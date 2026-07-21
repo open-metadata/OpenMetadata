@@ -19,7 +19,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useGraphDataBuilder } from './hooks/useGraphData';
+import {
+  findOntologyEdgeByGraphId,
+  useGraphDataBuilder,
+} from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
   fitViewWithMinZoom,
@@ -31,6 +34,7 @@ import {
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
 import PortOverlay from './PortOverlay.component';
+import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
 
 function writeSearchHighlightIds(
   container: HTMLDivElement | null,
@@ -49,7 +53,9 @@ function writeSearchHighlightIds(
 function writeEdges(
   container: HTMLDivElement | null,
   edges: ReadonlyArray<{
+    edgeKind?: string;
     from: string;
+    provenance?: string;
     to: string;
     relationType: string;
     inverseRelationType?: string;
@@ -61,6 +67,8 @@ function writeEdges(
         from: e.from,
         to: e.to,
         relationType: e.relationType,
+        ...(e.edgeKind ? { edgeKind: e.edgeKind } : {}),
+        ...(e.provenance ? { provenance: e.provenance } : {}),
         ...(e.inverseRelationType
           ? { inverseRelationType: e.inverseRelationType }
           : {}),
@@ -96,10 +104,12 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onNodeClick,
       onNodeDoubleClick,
       onPaneClick,
+      onEdgeClick,
       onScrollNearEdge,
       nodePositions,
       relationTypes,
       studioMode,
+      isAuthoringMode,
       isEditMode,
       onCreateRelation,
     },
@@ -117,7 +127,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       () =>
         new Set(
           (relationTypes ?? [])
-            .filter((relationType) => relationType.category === 'hierarchical')
+            .filter(isHierarchicalRelationship)
             .map((relationType) => relationType.name)
         ),
       [relationTypes]
@@ -150,7 +160,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
-      isEditMode,
+      isEditMode: Boolean(isAuthoringMode || isEditMode),
       layoutType,
       nodePositions,
       relationTypes,
@@ -266,6 +276,14 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     useEffect(() => {
       writeEdges(containerRef.current, mergedEdgesList);
     }, [mergedEdgesList]);
+
+    useEffect(() => {
+      const selectedEdge = findOntologyEdgeByGraphId(
+        mergedEdgesList,
+        clickedEdgeId
+      );
+      onEdgeClick?.(selectedEdge);
+    }, [clickedEdgeId, mergedEdgesList, onEdgeClick]);
 
     useEffect(() => {
       writeCardinalityMap(containerRef.current, cardinalityLabelMap);

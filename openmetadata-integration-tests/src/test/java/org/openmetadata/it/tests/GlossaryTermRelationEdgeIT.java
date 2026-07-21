@@ -1,5 +1,19 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -14,16 +28,28 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
-import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
+import org.openmetadata.schema.api.data.OntologyGraphTruncationReason;
+import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -34,27 +60,26 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * test creates its own pair of terms so they are independent and can run concurrently.
  */
 @Execution(ExecutionMode.CONCURRENT)
+@ExtendWith(TestNamespaceExtension.class)
 public class GlossaryTermRelationEdgeIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final HttpClient HTTP =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
-  private static OpenMetadataClient client;
-  private static Glossary glossary;
+  private OpenMetadataClient client;
+  private Glossary glossary;
 
-  @BeforeAll
-  static void setup() throws Exception {
-    client = SdkClients.adminClient();
-    String glossaryName = "OntologyStudioEdges_" + UUID.randomUUID().toString().substring(0, 8);
-    glossary =
-        client
-            .glossaries()
-            .create(
-                new CreateGlossary()
-                    .withName(glossaryName)
-                    .withDescription("Glossary for single-edge relation endpoint tests"));
+  @BeforeEach
+  void setup(TestNamespace ns) throws Exception {
+    client = OssTestServer.defaultHandle().sdk();
+    glossary = GlossaryTestFactory.createSimple(ns);
     assertNotNull(glossary, "Test glossary should be created");
+  }
+
+  @AfterEach
+  void cleanup(TestNamespace ns) {
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
   }
 
   @Test
@@ -85,6 +110,18 @@ public class GlossaryTermRelationEdgeIT {
         RelationProvenance.MANUAL,
         edge.getProvenance(),
         "Provenance should default to Manual when omitted");
+  }
+
+  @Test
+  void inferredProvenanceCannotBeAuthoredThroughTheMutationApi() throws Exception {
+    GlossaryTerm from = createTerm("InferredFrom");
+    GlossaryTerm to = createTerm("InferredTo");
+
+    HttpResponse<String> response =
+        postRelationResponse(from.getId(), to.getId(), "broader", RelationProvenance.INFERRED);
+
+    assertEquals(400, response.statusCode(), response.body());
+    assertNull(findEdge(from, to.getId()));
   }
 
   @Test
@@ -152,9 +189,109 @@ public class GlossaryTermRelationEdgeIT {
     assertEquals(404, status, "PUT on a nonexistent relation should return 404");
   }
 
-  // ---- helpers ----
+  @Test
+  void updateByStableIdPreservesIdentityAndAuditMetadata() throws Exception {
+    GlossaryTerm from = createTerm("StableUpdateFrom");
+    GlossaryTerm to = createTerm("StableUpdateTo");
+    postRelation(from.getId(), to.getId(), "broader", RelationProvenance.MANUAL);
+    TermRelation original = findEdge(from, to.getId(), "broader");
+    assertNotNull(original);
 
-  private static GlossaryTerm createTerm(String prefix) throws Exception {
+    HttpResponse<String> response =
+        updateRelationById(
+            from.getId(),
+            original.getId(),
+            new UpdateTermRelation()
+                .withRelationType("narrower")
+                .withProvenance(RelationProvenance.IMPORTED)
+                .withStatus(EntityStatus.APPROVED));
+
+    assertVersionedRelatedTermsChange(response, from.getVersion());
+    TermRelation updated = findEdge(from, to.getId(), "narrower");
+    assertEquals(original.getId(), updated.getId());
+    assertEquals(original.getCreatedAt(), updated.getCreatedAt());
+    assertEquals(original.getCreatedBy(), updated.getCreatedBy());
+    assertEquals(RelationProvenance.IMPORTED, updated.getProvenance());
+    assertEquals(EntityStatus.APPROVED, updated.getStatus());
+    TermRelation inverse = findEdge(to, from.getId(), "broader");
+    assertEquals(original.getId(), inverse.getId());
+  }
+
+  @Test
+  void partialStableIdUpdatePreservesOmittedFields() throws Exception {
+    GlossaryTerm from = createTerm("PartialUpdateFrom");
+    GlossaryTerm to = createTerm("PartialUpdateTo");
+    postRelation(from.getId(), to.getId(), "broader", RelationProvenance.IMPORTED);
+    TermRelation original = findEdge(from, to.getId(), "broader");
+    assertNotNull(original);
+
+    HttpResponse<String> response =
+        updateRelationById(
+            from.getId(),
+            original.getId(),
+            new UpdateTermRelation().withStatus(EntityStatus.APPROVED));
+
+    assertVersionedRelatedTermsChange(response, from.getVersion());
+    TermRelation updated = findEdge(from, to.getId(), "broader");
+    assertEquals(original.getId(), updated.getId());
+    assertEquals(RelationProvenance.IMPORTED, updated.getProvenance());
+    assertEquals(EntityStatus.APPROVED, updated.getStatus());
+  }
+
+  @Test
+  void deleteByStableIdLeavesOtherRelationshipTypesUntouched() throws Exception {
+    GlossaryTerm from = createTerm("StableDeleteFrom");
+    GlossaryTerm to = createTerm("StableDeleteTo");
+    postRelation(from.getId(), to.getId(), "broader", RelationProvenance.MANUAL);
+    postRelation(from.getId(), to.getId(), "synonym", RelationProvenance.MANUAL);
+    TermRelation broader = findEdge(from, to.getId(), "broader");
+    GlossaryTerm beforeDelete =
+        client.glossaryTerms().getByName(from.getFullyQualifiedName(), "relatedTerms");
+    assertNotNull(broader);
+
+    HttpResponse<String> response = deleteRelationById(from.getId(), broader.getId());
+
+    assertVersionedRelatedTermsChange(response, beforeDelete.getVersion());
+    assertNull(findEdge(from, to.getId(), "broader"));
+    assertNotNull(findEdge(from, to.getId(), "synonym"));
+  }
+
+  @Test
+  void emptyStableIdUpdateIsRejected() throws Exception {
+    GlossaryTerm from = createTerm("EmptyUpdateFrom");
+    GlossaryTerm to = createTerm("EmptyUpdateTo");
+    postRelation(from.getId(), to.getId(), "broader", RelationProvenance.MANUAL);
+    TermRelation relation = findEdge(from, to.getId(), "broader");
+    assertNotNull(relation);
+
+    HttpResponse<String> response =
+        updateRelationById(from.getId(), relation.getId(), new UpdateTermRelation());
+
+    assertEquals(400, response.statusCode(), response.body());
+  }
+
+  @Test
+  void relationGraphReportsNodeAndEdgeTruncation() throws Exception {
+    GlossaryTerm root = createTerm("SliceRoot");
+    GlossaryTerm first = createTerm("SliceFirst");
+    GlossaryTerm second = createTerm("SliceSecond");
+    GlossaryTerm third = createTerm("SliceThird");
+    postRelation(root.getId(), first.getId(), "relatedTo", RelationProvenance.MANUAL);
+    postRelation(root.getId(), second.getId(), "relatedTo", RelationProvenance.MANUAL);
+    postRelation(root.getId(), third.getId(), "relatedTo", RelationProvenance.MANUAL);
+
+    GlossaryTermRelationGraph nodeBounded = relationGraph(root.getId(), 2, 10);
+    GlossaryTermRelationGraph edgeBounded = relationGraph(root.getId(), 10, 1);
+
+    assertTrue(nodeBounded.getTruncated());
+    assertEquals(OntologyGraphTruncationReason.NODE_LIMIT, nodeBounded.getTruncationReason());
+    assertEquals(2, nodeBounded.getNodes().size());
+    assertTrue(edgeBounded.getTruncated());
+    assertEquals(OntologyGraphTruncationReason.EDGE_LIMIT, edgeBounded.getTruncationReason());
+    assertEquals(1, edgeBounded.getEdges().size());
+  }
+
+  private GlossaryTerm createTerm(String prefix) throws Exception {
     String name = prefix + "_" + UUID.randomUUID().toString().substring(0, 8);
     return client
         .glossaryTerms()
@@ -165,7 +302,7 @@ public class GlossaryTermRelationEdgeIT {
                 .withGlossary(glossary.getFullyQualifiedName()));
   }
 
-  private static GlossaryTerm createTerm(String prefix, GlossaryTerm relatedTerm) throws Exception {
+  private GlossaryTerm createTerm(String prefix, GlossaryTerm relatedTerm) throws Exception {
     String name = prefix + "_" + UUID.randomUUID().toString().substring(0, 8);
     return client
         .glossaryTerms()
@@ -188,7 +325,7 @@ public class GlossaryTermRelationEdgeIT {
     return termRelation;
   }
 
-  private static void postRelation(UUID fromId, UUID toId, String type, RelationProvenance prov)
+  private void postRelation(UUID fromId, UUID toId, String type, RelationProvenance prov)
       throws Exception {
     HttpResponse<String> response = postRelationResponse(fromId, toId, type, prov);
     assertTrue(
@@ -196,27 +333,27 @@ public class GlossaryTermRelationEdgeIT {
         "POST relation should succeed, got " + response.statusCode() + ": " + response.body());
   }
 
-  private static HttpResponse<String> postRelationResponse(
+  private HttpResponse<String> postRelationResponse(
       UUID fromId, UUID toId, String type, RelationProvenance prov) throws Exception {
     String url = SdkClients.getServerUrl() + "/v1/glossaryTerms/" + fromId + "/relations";
     return send("POST", url, MAPPER.writeValueAsString(buildBody(toId, type, prov)));
   }
 
-  private static void putRelation(UUID fromId, UUID toId, String type) throws Exception {
+  private void putRelation(UUID fromId, UUID toId, String type) throws Exception {
     assertEquals(200, putRelationRaw(fromId, toId, type), "PUT relation should succeed");
   }
 
-  private static int putRelationRaw(UUID fromId, UUID toId, String type) throws Exception {
+  private int putRelationRaw(UUID fromId, UUID toId, String type) throws Exception {
     return putRelationResponse(fromId, toId, type).statusCode();
   }
 
-  private static HttpResponse<String> putRelationResponse(UUID fromId, UUID toId, String type)
+  private HttpResponse<String> putRelationResponse(UUID fromId, UUID toId, String type)
       throws Exception {
     String url = SdkClients.getServerUrl() + "/v1/glossaryTerms/" + fromId + "/relations/" + toId;
     return send("PUT", url, MAPPER.writeValueAsString(buildBody(toId, type, null)));
   }
 
-  private static HttpResponse<String> deleteRelationResponse(UUID fromId, UUID toId, String type)
+  private HttpResponse<String> deleteRelationResponse(UUID fromId, UUID toId, String type)
       throws Exception {
     String url =
         SdkClients.getServerUrl()
@@ -229,8 +366,44 @@ public class GlossaryTermRelationEdgeIT {
     return send("DELETE", url, "");
   }
 
-  private static HttpResponse<String> send(String method, String url, String body)
+  private HttpResponse<String> updateRelationById(
+      UUID termId, UUID relationshipId, UpdateTermRelation update) throws Exception {
+    String url =
+        SdkClients.getServerUrl()
+            + "/v1/glossaryTerms/"
+            + termId
+            + "/relations/id/"
+            + relationshipId;
+    return send("PUT", url, MAPPER.writeValueAsString(update));
+  }
+
+  private HttpResponse<String> deleteRelationById(UUID termId, UUID relationshipId)
       throws Exception {
+    String url =
+        SdkClients.getServerUrl()
+            + "/v1/glossaryTerms/"
+            + termId
+            + "/relations/id/"
+            + relationshipId;
+    return send("DELETE", url, "");
+  }
+
+  private GlossaryTermRelationGraph relationGraph(UUID termId, int nodeLimit, int edgeLimit)
+      throws Exception {
+    String url =
+        SdkClients.getServerUrl()
+            + "/v1/glossaryTerms/"
+            + termId
+            + "/relationsGraph?depth=1&nodeLimit="
+            + nodeLimit
+            + "&edgeLimit="
+            + edgeLimit;
+    HttpResponse<String> response = send("GET", url, "");
+    assertEquals(200, response.statusCode(), response.body());
+    return MAPPER.readValue(response.body(), GlossaryTermRelationGraph.class);
+  }
+
+  private HttpResponse<String> send(String method, String url, String body) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -241,10 +414,17 @@ public class GlossaryTermRelationEdgeIT {
     return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
-  private static TermRelation findEdge(GlossaryTerm from, UUID toId) throws Exception {
+  private TermRelation findEdge(GlossaryTerm from, UUID toId) throws Exception {
     GlossaryTerm reloaded =
         client.glossaryTerms().getByName(from.getFullyQualifiedName(), "relatedTerms");
     return firstEdgeTo(reloaded, toId);
+  }
+
+  private TermRelation findEdge(GlossaryTerm from, UUID toId, String relationType)
+      throws Exception {
+    GlossaryTerm reloaded =
+        client.glossaryTerms().getByName(from.getFullyQualifiedName(), "relatedTerms");
+    return firstEdgeTo(reloaded, toId, relationType);
   }
 
   private static TermRelation firstEdgeTo(GlossaryTerm term, UUID toId) {
@@ -252,6 +432,20 @@ public class GlossaryTermRelationEdgeIT {
     if (term.getRelatedTerms() != null) {
       for (TermRelation relation : term.getRelatedTerms()) {
         if (relation.getTerm() != null && toId.equals(relation.getTerm().getId())) {
+          result = relation;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  private static TermRelation firstEdgeTo(GlossaryTerm term, UUID toId, String relationType) {
+    TermRelation result = null;
+    if (term.getRelatedTerms() != null) {
+      for (TermRelation relation : term.getRelatedTerms()) {
+        boolean hasTarget = relation.getTerm() != null && toId.equals(relation.getTerm().getId());
+        if (hasTarget && relationType.equals(relation.getRelationType())) {
           result = relation;
           break;
         }
@@ -285,25 +479,31 @@ public class GlossaryTermRelationEdgeIT {
     return false;
   }
 
-  private static void assertUpdateChangeEvent(UUID entityId, long timestamp) throws Exception {
+  private void assertUpdateChangeEvent(UUID entityId, long timestamp) {
     String url =
         SdkClients.getServerUrl() + "/v1/events?entityUpdated=glossaryTerm&timestamp=" + timestamp;
-    for (int attempt = 0; attempt < 20; attempt++) {
-      HttpResponse<String> response = send("GET", url, "");
-      assertEquals(200, response.statusCode(), response.body());
-      for (JsonNode event : MAPPER.readTree(response.body()).path("data")) {
-        if (entityId.toString().equals(event.path("entityId").asText())
-            && "entityUpdated".equals(event.path("eventType").asText())) {
-          return;
-        }
-      }
-      Thread.sleep(250);
-    }
-    throw new AssertionError("No glossaryTerm update ChangeEvent found for " + entityId);
+    await("glossaryTerm update ChangeEvent for " + entityId)
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(250))
+        .until(() -> containsUpdateEvent(url, entityId));
   }
 
-  private static void assertVersionHistoryContainsRelatedTermsChange(UUID entityId)
-      throws Exception {
+  private boolean containsUpdateEvent(String url, UUID entityId) throws Exception {
+    HttpResponse<String> response = send("GET", url, "");
+    assertEquals(200, response.statusCode(), response.body());
+    boolean found = false;
+    for (JsonNode event : MAPPER.readTree(response.body()).path("data")) {
+      found = found || isUpdateEvent(event, entityId);
+    }
+    return found;
+  }
+
+  private static boolean isUpdateEvent(JsonNode event, UUID entityId) {
+    return entityId.toString().equals(event.path("entityId").asText())
+        && "entityUpdated".equals(event.path("eventType").asText());
+  }
+
+  private void assertVersionHistoryContainsRelatedTermsChange(UUID entityId) throws Exception {
     String url = SdkClients.getServerUrl() + "/v1/glossaryTerms/" + entityId + "/versions";
     HttpResponse<String> response = send("GET", url, "");
     assertEquals(200, response.statusCode(), response.body());

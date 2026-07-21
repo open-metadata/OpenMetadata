@@ -46,6 +46,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
@@ -120,6 +121,7 @@ import org.openmetadata.service.search.indexes.PromptTemplateIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
+import org.openmetadata.service.search.indexes.RelationshipTypeIndex;
 import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.SearchServiceIndex;
@@ -395,6 +397,10 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),
+        Arguments.of(
+            Entity.RELATIONSHIP_TYPE,
+            (Supplier<Object>) RelationshipType::new,
+            RelationshipTypeIndex.class),
         Arguments.of(Entity.MLMODEL, (Supplier<Object>) MlModel::new, MlModelIndex.class),
         Arguments.of(Entity.LLM_MODEL, (Supplier<Object>) LLMModel::new, LlmModelIndex.class),
         Arguments.of(

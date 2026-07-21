@@ -13,51 +13,49 @@
 
 package org.openmetadata.service.rdf;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
-import java.util.ArrayList;
+import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.openmetadata.schema.api.rdf.SavedSparqlQueries;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.service.jdbi3.DocumentRepository;
 
 public final class SavedSparqlQueryStore {
-  static final String EXTENSION = "user.savedSparqlQueries";
-  static final String JSON_SCHEMA = "savedSparqlQueries";
+  private final SavedSparqlQueryDocumentRepository repository;
+  private final SavedSparqlQueryDocumentCodec codec;
 
-  private final CollectionDAO.EntityExtensionDAO entityExtensionDAO;
-
-  public SavedSparqlQueryStore(CollectionDAO collectionDAO) {
-    this.entityExtensionDAO = collectionDAO.entityExtensionDAO();
+  public SavedSparqlQueryStore(final DocumentRepository repository) {
+    this(new OpenMetadataSavedSparqlQueryDocumentRepository(repository));
   }
 
-  public SavedSparqlQueryStore(CollectionDAO.EntityExtensionDAO entityExtensionDAO) {
-    this.entityExtensionDAO = entityExtensionDAO;
+  SavedSparqlQueryStore(final SavedSparqlQueryDocumentRepository repository) {
+    this.repository = Objects.requireNonNull(repository);
+    codec = new SavedSparqlQueryDocumentCodec();
   }
 
-  public SavedSparqlQueries get(UUID userId) {
-    String json = entityExtensionDAO.getExtension(Objects.requireNonNull(userId), EXTENSION);
-    if (nullOrEmpty(json)) {
-      return emptyLibrary();
-    }
-
-    SavedSparqlQueries savedQueries = JsonUtils.readValue(json, SavedSparqlQueries.class);
-    savedQueries.setQueries(listOrEmptyMutable(savedQueries.getQueries()));
+  public SavedSparqlQueries get(final UUID userId) {
+    final String documentFqn = codec.documentFqn(Objects.requireNonNull(userId));
+    final Document document = repository.findByFqn(documentFqn);
+    final SavedSparqlQueries savedQueries =
+        document == null ? emptyLibrary() : codec.decode(document);
     return savedQueries;
   }
 
-  public SavedSparqlQueries save(UUID userId, SavedSparqlQueries savedQueries) {
-    entityExtensionDAO.insert(
-        Objects.requireNonNull(userId),
-        EXTENSION,
-        JSON_SCHEMA,
-        JsonUtils.pojoToJson(Objects.requireNonNull(savedQueries)));
-    return savedQueries;
+  public SavedSparqlQueries save(
+      final UriInfo uriInfo,
+      final UUID userId,
+      final String userName,
+      final SavedSparqlQueries savedQueries) {
+    final String documentFqn = codec.documentFqn(Objects.requireNonNull(userId));
+    final Document current = repository.findByFqn(documentFqn);
+    final Document updated = codec.encode(userId, Objects.requireNonNull(savedQueries));
+    final Document persisted =
+        repository.save(uriInfo, current, updated, Objects.requireNonNull(userName));
+    return codec.decode(persisted);
   }
 
-  private SavedSparqlQueries emptyLibrary() {
-    return new SavedSparqlQueries().withQueries(new ArrayList<>());
+  private static SavedSparqlQueries emptyLibrary() {
+    return new SavedSparqlQueries().withQueries(List.of());
   }
 }

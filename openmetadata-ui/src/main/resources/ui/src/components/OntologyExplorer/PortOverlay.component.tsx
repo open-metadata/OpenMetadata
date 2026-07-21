@@ -130,11 +130,11 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
         <div
           className={classNames(
             'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
-            'tw:rounded-full tw:border tw:border-brand-200 tw:bg-brand-50 tw:px-4 tw:py-2',
-            'tw:font-body tw:text-xs tw:leading-[normal] tw:font-semibold tw:text-brand-700 tw:shadow-sm'
+            'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
+            'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
           )}
           data-testid="ontology-connect-instruction">
-          <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded-[3px] tw:border tw:border-brand-600">
+          <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
             <Check aria-hidden="true" className="tw:size-2.5" />
           </span>
           <span>

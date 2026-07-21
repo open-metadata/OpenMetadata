@@ -87,6 +87,27 @@ class SystemRepositoryPatchSettingTest {
   }
 
   @Test
+  void typedPreparationRunsBeforeGlossarySettingsArePersisted() {
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(ORIGINAL_JSON);
+    when(systemDAO.updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), anyString()))
+        .thenReturn(1);
+
+    systemRepository.patchGlossaryTermRelationSettings(
+        appendRelationTypePatch(),
+        settings -> {
+          settings.getRelationTypes().getFirst().setDisplayName("Prescribes");
+          return settings;
+        });
+
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO)
+        .updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), updatedJson.capture());
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(updatedJson.getValue(), GlossaryTermRelationSettings.class);
+    assertEquals("Prescribes", updated.getRelationTypes().getFirst().getDisplayName());
+  }
+
+  @Test
   void patchSettingRejectsConcurrentSnapshotChange() {
     when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(ORIGINAL_JSON);
     when(systemDAO.updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), anyString()))

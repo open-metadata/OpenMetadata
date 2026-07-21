@@ -3,12 +3,17 @@ package org.openmetadata.sdk.services.glossary;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
+import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
+import org.openmetadata.schema.api.data.OntologyStudioSummary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -83,26 +88,75 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
    * @param id the root glossary term id
    * @param depth traversal depth (1-5)
    * @param relationTypes relation types to include, or {@code null}/empty for all
-   * @return a map with {@code nodes} and {@code edges} entries
+   * @return the bounded, typed relation graph
    */
-  public Map<String, Object> relationGraph(UUID id, int depth, List<String> relationTypes)
+  public GlossaryTermRelationGraph relationGraph(UUID id, int depth, List<String> relationTypes)
       throws OpenMetadataException {
-    RequestOptions.Builder options =
-        RequestOptions.builder().queryParam("depth", String.valueOf(depth));
-    if (relationTypes != null && !relationTypes.isEmpty()) {
-      options.queryParam("relationTypes", String.join(",", relationTypes));
-    }
-    String response =
-        httpClient.executeForString(
-            HttpMethod.GET, basePath + "/" + id + "/relationsGraph", null, options.build());
-    return deserialize(response, new TypeReference<Map<String, Object>>() {});
+    return relationGraph(id, GlossaryTermRelationGraphOptions.defaults(depth, relationTypes));
+  }
+
+  /** Fetch a relation graph with explicit traversal and response bounds. */
+  public GlossaryTermRelationGraph relationGraph(
+      final UUID id, final GlossaryTermRelationGraphOptions graphOptions)
+      throws OpenMetadataException {
+    final RequestOptions requestOptions = toRequestOptions(graphOptions);
+    return httpClient.execute(
+        HttpMethod.GET,
+        basePath + "/" + id + "/relationsGraph",
+        null,
+        GlossaryTermRelationGraph.class,
+        requestOptions);
   }
 
   /** Return per-relation-type usage counts across all glossary terms. */
-  public Map<String, Integer> relationTypeUsage() throws OpenMetadataException {
+  public List<RelationshipTypeUsage> relationTypeUsage() throws OpenMetadataException {
     String response =
         httpClient.executeForString(HttpMethod.GET, basePath + "/relationTypes/usage", null);
-    return deserialize(response, new TypeReference<Map<String, Integer>>() {});
+    return deserialize(response, new TypeReference<List<RelationshipTypeUsage>>() {});
+  }
+
+  /** Return the bounded health and isolation summary used by Ontology Studio. */
+  public OntologyStudioSummary studioSummary(String parent, int limit, int offset)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET,
+        basePath + "/studio/summary",
+        null,
+        OntologyStudioSummary.class,
+        studioPageOptions(parent, limit, offset));
+  }
+
+  /** Return one bounded page of term-to-asset clusters used by Ontology Studio data mode. */
+  public OntologyStudioDataGraph studioData(
+      String parent, int limit, int offset, int assetPreviewSize) throws OpenMetadataException {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("assetPreviewSize", String.valueOf(assetPreviewSize))
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("offset", String.valueOf(offset));
+    if (parent != null) {
+      options.queryParam("parent", parent);
+    }
+    return httpClient.execute(
+        HttpMethod.GET,
+        basePath + "/studio/data",
+        null,
+        OntologyStudioDataGraph.class,
+        options.build());
+  }
+
+  /** Return one bounded page of detailed assets for a term card. */
+  public ResultList<OntologyStudioAsset> studioAssets(UUID id, int limit, int offset)
+      throws OpenMetadataException {
+    String response =
+        httpClient.executeForString(
+            HttpMethod.GET,
+            basePath + "/" + id + "/studioAssets",
+            RequestOptions.builder()
+                .queryParam("limit", String.valueOf(limit))
+                .queryParam("offset", String.valueOf(offset))
+                .build());
+    return deserialize(response, new TypeReference<ResultList<OntologyStudioAsset>>() {});
   }
 
   private <R> R deserialize(String json, TypeReference<R> type) throws OpenMetadataException {
@@ -114,5 +168,29 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
           "Failed to parse glossary term relations response: " + e.getMessage(), e);
     }
     return result;
+  }
+
+  private static RequestOptions toRequestOptions(
+      final GlossaryTermRelationGraphOptions graphOptions) {
+    final RequestOptions.Builder builder =
+        RequestOptions.builder()
+            .queryParam("depth", String.valueOf(graphOptions.depth()))
+            .queryParam("nodeLimit", String.valueOf(graphOptions.nodeLimit()))
+            .queryParam("edgeLimit", String.valueOf(graphOptions.edgeLimit()));
+    if (!graphOptions.relationTypes().isEmpty()) {
+      builder.queryParam("relationTypes", String.join(",", graphOptions.relationTypes()));
+    }
+    return builder.build();
+  }
+
+  private static RequestOptions studioPageOptions(String parent, int limit, int offset) {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("offset", String.valueOf(offset));
+    if (parent != null) {
+      options.queryParam("parent", parent);
+    }
+    return options.build();
   }
 }

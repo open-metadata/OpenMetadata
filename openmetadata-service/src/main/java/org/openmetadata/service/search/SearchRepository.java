@@ -3587,6 +3587,17 @@ public class SearchRepository {
         query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
+  public JsonObject aggregate(
+      String query,
+      String entityType,
+      SearchAggregation searchAggregation,
+      SearchListFilter filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType), subjectContext);
+  }
+
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);

@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -31,16 +32,20 @@ public final class SavedSparqlQueryService {
   private static final int MAX_QUERY_LENGTH = 100_000;
   private final SavedSparqlQueryStore store;
 
-  public SavedSparqlQueryService(SavedSparqlQueryStore store) {
+  public SavedSparqlQueryService(final SavedSparqlQueryStore store) {
     this.store = Objects.requireNonNull(store);
   }
 
-  public SavedSparqlQueries get(UUID userId) {
+  public SavedSparqlQueries get(final UUID userId) {
     return store.get(userId);
   }
 
-  public SavedSparqlQueries replace(UUID userId, SavedSparqlQueries requestedLibrary) {
-    return store.save(userId, normalize(requestedLibrary));
+  public SavedSparqlQueries replace(
+      final UriInfo uriInfo,
+      final UUID userId,
+      final String userName,
+      final SavedSparqlQueries requestedLibrary) {
+    return store.save(uriInfo, userId, userName, normalize(requestedLibrary));
   }
 
   static SavedSparqlQueries normalize(SavedSparqlQueries requestedLibrary) {

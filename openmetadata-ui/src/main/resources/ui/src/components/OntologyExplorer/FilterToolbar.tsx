@@ -262,7 +262,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
           )}
         {onLoadMore !== undefined && (
           <Button
-            className="tw:text-brand-600"
+            className="tw:text-brand-secondary"
             color="tertiary"
             data-testid="ontology-load-more-btn"
             isDisabled={!hasMoreTerms || isLoading || isLoadingMore}

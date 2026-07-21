@@ -14,6 +14,7 @@ import {
   Circle as GCircle,
   Group,
   Image as GImage,
+  Line as GLine,
   Rect as GRect,
   Text as GText,
 } from '@antv/g';
@@ -22,12 +23,15 @@ import {
   ExtensionCategory,
   Line,
   LineStyleProps,
+  Quadratic,
+  QuadraticStyleProps,
   Rect as RectNode,
   RectCombo,
   RectComboStyleProps,
   RectStyleProps,
   register,
 } from '@antv/g6';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import {
   COLOR_META_BY_HEX,
   COMBO_FILL_DEFAULT,
@@ -106,6 +110,11 @@ import {
 } from '../OntologyExplorer.constants';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
 import './ontologyComboAwarePolylineEdge';
+import { getRelationshipColor } from './relationshipTypeUtils';
+import {
+  getStudioEditPortCircleStyle,
+  getStudioEditPortPlusLineStyles,
+} from './studioEditPortStyles';
 import {
   getCanvasContext,
   measureTextWidth,
@@ -113,6 +122,26 @@ import {
 } from './textMeasure';
 
 export const CARDINALITY_AWARE_LINE_EDGE_TYPE = 'cardinality-aware-line';
+export const CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE =
+  'cardinality-aware-quadratic';
+
+type CardinalityEndpoint = [number, number];
+
+function drawCardinalityLabels(
+  attributes: Record<string, unknown>,
+  endpoints: [CardinalityEndpoint, CardinalityEndpoint],
+  upsertLabel: (
+    key: string,
+    labelAttributes: ReturnType<typeof computeCardinalityLabelAttrs>
+  ) => void
+) {
+  (['start', 'end'] as const).forEach((end) => {
+    upsertLabel(
+      `cardinality-${end}`,
+      computeCardinalityLabelAttrs(attributes, endpoints, end)
+    );
+  });
+}
 
 class CardinalityAwareLine extends Line {
   override render(
@@ -120,28 +149,40 @@ class CardinalityAwareLine extends Line {
     container: Group
   ): void {
     super.render(attributes, container);
-    this.drawCardinalityLabel(attributes, container, 'start');
-    this.drawCardinalityLabel(attributes, container, 'end');
-  }
-
-  private drawCardinalityLabel(
-    attributes: Required<LineStyleProps>,
-    container: Group,
-    end: 'start' | 'end'
-  ): void {
     const endpoints = this.getEndpoints(attributes);
-    const attrs = computeCardinalityLabelAttrs(
+    drawCardinalityLabels(
       attributes as Record<string, unknown>,
       [endpoints[0] as [number, number], endpoints[1] as [number, number]],
-      end
+      (key, labelAttributes) =>
+        this.upsert(key, GText, labelAttributes, container)
     );
-    this.upsert(`cardinality-${end}`, GText, attrs, container);
+  }
+}
+
+class CardinalityAwareQuadratic extends Quadratic {
+  override render(
+    attributes: Required<QuadraticStyleProps>,
+    container: Group
+  ): void {
+    super.render(attributes, container);
+    const endpoints = this.getEndpoints(attributes);
+    drawCardinalityLabels(
+      attributes as Record<string, unknown>,
+      [endpoints[0] as [number, number], endpoints[1] as [number, number]],
+      (key, labelAttributes) =>
+        this.upsert(key, GText, labelAttributes, container)
+    );
   }
 }
 register(
   ExtensionCategory.EDGE,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
   CardinalityAwareLine
+);
+register(
+  ExtensionCategory.EDGE,
+  CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
+  CardinalityAwareQuadratic
 );
 
 const cssColorCache = new Map<string, string>();
@@ -268,23 +309,32 @@ class StudioTermNode extends RectNode {
       },
       container
     );
+    const plusLineStyles = getStudioEditPortPlusLineStyles(
+      bounds.max[0],
+      centerY
+    );
     this.upsert(
-      'studio-edit-port-plus',
-      GText,
+      'studio-edit-port-circle',
+      GCircle,
       attrs.studioEditMode === true
-        ? {
-            x: bounds.max[0],
-            y: centerY,
-            text: '+',
-            fill: '#FFFFFF',
-            fontFamily: 'Inter',
-            fontSize: 14,
-            fontWeight: 500,
-            pointerEvents: 'none',
-            textAlign: 'center',
-            textBaseline: 'middle',
-          }
+        ? getStudioEditPortCircleStyle(bounds.max[0], centerY)
         : false,
+      container
+    );
+    const editPortCircle = this.getShape('studio-edit-port-circle');
+    if (editPortCircle) {
+      editPortCircle.className = STUDIO_EDIT_PORT_CLASS_NAME;
+    }
+    this.upsert(
+      'studio-edit-port-plus-horizontal',
+      GLine,
+      attrs.studioEditMode === true ? plusLineStyles[0] : false,
+      container
+    );
+    this.upsert(
+      'studio-edit-port-plus-vertical',
+      GLine,
+      attrs.studioEditMode === true ? plusLineStyles[1] : false,
       container
     );
   }
@@ -540,16 +590,16 @@ const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
 
 export function getEffectiveRelationColor(
   relationType: string,
-  customRelation: { isSystemDefined?: boolean; color?: string } | undefined
+  relationshipType: RelationshipType | undefined
 ): string | undefined {
-  if (!customRelation) {
-    return RELATION_META[relationType]?.color;
-  }
-  if (customRelation.isSystemDefined) {
-    return RELATION_META[relationType]?.color ?? customRelation.color;
-  }
+  const configuredColor = relationshipType
+    ? getRelationshipColor(relationshipType)
+    : undefined;
+  const effectiveColor = relationshipType?.systemDefined
+    ? RELATION_META[relationType]?.color ?? configuredColor
+    : configuredColor ?? RELATION_META[relationType]?.color;
 
-  return customRelation.color ?? RELATION_META[relationType]?.color;
+  return effectiveColor;
 }
 
 export function getEdgeRelationLabelStyle(

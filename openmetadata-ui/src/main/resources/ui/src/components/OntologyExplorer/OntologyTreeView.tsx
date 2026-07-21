@@ -32,15 +32,15 @@ const OntologyTreeView = ({
 
   return (
     <div
-      className="tw:h-full tw:flex-1 tw:overflow-auto tw:bg-white"
+      className="tw:h-full tw:flex-1 tw:overflow-auto tw:bg-primary"
       data-testid="ontology-tree-view">
       <div className="tw:max-w-[920px] tw:px-6 tw:py-5">
-        <p className="tw:mb-4 tw:font-body tw:text-[13px] tw:leading-[1.5] tw:font-normal tw:text-gray-500">
+        <p className="tw:mb-4 tw:font-body tw:text-[13px] tw:leading-[1.5] tw:font-normal tw:text-quaternary">
           {t('message.ontology-tree-description')}
         </p>
 
         {groups.length === 0 ? (
-          <p className="tw:py-10 tw:text-center tw:font-body tw:text-[13px] tw:leading-5 tw:text-gray-500">
+          <p className="tw:py-10 tw:text-center tw:font-body tw:text-sm tw:leading-5 tw:text-quaternary">
             {t('message.no-glossary-terms-found')}
           </p>
         ) : (
@@ -52,12 +52,12 @@ const OntologyTreeView = ({
               <div className="tw:mb-2 tw:flex tw:items-center tw:gap-2">
                 <span
                   aria-hidden="true"
-                  className="tw:size-1.5 tw:rounded-[2px] tw:bg-brand-600"
+                  className="tw:size-1.5 tw:rounded-sm tw:bg-brand-solid"
                 />
-                <h3 className="tw:font-body tw:text-xs tw:leading-[18px] tw:font-bold tw:tracking-[0.04em] tw:text-gray-600 tw:uppercase">
+                <h3 className="tw:font-body tw:text-xs tw:leading-5 tw:font-bold tw:tracking-wide tw:text-tertiary tw:uppercase">
                   {group.glossaryName}
                 </h3>
-                <span className="tw:font-body tw:text-[11px] tw:leading-4 tw:font-medium tw:text-gray-400">
+                <span className="tw:font-body tw:text-xs tw:leading-4 tw:font-medium tw:text-quaternary">
                   {t('label.x-terms', { count: group.rows.length })}
                 </span>
               </div>
@@ -68,12 +68,12 @@ const OntologyTreeView = ({
                 return (
                   <button
                     className={classNames(
-                      'tw:mb-0.5 tw:flex tw:w-full tw:items-center tw:gap-[9px] tw:rounded-lg tw:border',
+                      'tw:mb-0.5 tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:rounded-lg tw:border',
                       'tw:px-[11px] tw:py-[9px] tw:text-left tw:focus-visible:outline-2',
                       'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
                       isSelected
-                        ? 'tw:border-brand-100 tw:bg-brand-50'
-                        : 'tw:border-transparent tw:bg-white hover:tw:bg-gray-50'
+                        ? 'tw:border-brand tw:bg-brand-primary'
+                        : 'tw:border-transparent tw:bg-primary hover:tw:bg-secondary'
                     )}
                     data-testid={`ontology-tree-term-${row.node.id}`}
                     key={row.node.id}
@@ -87,12 +87,14 @@ const OntologyTreeView = ({
                       aria-hidden="true"
                       className={classNames(
                         'tw:size-2 tw:shrink-0 tw:rounded-full',
-                        row.isIsolated ? 'tw:bg-warning-500' : 'tw:bg-brand-300'
+                        row.isIsolated
+                          ? 'tw:bg-warning-primary0'
+                          : 'tw:bg-brand-secondary'
                       )}
                     />
                     <span
                       className={classNames(
-                        'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-[13px] tw:leading-[18px] tw:text-gray-900',
+                        'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-[13px] tw:leading-5 tw:text-primary',
                         isSelected ? 'tw:font-bold' : 'tw:font-medium'
                       )}>
                       {row.node.label}
@@ -100,14 +102,14 @@ const OntologyTreeView = ({
                     {row.parentCount > 1 ? (
                       <span
                         className={
-                          'tw:rounded-full tw:border tw:border-purple-200 tw:bg-purple-50 tw:px-[7px] ' +
-                          'tw:py-px tw:font-body tw:text-[10px] tw:leading-[14px] tw:font-semibold tw:text-purple-700'
+                          'tw:rounded-full tw:border tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:px-2 ' +
+                          'tw:py-px tw:font-body tw:text-xs tw:leading-4 tw:font-semibold tw:text-utility-purple-700'
                         }>
                         {t('label.polyhierarchy')}
                       </span>
                     ) : null}
                     {row.isIsolated ? (
-                      <span className="tw:flex tw:items-center tw:gap-1 tw:font-body tw:text-[10px] tw:leading-[14px] tw:font-semibold tw:text-warning-700 tw:lowercase">
+                      <span className="tw:flex tw:items-center tw:gap-1 tw:font-body tw:text-xs tw:leading-4 tw:font-semibold tw:text-warning-primary tw:lowercase">
                         <AlertTriangle
                           aria-hidden="true"
                           className="tw:size-3"
@@ -117,8 +119,8 @@ const OntologyTreeView = ({
                     ) : (
                       <span
                         className={
-                          'tw:rounded-full tw:border tw:border-gray-200 tw:bg-gray-100 tw:px-[7px] tw:py-px ' +
-                          'tw:font-body tw:text-[10px] tw:leading-[14px] tw:font-semibold tw:text-gray-600'
+                          'tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px ' +
+                          'tw:font-body tw:text-xs tw:leading-4 tw:font-semibold tw:text-tertiary'
                         }>
                         {t('label.x-relations', {
                           count: row.relationCount,

@@ -1,0 +1,19 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackList.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackList",
+  "description": "Ontology Studio library catalogue.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackList",
+  "properties": {
+    "packs": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyPackManifest.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["packs"],
+  "additionalProperties": false
+}

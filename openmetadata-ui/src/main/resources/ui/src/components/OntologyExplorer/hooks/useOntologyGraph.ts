@@ -22,6 +22,7 @@ import {
 } from '@antv/g6';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   BRAND_BLUE_FALLBACK,
   COMBO_COLOR_FALLBACK,
@@ -35,6 +36,7 @@ import {
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
   DEFAULT_ZOOM,
+  DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
@@ -67,7 +69,6 @@ import {
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
 } from '../PortOverlay.interface';
-import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   adaptiveSpacing,
   getLayoutConfig,
@@ -81,6 +82,7 @@ import {
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
+  CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
   getCanvasColor,
   STUDIO_EDIT_PORT_CLASS_NAME,
   truncateHierarchyBadgeToFitWidth,
@@ -128,7 +130,10 @@ const sameStringSet = (a: Set<string>, b: Set<string>) => {
   return true;
 };
 
-function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
+export function isGraphTopologySynced(
+  graph: Graph,
+  graphData: GraphData
+): boolean {
   const { nodes = [], edges = [], combos = [] } = graphData;
 
   if (!sameStringSet(toIdSet(nodes), toIdSet(graph.getNodeData()))) {
@@ -147,7 +152,7 @@ function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
   return sameStringSet(toIdSet(combos), toIdSet(modelCombos));
 }
 
-const findBadgeIndex = (originalTarget: unknown): number | null => {
+export const findBadgeIndex = (originalTarget: unknown): number | null => {
   let current: unknown = originalTarget;
   for (let depth = 0; depth < 14; depth += 1) {
     if (!current || typeof current !== 'object') {
@@ -191,19 +196,19 @@ const hasShapeClass = (originalTarget: unknown, className: string): boolean => {
   return false;
 };
 
-function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+export function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 0;
 }
 
-function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
+export function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 1;
 }
 
-function stripNodePositionsForDataMode<T extends { style?: unknown }>(
+export function stripNodePositionsForDataMode<T extends { style?: unknown }>(
   nodes: T[]
 ): T[] {
   return nodes.map((node) => {
@@ -899,7 +904,10 @@ export function useOntologyGraph({
                     ontNode.entityRef.type
                   )
                 : undefined;
-            const entityIconUrl = getEntityIconUrl(ontNode?.entityRef?.type);
+            const entityIconUrl = serviceUtilClassBase.getServiceTypeLogo({
+              entityType: ontNode?.entityRef?.type,
+              serviceType: ontNode?.serviceLabel,
+            });
 
             return {
               ...buildDataModeAssetNodeStyle(
@@ -1155,7 +1163,10 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: () => CARDINALITY_AWARE_LINE_EDGE_TYPE,
+        type: () =>
+          studioMode && !isDataMode
+            ? CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE
+            : CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
           enter: false,
         },
@@ -1178,6 +1189,15 @@ export function useOntologyGraph({
             lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
             opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
             endArrow: !isDataMode,
+            // Reset label opacity on non-dimmed edges: G6 merges style updates,
+            // so an un-dimmed edge would otherwise retain a stale dimmed label
+            // opacity — a bold line with an unreadable relation label.
+            ...(isEdgeDimmed
+              ? {
+                  labelOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                  labelBackgroundOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                }
+              : { labelOpacity: 1, labelBackgroundOpacity: 1 }),
           };
 
           const merged = (
@@ -1306,11 +1326,31 @@ export function useOntologyGraph({
     const cancelEditGesture = () => {
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
     };
+    const writeGraphSnapshot = () => {
+      const positions = Object.fromEntries(
+        graph.getNodeData().flatMap((node) => {
+          try {
+            const canvasPosition = graph.getElementPosition(node.id);
+            const clientPosition = graph.getClientByCanvas(canvasPosition);
+
+            return [
+              [String(node.id), { x: clientPosition[0], y: clientPosition[1] }],
+            ];
+          } catch {
+            return [];
+          }
+        })
+      );
+      container.dataset.graphZoom = String(graph.getZoom());
+      container.dataset.nodePositions = JSON.stringify(positions);
+    };
 
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
     graph.on(NodeEvent.DRAG_START, cancelEditGesture);
+    graph.on(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
     graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
+    graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
       onPaneClick();
@@ -1489,10 +1529,12 @@ export function useOntologyGraph({
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
       graph.off(NodeEvent.DRAG_START, cancelEditGesture);
+      graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
       graph.off(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
+      graph.off(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
       graph.destroy();
       graphRef.current = null;
     };

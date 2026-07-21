@@ -15,13 +15,33 @@
  */
 export interface TermRelationMetadata {
     /**
+     * Time the relationship was first persisted.
+     */
+    createdAt?: number;
+    /**
+     * User who first authored or imported the relationship.
+     */
+    createdBy?: string;
+    /**
+     * Stable logical relationship identifier.
+     */
+    id?: string;
+    /**
      * How this relation edge originated.
      */
     provenance: Provenance;
     /**
+     * Stable identifier of the governed relationship type.
+     */
+    relationshipTypeId?: string;
+    /**
      * Type of the semantic relation between the glossary terms.
      */
     relationType: string;
+    /**
+     * Authored source term, independent of canonical physical row ordering.
+     */
+    sourceTermId?: string;
     /**
      * Approval status of this relation edge.
      */

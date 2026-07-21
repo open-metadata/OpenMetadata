@@ -12,7 +12,8 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import { GraphFilters, OntologyGraphData } from './OntologyExplorer.interface';
 import {
   buildOntologyQuerySuggestions,
@@ -34,13 +35,12 @@ const GLOSSARIES: Glossary[] = [
   { id: 'g2', name: 'Compliance', description: '' },
 ];
 
-const RELATION_TYPES: GlossaryTermRelationType[] = [
-  {
+const RELATION_TYPES: RelationshipType[] = [
+  createRelationshipTypeMock({
     name: 'broader',
     displayName: 'Broader',
-    category: 'hierarchical',
     rdfPredicate: 'http://www.w3.org/2004/02/skos/core#broader',
-  },
+  }),
 ];
 
 const GRAPH: OntologyGraphData = {
@@ -140,9 +140,7 @@ describe('OntologyStudio utils', () => {
     expect(suggestions[0].query).toContain(
       '<http://www.w3.org/2004/02/skos/core#broader>'
     );
-    expect(suggestions[0].query).toContain(
-      'GRAPH <https://open-metadata.org/graph/knowledge>'
-    );
+    expect(suggestions[0].query).not.toContain('GRAPH');
     expect(suggestions[0].query).toContain('Finance.BetaParent');
     expect(suggestions[0].query).not.toContain('AntiMoneyLaundering');
   });

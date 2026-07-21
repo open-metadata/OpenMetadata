@@ -12,34 +12,52 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { getGlossaryTermRelationSettings } from '../../rest/glossaryAPI';
+import {
+  Category,
+  PaletteKey,
+} from '../../generated/entity/data/relationshipType';
+import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
 
-jest.mock('../../rest/glossaryAPI', () => ({
-  getGlossaryTermRelationSettings: jest.fn(),
+jest.mock('../../rest/ontologyAPI', () => ({
+  listRelationshipTypes: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const mockGetSettings = getGlossaryTermRelationSettings as jest.MockedFunction<
-  typeof getGlossaryTermRelationSettings
+const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
+  typeof listRelationshipTypes
 >;
 
 const RELATION_TYPES = [
   {
     name: 'broader',
     displayName: 'Broader',
-    isSystemDefined: true,
-    inverseRelation: 'narrower',
-    category: 'hierarchical',
+    category: Category.OwlSkos,
+    characteristics: [],
+    crossGlossaryAllowed: true,
+    description: 'Broader concept',
+    fullyQualifiedName: 'broader',
+    id: 'broader-id',
+    inverse: { id: 'narrower-id', name: 'narrower', type: 'relationshipType' },
+    paletteKey: PaletteKey.Green,
+    rdfPredicate: 'http://www.w3.org/2004/02/skos/core#broader',
+    systemDefined: true,
   },
   {
     name: 'governedBy',
     displayName: 'Governed By',
-    isSystemDefined: false,
-    category: 'associative',
+    category: Category.Custom,
+    characteristics: [],
+    crossGlossaryAllowed: true,
+    description: 'Governance concept',
+    fullyQualifiedName: 'governedBy',
+    id: 'governed-by-id',
+    paletteKey: PaletteKey.Violet,
+    rdfPredicate: 'https://example.org/governedBy',
+    systemDefined: false,
   },
 ];
 
@@ -58,8 +76,11 @@ describe('RelationshipTypePicker', () => {
     );
 
   beforeEach(() => {
-    mockGetSettings.mockReset();
-    mockGetSettings.mockResolvedValue({ relationTypes: RELATION_TYPES });
+    mockListRelationshipTypes.mockReset();
+    mockListRelationshipTypes.mockResolvedValue({
+      data: RELATION_TYPES,
+      paging: { total: RELATION_TYPES.length },
+    });
   });
 
   it('loads and groups relation types into system and custom', async () => {

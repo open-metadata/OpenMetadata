@@ -21,15 +21,18 @@ import {
 import classNames from 'classnames';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import OntologyDeleteImpactPanel from './OntologyDeleteImpactPanel';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
 import { isTermNode } from './utils/graphBuilders';
+import { getRelationshipColor } from './utils/relationshipTypeUtils';
 
 interface OntologyTermEditorProps {
   readonly edges: OntologyEdge[];
+  readonly isEditable: boolean;
   readonly nodes: OntologyNode[];
-  readonly relationTypes: GlossaryTermRelationType[];
+  readonly relationTypes: RelationshipType[];
   readonly selectedNode: OntologyNode | null;
   readonly onCreateRelation: (
     fromId: string,
@@ -37,14 +40,17 @@ interface OntologyTermEditorProps {
     relationType: string
   ) => Promise<void>;
   readonly onSelectNode: (node: OntologyNode) => void;
+  readonly onDeleteTerm: () => void;
 }
 
 const OntologyTermEditor = ({
   edges,
+  isEditable,
   nodes,
   relationTypes,
   selectedNode,
   onCreateRelation,
+  onDeleteTerm,
   onSelectNode,
 }: OntologyTermEditorProps) => {
   const { t } = useTranslation();
@@ -60,10 +66,10 @@ const OntologyTermEditor = ({
     [activeNode?.id, termNodes]
   );
   const systemRelationTypes = relationTypes.filter(
-    (relationType) => relationType.isSystemDefined
+    (relationType) => relationType.systemDefined
   );
   const customRelationTypes = relationTypes.filter(
-    (relationType) => !relationType.isSystemDefined
+    (relationType) => !relationType.systemDefined
   );
 
   useEffect(() => {
@@ -91,17 +97,17 @@ const OntologyTermEditor = ({
 
   const renderRelationTypeGroup = (
     label: string,
-    types: GlossaryTermRelationType[]
+    types: RelationshipType[]
   ) => {
     if (types.length === 0) {
       return null;
     }
 
     return (
-      <div className="tw:flex tw:flex-col tw:gap-2">
+      <div className="tw:flex tw:flex-col tw:gap-1.5">
         <Typography
           as="span"
-          className="tw:uppercase tw:text-quaternary"
+          className="tw:text-[10px]! tw:tracking-[0.06em] tw:text-quaternary tw:uppercase"
           size="text-xs"
           weight="semibold">
           {label}
@@ -115,14 +121,14 @@ const OntologyTermEditor = ({
               )}
               color="secondary"
               data-testid={`term-editor-relation-${relationType.name}`}
+              isDisabled={!isEditable}
               key={relationType.name}
               size="sm"
               onClick={() => setSelectedRelationType(relationType.name)}>
               <span
                 className="tw:size-2 tw:rounded-full"
                 style={{
-                  backgroundColor:
-                    relationType.color ?? 'var(--color-fg-quaternary)',
+                  backgroundColor: getRelationshipColor(relationType),
                 }}
               />
               {relationType.displayName || relationType.name}
@@ -145,13 +151,17 @@ const OntologyTermEditor = ({
 
   return (
     <div
-      className="tw:h-full tw:overflow-auto tw:bg-secondary tw:p-6"
+      className="tw:h-full tw:overflow-auto tw:bg-primary tw:px-[26px] tw:py-[22px]"
       data-testid="ontology-term-editor">
-      <div className="tw:flex tw:max-w-4xl tw:flex-col tw:gap-5">
+      <div className="tw:flex tw:max-w-[760px] tw:flex-col tw:gap-5">
         <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-3">
           <div>
             <div className="tw:flex tw:items-center tw:gap-2">
-              <Typography as="h2" size="display-xs" weight="semibold">
+              <Typography
+                as="h2"
+                className="tw:text-[22px]! tw:leading-normal!"
+                size="display-xs"
+                weight="bold">
                 {activeNode.label}
               </Typography>
               <Badge color="blue" size="sm" type="color">
@@ -160,7 +170,7 @@ const OntologyTermEditor = ({
             </div>
             <Typography
               as="p"
-              className="tw:font-mono tw:text-quaternary"
+              className="tw:mt-0.5 tw:font-mono tw:text-[11px]! tw:font-normal tw:text-quaternary"
               size="text-xs">
               {activeNode.fullyQualifiedName}
             </Typography>
@@ -186,7 +196,23 @@ const OntologyTermEditor = ({
           </Select>
         </div>
 
-        <Card className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:border tw:border-utility-gray-blue-100 tw:p-4 tw:ring-0 tw:shadow-sm">
+        <div>
+          <Typography
+            as="h3"
+            className="tw:text-[15px]! tw:leading-normal!"
+            size="text-sm"
+            weight="semibold">
+            {t('label.relationship-plural')}
+          </Typography>
+          <OntologyNodeRelationsContent
+            edges={edges}
+            isEditMode={isEditable}
+            node={activeNode}
+            nodes={nodes}
+            relationTypes={relationTypes}
+          />
+        </div>
+        <Card className="tw:flex tw:flex-col tw:gap-[13px] tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-[13px] tw:ring-0 tw:shadow-none">
           <Typography as="h3" size="text-sm" weight="semibold">
             {t('label.add-entity', { entity: t('label.relationship') })}
           </Typography>
@@ -206,6 +232,7 @@ const OntologyTermEditor = ({
               </Typography>
               <Select
                 aria-label={t('label.target-term')}
+                isDisabled={!isEditable}
                 items={targetNodes.map((term) => ({
                   id: term.id,
                   label: term.label,
@@ -225,7 +252,10 @@ const OntologyTermEditor = ({
               color="primary"
               data-testid="term-editor-add-relationship"
               isDisabled={
-                isSaving || !selectedRelationType || !selectedTargetId
+                !isEditable ||
+                isSaving ||
+                !selectedRelationType ||
+                !selectedTargetId
               }
               size="sm"
               onClick={async () => {
@@ -244,19 +274,13 @@ const OntologyTermEditor = ({
             </Button>
           </div>
         </Card>
-
-        <div>
-          <Typography as="h3" size="text-sm" weight="semibold">
-            {t('label.relationship-plural')}
-          </Typography>
-          <OntologyNodeRelationsContent
-            isEditMode
-            edges={edges}
+        {isEditable ? (
+          <OntologyDeleteImpactPanel
             node={activeNode}
-            nodes={nodes}
-            relationTypes={relationTypes}
+            nodes={termNodes}
+            onDeleted={onDeleteTerm}
           />
-        </div>
+        ) : null}
       </div>
     </div>
   );

@@ -440,3 +440,105 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+-- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
+CREATE TABLE IF NOT EXISTS relationship_type_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT relationship_type_fqn_hash_unique UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS relationship_type_name_index ON relationship_type_entity (name);
+CREATE INDEX IF NOT EXISTS relationship_type_deleted_index ON relationship_type_entity (deleted);
+
+CREATE TABLE IF NOT EXISTS ontology_axiom_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  glossaryId VARCHAR(36) GENERATED ALWAYS AS (json -> 'glossary' ->> 'id') STORED NOT NULL,
+  axiomType VARCHAR(64) GENERATED ALWAYS AS (json ->> 'axiomType') STORED NOT NULL,
+  entityStatus VARCHAR(32) GENERATED ALWAYS AS (json ->> 'entityStatus') STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_axiom_fqn_hash_unique UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ontology_axiom_name_index ON ontology_axiom_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_axiom_glossary_type_index ON ontology_axiom_entity (glossaryId, axiomType);
+CREATE INDEX IF NOT EXISTS ontology_axiom_status_index ON ontology_axiom_entity (entityStatus);
+CREATE INDEX IF NOT EXISTS ontology_axiom_deleted_index ON ontology_axiom_entity (deleted);
+
+CREATE TABLE IF NOT EXISTS ontology_change_set_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  state VARCHAR(32) GENERATED ALWAYS AS (json ->> 'state') STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_change_set_fqn_hash_unique UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ontology_change_set_name_index ON ontology_change_set_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_change_set_state_index ON ontology_change_set_entity (state);
+CREATE INDEX IF NOT EXISTS ontology_change_set_updated_by_index ON ontology_change_set_entity (updatedBy);
+CREATE INDEX IF NOT EXISTS ontology_change_set_deleted_index ON ontology_change_set_entity (deleted);
+
+CREATE TABLE IF NOT EXISTS ontology_annex (
+  glossaryId VARCHAR(36) NOT NULL,
+  revision BIGINT NOT NULL,
+  canonicalNQuads TEXT NOT NULL,
+  checksum CHAR(64) NOT NULL,
+  source VARCHAR(32) NOT NULL,
+  createdBy VARCHAR(256) NOT NULL,
+  createdAt BIGINT NOT NULL,
+  PRIMARY KEY (glossaryId, revision),
+  CONSTRAINT ontology_annex_checksum_unique UNIQUE (glossaryId, checksum)
+);
+CREATE INDEX IF NOT EXISTS ontology_annex_created_at_index ON ontology_annex (createdAt);
+
+CREATE TABLE IF NOT EXISTS ontology_edit_lock (
+  resourceType VARCHAR(128) NOT NULL,
+  resourceId VARCHAR(36) NOT NULL,
+  holderId VARCHAR(36) NOT NULL,
+  sessionId VARCHAR(64) NOT NULL,
+  version BIGINT NOT NULL,
+  acquiredAt BIGINT NOT NULL,
+  renewedAt BIGINT NOT NULL,
+  expiresAt BIGINT NOT NULL,
+  PRIMARY KEY (resourceType, resourceId)
+);
+CREATE INDEX IF NOT EXISTS ontology_edit_lock_expiry_index ON ontology_edit_lock (expiresAt);
+CREATE INDEX IF NOT EXISTS ontology_edit_lock_holder_index ON ontology_edit_lock (holderId, sessionId);
+
+CREATE TABLE IF NOT EXISTS rdf_inference_rule (
+  name VARCHAR(64) NOT NULL,
+  json JSONB NOT NULL,
+  systemRule BOOLEAN NOT NULL DEFAULT FALSE,
+  dirty BOOLEAN NOT NULL DEFAULT TRUE,
+  deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  updatedAt BIGINT NOT NULL,
+  lastMaterializedAt BIGINT,
+  lastTripleCount BIGINT NOT NULL DEFAULT 0,
+  lastError TEXT,
+  PRIMARY KEY (name)
+);
+CREATE INDEX IF NOT EXISTS rdf_inference_rule_dirty_index
+  ON rdf_inference_rule (dirty, deleted);
+
+ALTER TABLE entity_relationship
+  ADD COLUMN IF NOT EXISTS relationshipId VARCHAR(36),
+  ADD COLUMN IF NOT EXISTS relationshipTypeId VARCHAR(36);
+
+CREATE UNIQUE INDEX IF NOT EXISTS relationship_id_unique
+  ON entity_relationship (relationshipId);
+CREATE INDEX IF NOT EXISTS entity_relationship_type_id_index
+  ON entity_relationship (relationshipTypeId);

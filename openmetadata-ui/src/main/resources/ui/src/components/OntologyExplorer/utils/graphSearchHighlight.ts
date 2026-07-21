@@ -12,7 +12,7 @@
  */
 import { includes, toLower } from 'lodash';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import { OntologyNode } from '../OntologyExplorer.interface';
 
 export interface GraphSearchHighlightInput {
@@ -55,7 +55,7 @@ export function computeGraphSearchHighlight(
   edges: EdgeForSearch[],
   rawQuery: string,
   glossaries: Glossary[],
-  relationTypes: GlossaryTermRelationType[]
+  relationTypes: RelationshipType[]
 ): GraphSearchHighlightInput | null {
   const query = normalize(rawQuery.trim());
   if (!query) {

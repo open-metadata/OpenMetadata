@@ -53,6 +53,7 @@ public final class RdfSparqlService {
 
   public void update(String sparql) {
     requireQuery(sparql, "SPARQL update body is required");
+    SparqlQueryLimits.requireBoundedText(sparql);
     try {
       UpdateFactory.create(sparql);
     } catch (QueryParseException | UpdateException exception) {
@@ -66,12 +67,16 @@ public final class RdfSparqlService {
     RdfRepository.InferenceQueryResult result =
         repository.executeSparqlQueryWithInferenceResult(sparql, format.mediaType, inferenceLevel);
     return new QueryResult(
-        result.results(), format.externalName, format.mediaType, result.warning());
+        SparqlQueryLimits.requireBoundedOutput(result.results()),
+        format.externalName,
+        format.mediaType,
+        result.warning());
   }
 
   private QueryResult directQuery(String sparql, ResultFormat format) {
     return new QueryResult(
-        repository.executeSparqlQuery(sparql, format.mediaType),
+        SparqlQueryLimits.requireBoundedOutput(
+            repository.executeSparqlQuery(sparql, format.mediaType)),
         format.externalName,
         format.mediaType,
         null);
@@ -79,6 +84,7 @@ public final class RdfSparqlService {
 
   private static Query parseReadOnlyQuery(String sparql) {
     requireQuery(sparql, "SPARQL query is required");
+    SparqlQueryLimits.requireBoundedText(sparql);
     Query query;
     try {
       query = QueryFactory.create(sparql);
@@ -92,7 +98,7 @@ public final class RdfSparqlService {
         || query.isConstructType())) {
       throw new IllegalArgumentException("Only read-only SPARQL queries are accepted");
     }
-    return query;
+    return SparqlQueryLimits.applyResultLimit(query);
   }
 
   private static void requireQuery(String sparql, String message) {
@@ -114,7 +120,8 @@ public final class RdfSparqlService {
     }
 
     public static ReadQuery parse(String sparql) {
-      return new ReadQuery(sparql, parseReadOnlyQuery(sparql));
+      Query parsed = parseReadOnlyQuery(sparql);
+      return new ReadQuery(parsed.toString(), parsed);
     }
   }
 

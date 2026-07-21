@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -421,6 +422,17 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
+    return aggregate(query, index, searchAggregation, filter, null);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
       throw new IOException("ElasticSearch client is not available");
@@ -462,16 +474,10 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      final Query finalParsedQuery = parsedQuery;
-      final Query finalFilterQuery = filterQuery;
-
-      if (finalParsedQuery != null && finalFilterQuery != null) {
-        searchRequestBuilder.query(
-            q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)));
-      } else if (finalParsedQuery != null) {
-        searchRequestBuilder.query(finalParsedQuery);
-      } else if (finalFilterQuery != null) {
-        searchRequestBuilder.query(q -> q.bool(b -> b.filter(finalFilterQuery)));
+      final Query combinedQuery =
+          combineQueries(parsedQuery, filterQuery, buildVisibilityQuery(subjectContext));
+      if (combinedQuery != null) {
+        searchRequestBuilder.query(combinedQuery);
       }
 
       searchRequestBuilder.aggregations(aggregations);
@@ -495,6 +501,33 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
+  }
+
+  private Query buildVisibilityQuery(SubjectContext subjectContext) {
+    if (!SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      return null;
+    }
+    OMQueryBuilder queryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+    return queryBuilder == null ? null : ((ElasticQueryBuilder) queryBuilder).buildV2();
+  }
+
+  private static Query combineQueries(Query query, Query filter, Query visibility) {
+    List<Query> filters = Stream.of(filter, visibility).filter(item -> item != null).toList();
+    if (query == null && filters.isEmpty()) {
+      return null;
+    }
+    return Query.of(
+        root ->
+            root.bool(
+                bool -> {
+                  if (query != null) {
+                    bool.must(query);
+                  }
+                  if (!filters.isEmpty()) {
+                    bool.filter(filters);
+                  }
+                  return bool;
+                }));
   }
 
   private String serializeSearchResponse(SearchResponse<JsonData> searchResponse) {

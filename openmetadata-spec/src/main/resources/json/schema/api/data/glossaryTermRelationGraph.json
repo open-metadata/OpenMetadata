@@ -19,8 +19,37 @@
       "items": {
         "$ref": "glossaryTermRelationGraphEdge.json"
       }
+    },
+    "truncated": {
+      "description": "Whether additional authorized nodes or edges were omitted by the requested slice limits.",
+      "type": "boolean",
+      "default": false
+    },
+    "truncationReason": {
+      "description": "Limit that bounded the returned graph slice.",
+      "javaType": "org.openmetadata.schema.api.data.OntologyGraphTruncationReason",
+      "type": "string",
+      "enum": ["NONE", "NODE_LIMIT", "EDGE_LIMIT"],
+      "default": "NONE"
+    },
+    "nodeLimit": {
+      "description": "Maximum number of nodes requested for this slice.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "edgeLimit": {
+      "description": "Maximum number of edges requested for this slice.",
+      "type": "integer",
+      "minimum": 1
     }
   },
-  "required": ["nodes", "edges"],
+  "required": [
+    "nodes",
+    "edges",
+    "truncated",
+    "truncationReason",
+    "nodeLimit",
+    "edgeLimit"
+  ],
   "additionalProperties": false
 }

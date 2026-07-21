@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { RDFStatus } from '../generated/api/rdf/rdfStatus';
 import {
   SavedSparqlQueries as SavedSparqlQueriesResponse,
   SavedSparqlQuery as SavedSparqlQueryResponse,
@@ -181,7 +182,8 @@ export const replaceSparqlQueryTemplates = async (
  * SPARQL serialization (JSON/XML/CSV/TSV for SELECT/ASK; Turtle/N-Triples/
  * RDF-XML/JSON-LD for CONSTRUCT/DESCRIBE).
  */
-export const runSparqlQuery = async (
+const executeSparqlQuery = async (
+  path: string,
   params: SparqlPlaygroundParams
 ): Promise<SparqlPlaygroundResult> => {
   const format: SparqlPlaygroundFormat = params.format ?? 'json';
@@ -189,7 +191,7 @@ export const runSparqlQuery = async (
   const acceptMime = SPARQL_RESULT_MIME[format];
   const start = performance.now();
   const response = await APIClient.post(
-    '/rdf/sparql',
+    path,
     {
       query: params.query,
       format,
@@ -224,6 +226,16 @@ export const runSparqlQuery = async (
   };
 };
 
+export const runSparqlQuery = (
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> => executeSparqlQuery('/rdf/sparql', params);
+
+export const runGlossarySparqlQuery = (
+  glossaryId: string,
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> =>
+  executeSparqlQuery(`/glossaries/${glossaryId}/sparql`, params);
+
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
   jsonld: 'application/ld+json',
   turtle: 'text/turtle',
@@ -240,16 +252,16 @@ export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
 
 export const checkRdfEnabled = async (): Promise<boolean> => {
   try {
-    const response = await APIClient.get('/rdf/status');
+    const response = await APIClient.get<RDFStatus>('/rdf/status');
 
-    return response.data?.enabled ?? false;
+    return response.data.enabled;
   } catch (error) {
     return false;
   }
 };
 
-export const fetchRdfConfig = async (): Promise<{ enabled: boolean }> => {
-  const response = await APIClient.get<{ enabled: boolean }>('/rdf/status');
+export const fetchRdfConfig = async (): Promise<RDFStatus> => {
+  const response = await APIClient.get<RDFStatus>('/rdf/status');
 
   return response.data;
 };
@@ -429,4 +441,29 @@ export const downloadGlossaryOntology = async (
     link.remove();
     globalThis.URL.revokeObjectURL(url);
   }, 100);
+};
+
+export interface ShaclValidationResult {
+  conforms: boolean;
+  report: string;
+}
+
+export const validateOntologyShapes = async (params?: {
+  entityUri?: string;
+  format?: 'turtle' | 'jsonld';
+}): Promise<ShaclValidationResult> => {
+  const { entityUri, format = 'turtle' } = params ?? {};
+  const response = await APIClient.post<string>('/rdf/validate', null, {
+    headers: {
+      Accept: format === 'jsonld' ? 'application/ld+json' : 'text/turtle',
+    },
+    params: { entityUri, format },
+    responseType: 'text',
+  });
+
+  return {
+    conforms:
+      String(response.headers['om-shacl-conforms']).toLowerCase() === 'true',
+    report: response.data,
+  };
 };

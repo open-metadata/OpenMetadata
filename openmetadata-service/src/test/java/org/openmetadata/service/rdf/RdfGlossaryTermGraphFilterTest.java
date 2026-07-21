@@ -32,19 +32,24 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 class RdfGlossaryTermGraphFilterTest {
 
   private static final String BASE_URI = "https://open-metadata.org/";
+  private static final String SEE_ALSO_NAME = "seeAlso";
+  private static final String SEE_ALSO_PREDICATE = "http://www.w3.org/2000/01/rdf-schema#seeAlso";
 
   @Test
   void glossaryTermFilterQueriesSelectedTermAndDirectNeighbors() throws Exception {
     RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfRepository repository = new RdfRepository(config(), storage, null);
+    RdfRepository repository = repository(storage);
     UUID glossaryId = UUID.randomUUID();
     UUID glossaryTermId = UUID.randomUUID();
 
@@ -72,7 +77,7 @@ class RdfGlossaryTermGraphFilterTest {
   @Test
   void relationTypeFilterIncludesConfiguredAndFallbackPredicateUris() throws Exception {
     RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfRepository repository = new RdfRepository(config(), storage, null);
+    RdfRepository repository = repository(storage);
     UUID glossaryTermId = UUID.randomUUID();
 
     when(storage.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
@@ -93,7 +98,7 @@ class RdfGlossaryTermGraphFilterTest {
   @Test
   void glossaryTermGraphResponseAppliesTermAndIsolatedFilters() throws Exception {
     RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfRepository repository = new RdfRepository(config(), storage, null);
+    RdfRepository repository = repository(storage);
     UUID selectedId = UUID.randomUUID();
     UUID relatedId = UUID.randomUUID();
     UUID unrelatedId = UUID.randomUUID();
@@ -122,7 +127,7 @@ class RdfGlossaryTermGraphFilterTest {
   void isolatedOnlyRdfResponseDoesNotFallBackToDatabaseWhenIsolatedNodesAreExcluded()
       throws Exception {
     RdfStorageInterface storage = mock(RdfStorageInterface.class);
-    RdfRepository repository = new RdfRepository(config(), storage, null);
+    RdfRepository repository = repository(storage);
     UUID selectedId = UUID.randomUUID();
 
     when(storage.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
@@ -190,6 +195,19 @@ class RdfGlossaryTermGraphFilterTest {
 
   private static RdfConfiguration config() {
     return new RdfConfiguration().withEnabled(true).withBaseUri(URI.create(BASE_URI));
+  }
+
+  private static RdfRepository repository(final RdfStorageInterface storage) {
+    final CollectionDAO.RelationshipTypeDAO relationshipTypeDAO =
+        mock(CollectionDAO.RelationshipTypeDAO.class);
+    final RelationshipType relationshipType =
+        new RelationshipType()
+            .withName(SEE_ALSO_NAME)
+            .withRdfPredicate(URI.create(SEE_ALSO_PREDICATE));
+    when(relationshipTypeDAO.listActive())
+        .thenReturn(List.of(JsonUtils.pojoToJson(relationshipType)));
+    return new RdfRepository(
+        config(), storage, null, () -> new RelationshipTypeResolver(relationshipTypeDAO));
   }
 
   private static GlossaryTerm term(UUID id, UUID glossaryId) {

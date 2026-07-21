@@ -19,6 +19,10 @@ import type {
   HierarchyNode,
   OntologyNode,
 } from '../OntologyExplorer.interface';
+import {
+  getInverseRelationshipName,
+  isHierarchicalRelationship,
+} from './relationshipTypeUtils';
 
 const HIERARCHICAL_RELATION_TYPES = new Set([
   'broader',
@@ -40,19 +44,13 @@ function normalizeParentChild(
   return { parent: to, child: from };
 }
 
-function isHierarchicalCategory(category: unknown): boolean {
-  return (
-    typeof category === 'string' && category.toLowerCase() === 'hierarchical'
-  );
-}
-
 function getHierarchicalRelationTypes(
-  relationSettings: BuildHierarchyGraphsParams['relationSettings']
+  relationTypes: BuildHierarchyGraphsParams['relationTypes']
 ): Set<string> {
-  if (relationSettings?.relationTypes?.length) {
+  if (relationTypes.length) {
     const set = new Set<string>();
-    relationSettings.relationTypes.forEach((r) => {
-      if (isHierarchicalCategory(r.category)) {
+    relationTypes.forEach((r) => {
+      if (isHierarchicalRelationship(r)) {
         set.add(r.name);
       }
     });
@@ -65,7 +63,7 @@ function getHierarchicalRelationTypes(
 }
 
 function buildRelationMapsForHierarchy(
-  relationSettings: BuildHierarchyGraphsParams['relationSettings']
+  relationTypes: BuildHierarchyGraphsParams['relationTypes']
 ): {
   inverseMap: Record<string, string>;
   parentSideTypes: Set<string>;
@@ -78,13 +76,14 @@ function buildRelationMapsForHierarchy(
   };
   const parentSideTypes = new Set(['broader', 'hasPart']);
 
-  relationSettings?.relationTypes?.forEach((rt) => {
-    if (rt.inverseRelation) {
-      inverseMap[rt.name] = rt.inverseRelation;
-      inverseMap[rt.inverseRelation] = rt.name;
+  relationTypes.forEach((relationshipType) => {
+    const inverseName = getInverseRelationshipName(relationshipType);
+    if (inverseName) {
+      inverseMap[relationshipType.name] = inverseName;
+      inverseMap[inverseName] = relationshipType.name;
     }
-    if (isHierarchicalCategory(rt.category)) {
-      parentSideTypes.add(rt.name);
+    if (isHierarchicalRelationship(relationshipType)) {
+      parentSideTypes.add(relationshipType.name);
     }
   });
 
@@ -98,16 +97,16 @@ function scopeId(glossaryId: string, termId: string): string {
 export function buildHierarchyGraphs({
   terms,
   relations,
-  relationSettings,
+  relationTypes,
   relationColors,
   glossaryNames,
 }: BuildHierarchyGraphsParams): HierarchyGraphResult {
-  const hierarchicalTypes = getHierarchicalRelationTypes(relationSettings);
+  const hierarchicalTypes = getHierarchicalRelationTypes(relationTypes);
   const hierarchicalEdges = relations.filter((e) =>
     hierarchicalTypes.has(e.relationType)
   );
   const { inverseMap, parentSideTypes } =
-    buildRelationMapsForHierarchy(relationSettings);
+    buildRelationMapsForHierarchy(relationTypes);
 
   const termsWithHierarchicalRelation = new Set<string>();
   hierarchicalEdges.forEach((e) => {

@@ -12,13 +12,14 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import {
   GraphFilters,
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
 import { isTermNode } from './utils/graphBuilders';
+import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
 
 export interface OntologyHealthSummary {
   connectedPercent: number;
@@ -49,16 +50,12 @@ export interface OntologyQuerySuggestion {
 
 export const ONTOLOGY_SPARQL_PREFIXES =
   'PREFIX om: <https://open-metadata.org/ontology/>';
-export const ONTOLOGY_KNOWLEDGE_GRAPH =
-  'https://open-metadata.org/graph/knowledge';
 
 export const NEW_ONTOLOGY_QUERY = `${ONTOLOGY_SPARQL_PREFIXES}
 
 SELECT ?conceptFqn WHERE {
-  GRAPH <${ONTOLOGY_KNOWLEDGE_GRAPH}> {
-    ?concept a om:GlossaryTerm ;
-             om:fullyQualifiedName ?conceptFqn .
-  }
+  ?concept a om:GlossaryTerm ;
+           om:fullyQualifiedName ?conceptFqn .
 }
 LIMIT 100`;
 
@@ -82,7 +79,7 @@ function escapeSparqlString(value: string): string {
 
 function getRdfPredicate(
   relationType: string,
-  relationDefinition?: GlossaryTermRelationType
+  relationDefinition?: RelationshipType
 ): string {
   const configuredPredicate = relationDefinition?.rdfPredicate;
   if (configuredPredicate?.match(/^https?:\/\//)) {
@@ -102,7 +99,7 @@ function getRdfPredicate(
 export function buildOntologyQuerySuggestions(
   graphData: OntologyGraphData | null,
   selectedGlossaryIds: string[],
-  relationTypes: GlossaryTermRelationType[],
+  relationTypes: RelationshipType[],
   limit = MAX_ONTOLOGY_QUERY_SUGGESTIONS
 ): OntologyQuerySuggestion[] {
   if (!graphData || limit <= 0) {
@@ -178,11 +175,9 @@ export function buildOntologyQuerySuggestions(
         query: `${ONTOLOGY_SPARQL_PREFIXES}
 
 SELECT ?conceptFqn WHERE {
-  GRAPH <${ONTOLOGY_KNOWLEDGE_GRAPH}> {
-    ?concept ${predicate} ?relatedConcept ;
-             om:fullyQualifiedName ?conceptFqn .
-    ?relatedConcept om:fullyQualifiedName "${escapeSparqlString(targetFqn)}" .
-  }
+  ?concept ${predicate} ?relatedConcept ;
+           om:fullyQualifiedName ?conceptFqn .
+  ?relatedConcept om:fullyQualifiedName "${escapeSparqlString(targetFqn)}" .
 }
 LIMIT 100`,
       };
@@ -264,12 +259,12 @@ export function getOntologyHealthSummary(
 function buildParentMap(
   graphData: OntologyGraphData,
   termIds: Set<string>,
-  relationTypes: GlossaryTermRelationType[]
+  relationTypes: RelationshipType[]
 ): Map<string, Set<string>> {
   const parentMap = new Map<string, Set<string>>();
   const hierarchicalTypes = new Set(
     relationTypes
-      .filter((relationType) => relationType.category === 'hierarchical')
+      .filter(isHierarchicalRelationship)
       .map((relationType) => normalizeRelationType(relationType.name))
   );
   const addParent = (childId: string, parentId: string) => {
@@ -336,7 +331,7 @@ export function buildOntologyTreeGroups(
   graphData: OntologyGraphData | null,
   filters: GraphFilters,
   glossaries: Glossary[],
-  relationTypes: GlossaryTermRelationType[]
+  relationTypes: RelationshipType[]
 ): OntologyTreeGroup[] {
   const terms = scopedTerms(graphData, filters);
   if (!graphData || terms.length === 0) {

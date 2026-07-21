@@ -39,10 +39,7 @@ class RdfResourceLineageQueryTest {
             "https://open-metadata.org/");
     String both =
         RdfGraphService.buildLineageQuery(
-            entityId,
-            "table",
-            RdfGraphService.LineageDirection.BOTH,
-            "https://open-metadata.org/");
+            entityId, "table", RdfGraphService.LineageDirection.BOTH, "https://open-metadata.org/");
 
     assertTrue(upstream.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
     assertTrue(downstream.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));

@@ -1,10 +1,5 @@
 package org.openmetadata.service.rdf.inference;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -23,13 +18,6 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
  */
 public final class InferenceRuleRegistry {
 
-  private static final String[] STARTER_PACK = {
-    "/rdf/inference-rules/transitive-lineage-closure.json",
-    "/rdf/inference-rules/pii-propagation-via-lineage.json",
-    "/rdf/inference-rules/schema-tag-inheritance.json",
-    "/rdf/inference-rules/domain-membership-inheritance.json"
-  };
-
   private static final InferenceRuleRegistry INSTANCE = new InferenceRuleRegistry();
 
   public static InferenceRuleRegistry getInstance() {
@@ -40,7 +28,6 @@ public final class InferenceRuleRegistry {
   // {@link #upsert} / {@link #delete} mutate concurrently. Iteration order isn't preserved, so
   // {@code list()} sorts explicitly (priority + name) for deterministic API output.
   private final ConcurrentMap<String, InferenceRule> rules = new ConcurrentHashMap<>();
-  private final ObjectMapper mapper = new ObjectMapper();
   private volatile boolean starterLoaded = false;
 
   private InferenceRuleRegistry() {}
@@ -50,36 +37,14 @@ public final class InferenceRuleRegistry {
    */
   public synchronized void loadStarterPackIfNeeded() {
     if (!starterLoaded) {
-      List<InferenceRule> starterRules =
-          Arrays.stream(STARTER_PACK).map(this::readStarterRule).toList();
+      List<InferenceRule> starterRules = InferenceRuleStarterPack.load();
       starterRules.forEach(rule -> rules.put(rule.getName(), rule));
       starterLoaded = true;
     }
   }
 
-  private InferenceRule readStarterRule(String resourcePath) {
-    URL resource =
-        Optional.ofNullable(InferenceRuleRegistry.class.getResource(resourcePath))
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Required inference rule resource is missing: " + resourcePath));
-    try (InputStream input = resource.openStream()) {
-      InferenceRule rule = mapper.readValue(input, InferenceRule.class);
-      requireValid(rule, resourcePath);
-      return rule;
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Unable to read inference rule resource: " + resourcePath, exception);
-    }
-  }
-
   private static void requireValid(InferenceRule rule, String context) {
-    List<String> errors = InferenceRuleValidator.validate(rule);
-    if (!errors.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Invalid inference rule '%s': %s".formatted(context, String.join("; ", errors)));
-    }
+    InferenceRuleValidator.requireValid(rule, context);
   }
 
   /** @return all rules in priority order, then by name. */

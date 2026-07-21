@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Check, Edit03, Plus, Trash01 } from '@untitledui/icons';
-import { Input, Modal } from 'antd';
+import {
+  Badge,
+  Button,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
+import { Edit03, Plus, Trash01 } from '@untitledui/icons';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/edit/closebrackets.js';
@@ -22,19 +29,20 @@ import 'codemirror/mode/sparql/sparql.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../enums/codemirror.enum';
-import { Binding } from '../../generated/api/rdf/sparqlResponse';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
 import { useSparqlQueryLibrary } from '../../hooks/useSparqlQueryLibrary';
 import {
+  runGlossarySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
 import { generateUUID } from '../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
 import { OntologyGraphData } from './OntologyExplorer.interface';
+import OntologyQueryResults from './OntologyQueryResults';
 import {
   buildOntologyQuerySuggestions,
   NEW_ONTOLOGY_QUERY,
@@ -45,15 +53,11 @@ import './OntologyStudioQueryConsole.less';
 interface OntologyStudioQueryConsoleProps {
   readonly initialQuery?: string;
   readonly graphData: OntologyGraphData | null;
-  readonly relationTypes: GlossaryTermRelationType[];
+  readonly relationTypes: RelationshipType[];
   readonly selectedGlossaryIds: string[];
 }
 
 type SaveTarget = 'personal' | 'template';
-
-function getResultValue(binding: Binding | undefined): string {
-  return binding?.value ?? '';
-}
 
 const OntologyStudioQueryConsole = ({
   initialQuery,
@@ -142,11 +146,20 @@ const OntologyStudioQueryConsole = ({
       setResult(null);
       setErrorMessage(null);
       try {
-        const nextResult = await runSparqlQuery({
+        const queryParams = {
           query: nextQuery,
-          format: 'json',
-          inference: 'none',
-        });
+          format: 'json' as const,
+          inference: 'none' as const,
+        };
+        const glossaryId = selectedGlossaryIds[0];
+        if (!glossaryId && !isAdminUser) {
+          throw new Error(
+            t('label.please-select-entity', { entity: t('label.glossary') })
+          );
+        }
+        const nextResult = glossaryId
+          ? await runGlossarySparqlQuery(glossaryId, queryParams)
+          : await runSparqlQuery(queryParams);
         setResult(nextResult);
       } catch (error) {
         const message = isAxiosError(error)
@@ -160,28 +173,8 @@ const OntologyStudioQueryConsole = ({
         setRunning(false);
       }
     },
-    [t]
+    [isAdminUser, selectedGlossaryIds, t]
   );
-
-  const resultTable = useMemo(() => {
-    if (!result?.parsed) {
-      return null;
-    }
-
-    return {
-      rows: result.parsed.results?.bindings ?? [],
-      variables: result.parsed.head?.vars ?? [],
-    };
-  }, [result]);
-
-  const conceptResults = useMemo(() => {
-    if (!resultTable || resultTable.variables.length !== 1) {
-      return null;
-    }
-    const variable = resultTable.variables[0];
-
-    return resultTable.rows.map((row) => getResultValue(row[variable]));
-  }, [resultTable]);
 
   const handleSuggestionRun = useCallback(
     (suggestion: OntologyQuerySuggestion) => {
@@ -312,19 +305,19 @@ const OntologyStudioQueryConsole = ({
   return (
     <>
       <div
-        className="tw:flex tw:h-full tw:min-h-[540px] tw:bg-gray-warm-100"
+        className="tw:flex tw:h-full tw:bg-secondary"
         data-testid="ontology-studio-query-console">
         <aside
-          className="tw:w-60 tw:shrink-0 tw:overflow-y-auto tw:border-r tw:border-gray-blue-100 tw:bg-gray-50 tw:px-3.5 tw:py-4"
+          className="tw:w-60 tw:shrink-0 tw:overflow-y-auto tw:border-r tw:border-secondary tw:bg-secondary tw:px-3.5 tw:py-4"
           data-testid="ontology-query-sample-rail">
           <div className="tw:mb-3 tw:flex tw:items-center tw:justify-between tw:gap-2">
-            <h2 className="tw:m-0 tw:font-body tw:text-[10px] tw:leading-[normal] tw:font-semibold tw:tracking-[0.05em] tw:text-gray-500 tw:uppercase">
+            <h2 className="tw:m-0 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
               {t('label.query-plural')}
             </h2>
             <button
               className={classNames(
                 'tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:border-0 tw:bg-transparent tw:px-1.5 tw:py-1',
-                'tw:font-body tw:text-[11px] tw:leading-[normal] tw:font-semibold tw:text-brand-600 hover:tw:bg-brand-50'
+                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary hover:tw:bg-brand-primary'
               )}
               data-testid="ontology-query-new"
               type="button"
@@ -336,7 +329,7 @@ const OntologyStudioQueryConsole = ({
             </button>
           </div>
 
-          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-[normal] tw:font-semibold tw:tracking-[0.05em] tw:text-gray-400 tw:uppercase">
+          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
             {t('label.ontology')}
           </h3>
           <div className="tw:flex tw:flex-col tw:gap-1">
@@ -347,12 +340,12 @@ const OntologyStudioQueryConsole = ({
                 <button
                   aria-pressed={isActive}
                   className={classNames(
-                    'tw:w-full tw:rounded-lg tw:border tw:px-[11px] tw:py-[9px] tw:text-left tw:font-body',
-                    'tw:text-xs tw:leading-[normal] tw:font-medium tw:transition-colors',
+                    'tw:w-full tw:rounded-lg tw:border tw:px-3 tw:py-2.5 tw:text-left tw:font-body',
+                    'tw:text-xs tw:leading-normal tw:font-medium tw:transition-colors',
                     'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
                     isActive
-                      ? 'tw:border-brand-200 tw:bg-brand-50 tw:text-brand-700'
-                      : 'tw:border-gray-200 tw:bg-white tw:text-gray-700 hover:tw:bg-gray-50'
+                      ? 'tw:border-brand tw:bg-brand-primary tw:text-brand-secondary'
+                      : 'tw:border-secondary tw:bg-primary tw:text-secondary hover:tw:bg-secondary'
                   )}
                   data-testid={`ontology-query-suggestion-${suggestion.id}`}
                   key={suggestion.id}
@@ -366,23 +359,23 @@ const OntologyStudioQueryConsole = ({
               );
             })}
             {querySuggestions.length === 0 ? (
-              <p className="tw:m-0 tw:px-1 tw:font-body tw:text-[11px] tw:text-gray-500">
+              <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
                 {t('message.no-query-available')}
               </p>
             ) : null}
           </div>
 
-          <div className="tw:my-4 tw:h-px tw:bg-gray-200" />
+          <div className="tw:my-4 tw:h-px tw:bg-quaternary" />
 
-          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-[normal] tw:font-semibold tw:tracking-[0.05em] tw:text-gray-400 tw:uppercase">
+          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
             {t('label.installation-queries')}
           </h3>
           {isLoading ? (
-            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-[11px] tw:text-gray-500">
+            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
               {t('label.loading')}
             </p>
           ) : queryTemplates.length === 0 ? (
-            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-[11px] tw:text-gray-500">
+            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
               {t('message.no-query-available')}
             </p>
           ) : (
@@ -396,17 +389,19 @@ const OntologyStudioQueryConsole = ({
                 return (
                   <div
                     className={classNames(
-                      'tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-white tw:pl-[11px] tw:pr-1 tw:transition-colors',
+                      'tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-primary tw:pl-3 tw:pr-1 tw:transition-colors',
                       isActive
-                        ? 'tw:border-brand-200 tw:bg-brand-50'
-                        : 'tw:border-gray-200 hover:tw:bg-gray-50'
+                        ? 'tw:border-brand tw:bg-brand-primary'
+                        : 'tw:border-secondary hover:tw:bg-secondary'
                     )}
                     key={queryTemplate.id}>
                     <button
                       aria-pressed={isActive}
                       className={classNames(
-                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-[9px] tw:text-left tw:font-body tw:text-xs tw:leading-[normal] tw:font-medium',
-                        isActive ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                        isActive
+                          ? 'tw:text-brand-secondary'
+                          : 'tw:text-secondary'
                       )}
                       data-testid={`ontology-query-template-${queryTemplate.id}`}
                       title={queryTemplate.name}
@@ -422,7 +417,7 @@ const OntologyStudioQueryConsole = ({
                           aria-label={`${t('label.edit')} ${
                             queryTemplate.name
                           }`}
-                          className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-gray-400 hover:tw:bg-gray-100 hover:tw:text-gray-700"
+                          className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-quaternary hover:tw:bg-tertiary hover:tw:text-secondary"
                           data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
                           type="button"
                           onClick={() => handleTemplateEdit(queryTemplate)}>
@@ -432,7 +427,10 @@ const OntologyStudioQueryConsole = ({
                           aria-label={`${t('label.delete')} ${
                             queryTemplate.name
                           }`}
-                          className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-gray-400 hover:tw:bg-error-50 hover:tw:text-error-600"
+                          className={classNames(
+                            'tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0',
+                            'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
+                          )}
                           data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
                           type="button"
                           onClick={() =>
@@ -448,16 +446,16 @@ const OntologyStudioQueryConsole = ({
             </div>
           )}
 
-          <div className="tw:my-4 tw:h-px tw:bg-gray-200" />
+          <div className="tw:my-4 tw:h-px tw:bg-quaternary" />
 
-          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-[normal] tw:font-semibold tw:tracking-[0.05em] tw:text-gray-400 tw:uppercase">
+          <h3 className="tw:mb-2 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.06em] tw:text-quaternary tw:uppercase">
             {t('label.saved-queries')}
           </h3>
-          <p className="tw:mb-2 tw:mt-0 tw:px-1 tw:font-body tw:text-[11px] tw:text-gray-500">
+          <p className="tw:mb-2 tw:mt-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
             {t('message.sparql-private-queries-description')}
           </p>
           {savedQueries.length === 0 ? (
-            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-[11px] tw:text-gray-500">
+            <p className="tw:m-0 tw:px-1 tw:font-body tw:text-xs tw:text-quaternary">
               {t('message.sparql-no-saved-queries')}
             </p>
           ) : (
@@ -470,17 +468,19 @@ const OntologyStudioQueryConsole = ({
                 return (
                   <div
                     className={classNames(
-                      'tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-white tw:pl-[11px] tw:pr-1 tw:transition-colors',
+                      'tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-primary tw:pl-3 tw:pr-1 tw:transition-colors',
                       isActive
-                        ? 'tw:border-brand-200 tw:bg-brand-50'
-                        : 'tw:border-gray-200 hover:tw:bg-gray-50'
+                        ? 'tw:border-brand tw:bg-brand-primary'
+                        : 'tw:border-secondary hover:tw:bg-secondary'
                     )}
                     key={savedQuery.id}>
                     <button
                       aria-pressed={isActive}
                       className={classNames(
-                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-[9px] tw:text-left tw:font-body tw:text-xs tw:leading-[normal] tw:font-medium',
-                        isActive ? 'tw:text-brand-700' : 'tw:text-gray-700'
+                        'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:py-2.5 tw:text-left tw:font-body tw:text-xs tw:leading-normal tw:font-medium',
+                        isActive
+                          ? 'tw:text-brand-secondary'
+                          : 'tw:text-secondary'
                       )}
                       data-testid={`ontology-query-saved-${savedQuery.id}`}
                       title={savedQuery.name}
@@ -492,7 +492,10 @@ const OntologyStudioQueryConsole = ({
                     </button>
                     <button
                       aria-label={`${t('label.delete')} ${savedQuery.name}`}
-                      className="tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0 tw:bg-transparent tw:text-gray-400 hover:tw:bg-error-50 hover:tw:text-error-600"
+                      className={classNames(
+                        'tw:grid tw:size-7 tw:shrink-0 tw:place-items-center tw:rounded-md tw:border-0',
+                        'tw:bg-transparent tw:text-quaternary hover:tw:bg-error-primary hover:tw:text-error-primary'
+                      )}
                       data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
                       type="button"
                       onClick={() =>
@@ -508,19 +511,26 @@ const OntologyStudioQueryConsole = ({
         </aside>
 
         <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:border-gray-blue-100 tw:bg-white tw:px-4 tw:py-[11px]">
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:bg-primary tw:px-4 tw:py-3">
             <span
               className={classNames(
-                'tw:rounded-[7px] tw:border tw:border-gray-300 tw:bg-white tw:px-2.5 tw:py-[5px]',
-                'tw:font-body tw:text-[11px] tw:leading-[normal] tw:font-semibold tw:text-gray-700 tw:uppercase'
+                'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-2.5 tw:py-1.5',
+                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary tw:uppercase'
               )}>
               {t('label.select')}
             </span>
+            <Badge
+              color="gray"
+              data-testid="ontology-query-read-only"
+              size="sm"
+              type="color">
+              {t('label.read-only')}
+            </Badge>
             <span className="tw:flex-1" />
             <button
               className={classNames(
-                'tw:rounded-[7px] tw:border tw:border-gray-300 tw:bg-white tw:px-[15px] tw:py-[7px]',
-                'tw:font-body tw:text-xs tw:leading-[normal] tw:font-semibold tw:text-gray-700 tw:shadow-xs-skeuomorphic'
+                'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2',
+                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic'
               )}
               data-testid="ontology-query-save"
               type="button"
@@ -530,8 +540,8 @@ const OntologyStudioQueryConsole = ({
             {isAdminUser ? (
               <button
                 className={classNames(
-                  'tw:rounded-[7px] tw:border tw:border-gray-300 tw:bg-white tw:px-[15px] tw:py-[7px]',
-                  'tw:font-body tw:text-xs tw:leading-[normal] tw:font-semibold tw:text-gray-700 tw:shadow-xs-skeuomorphic'
+                  'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2',
+                  'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic'
                 )}
                 data-testid="ontology-query-save-template"
                 type="button"
@@ -543,8 +553,8 @@ const OntologyStudioQueryConsole = ({
             ) : null}
             <button
               className={classNames(
-                'tw:rounded-[7px] tw:border-0 tw:bg-brand-solid tw:px-[15px] tw:py-[7px]',
-                'tw:font-body tw:text-xs tw:leading-[normal] tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
+                'tw:rounded-lg tw:border-0 tw:bg-brand-solid tw:px-4 tw:py-2',
+                'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
                 'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
               )}
               data-testid="ontology-sparql-run"
@@ -556,7 +566,7 @@ const OntologyStudioQueryConsole = ({
           </div>
 
           <div
-            className="tw:shrink-0 tw:border-b tw:border-gray-blue-100 tw:bg-white"
+            className="tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary"
             data-testid="ontology-sparql-editor">
             <SchemaEditor
               className="ontology-studio-query-editor"
@@ -583,103 +593,76 @@ const OntologyStudioQueryConsole = ({
           <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4">
             {errorMessage ? (
               <div
-                className="tw:rounded-lg tw:border tw:border-error-200 tw:bg-error-50 tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-700"
+                className="tw:rounded-lg tw:border tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary"
                 data-testid="ontology-sparql-error">
                 {errorMessage}
               </div>
             ) : null}
 
             {result ? (
-              <div data-testid="ontology-sparql-result">
-                <div className="tw:mb-3 tw:flex tw:items-center tw:gap-1.5 tw:font-body tw:text-[11px] tw:leading-[normal] tw:font-semibold tw:text-success-700">
-                  <Check aria-hidden="true" className="tw:size-[13px]" />
-                  <span data-testid="ontology-sparql-result-status">
-                    {resultTable?.rows.length ?? 0}{' '}
-                    {t('label.result-plural').toLocaleLowerCase()}{' '}
-                    <span aria-hidden="true">·</span> {result.durationMs} ms
-                  </span>
-                </div>
-
-                {conceptResults ? (
-                  <div
-                    className="tw:flex tw:flex-wrap tw:gap-[7px]"
-                    data-testid="ontology-sparql-chips">
-                    {conceptResults.map((value, index) => (
-                      <span
-                        className="tw:rounded-full tw:border tw:border-gray-200 tw:bg-white tw:px-3 tw:py-[5px] tw:font-body tw:text-xs tw:leading-[normal] tw:font-medium tw:text-gray-900"
-                        key={`${value}-${index}`}>
-                        {value}
-                      </span>
-                    ))}
-                  </div>
-                ) : resultTable && resultTable.variables.length > 0 ? (
-                  <div className="tw:max-h-[420px] tw:overflow-auto tw:rounded-lg tw:border tw:border-gray-200 tw:bg-white">
-                    <table className="tw:w-full tw:border-collapse tw:font-body tw:text-xs">
-                      <thead>
-                        <tr>
-                          {resultTable.variables.map((variable) => (
-                            <th
-                              className="tw:border-b tw:border-gray-200 tw:bg-gray-50 tw:px-3 tw:py-2 tw:text-left tw:font-semibold tw:text-gray-700"
-                              key={variable}>
-                              {variable}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {resultTable.rows.map((row, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {resultTable.variables.map((variable) => (
-                              <td
-                                className="tw:border-b tw:border-gray-100 tw:px-3 tw:py-2 tw:font-mono tw:text-[11px] tw:text-gray-700"
-                                key={variable}>
-                                {getResultValue(row[variable])}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <pre className="tw:m-0 tw:max-h-[420px] tw:overflow-auto tw:rounded-lg tw:border tw:border-gray-200 tw:bg-white tw:p-3 tw:font-mono tw:text-[11px] tw:text-gray-700">
-                    {result.body}
-                  </pre>
-                )}
-              </div>
+              <OntologyQueryResults
+                graphData={graphData}
+                relationshipTypes={relationTypes}
+                result={result}
+              />
             ) : null}
           </div>
         </div>
       </div>
 
-      <Modal
-        cancelText={t('label.cancel')}
-        data-testid="ontology-query-save-modal"
-        okButtonProps={{ disabled: !saveName.trim() }}
-        okText={
-          saveTarget === 'template' && activeQueryId?.startsWith('template-')
-            ? t('label.update')
-            : t('label.save')
-        }
-        open={isSaveModalOpen}
-        title={
-          saveTarget === 'template'
-            ? activeQueryId?.startsWith('template-')
-              ? t('label.update-sample-query')
-              : t('label.save-as-sample-query')
-            : t('label.save-query')
-        }
-        onCancel={() => setIsSaveModalOpen(false)}
-        onOk={() => void handleCommitSave()}>
-        <Input
-          autoFocus
-          data-testid="ontology-query-save-name"
-          placeholder={t('message.sparql-save-prompt')}
-          value={saveName}
-          onChange={(event) => setSaveName(event.target.value)}
-          onPressEnter={() => void handleCommitSave()}
-        />
-      </Modal>
+      <ModalOverlay
+        isDismissable
+        isOpen={isSaveModalOpen}
+        onOpenChange={setIsSaveModalOpen}>
+        <Modal>
+          <Dialog
+            showCloseButton
+            data-testid="ontology-query-save-modal"
+            title={
+              saveTarget === 'template'
+                ? activeQueryId?.startsWith('template-')
+                  ? t('label.update-sample-query')
+                  : t('label.save-as-sample-query')
+                : t('label.save-query')
+            }
+            width={480}
+            onClose={() => setIsSaveModalOpen(false)}>
+            <Dialog.Content>
+              <Input
+                autoFocus
+                inputDataTestId="ontology-query-save-name"
+                label={t('label.name')}
+                placeholder={t('message.sparql-save-prompt')}
+                value={saveName}
+                onChange={setSaveName}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && saveName.trim()) {
+                    void handleCommitSave();
+                  }
+                }}
+              />
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                size="sm"
+                onPress={() => setIsSaveModalOpen(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isDisabled={!saveName.trim()}
+                size="sm"
+                onPress={() => void handleCommitSave()}>
+                {saveTarget === 'template' &&
+                activeQueryId?.startsWith('template-')
+                  ? t('label.update')
+                  : t('label.save')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </>
   );
 };

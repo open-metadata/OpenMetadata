@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
+import { createRelationshipTypeMock } from '../../../mocks/Ontology.mock';
 import { OntologyNode } from '../OntologyExplorer.interface';
 import {
   computeGraphSearchHighlight,
@@ -23,12 +24,11 @@ const NODES: OntologyNode[] = [
   { id: 'beta-id', label: 'Beta', type: 'glossaryTerm' },
 ];
 const EDGES = [{ from: 'alpha-id', to: 'beta-id', relationType: 'requires' }];
-const RELATION_TYPES: GlossaryTermRelationType[] = [
-  {
+const RELATION_TYPES: RelationshipType[] = [
+  createRelationshipTypeMock({
     name: 'requires',
     displayName: 'Requires',
-    category: 'associative',
-  },
+  }),
 ];
 
 describe('computeGraphSearchHighlight', () => {

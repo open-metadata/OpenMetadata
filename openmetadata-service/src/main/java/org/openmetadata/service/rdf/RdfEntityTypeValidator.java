@@ -21,13 +21,13 @@ import java.util.regex.Pattern;
 import org.openmetadata.service.Entity;
 
 /** Validates entity types before they are interpolated into RDF identifiers or queries. */
-final class RdfEntityTypeValidator {
+public final class RdfEntityTypeValidator {
 
   private static final Pattern ENTITY_TYPE = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
 
   private RdfEntityTypeValidator() {}
 
-  static String requireKnown(String entityType) {
+  public static String requireKnown(String entityType) {
     return requireKnown(entityType, Entity::hasEntityRepository);
   }
 

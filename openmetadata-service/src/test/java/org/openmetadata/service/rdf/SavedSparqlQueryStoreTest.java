@@ -14,38 +14,43 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.rdf.SavedSparqlQueries;
 import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.service.docstore.PrivateDocumentType;
 
 class SavedSparqlQueryStoreTest {
 
   @Test
   void returnsAnEmptyLibraryWhenTheUserHasNoQueries() {
-    CollectionDAO.EntityExtensionDAO dao = mock(CollectionDAO.EntityExtensionDAO.class);
-    UUID userId = UUID.randomUUID();
-    when(dao.getExtension(userId, SavedSparqlQueryStore.EXTENSION)).thenReturn(null);
+    final SavedSparqlQueryDocumentRepository repository =
+        mock(SavedSparqlQueryDocumentRepository.class);
+    final UUID userId = UUID.randomUUID();
 
-    SavedSparqlQueries result = new SavedSparqlQueryStore(dao).get(userId);
+    final SavedSparqlQueries result = new SavedSparqlQueryStore(repository).get(userId);
 
     assertEquals(List.of(), result.getQueries());
   }
 
   @Test
-  void storesTheLibraryOnlyUnderTheOwningUserId() {
-    CollectionDAO.EntityExtensionDAO dao = mock(CollectionDAO.EntityExtensionDAO.class);
-    UUID userId = UUID.randomUUID();
-    SavedSparqlQuery query =
+  void storesTheLibraryInAnOwnerBoundPrivateDocument() {
+    final SavedSparqlQueryDocumentRepository repository =
+        mock(SavedSparqlQueryDocumentRepository.class);
+    final UriInfo uriInfo = mock(UriInfo.class);
+    final UUID userId = UUID.randomUUID();
+    final SavedSparqlQuery query =
         new SavedSparqlQuery()
             .withId(UUID.randomUUID())
             .withName("My query")
@@ -53,18 +58,44 @@ class SavedSparqlQueryStoreTest {
             .withFormat(SavedSparqlQuery.Format.JSON)
             .withInference(SavedSparqlQuery.Inference.NONE)
             .withSavedAt(123L);
-    SavedSparqlQueries library = new SavedSparqlQueries().withQueries(List.of(query));
-    ArgumentCaptor<String> json = ArgumentCaptor.forClass(String.class);
+    final SavedSparqlQueries library = new SavedSparqlQueries().withQueries(List.of(query));
+    final ArgumentCaptor<Document> document = ArgumentCaptor.forClass(Document.class);
+    when(repository.save(any(), isNull(), any(), any()))
+        .thenAnswer(invocation -> invocation.getArgument(2));
 
-    new SavedSparqlQueryStore(dao).save(userId, library);
+    final SavedSparqlQueries stored =
+        new SavedSparqlQueryStore(repository).save(uriInfo, userId, "owner", library);
 
-    verify(dao)
-        .insert(
-            eq(userId),
-            eq(SavedSparqlQueryStore.EXTENSION),
-            eq(SavedSparqlQueryStore.JSON_SCHEMA),
-            json.capture());
-    SavedSparqlQueries stored = JsonUtils.readValue(json.getValue(), SavedSparqlQueries.class);
+    verify(repository).save(any(), isNull(), document.capture(), any());
+    assertEquals(PrivateDocumentType.SPARQL_QUERY.value(), document.getValue().getEntityType());
+    assertEquals(userId.toString(), document.getValue().getName());
+    assertEquals("SparqlQuery." + userId, document.getValue().getFullyQualifiedName());
+    assertNull(document.getValue().getId());
     assertEquals(library, stored);
+  }
+
+  @Test
+  void decodesOnlyTheOwningUsersDocument() {
+    final SavedSparqlQueryDocumentRepository repository =
+        mock(SavedSparqlQueryDocumentRepository.class);
+    final UUID userId = UUID.randomUUID();
+    final SavedSparqlQueries library =
+        new SavedSparqlQueries().withQueries(List.of(query(UUID.randomUUID())));
+    final SavedSparqlQueryDocumentCodec codec = new SavedSparqlQueryDocumentCodec();
+    when(repository.findByFqn(codec.documentFqn(userId))).thenReturn(codec.encode(userId, library));
+
+    final SavedSparqlQueries stored = new SavedSparqlQueryStore(repository).get(userId);
+
+    assertEquals(library, stored);
+  }
+
+  private static SavedSparqlQuery query(final UUID id) {
+    return new SavedSparqlQuery()
+        .withId(id)
+        .withName("My query")
+        .withQuery("SELECT ?s WHERE { ?s ?p ?o }")
+        .withFormat(SavedSparqlQuery.Format.JSON)
+        .withInference(SavedSparqlQuery.Inference.NONE)
+        .withSavedAt(123L);
   }
 }

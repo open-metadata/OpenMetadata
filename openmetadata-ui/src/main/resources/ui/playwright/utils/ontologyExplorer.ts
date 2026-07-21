@@ -53,6 +53,35 @@ export async function waitForGraphLoaded(page: Page) {
   });
 }
 
+export async function releaseOntologyEditLease(
+  page: Page,
+  glossaryId: string
+): Promise<void> {
+  const releaseResponse = page
+    .waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/ontologyEditLocks/glossary/${glossaryId}`) &&
+        response.request().method() === 'DELETE',
+      { timeout: 10_000 }
+    )
+    .catch(() => undefined);
+  await page.getByTestId('mode-tab-view').click();
+  await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(
+    page.getByTestId('ontology-edit-lease-status')
+  ).not.toBeVisible();
+
+  const response = await releaseResponse;
+  if (response) {
+    expect(response.ok(), await response.text()).toBe(true);
+  }
+}
+
 export async function readNodePositions(
   page: Page
 ): Promise<Record<string, { x: number; y: number }>> {
@@ -69,6 +98,7 @@ export async function readNodePositions(
         return false;
       }
     },
+    undefined,
     { timeout: 20000 }
   );
 
@@ -89,8 +119,22 @@ export async function clickFirstGraphNode(page: Page): Promise<void> {
   await page.mouse.click(firstPos.x, firstPos.y);
 }
 
+export async function clickGraphNode(
+  page: Page,
+  nodeId: string
+): Promise<void> {
+  const positions = await readNodePositions(page);
+  const position = positions[nodeId];
+  if (!position) {
+    throw new Error(`Graph node ${nodeId} was not rendered`);
+  }
+  await page.mouse.click(position.x, position.y);
+}
+
 export interface RenderedEdge {
+  edgeKind?: string;
   from: string;
+  provenance?: string;
   to: string;
   relationType: string;
   inverseRelationType?: string;
@@ -124,6 +168,27 @@ export async function readGraphEdges(
     .evaluate(
       (el: HTMLElement) =>
         JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]
+    );
+}
+
+export async function readSearchHighlightIds(page: Page): Promise<string[]> {
+  await page.waitForFunction(
+    () => {
+      const element = document.querySelector<HTMLElement>(
+        '.ontology-g6-container'
+      );
+      const value = element?.dataset.searchHighlightIds;
+
+      return typeof value === 'string' && value !== '[]';
+    },
+    { timeout: 20000 }
+  );
+
+  return page
+    .locator('.ontology-g6-container')
+    .evaluate(
+      (element: HTMLElement) =>
+        JSON.parse(element.dataset.searchHighlightIds ?? '[]') as string[]
     );
 }
 
@@ -248,9 +313,8 @@ export async function readGraphZoom(page: Page): Promise<number> {
   });
 }
 
-// Badge is at DATA_MODE_TERM_NODE_SIZE/2 + NODE_BADGE_OFFSET_X = 15+8 = 23 px
-// to the right and 15+8 = 23 px above the node center (in canvas pixels).
-const DATA_MODE_BADGE_CANVAS_OFFSET_PX = 23;
+const DATA_MODE_BADGE_CANVAS_OFFSET_X_PX = 23;
+const DATA_MODE_BADGE_CANVAS_OFFSET_Y_PX = -8;
 
 export async function clickDataModeAssetBadge(
   page: Page,
@@ -262,8 +326,10 @@ export async function clickDataModeAssetBadge(
     throw new Error(`Term node ${termId} not found in node positions`);
   }
   const zoom = await readGraphZoom(page);
-  const offset = DATA_MODE_BADGE_CANVAS_OFFSET_PX * zoom;
-  await page.mouse.click(termPos.x + offset, termPos.y - offset);
+  await page.mouse.click(
+    termPos.x + DATA_MODE_BADGE_CANVAS_OFFSET_X_PX * zoom,
+    termPos.y + DATA_MODE_BADGE_CANVAS_OFFSET_Y_PX * zoom
+  );
 }
 
 export type CardinalityLabels = {

@@ -1,0 +1,26 @@
+{
+  "abbreviation": "HR Open",
+  "bundled": true,
+  "description": "A compact OpenMetadata starter subset of HR Open Standards workforce concepts.",
+  "id": "hr-open",
+  "license": "MIT",
+  "licenseUrl": "https://www.hropenstandards.org/",
+  "modules": [
+    {
+      "conceptCount": 9,
+      "dependencies": [],
+      "description": "Workers, positions, organizations, and compensation concepts.",
+      "format": "turtle",
+      "id": "workforce",
+      "name": "Workforce",
+      "relationshipCount": 5,
+      "resourcePath": "rdf/ontology-packs/hr-open/workforce.ttl",
+      "selectedByDefault": true,
+      "sha256": "ef532604d3b0adfa6bc53c6d217283e5bf9937238c5d6d55c569610f5994599f"
+    }
+  ],
+  "name": "HR Open Standards",
+  "sourceUrl": "https://www.hropenstandards.org/",
+  "standard": "HR Open Standards",
+  "version": "2025Q1-om1"
+}

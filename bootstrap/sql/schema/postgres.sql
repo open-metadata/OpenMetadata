@@ -326,6 +326,8 @@ CREATE TABLE public.entity_relationship (
     relationtype character varying(64) DEFAULT ''::character varying NOT NULL,
     jsonschema character varying(256),
     json jsonb,
+    relationshipid character varying(36),
+    relationshiptypeid character varying(36),
     deleted boolean DEFAULT false NOT NULL
 );
 
@@ -417,6 +419,119 @@ CREATE TABLE public.glossary_term_entity (
 
 
 ALTER TABLE public.glossary_term_entity OWNER TO openmetadata_user;
+
+--
+-- Ontology Studio entity and durable authoring tables
+--
+
+CREATE TABLE public.relationship_type_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    fqnhash character varying(768) NOT NULL,
+    json jsonb NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    CONSTRAINT relationship_type_entity_pkey PRIMARY KEY (id),
+    CONSTRAINT relationship_type_fqn_hash_unique UNIQUE (fqnhash)
+);
+
+ALTER TABLE public.relationship_type_entity OWNER TO openmetadata_user;
+
+CREATE INDEX relationship_type_name_index ON public.relationship_type_entity USING btree (name);
+CREATE INDEX relationship_type_deleted_index ON public.relationship_type_entity USING btree (deleted);
+
+CREATE TABLE public.ontology_axiom_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    fqnhash character varying(768) NOT NULL,
+    json jsonb NOT NULL,
+    glossaryid character varying(36) GENERATED ALWAYS AS ((json -> 'glossary'::text) ->> 'id'::text) STORED NOT NULL,
+    axiomtype character varying(64) GENERATED ALWAYS AS ((json ->> 'axiomType'::text)) STORED NOT NULL,
+    entitystatus character varying(32) GENERATED ALWAYS AS ((json ->> 'entityStatus'::text)) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    CONSTRAINT ontology_axiom_entity_pkey PRIMARY KEY (id),
+    CONSTRAINT ontology_axiom_fqn_hash_unique UNIQUE (fqnhash)
+);
+
+ALTER TABLE public.ontology_axiom_entity OWNER TO openmetadata_user;
+
+CREATE INDEX ontology_axiom_name_index ON public.ontology_axiom_entity USING btree (name);
+CREATE INDEX ontology_axiom_glossary_type_index ON public.ontology_axiom_entity USING btree (glossaryid, axiomtype);
+CREATE INDEX ontology_axiom_status_index ON public.ontology_axiom_entity USING btree (entitystatus);
+CREATE INDEX ontology_axiom_deleted_index ON public.ontology_axiom_entity USING btree (deleted);
+
+CREATE TABLE public.ontology_change_set_entity (
+    id character varying(36) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
+    name character varying(256) GENERATED ALWAYS AS ((json ->> 'name'::text)) STORED NOT NULL,
+    fqnhash character varying(768) NOT NULL,
+    json jsonb NOT NULL,
+    state character varying(32) GENERATED ALWAYS AS ((json ->> 'state'::text)) STORED NOT NULL,
+    updatedat bigint GENERATED ALWAYS AS (((json ->> 'updatedAt'::text))::bigint) STORED NOT NULL,
+    updatedby character varying(256) GENERATED ALWAYS AS ((json ->> 'updatedBy'::text)) STORED NOT NULL,
+    deleted boolean GENERATED ALWAYS AS (((json ->> 'deleted'::text))::boolean) STORED,
+    CONSTRAINT ontology_change_set_entity_pkey PRIMARY KEY (id),
+    CONSTRAINT ontology_change_set_fqn_hash_unique UNIQUE (fqnhash)
+);
+
+ALTER TABLE public.ontology_change_set_entity OWNER TO openmetadata_user;
+
+CREATE INDEX ontology_change_set_name_index ON public.ontology_change_set_entity USING btree (name);
+CREATE INDEX ontology_change_set_state_index ON public.ontology_change_set_entity USING btree (state);
+CREATE INDEX ontology_change_set_updated_by_index ON public.ontology_change_set_entity USING btree (updatedby);
+CREATE INDEX ontology_change_set_deleted_index ON public.ontology_change_set_entity USING btree (deleted);
+
+CREATE TABLE public.ontology_annex (
+    glossaryid character varying(36) NOT NULL,
+    revision bigint NOT NULL,
+    canonicalnquads text NOT NULL,
+    checksum character(64) NOT NULL,
+    source character varying(32) NOT NULL,
+    createdby character varying(256) NOT NULL,
+    createdat bigint NOT NULL,
+    CONSTRAINT ontology_annex_pkey PRIMARY KEY (glossaryid, revision),
+    CONSTRAINT ontology_annex_checksum_unique UNIQUE (glossaryid, checksum)
+);
+
+ALTER TABLE public.ontology_annex OWNER TO openmetadata_user;
+
+CREATE INDEX ontology_annex_created_at_index ON public.ontology_annex USING btree (createdat);
+
+CREATE TABLE public.ontology_edit_lock (
+    resourcetype character varying(128) NOT NULL,
+    resourceid character varying(36) NOT NULL,
+    holderid character varying(36) NOT NULL,
+    sessionid character varying(64) NOT NULL,
+    version bigint NOT NULL,
+    acquiredat bigint NOT NULL,
+    renewedat bigint NOT NULL,
+    expiresat bigint NOT NULL,
+    CONSTRAINT ontology_edit_lock_pkey PRIMARY KEY (resourcetype, resourceid)
+);
+
+ALTER TABLE public.ontology_edit_lock OWNER TO openmetadata_user;
+
+CREATE INDEX ontology_edit_lock_expiry_index ON public.ontology_edit_lock USING btree (expiresat);
+CREATE INDEX ontology_edit_lock_holder_index ON public.ontology_edit_lock USING btree (holderid, sessionid);
+
+CREATE TABLE public.rdf_inference_rule (
+    name character varying(64) NOT NULL,
+    json jsonb NOT NULL,
+    systemrule boolean DEFAULT false NOT NULL,
+    dirty boolean DEFAULT true NOT NULL,
+    deleted boolean DEFAULT false NOT NULL,
+    updatedat bigint NOT NULL,
+    lastmaterializedat bigint,
+    lasttriplecount bigint DEFAULT 0 NOT NULL,
+    lasterror text,
+    CONSTRAINT rdf_inference_rule_pkey PRIMARY KEY (name)
+);
+
+ALTER TABLE public.rdf_inference_rule OWNER TO openmetadata_user;
+
+CREATE INDEX rdf_inference_rule_dirty_index ON public.rdf_inference_rule USING btree (dirty, deleted);
 
 --
 -- Name: ingestion_pipeline_entity; Type: TABLE; Schema: public; Owner: openmetadata_user
@@ -1329,6 +1444,9 @@ ALTER TABLE ONLY public.entity_extension
 ALTER TABLE ONLY public.entity_relationship
     ADD CONSTRAINT entity_relationship_pkey PRIMARY KEY (fromid, toid, relation, relationtype);
 
+ALTER TABLE ONLY public.entity_relationship
+    ADD CONSTRAINT relationship_id_unique UNIQUE (relationshipid);
+
 
 -- Name: event_subscription_entity event_subscription_entity_namehash_key; Type: CONSTRAINT; Schema: public; Owner: openmetadata_user
 --
@@ -1920,6 +2038,8 @@ CREATE INDEX entity_relationship_from_index ON public.entity_relationship USING 
 --
 
 CREATE INDEX entity_relationship_to_index ON public.entity_relationship USING btree (toid, relation);
+
+CREATE INDEX entity_relationship_type_id_index ON public.entity_relationship USING btree (relationshiptypeid);
 
 
 --

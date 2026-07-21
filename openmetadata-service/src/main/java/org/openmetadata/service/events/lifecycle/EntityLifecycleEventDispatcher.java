@@ -29,6 +29,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Dispatcher for entity lifecycle events.
@@ -172,7 +173,8 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else {
-      runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
+      PostCommitActionQueue.runOrDefer(
+          () -> runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler));
     }
   }
 
@@ -247,8 +249,11 @@ public class EntityLifecycleEventDispatcher {
             handler);
       }
     } else {
-      runInline(
-          () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext), handler);
+      PostCommitActionQueue.runOrDefer(
+          () ->
+              runInline(
+                  () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext),
+                  handler));
     }
   }
 
@@ -322,6 +327,16 @@ public class EntityLifecycleEventDispatcher {
   }
 
   private void executeHandler(
+      EntityInterface entity,
+      Supplier<EntityInterface> snapshotSupplier,
+      String operation,
+      Consumer<EntityInterface> handlerCall,
+      EntityLifecycleEventHandler handler) {
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(entity, snapshotSupplier, operation, handlerCall, handler));
+  }
+
+  private void executeHandlerAfterCommit(
       EntityInterface entity,
       Supplier<EntityInterface> snapshotSupplier,
       String operation,
@@ -401,6 +416,15 @@ public class EntityLifecycleEventDispatcher {
   }
 
   private void executeHandler(
+      EntityReference reference,
+      String operation,
+      Runnable handlerExecution,
+      EntityLifecycleEventHandler handler) {
+    PostCommitActionQueue.runOrDefer(
+        () -> executeHandlerAfterCommit(reference, operation, handlerExecution, handler));
+  }
+
+  private void executeHandlerAfterCommit(
       EntityReference reference,
       String operation,
       Runnable handlerExecution,

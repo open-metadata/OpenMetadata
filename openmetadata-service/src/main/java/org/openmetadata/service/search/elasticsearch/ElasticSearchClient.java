@@ -582,6 +582,17 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.aggregate(query, index, searchAggregation, filter, subjectContext);
+  }
+
+  @Override
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   }

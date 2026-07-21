@@ -294,7 +294,7 @@ export default [
           selector:
             "CallExpression[callee.object.name='browser'][callee.property.name='newPage'][arguments.length=0]",
           message:
-            "Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.",
+            'Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.',
         },
       ],
     },

@@ -18,6 +18,9 @@ public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlos
   public GlossaryTerm createToEntity(CreateGlossaryTerm create, String user) {
     return copy(new GlossaryTerm(), create, user)
         .withSynonyms(create.getSynonyms())
+        .withAttributes(create.getAttributes())
+        .withConceptMappings(create.getConceptMappings())
+        .withIri(create.getIri())
         .withStyle(create.getStyle())
         .withGlossary(getEntityReferenceByName(Entity.GLOSSARY, create.getGlossary()))
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))

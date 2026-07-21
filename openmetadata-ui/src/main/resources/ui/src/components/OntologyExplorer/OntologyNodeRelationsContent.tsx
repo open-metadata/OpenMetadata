@@ -22,30 +22,30 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ConceptMapping,
   ConceptMappingType,
-  GlossaryTerm,
 } from '../../generated/entity/data/glossaryTerm';
-import {
-  getGlossaryTermsById,
-  patchGlossaryTerm,
-} from '../../rest/glossaryAPI';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
+import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 import { isValidUUID } from './utils/graphBuilders';
 import { getEffectiveRelationColor } from './utils/graphStyles';
+import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
 
 export interface OntologyNodeRelationsContentProps {
   readonly node: OntologyNode;
   readonly edges: OntologyEdge[];
   readonly nodes: OntologyNode[];
-  readonly relationTypes: GlossaryTermRelationType[];
+  readonly relationTypes: RelationshipType[];
   readonly isEditMode?: boolean;
 }
 
@@ -57,7 +57,6 @@ export const OntologyNodeRelationsContent: React.FC<
   OntologyNodeRelationsContentProps
 > = ({ node, edges, nodes, relationTypes, isEditMode = false }) => {
   const { t } = useTranslation();
-  const [termDetails, setTermDetails] = useState<GlossaryTerm | null>(null);
   const [mappingType, setMappingType] = useState<ConceptMappingType>(
     ConceptMappingType.ExactMatch
   );
@@ -65,31 +64,7 @@ export const OntologyNodeRelationsContent: React.FC<
   const [isAddingMapping, setIsAddingMapping] = useState(false);
   const [isSavingMapping, setIsSavingMapping] = useState(false);
   const termId = node.termId ?? node.id;
-
-  useEffect(() => {
-    let active = true;
-    if (!isValidUUID(termId)) {
-      setTermDetails(null);
-
-      return undefined;
-    }
-
-    getGlossaryTermsById(termId, { fields: ['conceptMappings'] })
-      .then((term) => {
-        if (active) {
-          setTermDetails(term);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setTermDetails(null);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [termId]);
+  const { setTermDetails, termDetails } = useOntologyTermDetails(termId);
 
   const nodeRelations = useMemo(() => {
     const incoming = edges
@@ -109,7 +84,7 @@ export const OntologyNodeRelationsContent: React.FC<
   }, [node, edges, nodes]);
 
   const relationTypeMap = useMemo(() => {
-    const map = new Map<string, GlossaryTermRelationType>();
+    const map = new Map<string, RelationshipType>();
     relationTypes.forEach((relationType) => {
       map.set(relationType.name, relationType);
     });
@@ -147,7 +122,7 @@ export const OntologyNodeRelationsContent: React.FC<
     const parentIds = new Set<string>();
     const hierarchicalRelationNames = new Set(
       relationTypes
-        .filter((relationType) => relationType.category === 'hierarchical')
+        .filter(isHierarchicalRelationship)
         .map((relationType) =>
           relationType.name.toLowerCase().replace(/[^a-z0-9]/g, '')
         )
@@ -231,7 +206,7 @@ export const OntologyNodeRelationsContent: React.FC<
         t('server.create-entity-success', { entity: t('label.mapping') })
       );
     } catch (error) {
-      showErrorToast(String(error));
+      showErrorToast(error as AxiosError);
     } finally {
       setIsSavingMapping(false);
     }
@@ -274,7 +249,7 @@ export const OntologyNodeRelationsContent: React.FC<
             {String(count).padStart(2, '0')}
           </Badge>
         </div>
-        <Card className="tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:p-4">
+        <Card className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-4">
           <ul className="tw:m-0 tw:list-none tw:p-0">
             {rows.map((rel, rowIndex) => {
               const labelText = relatedDisplayName(rel);
@@ -286,7 +261,10 @@ export const OntologyNodeRelationsContent: React.FC<
                 customRelation
               );
               const meta = effectiveColor
-                ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()]
+                ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? {
+                    background: 'var(--color-bg-secondary)',
+                    color: effectiveColor,
+                  }
                 : undefined;
 
               return (
@@ -354,6 +332,15 @@ export const OntologyNodeRelationsContent: React.FC<
             {parentCount}
           </Badge>
         </Card>
+      ) : null}
+
+      {isValidUUID(termId) ? (
+        <OntologyConceptAttributes
+          attributes={termDetails?.attributes ?? []}
+          isEditMode={isEditMode}
+          termId={termId}
+          onTermUpdate={setTermDetails}
+        />
       ) : null}
 
       {totalRelations === 0 ? (

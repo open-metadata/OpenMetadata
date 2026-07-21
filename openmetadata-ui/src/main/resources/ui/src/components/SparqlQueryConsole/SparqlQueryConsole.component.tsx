@@ -14,11 +14,14 @@
 import {
   Button,
   Card,
+  Dialog,
+  Input,
+  Modal,
+  ModalOverlay,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit03, Trash01 } from '@untitledui/icons';
-import { Input, Modal } from 'antd';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/edit/closebrackets.js';
@@ -598,36 +601,58 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
         </Card>
       </div>
 
-      <Modal
-        cancelText={t('label.cancel')}
-        data-testid="sparql-save-modal"
-        okButtonProps={{ disabled: !saveName.trim() }}
-        okText={
-          saveTarget === 'template'
-            ? activeTemplateId
-              ? t('label.update')
-              : t('label.save')
-            : t('label.save')
-        }
-        open={isSaveModalOpen}
-        title={
-          saveTarget === 'template'
-            ? activeTemplateId
-              ? t('label.update-sample-query')
-              : t('label.save-as-sample-query')
-            : t('label.save-query')
-        }
-        onCancel={() => setIsSaveModalOpen(false)}
-        onOk={() => void handleCommitSave()}>
-        <Input
-          autoFocus
-          data-testid="sparql-save-name-input"
-          placeholder={t('message.sparql-save-prompt')}
-          value={saveName}
-          onChange={(e) => setSaveName(e.target.value)}
-          onPressEnter={() => void handleCommitSave()}
-        />
-      </Modal>
+      <ModalOverlay
+        isDismissable
+        isOpen={isSaveModalOpen}
+        onOpenChange={setIsSaveModalOpen}>
+        <Modal>
+          <Dialog
+            showCloseButton
+            data-testid="sparql-save-modal"
+            title={
+              saveTarget === 'template'
+                ? activeTemplateId
+                  ? t('label.update-sample-query')
+                  : t('label.save-as-sample-query')
+                : t('label.save-query')
+            }
+            width={480}
+            onClose={() => setIsSaveModalOpen(false)}>
+            <Dialog.Content>
+              <Input
+                autoFocus
+                inputDataTestId="sparql-save-name-input"
+                label={t('label.name')}
+                placeholder={t('message.sparql-save-prompt')}
+                value={saveName}
+                onChange={setSaveName}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && saveName.trim()) {
+                    void handleCommitSave();
+                  }
+                }}
+              />
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                size="sm"
+                onPress={() => setIsSaveModalOpen(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isDisabled={!saveName.trim()}
+                size="sm"
+                onPress={() => void handleCommitSave()}>
+                {saveTarget === 'template' && activeTemplateId
+                  ? t('label.update')
+                  : t('label.save')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </>
   );
 };

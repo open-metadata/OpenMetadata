@@ -143,6 +143,15 @@ class InferenceRuleValidatorTest {
           validate(rule("empty-template", emptyTemplate)).stream()
               .anyMatch(e -> e.contains("CONSTRUCT template must contain at least one triple")));
     }
+
+    @Test
+    @DisplayName("Top-level query modifiers unsupported by SPARQL UPDATE are rejected")
+    void topLevelModifiersRejected() {
+      String limited = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 10";
+      assertTrue(
+          validate(rule("limited-rule", limited)).stream()
+              .anyMatch(error -> error.contains("LIMIT, OFFSET, or ORDER BY")));
+    }
   }
 
   @Nested

@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyStudioDataGraph.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyStudioDataGraph",
+  "description": "A bounded page of term-to-asset clusters and semantic relations for Ontology Studio data mode.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyStudioDataGraph",
+  "properties": {
+    "clusters": {
+      "description": "Term-to-asset clusters in this page.",
+      "type": "array",
+      "items": {
+        "$ref": "ontologyStudioAssetCluster.json"
+      },
+      "default": []
+    },
+    "edges": {
+      "description": "Semantic relations whose endpoints are both present in this page.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphEdge.json"
+      },
+      "default": []
+    },
+    "paging": {
+      "description": "Offset pagination for clusters.",
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": ["clusters", "edges", "paging"],
+  "additionalProperties": false
+}

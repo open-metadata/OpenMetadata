@@ -14,7 +14,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import {
   LayoutEngine,
   RELATION_COLORS,
@@ -51,7 +51,7 @@ export interface UseOntologyGraphDerivedOptions {
   filters: GraphFilters;
   explorationMode: ExplorationMode;
   glossaries: Glossary[];
-  relationTypes: GlossaryTermRelationType[];
+  relationTypes: RelationshipType[];
   settings: GraphSettings;
   scope: OntologyExplorerProps['scope'];
   entityId?: string;
@@ -88,15 +88,29 @@ export function useOntologyGraphDerived({
   }, [glossaries]);
 
   const loadedAssetCountPerTerm = useMemo(() => {
-    const counts: Record<string, number> = {};
-    assetGraphData?.edges.forEach((e) => {
-      if (e.relationType === ASSET_RELATION_TYPE) {
-        counts[e.to] = (counts[e.to] ?? 0) + 1;
+    const assetsByTerm = new Map<string, Set<string>>();
+    const nodeTypeById = new Map(
+      [...(graphData?.nodes ?? []), ...(assetGraphData?.nodes ?? [])].map(
+        (node) => [node.id, node.type]
+      )
+    );
+    [...(graphData?.edges ?? []), ...(assetGraphData?.edges ?? [])].forEach(
+      (e) => {
+        if (e.relationType === ASSET_RELATION_TYPE) {
+          const fromType = nodeTypeById.get(e.from);
+          const termId = fromType === ASSET_NODE_TYPE ? e.to : e.from;
+          const assetId = fromType === ASSET_NODE_TYPE ? e.from : e.to;
+          const assets = assetsByTerm.get(termId) ?? new Set<string>();
+          assets.add(assetId);
+          assetsByTerm.set(termId, assets);
+        }
       }
-    });
+    );
 
-    return counts;
-  }, [assetGraphData]);
+    return Object.fromEntries(
+      [...assetsByTerm].map(([termId, assetIds]) => [termId, assetIds.size])
+    );
+  }, [assetGraphData, graphData]);
 
   const combinedGraphData = useMemo(() => {
     if (!graphData) {
@@ -351,7 +365,7 @@ export function useOntologyGraphDerived({
     return buildHierarchyGraphs({
       terms,
       relations,
-      relationSettings: { relationTypes },
+      relationTypes,
       relationColors: RELATION_COLORS,
       glossaryNames,
     });

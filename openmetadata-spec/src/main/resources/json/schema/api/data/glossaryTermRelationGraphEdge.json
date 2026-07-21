@@ -6,6 +6,10 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.GlossaryTermRelationGraphEdge",
   "properties": {
+    "id": {
+      "description": "Stable logical relationship identifier.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
     "from": {
       "description": "Identifier of the source glossary term.",
       "$ref": "../../type/basic.json#/definitions/uuid"
@@ -17,8 +21,24 @@
     "relationType": {
       "description": "Configured type of the glossary relation.",
       "type": "string"
+    },
+    "relationshipType": {
+      "description": "Resolved first-class relationship type.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "provenance": {
+      "$ref": "../../type/termRelation.json#/definitions/provenance"
+    },
+    "status": {
+      "$ref": "../../type/status.json"
+    },
+    "createdBy": {
+      "type": "string"
+    },
+    "createdAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     }
   },
-  "required": ["from", "to", "relationType"],
+  "required": ["id", "from", "to", "relationType", "provenance", "status"],
   "additionalProperties": false
 }

@@ -11,9 +11,20 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
+import {
+  Characteristic,
+  RelationshipType,
+} from '../../../generated/entity/data/relationshipType';
 import { Provenance } from '../../../generated/type/termRelation';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
-import { LayoutEngine, LayoutType } from '../OntologyExplorer.constants';
+import {
+  createRelationshipTypeMock,
+  createRelationshipTypeReferenceMock,
+} from '../../../mocks/Ontology.mock';
+import {
+  DIMMED_EDGE_LABEL_OPACITY,
+  LayoutEngine,
+  LayoutType,
+} from '../OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from '../OntologyExplorer.interface';
 import {
   ASSET_BINDING_EDGE_KIND,
@@ -21,6 +32,8 @@ import {
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import {
+  findOntologyEdgeByGraphId,
+  getOntologyEdgeId,
   getStudioNodeAccentColor,
   mergeEdges,
   useGraphDataBuilder,
@@ -36,13 +49,8 @@ jest.mock('../utils/textMeasure', () => ({
 }));
 
 const customRelationType = (
-  overrides: Partial<GlossaryTermRelationType> & { name: string }
-): GlossaryTermRelationType =>
-  ({
-    category: 'associative',
-    displayName: overrides.name,
-    ...overrides,
-  } as GlossaryTermRelationType);
+  overrides: Partial<RelationshipType> & { name: string }
+): RelationshipType => createRelationshipTypeMock(overrides);
 
 const edge = (
   from: string,
@@ -84,7 +92,7 @@ describe('getStudioNodeAccentColor', () => {
 });
 
 describe('studio edit ports', () => {
-  it('renders the relationship port as part of the G6 node', () => {
+  it('flags the in-node edit handle without a G6 port so edges anchor to the node boundary', () => {
     const { result } = renderHook(() =>
       useGraphDataBuilder({
         clickedEdgeId: null,
@@ -101,29 +109,125 @@ describe('studio edit ports', () => {
       })
     );
 
-    expect(result.current.graphData.nodes?.[0]).toMatchObject({
-      style: {
-        port: true,
-        ports: [
-          expect.objectContaining({
-            key: 'ontology-edit',
-            placement: 'right',
-          }),
-        ],
-        studioEditMode: true,
-      },
-    });
+    const style = result.current.graphData.nodes?.[0]?.style;
+
+    expect(style).toMatchObject({ studioEditMode: true });
+    expect(style).not.toHaveProperty('port');
+    expect(style).not.toHaveProperty('ports');
   });
 });
 
 // Mirrors the subset of GlossaryTermRelationSettings the backend seeds via the
 // 1.13.0 migration that the tests below exercise.
-const seededRelationTypes: GlossaryTermRelationType[] = [
-  customRelationType({ name: 'relatedTo', isSymmetric: true }),
-  customRelationType({ name: 'synonym', isSymmetric: true }),
-  customRelationType({ name: 'partOf', inverseRelation: 'hasPart' }),
-  customRelationType({ name: 'hasPart', inverseRelation: 'partOf' }),
+const seededRelationTypes: RelationshipType[] = [
+  customRelationType({
+    name: 'relatedTo',
+    characteristics: [Characteristic.Symmetric],
+  }),
+  customRelationType({
+    name: 'synonym',
+    characteristics: [Characteristic.Symmetric],
+  }),
+  customRelationType({
+    name: 'partOf',
+    inverse: createRelationshipTypeReferenceMock('hasPart'),
+  }),
+  customRelationType({
+    name: 'hasPart',
+    inverse: createRelationshipTypeReferenceMock('partOf'),
+  }),
 ];
+
+describe('studio edge rendering', () => {
+  it('renders every parallel relationship as a distinct curved arrow', () => {
+    const { result } = renderHook(() =>
+      useGraphDataBuilder({
+        clickedEdgeId: null,
+        explorationMode: 'model',
+        glossaries: [],
+        glossaryColorMap: {},
+        inputEdges: [edge('A', 'B', 'partOf'), edge('A', 'B', 'relatedTo')],
+        inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
+        layoutType: LayoutEngine.Dagre,
+        relationTypes: seededRelationTypes,
+        selectedNodeId: null,
+        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+        studioMode: true,
+      })
+    );
+
+    expect(result.current.graphData.edges).toHaveLength(2);
+    expect(result.current.graphData.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          style: expect.objectContaining({
+            curveOffset: expect.any(Number),
+            endArrow: true,
+          }),
+        }),
+      ])
+    );
+    expect(
+      result.current.graphData.edges?.every(
+        (renderedEdge) => renderedEdge.style?.stroke !== 'transparent'
+      )
+    ).toBe(true);
+  });
+
+  it('draws both arrowheads for a symmetric relationship', () => {
+    const { result } = renderHook(() =>
+      useGraphDataBuilder({
+        clickedEdgeId: null,
+        explorationMode: 'model',
+        glossaries: [],
+        glossaryColorMap: {},
+        inputEdges: [edge('A', 'B', 'relatedTo')],
+        inputNodes: [studioNode({ id: 'A' }), studioNode({ id: 'B' })],
+        layoutType: LayoutEngine.Dagre,
+        relationTypes: seededRelationTypes,
+        selectedNodeId: null,
+        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+        studioMode: true,
+      })
+    );
+
+    expect(result.current.graphData.edges?.[0].style).toMatchObject({
+      endArrow: true,
+      startArrow: true,
+    });
+  });
+
+  it('restores label opacity on un-dimmed edges but dims unrelated ones when a node is selected', () => {
+    const { result } = renderHook(() =>
+      useGraphDataBuilder({
+        clickedEdgeId: null,
+        explorationMode: 'model',
+        glossaries: [],
+        glossaryColorMap: {},
+        inputEdges: [edge('A', 'B', 'partOf'), edge('C', 'D', 'relatedTo')],
+        inputNodes: [
+          studioNode({ id: 'A' }),
+          studioNode({ id: 'B' }),
+          studioNode({ id: 'C' }),
+          studioNode({ id: 'D' }),
+        ],
+        layoutType: LayoutEngine.Dagre,
+        relationTypes: seededRelationTypes,
+        selectedNodeId: 'A',
+        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+        studioMode: true,
+      })
+    );
+
+    const edges = result.current.graphData.edges ?? [];
+    const connected = edges.find((e) => e.source === 'A' && e.target === 'B');
+    const unrelated = edges.find((e) => e.source === 'C' && e.target === 'D');
+
+    expect(connected?.style?.labelOpacity).toBe(1);
+    expect(connected?.style?.labelBackgroundOpacity).toBe(1);
+    expect(unrelated?.style?.labelOpacity).toBe(DIMMED_EDGE_LABEL_OPACITY);
+  });
+});
 
 describe('mergeEdges', () => {
   it('merges a symmetric pair (relatedTo + relatedTo) into one bidirectional edge', () => {
@@ -190,6 +294,15 @@ describe('mergeEdges', () => {
     ]);
   });
 
+  it('renders one persisted symmetric projection as bidirectional', () => {
+    const result = mergeEdges(
+      [edge('A', 'B', 'relatedTo')],
+      seededRelationTypes
+    );
+
+    expect(result[0].isBidirectional).toBe(true);
+  });
+
   it('does not merge two edges of the same non-symmetric relation type', () => {
     const result = mergeEdges(
       [edge('A', 'B', 'partOf'), edge('B', 'A', 'partOf')],
@@ -201,9 +314,15 @@ describe('mergeEdges', () => {
   });
 
   it('merges a user-configured inverse pair using runtime relation type settings', () => {
-    const configuredTypes: GlossaryTermRelationType[] = [
-      customRelationType({ name: 'derivedFrom', inverseRelation: 'derives' }),
-      customRelationType({ name: 'derives', inverseRelation: 'derivedFrom' }),
+    const configuredTypes: RelationshipType[] = [
+      customRelationType({
+        name: 'derivedFrom',
+        inverse: createRelationshipTypeReferenceMock('derives'),
+      }),
+      customRelationType({
+        name: 'derives',
+        inverse: createRelationshipTypeReferenceMock('derivedFrom'),
+      }),
     ];
     const result = mergeEdges(
       [edge('A', 'B', 'derivedFrom'), edge('B', 'A', 'derives')],
@@ -221,8 +340,11 @@ describe('mergeEdges', () => {
   });
 
   it('merges a user-configured symmetric relation type from runtime settings', () => {
-    const configuredTypes: GlossaryTermRelationType[] = [
-      customRelationType({ name: 'siblingOf', isSymmetric: true }),
+    const configuredTypes: RelationshipType[] = [
+      customRelationType({
+        name: 'siblingOf',
+        characteristics: [Characteristic.Symmetric],
+      }),
     ];
     const result = mergeEdges(
       [edge('A', 'B', 'siblingOf'), edge('B', 'A', 'siblingOf')],
@@ -239,8 +361,11 @@ describe('mergeEdges', () => {
   });
 
   it('infers the reverse inverse mapping when only one direction is configured', () => {
-    const configuredTypes: GlossaryTermRelationType[] = [
-      customRelationType({ name: 'producedBy', inverseRelation: 'produces' }),
+    const configuredTypes: RelationshipType[] = [
+      customRelationType({
+        name: 'producedBy',
+        inverse: createRelationshipTypeReferenceMock('produces'),
+      }),
     ];
     const result = mergeEdges(
       [edge('A', 'B', 'producedBy'), edge('B', 'A', 'produces')],
@@ -298,6 +423,37 @@ describe('mergeEdges', () => {
       edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
       provenance: Provenance.Inferred,
     });
+  });
+
+  it('preserves stable identity and audit metadata through edge merging', () => {
+    const result = mergeEdges(
+      [
+        {
+          ...edge('A', 'B', 'partOf'),
+          id: '11111111-1111-1111-1111-111111111111',
+          createdAt: 1_700_000_000_000,
+          createdBy: 'ontology-editor',
+          provenance: Provenance.Imported,
+        },
+      ],
+      seededRelationTypes
+    );
+
+    expect(result[0]).toMatchObject({
+      id: '11111111-1111-1111-1111-111111111111',
+      createdAt: 1_700_000_000_000,
+      createdBy: 'ontology-editor',
+      provenance: Provenance.Imported,
+    });
+    expect(getOntologyEdgeId(result[0])).toBe(
+      'edge-11111111-1111-1111-1111-111111111111'
+    );
+    expect(
+      findOntologyEdgeByGraphId(
+        result,
+        'edge-11111111-1111-1111-1111-111111111111'
+      )
+    ).toBe(result[0]);
   });
 });
 

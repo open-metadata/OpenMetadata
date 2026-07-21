@@ -61,7 +61,7 @@ public final class RdfValidationService {
   private Model fetchData(String entityUri) {
     String query = entityUri == null ? FULL_GRAPH_QUERY : "DESCRIBE <" + entityUri + ">";
     try {
-      String turtle = repository.executeSparqlQueryDirect(query, "text/turtle");
+      String turtle = repository.executeSparqlQueryDirect(query, "turtle");
       return parseTurtle(turtle, repository.getBaseUri());
     } catch (RiotException exception) {
       throw new IllegalStateException("Unable to load RDF data for SHACL validation", exception);

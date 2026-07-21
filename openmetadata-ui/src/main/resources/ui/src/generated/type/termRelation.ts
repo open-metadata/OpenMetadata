@@ -16,6 +16,14 @@
  */
 export interface TermRelation {
     /**
+     * Time the relationship was first persisted.
+     */
+    createdAt?: number;
+    /**
+     * User who first authored or imported the relationship.
+     */
+    createdBy?: string;
+    /**
      * Unique identifier of this relation edge.
      */
     id?: string;
@@ -23,6 +31,10 @@ export interface TermRelation {
      * How this relation edge originated. Defaults to 'Manual'.
      */
     provenance?: Provenance;
+    /**
+     * Resolved first-class relationship type.
+     */
+    relationshipType?: EntityReference;
     /**
      * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
      * 'relatedTo' for backward compatibility.
@@ -51,28 +63,14 @@ export enum Provenance {
 }
 
 /**
- * Approval status of this relation edge.
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
-}
-
-/**
- * Reference to the related glossary term.
+ * Resolved first-class relationship type.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Reference to the related glossary term.
  */
 export interface EntityReference {
     /**
@@ -115,4 +113,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Approval status of this relation edge.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }

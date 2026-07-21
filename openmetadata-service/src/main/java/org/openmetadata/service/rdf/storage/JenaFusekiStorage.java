@@ -1295,6 +1295,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   @Override
+  public long getTripleCount(final String graphUri) {
+    throwIfCircuitOpen("getTripleCount");
+    final String query =
+        "SELECT (COUNT(*) as ?count) WHERE { GRAPH <" + graphUri + "> { ?s ?p ?o } }";
+    long tripleCount = 0;
+    try (QueryExecution queryExecution = connection.query(query)) {
+      final ResultSet results = queryExecution.execSelect();
+      if (results.hasNext()) {
+        tripleCount = results.next().getLiteral("count").getLong();
+      }
+      recordSuccess();
+    } catch (RuntimeException exception) {
+      if (isCircuitBreakerFailure(exception)) {
+        recordFailure();
+      }
+      throw exception;
+    }
+    return tripleCount;
+  }
+
+  @Override
   public void clearGraph(String graphUri) {
     throwIfCircuitOpen("clearGraph");
     try {

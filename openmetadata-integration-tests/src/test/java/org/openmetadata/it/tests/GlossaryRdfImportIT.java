@@ -21,28 +21,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.ResourceAccessMode;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
-import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
-import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ConceptMapping;
@@ -57,20 +50,15 @@ import org.openmetadata.schema.type.RelationProvenance;
  * End-to-end test for the native OWL/RDF ontology import endpoint
  * ({@code PUT /v1/glossaries/name/{name}/importRdf}). Verifies that an ontology is materialized as
  * real, editable glossary terms with hierarchy, synonyms, canonical IRIs, SKOS concept mappings,
- * typed relations (auto-registered) and datatype-property custom properties.
+ * governed relationship types and per-concept datatype attributes.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-@ResourceLock(
-    value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
-    mode = ResourceAccessMode.READ_WRITE)
 public class GlossaryRdfImportIT {
 
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private ObjectNode originalRelationSettings;
-
   private static final String ONTOLOGY =
       """
       @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
@@ -102,32 +90,9 @@ public class GlossaryRdfImportIT {
           rdfs:range xsd:string .
       """;
 
-  @BeforeEach
-  void captureRelationSettings() throws Exception {
-    HttpResponse<String> response =
-        get(SdkClients.getServerUrl() + "/v1/system/settings/glossaryTermRelationSettings");
-    assertEquals(200, response.statusCode(), response.body());
-    originalRelationSettings =
-        (ObjectNode) OBJECT_MAPPER.readTree(response.body()).path("config_value").deepCopy();
-  }
-
   @AfterEach
-  void restoreRelationSettings(TestNamespace ns) throws Exception {
+  void cleanup(TestNamespace ns) {
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
-
-    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
-    payload.put("config_type", "glossaryTermRelationSettings");
-    payload.set("config_value", originalRelationSettings);
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .header("Content-Type", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .PUT(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(payload)))
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(200, response.statusCode(), response.body());
   }
 
   @Test
@@ -143,12 +108,17 @@ public class GlossaryRdfImportIT {
         result.get("relationsAdded").asInt() >= 1, "custom prescribes relation wired" + detail);
     assertTrue(result.get("conceptMappingsAdded").asInt() >= 1, "external closeMatch" + detail);
     assertTrue(
-        result.get("customPropertiesCreated").asInt() >= 1, "datatype property -> CP" + detail);
+        result.get("customPropertiesCreated").asInt() >= 1,
+        "datatype property -> per-concept attribute" + detail);
 
     GlossaryTerm provider = getTerm(glossaryName + ".HealthcareProvider");
     assertNotNull(provider.getIri(), "canonical ontology IRI is persisted");
     assertTrue(provider.getSynonyms().contains("HCP"), "altLabel -> synonym");
     assertFalse(provider.getConceptMappings().isEmpty(), "SKOS closeMatch -> conceptMapping");
+    assertTrue(
+        provider.getAttributes().stream()
+            .anyMatch(attribute -> "hasNpiNumber".equals(attribute.getName())),
+        "OWL datatype property is attached to its domain concept");
     assertEquals(
         EntityStatus.APPROVED,
         provider.getEntityStatus(),
@@ -547,7 +517,7 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
-  void nonAdminOwnerImportsTermsButCannotMutateGlobalSchema(TestNamespace ns) throws Exception {
+  void nonAdminOwnerImportsTermsAndPerConceptAttributes(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     User owner = UserTestFactory.createUser(ns, "ontologyOwner");
     setGlossaryOwner(glossary.getId().toString(), owner);
@@ -565,10 +535,9 @@ public class GlossaryRdfImportIT {
         0,
         result.get("relationTypesRegistered").asInt(),
         "a non-admin owner must not register global relation types: " + result);
-    assertEquals(
-        0,
-        result.get("customPropertiesCreated").asInt(),
-        "a non-admin owner must not create global custom properties: " + result);
+    assertTrue(
+        result.get("customPropertiesCreated").asInt() >= 1,
+        "per-concept attributes are part of terms the owner can edit: " + result);
   }
 
   @Test
@@ -580,8 +549,7 @@ public class GlossaryRdfImportIT {
         JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
 
     // A custom object property that no other test registers, so it is guaranteed to be
-    // unregistered when this non-admin import runs (the global relation-type settings are
-    // shared across the concurrent suite, and a non-admin never registers it).
+    // unregistered when this non-admin import runs, and a non-admin never registers it.
     String ontology =
         """
         @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
@@ -687,7 +655,6 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
-  @EnabledIf("isRdfEnabled")
   void roundTripsThroughRdfExport(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     importRdf(glossary.getName(), false);
@@ -703,7 +670,6 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
-  @EnabledIf("isRdfEnabled")
   void roundTripsEveryPolyhierarchyEdgeThroughRdfExport(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String diamondOntology =
@@ -732,10 +698,6 @@ public class GlossaryRdfImportIT {
         2,
         nTriples.lines().filter(line -> line.startsWith(child)).count(),
         "both broader edges must survive import and export");
-  }
-
-  static boolean isRdfEnabled() {
-    return RdfTestUtils.isRdfEnabled();
   }
 
   private JsonNode importRdf(String glossaryName, boolean dryRun) throws Exception {
@@ -823,7 +785,7 @@ public class GlossaryRdfImportIT {
   private GlossaryTerm getTerm(String fqn) throws Exception {
     String url =
         String.format(
-            "%s/v1/glossaryTerms/name/%s?fields=relatedTerms,parent",
+            "%s/v1/glossaryTerms/name/%s?fields=attributes,conceptMappings,parent,relatedTerms",
             SdkClients.getServerUrl(), fqn);
     HttpResponse<String> response = get(url);
     assertEquals(200, response.statusCode(), "getTerm failed: " + response.body());
@@ -858,7 +820,7 @@ public class GlossaryRdfImportIT {
   private String exportGlossary(String glossaryId, String format) throws Exception {
     String url =
         String.format(
-            "%s/v1/rdf/glossary/%s/export?format=%s",
+            "%s/v1/glossaries/%s/exportOntology?format=%s",
             SdkClients.getServerUrl(), glossaryId, format);
     HttpResponse<String> response = get(url);
     assertEquals(200, response.statusCode(), "export failed: " + response.body());

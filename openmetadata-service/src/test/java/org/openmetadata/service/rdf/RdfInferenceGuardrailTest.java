@@ -93,6 +93,24 @@ class RdfInferenceGuardrailTest {
   }
 
   @Test
+  void queriesMaterializedCustomInferenceWithoutLoadingTheDataset() {
+    RdfStorageInterface storage = mock(RdfStorageInterface.class);
+    RdfConfiguration config =
+        new RdfConfiguration().withEnabled(true).withMaterializedInferenceEnabled(true);
+    RdfRepository repository = new RdfRepository(config, storage, null);
+    String directResult = "{\"head\":{},\"boolean\":true}";
+    when(storage.executeSparqlQuery(ASK_QUERY, "json")).thenReturn(directResult);
+
+    InferenceQueryResult result =
+        repository.executeSparqlQueryWithInferenceResult(ASK_QUERY, "json", "custom");
+
+    assertEquals(directResult, result.results());
+    assertNull(result.warning());
+    verify(storage, never()).getTripleCount();
+    verify(storage, never()).executeSparqlQuery(ALL_DATA_QUERY, "text/turtle");
+  }
+
+  @Test
   void usesDefaultLimitForMissingOrInvalidConfiguration() {
     assertEquals(
         RdfRepository.DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES,

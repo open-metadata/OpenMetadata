@@ -205,10 +205,7 @@ describe('KnowledgeGraph3DScene', () => {
       type: 'table',
     });
     rerender(
-      <KnowledgeGraph3DScene
-        {...sceneProps(updatedData)}
-        data={updatedData}
-      />
+      <KnowledgeGraph3DScene {...sceneProps(updatedData)} data={updatedData} />
     );
 
     expect(mockGraphMethods.d3ReheatSimulation).toHaveBeenCalledTimes(1);

@@ -35,6 +35,12 @@
           "$ref": "internal/cacheWarmupAppConfig.json"
         },
         {
+          "$ref": "internal/rdfIndexingAppConfig.json"
+        },
+        {
+          "$ref": "internal/rdfInferenceAppConfig.json"
+        },
+        {
           "$ref": "internal/dataRetentionConfiguration.json"
         },
         {

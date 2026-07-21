@@ -16,6 +16,7 @@ import {
   ConceptMappingType,
   GlossaryTerm,
 } from '../../generated/entity/data/glossaryTerm';
+import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import {
   getGlossaryTermsById,
   patchGlossaryTerm,
@@ -94,11 +95,11 @@ describe('OntologyNodeRelationsContent', () => {
           { id: 'parent-b', label: 'Parent B', type: 'glossaryTerm' },
         ]}
         relationTypes={[
-          {
+          createRelationshipTypeMock({
             name: 'broader',
             displayName: 'Broader',
-            category: 'hierarchical',
-          },
+            rdfPredicate: 'http://www.w3.org/2004/02/skos/core#broader',
+          }),
         ]}
       />
     );

@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import type { TFunction } from 'i18next';
+import { OntologyStudioDataGraph } from '../../../generated/api/data/ontologyStudioDataGraph';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { Provenance } from '../../../generated/type/termRelation';
+import { EntityStatus, Provenance } from '../../../generated/type/termRelation';
 import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
   ASSET_BINDING_EDGE_KIND,
   ASSET_RELATION_TYPE,
   buildGraphFromAllTerms,
+  buildGraphFromStudioData,
   convertRdfGraphToOntologyGraph,
   projectOntologyRelationsToAssets,
   SEMANTIC_PROJECTION_EDGE_KIND,
@@ -44,6 +46,66 @@ const glossaries: Glossary[] = [
     description: 'd',
   } as Glossary,
 ];
+
+describe('buildGraphFromStudioData', () => {
+  it('maps bounded clusters into terms, detailed assets, and binding edges', () => {
+    const result = buildGraphFromStudioData(
+      {
+        clusters: [
+          {
+            assetCount: 11,
+            assets: [
+              {
+                columnCount: 7,
+                entity: {
+                  displayName: 'Transactions',
+                  fullyQualifiedName: 'warehouse.finance.transactions',
+                  id: 'asset-1',
+                  type: 'table',
+                },
+                serviceType: 'Snowflake',
+              },
+            ],
+            term: {
+              displayName: 'Primary Cluster',
+              fullyQualifiedName: 'Finance.PrimaryCluster',
+              id: 'term-1',
+              name: 'PrimaryCluster',
+            },
+          },
+        ],
+        edges: [],
+        paging: { total: 1 },
+      } as OntologyStudioDataGraph,
+      glossaries,
+      tStub
+    );
+
+    expect(result.nodes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          assetCount: 11,
+          glossaryId: 'gloss-finance-id',
+          id: 'term-1',
+          loadedAssetCount: 1,
+        }),
+        expect.objectContaining({
+          columnCount: 7,
+          id: 'asset-1',
+          serviceLabel: 'Snowflake',
+          type: 'dataAsset',
+        }),
+      ])
+    );
+    expect(result.edges).toContainEqual({
+      edgeKind: ASSET_BINDING_EDGE_KIND,
+      from: 'asset-1',
+      label: 'label.tagged-with',
+      relationType: ASSET_RELATION_TYPE,
+      to: 'term-1',
+    });
+  });
+});
 
 describe('convertRdfGraphToOntologyGraph', () => {
   it('prefers the explicit glossaryId from the response over FQN heuristic', () => {
@@ -399,6 +461,48 @@ describe('buildGraphFromAllTerms', () => {
 
     expect(result.nodes).toHaveLength(1);
     expect(result.edges).toHaveLength(0);
+  });
+
+  it('propagates persisted relationship identity and governance metadata', () => {
+    const relationId = '33333333-3333-3333-3333-333333333333';
+    const terms = [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'Source',
+        fullyQualifiedName: 'Finance.Source',
+        glossary: { id: baseGlossary.id, type: 'glossary' },
+        relatedTerms: [
+          {
+            createdAt: 1_700_000_000_000,
+            createdBy: 'ontology-editor',
+            id: relationId,
+            provenance: Provenance.Imported,
+            relationType: 'partOf',
+            status: EntityStatus.Approved,
+            term: {
+              id: '22222222-2222-2222-2222-222222222222',
+              type: 'glossaryTerm',
+            },
+          },
+        ],
+      },
+      {
+        id: '22222222-2222-2222-2222-222222222222',
+        name: 'Target',
+        fullyQualifiedName: 'Finance.Target',
+        glossary: { id: baseGlossary.id, type: 'glossary' },
+      },
+    ] as GlossaryTerm[];
+
+    const result = buildGraphFromAllTerms(terms, [baseGlossary], tStub);
+
+    expect(result.edges[0]).toMatchObject({
+      createdAt: 1_700_000_000_000,
+      createdBy: 'ontology-editor',
+      id: relationId,
+      provenance: Provenance.Imported,
+      status: EntityStatus.Approved,
+    });
   });
 });
 

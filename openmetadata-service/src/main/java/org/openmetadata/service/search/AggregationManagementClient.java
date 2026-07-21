@@ -68,6 +68,25 @@ public interface AggregationManagementClient {
       throws IOException;
 
   /**
+   * Execute an aggregation query with RBAC visibility filters for the requesting subject.
+   *
+   * @param query the search query
+   * @param index the index to search
+   * @param searchAggregation the search aggregation configuration
+   * @param filter additional filter query
+   * @param subjectContext the requesting subject used to enforce search visibility
+   * @return the aggregation results as JsonObject
+   * @throws IOException if the aggregation operation fails
+   */
+  JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
+      throws IOException;
+
+  /**
    * Get entity type counts with aggregation.
    * Returns count of entities grouped by entity type.
    *

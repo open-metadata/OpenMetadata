@@ -11,6 +11,13 @@
       "type": "string",
       "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
       "default": "NONE"
+    },
+    "shaclValidationMode": {
+      "description": "SHACL validation behavior for RDF import and asynchronous projections.",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode",
+      "type": "string",
+      "enum": ["OFF", "REPORT", "ENFORCE_IMPORTS"],
+      "default": "REPORT"
     }
   },
   "properties": {
@@ -117,6 +124,29 @@
       "type": "integer",
       "default": 100000,
       "minimum": 1
+    },
+    "materializedInferenceEnabled": {
+      "description": "Use durable per-rule inferred named graphs produced inside the RDF store instead of building an in-memory Jena inference model for CUSTOM inference queries.",
+      "type": "boolean",
+      "default": false
+    },
+    "shaclValidationMode": {
+      "$ref": "#/definitions/shaclValidationMode"
+    },
+    "dereferenceableIris": {
+      "description": "Expose authenticated content-negotiated redirects for OpenMetadata-minted IRIs.",
+      "type": "boolean",
+      "default": false
+    },
+    "strictOwlProfile": {
+      "description": "Reject authored axioms that violate the supported OWL 2 DL profile guardrails.",
+      "type": "boolean",
+      "default": true
+    },
+    "askCollateEnabled": {
+      "description": "Expose optional AI-assisted Ontology Studio flows. Manual authoring remains available when disabled.",
+      "type": "boolean",
+      "default": false
     },
     "federation": {
       "description": "Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is disabled by default; SERVICE clauses are rejected unless the target URI is in the allowlist.",

@@ -55,6 +55,14 @@ public final class InferenceRuleValidator {
     return errors;
   }
 
+  static void requireValid(final InferenceRule rule, final String context) {
+    final List<String> errors = validate(rule);
+    if (!errors.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Invalid inference rule '%s': %s".formatted(context, String.join("; ", errors)));
+    }
+  }
+
   private static void validateMetadata(InferenceRule rule, List<String> errors) {
     if (isBlank(rule.getName())) {
       errors.add("'name' must not be blank");
@@ -108,6 +116,20 @@ public final class InferenceRuleValidator {
     if (containsServiceClause(query)) {
       errors.add(
           "ruleBody must not contain SERVICE clauses; inference is local-only and federated rules are rejected");
+    }
+    validateMaterializationCompatibility(query, errors);
+  }
+
+  private static void validateMaterializationCompatibility(
+      final Query query, final List<String> errors) {
+    if (query.hasDatasetDescription()) {
+      errors.add("ruleBody must not contain FROM or FROM NAMED dataset clauses");
+    }
+    if (query.hasLimit() || query.hasOffset() || query.hasOrderBy()) {
+      errors.add("ruleBody must not contain top-level LIMIT, OFFSET, or ORDER BY modifiers");
+    }
+    if (query.hasGroupBy() || query.hasHaving() || query.hasValues()) {
+      errors.add("ruleBody must not contain top-level GROUP BY, HAVING, or VALUES modifiers");
     }
   }
 

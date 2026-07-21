@@ -19,7 +19,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelationMetadata;
@@ -73,5 +75,31 @@ class TermRelationMetadataCodecTest {
     assertEquals("narrower", metadata.getRelationType());
     assertEquals(RelationProvenance.INFERRED, metadata.getProvenance());
     assertEquals(EntityStatus.IN_REVIEW, metadata.getStatus());
+  }
+
+  @Test
+  void createPreservesStableIdentityAndAuditMetadata() {
+    UUID relationshipId = UUID.randomUUID();
+    UUID relationshipTypeId = UUID.randomUUID();
+    UUID sourceTermId = UUID.randomUUID();
+    RelationshipType relationshipType =
+        new RelationshipType().withId(relationshipTypeId).withName("broader");
+    TermRelationMetadata requested =
+        new TermRelationMetadata()
+            .withId(relationshipId)
+            .withRelationType("broader")
+            .withProvenance(RelationProvenance.IMPORTED)
+            .withStatus(EntityStatus.APPROVED)
+            .withCreatedBy("importer")
+            .withCreatedAt(42L);
+
+    TermRelationMetadata metadata =
+        codec.create(requested, relationshipType, sourceTermId, "editor", 100L);
+
+    assertEquals(relationshipId, metadata.getId());
+    assertEquals(relationshipTypeId, metadata.getRelationshipTypeId());
+    assertEquals(sourceTermId, metadata.getSourceTermId());
+    assertEquals("importer", metadata.getCreatedBy());
+    assertEquals(42L, metadata.getCreatedAt());
   }
 }

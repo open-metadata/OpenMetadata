@@ -29,6 +29,10 @@
       "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
       "$ref": "#/definitions/relationType"
     },
+    "relationshipType": {
+      "description": "Resolved first-class relationship type.",
+      "$ref": "entityReference.json"
+    },
     "term": {
       "description": "Reference to the related glossary term.",
       "$ref": "entityReference.json"
@@ -40,6 +44,14 @@
     "status": {
       "description": "Approval status of this relation edge.",
       "$ref": "status.json"
+    },
+    "createdBy": {
+      "description": "User who first authored or imported the relationship.",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Time the relationship was first persisted.",
+      "$ref": "basic.json#/definitions/timestamp"
     }
   },
   "required": ["term"],

@@ -13,6 +13,7 @@
 
 import type { TFunction } from 'i18next';
 import { EntityType } from '../../../enums/entity.enum';
+import { OntologyStudioDataGraph } from '../../../generated/api/data/ontologyStudioDataGraph';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -332,10 +333,16 @@ export function buildGraphFromAllTerms(
           if (!edgeSet.has(edgeKey)) {
             edgeSet.add(edgeKey);
             edges.push({
+              id: relation.id,
               from: term.id,
               to: relatedTermRef.id,
               label: relationType,
               relationType,
+              createdAt: relation.createdAt,
+              createdBy: relation.createdBy,
+              provenance: relation.provenance,
+              relationshipType: relation.relationshipType,
+              status: relation.status,
             });
           }
         }
@@ -409,6 +416,84 @@ export function buildGraphFromCounts(
   });
 
   return { nodes, edges };
+}
+
+function glossaryForTerm(
+  fullyQualifiedName: string,
+  glossaries: Glossary[]
+): Glossary | undefined {
+  return glossaries.find((glossary) => {
+    const glossaryFqn = glossary.fullyQualifiedName ?? glossary.name;
+
+    return (
+      fullyQualifiedName === glossaryFqn ||
+      fullyQualifiedName.startsWith(`${glossaryFqn}.`)
+    );
+  });
+}
+
+export function buildGraphFromStudioData(
+  data: OntologyStudioDataGraph,
+  glossaries: Glossary[],
+  t: TFunction
+): OntologyGraphData {
+  const nodes = new Map<string, OntologyNode>();
+  const edges: OntologyEdge[] = data.edges.map((edge) => ({
+    id: edge.id,
+    from: edge.from,
+    to: edge.to,
+    label: edge.relationType,
+    relationType: edge.relationType,
+    relationshipType: edge.relationshipType,
+  }));
+
+  data.clusters.forEach((cluster) => {
+    const glossary = glossaryForTerm(
+      cluster.term.fullyQualifiedName,
+      glossaries
+    );
+    nodes.set(cluster.term.id, {
+      id: cluster.term.id,
+      assetCount: cluster.assetCount,
+      loadedAssetCount: cluster.assets.length,
+      fullyQualifiedName: cluster.term.fullyQualifiedName,
+      glossaryId: glossary?.id,
+      group: glossary?.displayName ?? glossary?.name,
+      label: cluster.term.displayName ?? cluster.term.name,
+      originalLabel: cluster.term.displayName ?? cluster.term.name,
+      type: 'glossaryTerm',
+    });
+
+    cluster.assets.forEach((asset) => {
+      const label =
+        asset.entity.displayName ??
+        asset.entity.name ??
+        asset.entity.fullyQualifiedName ??
+        asset.entity.id;
+      nodes.set(asset.entity.id, {
+        id: asset.entity.id,
+        columnCount: asset.columnCount,
+        entityRef: asset.entity,
+        fullyQualifiedName: asset.entity.fullyQualifiedName,
+        label,
+        originalLabel: label,
+        serviceLabel:
+          asset.serviceType ??
+          asset.service?.displayName ??
+          asset.service?.name,
+        type: ASSET_NODE_TYPE,
+      });
+      edges.push({
+        edgeKind: ASSET_BINDING_EDGE_KIND,
+        from: asset.entity.id,
+        label: t('label.tagged-with'),
+        relationType: ASSET_RELATION_TYPE,
+        to: cluster.term.id,
+      });
+    });
+  });
+
+  return { nodes: [...nodes.values()], edges };
 }
 
 export function mergeMetricsIntoGraph(

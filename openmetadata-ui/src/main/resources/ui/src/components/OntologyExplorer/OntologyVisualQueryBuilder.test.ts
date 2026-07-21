@@ -12,17 +12,17 @@
  */
 
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import { buildVisualSparqlQuery } from './OntologyVisualQueryBuilder';
 
 describe('buildVisualSparqlQuery', () => {
   it('compiles the selected relation and target into auditable SPARQL', () => {
-    const relationType: GlossaryTermRelationType = {
+    const relationType: RelationshipType = createRelationshipTypeMock({
       name: 'governedBy',
       displayName: 'Governed by',
-      category: 'associative',
       rdfPredicate: 'https://example.com/ontology/governedBy',
-    };
+    });
     const target: GlossaryTerm = {
       id: 'target-id',
       name: 'AntiMoneyLaundering',

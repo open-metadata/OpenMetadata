@@ -66,12 +66,11 @@ public final class SparqlFederationGuard {
    *     preserved. Variable endpoints surface as the literal string {@code ?varname}.
    */
   public List<String> serviceEndpoints(String sparql) {
-    Optional<Query> parsed = parseQuietly(sparql);
-    if (parsed.isEmpty()) {
-      return List.of();
-    }
-    EndpointCollector collector = new EndpointCollector();
-    ElementWalker.walk(parsed.get().getQueryPattern(), collector);
+    final Optional<Query> parsed = parseQuietly(sparql);
+    final EndpointCollector collector = new EndpointCollector();
+    parsed
+        .map(Query::getQueryPattern)
+        .ifPresent(queryPattern -> ElementWalker.walk(queryPattern, collector));
     return List.copyOf(collector.endpoints);
   }
 

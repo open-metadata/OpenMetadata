@@ -76,6 +76,7 @@ import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
@@ -94,8 +95,10 @@ import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
@@ -593,6 +596,7 @@ public class SystemResource {
       }
     }
 
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
     if (GLOSSARY_TERM_RELATION_SETTINGS
         .value()
         .equalsIgnoreCase(settingName.getConfigType().toString())) {
@@ -601,6 +605,7 @@ public class SystemResource {
       normalizeGlossaryTermRelationSettings(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
+      relationshipTypeUpdate = relationshipTypeUpdate(relationSettings);
     }
     if (SPARQL_QUERY_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
       SparqlQuerySettings querySettings =
@@ -610,8 +615,57 @@ public class SystemResource {
     }
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
 
     return response;
+  }
+
+  private LegacyRelationshipTypeUpdate relationshipTypeUpdate(
+      GlossaryTermRelationSettings updated) {
+    return new LegacyRelationshipTypeUpdate(previousRelationshipTypeSettings(), updated);
+  }
+
+  private GlossaryTermRelationSettings previousRelationshipTypeSettings() {
+    Settings previousSetting =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    return previousSetting == null
+        ? new GlossaryTermRelationSettings().withRelationTypes(List.of())
+        : JsonUtils.convertValue(
+            previousSetting.getConfigValue(), GlossaryTermRelationSettings.class);
+  }
+
+  private static LegacyRelationshipTypeUpdate patchedRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, Response response) {
+    LegacyRelationshipTypeUpdate update = null;
+    if (previous != null && response.getEntity() instanceof Settings settings) {
+      GlossaryTermRelationSettings updated =
+          JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
+      update = new LegacyRelationshipTypeUpdate(previous, updated);
+    }
+    return update;
+  }
+
+  private static boolean isRelationshipTypeSetting(String settingName) {
+    return GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName);
+  }
+
+  private static void synchronizeRelationshipTypes(
+      LegacyRelationshipTypeUpdate update,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Response.Status.Family responseFamily) {
+    if (update != null && responseFamily == Response.Status.Family.SUCCESSFUL) {
+      RelationshipTypeRepository repository =
+          (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+      LegacyRelationshipTypeSynchronizer synchronizer =
+          new LegacyRelationshipTypeSynchronizer(repository);
+      synchronizer.synchronize(
+          update.previous(),
+          update.updated(),
+          uriInfo,
+          securityContext.getUserPrincipal().getName());
+    }
   }
 
   @PUT
@@ -721,7 +775,32 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.patchSetting(settingName, patch);
+    GlossaryTermRelationSettings previous =
+        isRelationshipTypeSetting(settingName) ? previousRelationshipTypeSettings() : null;
+    Response response = patchSetting(settingName, patch);
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate =
+        patchedRelationshipTypeUpdate(previous, response);
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
+    return response;
+  }
+
+  private Response patchSetting(String settingName, JsonPatch patch) {
+    Response response =
+        isRelationshipTypeSetting(settingName)
+            ? systemRepository.patchGlossaryTermRelationSettings(
+                patch, this::preparePatchedRelationshipTypeSettings)
+            : systemRepository.patchSetting(settingName, patch);
+    return response;
+  }
+
+  private GlossaryTermRelationSettings preparePatchedRelationshipTypeSettings(
+      GlossaryTermRelationSettings updated) {
+    normalizeGlossaryTermRelationSettings(updated);
+    Settings settings =
+        new Settings().withConfigType(GLOSSARY_TERM_RELATION_SETTINGS).withConfigValue(updated);
+    validateGlossaryTermRelationSettingsUpdate(settings);
+    return updated;
   }
 
   @GET
@@ -1416,23 +1495,32 @@ public class SystemResource {
 
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+    List<RelationshipTypeUsage> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
 
     List<String> inUseRelationTypes =
         removedRelationTypes.stream()
-            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .filter(name -> relationTypeUsage(name, usageCounts) > 0)
             .toList();
 
     if (!inUseRelationTypes.isEmpty()) {
       StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
       for (String relationTypeName : inUseRelationTypes) {
-        int count = usageCounts.get(relationTypeName);
+        int count = relationTypeUsage(relationTypeName, usageCounts);
         message.append(
             String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
       }
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+  }
+
+  private static int relationTypeUsage(
+      String relationTypeName, List<RelationshipTypeUsage> usageCounts) {
+    return usageCounts.stream()
+        .filter(usage -> relationTypeName.equals(usage.getRelationshipType().getName()))
+        .mapToInt(RelationshipTypeUsage::getCount)
+        .findFirst()
+        .orElse(0);
   }
 
   private void validateSparqlQuerySettings(SparqlQuerySettings settings) {
@@ -1491,12 +1579,12 @@ public class SystemResource {
           relationType.setTargetMax(1);
         }
         case ONE_TO_MANY -> {
-          relationType.setSourceMax(1);
-          relationType.setTargetMax(null);
-        }
-        case MANY_TO_ONE -> {
           relationType.setSourceMax(null);
           relationType.setTargetMax(1);
+        }
+        case MANY_TO_ONE -> {
+          relationType.setSourceMax(1);
+          relationType.setTargetMax(null);
         }
         case MANY_TO_MANY -> {
           relationType.setSourceMax(null);
@@ -1519,12 +1607,15 @@ public class SystemResource {
     if (Integer.valueOf(1).equals(sourceMax) && Integer.valueOf(1).equals(targetMax)) {
       return RelationCardinality.ONE_TO_ONE;
     }
-    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
+    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
       return RelationCardinality.ONE_TO_MANY;
     }
-    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
+    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
       return RelationCardinality.MANY_TO_ONE;
     }
     return RelationCardinality.CUSTOM;
   }
+
+  private record LegacyRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, GlossaryTermRelationSettings updated) {}
 }

@@ -36,6 +36,13 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>bom</artifactId>
         <version>${awssdk.version}</version>
@@ -168,18 +175,6 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-assets</artifactId>
     </dependency>
-    <!--
-      HTTP/2 connector factories. Not used by default (see conf/openmetadata.yaml,
-      applicationConnectors). Operators who run Jetty without an HTTP/2-terminating
-      load balancer in front can flip the connector type to h2c to get multiplexed
-      chunk downloads on first paint. AWS ALB / CloudFront speak HTTP/2 to the
-      browser but use HTTP/1.1 to the origin, so this won't help that path; useful
-      mainly for direct-access deployments (Docker Compose, on-prem, local dev).
-    -->
-    <dependency>
-      <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-http2</artifactId>
-    </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-core</artifactId>
@@ -202,14 +197,6 @@
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
-    <!--
-      dropwizard-http2 registers `type: h2` (TLS) and `type: h2c` (cleartext) connector
-      factories via META-INF/services. Adding the dep is what makes those connector types
-      available in conf/openmetadata.yaml — without it, "type: h2c" fails at startup with
-      "unknown connector type". Both factories are backward-compatible with HTTP/1.1 clients
-      on the same port (cleartext via Upgrade, TLS via ALPN), so adopting them does not
-      break existing clients.
-    -->
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-http2</artifactId>

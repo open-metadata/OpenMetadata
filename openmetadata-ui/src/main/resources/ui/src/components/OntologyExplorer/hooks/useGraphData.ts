@@ -12,16 +12,16 @@
  */
 import { ComboData, EdgeData, NodeData } from '@antv/g6';
 import { useCallback, useMemo } from 'react';
-import { RelationCardinality } from '../../../generated/configuration/glossaryTermRelationSettings';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { deriveCardinality } from '../../../utils/Glossary/glossaryTermRelationUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   DATA_MODE_ASSET_CIRCLE_SIZE,
   DATA_MODE_ASSET_EDGE_STROKE_COLOR,
   DATA_MODE_TERM_H_SPACING,
   DATA_MODE_TERM_NODE_SIZE,
   DATA_MODE_TERM_V_SPACING,
+  DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_STROKE_COLOR,
@@ -35,7 +35,6 @@ import {
   OntologyEdge,
   OntologyNode,
 } from '../OntologyExplorer.interface';
-import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
   OBSERVED_LINEAGE_EDGE_KIND,
   SEMANTIC_PROJECTION_EDGE_KIND,
@@ -55,18 +54,17 @@ import {
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
-  STUDIO_EDIT_PORT_KEY,
 } from '../utils/graphStyles';
 import {
   computeGlossaryGroupPositions,
   computeOutermostRingRadius,
 } from '../utils/layoutCalculations';
-
-interface CardinalityInfo {
-  cardinality?: RelationCardinality;
-  sourceMax?: number | null;
-  targetMax?: number | null;
-}
+import {
+  getInverseRelationshipName,
+  getRelationshipCardinalityLabels,
+  getRelationshipColor,
+  isSymmetricRelationship,
+} from '../utils/relationshipTypeUtils';
 
 const STUDIO_DEFAULT_ACCENT = '#84CAFF';
 const STUDIO_COMPLIANCE_ACCENT = '#DC6803';
@@ -84,31 +82,26 @@ export function getStudioNodeAccentColor(node: OntologyNode): string {
     : STUDIO_DEFAULT_ACCENT;
 }
 
+export function getOntologyEdgeId(edge: MergedEdge): string {
+  const identity =
+    edge.id ??
+    `${edge.from}-${edge.to}-${edge.relationType}-${
+      edge.edgeKind ?? 'ontology'
+    }`;
+
+  return `edge-${identity}`;
+}
+
 function getCardinalityEndLabels(
   relationType: string,
-  cardinalityMap: Map<string, CardinalityInfo>
+  cardinalityMap: Map<string, RelationshipType>
 ): { startLabelText: string; endLabelText: string } | null {
-  const info = cardinalityMap.get(relationType);
-  if (!info?.cardinality) {
-    return null;
-  }
-  switch (info.cardinality) {
-    case RelationCardinality.OneToOne:
-      return { startLabelText: '1', endLabelText: '1' };
-    case RelationCardinality.OneToMany:
-      return { startLabelText: '1', endLabelText: 'M' };
-    case RelationCardinality.ManyToOne:
-      return { startLabelText: 'M', endLabelText: '1' };
-    case RelationCardinality.ManyToMany:
-      return { startLabelText: 'M', endLabelText: 'M' };
-    case RelationCardinality.Custom:
-      return {
-        startLabelText: info.sourceMax === 1 ? '1' : 'M',
-        endLabelText: info.targetMax === 1 ? '1' : 'M',
-      };
-    default:
-      return null;
-  }
+  const relationshipType = cardinalityMap.get(relationType);
+  const labels = relationshipType
+    ? getRelationshipCardinalityLabels(relationshipType)
+    : null;
+
+  return labels;
 }
 
 interface RelationMaps {
@@ -116,20 +109,19 @@ interface RelationMaps {
   symmetricSet: Set<string>;
 }
 
-function buildRelationMaps(
-  configuredTypes?: GlossaryTermRelationType[]
-): RelationMaps {
+function buildRelationMaps(configuredTypes?: RelationshipType[]): RelationMaps {
   const inverseMap: Record<string, string> = {};
   const symmetricSet = new Set<string>();
-  configuredTypes?.forEach((rt) => {
-    if (rt.inverseRelation) {
-      inverseMap[rt.name] = rt.inverseRelation;
-      if (!(rt.inverseRelation in inverseMap)) {
-        inverseMap[rt.inverseRelation] = rt.name;
+  configuredTypes?.forEach((relationshipType) => {
+    const inverseName = getInverseRelationshipName(relationshipType);
+    if (inverseName) {
+      inverseMap[relationshipType.name] = inverseName;
+      if (!(inverseName in inverseMap)) {
+        inverseMap[inverseName] = relationshipType.name;
       }
     }
-    if (rt.isSymmetric) {
-      symmetricSet.add(rt.name);
+    if (isSymmetricRelationship(relationshipType)) {
+      symmetricSet.add(relationshipType.name);
     }
   });
 
@@ -146,7 +138,7 @@ function isInversePair(
 
 export function mergeEdges(
   inputEdges: OntologyEdge[],
-  configuredTypes?: GlossaryTermRelationType[]
+  configuredTypes?: RelationshipType[]
 ): MergedEdge[] {
   const { inverseMap, symmetricSet } = buildRelationMaps(configuredTypes);
   const pairGroups = new Map<string, OntologyEdge[]>();
@@ -196,12 +188,19 @@ export function mergeEdges(
       consumed.add(i);
       if (matchIndex < 0) {
         result.push({
+          ...(edge.id ? { id: edge.id } : {}),
           from: edge.from,
           to: edge.to,
           relationType: edge.relationType,
-          isBidirectional: false,
+          isBidirectional: isSymmetric,
           ...(edge.edgeKind ? { edgeKind: edge.edgeKind } : {}),
           ...(edge.provenance ? { provenance: edge.provenance } : {}),
+          ...(edge.status ? { status: edge.status } : {}),
+          ...(edge.createdBy ? { createdBy: edge.createdBy } : {}),
+          ...(edge.createdAt ? { createdAt: edge.createdAt } : {}),
+          ...(edge.relationshipType
+            ? { relationshipType: edge.relationshipType }
+            : {}),
         });
 
         continue;
@@ -209,6 +208,7 @@ export function mergeEdges(
       const match = list[matchIndex];
       consumed.add(matchIndex);
       result.push({
+        ...(edge.id ? { id: edge.id } : {}),
         from: edge.from,
         to: edge.to,
         relationType: edge.relationType,
@@ -218,6 +218,12 @@ export function mergeEdges(
         isBidirectional: true,
         ...(edge.edgeKind ? { edgeKind: edge.edgeKind } : {}),
         ...(edge.provenance ? { provenance: edge.provenance } : {}),
+        ...(edge.status ? { status: edge.status } : {}),
+        ...(edge.createdBy ? { createdBy: edge.createdBy } : {}),
+        ...(edge.createdAt ? { createdAt: edge.createdAt } : {}),
+        ...(edge.relationshipType
+          ? { relationshipType: edge.relationshipType }
+          : {}),
       });
     }
   }
@@ -258,28 +264,19 @@ export function useGraphDataBuilder({
 
   const customRelationColorMap = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {};
-    relationTypes?.forEach((rt) => {
-      const effectiveColor = rt.isSystemDefined
-        ? RELATION_META[rt.name]?.color ?? rt.color
-        : rt.color ?? RELATION_META[rt.name]?.color;
-      if (effectiveColor) {
-        map[rt.name] = effectiveColor;
-      }
+    relationTypes?.forEach((relationshipType) => {
+      map[relationshipType.name] =
+        RELATION_META[relationshipType.name]?.color ??
+        getRelationshipColor(relationshipType);
     });
 
     return map;
   }, [relationTypes]);
 
-  const cardinalityMap = useMemo<Map<string, CardinalityInfo>>(() => {
-    const map = new Map<string, CardinalityInfo>();
-    relationTypes?.forEach((rt) => {
-      const cardinality =
-        rt.cardinality ?? deriveCardinality(rt.sourceMax, rt.targetMax);
-      map.set(rt.name, {
-        cardinality,
-        sourceMax: rt.sourceMax,
-        targetMax: rt.targetMax,
-      });
+  const cardinalityMap = useMemo<Map<string, RelationshipType>>(() => {
+    const map = new Map<string, RelationshipType>();
+    relationTypes?.forEach((relationshipType) => {
+      map.set(relationshipType.name, relationshipType);
     });
 
     return map;
@@ -613,7 +610,10 @@ export function useGraphDataBuilder({
           node.entityRef?.type !== undefined
             ? entityUtilClassBase.getFormattedEntityType(node.entityRef.type)
             : undefined;
-        const entityIconUrl = getEntityIconUrl(node.entityRef?.type);
+        const entityIconUrl = serviceUtilClassBase.getServiceTypeLogo({
+          entityType: node.entityRef?.type,
+          serviceType: node.serviceLabel,
+        });
 
         return {
           id: node.id,
@@ -693,23 +693,6 @@ export function useGraphDataBuilder({
           ),
           ...(studioMode && {
             label: false,
-            port: isEditMode,
-            ports: isEditMode
-              ? [
-                  {
-                    key: STUDIO_EDIT_PORT_KEY,
-                    placement: 'right',
-                    r: 9,
-                    cursor: 'pointer',
-                    fill: '#1570EF',
-                    lineWidth: 1,
-                    shadowBlur: 5,
-                    shadowColor: 'rgba(21, 112, 239, 0.4)',
-                    shadowOffsetY: 2,
-                    stroke: '#FFFFFF',
-                  },
-                ]
-              : [],
             stroke:
               node.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
             studioLabelText: label,
@@ -798,9 +781,7 @@ export function useGraphDataBuilder({
           toType !== 'metric';
 
         return group.map((singleEdge, i) => {
-          const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${
-            singleEdge.relationType
-          }-${singleEdge.edgeKind ?? 'ontology'}`;
+          const edgeId = getOntologyEdgeId(singleEdge);
           const isPrimary = i === 0;
           const edgeKeyStr = `${singleEdge.from}::${singleEdge.to}::${singleEdge.relationType}`;
           const isDimmedBySearch =
@@ -898,9 +879,36 @@ export function useGraphDataBuilder({
             : {};
 
           const commonStyle = {
+            ...(studioMode
+              ? { curveOffset: n === 1 ? 24 : step * BADGE_V_STEP }
+              : {}),
             lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
             opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
             ...labelStyle,
+            // Always restore label opacity when not dimmed: G6 merges style
+            // updates, so an edge that un-dims (e.g. its node gets selected)
+            // would otherwise keep the stale dimmed label opacity and render a
+            // bold line with an invisible relation label.
+            ...(isEdgeDimmed
+              ? {
+                  labelOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                  labelBackgroundOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                }
+              : { labelOpacity: 1, labelBackgroundOpacity: 1 }),
+          };
+          const hasArrow = explorationMode !== 'data' || isSemanticProjection;
+          const highlightedLineWidth = studioMode ? 2.4 : 2.5;
+          const defaultLineWidth = studioMode ? 1.8 : 1.5;
+          const visibleStyle = {
+            stroke: edgeColor,
+            lineWidth:
+              isHighlighted || isClickedEdge
+                ? highlightedLineWidth
+                : defaultLineWidth,
+            endArrow: hasArrow,
+            startArrow: hasArrow && singleEdge.isBidirectional,
+            ...(isSemanticProjection ? { lineDash: [6, 4] } : {}),
+            ...commonStyle,
           };
 
           return {
@@ -908,30 +916,30 @@ export function useGraphDataBuilder({
             source: singleEdge.from,
             target: singleEdge.to,
             data: {
+              relationshipId: singleEdge.id,
+              createdAt: singleEdge.createdAt,
+              createdBy: singleEdge.createdBy,
               relationType: singleEdge.relationType,
+              relationshipType: singleEdge.relationshipType,
               edgeKind: singleEdge.edgeKind,
               provenance: singleEdge.provenance,
+              status: singleEdge.status,
               edgeColor,
               isHighlighted,
               isClickedEdge,
               isCrossTeam,
               isEdgeDimmed,
             },
-            style: isPrimary
-              ? {
-                  stroke: edgeColor,
-                  lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
-                  endArrow: explorationMode !== 'data' || isSemanticProjection,
-                  ...(isSemanticProjection ? { lineDash: [6, 4] } : {}),
-                  ...commonStyle,
-                }
-              : {
-                  // Line invisible; label group retains opacity:1 so badge shows.
-                  stroke: 'transparent',
-                  lineWidth: 0,
-                  endArrow: false,
-                  ...commonStyle,
-                },
+            style:
+              isPrimary || studioMode
+                ? visibleStyle
+                : {
+                    // Line invisible; label group retains opacity:1 so badge shows.
+                    stroke: 'transparent',
+                    lineWidth: 0,
+                    endArrow: false,
+                    ...commonStyle,
+                  },
           };
         });
       }
@@ -1103,4 +1111,15 @@ export function useGraphDataBuilder({
     assetToTermMap,
     cardinalityLabelMap,
   };
+}
+
+export function findOntologyEdgeByGraphId(
+  edges: MergedEdge[],
+  graphEdgeId: string | null
+): MergedEdge | null {
+  const edge = graphEdgeId
+    ? edges.find((candidate) => getOntologyEdgeId(candidate) === graphEdgeId)
+    : undefined;
+
+  return edge ?? null;
 }

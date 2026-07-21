@@ -13,22 +13,29 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
+import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import {
   getSavedSparqlQueries,
   getSparqlQueryTemplates,
   replaceSavedSparqlQueries,
   replaceSparqlQueryTemplates,
+  runGlossarySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
 } from '../../rest/rdfAPI';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyStudioQueryConsole from './OntologyStudioQueryConsole';
 
 interface SchemaEditorMockProps {
   value: string;
   onChange?: (value: string) => void;
+}
+
+interface OntologyGraphMockProps {
+  edges: Array<{ from: string; to: string }>;
+  nodes: Array<{ id: string }>;
 }
 
 jest.mock('../Database/SchemaEditor/SchemaEditor', () => ({
@@ -42,11 +49,23 @@ jest.mock('../Database/SchemaEditor/SchemaEditor', () => ({
   ),
 }));
 
+jest.mock('./OntologyGraphG6', () => ({
+  __esModule: true,
+  default: ({ edges, nodes }: OntologyGraphMockProps) => (
+    <div
+      data-edge-count={edges.length}
+      data-node-count={nodes.length}
+      data-testid="query-result-g6"
+    />
+  ),
+}));
+
 jest.mock('../../rest/rdfAPI', () => ({
   getSavedSparqlQueries: jest.fn(),
   getSparqlQueryTemplates: jest.fn(),
   replaceSavedSparqlQueries: jest.fn(),
   replaceSparqlQueryTemplates: jest.fn(),
+  runGlossarySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
 }));
 
@@ -62,6 +81,8 @@ jest.mock('../../utils/ToastUtils', () => ({
 const mockRunSparqlQuery = runSparqlQuery as jest.MockedFunction<
   typeof runSparqlQuery
 >;
+const mockRunGlossarySparqlQuery =
+  runGlossarySparqlQuery as jest.MockedFunction<typeof runGlossarySparqlQuery>;
 const mockGetSavedQueries = getSavedSparqlQueries as jest.MockedFunction<
   typeof getSavedSparqlQueries
 >;
@@ -114,13 +135,12 @@ const GRAPH_DATA: OntologyGraphData = {
   ],
 };
 
-const RELATION_TYPES: GlossaryTermRelationType[] = [
-  {
+const RELATION_TYPES: RelationshipType[] = [
+  createRelationshipTypeMock({
     name: 'relatedTo',
     displayName: 'Related To',
     rdfPredicate: 'https://open-metadata.org/ontology/relatedTo',
-    category: 'associative',
-  },
+  }),
 ];
 
 function renderConsole() {
@@ -128,7 +148,7 @@ function renderConsole() {
     <OntologyStudioQueryConsole
       graphData={GRAPH_DATA}
       relationTypes={RELATION_TYPES}
-      selectedGlossaryIds={[]}
+      selectedGlossaryIds={['glossary-1']}
     />
   );
 }
@@ -167,6 +187,25 @@ describe('OntologyStudioQueryConsole', () => {
         },
       },
     });
+    mockRunGlossarySparqlQuery.mockResolvedValue({
+      format: 'json',
+      body: '',
+      contentType: 'application/sparql-results+json',
+      durationMs: 38,
+      parsed: {
+        head: { vars: ['c'] },
+        results: {
+          bindings: [
+            {
+              c: {
+                type: Type.URI,
+                value: 'https://open-metadata.org/entity/glossaryTerm/example',
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   it('derives the compact Studio query rail from the ontology graph', () => {
@@ -184,6 +223,9 @@ describe('OntologyStudioQueryConsole', () => {
     expect(
       screen.queryByText('Concepts regulated by AML')
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-query-read-only')).toHaveTextContent(
+      'label.read-only'
+    );
   });
 
   it('loads and runs an ontology-derived query from the rail', async () => {
@@ -194,7 +236,8 @@ describe('OntologyStudioQueryConsole', () => {
     );
 
     await waitFor(() =>
-      expect(mockRunSparqlQuery).toHaveBeenCalledWith(
+      expect(mockRunGlossarySparqlQuery).toHaveBeenCalledWith(
+        'glossary-1',
         expect.objectContaining({
           format: 'json',
           inference: 'none',
@@ -209,6 +252,68 @@ describe('OntologyStudioQueryConsole', () => {
       await screen.findByTestId('ontology-sparql-chips')
     ).toHaveTextContent(
       'https://open-metadata.org/entity/glossaryTerm/example'
+    );
+  });
+
+  it('keeps unrestricted knowledge-graph queries admin-only', async () => {
+    mockUseAuth.mockReturnValue({
+      isAdminUser: true,
+      isFirstTimeUser: false,
+    });
+    render(
+      <OntologyStudioQueryConsole
+        graphData={GRAPH_DATA}
+        relationTypes={RELATION_TYPES}
+        selectedGlossaryIds={[]}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+
+    await waitFor(() => expect(mockRunSparqlQuery).toHaveBeenCalled());
+
+    expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
+  });
+
+  it('toggles triple-shaped query results from a table to a subgraph', async () => {
+    mockRunGlossarySparqlQuery.mockResolvedValueOnce({
+      body: '',
+      contentType: 'application/sparql-results+json',
+      durationMs: 12,
+      format: 'json',
+      parsed: {
+        head: { vars: ['source', 'predicate', 'target'] },
+        results: {
+          bindings: [
+            {
+              predicate: {
+                type: Type.URI,
+                value: 'https://open-metadata.org/ontology/relatedTo',
+              },
+              source: { type: Type.URI, value: 'urn:source' },
+              target: { type: Type.URI, value: 'urn:target' },
+            },
+          ],
+        },
+      },
+    });
+    renderConsole();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+    fireEvent.click(await screen.findByText('label.graph'));
+
+    expect(screen.getByTestId('ontology-sparql-result-graph')).toBeVisible();
+    expect(screen.getByTestId('query-result-g6')).toHaveAttribute(
+      'data-edge-count',
+      '1'
+    );
+    expect(screen.getByTestId('query-result-g6')).toHaveAttribute(
+      'data-node-count',
+      '2'
     );
   });
 

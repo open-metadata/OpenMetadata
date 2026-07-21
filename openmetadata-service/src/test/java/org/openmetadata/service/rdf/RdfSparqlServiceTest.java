@@ -15,11 +15,15 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 class RdfSparqlServiceTest {
@@ -28,13 +32,17 @@ class RdfSparqlServiceTest {
   void executesAReadQueryWithTypedWireMetadata() {
     RdfRepository repository = mock(RdfRepository.class);
     String query = "SELECT * WHERE { ?subject ?predicate ?object }";
-    when(repository.executeSparqlQuery(query, "text/csv")).thenReturn("subject\n");
+    when(repository.executeSparqlQuery(anyString(), eq("text/csv"))).thenReturn("subject\n");
 
     RdfSparqlService.QueryResult result = service(repository).query(query, "csv", "none");
 
     assertEquals("subject\n", result.body());
     assertEquals("csv", result.format());
     assertEquals("text/csv", result.mediaType());
+    ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+    verify(repository).executeSparqlQuery(queryCaptor.capture(), eq("text/csv"));
+    assertTrue(queryCaptor.getValue().contains("LIMIT"));
+    assertTrue(queryCaptor.getValue().contains("1000"));
   }
 
   @Test
@@ -42,7 +50,7 @@ class RdfSparqlServiceTest {
     RdfRepository repository = mock(RdfRepository.class);
     String query = "SELECT * WHERE { ?subject ?predicate ?object }";
     when(repository.executeSparqlQueryWithInferenceResult(
-            query, "application/sparql-results+json", "rdfs"))
+            anyString(), eq("application/sparql-results+json"), eq("rdfs")))
         .thenReturn(new RdfRepository.InferenceQueryResult("{}", "limited inference"));
 
     RdfSparqlService.QueryResult result = service(repository).query(query, "json", "rdfs");
@@ -89,7 +97,7 @@ class RdfSparqlServiceTest {
     RdfRepository repository = mock(RdfRepository.class);
     String graphQuery =
         "CONSTRUCT { ?subject ?predicate ?object } WHERE { ?subject ?predicate ?object }";
-    when(repository.executeSparqlQuery(graphQuery, "text/turtle")).thenReturn("");
+    when(repository.executeSparqlQuery(anyString(), eq("text/turtle"))).thenReturn("");
 
     RdfSparqlService.QueryResult result = service(repository).query(graphQuery, null, null);
 
@@ -101,6 +109,38 @@ class RdfSparqlServiceTest {
         () ->
             service(repository)
                 .query("SELECT * WHERE { ?subject ?predicate ?object }", "json", "invalid"));
+  }
+
+  @Test
+  void rejectsOversizedQueriesAndResultLimits() {
+    RdfRepository repository = mock(RdfRepository.class);
+    String oversizedQuery = "#".repeat(SparqlQueryLimits.MAX_QUERY_CHARACTERS + 1);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service(repository).query(oversizedQuery, "json", "none"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service(repository)
+                .query(
+                    "SELECT * WHERE { ?subject ?predicate ?object } LIMIT 10001", "json", "none"));
+  }
+
+  @Test
+  void rejectsOversizedSerializedResults() {
+    RdfRepository repository = mock(RdfRepository.class);
+    when(repository.executeSparqlQuery(anyString(), eq("application/sparql-results+json")))
+        .thenReturn("x".repeat(SparqlQueryLimits.MAX_OUTPUT_BYTES + 1));
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                service(repository)
+                    .query("SELECT * WHERE { ?subject ?predicate ?object }", "json", "none"));
+
+    assertTrue(exception.getMessage().contains("maximum response size"));
   }
 
   private static RdfSparqlService service(RdfRepository repository) {

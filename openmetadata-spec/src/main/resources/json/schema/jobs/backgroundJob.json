@@ -12,7 +12,7 @@
     },
     "jobType": {
       "type": "string",
-      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT"],
+      "enum": ["CUSTOM_PROPERTY_ENUM_CLEANUP", "DELETE_ENTITY", "DELETE_TOKEN", "CSV_IMPORT", "CSV_EXPORT", "ONTOLOGY_BULK"],
       "description": "Type of the job."
     },
     "methodName": {
@@ -25,8 +25,11 @@
           "$ref": "./enumCleanupArgs.json"
         },
         {
-         "type": "object",
-         "additionalProperties": true
+          "$ref": "../api/data/ontologyBulkJobArguments.json"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true
         }
       ],
       "description": "Object containing job arguments."

@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +61,14 @@ class SearchAggregationTest {
 
     Map<String, String> value = node.getValue();
     assertEquals("byTermsCount>max_timestamp", value.get("buckets_path"));
+  }
+
+  @Test
+  void testTermsIncludesExactValues() {
+    SearchAggregationNode node =
+        SearchAggregation.terms("studio_terms", "tags.tagFQN", 2, List.of("A.One", "B,Two"));
+
+    assertEquals(List.of("A.One", "B,Two"), SearchAggregation.includedValues(node.getValue()));
+    assertEquals("2", node.getValue().get("size"));
   }
 }

@@ -1,0 +1,26 @@
+{
+  "abbreviation": "EPCIS",
+  "bundled": true,
+  "description": "A compact OpenMetadata starter subset of GS1 EPCIS supply-chain event concepts.",
+  "id": "epcis",
+  "license": "MIT",
+  "licenseUrl": "https://www.gs1.org/standards/epcis",
+  "modules": [
+    {
+      "conceptCount": 10,
+      "dependencies": [],
+      "description": "EPCIS event types and the core event dimensions (what, when, where, why).",
+      "format": "turtle",
+      "id": "event-model",
+      "name": "Event model",
+      "relationshipCount": 8,
+      "resourcePath": "rdf/ontology-packs/epcis/event-model.ttl",
+      "selectedByDefault": true,
+      "sha256": "88647daab7673008fb8d20dd0e792496779b15b40bb7e06c4cd58140a1d932d5"
+    }
+  ],
+  "name": "EPCIS",
+  "sourceUrl": "https://www.gs1.org/standards/epcis",
+  "standard": "GS1 EPCIS",
+  "version": "2025Q1-om1"
+}

@@ -14,36 +14,46 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import {
-  getGlossaryTermRelationSettings,
-  getGlossaryTerms,
-} from '../../rest/glossaryAPI';
-import { runSparqlQuery } from '../../rest/rdfAPI';
+import { useAuth } from '../../hooks/authHooks';
+import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
+import { getGlossaryTerms } from '../../rest/glossaryAPI';
+import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import { runGlossarySparqlQuery, runSparqlQuery } from '../../rest/rdfAPI';
 import OntologyVisualQueryBuilder from './OntologyVisualQueryBuilder';
 
 jest.mock('../../rest/glossaryAPI', () => ({
-  getGlossaryTermRelationSettings: jest.fn(),
   getGlossaryTerms: jest.fn(),
 }));
 
+jest.mock('../../rest/ontologyAPI', () => ({
+  listRelationshipTypes: jest.fn(),
+}));
+
 jest.mock('../../rest/rdfAPI', () => ({
+  runGlossarySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
+}));
+
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn(),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-const mockGetRelationSettings =
-  getGlossaryTermRelationSettings as jest.MockedFunction<
-    typeof getGlossaryTermRelationSettings
-  >;
+const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
+  typeof listRelationshipTypes
+>;
 const mockGetGlossaryTerms = getGlossaryTerms as jest.MockedFunction<
   typeof getGlossaryTerms
 >;
 const mockRunSparqlQuery = runSparqlQuery as jest.MockedFunction<
   typeof runSparqlQuery
 >;
+const mockRunGlossarySparqlQuery =
+  runGlossarySparqlQuery as jest.MockedFunction<typeof runGlossarySparqlQuery>;
+const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 const antiMoneyLaunderingTerm: GlossaryTerm = {
   id: 'aml-id',
@@ -62,24 +72,29 @@ const knowYourCustomerTerm: GlossaryTerm = {
   glossary: { id: 'glossary-id', type: 'glossary' },
 };
 
+const RELATION_TYPES = [
+  createRelationshipTypeMock({
+    name: 'relatedTo',
+    displayName: 'Related To',
+    rdfPredicate: 'https://open-metadata.org/ontology/relatedTo',
+  }),
+  createRelationshipTypeMock({
+    name: 'partOf',
+    displayName: 'Part Of',
+    rdfPredicate: 'https://open-metadata.org/ontology/partOf',
+  }),
+];
+
 describe('OntologyVisualQueryBuilder component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetRelationSettings.mockResolvedValue({
-      relationTypes: [
-        {
-          name: 'relatedTo',
-          displayName: 'Related To',
-          category: 'associative',
-          rdfPredicate: 'https://open-metadata.org/ontology/relatedTo',
-        },
-        {
-          name: 'partOf',
-          displayName: 'Part Of',
-          category: 'associative',
-          rdfPredicate: 'https://open-metadata.org/ontology/partOf',
-        },
-      ],
+    mockUseAuth.mockReturnValue({
+      isAdminUser: false,
+      isFirstTimeUser: false,
+    });
+    mockListRelationshipTypes.mockResolvedValue({
+      data: RELATION_TYPES,
+      paging: { total: RELATION_TYPES.length },
     });
     mockGetGlossaryTerms.mockResolvedValue({
       data: [antiMoneyLaunderingTerm, knowYourCustomerTerm],
@@ -104,10 +119,31 @@ describe('OntologyVisualQueryBuilder component', () => {
         },
       },
     });
+    mockRunGlossarySparqlQuery.mockResolvedValue({
+      format: 'json',
+      body: '',
+      contentType: 'application/sparql-results+json',
+      durationMs: 12,
+      parsed: {
+        head: { vars: ['concept'] },
+        results: {
+          bindings: [
+            {
+              concept: {
+                type: Type.URI,
+                value: 'https://open-metadata.org/entity/glossaryTerm/result',
+              },
+            },
+          ],
+        },
+      },
+    });
   });
 
   it('allows the relationship and target term to be selected', async () => {
-    render(<OntologyVisualQueryBuilder />);
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
@@ -143,7 +179,8 @@ describe('OntologyVisualQueryBuilder component', () => {
     fireEvent.click(screen.getByTestId('ontology-builder-run'));
 
     await waitFor(() =>
-      expect(mockRunSparqlQuery).toHaveBeenCalledWith(
+      expect(mockRunGlossarySparqlQuery).toHaveBeenCalledWith(
+        'glossary-id',
         expect.objectContaining({
           query: expect.stringContaining(
             'FinancialRiskCompliance.Compliance.KnowYourCustomer'
@@ -153,6 +190,42 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     expect(await screen.findByTestId('ontology-builder-result')).toBeVisible();
+  });
+
+  it('hands the generated query to onEditAsSparql', async () => {
+    const onEditAsSparql = jest.fn();
+    render(
+      <OntologyVisualQueryBuilder
+        selectedGlossaryIds={['glossary-id']}
+        onEditAsSparql={onEditAsSparql}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-edit-as-sparql'));
+
+    expect(onEditAsSparql).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'FinancialRiskCompliance.Compliance.AntiMoneyLaundering'
+      )
+    );
+  });
+
+  it('hides the Edit as SPARQL action when no handler is provided', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-builder-edit-as-sparql')
+    ).not.toBeInTheDocument();
   });
 
   it('derives the initial selection from the loaded ontology graph', async () => {
@@ -184,20 +257,7 @@ describe('OntologyVisualQueryBuilder component', () => {
             },
           ],
         }}
-        relationTypes={[
-          {
-            name: 'relatedTo',
-            displayName: 'Related To',
-            category: 'associative',
-            rdfPredicate: 'https://open-metadata.org/ontology/relatedTo',
-          },
-          {
-            name: 'partOf',
-            displayName: 'Part Of',
-            category: 'associative',
-            rdfPredicate: 'https://open-metadata.org/ontology/partOf',
-          },
-        ]}
+        relationTypes={RELATION_TYPES}
       />
     );
 
@@ -208,7 +268,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     expect(screen.getByText('Know Your Customer')).toBeVisible();
-    expect(mockGetRelationSettings).not.toHaveBeenCalled();
+    expect(mockListRelationshipTypes).not.toHaveBeenCalled();
     expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
   });
 });

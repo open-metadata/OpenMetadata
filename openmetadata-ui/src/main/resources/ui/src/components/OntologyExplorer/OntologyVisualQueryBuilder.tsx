@@ -17,26 +17,18 @@ import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import {
-  getGlossaryTermRelationSettings,
-  getGlossaryTerms,
-} from '../../rest/glossaryAPI';
-import { runSparqlQuery } from '../../rest/rdfAPI';
-import {
-  GlossaryTermRelationSettings,
-  GlossaryTermRelationType,
-} from '../../rest/settingConfigAPI';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { useAuth } from '../../hooks/authHooks';
+import { getGlossaryTerms } from '../../rest/glossaryAPI';
+import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import { runGlossarySparqlQuery, runSparqlQuery } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { DEFAULT_SPARQL_PREFIXES } from '../SparqlQueryConsole/SparqlQueryConsole.interface';
+import { DEFAULT_RELATIONSHIP_TYPE } from './OntologyExplorer.constants';
 import { OntologyGraphData, OntologyNode } from './OntologyExplorer.interface';
+import { getRelationshipColor } from './utils/relationshipTypeUtils';
 
 const ONTOLOGY_NAMESPACE = 'https://open-metadata.org/ontology/';
-const DEFAULT_RELATION_TYPE: GlossaryTermRelationType = {
-  name: 'relatedTo',
-  displayName: '',
-  category: 'associative',
-  rdfPredicate: `${ONTOLOGY_NAMESPACE}relatedTo`,
-};
 
 interface VisualQueryTerm {
   id: string;
@@ -48,8 +40,9 @@ interface VisualQueryTerm {
 
 interface OntologyVisualQueryBuilderProps {
   graphData?: OntologyGraphData | null;
-  relationTypes?: GlossaryTermRelationType[];
+  relationTypes?: RelationshipType[];
   selectedGlossaryIds?: string[];
+  onEditAsSparql?: (query: string) => void;
 }
 
 function escapeSparqlLiteral(value: string): string {
@@ -70,7 +63,7 @@ function toSparqlLocalName(
 }
 
 export function buildVisualSparqlQuery(
-  relationType: GlossaryTermRelationType | undefined,
+  relationType: RelationshipType | undefined,
   target: VisualQueryTerm | undefined
 ): string {
   const predicate =
@@ -94,7 +87,7 @@ LIMIT 100`;
 }
 
 export function buildVisualSparqlPreview(
-  relationType: GlossaryTermRelationType | undefined,
+  relationType: RelationshipType | undefined,
   target: VisualQueryTerm | undefined
 ): string {
   const predicate = relationType?.rdfPredicate
@@ -154,7 +147,7 @@ function getGraphTerms(
 
 function getInitialBuilderSelection(
   graphData: OntologyGraphData | null | undefined,
-  relationTypes: GlossaryTermRelationType[],
+  relationTypes: RelationshipType[],
   terms: VisualQueryTerm[]
 ): { relationName: string; targetId: string } {
   const termIds = new Set(terms.map((term) => term.id));
@@ -175,7 +168,7 @@ function getInitialBuilderSelection(
       (relation) => normalizeName(relation.name) === 'relatedto'
     ) ??
     relationTypes[0] ??
-    DEFAULT_RELATION_TYPE;
+    DEFAULT_RELATIONSHIP_TYPE;
 
   return {
     relationName: defaultRelation.name,
@@ -187,14 +180,14 @@ const OntologyVisualQueryBuilder = ({
   graphData,
   relationTypes: suppliedRelationTypes,
   selectedGlossaryIds,
+  onEditAsSparql,
 }: OntologyVisualQueryBuilderProps) => {
   const { t } = useTranslation();
-  const [relationTypes, setRelationTypes] = useState<
-    GlossaryTermRelationType[]
-  >([]);
+  const { isAdminUser } = useAuth();
+  const [relationTypes, setRelationTypes] = useState<RelationshipType[]>([]);
   const [terms, setTerms] = useState<VisualQueryTerm[]>([]);
   const [selectedRelation, setSelectedRelation] = useState(
-    DEFAULT_RELATION_TYPE.name
+    DEFAULT_RELATIONSHIP_TYPE.name
   );
   const [selectedTarget, setSelectedTarget] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -213,9 +206,8 @@ const OntologyVisualQueryBuilder = ({
       );
       const relationTypesPromise = suppliedRelationTypes?.length
         ? Promise.resolve(suppliedRelationTypes)
-        : getGlossaryTermRelationSettings().then(
-            (settings) =>
-              (settings as GlossaryTermRelationSettings)?.relationTypes ?? []
+        : listRelationshipTypes({ limit: 1000 }).then(
+            (response) => response.data
           );
       const termsPromise = scopedGraphTerms.length
         ? Promise.resolve(scopedGraphTerms)
@@ -259,13 +251,13 @@ const OntologyVisualQueryBuilder = ({
   }, [graphData, selectedGlossaryId, suppliedRelationTypes]);
 
   const relationOptions = useMemo(
-    () => (relationTypes.length ? relationTypes : [DEFAULT_RELATION_TYPE]),
+    () => (relationTypes.length ? relationTypes : [DEFAULT_RELATIONSHIP_TYPE]),
     [relationTypes]
   );
   const selectedRelationType = useMemo(
     () =>
       relationOptions.find((relation) => relation.name === selectedRelation) ??
-      DEFAULT_RELATION_TYPE,
+      DEFAULT_RELATIONSHIP_TYPE,
     [relationOptions, selectedRelation]
   );
   const selectedTargetTerm = useMemo(
@@ -282,9 +274,9 @@ const OntologyVisualQueryBuilder = ({
   );
 
   const getRelationLabel = useCallback(
-    (relation: GlossaryTermRelationType) =>
+    (relation: RelationshipType) =>
       relation.displayName ||
-      (relation.name === DEFAULT_RELATION_TYPE.name
+      (relation.name === DEFAULT_RELATIONSHIP_TYPE.name
         ? t('label.related-to')
         : relation.name),
     [t]
@@ -297,10 +289,8 @@ const OntologyVisualQueryBuilder = ({
         icon: (
           <span
             aria-hidden="true"
-            className="tw:size-2 tw:shrink-0 tw:rounded-[3px] tw:bg-warning-600"
-            style={
-              relation.color ? { backgroundColor: relation.color } : undefined
-            }
+            className="tw:size-2 tw:shrink-0 tw:rounded tw:bg-warning-solid"
+            style={{ backgroundColor: getRelationshipColor(relation) }}
           />
         ),
       })),
@@ -320,11 +310,19 @@ const OntologyVisualQueryBuilder = ({
     setMatchCount(undefined);
     setErrorMessage(undefined);
     try {
-      const result = await runSparqlQuery({
+      const queryParams = {
         query: generatedQuery,
-        format: 'json',
-        inference: 'none',
-      });
+        format: 'json' as const,
+        inference: 'none' as const,
+      };
+      if (!selectedGlossaryId && !isAdminUser) {
+        throw new Error(
+          t('label.please-select-entity', { entity: t('label.glossary') })
+        );
+      }
+      const result = selectedGlossaryId
+        ? await runGlossarySparqlQuery(selectedGlossaryId, queryParams)
+        : await runSparqlQuery(queryParams);
       setMatchCount(result.parsed?.results?.bindings?.length ?? 0);
     } catch (error) {
       const message = isAxiosError(error)
@@ -337,41 +335,41 @@ const OntologyVisualQueryBuilder = ({
     } finally {
       setIsRunning(false);
     }
-  }, [generatedQuery]);
+  }, [generatedQuery, isAdminUser, selectedGlossaryId, t]);
 
   return (
     <div
-      className="tw:h-full tw:min-h-[540px] tw:bg-gray-warm-100"
+      className="tw:h-full tw:bg-secondary"
       data-testid="ontology-visual-query-builder">
       <div className="tw:max-w-[640px] tw:px-[26px] tw:py-[22px]">
-        <h2 className="tw:mb-[3px] tw:font-body tw:text-[15px] tw:leading-[normal] tw:font-semibold tw:text-gray-900">
+        <h2 className="tw:mb-1 tw:font-body tw:text-[15px] tw:leading-normal tw:font-semibold tw:text-primary">
           {t('label.visual-query-builder')}
         </h2>
-        <p className="tw:mb-[18px] tw:font-body tw:text-xs tw:leading-[normal] tw:font-normal tw:text-gray-500">
+        <p className="tw:mb-5 tw:font-body tw:text-xs tw:leading-normal tw:font-normal tw:text-quaternary">
           {t('message.visual-query-builder-description')}
         </p>
 
         <div className="tw:mb-4 tw:flex tw:flex-col tw:gap-2.5">
-          <div className="tw:flex tw:items-center tw:gap-[9px]">
-            <span className="tw:w-11 tw:text-right tw:font-body tw:text-[11px] tw:leading-[normal] tw:font-semibold tw:text-gray-500">
+          <div className="tw:flex tw:items-center tw:gap-2.5">
+            <span className="tw:w-11 tw:text-right tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-quaternary">
               {t('label.find')}
             </span>
             <span
               className={classNames(
-                'tw:inline-flex tw:items-center tw:rounded-lg tw:border tw:border-gray-300',
-                'tw:bg-white tw:px-[11px] tw:py-2 tw:font-body tw:text-xs tw:leading-[normal] tw:font-medium tw:text-gray-900'
+                'tw:inline-flex tw:items-center tw:rounded-lg tw:border tw:border-primary',
+                'tw:bg-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:text-primary'
               )}>
               {t('label.concept-plural')}
             </span>
           </div>
 
-          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-[9px]">
-            <span className="tw:w-11 tw:text-right tw:font-body tw:text-[11px] tw:leading-[normal] tw:font-semibold tw:text-gray-500 tw:lowercase">
+          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2.5">
+            <span className="tw:w-11 tw:text-right tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-quaternary tw:lowercase">
               {t('label.where')}
             </span>
             <Select
               aria-label={t('label.relationship-type')}
-              className="tw:w-52 [&_button]:tw:bg-warning-50 [&_button]:tw:ring-warning-200 [&_button_p]:tw:text-warning-700"
+              className="tw:w-52 [&_button]:tw:bg-warning-primary [&_button]:tw:ring-utility-warning-200 [&_button_p]:tw:text-warning-primary"
               data-testid="ontology-builder-relation"
               fontSize="xs"
               isDisabled={isLoading}
@@ -420,11 +418,11 @@ const OntologyVisualQueryBuilder = ({
           </div>
         </div>
 
-        <h3 className="tw:mb-[7px] tw:font-body tw:text-[10px] tw:leading-[normal] tw:font-semibold tw:tracking-[0.05em] tw:text-gray-500 tw:uppercase">
+        <h3 className="tw:mb-2 tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:tracking-wide tw:text-quaternary tw:uppercase">
           {t('label.generated-sparql')}
         </h3>
         <pre
-          className="tw:mb-4 tw:overflow-auto tw:rounded-[9px] tw:bg-primary-solid tw:px-3.5 tw:py-3 tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:font-normal tw:text-gray-300"
+          className="tw:mb-4 tw:overflow-auto tw:rounded-lg tw:bg-primary-solid tw:px-3.5 tw:py-3 tw:font-mono tw:text-xs tw:leading-loose tw:font-normal tw:text-secondary_on-brand"
           data-testid="ontology-generated-sparql">
           {queryPreview}
         </pre>
@@ -432,8 +430,8 @@ const OntologyVisualQueryBuilder = ({
         <div className="tw:flex tw:items-center tw:gap-2.5">
           <button
             className={classNames(
-              'tw:rounded-lg tw:border-0 tw:bg-brand-solid tw:px-[17px] tw:py-2.5',
-              'tw:font-body tw:text-[13px] tw:leading-[normal] tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
+              'tw:rounded-lg tw:border-0 tw:bg-brand-solid tw:px-4 tw:py-2.5',
+              'tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-white tw:shadow-xs-skeuomorphic',
               'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
             )}
             data-testid="ontology-builder-run"
@@ -443,11 +441,26 @@ const OntologyVisualQueryBuilder = ({
             {isRunning ? t('label.running') : t('label.run-query')}
           </button>
 
+          {onEditAsSparql ? (
+            <button
+              className={classNames(
+                'tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:px-4 tw:py-2.5',
+                'tw:font-body tw:text-[13px] tw:leading-normal tw:font-semibold tw:text-secondary tw:shadow-xs-skeuomorphic',
+                'disabled:tw:cursor-not-allowed disabled:tw:opacity-60'
+              )}
+              data-testid="ontology-builder-edit-as-sparql"
+              disabled={!selectedTarget}
+              type="button"
+              onClick={() => onEditAsSparql(queryPreview)}>
+              {t('label.edit-as-sparql')}
+            </button>
+          ) : null}
+
           {matchCount !== undefined ? (
             <span
               className={classNames(
-                'tw:inline-flex tw:items-center tw:rounded-full tw:border tw:border-success-200',
-                'tw:bg-success-50 tw:px-3 tw:py-1.5 tw:font-body tw:text-xs tw:leading-[normal] tw:font-semibold tw:text-success-700'
+                'tw:inline-flex tw:items-center tw:rounded-full tw:border tw:border-utility-success-200',
+                'tw:bg-success-primary tw:px-3 tw:py-1.5 tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-success-primary'
               )}
               data-testid="ontology-builder-result">
               {t('message.ontology-query-concepts-match', {
@@ -458,7 +471,7 @@ const OntologyVisualQueryBuilder = ({
         </div>
 
         {errorMessage ? (
-          <div className="tw:mt-3 tw:rounded-lg tw:border tw:border-error-200 tw:bg-error-50 tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-700">
+          <div className="tw:mt-3 tw:rounded-lg tw:border tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2 tw:font-body tw:text-xs tw:text-error-primary">
             {errorMessage}
           </div>
         ) : null}

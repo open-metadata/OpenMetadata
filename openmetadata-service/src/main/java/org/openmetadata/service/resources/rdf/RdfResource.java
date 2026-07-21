@@ -10,7 +10,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
@@ -27,42 +29,64 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.net.URI;
 import java.security.Principal;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
+import org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
+import org.openmetadata.schema.api.configuration.rdf.InferenceRuleList;
+import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
+import org.openmetadata.schema.api.data.RdfEntityDiff;
+import org.openmetadata.schema.api.rdf.RdfInferenceStatus;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
+import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.api.rdf.SavedSparqlQueries;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.DocumentRepository;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.rdf.OntologyDocument;
+import org.openmetadata.service.rdf.RdfEntityDiffService;
+import org.openmetadata.service.rdf.RdfEntityTypeValidator;
 import org.openmetadata.service.rdf.RdfGraphService;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfSparqlService;
 import org.openmetadata.service.rdf.RdfValidationService;
 import org.openmetadata.service.rdf.SavedSparqlQueryService;
 import org.openmetadata.service.rdf.SavedSparqlQueryStore;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.extension.CustomOntologyRegistry;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
-import org.openmetadata.service.rdf.inference.InferenceRuleRegistry;
+import org.openmetadata.service.rdf.inference.InferenceMaterializer;
+import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
+import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.rdf.inference.InferenceRuleValidator;
 import org.openmetadata.service.rdf.insights.RdfInsightsService;
 import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/rdf")
 @Tag(name = "RDF", description = "APIs for RDF and SPARQL operations")
@@ -72,11 +96,19 @@ import org.openmetadata.service.security.Authorizer;
 @Slf4j
 public class RdfResource {
   public static final String COLLECTION_PATH = "/v1/rdf";
+  private static final String DEFAULT_RDF_BASE_URI = "https://open-metadata.org/";
+  private static final SparqlQueryExecutionGuard SPARQL_EXECUTION_GUARD =
+      SparqlQueryExecutionGuard.shared();
   private volatile SavedSparqlQueryStore savedSparqlQueryStore;
+  private volatile InferenceRuleService inferenceRuleService;
   private final Authorizer authorizer;
   private final Supplier<RdfRepository> repositorySupplier;
+  private final Supplier<RdfProjectionState> projectionStateSupplier;
+  private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
+  private volatile boolean askCollateEnabled;
+  private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
   public static final String TURTLE = "text/turtle";
@@ -89,12 +121,55 @@ public class RdfResource {
   public static final String INFERENCE_WARNING_HEADER = "X-OpenMetadata-Inference-Warning";
 
   public RdfResource(Authorizer authorizer) {
-    this(authorizer, RdfRepository::getInstanceOrNull);
+    this(
+        authorizer,
+        RdfRepository::getInstanceOrNull,
+        null,
+        null,
+        RdfResource::configuredProjectionState);
   }
 
   RdfResource(Authorizer authorizer, Supplier<RdfRepository> repositorySupplier) {
+    this(authorizer, repositorySupplier, null, null, () -> RdfProjectionState.READY);
+  }
+
+  RdfResource(
+      Authorizer authorizer,
+      Supplier<RdfRepository> repositorySupplier,
+      RdfEntityDiffService entityDiffService) {
+    this(authorizer, repositorySupplier, entityDiffService, null, () -> RdfProjectionState.READY);
+  }
+
+  RdfResource(
+      final Authorizer authorizer,
+      final Supplier<RdfRepository> repositorySupplier,
+      final RdfEntityDiffService entityDiffService,
+      final InferenceRuleService inferenceRuleService) {
+    this(
+        authorizer,
+        repositorySupplier,
+        entityDiffService,
+        inferenceRuleService,
+        () -> RdfProjectionState.READY);
+  }
+
+  RdfResource(
+      final Authorizer authorizer,
+      final Supplier<RdfRepository> repositorySupplier,
+      final RdfEntityDiffService entityDiffService,
+      final InferenceRuleService inferenceRuleService,
+      final Supplier<RdfProjectionState> projectionStateSupplier) {
     this.authorizer = Objects.requireNonNull(authorizer);
     this.repositorySupplier = Objects.requireNonNull(repositorySupplier);
+    this.entityDiffService = entityDiffService;
+    this.inferenceRuleService = inferenceRuleService;
+    this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
+  }
+
+  private static RdfProjectionState configuredProjectionState() {
+    final RdfProjectionStateResolver resolver =
+        new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao());
+    return resolver.resolve();
   }
 
   private RdfRepository getRdfRepository() {
@@ -123,13 +198,39 @@ public class RdfResource {
 
   private SavedSparqlQueryStore getSavedSparqlQueryStore() {
     if (savedSparqlQueryStore == null) {
-      savedSparqlQueryStore = new SavedSparqlQueryStore(Entity.getCollectionDAO());
+      final DocumentRepository documentRepository =
+          (DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT);
+      savedSparqlQueryStore = new SavedSparqlQueryStore(documentRepository);
     }
     return savedSparqlQueryStore;
   }
 
   private SavedSparqlQueryService savedSparqlQueryService() {
     return new SavedSparqlQueryService(getSavedSparqlQueryStore());
+  }
+
+  private InferenceRuleService inferenceRuleService() {
+    InferenceRuleService local = inferenceRuleService;
+    if (local == null) {
+      synchronized (this) {
+        local = inferenceRuleService;
+        if (local == null) {
+          local = createInferenceRuleService();
+          inferenceRuleService = local;
+        }
+      }
+    }
+    return local;
+  }
+
+  private InferenceRuleService createInferenceRuleService() {
+    final RdfRepository repository = requireRdfRepository();
+    final Clock clock = Clock.systemUTC();
+    final InferenceRuleRepository ruleRepository =
+        new InferenceRuleRepository(
+            Entity.getCollectionDAO().rdfInferenceRuleDAO(), clock, repository.getBaseUri());
+    return new InferenceRuleService(
+        ruleRepository, new InferenceMaterializer(repository, ruleRepository, clock));
   }
 
   private SemanticSearchEngine getSemanticSearchEngine() {
@@ -153,6 +254,25 @@ public class RdfResource {
       LOG.info("RDF support is disabled in configuration");
     }
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
+    this.configuredBaseUri = rdfBaseUri(config);
+    this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
+    this.askCollateEnabled =
+        config.getRdfConfiguration() != null
+            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
+            && LLMClientHolder.isEnabled();
+  }
+
+  private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {
+    final String baseUri =
+        config.getRdfConfiguration() == null || config.getRdfConfiguration().getBaseUri() == null
+            ? DEFAULT_RDF_BASE_URI
+            : config.getRdfConfiguration().getBaseUri().toString();
+    return baseUri;
+  }
+
+  private RdfEntityDiffService entityDiffService() {
+    return Objects.requireNonNull(
+        entityDiffService, "RDF entity diff service has not been initialized");
   }
 
   private synchronized SparqlFederationGuard getFederationGuard() {
@@ -176,8 +296,35 @@ public class RdfResource {
             content = @Content(mediaType = MediaType.APPLICATION_JSON))
       })
   public Response getRdfStatus(@Context SecurityContext securityContext) {
-    authorizer.authorizeAdmin(securityContext);
-    return Response.ok(RdfStatus.from(getRdfRepository())).build();
+    requireAuthenticatedUserName(securityContext);
+    return Response.ok(rdfStatus()).build();
+  }
+
+  private RdfStatus rdfStatus() {
+    final RdfRepository repository = getRdfRepository();
+    final boolean enabled = repository != null && repository.isEnabled();
+    final RdfInferenceStatus inferenceStatus = inferenceStatus(repository, enabled);
+    final String storageType = enabled ? repository.getConfig().getStorageType().toString() : "N/A";
+    final RdfProjectionState projectionState = projectionState(enabled);
+    return new RdfStatus()
+        .withBaseUri(URI.create(configuredBaseUri))
+        .withEnabled(enabled)
+        .withStorageType(storageType)
+        .withInference(inferenceStatus)
+        .withProjectionState(projectionState)
+        .withAskCollateEnabled(askCollateEnabled);
+  }
+
+  private RdfProjectionState projectionState(final boolean enabled) {
+    return enabled ? projectionStateSupplier.get() : RdfProjectionState.DISABLED;
+  }
+
+  private static RdfInferenceStatus inferenceStatus(
+      final RdfRepository repository, final boolean enabled) {
+    return new RdfInferenceStatus()
+        .withEnabled(enabled && repository.isInferenceEnabledByDefault())
+        .withDefaultLevel(enabled ? repository.getDefaultInferenceLevel() : "NONE")
+        .withAvailableLevels(Set.of("NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"));
   }
 
   @POST
@@ -221,16 +368,16 @@ public class RdfResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "listInferenceRules",
-      summary = "List loaded inference rules",
+      summary = "List durable inference rules and materialization state",
       description =
-          "Returns all inference rules loaded into this server, in execution order (priority then name). Includes the shipped starter pack plus any rules that have been upserted at runtime.",
+          "Returns the shipped starter pack and custom rules with their durable dirty state, inferred graph URI, last materialization result, and execution order.",
       responses = {
         @ApiResponse(responseCode = "200", description = "List of inference rules"),
         @ApiResponse(responseCode = "403", description = "Forbidden")
       })
   public Response listInferenceRules(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    return Response.ok(new InferenceRuleList(InferenceRuleRegistry.getInstance().list())).build();
+    return Response.ok(new InferenceRuleList().withRules(inferenceRuleService().list())).build();
   }
 
   @GET
@@ -247,14 +394,65 @@ public class RdfResource {
   public Response getInferenceRule(
       @Context SecurityContext securityContext, @PathParam("name") String name) {
     authorizer.authorizeAdmin(securityContext);
-    return InferenceRuleRegistry.getInstance()
-        .get(name)
-        .map(rule -> Response.ok(rule).build())
-        .orElse(
-            Response.status(Response.Status.NOT_FOUND)
-                .entity(buildErrorResponse("Inference rule not found: " + name))
-                .type(MediaType.APPLICATION_JSON)
-                .build());
+    return Response.ok(inferenceRuleService().get(name)).build();
+  }
+
+  @PUT
+  @Path("/rules/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "upsertInferenceRule",
+      summary = "Create or update an inference rule",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Rule saved and marked dirty"),
+        @ApiResponse(responseCode = "400", description = "Invalid rule"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response upsertInferenceRule(
+      @Context final SecurityContext securityContext,
+      @PathParam("name") final String name,
+      @Valid final InferenceRule rule) {
+    authorizer.authorizeAdmin(securityContext);
+    final InferenceRuleStatus status = inferenceRuleService().upsert(name, rule);
+    return Response.ok(status).build();
+  }
+
+  @DELETE
+  @Path("/rules/{name}")
+  @Operation(
+      operationId = "deleteInferenceRule",
+      summary = "Delete a custom inference rule and its materialized graph",
+      responses = {
+        @ApiResponse(responseCode = "204", description = "Rule deleted"),
+        @ApiResponse(responseCode = "400", description = "System rules cannot be deleted"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response deleteInferenceRule(
+      @Context final SecurityContext securityContext, @PathParam("name") final String name) {
+    authorizer.authorizeAdmin(securityContext);
+    inferenceRuleService().delete(name);
+    return Response.noContent().build();
+  }
+
+  @POST
+  @Path("/rules/materialize")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "materializeInferenceRules",
+      summary = "Materialize dirty inference rules inside Fuseki",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Materialization completed"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
+      })
+  public Response materializeInferenceRules(
+      @Context final SecurityContext securityContext,
+      @QueryParam("force") @DefaultValue("false") final boolean force,
+      @QueryParam("ruleName") final String ruleName) {
+    authorizer.authorizeAdmin(securityContext);
+    final InferenceMaterializationResult result =
+        inferenceRuleService().materialize(force, ruleName);
+    return Response.ok(result).build();
   }
 
   @GET
@@ -575,7 +773,7 @@ public class RdfResource {
       operationId = "validateInferenceRule",
       summary = "Validate a candidate inference rule without persisting it",
       description =
-          "Runs the same validator that admin writes are gated on (CONSTRUCT-only, no SERVICE clauses, syntactically well-formed) and returns the list of errors. Useful for an admin UI that wants live feedback while editing a rule.",
+          "Runs the same validator used by durable writes. Materializable rules must be CONSTRUCT queries without SERVICE, dataset clauses, result modifiers, or unsupported grouping constructs.",
       responses = {
         @ApiResponse(responseCode = "200", description = "Validation result"),
         @ApiResponse(responseCode = "403", description = "Forbidden")
@@ -668,11 +866,49 @@ public class RdfResource {
       @Parameter(description = "Entity id", required = true) @PathParam("id") UUID id,
       @Parameter(description = "RDF format") @QueryParam("format") @DefaultValue("jsonld")
           String format) {
-    authorizer.authorizeAdmin(securityContext);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        new ResourceContext<>(entityType, id, null));
     RdfGraphService.Representation representation =
         executeGraphOperation(
             "retrieving an entity as RDF", () -> graphService().entity(entityType, id, format));
     return Response.ok(representation.body(), representation.mediaType()).build();
+  }
+
+  @GET
+  @Path("/entity/{entityType}/{id}/diff")
+  @Operation(
+      operationId = "getEntityRdfDiff",
+      summary = "Diff two RDF entity versions",
+      description =
+          "Returns deterministic typed RDF statements added and removed between two database "
+              + "entity versions. This endpoint remains available when RDF storage is disabled.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Canonical RDF entity diff",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(implementation = RdfEntityDiff.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid entity type or version"),
+        @ApiResponse(responseCode = "404", description = "Entity version not found")
+      })
+  public Response getEntityRdfDiff(
+      @Context final SecurityContext securityContext,
+      @PathParam("entityType") final String requestedEntityType,
+      @PathParam("id") final UUID entityId,
+      @QueryParam("fromVersion") final Double fromVersion,
+      @QueryParam("toVersion") final Double toVersion) {
+    final String entityType = RdfEntityTypeValidator.requireKnown(requestedEntityType);
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        new ResourceContext<>(entityType, entityId, null));
+    final RdfEntityDiff diff =
+        entityDiffService().diff(entityType, entityId, fromVersion, toVersion);
+    return Response.ok(diff).build();
   }
 
   @GET
@@ -808,9 +1044,12 @@ public class RdfResource {
         @ApiResponse(responseCode = "401", description = "Authentication required")
       })
   public SavedSparqlQueries replaceSavedSparqlQueries(
-      @Context SecurityContext securityContext, @Valid SavedSparqlQueries savedQueries) {
-    UUID currentUserId = getCurrentUserId(securityContext);
-    return savedSparqlQueryService().replace(currentUserId, savedQueries);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SavedSparqlQueries savedQueries) {
+    final String userName = requireAuthenticatedUserName(securityContext);
+    final UUID currentUserId = getCurrentUserId(userName);
+    return savedSparqlQueryService().replace(uriInfo, currentUserId, userName, savedQueries);
   }
 
   @GET
@@ -829,13 +1068,20 @@ public class RdfResource {
   }
 
   private UUID getCurrentUserId(SecurityContext securityContext) {
-    String userName =
-        Optional.ofNullable(securityContext)
-            .map(SecurityContext::getUserPrincipal)
-            .map(Principal::getName)
-            .filter(name -> !nullOrEmpty(name) && !name.isBlank())
-            .orElseThrow(() -> new NotAuthorizedException("Authentication is required"));
+    final String userName = requireAuthenticatedUserName(securityContext);
+    return getCurrentUserId(userName);
+  }
+
+  private static UUID getCurrentUserId(final String userName) {
     return Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED).getId();
+  }
+
+  private static String requireAuthenticatedUserName(SecurityContext securityContext) {
+    return Optional.ofNullable(securityContext)
+        .map(SecurityContext::getUserPrincipal)
+        .map(Principal::getName)
+        .filter(name -> !nullOrEmpty(name) && !name.isBlank())
+        .orElseThrow(() -> new NotAuthorizedException("Authentication is required"));
   }
 
   @GET
@@ -882,7 +1128,8 @@ public class RdfResource {
           @DefaultValue("none")
           String inference) {
     authorizer.authorizeAdmin(securityContext);
-    return executeSparqlQuery(query, format, inference);
+    return executeSparqlQuery(
+        requireAuthenticatedUserName(securityContext), query, format, inference);
   }
 
   @POST
@@ -916,7 +1163,8 @@ public class RdfResource {
     String inference =
         sparqlQuery.getInference() != null ? sparqlQuery.getInference().toString() : "none";
     String format = sparqlQuery.getFormat() != null ? sparqlQuery.getFormat().toString() : "json";
-    return executeSparqlQuery(sparqlQuery.getQuery(), format, inference);
+    return executeSparqlQuery(
+        requireAuthenticatedUserName(securityContext), sparqlQuery.getQuery(), format, inference);
   }
 
   @POST
@@ -939,45 +1187,30 @@ public class RdfResource {
     return Response.ok(new SparqlUpdateResult("success")).build();
   }
 
-  private Response executeSparqlQuery(String query, String format, String inference) {
+  private Response executeSparqlQuery(
+      String principal, String query, String format, String inference) {
     try {
-      RdfSparqlService.QueryResult result = sparqlService().query(query, format, inference);
+      RdfSparqlService.QueryResult result =
+          SPARQL_EXECUTION_GUARD.execute(
+              principal, () -> sparqlService().query(query, format, inference));
       Response.ResponseBuilder response = Response.ok(result.body()).type(result.mediaType());
       Optional.ofNullable(result.warning())
           .ifPresent(warning -> response.header(INFERENCE_WARNING_HEADER, warning));
       return response.build();
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
+    } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
+      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+    } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
+      throw new ServiceUnavailableException(
+          Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(exception.getMessage())
+              .build(),
+          exception);
     }
   }
 
   private record SparqlUpdateResult(String status) {}
-
-  private record RdfStatus(boolean enabled, InferenceStatus inference, String storageType) {
-    private static RdfStatus from(RdfRepository repository) {
-      boolean enabled = repository != null && repository.isEnabled();
-      InferenceStatus inference =
-          new InferenceStatus(
-              enabled && repository.isInferenceEnabledByDefault(),
-              enabled ? repository.getDefaultInferenceLevel() : "NONE",
-              List.of("NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"));
-      String storageType = enabled ? repository.getConfig().getStorageType().toString() : "N/A";
-      return new RdfStatus(enabled, inference, storageType);
-    }
-  }
-
-  private record InferenceStatus(
-      boolean enabled, String defaultLevel, List<String> availableLevels) {
-    private InferenceStatus {
-      availableLevels = List.copyOf(availableLevels);
-    }
-  }
-
-  private record InferenceRuleList(List<InferenceRule> rules) {
-    private InferenceRuleList {
-      rules = List.copyOf(rules);
-    }
-  }
 
   private record CustomOntologyList(List<CustomOntology> extensions) {
     private CustomOntologyList {

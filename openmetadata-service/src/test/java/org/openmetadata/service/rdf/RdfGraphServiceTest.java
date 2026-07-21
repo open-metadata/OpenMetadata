@@ -111,6 +111,7 @@ class RdfGraphServiceTest {
         RdfSerializationFormat.parseOrDefault(null, RdfSerializationFormat.JSON_LD));
     assertEquals(RdfSerializationFormat.RDF_XML, RdfSerializationFormat.parse("xml"));
     assertEquals(RdfSerializationFormat.N_TRIPLES, RdfSerializationFormat.parse("nt"));
+    assertThrows(IllegalArgumentException.class, () -> RdfSerializationFormat.parse("unsupported"));
   }
 
   private static RdfGraphService service(RdfRepository repository) {

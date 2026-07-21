@@ -54,7 +54,8 @@ public enum RdfSerializationFormat {
       case "rdfxml", "rdf+xml", "rdf/xml", "xml" -> RDF_XML;
       case "ntriples", "n-triples", "nt" -> N_TRIPLES;
       case "jsonld", "json-ld", "ld+json" -> JSON_LD;
-      default -> defaultFormat;
+      default -> throw new IllegalArgumentException(
+          "Unsupported RDF serialization format: " + requested);
     };
   }
 

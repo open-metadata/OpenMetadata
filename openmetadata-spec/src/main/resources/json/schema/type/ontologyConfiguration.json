@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyConfiguration",
+  "description": "Ontology modeling and namespace settings inherited by every term in a glossary.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyConfiguration",
+  "definitions": {
+    "layer": {
+      "description": "Governance layer of an ontology model.",
+      "javaType": "org.openmetadata.schema.type.OntologyLayer",
+      "type": "string",
+      "enum": ["L1", "L2", "L3"],
+      "default": "L3"
+    },
+    "prefix": {
+      "description": "A compact IRI prefix and its absolute namespace.",
+      "javaType": "org.openmetadata.schema.type.OntologyPrefix",
+      "type": "object",
+      "properties": {
+        "prefix": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
+        },
+        "namespace": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["prefix", "namespace"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "baseIri": {
+      "description": "Absolute base IRI used when minting governed concepts.",
+      "type": "string",
+      "format": "uri"
+    },
+    "layer": {
+      "$ref": "#/definitions/layer"
+    },
+    "imports": {
+      "description": "Ontology models this model depends on. Dependencies must point to the same or a more foundational layer.",
+      "$ref": "entityReferenceList.json"
+    },
+    "prefixes": {
+      "description": "Prefix registry used for display, authoring, import, and export.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/prefix"
+      },
+      "default": []
+    },
+    "iriMintingPattern": {
+      "description": "IRI suffix pattern. Supported placeholders are {glossary}, {term}, and {uuid}.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "default": "{term}"
+    },
+    "readOnly": {
+      "description": "Whether the model is an installed reference model that cannot be edited directly.",
+      "type": "boolean",
+      "default": false
+    },
+    "installedPacks": {
+      "description": "Verified ontology library packs installed into this model, keyed by stable pack ID.",
+      "type": "array",
+      "items": {
+        "$ref": "ontologyPackInstallation.json"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "layer",
+    "prefixes",
+    "iriMintingPattern",
+    "readOnly",
+    "installedPacks"
+  ],
+  "additionalProperties": false
+}

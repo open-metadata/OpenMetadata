@@ -123,17 +123,42 @@ describe('SparqlPlayground', () => {
     expect(screen.getByTestId('sparql-run')).toBeInTheDocument();
   });
 
-  it('removes the legacy shared saved-query cache', () => {
+  it('imports and removes the legacy shared saved-query cache after persistence', async () => {
     window.localStorage.setItem(
       'om.sparql-playground.savedQueries',
-      '[{"name":"Shared query"}]'
+      JSON.stringify([QUERY_TEMPLATE])
     );
+    mockGetSavedQueries.mockResolvedValue([]);
+    mockGetQueryTemplates.mockResolvedValue([]);
 
     render(<SparqlPlayground />);
 
-    expect(
-      window.localStorage.getItem('om.sparql-playground.savedQueries')
-    ).toBeNull();
+    await waitFor(() => {
+      expect(mockReplaceSavedQueries).toHaveBeenCalledWith([QUERY_TEMPLATE]);
+      expect(
+        window.localStorage.getItem('om.sparql-playground.savedQueries')
+      ).toBeNull();
+    });
+  });
+
+  it('retains the legacy cache when server persistence fails', async () => {
+    const serializedQuery = JSON.stringify([QUERY_TEMPLATE]);
+    window.localStorage.setItem(
+      'om.sparql-playground.savedQueries',
+      serializedQuery
+    );
+    mockGetSavedQueries.mockResolvedValue([]);
+    mockGetQueryTemplates.mockResolvedValue([]);
+    mockReplaceSavedQueries.mockRejectedValue(new Error('persistence failed'));
+
+    render(<SparqlPlayground />);
+
+    await waitFor(() => {
+      expect(mockReplaceSavedQueries).toHaveBeenCalled();
+      expect(
+        window.localStorage.getItem('om.sparql-playground.savedQueries')
+      ).toBe(serializedQuery);
+    });
   });
 
   it('shows an error and skips the API call when the editor body is empty', async () => {
