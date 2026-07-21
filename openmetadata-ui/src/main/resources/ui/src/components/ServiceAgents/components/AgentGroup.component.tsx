@@ -94,11 +94,9 @@ const AgentGroup: FC<AgentGroupProps> = ({
           ))}
       </Box>
       {agents.length === 0 && emptyPlaceholder ? (
-        <div
-          className="tw:border tw:rounded-xl tw:border-secondary tw:bg-white tw:dark:bg-gray-900"
-          data-testid="agent-group-empty-placeholder">
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
           {emptyPlaceholder}
-        </div>
+        </Box>
       ) : (
         <div className="tw:grid tw:gap-2.5">
           {agents.map((agent) => (
