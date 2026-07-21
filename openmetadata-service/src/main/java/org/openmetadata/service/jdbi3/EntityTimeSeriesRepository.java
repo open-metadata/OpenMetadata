@@ -396,7 +396,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   public void deleteById(UUID id, boolean hardDelete) {
     // time series entities by definition cannot be soft deleted
     if (hardDelete) {
-      T entityRecord = getById(id);
+      String jsonRecord = timeSeriesDao.getById(id);
+      T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
       if (entityRecord != null) {
         daoCollection.relationshipDAO().deleteAll(id, entityType);
         timeSeriesDao.deleteById(id);

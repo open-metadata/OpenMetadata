@@ -108,6 +108,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1018,7 +1019,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     RdfUpdater.updateEntity(testSuite);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
@@ -1026,10 +1026,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
           (TestCaseResolutionStatusRepository)
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-      for (CollectionDAO.EntityRelationshipRecord child : children) {
-        LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
-        testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-      }
+      AsyncService.getInstance()
+          .execute(
+              () -> {
+                for (CollectionDAO.EntityRelationshipRecord child : children) {
+                  LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                  testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
+                }
+              });
     }
   }
 
