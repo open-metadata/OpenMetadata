@@ -276,7 +276,6 @@
     "prosemirror-transform": "1.7.0",
     "prosemirror-view": "1.28.2",
     "ws": "8.21.1",
-    "axios": "1.18.0",
     "micromatch": "4.0.8",
     "minimatch": "3.1.5",
     "rollup": "4.59.0",
