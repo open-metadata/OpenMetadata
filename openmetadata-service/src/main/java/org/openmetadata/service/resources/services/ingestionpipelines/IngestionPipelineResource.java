@@ -1090,94 +1090,91 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string"))
           @PathParam("id")
           String id) {
-    try {
-      if (pipelineServiceClient == null) {
-        return Response.status(200).entity("Pipeline Client Disabled").build();
-      }
-      IngestionPipeline ingestionPipeline =
-          getIngestionPipelineByIdOrName(
-              uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
+    if (pipelineServiceClient == null) {
+      return Response.status(200).entity("Pipeline Client Disabled").build();
+    }
+    // Resolve the pipeline up front (no surrounding catch) so an unknown Id/fqn surfaces as 404,
+    // like getLastIngestionLogs. The streaming body below runs after this method returns, so its
+    // failures were never caught here anyway.
+    IngestionPipeline ingestionPipeline =
+        getIngestionPipelineByIdOrName(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
 
-      String filename =
-          String.format(
-              "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
+    String filename =
+        String.format(
+            "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
 
-      boolean useStreamableLogs =
-          ingestionPipeline.getEnableStreamableLogs()
-              || (ingestionPipeline.getIngestionRunner() != null
-                  && repository.isIngestionRunnerStreamableLogsEnabled(
-                      ingestionPipeline.getIngestionRunner()));
+    boolean useStreamableLogs =
+        ingestionPipeline.getEnableStreamableLogs()
+            || (ingestionPipeline.getIngestionRunner() != null
+                && repository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
 
-      StreamingOutput streamingOutput =
-          output -> {
-            String cursor = null;
-            boolean hasMoreData = true;
+    StreamingOutput streamingOutput =
+        output -> {
+          String cursor = null;
+          boolean hasMoreData = true;
 
-            while (hasMoreData) {
-              Map<String, String> logChunk;
+          while (hasMoreData) {
+            Map<String, String> logChunk;
 
-              if (useStreamableLogs) {
-                // Get logs using the repository's log storage picking up the last runId
-                PipelineStatus latestStatus =
-                    IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
-                String runId = latestStatus == null ? null : latestStatus.getRunId();
-                if (CommonUtil.nullOrEmpty(runId)) {
-                  throw new PipelineServiceClientException(
-                      "No runId found for the last ingestion pipeline run");
-                }
-
-                Map<String, Object> lastIngestionLogsMap =
-                    repository.getLogs(
-                        ingestionPipeline.getFullyQualifiedName(),
-                        UUID.fromString(runId),
-                        cursor,
-                        1000);
-                logChunk =
-                    lastIngestionLogsMap.entrySet().stream()
-                        .filter(entry -> entry.getValue() != null)
-                        .collect(
-                            Collectors.toMap(
-                                Map.Entry::getKey, entry -> entry.getValue().toString()));
-                Object logs = logChunk.remove("logs");
-                if (logs != null) {
-                  logChunk.put(
-                      TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
-                      logs.toString());
-                }
-              } else {
-                // Get the logs from the service client
-                logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+            if (useStreamableLogs) {
+              // Get logs using the repository's log storage picking up the last runId
+              PipelineStatus latestStatus =
+                  IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+              String runId = latestStatus == null ? null : latestStatus.getRunId();
+              if (CommonUtil.nullOrEmpty(runId)) {
+                throw new PipelineServiceClientException(
+                    "No runId found for the last ingestion pipeline run");
               }
 
-              if (logChunk == null || logChunk.isEmpty()) {
-                break;
+              Map<String, Object> lastIngestionLogsMap =
+                  repository.getLogs(
+                      ingestionPipeline.getFullyQualifiedName(),
+                      UUID.fromString(runId),
+                      cursor,
+                      1000);
+              logChunk =
+                  lastIngestionLogsMap.entrySet().stream()
+                      .filter(entry -> entry.getValue() != null)
+                      .collect(
+                          Collectors.toMap(
+                              Map.Entry::getKey, entry -> entry.getValue().toString()));
+              Object logs = logChunk.remove("logs");
+              if (logs != null) {
+                logChunk.put(
+                    TYPE_TO_TASK.get(ingestionPipeline.getPipelineType().toString()),
+                    logs.toString());
               }
+            } else {
+              // Get the logs from the service client
+              logChunk = pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, cursor);
+            }
 
-              for (Map.Entry<String, String> entry : logChunk.entrySet()) {
-                if (entry.getValue() != null
-                    && !entry.getKey().equals("after")
-                    && !entry.getKey().equals("total")) {
-                  output.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
-                  output.write("\n".getBytes(StandardCharsets.UTF_8));
-                }
-              }
-              output.flush();
+            if (logChunk == null || logChunk.isEmpty()) {
+              break;
+            }
 
-              cursor = logChunk.get("after");
-              if (cursor == null) {
-                hasMoreData = false;
+            for (Map.Entry<String, String> entry : logChunk.entrySet()) {
+              if (entry.getValue() != null
+                  && !entry.getKey().equals("after")
+                  && !entry.getKey().equals("total")) {
+                output.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                output.write("\n".getBytes(StandardCharsets.UTF_8));
               }
             }
-          };
+            output.flush();
 
-      return Response.ok(streamingOutput)
-          .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
-          .build();
-    } catch (Exception e) {
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Error downloading logs: " + e.getMessage())
-          .build();
-    }
+            cursor = logChunk.get("after");
+            if (cursor == null) {
+              hasMoreData = false;
+            }
+          }
+        };
+
+    return Response.ok(streamingOutput)
+        .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+        .build();
   }
 
   @PUT
