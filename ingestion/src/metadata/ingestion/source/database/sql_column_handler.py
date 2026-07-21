@@ -194,7 +194,7 @@ class SqlColumnHandlerMixin:
 
         pk_columns = [
             clean_up_starting_ending_double_quotes_in_string(pk_column)
-            for pk_column in pk_columns
+            for pk_column in pk_columns  # pyright: ignore[reportOptionalIterable]
         ]
 
         return pk_columns, unique_columns, foreign_columns
