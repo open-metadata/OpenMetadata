@@ -101,7 +101,7 @@ const FREQUENCY_LABEL_KEYS: Record<string, string> = {
 };
 
 const SELECTED_FREQUENCY_CLASS =
-  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:ring-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
+  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:after:outline-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
 
 const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   value,
