@@ -30,6 +30,7 @@ RUN apt-get -qq update \
   libkrb5-dev \
   default-jre-headless \
   openssl \
+  pkg-config \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
   postgresql \
@@ -48,10 +49,15 @@ RUN apt-get -qq update \
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget -> tracked; upstream fix pending, no-op until Debian ships it).
   # --only-upgrade is a no-op for packages not present in the base image.
+  # Upgrade libmariadb3 together with the mysqlclient dev packages that
+  # exact-pin it, so apt keeps them consistent instead of removing
+  # libmariadb-dev / default-libmysqlclient-dev (which drops pkg-config's
+  # .pc files and breaks the mysqlclient source build later).
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
        curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+       libmariadb-dev default-libmysqlclient-dev \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
