@@ -1084,8 +1084,8 @@ class OpenlineageSource(PipelineServiceSource):
             logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
             return
 
-        event_has_no_outputs = not outputs
-        event_has_no_inputs = not inputs
+        event_has_no_outputs = not output_edges
+        event_has_no_inputs = not input_edges
 
         single_sided = None
         if event_has_no_outputs and input_edges:
