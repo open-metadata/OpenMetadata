@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -176,7 +177,7 @@ public class AIContextBuilder {
             .withFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
             .withDisplayName(entity.getDisplayName())
-            .withDescription(entity.getDescription())
+            .withDescription(unescapeRichText(entity.getDescription()))
             .withResource(entity.getHref())
             .withTags(extractClassificationTags(entity))
             .withGlossaryTerms(resolveGlossaryTerms(entity))
@@ -611,7 +612,7 @@ public class AIContextBuilder {
                 .withName(term.getName())
                 .withDisplayName(term.getDisplayName())
                 .withFullyQualifiedName(term.getFullyQualifiedName())
-                .withContent(term.getDescription());
+                .withContent(unescapeRichText(term.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to resolve glossary term {}: {}", termFqn, e.getMessage());
@@ -690,7 +691,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return content;
+    return unescapeRichText(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
@@ -746,15 +747,24 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = entity.getDescription();
+      content = unescapeRichText(entity.getDescription());
     }
     return content;
+  }
+
+  /**
+   * Block-editor rich text is persisted HTML-entity-escaped (e.g. {@code &#96;} for a backtick,
+   * {@code &gt;&#61;} for {@code >=}). Un-escape it before it enters the AIContext so the markdown an
+   * LLM consumes carries real code fences and operators, not their entity references.
+   */
+  static String unescapeRichText(String value) {
+    return nullOrEmpty(value) ? value : StringEscapeUtils.unescapeHtml4(value);
   }
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
     if (!nullOrEmpty(metric.getDescription())) {
-      content.append(metric.getDescription());
+      content.append(unescapeRichText(metric.getDescription()));
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {
@@ -790,7 +800,7 @@ public class AIContextBuilder {
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(page.getDescription());
+                .withContent(unescapeRichText(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(
@@ -851,7 +861,7 @@ public class AIContextBuilder {
               .withDataType(columnType(column))
               .withConstraint(
                   column.getConstraint() == null ? null : column.getConstraint().value())
-              .withDescription(column.getDescription()));
+              .withDescription(unescapeRichText(column.getDescription())));
     }
     return fields;
   }

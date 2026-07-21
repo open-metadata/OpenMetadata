@@ -399,6 +399,52 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void unescapeRichText_decodesHtmlEntitiesFromBlockEditorContent() {
+    assertEquals(
+        "```\ncode\n```",
+        AIContextBuilder.unescapeRichText("&#96;&#96;&#96;\ncode\n&#96;&#96;&#96;"),
+        "backtick entities must decode to a real markdown code fence");
+    assertEquals(
+        "aum >= 250k for the bank's clients",
+        AIContextBuilder.unescapeRichText("aum &gt;&#61; 250k for the bank&#39;s clients"),
+        "operator and apostrophe entities must decode");
+  }
+
+  @Test
+  void unescapeRichText_leavesPlainTextNullAndBareAmpersandUntouched() {
+    assertEquals("R&D spend", AIContextBuilder.unescapeRichText("R&D spend"));
+    assertEquals("", AIContextBuilder.unescapeRichText(""));
+    assertNull(AIContextBuilder.unescapeRichText(null));
+  }
+
+  @Test
+  void metricContent_unescapesDescriptionAndPreservesExpressionCode() {
+    Metric metric =
+        new Metric()
+            .withName("HighValue")
+            .withDescription("Flag when deposits &gt;&#61; 50k for the bank&#39;s book.")
+            .withMetricExpression(new MetricExpression().withCode("SUM(deposit) >= 50000"));
+    String content = AIContextBuilder.metricContent(metric);
+    assertTrue(
+        content.contains("deposits >= 50k for the bank's book."),
+        "metric description entities must be unescaped");
+    assertTrue(content.contains("SUM(deposit) >= 50000"), "expression code must pass through raw");
+  }
+
+  @Test
+  void toFieldContexts_unescapesColumnDescriptionEntities() {
+    Column column =
+        new Column()
+            .withName("value_segment")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDescription(
+                "private_banking when aum &gt;&#61; 250k, else the bank&#39;s default");
+    FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
+    assertEquals(
+        "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
   void applySearchFields_materializesStructuralContextAndFkTargets() {
     Map<String, Object> doc = new HashMap<>();
     AIContextBuilder.applySearchFields(doc, sampleTable());

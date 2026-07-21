@@ -98,6 +98,14 @@ class AIContextMarkdownTest {
   }
 
   @Test
+  void textMarkdownMediaType_declaresUtf8Charset() {
+    assertTrue(
+        AIContextMarkdown.TEXT_MARKDOWN.contains("charset=UTF-8"),
+        "markdown media type must declare UTF-8 or clients default text/* to ISO-8859-1 and "
+            + "mojibake the em dashes, arrows and section signs the document embeds");
+  }
+
+  @Test
   void render_emitsResourceUriWhenPresent() {
     AIContext context =
         new AIContext()

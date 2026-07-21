@@ -44,8 +44,13 @@ import org.openmetadata.service.Entity;
  * Structural markdown is preferred over prose because it aids both human reading and agent retrieval.
  */
 public final class AIContextMarkdown {
-  /** Media type of the OKF-style markdown document produced by {@link #render}. */
-  public static final String TEXT_MARKDOWN = "text/markdown";
+  /**
+   * Media type of the OKF-style markdown document produced by {@link #render}. The {@code
+   * charset=UTF-8} parameter is required: the document embeds non-ASCII glyphs (em dashes, arrows,
+   * the section sign) and, without an explicit charset, clients default {@code text/*} to
+   * ISO-8859-1 (RFC 2616) and mojibake the UTF-8 bytes.
+   */
+  public static final String TEXT_MARKDOWN = "text/markdown; charset=UTF-8";
 
   /** {@code ?format=} value that selects the structured AIContext JSON over markdown. */
   public static final String FORMAT_JSON = "json";
