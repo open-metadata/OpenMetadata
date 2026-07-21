@@ -35,7 +35,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
@@ -47,6 +49,8 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -57,6 +61,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPla
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.FieldPathUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * Handles workflow integration for Task entities.
@@ -692,7 +697,8 @@ public class TaskWorkflowHandler {
     entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
-      repository.patch(null, entity.getId(), user, patch, null, null);
+      PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
+      recordChangeEvent(response, user);
     }
   }
 
@@ -721,7 +727,8 @@ public class TaskWorkflowHandler {
       setTags.invoke(field, mergeTags(current, tagsToAdd, tagsToRemove));
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
       if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
+        PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
+        recordChangeEvent(response, user);
       }
       applied = true;
     } catch (NoSuchMethodException e) {
@@ -733,6 +740,34 @@ public class TaskWorkflowHandler {
           "[TaskWorkflowHandler] patchFieldTags failed at '{}': {}", fieldPath, e.getMessage(), e);
     }
     return applied;
+  }
+
+  private void recordChangeEvent(PatchResponse<?> response, String user) {
+    if (response == null) {
+      return;
+    }
+    EventType changeType = response.changeType();
+    if (changeType == null || changeType == EventType.ENTITY_NO_CHANGE) {
+      return;
+    }
+    Object patchedEntity = response.entity();
+    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+      return;
+    }
+    try {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+      Object entityForEvent = changeEvent.getEntity();
+      changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Failed to persist change event for entity '{}': {}",
+          entityInterface.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
   }
 
   private List<TagLabel> mergeTags(

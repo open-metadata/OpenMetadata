@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -108,6 +109,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
@@ -2283,6 +2285,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     String columnName = table.getColumns().get(0).getName();
     String fieldPath = "columns." + columnName + ".tags";
     Double initialVersion = table.getVersion();
+    long resolveStartTs = System.currentTimeMillis();
 
     List<TagLabel> tagsToAdd =
         List.of(
@@ -2367,6 +2370,78 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .map(t -> "admin".equals(t.getAppliedBy()))
             .orElse(false),
         "Applied tag must record appliedBy=admin (versioned path); got: " + columnTags);
+
+    assertEquals(
+        2,
+        SdkClients.adminClient().tables().getVersionList(updatedTable.getId()).getVersions().size(),
+        "Version history must contain both 0.1 (baseline) and the post-TagUpdate bump");
+
+    JsonNode events;
+    try {
+      String eventsJson =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events",
+                  null,
+                  RequestOptions.builder()
+                      .queryParam("entityUpdated", "table")
+                      .queryParam("timestamp", Long.toString(resolveStartTs))
+                      .queryParam("limit", "1000")
+                      .build());
+      events = JsonUtils.readTree(eventsJson);
+    } catch (Exception e) {
+      throw new AssertionError("Failed to fetch /v1/events", e);
+    }
+    boolean entityUpdatedEmitted = false;
+    for (JsonNode event : events.path("data")) {
+      if (table.getFullyQualifiedName().equals(event.path("entityFullyQualifiedName").asText())
+          && "entityUpdated".equals(event.path("eventType").asText())) {
+        entityUpdatedEmitted = true;
+        break;
+      }
+    }
+    assertTrue(
+        entityUpdatedEmitted,
+        "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
+            + events.path("data"));
+
+    Awaitility.await("search index reflects column tag after TagUpdate")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String searchJson =
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/search/query",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("index", "table_search_index")
+                              .queryParam(
+                                  "q",
+                                  "fullyQualifiedName:\"" + table.getFullyQualifiedName() + "\"")
+                              .build());
+              JsonNode search = JsonUtils.readTree(searchJson);
+              JsonNode hits = search.path("hits").path("hits");
+              assertTrue(hits.size() > 0, "Search hit for table must be present");
+              JsonNode columns = hits.get(0).path("_source").path("columns");
+              assertTrue(columns.size() > 0, "Search doc must include columns");
+              JsonNode searchTags = columns.get(0).path("tags");
+              boolean searchHasTag = false;
+              for (JsonNode t : searchTags) {
+                if ("PersonalData.Personal".equals(t.path("tagFQN").asText())) {
+                  searchHasTag = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  searchHasTag,
+                  "Column-level TagUpdate must reindex the parent table; got tags: " + searchTags);
+            });
   }
 
   @Test
