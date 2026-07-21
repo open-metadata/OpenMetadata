@@ -128,12 +128,12 @@ final class EntityRankingSeeders {
           new CreateTable()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withDatabaseSchema(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withColumns(
                   List.of(
                       new Column()
-                          .withName(EntitySeeder.distinctiveFor(token, placement))
+                          .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                           .withDataType(ColumnDataType.VARCHAR)
                           .withDataLength(64)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
@@ -186,8 +186,8 @@ final class EntityRankingSeeders {
           new CreateDashboard()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement));
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement));
       if (placement == Placement.DISTINCTIVE) {
         create.withCharts(List.of(createChart(client, ns, parent, token, placement)));
       }
@@ -206,7 +206,7 @@ final class EntityRankingSeeders {
         Placement placement) {
       CreateChart createChart =
           new CreateChart()
-              .withName(EntitySeeder.distinctiveFor(token, placement))
+              .withName(EntitySeeder.distinctiveFor(ns, token, placement))
               .withService(service)
               .withChartType(ChartType.Other);
       return client.charts().create(createChart).getFullyQualifiedName();
@@ -254,15 +254,15 @@ final class EntityRankingSeeders {
               .withSchemaFields(
                   List.of(
                       new Field()
-                          .withName(EntitySeeder.distinctiveFor(token, placement))
+                          .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                           .withDataType(FieldDataType.STRING)));
       CreateTopic create =
           new CreateTopic()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
               .withPartitions(1)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withMessageSchema(schema);
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
@@ -313,10 +313,10 @@ final class EntityRankingSeeders {
           new CreatePipeline()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withTasks(
-                  List.of(new Task().withName(EntitySeeder.distinctiveFor(token, placement))));
+                  List.of(new Task().withName(EntitySeeder.distinctiveFor(ns, token, placement))));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
         create.withTags(tags);
@@ -366,12 +366,12 @@ final class EntityRankingSeeders {
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
               .withAlgorithm("regression")
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withMlFeatures(
                   List.of(
                       new MlFeature()
-                          .withName(EntitySeeder.distinctiveFor(token, placement))
+                          .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                           .withDataType(MlFeatureDataType.Numerical)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
@@ -421,14 +421,14 @@ final class EntityRankingSeeders {
           new CreateContainer()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withDataModel(
                   new ContainerDataModel()
                       .withColumns(
                           List.of(
                               new Column()
-                                  .withName(EntitySeeder.distinctiveFor(token, placement))
+                                  .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                                   .withDataType(ColumnDataType.VARCHAR)
                                   .withDataLength(64))));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
@@ -483,13 +483,13 @@ final class EntityRankingSeeders {
           new CreateDashboardDataModel()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withDataModelType(DataModelType.LookMlView)
               .withColumns(
                   List.of(
                       new Column()
-                          .withName(EntitySeeder.distinctiveFor(token, placement))
+                          .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                           .withDataType(ColumnDataType.VARCHAR)
                           .withDataLength(64)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
@@ -533,10 +533,10 @@ final class EntityRankingSeeders {
       CreateQuery create =
           new CreateQuery()
               .withName(EntitySeeder.nameFor(ns, token, placement))
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withService(parent)
-              .withQuery("SELECT " + EntitySeeder.distinctiveFor(token, placement) + " FROM t");
+              .withQuery("SELECT " + EntitySeeder.distinctiveFor(ns, token, placement) + " FROM t");
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
         create.withTags(tags);
@@ -573,8 +573,8 @@ final class EntityRankingSeeders {
           new CreateStoredProcedure()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withDatabaseSchema(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withStoredProcedureCode(
                   new StoredProcedureCode()
                       .withLanguage(StoredProcedureLanguage.SQL)
@@ -620,12 +620,12 @@ final class EntityRankingSeeders {
           new CreateSearchIndex()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withFields(
                   List.of(
                       new SearchIndexField()
-                          .withName(RankingSupport.uniqueTerm())
+                          .withName(EntitySeeder.tokenFreeValue(ns))
                           .withDataType(SearchIndexDataType.TEXT)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
@@ -672,9 +672,9 @@ final class EntityRankingSeeders {
           new CreateGlossaryTerm()
               .withGlossary(parent)
               .withName(EntitySeeder.nameFor(ns, token, placement))
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
-              .withSynonyms(List.of(EntitySeeder.distinctiveFor(token, placement)));
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
+              .withSynonyms(List.of(EntitySeeder.distinctiveFor(ns, token, placement)));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
         create.withTags(tags);
@@ -711,8 +711,8 @@ final class EntityRankingSeeders {
       CreateMetric create =
           new CreateMetric()
               .withName(EntitySeeder.nameFor(ns, token, placement))
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement));
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
         create.withTags(tags);
@@ -763,14 +763,14 @@ final class EntityRankingSeeders {
           new CreateAPIEndpoint()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withApiCollection(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
               .withRequestSchema(
                   new APISchema()
                       .withSchemaFields(
                           List.of(
                               new Field()
-                                  .withName(EntitySeeder.distinctiveFor(token, placement))
+                                  .withName(EntitySeeder.distinctiveFor(ns, token, placement))
                                   .withDataType(FieldDataType.STRING))));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
@@ -818,9 +818,9 @@ final class EntityRankingSeeders {
           new CreateDirectory()
               .withName(EntitySeeder.nameFor(ns, token, placement))
               .withService(parent)
-              .withDisplayName(EntitySeeder.displayNameFor(token, placement))
-              .withDescription(EntitySeeder.descriptionFor(token, placement))
-              .withPath("/" + EntitySeeder.distinctiveFor(token, placement));
+              .withDisplayName(EntitySeeder.displayNameFor(ns, token, placement))
+              .withDescription(EntitySeeder.descriptionFor(ns, token, placement))
+              .withPath("/" + EntitySeeder.distinctiveFor(ns, token, placement));
       List<TagLabel> tags = EntitySeeder.tierTags(tier1);
       if (tags != null) {
         create.withTags(tags);

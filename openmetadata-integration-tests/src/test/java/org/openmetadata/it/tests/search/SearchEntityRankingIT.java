@@ -107,7 +107,7 @@ class SearchEntityRankingIT {
       String parent,
       Case testCase,
       List<String> failures) {
-    String term = RankingSupport.uniqueTerm();
+    String term = RankingSupport.uniqueTerm(ns);
     String high = seeder.seed(client, ns, parent, term, testCase.high(), testCase.tierHigh());
     String low = seeder.seed(client, ns, parent, term, testCase.low(), testCase.tierLow());
     String notIndexed =
@@ -138,7 +138,7 @@ class SearchEntityRankingIT {
               + " vs "
               + rankLow
               + " -> "
-              + result.names());
+              + result.hits());
     }
   }
 
@@ -148,7 +148,7 @@ class SearchEntityRankingIT {
       EntitySeeder seeder,
       String parent,
       List<String> failures) {
-    String term = RankingSupport.uniqueTerm();
+    String term = RankingSupport.uniqueTerm(ns);
     String name = seeder.seed(client, ns, parent, term, Placement.DISTINCTIVE, false);
     String notFound =
         RankingSupport.awaitOrReason(
