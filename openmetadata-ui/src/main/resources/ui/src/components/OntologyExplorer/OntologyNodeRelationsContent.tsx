@@ -162,8 +162,8 @@ export const OntologyNodeRelationsContent: React.FC<
                     <Badge
                       className={
                         meta
-                          ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:ring-0'
-                          : 'tw:ring-0'
+                          ? 'tw:bg-[var(--rel-bg)] tw:text-[var(--rel-color)] tw:outline-0'
+                          : 'tw:outline-0'
                       }
                       size="sm"
                       type="color">
