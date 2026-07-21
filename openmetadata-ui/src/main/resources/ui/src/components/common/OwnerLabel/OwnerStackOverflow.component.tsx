@@ -121,7 +121,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
       <AriaTooltip
         className={({ isEntering, isExiting }) =>
           classNames(
-            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
             isExiting &&
