@@ -184,15 +184,19 @@ interface AppModeStore {
 }
 
 const initialSession = readSession();
-// When sessionStorage is empty (fresh tab), fall back to the localStorage
-// hint if it's still fresh. This avoids a visible flash of Classic before
-// the resolver's effect runs and adopts the hint. The hint is only a seed
-// for the in-memory value — the resolver still writes the sessionStorage
-// tuple with proper persona-scoping once it has that context.
-const initialHint = initialSession ? null : readHint();
-const initialMode =
-  initialSession?.mode ??
-  (isHintFresh(initialHint) ? initialHint!.mode : DEFAULT_APP_MODE);
+// Only hydrate the in-memory store from the sessionStorage tuple at
+// module load — do NOT fall back to the cross-tab hint here. The hint
+// is a shared localStorage key and its mode may not be registered in
+// this tab (App.tsx installs the AI route in its own effect, which
+// hasn't run at module init). Seeding the store with an unregistered
+// mode causes `useAppMode()` to return e.g. `'ai'` on the first render
+// while the registry is still empty, so AI-only layouts try to render
+// against the Classic route tree — a "flash of broken AI" that's
+// worse than the "flash of Classic" it was trying to avoid. The
+// resolver (`useResolvedAppMode`) reads the hint safely, gated on
+// registration, and adopts it via `writeAppMode` once the AI route
+// registers.
+const initialMode = initialSession?.mode ?? DEFAULT_APP_MODE;
 
 export const useAppModeStore = create<AppModeStore>((set) => ({
   currentMode: initialMode,
@@ -211,7 +215,21 @@ export const useAppModeStore = create<AppModeStore>((set) => ({
 const HEARTBEAT_INTERVAL_MS = Math.floor(APP_MODE_HINT_TTL_MS / 2);
 
 const refreshHint = (): void => {
-  writeHint(useAppModeStore.getState().currentMode);
+  const mode = useAppModeStore.getState().currentMode;
+  // A tab in the default (Classic) mode has nothing worth propagating
+  // — DEFAULT is the resolver's own fallback, so a fresh hint of
+  // `'default'` provides no information a sibling tab wouldn't reach
+  // on its own. Worse, the hint is a single shared localStorage key,
+  // so an idle Classic tab's heartbeat would nondeterministically
+  // overwrite an `'ai'` hint that a sibling AI tab just wrote,
+  // stranding the next cmd-clicked new tab in Classic — the exact
+  // regression the hint exists to prevent. Explicit switches
+  // (writeAppMode) still write the hint for both modes so a user
+  // going AI → Classic correctly updates the hint to `'default'`.
+  if (mode === DEFAULT_APP_MODE) {
+    return;
+  }
+  writeHint(mode);
 };
 
 if (hasWindow()) {

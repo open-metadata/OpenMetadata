@@ -155,6 +155,21 @@ describe('writeAppMode', () => {
     expect(parsed.mode).toBe('ai');
     expect(typeof parsed.ts).toBe('number');
   });
+
+  it('overwrites the hint with DEFAULT when explicitly switching AI → Classic', () => {
+    // Explicit switches update the hint for both modes so a sibling
+    // tab picks up the user's most-recent intent. Only the passive
+    // heartbeat is guarded against DEFAULT-mode writes.
+    writeAppMode('ai');
+    writeAppMode(DEFAULT_APP_MODE);
+
+    const raw = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+    const parsed = JSON.parse(raw ?? '') as { mode: string; ts: number };
+
+    expect(parsed.mode).toBe(DEFAULT_APP_MODE);
+  });
 });
 
 describe('clearAppMode', () => {
@@ -183,6 +198,52 @@ describe('clearAppMode', () => {
     expect(
       globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
     ).toBeNull();
+  });
+});
+
+describe('heartbeat (visibility / focus refresh)', () => {
+  beforeEach(resetStore);
+
+  it('does NOT overwrite a fresh AI hint when this tab is in DEFAULT mode', () => {
+    // Simulate a sibling AI tab having written a fresh hint.
+    const siblingWriteTs = Date.now();
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: siblingWriteTs })
+    );
+    // This tab is in DEFAULT mode.
+    useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
+
+    // Fire a visibility change — the heartbeat listener runs.
+    globalThis.window.dispatchEvent(new Event('visibilitychange'));
+
+    // Hint is unchanged: still `'ai'` with the sibling's timestamp.
+    const raw = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+    const parsed = JSON.parse(raw ?? '') as { mode: string; ts: number };
+
+    expect(parsed.mode).toBe('ai');
+    expect(parsed.ts).toBe(siblingWriteTs);
+  });
+
+  it('refreshes the hint when this tab is in a non-default mode', () => {
+    const oldTs = Date.now() - 30_000;
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: oldTs })
+    );
+    useAppModeStore.setState({ currentMode: 'ai' });
+
+    globalThis.window.dispatchEvent(new Event('visibilitychange'));
+
+    const raw = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+    const parsed = JSON.parse(raw ?? '') as { mode: string; ts: number };
+
+    expect(parsed.mode).toBe('ai');
+    expect(parsed.ts).toBeGreaterThan(oldTs);
   });
 });
 
