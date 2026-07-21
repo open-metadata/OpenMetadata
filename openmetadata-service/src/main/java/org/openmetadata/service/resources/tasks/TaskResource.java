@@ -1121,7 +1121,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolvedPayload,
             comment,
             userName);
-    return Response.ok(resolvedTask).build();
+    // Change-event header so resolve fires task alerts.
+    return Response.ok(resolvedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   private ListFilter buildTaskListFilter(
@@ -1294,7 +1297,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    return Response.ok(closedTask).build();
+    // Change-event header so close fires task alerts.
+    return Response.ok(closedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   @DELETE
@@ -1385,7 +1391,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             null,
             userName);
-    return Response.ok(resolvedTask).build();
+    // Change-event header so resolve fires task alerts.
+    return Response.ok(resolvedTask)
+        .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
+        .build();
   }
 
   // ========================= Bulk Operations Endpoint =========================
