@@ -85,6 +85,19 @@ export const openEntitySummaryPanel = async ({
     await searchResponsePromise;
     await page.getByTestId('searchBox').press('Enter');
     await waitForAllLoadersToDisappear(page);
+
+    // Select the entity-type tab as part of each search attempt: for callers that
+    // pass an exploreTab without an endpoint filter (e.g. Column), the result card
+    // only renders under its tab, so the poll's visibility check must run after the
+    // tab is selected — not once, after the poll.
+    if (exploreTab) {
+      const tab = page
+        .getByTestId('explore-left-panel')
+        .getByRole('menuitem', { name: exploreTab });
+      await tab.waitFor({ state: 'visible' });
+      await tab.click();
+      await waitForAllLoadersToDisappear(page);
+    }
   };
 
   const entityResultCard = fullyQualifiedName
@@ -121,15 +134,6 @@ export const openEntitySummaryPanel = async ({
         { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
       )
       .toBe(true);
-  }
-
-  if (exploreTab) {
-    const tab = page
-      .getByTestId('explore-left-panel')
-      .getByRole('menuitem', { name: exploreTab });
-    await tab.waitFor({ state: 'visible' });
-    await tab.click();
-    await waitForAllLoadersToDisappear(page);
   }
 
   if (fullyQualifiedName) {
