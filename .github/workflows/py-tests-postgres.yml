@@ -124,6 +124,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'

@@ -78,6 +78,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Trigger Collate build & wait
         uses: the-actions-org/workflow-dispatch@v4

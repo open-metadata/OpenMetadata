@@ -115,6 +115,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -164,6 +165,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
+          allow-unsafe-pr-checkout: true
 
       - name: Get all changed files
         id: all-changes
@@ -245,6 +247,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Download Maven build artifact
         id: download-build

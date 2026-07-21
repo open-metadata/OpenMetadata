@@ -102,6 +102,7 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
+          allow-unsafe-pr-checkout: true
 
       - uses: actions/setup-node@v4
         with:
