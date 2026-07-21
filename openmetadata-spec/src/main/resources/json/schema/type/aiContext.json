@@ -11,6 +11,10 @@
             "javaType": "org.openmetadata.schema.type.aicontext.KnowledgeItem",
             "description": "A single piece of business knowledge attached to the asset (glossary term definition, metric definition, or Context Center article/pill).",
             "properties": {
+                "id": {
+                    "description": "Unique identifier of the knowledge entity.",
+                    "$ref": "basic.json#/definitions/uuid"
+                },
                 "type": {
                     "description": "The entity type of the knowledge item.",
                     "type": "string",
@@ -360,9 +364,36 @@
                 }
             },
             "additionalProperties": false
+        },
+        "lineageEdgeContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.LineageEdgeContext",
+            "description": "One immediate lineage edge of the asset: the neighboring asset's fully qualified name plus the column-level mappings recorded on the edge, when available.",
+            "properties": {
+                "fullyQualifiedName": {
+                    "description": "Fully qualified name of the neighboring upstream or downstream asset.",
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "columns": {
+                    "description": "Column-level lineage recorded on this edge, capped server-side; fetch the full graph with the get_entity_lineage tool.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "entityLineage.json#/definitions/columnLineage"
+                    }
+                },
+                "columnsTruncated": {
+                    "description": "True when column-level lineage was truncated at the server-side per-edge cap; fetch the full graph with the get_entity_lineage tool.",
+                    "type": "boolean"
+                }
+            },
+            "additionalProperties": false
         }
     },
     "properties": {
+        "id": {
+            "description": "Unique identifier of the asset this context describes.",
+            "$ref": "basic.json#/definitions/uuid"
+        },
         "fullyQualifiedName": {
             "description": "Fully qualified name of the asset this context describes.",
             "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
@@ -371,11 +402,23 @@
             "description": "Entity type of the asset (table, dashboard, pipeline, topic, ...).",
             "type": "string"
         },
+        "serviceType": {
+            "description": "Service type of the asset's service (e.g. Snowflake, BigQuery).",
+            "type": "string"
+        },
         "displayName": {
             "type": "string"
         },
         "description": {
             "type": "string"
+        },
+        "owners": {
+            "description": "Owners (users/teams) of the asset.",
+            "type": "array",
+            "items": {
+                "$ref": "entityReference.json"
+            },
+            "default": null
         },
         "resource": {
             "description": "Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).",
@@ -421,6 +464,20 @@
             "type": "array",
             "items": {
                 "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+            }
+        },
+        "upstreamEdges": {
+            "description": "Immediate upstream lineage edges with optional column mappings. Supplements the upstream fully qualified name list.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/lineageEdgeContext"
+            }
+        },
+        "downstreamEdges": {
+            "description": "Immediate downstream lineage edges with optional column mappings. Supplements the downstream fully qualified name list.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/lineageEdgeContext"
             }
         },
         "assetContext": {

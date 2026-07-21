@@ -95,8 +95,6 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
-    conditions.add(getSourceFileCondition());
-    conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
@@ -136,39 +134,6 @@ public class ListFilter extends Filter<ListFilter> {
       return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
     }
     return null;
-  }
-
-  /** Filters context memories down to the knowledge pills extracted from a given context file. */
-  private String getSourceFileCondition() {
-    String sourceFileId = queryParams.get("sourceFileId");
-    String result = "";
-    if (!nullOrEmpty(sourceFileId)) {
-      queryParams.put("sourceFileIdParam", sourceFileId);
-      result =
-          String.format(
-              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
-                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
-                  + "AND entity_relationship.fromId = :sourceFileIdParam "
-                  + "AND entity_relationship.relation = %d))",
-              Relationship.MENTIONED_IN.ordinal());
-    }
-    return result;
-  }
-
-  /** Filters context memories down to the knowledge pills extracted from any source entity. */
-  private String getSourceEntityCondition() {
-    String sourceEntityId = queryParams.get("sourceEntityId");
-    String result = "";
-    if (!nullOrEmpty(sourceEntityId)) {
-      queryParams.put("sourceEntityIdParam", sourceEntityId);
-      result =
-          String.format(
-              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
-                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
-                  + "AND entity_relationship.relation = %d))",
-              Relationship.MENTIONED_IN.ordinal());
-    }
-    return result;
   }
 
   /**
@@ -236,7 +201,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(assigneeFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
@@ -254,6 +219,19 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -308,7 +286,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(createdBy.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
@@ -1229,7 +1207,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(approverFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
     return String.format(

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -36,14 +35,17 @@ from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection as DatabricksConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection as UnityCatalogConnectionConfig,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -51,10 +53,13 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.databricks.auth import (
+    catalog_url,
     get_auth_config,
-    normalize_host_port,
+    probe_target,
 )
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -81,17 +86,24 @@ logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
 
-# Databricks dials the workspace over HTTPS; the gate TCP-probes this port.
-DEFAULT_DATABRICKS_PORT = 443
-
 DEFAULT_CATALOG = "main"
 
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
 
 
+# The listing checks raise a message carrying this token when no catalog/schema was
+# resolved; the pack matches on it. Shared so producer and matcher cannot drift.
+UNRESOLVED_TARGET_TOKEN = "Could not resolve a catalog and schema"
+
+
 # databricks-sql/thrift reports failures as message tokens, not numeric codes, so
 # rules key on tokens; specific ones precede broad ones (first match wins).
 DATABRICKS_ERRORS = ErrorPack(
+    when(Matchers.contains(UNRESOLVED_TARGET_TOKEN)).diagnose(
+        "Could not resolve a catalog and schema to probe",
+        fix="The earlier steps found no catalog/schema this user can use. Verify the configured "
+        "catalog and schema exist and that the user has USE CATALOG and USE SCHEMA on them.",
+    ),
     when(Matchers.contains("invalid access token")).diagnose(
         "Authentication failed",
         fix="Check the access token - the workspace rejected it. Verify the token is valid, "
@@ -101,11 +113,9 @@ DATABRICKS_ERRORS = ErrorPack(
         "Access token expired",
         fix="The access token has expired. Generate a new token and update the connection.",
     ),
-    when(Matchers.contains("forbidden")).diagnose(
-        "Access denied",
-        fix="The workspace returned 403 Forbidden. Verify the token's user is entitled to the "
-        "workspace and the configured HTTP path / SQL warehouse.",
-    ),
+    # No 403 rule: databricks-sql keeps the status in error.context["http-code"] and
+    # Error.__str__ returns only self.message (databricks/sql/exc.py), so no status
+    # reaches the text; "Forbidden" appears nowhere in the driver (4.2.6).
     when(Matchers.contains("malformed_request")).diagnose(
         "Invalid HTTP path",
         fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
@@ -132,12 +142,12 @@ DATABRICKS_ERRORS = ErrorPack(
         fix="The referenced schema does not exist or is not visible. Verify the schema name and "
         "that the user has USAGE on it.",
     ),
-    when(Matchers.contains("permission_denied")).diagnose(
-        "Insufficient privileges",
-        fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
-        "schema and SELECT on the system or information_schema tables it reads).",
-    ),
-    when(Matchers.contains("insufficient_permissions")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.contains("permission_denied"),
+            Matchers.contains("insufficient_permissions"),
+        )
+    ).diagnose(
         "Insufficient privileges",
         fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
         "schema and SELECT on the system or information_schema tables it reads).",
@@ -148,16 +158,6 @@ DATABRICKS_ERRORS = ErrorPack(
         "authorized to use them.",
     ),
 ).including(NETWORK_ERRORS)
-
-
-def _summarize(rows: Sequence[object], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the cap) or ``no <noun>s enumerated``."""
-    count = len(rows)
-    if not count:
-        return f"no {noun}s enumerated"
-    suffix = "+" if count >= DEFAULT_SAMPLE_ROWS else ""
-    plural = noun if count == 1 else f"{noun}s"
-    return f"{count}{suffix} {plural} enumerated"
 
 
 class DatabricksEngineWrapper:
@@ -204,25 +204,35 @@ class DatabricksEngineWrapper:
                     self.first_schema = self.schemas[0]
         return self.schemas
 
+    def _require_resolved_catalog_and_schema(self) -> tuple[str, str]:
+        """Fail loudly when the earlier steps resolved no catalog or schema.
+
+        Returning an empty list would be indistinguishable from "the schema is
+        genuinely empty", so a mandatory step would pass having proved nothing.
+        """
+        if not (self.first_catalog and self.first_schema):
+            raise SourceConnectionException(
+                f"{UNRESOLVED_TARGET_TOKEN}: catalog={self.first_catalog}, schema={self.first_schema}"
+            )
+        return self.first_catalog, self.first_schema
+
     def get_tables(self):
         """Get tables using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_catalog and self.first_schema:
-            with self.engine.connect() as connection:
-                tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
-                return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
-        return []
+        catalog, schema = self._require_resolved_catalog_and_schema()
+        with self.engine.connect() as connection:
+            tables = connection.execute(text(f"SHOW TABLES IN `{catalog}`.`{schema}`"))
+            return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_views(self):
         """Get views using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_catalog and self.first_schema:
-            with self.engine.connect() as connection:
-                views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
-                return views.fetchmany(DEFAULT_SAMPLE_ROWS)
-        return []
+        catalog, schema = self._require_resolved_catalog_and_schema()
+        with self.engine.connect() as connection:
+            views = connection.execute(text(f"SHOW VIEWS IN `{catalog}`.`{schema}`"))
+            return views.fetchmany(DEFAULT_SAMPLE_ROWS)
 
     def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
         """Get catalogs"""
@@ -239,11 +249,7 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
-    scheme = connection.scheme.value if connection.scheme else "databricks"
-    url = f"{scheme}://{normalize_host_port(connection.hostPort)}"
-    if connection.catalog:
-        url = f"{url}?catalog={quote_plus(connection.catalog)}"
-    return url
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: DatabricksConnectionConfig) -> Engine:
@@ -292,11 +298,7 @@ class DatabricksChecks:
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = normalize_host_port(self.service_connection.hostPort)
-        host, _, port = host_port.rpartition(":")
-        if host and port.isdigit():
-            return host, int(port)
-        return host_port, DEFAULT_DATABRICKS_PORT
+        return probe_target(self.service_connection.hostPort)
 
     def _list(self, operation: Callable[[], Sequence[object] | None], command: str | None, noun: str) -> Evidence:
         """Run a wrapper listing op, reporting the command and a row-count summary;
@@ -306,15 +308,11 @@ class DatabricksChecks:
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
         rows = list(rows) if rows is not None else []
-        return Evidence(summary=_summarize(rows, noun), command=command)
+        return Evidence(summary=enumerated(len(rows), noun, DEFAULT_SAMPLE_ROWS), command=command)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        host, port = self._probe_target()
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+        probe_or_fail(*self._probe_target())
         return run_sql(self._db.client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetDatabases)
@@ -382,17 +380,37 @@ class DatabricksChecks:
         return run_sql(self._db.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
 
 
+class DatabricksApiConnection(
+    BaseConnection[DatabricksConnectionConfig | UnityCatalogConnectionConfig, DatabricksClient]
+):
+    """Owns the Databricks REST client (Jobs, query-history, and lineage APIs):
+    a separate lifetime from the SQL engine, shared by the databricks and Unity
+    Catalog sources."""
+
+    def _get_client(self) -> DatabricksClient:
+        # No pooled resource to close: uses the ``requests`` module, not a Session.
+        return DatabricksClient(self.service_connection)
+
+
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
     def __init__(self, service_connection: DatabricksConnectionConfig) -> None:
         super().__init__(service_connection)
         # Honor the user-facing connectionTimeout (default 120s) as the per-step
         # budget; a cold serverless warehouse can exceed the 60s framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
+        # A sub-owner, not a client: constructing it opens nothing.
+        self.api = DatabricksApiConnection(service_connection)
 
     def _get_client(self) -> Engine:
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
+
+    def close(self) -> None:
+        # Not _on_close: that registry is reset by close(), so a sub-owner
+        # registered once would not be released on a later reuse cycle.
+        self.api.close()
+        super().close()
 
     def checks(self) -> ChecksProvider:
         return DatabricksChecks(

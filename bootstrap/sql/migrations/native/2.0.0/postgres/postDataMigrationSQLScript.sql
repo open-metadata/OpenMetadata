@@ -90,26 +90,6 @@ UPDATE ingestion_pipeline_entity
 SET json = (json::jsonb #- '{pipelineStatuses}')::json
 WHERE json::jsonb #> '{pipelineStatuses}' IS NOT NULL;
 
--- MCP Server and MCP Chat are no longer internal Applications; their enablement now lives in
--- platform settings (mcpConfiguration). The MCP Chat app was never shipped to customers, so
--- aiSettings.mcpChat keeps its seeded default shape (no config carry-over).
-
--- MCP Server: keep it disabled if the server app was not installed (mcpConfiguration defaults
--- to enabled=true, which would otherwise turn it on).
-UPDATE openmetadata_settings
-SET json = jsonb_set(json, '{enabled}', 'false'::jsonb)
-WHERE configtype = 'mcpConfiguration'
-  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
-
--- Retire the MCP apps (their Java classes and marketplace seeds are removed). Keep the bot users
--- so the MCP server keeps its principal.
-DELETE FROM entity_relationship er USING installed_apps ia
-  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM entity_relationship er USING apps_marketplace ia
-  WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');
-
 -- Post data migration script for Task workflow cutover - OpenMetadata 2.0.0 (moved from 2.0.1)
 
 -- RdfIndexApp: switch to weekly Saturday cron and full-rebuild every run.
@@ -246,3 +226,33 @@ SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration
 WHERE extension LIKE 'app.version.%'
   AND (jsonb_exists(json::jsonb, 'openMetadataServerConnection')
        OR jsonb_exists(json::jsonb, 'privateConfiguration'));
+
+-- Data Insights no longer runs a Data Quality workflow: testCaseResult and
+-- testCaseResolutionStatus are read straight from their live search indexes via the
+-- di-data-assets-* aliases, which search indexing now owns. moduleConfiguration is
+-- additionalProperties:false, so the retired dataQuality key must be stripped from every
+-- persisted config or DataInsightsApp fails to deserialize it on startup.
+UPDATE installed_apps
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');
+
+UPDATE apps_marketplace
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');
+
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');

@@ -1004,7 +1004,7 @@ test.describe(
         await testCaseTypeByColumn;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
         // Test case filter by test type table
@@ -1040,7 +1040,7 @@ test.describe(
         await testCaseStatusBySuccess;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
         // Test case filter by status
@@ -1062,7 +1062,7 @@ test.describe(
         await testCasePlatformByDBT;
 
         await expect(
-          page.locator('[data-testid="search-error-placeholder"]')
+          page.locator('[data-testid="empty-placeholder"]')
         ).toBeVisible();
 
         const getTestCaseWithoutPlatform = page.waitForResponse(

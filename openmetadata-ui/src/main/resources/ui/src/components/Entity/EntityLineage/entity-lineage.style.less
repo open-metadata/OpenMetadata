@@ -155,7 +155,7 @@
   height: calc(@asset-details-tab-pane-height - 20px);
 
   .lineage-container {
-    height: calc(100% - 69px);
+    height: calc(100% - 77px);
     overflow-y: auto;
   }
 
@@ -453,13 +453,17 @@
   &.edit-mode {
     left: @lineage-sidebar-width;
   }
+  left: 8px;
 }
 .react-flow__panel.right {
-  right: 24px;
+  right: 8px;
 }
 
 .react-flow__panel {
-  margin: 16px !important;
+  margin: 0 !important;
+  &.bottom {
+    bottom: 8px;
+  }
 }
 
 .react-flow__minimap {

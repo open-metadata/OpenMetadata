@@ -144,6 +144,28 @@ describe('useMetadataAgents', () => {
     expect(discovered?.status).toBe('running');
   });
 
+  it('drops a DISCOVERY event whose pipeline type is not a metadata agent type', () => {
+    const { result } = renderAgentsHook([buildPipeline('metadata_agent')]);
+
+    const appPipeline = {
+      ...buildPipeline('mysql_service_TierAutomation'),
+      pipelineType: PipelineType.Application,
+    } as IngestionPipeline;
+
+    act(() => {
+      capturedOnEvent(
+        buildEvent(
+          'testSnowflake.mysql_service_TierAutomation',
+          { ingestionPipeline: appPipeline },
+          { updateType: ProgressUpdateType.Discovery }
+        )
+      );
+    });
+
+    expect(result.current.agents).toHaveLength(1);
+    expect(result.current.discoveredCount).toBe(0);
+  });
+
   it('applies later progress frames to a discovered agent', () => {
     const { result } = renderAgentsHook([buildPipeline('metadata_agent')]);
 

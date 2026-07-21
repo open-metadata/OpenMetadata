@@ -1070,7 +1070,7 @@ const DomainDetails = ({
         </Box>
 
         <GenericProvider<Domain>
-          muiTags
+          newTagsUI
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}

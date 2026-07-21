@@ -80,13 +80,26 @@ class FlakyServer:
             if behavior == "hang":
                 time.sleep(_HANG_SECONDS)
                 return
-            body = json.dumps({"ok": True}).encode()
-            conn.sendall(
-                b"HTTP/1.1 200 OK\r\n"
-                b"Content-Type: application/json\r\n"
-                b"Content-Length: " + str(len(body)).encode() + b"\r\n"
-                b"Connection: close\r\n\r\n" + body
-            )
+            if behavior.isdigit():
+                # dbt-shaped error: "code" nested under "status", which the client
+                # cannot classify, so get() drops it to None.
+                self._send(conn, int(behavior), {"status": {"code": int(behavior)}})
+                return
+            self._send(conn, 200, {"ok": True})
+
+    @staticmethod
+    def _send(conn: socket.socket, status: int, payload: dict) -> None:
+        reason = {200: "OK", 401: "Unauthorized", 504: "Gateway Timeout"}.get(status, "Status")
+        body = json.dumps(payload).encode()
+        conn.sendall(
+            f"HTTP/1.1 {status} {reason}\r\n".encode()
+            + b"Content-Type: application/json\r\n"
+            + b"Content-Length: "
+            + str(len(body)).encode()
+            + b"\r\n"
+            + b"Connection: close\r\n\r\n"
+            + body
+        )
 
 
 def _rest(port: int) -> REST:
@@ -119,4 +132,18 @@ def test_connection_abort_is_retried_and_recovers():
 def test_connection_failure_exhausts_to_transport_error():
     with FlakyServer([], tail="close") as srv, pytest.raises(RestTransportError):
         _rest(srv.port).get("/anything")
+    assert srv.attempts >= 2
+
+
+def test_get_raw_surfaces_a_status_get_swallows():
+    with FlakyServer(["401"]) as srv:
+        assert _rest(srv.port).get("/x") is None
+    with FlakyServer(["401"]) as srv:
+        assert _rest(srv.port).get_raw("/x").status_code == 401
+
+
+def test_get_raw_still_retries_gateway_5xx():
+    with FlakyServer(["504", "ok"]) as srv:
+        resp = _rest(srv.port).get_raw("/x", retry_wait=0)
+    assert resp.status_code == 200
     assert srv.attempts >= 2

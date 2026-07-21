@@ -21,7 +21,16 @@ public class IndexMapping {
   String alias;
   List<String> parentAliases;
   List<String> childAliases;
+  List<String> dataInsightAliases;
   public static final String INDEX_NAME_SEPARATOR = "_";
+
+  /**
+   * Data Insights joins its index and alias names with '-', not INDEX_NAME_SEPARATOR. The chart
+   * aggregators query the wildcard {@code <clusterAlias>-di-data-assets-*}, so an alias prefixed
+   * with '_' would never be matched.
+   */
+  private static final String DATA_INSIGHT_NAME_SEPARATOR = "-";
+
   private static final String DATA_ASSET_ALIAS = "dataAsset";
 
   public String getIndexName(String clusterAlias) {
@@ -40,6 +49,13 @@ public class IndexMapping {
     return clusterAlias != null && !clusterAlias.isEmpty()
         ? parentAliases.stream().map(a -> clusterAlias + INDEX_NAME_SEPARATOR + a).toList()
         : parentAliases;
+  }
+
+  public List<String> getDataInsightAliases(String clusterAlias) {
+    List<String> aliases = dataInsightAliases == null ? List.of() : dataInsightAliases;
+    return clusterAlias != null && !clusterAlias.isEmpty()
+        ? aliases.stream().map(a -> clusterAlias + DATA_INSIGHT_NAME_SEPARATOR + a).toList()
+        : aliases;
   }
 
   public List<String> getChildAliases(String clusterAlias) {

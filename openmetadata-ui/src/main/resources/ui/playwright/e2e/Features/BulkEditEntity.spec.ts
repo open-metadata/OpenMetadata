@@ -840,6 +840,14 @@ test.describe('Bulk Edit Entity', () => {
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
 
+    // Wait for the nested term to be indexed before the bulk-edit reads the
+    // parent's term list, so the exported grid reflects the correct child set.
+    await waitForSearchIndexed(
+      apiContext,
+      nestedGlossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
+
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
@@ -854,13 +862,29 @@ test.describe('Bulk Edit Entity', () => {
       // Visit the glossary terms tab
       await page.click('[data-testid="terms"]');
 
-      // Click on bulk edit button for the glossary term
+      // Click on bulk edit button for the glossary term. Wait for the export
+      // scoped to THIS parent term's FQN so the grid can't be populated from a
+      // stale activeGlossary scope (which yields a wrong, larger term set and a
+      // flaky processed-row count).
+      const parentTermFqn = parentGlossaryTerm.responseData.fullyQualifiedName;
+      const bulkEditExportResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/glossaryTerms/name/') &&
+          response.url().includes(encodeURIComponent(parentTermFqn)) &&
+          response.url().includes('exportAsync')
+      );
       await page.click('[data-testid="bulk-edit-table"]');
+      await bulkEditExportResponse;
 
       await waitForAllLoadersToDisappear(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+      // The parent term has exactly one child; a larger count means the export
+      // ran against the wrong scope — fail fast here instead of a confusing
+      // processed-row mismatch later.
+      await expect(page.locator('.rdg-row')).toHaveCount(1);
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })

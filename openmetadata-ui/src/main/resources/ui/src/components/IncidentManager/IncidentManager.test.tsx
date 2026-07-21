@@ -16,7 +16,6 @@ import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
-import '../../test/unit/mocks/mui.mock';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
@@ -196,6 +195,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Box: ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title?: React.ReactNode;
+      description?: React.ReactNode;
+    }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    ),
     Dropdown: {
       Root: DropdownRoot,
       Popover: jest
