@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ContextRule } from '../../../../../generated/type/personaContextDefinition';
@@ -86,7 +86,11 @@ describe('ContextRuleEditor', () => {
       />
     );
 
-    expect(screen.getByTestId('context-rule-fully-rendered')).toBeChecked();
-    expect(screen.getByTestId('context-rule-fully-rendered')).toBeDisabled();
+    const fullyRendered = within(
+      screen.getByTestId('context-rule-fully-rendered')
+    ).getByRole('switch');
+
+    expect(fullyRendered).toBeChecked();
+    expect(fullyRendered).toBeDisabled();
   });
 });

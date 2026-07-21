@@ -1599,39 +1599,76 @@ public class TeamRepository extends EntityRepository<Team> {
    * Validate hierarchy to avoid circular references A -> B -> A.
    */
   private void validateHierarchy(Team team) {
-    if (listOrEmpty(team.getParents()).isEmpty()) {
-      return;
+    // Both directions of the PARENT_OF edge are validated - parent -> team from team.getParents()
+    // and team -> child from team.getChildren() - so a cycle cannot be introduced from either side
+    // through create, PUT, PATCH, bulk create, or CSV import (all run through prepare()).
+    for (EntityReference parent : listOrEmpty(team.getParents())) {
+      validateNoCircularReference(parent.getId(), parent.getName(), team.getId(), team.getName());
     }
+    validateChildEdges(team);
+  }
 
-    // Check if any parent causes a circular dependency
-    for (EntityReference parent : team.getParents()) {
-      // 1. Self-reference check
-      if (parent.getId().equals(team.getId())) {
-        throw new IllegalArgumentException(
-            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
-      }
-
-      // 2. Initial circular reference check (check if the proposed parent is already a child)
-      // Team --PARENT_OF--> Child. We want to find Children.
-      // Relationship: from:Team, to:Child.
-      // findTo(fromId=Team) gets the Children.
-      List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
-      for (EntityReference child : listOrEmpty(children)) {
-        if (child.getId().equals(parent.getId())) {
+  /**
+   * Reject any child that is already an ancestor of the team, which would close a loop. The team's
+   * ancestor names are collected once (not per child) by walking up from both its proposed
+   * (in-request) parents and its persisted parents. Seeding from the proposed parents also catches a
+   * cycle formed within a single create request - e.g. parents=[P], children=[C] where C is an
+   * ancestor of P - which the per-edge walks miss because the new team has no id yet. The team's own
+   * name is included to reject a team being its own child.
+   */
+  private void validateChildEdges(Team team) {
+    List<EntityReference> children = listOrEmpty(team.getChildren());
+    if (!children.isEmpty()) {
+      Set<String> ancestorNames = collectAncestorNames(team);
+      for (EntityReference child : children) {
+        if (ancestorNames.contains(child.getName())) {
           throw new IllegalArgumentException(
               String.format(
-                  "Circular reference detected: Team '%s' is already a child of '%s'.",
-                  parent.getName(), team.getName()));
+                  "Circular reference detected: Team '%s' cannot be a child of '%s' because it is already an ancestor in the hierarchy.",
+                  child.getName(), team.getName()));
         }
       }
-
-      // 3. Deep circular reference check by traversing up the parent chain of the NEW parent
-      Set<UUID> visited = new HashSet<>();
-      visited.add(team.getId());
-      visited.add(parent.getId());
-
-      checkCircularReference(parent.getId(), visited, team.getName());
     }
+  }
+
+  private Set<String> collectAncestorNames(Team team) {
+    Set<String> ancestorNames = new HashSet<>();
+    ancestorNames.add(team.getName());
+    Deque<EntityReference> stack = new ArrayDeque<>(listOrEmpty(team.getParents()));
+    if (team.getId() != null) {
+      stack.addAll(findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM));
+    }
+    Set<UUID> expanded = new HashSet<>();
+    while (!stack.isEmpty()) {
+      EntityReference current = stack.pop();
+      ancestorNames.add(current.getName());
+      if (current.getId() != null && expanded.add(current.getId())) {
+        stack.addAll(findFrom(current.getId(), TEAM, Relationship.PARENT_OF, TEAM));
+      }
+    }
+    return ancestorNames;
+  }
+
+  /**
+   * Validate that adding the {@code parent --PARENT_OF--> child} edge does not create a cycle. A
+   * cycle exists when the two teams are the same, or when the child is already an ancestor of the
+   * parent (found by walking up the parent chain from the parent).
+   */
+  private void validateNoCircularReference(
+      UUID parentId, String parentName, UUID childId, String childName) {
+    if (isSameTeam(parentId, parentName, childId, childName)) {
+      throw new IllegalArgumentException(
+          String.format("Invalid hierarchy: Team '%s' cannot be its own parent", childName));
+    }
+    Set<UUID> visited = new HashSet<>();
+    visited.add(parentId);
+    visited.add(childId);
+    checkCircularReference(parentId, visited, childName);
+  }
+
+  private boolean isSameTeam(UUID parentId, String parentName, UUID childId, String childName) {
+    return (parentId != null && parentId.equals(childId))
+        || (parentName != null && parentName.equals(childName));
   }
 
   private void checkCircularReference(

@@ -20,16 +20,24 @@ on:
     paths:
       - "openmetadata-service/**"
       - "openmetadata-integration-tests/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
+      - "openmetadata-spec/pom.xml"
+      - "openmetadata-spec/src/**"
       - "openmetadata-sdk/**"
+      - "openmetadata-shaded-deps/**"
+      - "openmetadata-k8s-operator/**"
+      - "openmetadata-mcp/**"
       - "common/**"
       - "pom.xml"
+      - "Makefile"
       - "bootstrap/**"
+      - ".github/scripts/classify_test_outcome.py"
+      - ".github/workflows/integration-tests-mysql-elasticsearch.yml"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
+  pull-requests: read
   checks: write
 
 concurrency:
@@ -42,40 +50,48 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    # pull_request_target uses the GitHub API and does not require a checkout. Pushes are
+    # already scoped by the trigger paths above; merge queue and manual runs exercise the
+    # full suite. Keep the trigger paths and filter list in sync.
     outputs:
-      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      backend: ${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.backend }}
     steps:
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'pull_request_target' }}
         with:
           filters: |
             backend:
               - 'openmetadata-service/**'
               - 'openmetadata-integration-tests/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - 'openmetadata-spec/pom.xml'
+              - 'openmetadata-spec/src/**'
               - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'openmetadata-mcp/**'
               - 'common/**'
               - 'pom.xml'
+              - 'Makefile'
               - 'bootstrap/**'
+              - '.github/scripts/classify_test_outcome.py'
+              - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
-  integration-tests-mysql-elasticsearch:
+      - name: Verify PR merge commit is available
+        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.backend == 'true' && github.event.pull_request.merge_commit_sha == '' }}
+        run: |
+          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
+          exit 1
+
+  integration-test-build:
+    name: Build Integration Test Runtime
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: true
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: true
-          docker-images: false
-          swap-storage: true
-
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -92,7 +108,7 @@ jobs:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
           pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
+          disable-reviews: true
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -100,7 +116,6 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Cache Maven dependencies
-        id: cache-output
         uses: actions/cache@v4
         with:
           path: ~/.m2
@@ -109,47 +124,317 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
-        if: steps.cache-output.outputs.exit-code == 0
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build and Bundle Integration Test Runtime
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+        run: |
+          project_version="$(mvn --quiet --non-recursive help:evaluate \
+            -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
+          if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            echo "Invalid Maven project version: $project_version"
+            exit 1
+          fi
+
+          project_repository="$HOME/.m2/repository/org/open-metadata"
+          if [[ -d "$project_repository" ]]; then
+            find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+              -name "$project_version" -prune -exec rm -rf -- {} +
+          fi
+
+          mvn -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
+            clean install -pl :openmetadata-integration-tests -am
+
+          staging="$RUNNER_TEMP/java-it-reactor-repository"
+          bundle="$RUNNER_TEMP/java-it-build"
+          mkdir -p "$staging/org/open-metadata" "$bundle"
+          version_directory_count=0
+          while IFS= read -r -d '' version_directory; do
+            artifact_id="$(basename "$(dirname "$version_directory")")"
+            mkdir -p "$staging/org/open-metadata/$artifact_id"
+            cp -a "$version_directory" "$staging/org/open-metadata/$artifact_id/"
+            version_directory_count=$((version_directory_count + 1))
+          done < <(find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+            -name "$project_version" -print0)
+
+          if (( version_directory_count == 0 )); then
+            echo "The Maven build did not install any reactor artifacts."
+            exit 1
+          fi
+
+          find "$staging" -type f -name '*-boot.jar' -delete
+          tar -C "$staging" -czf "$bundle/reactor-repository.tar.gz" org
+          (
+            cd "$bundle"
+            sha256sum reactor-repository.tar.gz > reactor-repository.sha256
+          )
+          printf '%s\n' "$project_version" > "$bundle/project-version.txt"
+          printf '%s\n' "$SOURCE_SHA" > "$bundle/source-sha.txt"
+          du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Integration Test Runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/java-it-build
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  integration-test-lanes:
+    name: Integration Test Lane (${{ matrix.lane.name }})
+    needs: [changes, integration-test-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - name: parallel
+          - name: global-state
+          - name: multi-node
+          - name: retry-queue
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      # The required build job verifies `safe to test` before this fan-out can run.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Install Ubuntu dependencies
-        if: steps.cache-output.outputs.exit-code == 0
         run: |
           sudo apt-get update
           sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          librdkafka-dev unixodbc-dev libevent-dev jq
+          libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Build for Integration Tests (MySQL + Elasticsearch)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests clean install -pl :openmetadata-integration-tests -am
+      - name: Download Integration Test Runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: java-it-build-mysql-elasticsearch-${{ github.run_id }}
+          path: ${{ runner.temp }}/java-it-build
 
-      - name: Free build artifacts
+      - name: Restore Integration Test Runtime
         run: |
-          rm -rf openmetadata-service/target/lib openmetadata-service/target/classes
-          rm -rf openmetadata-spec/target openmetadata-sdk/target common/target
-          rm -rf openmetadata-shaded-deps/*/target
-          df -h /
+          bundle="$RUNNER_TEMP/java-it-build"
+          (
+            cd "$bundle"
+            sha256sum --check reactor-repository.sha256
+          )
+
+          project_version="$(<"$bundle/project-version.txt")"
+          source_sha="$(<"$bundle/source-sha.txt")"
+          if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+            echo "Invalid Maven project version: $project_version"
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$source_sha" ]]; then
+            echo "The build artifact does not match the checked-out commit."
+            exit 1
+          fi
+
+          project_repository="$HOME/.m2/repository/org/open-metadata"
+          if [[ -d "$project_repository" ]]; then
+            find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+              -name "$project_version" -prune -exec rm -rf -- {} +
+          fi
+          mkdir -p "$HOME/.m2/repository"
+          tar -C "$HOME/.m2/repository" -xzf "$bundle/reactor-repository.tar.gz"
+
+          test -s "$project_repository/platform/$project_version/platform-$project_version.pom"
+          test -s "$project_repository/openmetadata-service/$project_version/openmetadata-service-$project_version.jar"
 
       - name: Run Integration Tests (MySQL + Elasticsearch)
+        id: integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch
+          IT_LANE: ${{ matrix.lane.name }}
+          IT_PARALLELISM: '4'
+          IT_MAX_POOL_SIZE: '16'
+        run: |
+          {
+            echo "### Java integration configuration"
+            echo "- Profile: mysql-elasticsearch"
+            echo "- Lane: ${IT_LANE}"
+            echo "- Parallel workers: ${IT_PARALLELISM}"
+            echo "- Compensation-thread ceiling: ${IT_MAX_POOL_SIZE}"
+            echo "- Runner processors: $(nproc)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
+          mkdir -p "$diagnostics"
+          maven_log="$diagnostics/maven.log"
+          set +e
+          timeout --signal=TERM --kill-after=60s 65m \
+            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch \
+              -DintegrationTests.lane="${IT_LANE}" \
+              -DintegrationTests.parallelStrategy=fixed \
+              -DintegrationTests.parallelism="${IT_PARALLELISM}" \
+              -DintegrationTests.maxPoolSize="${IT_MAX_POOL_SIZE}" \
+            2>&1 | tee "$maven_log"
+          pipeline_status=("${PIPESTATUS[@]}")
+          exit_code="${pipeline_status[0]}"
+          if (( exit_code == 0 && pipeline_status[1] != 0 )); then
+            exit_code="${pipeline_status[1]}"
+          fi
+          set -e
+
+          max_log_bytes=20971520
+          log_bytes="$(stat --format=%s "$maven_log")"
+          if (( log_bytes > max_log_bytes )); then
+            tail -c "$max_log_bytes" "$maven_log" > "${maven_log}.tail"
+            mv "${maven_log}.tail" "$maven_log"
+          fi
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Capture Integration Test Diagnostics
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.integration-tests.outcome }}
+        run: |
+          diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
+          mkdir -p "$diagnostics"
+          {
+            date -u
+            uname -a
+            java -version
+            echo "processors=$(nproc)"
+            df -h
+            free -h
+            docker system df
+            docker ps -a --no-trunc
+          } > "$diagnostics/environment.txt" 2>&1
+
+          capture_container_logs=false
+          if [ "$TEST_STEP_OUTCOME" != "success" ]; then
+            capture_container_logs=true
+          elif ! find openmetadata-integration-tests/target/failsafe-reports \
+            -name 'TEST-*.xml' -print -quit 2>/dev/null | grep -q .; then
+            capture_container_logs=true
+          fi
+
+          if [ "$capture_container_logs" = "true" ]; then
+            while IFS= read -r container; do
+              [[ -n "$container" ]] || continue
+              name=$(docker inspect --format '{{.Name}}' "$container" | tr -cd '[:alnum:]_.-')
+              docker logs --timestamps --since 30m --tail 10000 "$container" 2>&1 \
+                | tail -c 10485760 > "$diagnostics/docker-${name}.log" || true
+            done < <(docker ps -aq)
+          fi
+
+      - name: Classify Integration Test Outcome
+        if: ${{ always() }}
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.integration-tests.outcome }}
+          TEST_EXIT_CODE: ${{ steps.integration-tests.outputs.exit_code }}
+          TEST_PROFILE: mysql-elasticsearch
+          TEST_LANE: ${{ matrix.lane.name }}
+        run: |
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code "$TEST_EXIT_CODE" \
+            --report-glob 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/ci-diagnostics/**/*' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/failsafe-reports/*.dump*' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/failsafe-reports/*.txt' \
+            --output openmetadata-integration-tests/target/ci-diagnostics/outcome.json
+
+      - name: Upload Integration Test Diagnostics
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-it-mysql-elasticsearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            openmetadata-integration-tests/target/ci-diagnostics
+            openmetadata-integration-tests/target/failsafe-reports/*.dump*
+            openmetadata-integration-tests/target/failsafe-reports/*.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload Integration Test Reports
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-it-reports-mysql-elasticsearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Clean Up
+        if: ${{ always() }}
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
       - name: Publish Test Report
         if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
+        continue-on-error: true
+        uses: ScalableCapital/action-surefire-report@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
+          check_name: Integration Test Report (mysql-elasticsearch, ${{ matrix.lane.name }})
+          fail_on_test_failures: false
+          fail_if_no_tests: false
           report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+  integration-tests-mysql-elasticsearch:
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'integration-tests-mysql-elasticsearch (ignored label)' || 'integration-tests-mysql-elasticsearch' }}
+    needs: [changes, integration-test-build, integration-test-lanes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    steps:
+      - name: Verify Maven Integration Test Lanes
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          BUILD_RESULT: ${{ needs.integration-test-build.result }}
+          LANES_RESULT: ${{ needs.integration-test-lanes.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" == "success" && "$BACKEND_CHANGED" != "true" ]]; then
+            echo "No backend integration-test paths changed."
+            exit 0
+          fi
+
+          if [[ "$CHANGES_RESULT" != "success" || "$BUILD_RESULT" != "success" || "$LANES_RESULT" != "success" ]]; then
+            echo "Java integration jobs did not complete successfully: changes=${CHANGES_RESULT}, build=${BUILD_RESULT}, lanes=${LANES_RESULT}"
+            exit 1
+          fi

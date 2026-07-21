@@ -95,6 +95,31 @@ on:
         required: false
         type: string
         default: '8'
+      simpleReindexTables:
+        description: 'Table fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'Topic fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'Dashboard fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'Pipeline fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'Table fixtures for the search availability UI scenario'
+        required: false
+        type: string
+        default: '5000'
 
 permissions:
   contents: read
@@ -165,7 +190,9 @@ jobs:
           fi
           # OM basic-auth login expects a base64-encoded password (BasicAuthServletHandler).
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
@@ -200,17 +227,24 @@ jobs:
           OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
           OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
           PW_VIDEO: 'true'
+          SIMPLE_REINDEX_TABLES: ${{ github.event.inputs.simpleReindexTables || '5000' }}
+          SIMPLE_REINDEX_TOPICS: ${{ github.event.inputs.simpleReindexTopics || '1500' }}
+          SIMPLE_REINDEX_DASHBOARDS: ${{ github.event.inputs.simpleReindexDashboards || '1500' }}
+          SIMPLE_REINDEX_PIPELINES: ${{ github.event.inputs.simpleReindexPipelines || '2000' }}
+          SEARCH_AVAILABLE_TABLES: ${{ github.event.inputs.searchAvailableTables || '5000' }}
+          IT_TEST: ${{ github.event.inputs.itTest }}
         run: |
-          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
-            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
-            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
-            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
-            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
-          IT_TEST_PROP=""
-          if [ -n "${{ github.event.inputs.itTest }}" ]; then
-            IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
+          test_args=(
+            "-Djpw.simpleReindex.tables=${SIMPLE_REINDEX_TABLES}"
+            "-Djpw.simpleReindex.topics=${SIMPLE_REINDEX_TOPICS}"
+            "-Djpw.simpleReindex.dashboards=${SIMPLE_REINDEX_DASHBOARDS}"
+            "-Djpw.simpleReindex.pipelines=${SIMPLE_REINDEX_PIPELINES}"
+            "-Djpw.searchAvailable.tables=${SEARCH_AVAILABLE_TABLES}"
+          )
+          if [ -n "$IT_TEST" ]; then
+            test_args+=("-Dit.test=${IT_TEST}")
           fi
-          mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
+          mvn verify -P ui-it -pl :openmetadata-integration-tests "${test_args[@]}" \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
             -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
             -Dui.it.excludedGroups="sso-bootstrap,search-direct"
@@ -220,6 +254,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/playwright-traces
           if-no-files-found: ignore
           retention-days: 14
@@ -229,6 +264,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-videos-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/playwright-videos
           if-no-files-found: ignore
           retention-days: 14
@@ -238,6 +274,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-ui-it-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
@@ -324,7 +361,9 @@ jobs:
             exit 1
           fi
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
@@ -367,6 +406,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-search-it-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
@@ -392,8 +432,10 @@ jobs:
 
   scale-it-external:
     # Runs after search-it (shared instance, singleton reindex app). max-parallel: 1 so the matrix
-    # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
-    # cluster collide and the db/es counts would mix cohorts.
+    # entries seed + reindex one at a time — two concurrent reindexes on one cluster collide and the
+    # db/es counts would mix cohorts. Default cohort is 100k only; a 500k run took >5h and was
+    # cancelled every night without ever completing. Larger sizes can still be requested on demand
+    # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
     if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
@@ -402,7 +444,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
+        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000]') }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -457,7 +499,9 @@ jobs:
             exit 1
           fi
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
@@ -504,6 +548,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scale-metrics-${{ matrix.seed }}-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/benchmark
           if-no-files-found: ignore
           retention-days: 30
@@ -513,6 +558,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-scale-${{ matrix.seed }}-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14

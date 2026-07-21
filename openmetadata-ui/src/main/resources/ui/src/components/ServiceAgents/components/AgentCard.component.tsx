@@ -52,6 +52,7 @@ import StatusPill from './shared/StatusPill.component';
 
 interface AgentCardProps {
   agent: Agent;
+  allowedActions?: string[];
   permissions?: AgentActionPermissions;
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
@@ -61,6 +62,7 @@ interface AgentCardProps {
 
 const AgentCard: FC<AgentCardProps> = ({
   agent,
+  allowedActions,
   permissions = NO_AGENT_PERMISSIONS,
   onAction,
   onLogs,
@@ -291,6 +293,7 @@ const AgentCard: FC<AgentCardProps> = ({
             </Button>
           )}
           <AgentOverflowMenu
+            allowedActions={allowedActions}
             permissions={permissions}
             status={agent.status}
             onAction={(action) => onAction(action, agent)}

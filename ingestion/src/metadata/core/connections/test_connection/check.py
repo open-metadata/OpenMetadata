@@ -8,14 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Step identity, the ``@check`` decorator, and discovery.
-
-A connector exposes its checks as ``@check(StepName)``-decorated methods on a
-provider object. ``collect_checks`` walks the provider's class hierarchy and
-returns a ``{step name: bound method}`` map the runner resolves against the
-definition.
-"""
+"""Step identity, the ``@check`` decorator, and discovery."""
 
 from __future__ import annotations
 
@@ -37,12 +30,10 @@ class DuplicateCheckError(Exception):
 
 
 class CheckError(Exception):
-    """A check that failed but still carries the ``Evidence`` it had gathered.
+    """A failed check that still carries the ``Evidence`` it had gathered.
 
-    Raising this instead of the bare cause lets the runner record what the step
-    attempted (e.g. the executed command) on a *failed* result, while still
-    classifying and logging the real cause. The runner stays engine-agnostic: it
-    only reads the ``Evidence`` off this core type, never the cause's internals.
+    Lets a failed step report what it attempted, without the runner reading the
+    cause's internals.
     """
 
     def __init__(self, cause: BaseException, evidence: Evidence) -> None:
@@ -52,11 +43,8 @@ class CheckError(Exception):
 
 
 class StepName(str, Enum):
-    """Base for per-category step-identity enums (e.g. ``DatabaseStep``).
-
-    Subclassing ``str`` is what lets members join directly to the definition's
-    string step names; subclasses declare the members.
-    """
+    """Base for per-category step-identity enums; ``str`` so members join the
+    definition's step names directly."""
 
 
 # A bound check the runner calls; the connector implements the unbound form.
@@ -92,9 +80,8 @@ class ChecksProvider(Protocol):
 def collect_checks(provider: ChecksProvider) -> dict[str, CheckMethod]:
     """Return ``{step name: bound method}`` for every ``@check`` on the provider.
 
-    Walks the class MRO so inherited checks are found and a subclass's ``@check``
-    override wins over the base's, and reads only ``@check``-tagged methods - never
-    instance data, so a provider property with side effects is never triggered.
+    Walks the MRO (subclass overrides win) and reads only tagged methods, so a
+    provider property with side effects is never triggered.
     """
     collected: dict[str, CheckMethod] = {}
     seen: set[str] = set()

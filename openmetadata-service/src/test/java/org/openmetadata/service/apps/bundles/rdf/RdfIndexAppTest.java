@@ -39,6 +39,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -543,6 +544,41 @@ class RdfIndexAppTest {
         assertEquals(Set.of("table"), result);
       }
     }
+
+    @Test
+    @DisplayName("Should exclude every time-series entity when expanding all entities")
+    void testResolveEntityTypesExcludesTimeSeriesEntitiesFromAll() throws Exception {
+      Set<String> timeSeriesEntities =
+          Set.of(
+              Entity.TEST_CASE_RESULT,
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              Entity.QUERY_COST_RECORD,
+              Entity.ENTITY_REPORT_DATA,
+              Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
+              Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
+              Entity.RAW_COST_ANALYSIS_REPORT_DATA,
+              Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        EntityRepository<?> mockRepository = mock(EntityRepository.class);
+        Set<String> allEntities = new java.util.HashSet<>(timeSeriesEntities);
+        allEntities.add("table");
+        entityMock.when(Entity::getEntityList).thenReturn(allEntities);
+        entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepository);
+        for (String timeSeriesEntity : timeSeriesEntities) {
+          entityMock
+              .when(() -> Entity.getEntityRepository(timeSeriesEntity))
+              .thenThrow(new IllegalStateException("Time-series entity"));
+        }
+
+        var method = RdfIndexApp.class.getDeclaredMethod("resolveEntityTypes", Set.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Set<String> result = (Set<String>) method.invoke(rdfIndexApp, Set.of("all"));
+
+        assertEquals(Set.of("table"), result);
+      }
+    }
   }
 
   @Nested
@@ -1019,7 +1055,8 @@ class RdfIndexAppTest {
       // batchSources (Fix-I — RdfBatchProcessor now passes its batchSources
       // to scope the per-source DELETE inside JenaFusekiStorage).
       var captor = org.mockito.ArgumentCaptor.forClass(List.class);
-      verify(mockRdfRepository).bulkAddRelationships(captor.capture(), anySet());
+      verify(mockRdfRepository)
+          .bulkAddRelationships(captor.capture(), anySet(), eq(RdfWriteMode.RECONCILE));
 
       @SuppressWarnings("unchecked")
       List<org.openmetadata.schema.type.EntityRelationship> storedRelationships = captor.getValue();
@@ -1072,9 +1109,13 @@ class RdfIndexAppTest {
       method.setAccessible(true);
       method.invoke(rdfIndexApp, "table", mockEntities);
 
-      // Verify addLineageWithDetails was called (lineage with JSON should use special method)
-      verify(mockRdfRepository)
-          .addLineageWithDetails(eq("table"), eq(fromId), eq("table"), eq(toId), any());
+      @SuppressWarnings("unchecked")
+      org.mockito.ArgumentCaptor<List<RdfRepository.LineageEdgeData>> captor =
+          org.mockito.ArgumentCaptor.forClass(List.class);
+      verify(mockRdfRepository).bulkAddLineage(captor.capture(), eq(RdfWriteMode.RECONCILE));
+      assertEquals(1, captor.getValue().size());
+      assertEquals(fromId, captor.getValue().get(0).fromId());
+      assertEquals(toId, captor.getValue().get(0).toId());
     }
 
     @Test
@@ -1114,7 +1155,8 @@ class RdfIndexAppTest {
       // SPARQL update. The separate clearOutgoingEntityRelationships call
       // was retired when the clear was folded into bulkAddRelationships'
       // atomic transaction; verify the 2-arg overload instead.
-      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
+      verify(mockRdfRepository)
+          .bulkAddRelationships(eq(java.util.List.of()), anySet(), eq(RdfWriteMode.RECONCILE));
       verify(mockRdfRepository, never())
           .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }
@@ -1153,7 +1195,8 @@ class RdfIndexAppTest {
       // never reach the insert side; bulkAddRelationships is still invoked
       // with an empty list + batchSources so the atomic clear+insert reconciles
       // the source entity's existing RDF state.
-      verify(mockRdfRepository).bulkAddRelationships(eq(java.util.List.of()), anySet());
+      verify(mockRdfRepository)
+          .bulkAddRelationships(eq(java.util.List.of()), anySet(), eq(RdfWriteMode.RECONCILE));
       verify(mockRdfRepository, never())
           .addRelationship(any(org.openmetadata.schema.type.EntityRelationship.class));
     }

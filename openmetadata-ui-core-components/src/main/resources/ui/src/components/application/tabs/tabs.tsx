@@ -1,6 +1,7 @@
 import type { BadgeColors, Sizes } from '@/components/base/badges/badge-types';
 import { Badge } from '@/components/base/badges/badges';
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Fragment, createContext, useContext, useMemo } from 'react';
 import type {
@@ -69,7 +70,7 @@ const getTabStyles = ({
     isHovered && 'tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected &&
-      'tw:bg-primary_alt tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset'
+      `tw:bg-primary_alt tw:text-secondary tw:shadow-xs ${borderAfter} tw:after:outline-primary`
   ),
   underline: cx(
     'tw:rounded-none tw:border-b-2 tw:border-transparent tw:outline-focus-ring',
@@ -124,11 +125,11 @@ const getHorizontalStyles = ({
   'button-brand': 'tw:gap-1',
   'button-gray': 'tw:gap-1',
   'button-border': cx(
-    'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:ring-1 tw:ring-secondary tw:ring-inset',
+    'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
     size === 'md' && 'tw:rounded-xl tw:p-1.5'
   ),
   'button-minimal':
-    'tw:gap-0.5 tw:rounded-lg tw:bg-secondary_alt tw:ring-1 tw:ring-inset tw:ring-secondary',
+    'tw:gap-0.5 tw:rounded-lg tw:bg-secondary_alt tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
   underline: cx('tw:gap-3', fullWidth && 'tw:w-full tw:gap-4'),
   line: 'tw:gap-2',
 });
@@ -203,7 +204,9 @@ export const Tab = (props: TabComponentProps) => {
       {...otherProps}
       className={(prop) =>
         cx(
-          'tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
+          // `tw:relative` anchors the button-minimal selected ::after border — the tab's
+          // own outline is reserved for the focus ring.
+          'tw:relative tw:z-10 tw:flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:gap-2 tw:rounded-md tw:whitespace-nowrap tw:text-quaternary tw:transition tw:duration-100 tw:ease-linear',
           'group-orientation-vertical:tw:justify-start',
           fullWidth && 'tw:w-full tw:flex-1',
           sizes[size][type],
@@ -216,7 +219,7 @@ export const Tab = (props: TabComponentProps) => {
       {(state) => (
         <Fragment>
           {typeof children === 'function' ? children(state) : children || label}
-          {badge && (
+          {(badge || badge === 0) && (
             <Badge
               className={cx(
                 'tw:hidden tw:transition-inherit-all tw:md:flex',

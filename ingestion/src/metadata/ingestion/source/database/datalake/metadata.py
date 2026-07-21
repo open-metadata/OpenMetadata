@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -52,7 +52,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.storage.storage_service import (
@@ -71,6 +74,10 @@ from metadata.utils.datalake.datalake_utils import (
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
 logger = ingestion_logger()
 
 OBJECT_FILTERED_OUT_MESSAGE = "Object Filtered Out"
@@ -88,12 +95,13 @@ class DatalakeSource(DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
-        self.connection_obj = self.client
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
@@ -350,6 +358,3 @@ class DatalakeSource(DatabaseServiceSource):
             )
             return True
         return False
-
-    def close(self):
-        self.client.close(self.service_connection)

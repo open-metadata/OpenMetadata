@@ -82,7 +82,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
           <button
             className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
-                ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
+                ? 'tw:border-utility-brand-600 tw:bg-primary tw:outline-4 tw:outline-utility-brand-600/10'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
             data-testid="run-history-item"
@@ -118,6 +118,9 @@ interface RunHistoryDrawerProps {
   agent: Agent;
   open: boolean;
   initialRunId?: string;
+  // Must be a stable reference (memoize with `useCallback`) — it feeds
+  // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
+  fetchRuns?: () => Promise<AgentRun[]>;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
@@ -127,12 +130,13 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
   open,
   initialRunId,
+  fetchRuns,
   onClose,
   onOpenLogs,
   onRun,
 }) => {
   const { t } = useTranslation();
-  const { runs, isLoading } = useAgentRuns(agent.fqn, true);
+  const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
 

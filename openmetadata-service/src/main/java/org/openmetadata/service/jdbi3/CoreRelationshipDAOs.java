@@ -39,6 +39,7 @@ import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -101,6 +102,29 @@ public interface CoreRelationshipDAOs {
         @Bind("extension") List<String> extension,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") List<String> json);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, JSON_OBJECT('revision', 1)) "
+                + "ON DUPLICATE KEY UPDATE jsonSchema = VALUES(jsonSchema), "
+                + "json = JSON_SET(entity_extension.json, '$.revision', "
+                + "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(entity_extension.json, '$.revision')) AS UNSIGNED), 0) + 1)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, jsonb_build_object('revision', 1)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, "
+                + "json = jsonb_build_object('revision', "
+                + "COALESCE((entity_extension.json ->> 'revision')::bigint, 0) + 1)",
+        connectionType = POSTGRES)
+    @BatchChunkSize(100)
+    void incrementRevisions(
+        @BindUUID("id") List<UUID> ids,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema);
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);

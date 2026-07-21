@@ -674,18 +674,6 @@ public class UserRepository extends EntityRepository<User> {
     return systemDefault != null ? systemDefault.getEntityReference() : null;
   }
 
-  public boolean hasPersona(User user, UUID personaId) {
-    EntityReference defaultPersona = getDefaultPersona(user);
-    if (defaultPersona != null && personaId.equals(defaultPersona.getId())) {
-      return true;
-    }
-    boolean directlyAssigned =
-        getPersonas(user).stream().anyMatch(persona -> personaId.equals(persona.getId()));
-    return directlyAssigned
-        || getInheritedPersonas(user).stream()
-            .anyMatch(persona -> personaId.equals(persona.getId()));
-  }
-
   private List<EntityReference> getInheritedPersonas(User user) {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return Collections.emptyList();
@@ -1587,6 +1575,10 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
       compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      compareAndUpdateAny(
+          () -> SubjectCache.invalidateUserContext(updated.getName()),
+          "personas",
+          "defaultPersona");
     }
 
     private void updateAllowImpersonation() {

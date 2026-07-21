@@ -15,13 +15,14 @@ import {
   Box,
   Button,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, DotsVertical } from '@untitledui/icons';
+import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
@@ -31,7 +32,6 @@ import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { TEST_CASE_STATUS_LABELS } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -53,14 +53,12 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
-import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -128,6 +126,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeTableBorder = false,
   enableBulkActions = false,
   editVariant = getDefaultTestCaseFormVariant(),
+  hasActiveFilters = false,
+  emptyStateAction,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -795,7 +795,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
-          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary':
             isUndefined(tableHeader) && !removeTableBorder,
         })}>
         <Table
@@ -846,24 +846,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   ))}
                 </div>
               ) : (
-                <FilterTablePlaceHolder
-                  placeholderText={
-                    <Transi18next
-                      i18nKey="message.no-data-quality-test-case"
-                      renderElement={
-                        <a
-                          href={DATA_QUALITY_PROFILER_DOCS}
-                          rel="noreferrer"
-                          target="_blank"
-                          title="Data Quality Profiler Documentation"
-                        />
-                      }
-                      values={{
-                        explore: t('message.explore-our-guide-here'),
-                      }}
-                    />
-                  }
-                />
+                <Box className="tw:relative tw:min-h-80 tw:w-full">
+                  <EmptyPlaceholder
+                    actions={
+                      !hasActiveFilters && emptyStateAction
+                        ? [emptyStateAction]
+                        : undefined
+                    }
+                    description={t(
+                      hasActiveFilters
+                        ? 'message.no-matching-test-cases-description'
+                        : 'message.no-test-cases-yet-description'
+                    )}
+                    icon={<File02 className="tw:text-fg-brand-primary" />}
+                    title={t(
+                      hasActiveFilters
+                        ? 'message.no-matching-test-cases'
+                        : 'message.no-test-cases-yet'
+                    )}
+                    variant="blank"
+                  />
+                </Box>
               )
             }>
             {(record) => renderRow(record)}

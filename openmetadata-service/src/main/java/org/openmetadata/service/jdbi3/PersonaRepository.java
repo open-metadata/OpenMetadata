@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +40,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
 import org.openmetadata.service.resources.teams.PersonaResource;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -289,6 +291,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
+  protected void postCreate(Persona persona) {
+    super.postCreate(persona);
+    if (Boolean.TRUE.equals(persona.getDefault())) {
+      SubjectCache.invalidateAllUserContexts();
+    } else {
+      invalidateUserContexts(persona.getUsers(), List.of());
+    }
+  }
+
+  @Override
   @Transaction
   protected void preDelete(Persona persona, String deletedBy) {
     // Remove all user-persona relationships (APPLIED_TO)
@@ -322,6 +334,11 @@ public class PersonaRepository extends EntityRepository<Persona> {
       EntityRepository.invalidateCacheForEntity(
           Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
+    if (Boolean.TRUE.equals(persona.getDefault()) || !teams.isEmpty()) {
+      SubjectCache.invalidateAllUserContexts();
+    } else {
+      invalidateUserContexts(users, defaultUsers);
+    }
   }
 
   @Override
@@ -334,6 +351,22 @@ public class PersonaRepository extends EntityRepository<Persona> {
   protected void postDelete(Persona persona, boolean hardDelete) {
     PersonaContextCache.getInstance().invalidate(persona);
     super.postDelete(persona, hardDelete);
+  }
+
+  private boolean userAssignmentsMatch(
+      List<EntityReference> originalUsers, List<EntityReference> updatedUsers) {
+    Set<UUID> originalUserIds = new HashSet<>();
+    Set<UUID> updatedUserIds = new HashSet<>();
+    listOrEmpty(originalUsers).forEach(user -> originalUserIds.add(user.getId()));
+    listOrEmpty(updatedUsers).forEach(user -> updatedUserIds.add(user.getId()));
+    return originalUserIds.equals(updatedUserIds);
+  }
+
+  private void invalidateUserContexts(
+      List<EntityReference> originalUsers, List<EntityReference> updatedUsers) {
+    List<EntityReference> affectedUsers = new ArrayList<>(listOrEmpty(originalUsers));
+    affectedUsers.addAll(listOrEmpty(updatedUsers));
+    SubjectCache.invalidateUserContexts(affectedUsers);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -360,6 +393,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     private void updateUsers(Persona origPersona, Persona updatedPersona) {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());
+      boolean assignmentsChanged = !userAssignmentsMatch(origUsers, updatedUsers);
       updateToRelationships(
           "users",
           PERSONA,
@@ -369,6 +403,9 @@ public class PersonaRepository extends EntityRepository<Persona> {
           origUsers,
           updatedUsers,
           false);
+      if (assignmentsChanged) {
+        deferReactOperation(() -> invalidateUserContexts(origUsers, updatedUsers));
+      }
     }
 
     private void updateDefault(Persona origPersona, Persona updatedPersona) {
@@ -376,6 +413,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
       Boolean updatedDefault = updatedPersona.getDefault();
       if (!Objects.equals(origDefault, updatedDefault)) {
         recordChange("default", origDefault, updatedDefault);
+        deferReactOperation(SubjectCache::invalidateAllUserContexts);
       }
     }
   }

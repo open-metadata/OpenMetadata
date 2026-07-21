@@ -54,11 +54,19 @@ const HeaderShell = ({
   className,
   'data-testid': dataTestId = 'header-shell',
 }: HeaderShellProps) => {
+  // When the header renders a footer (the tab strip), the tabs sit flush at the
+  // bottom edge of the card — drop the card's bottom padding but keep the top.
+  const paddingClass = footer
+    ? padding === 'comfortable'
+      ? 'tw:pt-4 tw:pb-0'
+      : 'tw:pt-3 tw:pb-0'
+    : PADDING_CLASS[padding];
+
   return (
     <Card
       className={classNames(
-        'tw:mb-5 tw:px-5',
-        PADDING_CLASS[padding],
+        'tw:px-5',
+        paddingClass,
         // Fixed light-blue header treatment per Figma — intentionally NOT the
         // dynamic brand-* tokens (those follow the deployment's primary color and
         // would tint this header pink on Collate). The gradient stops and the

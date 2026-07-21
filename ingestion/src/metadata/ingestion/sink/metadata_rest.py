@@ -14,6 +14,7 @@ It picks up the generated Entities and send them
 to the OM API.
 """
 
+import json
 import traceback
 from functools import singledispatchmethod
 from typing import Any, Optional, TypeVar, Union
@@ -33,6 +34,7 @@ from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
@@ -61,8 +63,13 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
 )
-from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataModel,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
 )
@@ -79,7 +86,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.models.barrier import Barrier
@@ -255,6 +261,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestDefinitionRequest,
                     CreateMcpServerRequest,
                     CreateGlossaryRequest,
+                    CreateMetricRequest,
                 ),
             )
         ):
@@ -545,15 +552,25 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=tag)
 
     @_run_dispatch.register
-    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
-        created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[str]:
+        # return_lineage=False: we only need a status identifier below, so skip the expensive
+        # per-edge full-graph GET that otherwise dominates lineage-heavy ingestions.
+        created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True, return_lineage=False)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
 
-        return Either(right=created_lineage["entity"]["fullyQualifiedName"])
+        # Producers that build id-only references carry no FQN. Fall back to a "{type}:{uuid}"
+        # label (e.g. "table:d311bdf2-..."):
+        # a None right would silently drop the edge from scanned status (ReturnStep.run) and
+        # stop write_override_lineage from patching the lineage-processed flag.
+        from_reference = add_lineage.edge.fromEntity
+        source_label = (
+            created_lineage["entity"]["fullyQualifiedName"] or f"{from_reference.type}:{model_str(from_reference.id)}"
+        )
+        return Either(right=source_label)  # pyright: ignore[reportCallIssue]
 
     @_run_dispatch.register
-    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[dict[str, Any]]:
+    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[str]:
         created_lineage = self.metadata.add_lineage_by_name(
             from_entity_fqn=add_lineage.from_entity_fqn,
             from_entity_type=add_lineage.from_entity_type,
@@ -561,6 +578,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             to_entity_type=add_lineage.to_entity_type,
             lineage_details=add_lineage.lineage_details,
             check_patch=True,
+            return_lineage=False,
         )
         if not created_lineage or created_lineage.get("error"):
             error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
@@ -592,7 +610,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
 
     @_run_dispatch.register
-    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
+    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[str]:
         """
         Writes the override lineage for the given lineage request.
 
@@ -600,7 +618,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             add_lineage (OMetaLineageRequest): The lineage request containing the override lineage information.
 
         Returns:
-            Either[Dict[str, Any]]: The result of the dispatch operation.
+            Either[str]: The dispatched write_lineage / write_fqn_lineage result, carrying the
+            source status identifier (FQN or "{type}:{uuid}" fallback) on success.
         """
         if add_lineage.override_lineage is True and (
             add_lineage.lineage_request.lineage_details
@@ -997,6 +1016,37 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         container_data = self.metadata.ingest_container_sample_data(container=entity, sample_data=sample_data)
         if container_data:
             logger.debug(f"Successfully ingested sample data for {entity.fullyQualifiedName.root}")
+            return True
+        return False
+
+    @staticmethod
+    def _unflatten_dotted_row(columns: list[ColumnName], row: list) -> dict:
+        """
+        Rebuild the original (possibly nested) message structure from the sampler's
+        dotted-path column names so nested RECORD topics keep their real shape.
+        """
+        message = {}
+        for idx, col in enumerate(columns):
+            parts = col.root.split(".")
+            cursor = message
+            for part in parts[:-1]:
+                cursor = cursor.setdefault(part, {})
+            cursor[parts[-1]] = row[idx]
+        return message
+
+    @_ingest_entity_sample_data.register
+    def _(self, entity: Topic, sample_data: TableData) -> bool:
+        """Topic-specific sample data ingestion implementation"""
+        messages = []
+        if sample_data.rows and sample_data.columns:
+            for row in sample_data.rows:
+                row_dict = self._unflatten_dotted_row(sample_data.columns, row)
+                messages.append(json.dumps(row_dict))
+        topic_sample_data = TopicSampleData(messages=messages)
+        result = self.metadata.ingest_topic_sample_data(topic=entity, sample_data=topic_sample_data)
+        if result:
+            fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else str(entity)
+            logger.debug(f"Successfully ingested sample data for {fqn}")
             return True
         return False
 

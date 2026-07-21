@@ -307,7 +307,7 @@ class TestSortAndLimitSyncs:
 def fivetran_source():
     with (
         patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
-        patch("metadata.ingestion.source.pipeline.fivetran.connection.get_connection") as mock_client,
+        patch("metadata.ingestion.source.pipeline.fivetran.connection.FivetranConnection._get_client") as mock_client,
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_FIVETRAN_CONFIG)
         source = FivetranSource.create(

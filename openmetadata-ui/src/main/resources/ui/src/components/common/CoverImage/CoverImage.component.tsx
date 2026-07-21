@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, useTheme } from '@mui/material';
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 
 interface CoverImageProps {
@@ -19,8 +18,6 @@ interface CoverImageProps {
 }
 
 export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
-  const theme = useTheme();
-  // Get authenticated image hook from ImageClassBase (paid version override)
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 
   // Always call unconditionally to avoid React Hook Rules violation
@@ -35,45 +32,31 @@ export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
       imageSrc.startsWith('blob:'));
 
   return (
-    <Box
-      data-testid="cover-image-container"
-      sx={{
-        height: '131px',
-        borderRadius: 1.5,
-        margin: '-1px -1px -1px 0',
-        overflow: 'hidden',
-        position: 'relative',
-      }}>
+    <div
+      className="tw:h-[131px] tw:rounded-xl tw:-mt-px tw:-mr-px tw:-mb-px tw:ml-0 tw:overflow-hidden tw:relative"
+      data-testid="cover-image-container">
       {showImage ? (
-        <Box
+        <img
           alt="Cover"
-          component="img"
+          className="tw:w-full tw:h-auto tw:min-h-[131px] tw:object-cover tw:object-[center_top] tw:block"
           data-testid="cover-image"
           src={imageSrc}
-          sx={{
-            width: '100%',
-            height: 'auto',
-            minHeight: 131,
-            objectFit: 'cover',
-            objectPosition: 'center top',
-            transform: position?.y ? `translateY(${position.y})` : 'none',
-            display: 'block',
-          }}
+          style={
+            position?.y ? { transform: `translateY(${position.y})` } : undefined
+          }
         />
       ) : (
-        <Box
+        <div
+          className={
+            isLoading
+              ? 'tw:w-full tw:h-full tw:bg-tertiary'
+              : 'tw:w-full tw:h-full tw:bg-[linear-gradient(271.49deg,#00D2FF_-11.47%,#03A0FF_59.48%,#016AFB_115.84%)]'
+          }
           data-testid={
             isLoading ? 'cover-image-loading' : 'cover-image-placeholder'
           }
-          sx={{
-            width: '100%',
-            height: '100%',
-            background: isLoading
-              ? theme.palette.grey[100]
-              : 'linear-gradient(271.49deg, #00D2FF -11.47%, #03A0FF 59.48%, #016AFB 115.84%)',
-          }}
         />
       )}
-    </Box>
+    </div>
   );
 };

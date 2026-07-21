@@ -68,7 +68,7 @@ mock_databricks_config = {
         "serviceConnection": {
             "config": {
                 "type": "DatabricksPipeline",
-                "token": "random_token",
+                "authType": {"token": "random_token"},
                 "hostPort": "localhost:443",
                 "connectionTimeout": 120,
                 "connectionArguments": {

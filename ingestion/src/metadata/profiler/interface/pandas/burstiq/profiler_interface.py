@@ -112,12 +112,13 @@ class BurstIQProfilerInterface(PandasProfilerInterface):
                         if col_name in df.columns:
                             df[col_name] = _pd.to_numeric(df[col_name], errors="coerce")
                     if other_cast_map:
-                        filtered = {c: other_cast_map[c] for c in df.keys() if c in other_cast_map}  # noqa: SIM118
-                        if filtered:
-                            try:
-                                df = df.astype(filtered)  # noqa: PLW2901
-                            except (TypeError, ValueError) as err:
-                                logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
+                        for col_name, dtype in other_cast_map.items():
+                            if col_name in df.columns:
+                                try:
+                                    mask = df[col_name].notna()
+                                    df.loc[mask, col_name] = df.loc[mask, col_name].astype(dtype)
+                                except (TypeError, ValueError) as err:
+                                    logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 except Exception as err:  # pylint: disable=broad-except
                     logger.warning(f"Error casting BurstIQ dataframe columns: {err}")
                     logger.debug(_tb.format_exc())

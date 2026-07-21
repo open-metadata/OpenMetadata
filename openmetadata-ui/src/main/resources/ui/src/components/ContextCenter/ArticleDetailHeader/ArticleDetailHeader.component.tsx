@@ -261,7 +261,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="success"
             size="lg"
             type="color">
@@ -278,7 +278,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="gray"
             size="lg"
             type="color">
@@ -295,7 +295,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   if (!knowledgePage && !tabs) {
@@ -320,7 +320,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <Box align="center" className="tw:text-sm" gap={3} wrap="wrap">
+    <Box align="center" className="tw:text-sm tw:mt-2" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">
@@ -425,7 +425,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <Tooltip title={t('label.editor')}>
               <TooltipTrigger className="tw:leading-0">
                 <EditorIcon
-                  className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                  className="tw:shrink-0 tw:text-quaternary"
                   height={16}
                   width={16}
                 />
@@ -632,8 +632,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:flex-col" data-testid="article-detail-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
+    <div
+      className="tw:flex tw:flex-col tw:mb-5"
+      data-testid="article-detail-header">
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <HeaderShell
         actions={actionsEl}
         badge={entityStatusBadge}

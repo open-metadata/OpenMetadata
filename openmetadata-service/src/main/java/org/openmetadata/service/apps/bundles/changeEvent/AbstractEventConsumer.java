@@ -42,6 +42,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
@@ -58,12 +59,18 @@ public abstract class AbstractEventConsumer
     implements Alert<ChangeEvent>, Consumer<ChangeEvent>, Job {
   public static final String DESTINATION_MAP_KEY = "SubscriptionMapKey";
   public static final String ALERT_OFFSET_KEY = "alertOffsetKey";
+  public static final String ALERT_PENDING_GAP_SINCE_KEY = "alertPendingGapSinceKey";
   public static final String ALERT_INFO_KEY = "alertInfoKey";
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+  static final long GAP_RESOLVE_TIMEOUT_MS = 30_000;
   protected final DIContainer dependencies;
   private long offset = -1;
+  // Highest change_event.offset that is safe to commit after the last poll.
+  private long lastReadOffset = -1;
+  private long pendingGapSince;
+  private boolean gapStateChanged;
   private long startingOffset = -1;
 
   private AlertMetrics alertMetrics;
@@ -110,6 +117,9 @@ public abstract class AbstractEventConsumer
       EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
       this.offset = eventSubscriptionOffset.getCurrentOffset();
       this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.lastReadOffset = this.offset;
+      this.pendingGapSince = loadPendingGapSince();
+      this.gapStateChanged = false;
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
 
@@ -192,6 +202,24 @@ public abstract class AbstractEventConsumer
 
     LOG.warn("No offset found for subscription {}, using default", eventSubscription.getId());
     return getStartingOffset(eventSubscription.getId());
+  }
+
+  private long loadPendingGapSince() {
+    Object value = jobDetail.getJobDataMap().get(ALERT_PENDING_GAP_SINCE_KEY);
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    if (value instanceof String stringValue && !stringValue.isBlank()) {
+      try {
+        return Long.parseLong(stringValue);
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Invalid pending gap timestamp '{}' for event subscription {}",
+            stringValue,
+            eventSubscription.getId());
+      }
+    }
+    return 0L;
   }
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
@@ -338,6 +366,8 @@ public abstract class AbstractEventConsumer
         .getJobDataMap()
         .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
 
+    persistPendingGapState(jobExecutionContext);
+
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
@@ -379,20 +409,84 @@ public abstract class AbstractEventConsumer
 
   @Override
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
-    List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
+    var records =
+        Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
+    CursorPlan cursorPlan =
+        planCursor(offset, pendingGapSince, records, System.currentTimeMillis());
+    gapStateChanged = cursorPlan.pendingGapSince() != pendingGapSince;
+    pendingGapSince = cursorPlan.pendingGapSince();
+    lastReadOffset = cursorPlan.offset();
+
+    if (cursorPlan.skippedGap()) {
+      LOG.warn(
+          "Event subscription {} skipping unfilled change_event gap [{} .. {}] after {}ms",
+          eventSubscription.getId(),
+          offset + 1,
+          cursorPlan.offset(),
+          GAP_RESOLVE_TIMEOUT_MS);
+    }
+
     List<ChangeEvent> changeEvents = new ArrayList<>();
     List<EntityError> errorEvents = new ArrayList<>();
-    for (String json : eventJson) {
+    for (int index = 0; index < cursorPlan.recordCount(); index++) {
+      var eventRecord = records.get(index);
       try {
-        ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
+        ChangeEvent event = JsonUtils.readValue(eventRecord.json(), ChangeEvent.class);
+        if (event == null) {
+          // JsonUtils.readValue returns null (it does not throw) on a null/blank json column, which
+          // would add a null ChangeEvent to the delivered batch and NPE downstream. Route it to
+          // errorEvents like any other unparseable row instead of silently delivering null.
+          throw new IllegalStateException(
+              "Null or blank change_event.json at offset " + eventRecord.offset());
+        }
         changeEvents.add(event);
       } catch (Exception ex) {
-        errorEvents.add(new EntityError().withMessage(ex.getMessage()).withEntity(json));
-        LOG.error("Error in Parsing Change Event : {} , Message: {} ", json, ex.getMessage(), ex);
+        errorEvents.add(
+            new EntityError().withMessage(ex.getMessage()).withEntity(eventRecord.json()));
+        LOG.error(
+            "Error in Parsing Change Event : {} , Message: {} ",
+            eventRecord.json(),
+            ex.getMessage(),
+            ex);
       }
     }
-    return new ResultList<>(changeEvents, errorEvents, null, null, eventJson.size());
+    return new ResultList<>(changeEvents, errorEvents, null, null, cursorPlan.recordCount());
   }
+
+  /**
+   * Advances only across a contiguous prefix of committed offsets. AUTO_INCREMENT values become
+   * visible at commit, so a concurrent transaction can temporarily hide a lower offset while a
+   * higher offset is already readable. Waiting at that gap prevents permanent event loss. A gap
+   * that remains unfilled is eventually treated as a rolled-back insert so consumers cannot stall
+   * forever.
+   */
+  static CursorPlan planCursor(
+      long currentOffset, long pendingGapSince, List<ChangeEventRecord> records, long now) {
+    if (records.isEmpty()) {
+      return new CursorPlan(currentOffset, 0L, 0, false);
+    }
+
+    int contiguousCount = 0;
+    long expectedOffset = currentOffset + 1;
+    while (contiguousCount < records.size()
+        && records.get(contiguousCount).offset() == expectedOffset) {
+      contiguousCount++;
+      expectedOffset++;
+    }
+
+    if (contiguousCount > 0) {
+      return new CursorPlan(currentOffset + contiguousCount, 0L, contiguousCount, false);
+    }
+    if (pendingGapSince == 0L) {
+      return new CursorPlan(currentOffset, now, 0, false);
+    }
+    if (now - pendingGapSince >= GAP_RESOLVE_TIMEOUT_MS) {
+      return new CursorPlan(records.getFirst().offset() - 1, 0L, 0, true);
+    }
+    return new CursorPlan(currentOffset, pendingGapSince, 0, false);
+  }
+
+  record CursorPlan(long offset, long pendingGapSince, int recordCount, boolean skippedGap) {}
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
@@ -420,11 +514,20 @@ public abstract class AbstractEventConsumer
           e);
 
     } finally {
-      if (!eventsWithReceivers.isEmpty()) {
-        offset += batchSize;
+      if (lastReadOffset > offset) {
+        offset = lastReadOffset;
         commit(jobExecutionContext);
+      } else if (gapStateChanged) {
+        persistPendingGapState(jobExecutionContext);
       }
     }
+  }
+
+  private void persistPendingGapState(JobExecutionContext jobExecutionContext) {
+    jobExecutionContext
+        .getJobDetail()
+        .getJobDataMap()
+        .put(ALERT_PENDING_GAP_SINCE_KEY, Long.toString(pendingGapSince));
   }
 
   public EventSubscription getEventSubscription() {

@@ -15,7 +15,7 @@ import { Toggle } from '@openmetadata/ui-core-components';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
@@ -55,6 +55,7 @@ const SearchPreview = ({
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
   const [showRankingDetails, setShowRankingDetails] = useState(false);
+  const latestRequestId = useRef(0);
   const {
     currentPage,
     pageSize,
@@ -77,6 +78,8 @@ const SearchPreview = ({
       searchTerm = searchValue,
     }: { page?: number; searchTerm?: string } = {}) => {
       if (searchConfig && Object.keys(searchConfig).length > 0) {
+        const requestId = latestRequestId.current + 1;
+        latestRequestId.current = requestId;
         try {
           setIsLoading(true);
           const res = await searchPreview({
@@ -89,15 +92,25 @@ const SearchPreview = ({
             searchSettings: searchConfig,
           });
 
+          // Ignore responses from superseded requests so a slow, stale response
+          // can never overwrite the latest preview.
+          if (requestId !== latestRequestId.current) {
+            return;
+          }
+
           const hits = res.hits.hits as unknown as SearchedDataProps['data'];
           const totalCount = res?.hits?.total.value ?? 0;
 
           handlePagingChange({ total: totalCount });
           setData(hits);
         } catch (error) {
-          showErrorToast(error as AxiosError);
+          if (requestId === latestRequestId.current) {
+            showErrorToast(error as AxiosError);
+          }
         } finally {
-          setIsLoading(false);
+          if (requestId === latestRequestId.current) {
+            setIsLoading(false);
+          }
         }
       }
     },
@@ -194,7 +207,7 @@ const SearchPreview = ({
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm">
+      <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
         <Col>
           <Typography.Text
             className="header-title"
@@ -202,17 +215,18 @@ const SearchPreview = ({
             {t('label.preview')}
           </Typography.Text>
         </Col>
-        <Col>
-          <Typography.Text className="m-r-xs">
-            {t('label.ranking-detail-plural')}
-          </Typography.Text>
-          <Toggle
-            aria-label={t('label.ranking-detail-plural')}
-            className="m-r-md"
-            data-testid="ranking-details-switch"
-            isSelected={showRankingDetails}
-            onChange={setShowRankingDetails}
-          />
+        <Col className="search-preview-actions">
+          <span className="ranking-details-control">
+            <Typography.Text>
+              {t('label.ranking-detail-plural')}
+            </Typography.Text>
+            <Toggle
+              aria-label={t('label.ranking-detail-plural')}
+              data-testid="ranking-details-switch"
+              isSelected={showRankingDetails}
+              onChange={setShowRankingDetails}
+            />
+          </span>
           <Button
             className="restore-defaults-btn font-semibold"
             data-testid="restore-defaults-btn"
@@ -220,7 +234,7 @@ const SearchPreview = ({
             {t('label.restore-default-plural')}
           </Button>
           <Button
-            className="save-btn font-semibold m-l-md"
+            className="save-btn font-semibold"
             data-testid="save-btn"
             disabled={disabledSave}
             loading={isSaving}

@@ -46,12 +46,10 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -158,6 +156,47 @@ public interface SystemTokenDAOs {
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
 
+    @SqlQuery("SELECT json FROM openmetadata_settings WHERE configType = :configType")
+    String getConfigJsonWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM openmetadata_settings "
+            + "WHERE configType = 'glossaryTermRelationSettings'")
+    String getGlossaryTermRelationSettingsJson() throws StatementException;
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateSettingsIfCurrent(
+        @Bind("configType") String configType,
+        @Bind("expectedJson") String expectedJson,
+        @Bind("updatedJson") String updatedJson);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateGlossaryTermRelationSettingsIfCurrent(
+        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT into openmetadata_settings (configType, json)"
@@ -233,8 +272,6 @@ public interface SystemTokenDAOs {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
-            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
-            case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

@@ -60,7 +60,6 @@ import {
   createQuickLink,
   deletePage,
   getKnowledgePageCardByIndex,
-  getKnowledgePageCardEntityIdentifier,
   readArticleInHierarchy,
   readQuickLink,
   toggleKnowledgePageBookmark,
@@ -339,7 +338,7 @@ test.describe('Context Center Articles', () => {
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
     await verifyArticleSearch(page, 'zzznomatchzzz_playwright');
-    await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+    await expect(page.getByText('No matching results')).toBeVisible({
       timeout: 8000,
     });
 
@@ -617,19 +616,15 @@ test.describe('Context Center Articles', () => {
     const card = await getKnowledgePageCardByIndex(page, 0);
     await expect(card.getByTestId('knowledge-card-title')).toBeVisible();
     await expect(card.getByTestId('knowledge-card-description')).toBeVisible();
-    await expect(card.getByTestId('knowledge-page-link')).toBeVisible();
     await expect(card.getByTestId('updated-at')).toBeVisible();
 
-    const viewedCard = await getKnowledgePageCardByIndex(page, 3);
-    const cardIdentifier = await getKnowledgePageCardEntityIdentifier(
-      viewedCard
-    );
-    const cardDisplayText =
-      (
-        await viewedCard.getByTestId('knowledge-card-title').textContent()
-      )?.trim() ?? '';
+    await verifyArticleSearch(page, articleEntity.responseData.displayName);
+    const viewedCard = page
+      .getByTestId('knowledge-page-listing')
+      .getByTestId(`knowledge-card-${articleEntity.responseData.displayName}`);
+    await expect(viewedCard).toBeVisible();
 
-    await viewedCard.getByTestId('knowledge-page-link').click();
+    await viewedCard.getByTestId('knowledge-page-link').first().click();
     await page.waitForURL((url) =>
       url.pathname.includes('/context-center/articles/')
     );
@@ -640,7 +635,7 @@ test.describe('Context Center Articles', () => {
     await expect(rightPanel.getByText('Recently Viewed')).toBeVisible();
 
     const recentlyViewedItem = rightPanel.getByTestId(
-      `recent-viewed-${cardIdentifier}`
+      `recent-viewed-${articleEntity.responseData.displayName}`
     );
     await recentlyViewedItem.scrollIntoViewIfNeeded();
     await expect(recentlyViewedItem).toBeVisible();
@@ -649,9 +644,8 @@ test.describe('Context Center Articles', () => {
       url.pathname.includes('/context-center/articles/')
     );
 
-    const expectedValue = cardDisplayText === 'Untitled' ? '' : cardDisplayText;
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
-      expectedValue
+      articleEntity.responseData.displayName
     );
 
     await navigateToArticles(page);
@@ -817,7 +811,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Article edit persistence and unsaved title behavior are correct', async ({
+  test('Article edits and navigation-flushed titles persist', async ({
     page,
     browser,
   }) => {
@@ -850,7 +844,6 @@ test.describe('Context Center Articles', () => {
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
       updatedTitle
     );
-    await scrollHierarchyToNode(page, updatedTitle);
 
     await navigateToArticles(page);
     await expect(
@@ -860,17 +853,26 @@ test.describe('Context Center Articles', () => {
 
     await navigateToArticle(page, article.fullyQualifiedName);
     const titleInput = page.getByTestId('entity-header-display-name');
-    await titleInput.fill(`${updatedTitle} Unsaved`);
+    const navigationFlushedTitle = `${updatedTitle} Navigation Flush`;
+    const navigationFlushResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/contextCenter/pages/${article.id}`) &&
+        response.request().method() === 'PATCH'
+    );
+
+    await titleInput.fill(navigationFlushedTitle);
+    await page.getByText('Unsaved').waitFor({ state: 'visible' });
     await page.goBack();
     await waitForAllLoadersToDisappear(page);
-    await expect(
-      page.getByTestId(`knowledge-card-${updatedTitle}`)
-    ).toBeVisible();
 
     await navigateToArticle(page, article.fullyQualifiedName);
+    const navigationFlushResult = await navigationFlushResponse;
+
+    expect(navigationFlushResult.status()).toBe(200);
     await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
-      updatedTitle
+      navigationFlushedTitle
     );
+    await assertArticleEditorSaved(page);
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
       await createNewPage(browser);
