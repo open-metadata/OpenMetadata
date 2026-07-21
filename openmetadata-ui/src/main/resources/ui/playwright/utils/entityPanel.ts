@@ -108,7 +108,7 @@ export const openEntitySummaryPanel = async ({
 
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
-    await cardByFqn.getByTestId('description-text').dispatchEvent('click');
+    await cardByFqn.getByTestId('description-text').click();
 
     return;
   }
