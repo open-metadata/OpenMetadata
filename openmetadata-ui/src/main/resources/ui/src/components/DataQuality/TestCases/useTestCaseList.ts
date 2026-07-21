@@ -168,6 +168,18 @@ export const useTestCaseList = ({
     [handlePageChange, fetchTestCases]
   );
 
+  const handleShowDeletedChange = useCallback(
+    (value: boolean) => {
+      // The deleted and non-deleted result sets can differ enough in size
+      // that the page the user is currently on no longer exists once the
+      // toggle flips, so reset to page 1 rather than refetching the same
+      // page number against the new result set.
+      handlePageChange(INITIAL_PAGING_VALUE);
+      setShowDeleted(value);
+    },
+    [handlePageChange]
+  );
+
   const getTestCases = () => {
     if (!isEmpty(params) || !isEmpty(selectedFilter)) {
       const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
@@ -214,6 +226,6 @@ export const useTestCaseList = ({
     pagingData,
     showPagination,
     showDeleted,
-    setShowDeleted,
+    setShowDeleted: handleShowDeletedChange,
   };
 };

@@ -273,6 +273,20 @@ describe('useTestCaseList', () => {
     );
   });
 
+  it('should reset to page 1 when showDeleted is toggled from a later page', async () => {
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.setShowDeleted(true);
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledWith(1);
+  });
+
   it('should ignore a stale response when a newer request has since been issued', async () => {
     let resolveFirst!: (value: {
       data: TestCase[];
