@@ -41,6 +41,12 @@ export abstract class RightPanelBase {
   protected async waitForVisible(locator: Locator): Promise<void> {
     await locator.waitFor({ state: 'visible' });
   }
+
+  protected async waitForBlockingAlertsToClear(): Promise<void> {
+    await expect(this.page.getByTestId('alert-bar')).toHaveCount(0, {
+      timeout: 15_000,
+    });
+  }
 }
 
 /**
@@ -195,6 +201,7 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editDescription(description: string): Promise<OverviewPageObject> {
+    await this.waitForBlockingAlertsToClear();
     await this.editDescriptionIcon.waitFor({ state: 'visible' });
     await this.editDescriptionIcon.dispatchEvent('click');
 
@@ -211,9 +218,12 @@ export class OverviewPageObject extends RightPanelBase {
     // Set up PATCH listener before clicking save so we don't race with the response.
     // This ensures the description is committed to the server before the caller proceeds
     // (particularly important when clearing description and then immediately reloading).
+    await this.waitForBlockingAlertsToClear();
+    await expect(this.saveButton).toBeEnabled();
     const patchPromise = this.waitForPatchResponse();
     await this.saveButton.click();
     await patchPromise;
+    await this.waitForBlockingAlertsToClear();
     return this;
   }
 
@@ -226,6 +236,7 @@ export class OverviewPageObject extends RightPanelBase {
     // Use dispatchEvent to avoid Playwright's internal scroll-into-view on click().
     // Scrolling the panel container triggers a React re-render that detaches the icon,
     // causing Playwright to retry the scroll → re-render → infinite loop under load.
+    await this.waitForBlockingAlertsToClear();
     await this.editTagsIcon.waitFor({ state: 'visible' });
     await this.editTagsIcon.dispatchEvent('click');
 
@@ -258,9 +269,12 @@ export class OverviewPageObject extends RightPanelBase {
     }
 
     await this.updateButton.waitFor({ state: 'visible' });
+    await this.waitForBlockingAlertsToClear();
+    await expect(this.updateButton).toBeEnabled();
     const tagPatchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
     await tagPatchPromise;
+    await this.waitForBlockingAlertsToClear();
 
     // After update the popover closes; rely on tag list container assertions
     // with built-in retry rather than a page-wide loader that may be ambiguous.
@@ -276,6 +290,8 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async editGlossaryTerms(termName: string): Promise<OverviewPageObject> {
+    await this.waitForBlockingAlertsToClear();
+    await this.editGlossaryTermsIcon.waitFor({ state: 'visible' });
     await this.editGlossaryTermsIcon.click();
 
     await this.selectableList.waitFor({ state: 'visible' });
@@ -301,13 +317,17 @@ export class OverviewPageObject extends RightPanelBase {
       el.classList.contains('active')
     );
     if (!isAlreadySelected) {
+      await this.waitForBlockingAlertsToClear();
       await termItem.click();
     }
 
     await this.updateButton.waitFor({ state: 'visible' });
+    await this.waitForBlockingAlertsToClear();
+    await expect(this.updateButton).toBeEnabled();
     const glossaryPatchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
     await glossaryPatchPromise;
+    await this.waitForBlockingAlertsToClear();
     // After update the popover closes; rely on glossary-term container assertion
     // with built-in retry rather than a page-wide loader that may be ambiguous.
     await this.glossaryTermListContainer.waitFor({ state: 'visible' });
@@ -526,6 +546,7 @@ export class OverviewPageObject extends RightPanelBase {
    * @returns OverviewPageObject for method chaining
    */
   async removeTag(tagDisplayNames: string[]): Promise<OverviewPageObject> {
+    await this.waitForBlockingAlertsToClear();
     await this.editTagsIcon.click();
     await this.selectableList.waitFor({ state: 'visible' });
     await this.selectableList
@@ -544,9 +565,12 @@ export class OverviewPageObject extends RightPanelBase {
       }
     }
 
+    await this.waitForBlockingAlertsToClear();
+    await expect(this.updateButton).toBeEnabled();
     const patchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
     await patchPromise;
+    await this.waitForBlockingAlertsToClear();
 
     return this;
   }
@@ -559,6 +583,7 @@ export class OverviewPageObject extends RightPanelBase {
   async removeGlossaryTerm(
     termDisplayNames: string[]
   ): Promise<OverviewPageObject> {
+    await this.waitForBlockingAlertsToClear();
     await this.editGlossaryTermsIcon.scrollIntoViewIfNeeded();
     await this.editGlossaryTermsIcon.waitFor({ state: 'visible' });
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
@@ -586,9 +611,12 @@ export class OverviewPageObject extends RightPanelBase {
       await this.glossaryTermSearchBar.clear();
     }
 
+    await this.waitForBlockingAlertsToClear();
+    await expect(this.updateButton).toBeEnabled();
     const patchPromise = this.waitForPatchResponse();
     await this.updateButton.click();
     await patchPromise;
+    await this.waitForBlockingAlertsToClear();
 
     return this;
   }
@@ -762,11 +790,13 @@ export class OverviewPageObject extends RightPanelBase {
       (resp) =>
         resp.request().method() === 'PATCH' &&
         resp.url().includes(urlPattern) &&
-        !resp.url().includes('/api/v1/analytics')
+        !resp.url().includes('/api/v1/analytics'),
+      { timeout: 60_000 }
     );
 
     const response = await responsePromise;
     expect(response.status()).toBe(200);
+    await this.waitForLoadersToDisappear();
   }
 
   // ============ VERIFICATION METHODS (BDD Style) ============

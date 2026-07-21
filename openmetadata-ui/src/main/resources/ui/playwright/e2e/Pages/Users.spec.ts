@@ -78,6 +78,14 @@ const updatedUserDetails = {
   newPassword: `NewUser@${uuid()}`,
 };
 
+const waitForUserPatchResponse = (page: Page) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/users/') &&
+      response.request().method() === 'PATCH',
+    { timeout: 60_000 }
+  );
+
 let adminUser: UserClass;
 let dataConsumerUser: UserClass;
 let dataStewardUser: UserClass;
@@ -964,13 +972,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     // Select the second persona as default
     await adminPage.getByTitle(persona2.data.displayName).click();
 
-    const defaultPersonaChangeResponse =
-      adminPage.waitForResponse('/api/v1/users/*');
+    const defaultPersonaSaveButton = adminPage.locator(
+      '[data-testid="user-profile-default-persona-edit-save"]'
+    );
+    await expect(defaultPersonaSaveButton).toBeEnabled();
 
-    await adminPage
-      .locator('[data-testid="user-profile-default-persona-edit-save"]')
-      .click();
-    await defaultPersonaChangeResponse;
+    const [defaultPersonaResponse] = await Promise.all([
+      waitForUserPatchResponse(adminPage),
+      defaultPersonaSaveButton.click(),
+    ]);
+    expect(defaultPersonaResponse.ok()).toBeTruthy();
+    await waitForAllLoadersToDisappear(adminPage);
 
     // Step 3: Go back to home page and verify new default persona is selected
     await redirectToHomePage(adminPage);
@@ -1026,11 +1038,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
       .click();
 
-    const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
-    await adminPage
-      .locator('[data-testid="user-profile-default-persona-edit-save"]')
-      .click();
-    await removePersonaResponse;
+    const removePersonaSaveButton = adminPage.locator(
+      '[data-testid="user-profile-default-persona-edit-save"]'
+    );
+    await expect(removePersonaSaveButton).toBeEnabled();
+
+    const [removeResponse] = await Promise.all([
+      waitForUserPatchResponse(adminPage),
+      removePersonaSaveButton.click(),
+    ]);
+    expect(removeResponse.ok()).toBeTruthy();
+    await waitForAllLoadersToDisappear(adminPage);
 
     // Verify NO notification appears when removing default persona
     await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
@@ -1157,12 +1175,17 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Save the changes
-      await adminPage
-        .locator('[data-testid="user-profile-persona-edit-save"]')
-        .click();
+      const removePersonasSaveButton = adminPage.locator(
+        '[data-testid="user-profile-persona-edit-save"]'
+      );
+      await expect(removePersonasSaveButton).toBeEnabled();
 
-      // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
+      const [response] = await Promise.all([
+        waitForUserPatchResponse(adminPage),
+        removePersonasSaveButton.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(adminPage);
 
       await expect(
         adminPage
@@ -1206,13 +1229,17 @@ test.describe('User Profile Persona Interactions', () => {
       await defaultPersonaOptionTestId.click();
 
       // Save the changes
-      const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
-      await adminPage
-        .locator('[data-testid="user-profile-default-persona-edit-save"]')
-        .click();
+      const saveDefaultPersonaButton = adminPage.locator(
+        '[data-testid="user-profile-default-persona-edit-save"]'
+      );
+      await expect(saveDefaultPersonaButton).toBeEnabled();
 
-      // Wait for the API call to complete and default persona to appear
-      await savePersonaResponse;
+      const [saveResponse] = await Promise.all([
+        waitForUserPatchResponse(adminPage),
+        saveDefaultPersonaButton.click(),
+      ]);
+      expect(saveResponse.ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(adminPage);
 
       // Check that success notification appears with correct message
       await toastNotification(
@@ -1267,16 +1294,18 @@ test.describe('User Profile Persona Interactions', () => {
         )
         .click();
 
-      const defaultPersonaChangeResponse =
-        adminPage.waitForResponse('/api/v1/users/*');
-
       // Save the changes
-      await adminPage
-        .locator('[data-testid="user-profile-default-persona-edit-save"]')
-        .click();
+      const clearDefaultPersonaButton = adminPage.locator(
+        '[data-testid="user-profile-default-persona-edit-save"]'
+      );
+      await expect(clearDefaultPersonaButton).toBeEnabled();
 
-      // Wait for the API call to complete and verify no default persona is shown
-      await defaultPersonaChangeResponse;
+      const [response] = await Promise.all([
+        waitForUserPatchResponse(adminPage),
+        clearDefaultPersonaButton.click(),
+      ]);
+      expect(response.ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(adminPage);
 
       // Verify NO notification appears when removing default persona
       await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
