@@ -100,7 +100,7 @@ install_antlr_cli:  ## Install antlr CLI locally
 			candidate=$$(apt-cache policy antlr4 2>/dev/null | awk '/Candidate:/ {print $$2}'); \
 		fi; \
 		case "$$candidate" in \
-			$(ANTLR_VERSION)*) \
+			$(ANTLR_VERSION)|$(ANTLR_VERSION)[-+~]*) \
 				if apt-get install -y -qq antlr4 > /dev/null 2>&1; then \
 					echo "Installed ANTLR $$candidate from the distro archive."; \
 					exit 0; \
