@@ -114,8 +114,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
@@ -164,7 +165,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Get all changed files
         id: all-changes
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -244,8 +246,9 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Download Maven build artifact
         id: download-build
         uses: actions/download-artifact@v4
@@ -483,6 +486,20 @@ jobs:
               > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
             docker compose -f docker/development/docker-compose-postgres.yml logs --no-color --tail 5000 \
               > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
+            # The tailed all-services log above only covers the last ~minute of the
+            # chatty server on a multi-hour shard, which misses the failing test's
+            # window. Capture the full server log (untailed) so index/search
+            # behavior at the time of the failure is available.
+            docker compose -f docker/development/docker-compose-postgres.yml \
+              logs --no-color --no-log-prefix openmetadata-server \
+              > "$DIAGNOSTICS_DIR/openmetadata-server-full.log" 2>&1 || true
+            # OpenSearch thread-pool rejected/completed counters are cumulative over
+            # the whole run, so they reveal write/refresh/search rejections even when
+            # they happened before the tail window.
+            curl -s "http://localhost:9200/_cat/thread_pool/write,refresh,search,search_throttled?v&h=node_name,name,active,queue,rejected,completed" \
+              > "$DIAGNOSTICS_DIR/opensearch-thread-pool.txt" 2>&1 || true
+            curl -s "http://localhost:9200/_cat/indices?v&h=index,health,status,docs.count,store.size,refresh.total,refresh.total_time,search.query_total&s=index" \
+              > "$DIAGNOSTICS_DIR/opensearch-indices.txt" 2>&1 || true
           fi
 
       - name: Upload failure diagnostics
@@ -532,7 +549,7 @@ jobs:
         env:
           EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
-          SOURCE_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
