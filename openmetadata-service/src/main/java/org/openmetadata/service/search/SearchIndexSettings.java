@@ -14,6 +14,7 @@ package org.openmetadata.service.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import java.util.Set;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
@@ -33,7 +34,10 @@ import org.slf4j.LoggerFactory;
  *       {@code ignore_malformed} on {@code boolean}, so {@code OsUtils} strips it from boolean fields
  *       when transforming the mapping for OpenSearch);
  *   <li>injects the tunable {@code index.mapping.*.limit} guardrails (depth, nested objects, total
- *       fields) into the index settings.
+ *       fields) into the index settings;
+ *   <li>defines {@code customPropertiesTyped} as a {@code nested} field (regardless of the
+ *       hardening toggle) so dynamic mapping can never type it as a plain object, which would make
+ *       every nested custom-property query fail shard-side on that index.
  * </ul>
  *
  * Existing values in a mapping file are never overwritten.
@@ -51,6 +55,12 @@ public final class SearchIndexSettings {
   private static final String DEPTH_LIMIT = "depth_limit";
   private static final String KEYWORD = "keyword";
   private static final String FLATTENED = "flattened";
+  private static final String NESTED = "nested";
+
+  private static final List<String> CUSTOM_PROPERTY_KEYWORD_FIELDS =
+      List.of("name", "propertyType", "stringValue", "refId", "refType", "refName", "refFqn");
+  private static final List<String> CUSTOM_PROPERTY_LONG_FIELDS =
+      List.of("longValue", "start", "end");
 
   private static final Set<String> MALFORMED_GUARD_TYPES =
       Set.of(
@@ -69,9 +79,7 @@ public final class SearchIndexSettings {
 
   public static String harden(String indexMappingContent, SearchFieldLimits limits) {
     String result = indexMappingContent;
-    if (limits.isHardeningEnabled()
-        && indexMappingContent != null
-        && !indexMappingContent.isEmpty()) {
+    if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
       result = hardenContent(indexMappingContent, limits);
     }
     return result;
@@ -81,13 +89,53 @@ public final class SearchIndexSettings {
     String result = content;
     try {
       ObjectNode root = (ObjectNode) JsonUtils.readTree(content);
-      injectMappingLimits(root, limits);
-      hardenFields(root, limits);
+      injectCustomPropertiesTypedMapping(root);
+      if (limits.isHardeningEnabled()) {
+        injectMappingLimits(root, limits);
+        hardenFields(root, limits);
+      }
       result = JsonUtils.pojoToJson(root);
     } catch (Exception hardeningFailed) {
       LOG.warn("Could not harden index mapping; using original", hardeningFailed);
     }
     return result;
+  }
+
+  /**
+   * Ensures every entity mapping defines {@code customPropertiesTyped} as {@code nested}. The shared
+   * doc builder writes this field into every entity document, but mapping files do not declare it,
+   * so the first document carrying a typed custom-property value would otherwise dynamic-map it as a
+   * plain object — and every nested query on that index then fails shard-side with "[nested] nested
+   * object under path [customPropertiesTyped] is not of nested type" ({@code ignore_unmapped} only
+   * covers missing paths, not wrongly-typed ones). Injected before field hardening so its keyword
+   * sub-fields pick up {@code ignore_above}; an explicit definition in the mapping file wins.
+   */
+  private static void injectCustomPropertiesTypedMapping(ObjectNode root) {
+    JsonNode mappings = root.get("mappings");
+    if (mappings instanceof ObjectNode mappingsNode
+        && mappingsNode.get(PROPERTIES) instanceof ObjectNode properties
+        && !properties.has(CustomPropertySearchFields.CUSTOM_PROPERTIES_TYPED)) {
+      properties.set(
+          CustomPropertySearchFields.CUSTOM_PROPERTIES_TYPED, customPropertiesTypedDefinition());
+    }
+  }
+
+  private static ObjectNode customPropertiesTypedDefinition() {
+    ObjectNode fields = JsonUtils.getObjectNode();
+    CUSTOM_PROPERTY_KEYWORD_FIELDS.forEach(name -> fields.set(name, typeNode(KEYWORD)));
+    fields.set("textValue", typeNode("text"));
+    fields.set("doubleValue", typeNode("double"));
+    CUSTOM_PROPERTY_LONG_FIELDS.forEach(name -> fields.set(name, typeNode("long")));
+    ObjectNode definition = JsonUtils.getObjectNode();
+    definition.put(TYPE, NESTED);
+    definition.set(PROPERTIES, fields);
+    return definition;
+  }
+
+  private static ObjectNode typeNode(String type) {
+    ObjectNode node = JsonUtils.getObjectNode();
+    node.put(TYPE, type);
+    return node;
   }
 
   private static void hardenFields(ObjectNode root, SearchFieldLimits limits) {
