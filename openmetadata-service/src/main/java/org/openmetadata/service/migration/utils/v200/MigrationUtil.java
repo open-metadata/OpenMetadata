@@ -46,6 +46,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -75,6 +76,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
@@ -94,6 +96,7 @@ public class MigrationUtil {
   private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
   private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
   private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
+  private static final String ADMIN_USER_NAME = "admin";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -752,10 +755,13 @@ public class MigrationUtil {
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
 
-        // Look up createdBy user ID from user_entity by name
-        String createdByUserId = lookupUserId(handle, createdByName);
-        if (createdByUserId != null) {
+        // Preserve the original requester: createdBy ref + createdById for the filter.
+        ObjectNode createdByRef = buildUserRef(createdByName);
+        String createdByUserId = null;
+        if (createdByRef != null && createdByRef.has("id")) {
+          createdByUserId = createdByRef.get("id").asText();
           taskJson.put("createdById", createdByUserId);
+          taskJson.set("createdBy", createdByRef);
         }
 
         taskJson.put("createdAt", createdAt);
@@ -763,8 +769,9 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
-        taskJson.put("commentCount", 0);
+        // Migrate posts -> comments (per-post reactions ride along in taskComment.reactions).
+        // Task has no top-level reactions field, so thread-level reactions are not carried over.
+        migrateThreadPostsToComments(threadJson, taskJson);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
@@ -772,12 +779,15 @@ public class MigrationUtil {
           taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
         }
 
-        // Set resolution details for closed tasks
+        // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
           if (taskDetails.has("closedBy")) {
-            resolution.put("comment", "Migrated from thread-based task system");
+            ObjectNode resolvedBy = buildUserRef(taskDetails.get("closedBy").asText());
+            if (resolvedBy != null) {
+              resolution.set("resolvedBy", resolvedBy);
+            }
           }
           if (taskDetails.has("closedAt")) {
             resolution.put("resolvedAt", taskDetails.get("closedAt").asLong());
@@ -1614,6 +1624,86 @@ public class MigrationUtil {
   }
 
   /**
+   * Resolve a legacy username to a user {@link EntityReference}; shared by both migration paths.
+   * A soft-deleted user keeps its real id; anything unresolvable (hard-deleted / "system" / null)
+   * falls back to the admin user, never a fabricated id. Throws only if admin is also unresolvable.
+   */
+  static EntityReference resolveUserReference(String userName) {
+    EntityReference reference = null;
+    if (!nullOrEmpty(userName)) {
+      try {
+        reference = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      }
+    }
+    if (reference == null) {
+      reference = Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+    }
+    return reference;
+  }
+
+  /**
+   * JSON-shaped {@link #resolveUserReference} for the static path (which builds task JSON, not
+   * POJOs). Returns null only if even the admin fallback cannot be resolved.
+   */
+  private static ObjectNode buildUserRef(String userName) {
+    ObjectNode ref = null;
+    try {
+      EntityReference reference = resolveUserReference(userName);
+      if (reference != null) {
+        ref = (ObjectNode) JsonUtils.valueToTree(reference);
+      }
+    } catch (Exception e) {
+      LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
+    }
+    return ref;
+  }
+
+  /**
+   * Migrate a legacy thread's {@code posts[]} (user replies + resolve/close records) into the new
+   * task's {@code comments[]} so the task discussion history survives, and sets {@code commentCount}.
+   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}). The author
+   * is resolved via {@link #buildUserRef} (soft-deleted users keep their real id; unresolvable ones
+   * fall back to the admin user) — never a synthetic id. A post is skipped only if even that fails.
+   */
+  private static void migrateThreadPostsToComments(JsonNode threadJson, ObjectNode taskJson) {
+    JsonNode posts = threadJson.get("posts");
+    ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
+    if (posts != null && posts.isArray()) {
+      for (JsonNode post : posts) {
+        ObjectNode comment = buildTaskComment(post);
+        if (comment != null) {
+          comments.add(comment);
+        }
+      }
+    }
+    taskJson.set("comments", comments);
+    taskJson.put("commentCount", comments.size());
+  }
+
+  /**
+   * Build a {@code taskComment} from a legacy post, or {@code null} to skip it (no message, or an
+   * author that cannot be resolved even to the admin fallback). Per-post reactions are carried over.
+   */
+  private static ObjectNode buildTaskComment(JsonNode post) {
+    ObjectNode comment = null;
+    ObjectNode author = post.has("message") ? buildUserRef(post.path("from").asText(null)) : null;
+    if (author != null) {
+      comment = JsonUtils.getObjectNode();
+      comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
+      comment.put("message", post.get("message").asText());
+      comment.set("author", author);
+      comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
+      if (post.has("reactions") && post.get("reactions").isArray()) {
+        comment.set("reactions", post.get("reactions"));
+      }
+    }
+    return comment;
+  }
+
+  /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
    * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
    * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
@@ -1818,7 +1908,6 @@ public class MigrationUtil {
 
   /** Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0. */
   public static class TaskWorkflow {
-    private static final String ADMIN_USER_NAME = "admin";
     private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
     private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
         "createRecognizerFeedbackApprovalTask";
@@ -2124,56 +2213,116 @@ public class MigrationUtil {
 
     private int backfillOpenTasksToWorkflowInstances() {
       int backfilled = 0;
+      int failedIncidentReplays = 0;
       try {
         ListFilter filter = new ListFilter(Include.NON_DELETED);
         filter.addQueryParam("taskStatusGroup", "open");
         List<Task> openTasks =
             listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
         for (Task task : openTasks) {
-          if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
+          if (task.getAbout() == null) {
             continue;
           }
-
-          var workflowBinding =
-              TaskWorkflowLifecycleResolver.resolveBinding(
-                  task.getType(), task.getCategory(), task.getPayload());
-          if (workflowBinding.isEmpty()) {
-            continue;
+          if (task.getWorkflowInstanceId() == null && startWorkflowInstanceForTask(task)) {
+            backfilled++;
           }
-
-          WorkflowDefinition workflowDefinition =
-              workflowDefinitionRepository.findByNameOrNull(
-                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
-          if (workflowDefinition == null) {
-            continue;
+          // Replay is idempotent (no-ops once the task is at its recorded stage), so re-attempt it
+          // on every migration run until it succeeds. The workflowInstanceId guard above only skips
+          // the one-shot instance creation, not the state replay, so a transient replay failure is
+          // recoverable by re-running the migration.
+          if (task.getCategory() == TaskCategory.Incident && !replayMigratedIncidentState(task)) {
+            failedIncidentReplays++;
           }
-
-          Map<String, Object> variables = new LinkedHashMap<>();
-          variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-              EntityUtil.buildEntityLink(
-                  task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
-              task.getUpdatedBy());
-          variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
-          if (workflowBinding.get().schema() != null
-              && workflowBinding.get().schema().getId() != null) {
-            variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
-            variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
-          }
-
-          workflowHandler.triggerByKey(
-              getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
-              task.getId().toString(),
-              variables);
-          backfilled++;
         }
       } catch (Exception e) {
         LOG.error("Failed to backfill open tasks to workflow instances", e);
       }
+      if (failedIncidentReplays > 0) {
+        LOG.warn(
+            "{} migrated incident task(s) could not replay their pre-upgrade state; re-run the migration or remediate manually",
+            failedIncidentReplays);
+      }
       return backfilled;
+    }
+
+    private boolean startWorkflowInstanceForTask(Task task) {
+      boolean started = false;
+      var binding =
+          TaskWorkflowLifecycleResolver.resolveBinding(
+              task.getType(), task.getCategory(), task.getPayload());
+      WorkflowDefinition definition =
+          binding.isEmpty()
+              ? null
+              : workflowDefinitionRepository.findByNameOrNull(
+                  binding.get().workflowDefinitionRef(), Include.NON_DELETED);
+      if (definition != null) {
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
+            task.getId().toString(),
+            buildBackfillWorkflowVariables(task, binding.get(), definition));
+        started = true;
+      }
+      return started;
+    }
+
+    private Map<String, Object> buildBackfillWorkflowVariables(
+        Task task,
+        TaskWorkflowLifecycleResolver.TaskWorkflowBinding binding,
+        WorkflowDefinition definition) {
+      Map<String, Object> variables = new LinkedHashMap<>();
+      variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          EntityUtil.buildEntityLink(
+              task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
+      variables.put("workflowDefinitionId", definition.getId().toString());
+      var schema = binding.schema();
+      if (schema != null && schema.getId() != null) {
+        variables.put("taskFormSchemaId", schema.getId().toString());
+        variables.put("taskFormSchemaVersion", schema.getVersion());
+      }
+      return variables;
+    }
+
+    private boolean replayMigratedIncidentState(Task task) {
+      boolean succeeded = true;
+      try {
+        String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
+        UUID stateId = incidentStateIdFromPayload(task);
+        if (recordFQN != null && stateId != null) {
+          TestCaseResolutionStatusRepository incidentRepository =
+              (TestCaseResolutionStatusRepository)
+                  Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+          // Key off the incident's own stateId, not the test case's global latest: the migration
+          // starts a fresh workflow that writes a newer "New" record for the same test case, which
+          // would otherwise mask the pre-upgrade Ack/Assigned state we need to replay.
+          TestCaseResolutionStatus latest = incidentRepository.getLatestRecordForStateId(stateId);
+          if (latest != null
+              && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
+            LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to replay pre-migration incident state for task {}: {}",
+            task.getId(),
+            e.getMessage());
+        succeeded = false;
+      }
+      return succeeded;
+    }
+
+    private UUID incidentStateIdFromPayload(Task task) {
+      UUID stateId = null;
+      if (task.getPayload() instanceof Map<?, ?> payload) {
+        Object rawId = payload.get("testCaseResolutionStatusId");
+        if (rawId != null) {
+          stateId = UUID.fromString(rawId.toString());
+        }
+      }
+      return stateId;
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
@@ -2498,20 +2647,7 @@ public class MigrationUtil {
     }
 
     private EntityReference resolveUserReference(String userName) {
-      if (nullOrEmpty(userName)) {
-        return getAdminReference();
-      }
-
-      try {
-        return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
-      } catch (Exception e) {
-        LOG.debug("Unable to resolve user '{}': {}", userName, e.getMessage());
-        return getAdminReference();
-      }
-    }
-
-    private EntityReference getAdminReference() {
-      return Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+      return MigrationUtil.resolveUserReference(userName);
     }
 
     private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {
