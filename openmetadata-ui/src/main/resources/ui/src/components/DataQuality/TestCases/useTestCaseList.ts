@@ -19,6 +19,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
@@ -27,6 +28,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
@@ -85,6 +87,8 @@ export const useTestCaseList = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const [showDeleted, setShowDeleted] = useState<boolean>(false);
+  const latestRequestId = useRef(0);
 
   const fetchTestCases = useCallback(
     async (
@@ -97,6 +101,7 @@ export const useTestCaseList = ({
         activeFilters ?? selectedFilter
       );
 
+      const requestId = ++latestRequestId.current;
       setIsLoading(true);
       try {
         const { data, paging: pagingResponse } = await getListTestCaseBySearch({
@@ -115,13 +120,23 @@ export const useTestCaseList = ({
           ],
           q: searchValue ? `*${searchValue}*` : undefined,
           offset: (page - 1) * pageSize,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
         });
+        // Ignore this response if a newer request has since been issued (e.g.
+        // rapidly toggling showDeleted) — applying it would clobber fresher state.
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
         setTestCase(data);
         handlePagingChange(pagingResponse);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+        }
       }
     },
     [
@@ -130,6 +145,7 @@ export const useTestCaseList = ({
       sortOptions,
       pageSize,
       searchValue,
+      showDeleted,
       handlePagingChange,
     ]
   );
@@ -150,6 +166,18 @@ export const useTestCaseList = ({
       fetchTestCases(page);
     },
     [handlePageChange, fetchTestCases]
+  );
+
+  const handleShowDeletedChange = useCallback(
+    (value: boolean) => {
+      // The deleted and non-deleted result sets can differ enough in size
+      // that the page the user is currently on no longer exists once the
+      // toggle flips, so reset to page 1 rather than refetching the same
+      // page number against the new result set.
+      handlePageChange(INITIAL_PAGING_VALUE);
+      setShowDeleted(value);
+    },
+    [handlePageChange]
   );
 
   const getTestCases = () => {
@@ -175,7 +203,7 @@ export const useTestCaseList = ({
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params, currentPage]);
+  }, [tab, testCasePermission, pageSize, params, currentPage, showDeleted]);
 
   const pagingData = useMemo(
     () => ({
@@ -197,5 +225,7 @@ export const useTestCaseList = ({
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    setShowDeleted: handleShowDeletedChange,
   };
 };

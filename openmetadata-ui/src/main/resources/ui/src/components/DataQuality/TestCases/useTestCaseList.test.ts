@@ -16,7 +16,8 @@ import { act } from 'react';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -240,6 +241,105 @@ describe('useTestCaseList', () => {
         })
       )
     );
+  });
+
+  it('should default to include=non-deleted and expose the showDeleted toggle', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    expect(lastPayload().include).toBe(Include.NonDeleted);
+    expect(result.current.showDeleted).toBe(false);
+    expect(typeof result.current.setShowDeleted).toBe('function');
+  });
+
+  it('should refetch with include=deleted when showDeleted is toggled on', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.setShowDeleted(true);
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ include: Include.Deleted })
+      )
+    );
+  });
+
+  it('should reset to page 1 when showDeleted is toggled from a later page', async () => {
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.setShowDeleted(true);
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledWith(1);
+  });
+
+  it('should ignore a stale response when a newer request has since been issued', async () => {
+    let resolveFirst!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    let resolveSecond!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    const firstResponse = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondResponse = new Promise((resolve) => {
+      resolveSecond = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock)
+      .mockReturnValueOnce(firstResponse)
+      .mockReturnValueOnce(secondResponse);
+
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.fetchTestCases();
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    // Resolve the newer (second) request first, then the stale (first) one —
+    // the stale response must not be allowed to clobber the fresher state.
+    await act(async () => {
+      resolveSecond({
+        data: [{ id: 'second' }] as unknown as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveFirst({
+        data: [{ id: 'first' }] as unknown as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.testCase).toEqual([{ id: 'second' }]);
   });
 
   it('should expose a number-based pagingData wired to the injected paging bag', async () => {

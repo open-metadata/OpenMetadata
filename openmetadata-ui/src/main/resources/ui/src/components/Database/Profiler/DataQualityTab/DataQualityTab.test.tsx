@@ -17,11 +17,13 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import React, { act } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { restoreTestCase } from '../../../../rest/testAPI';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -258,6 +260,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: DropdownMenu,
       Item: DropdownItem,
     },
+    toast: {
+      success: jest.fn(),
+      error: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    },
   };
 });
 
@@ -267,6 +275,12 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+  restoreTestCase: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
@@ -319,7 +333,7 @@ const mockProps: DataQualityTabProps = {
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
 };
-const mockPermissionsData = MOCK_PERMISSIONS;
+let mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
 
 jest.mock('react-router-dom', () => {
@@ -355,18 +369,26 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <span>Loader</span>)
 );
 
-jest.mock('../../../common/DeleteModal/DeleteModal', () =>
-  jest.fn().mockImplementation(({ open, onCancel, onDelete }) =>
-    open ? (
-      <div>
-        <p>DeleteModal</p>
-        <button data-testid="confirm-button" onClick={onDelete}>
-          delete
-        </button>
-        <button onClick={onCancel}>cancel</button>
-      </div>
-    ) : null
-  )
+jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+        visible ? (
+          <div>
+            <p>DeleteEntityModal</p>
+            <span data-testid="allow-soft-delete">
+              {String(Boolean(allowSoftDelete))}
+            </span>
+            <button
+              data-testid="confirm-button"
+              onClick={() => afterDeleteAction?.()}>
+              delete
+            </button>
+            <button onClick={onCancel}>cancel</button>
+          </div>
+        ) : null
+    )
 );
 
 jest.mock(
@@ -405,6 +427,7 @@ jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
 describe('DataQualityTab test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPermissionsData = MOCK_PERMISSIONS;
   });
 
   it('Component should render', async () => {
@@ -1147,6 +1170,180 @@ describe('DataQualityTab test', () => {
 
     expect(queuedReason).toBeInTheDocument();
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
+  });
+
+  describe('Restore functionality', () => {
+    const deletedTestCase = {
+      ...MOCK_TEST_CASE[0],
+      name: 'deleted_test_case',
+      deleted: true,
+    };
+
+    it('should show only the Restore action for a deleted test case', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} testCases={[deletedTestCase]} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      expect(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`edit-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`delete-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show the Restore action for a non-deleted test case', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      expect(
+        screen.queryByTestId(`restore-${firstRowData.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should call restoreTestCase and afterDeleteAction on restore confirm', async () => {
+      const afterDeleteAction = jest.fn();
+      await act(async () => {
+        render(
+          <DataQualityTab
+            {...mockProps}
+            afterDeleteAction={afterDeleteAction}
+            testCases={[deletedTestCase]}
+          />
+        );
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const restoreButton = await screen.findByTestId(
+        `restore-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(restoreButton);
+      });
+
+      const confirmationModal = await screen.findByText('ConfirmationModal');
+
+      expect(confirmationModal).toBeInTheDocument();
+
+      const confirmButton = screen.getByText('submit');
+
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+
+      expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id);
+
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
+    });
+
+    it('should default allowSoftDelete to false when the prop is not passed', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const deleteButton = await screen.findByTestId(
+        `delete-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(await screen.findByTestId('allow-soft-delete')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('should pass allowSoftDelete through when explicitly enabled', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab allowSoftDelete {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const deleteButton = await screen.findByTestId(
+        `delete-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(await screen.findByTestId('allow-soft-delete')).toHaveTextContent(
+        'true'
+      );
+    });
+
+    it('should disable Restore when the user has Delete but not EditAll (server authorizes restore on EditAll)', async () => {
+      mockPermissionsData = {
+        ...MOCK_PERMISSIONS,
+        EditAll: false,
+        Delete: true,
+      };
+
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} testCases={[deletedTestCase]} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const restoreButton = await screen.findByTestId(
+        `restore-${deletedTestCase.name}`
+      );
+
+      expect(restoreButton).toBeDisabled();
+    });
   });
 
   describe('BundleSuiteFormDrawer integration', () => {
