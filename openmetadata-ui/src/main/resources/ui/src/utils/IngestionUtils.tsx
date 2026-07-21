@@ -12,8 +12,8 @@
  */
 
 import {
-  Typography as CoreTypography,
   EmptyPlaceholder,
+  Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import { Code01 } from '@untitledui/icons';
 import { Typography } from 'antd';
