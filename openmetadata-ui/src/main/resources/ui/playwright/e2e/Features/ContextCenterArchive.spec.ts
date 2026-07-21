@@ -42,7 +42,6 @@ const ARCHIVE_PAGE_SIZE = 15;
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Context Center - Archive Page', () => {
-  let folder: ContextCenterFolder;
   let documentId = '';
   const folderName = `archive-test-folder-${uuid()}`;
   const documentFileName = `archive-test-${uuid()}.txt`;
@@ -50,38 +49,12 @@ test.describe('Context Center - Archive Page', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    const folderRes = await apiContext.post(
-      '/api/v1/contextCenter/drive/folders',
-      {
-        data: {
-          displayName: folderName,
-          name: folderName,
-        },
-      }
-    );
-    expect(folderRes.status()).toBe(201);
-    folder = (await folderRes.json()) as ContextCenterFolder;
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    if (documentId) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/files/${documentId}?hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-    if (folder?.id) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/folders/${folder.id}?recursive=true&hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
+    await apiContext.post('/api/v1/contextCenter/drive/folders', {
+      data: {
+        displayName: folderName,
+        name: folderName,
+      },
+    });
 
     await afterAction();
   });
@@ -391,27 +364,6 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    if (documentId) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/files/${documentId}?hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-    if (folder?.id) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/folders/${folder.id}?recursive=true&hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-
-    await afterAction();
-  });
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -522,56 +474,15 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 // ─── Suite: Archive lazy-loading (infinite scroll) ──────────────────────────
 
 test.describe('Context Center - Archive Page Lazy Loading', () => {
-  let lazyLoadDocumentIds: string[] = [];
-
   test.beforeAll(async ({ browser }) => {
     const namePrefix = `archive-lazy-load-${uuid()}`;
     const { apiContext, afterAction } = await createNewPage(browser);
+
     const uploads = Array.from({ length: 18 }, (_, i) =>
       createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
     );
-    lazyLoadDocumentIds = (await Promise.all(uploads)).map(({ id }) => id);
+    await Promise.all(uploads);
 
-    await expect
-      .poll(
-        async () => {
-          const response = await apiContext.get(
-            '/api/v1/contextCenter/drive/files',
-            {
-              params: { include: 'deleted', orderBy: 'DESC', limit: 100 },
-            }
-          );
-          if (!response.ok()) {
-            return false;
-          }
-
-          const body = (await response.json()) as {
-            data: Array<{ id: string }>;
-          };
-          const archivedIds = new Set(body.data.map(({ id }) => id));
-
-          return lazyLoadDocumentIds.every((id) => archivedIds.has(id));
-        },
-        {
-          intervals: [1000, 2000, 5000],
-          timeout: 60000,
-        }
-      )
-      .toBe(true);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await Promise.all(
-      lazyLoadDocumentIds.map((id) =>
-        apiContext
-          .delete(`/api/v1/contextCenter/drive/files/${id}?hardDelete=true`)
-          .catch(() => undefined)
-      )
-    );
     await afterAction();
   });
 

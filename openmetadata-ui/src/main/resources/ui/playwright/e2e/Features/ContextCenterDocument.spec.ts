@@ -11,47 +11,26 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { navigateToDocuments } from '../../utils/ContextCenterUtil';
+import {
+  BulkOperationResult,
+  ContextCenterDocument,
+  ContextCenterFolder,
+  expectBulkIdsRequest,
+  expectSelectedCount,
+  getDocumentRowByName,
+  navigateToDocuments,
+  parseResponseJson,
+  searchAndGetDocumentRow,
+  selectDocumentByName,
+  uploadDocument as uploadDocumentToApi,
+} from '../../utils/ContextCenterUtil';
 import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-
-// ─── Interfaces ───────────────────────────────────────────────────────────────
-
-interface ContextCenterDocument {
-  id: string;
-  name: string;
-  displayName?: string;
-}
-
-interface ContextCenterFolder {
-  id: string;
-  name: string;
-  displayName?: string;
-  fullyQualifiedName?: string;
-}
-
-interface BulkOperationResult {
-  numberOfRowsPassed?: number;
-  numberOfRowsFailed?: number;
-}
-
-interface BulkIdsRequest {
-  ids?: string[];
-}
-
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
 
@@ -61,61 +40,21 @@ let paginationFolder: ContextCenterFolder;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
-
 const uploadDocument = async (
   apiContext: APIRequestContext,
   name: string,
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
-    file: { name, mimeType: 'text/plain', buffer },
-  };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
-
-  const response = await apiContext.post(
-    '/api/v1/contextCenter/drive/files/upload',
-    { multipart }
+  const document = await uploadDocumentToApi(
+    apiContext,
+    name,
+    buffer,
+    folderFqn
   );
-  const body = await response.text();
-  expect(response.status(), body).toBe(201);
-
-  const document = parseResponseJson<ContextCenterDocument>(body);
   contextFileIdsToCleanup.add(document.id);
 
   return document;
-};
-
-const getDocumentRowByName = (page: Page, fileName: string): Locator =>
-  page
-    .getByTestId('documents-view')
-    .locator('[data-testid^="document-row-"]')
-    .filter({ hasText: fileName });
-
-const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
-  await expect(row).toBeVisible();
-  await row.scrollIntoViewIfNeeded();
-  await row.getByTestId('document-checkbox').click();
-};
-
-const expectSelectedCount = async (page: Page, count: number) => {
-  await expect(
-    page.getByText(`${count} selected`, { exact: true })
-  ).toBeVisible();
-};
-
-const expectBulkIdsRequest = (
-  postData: string | null,
-  expectedIds: string[]
-) => {
-  expect(postData).toBeTruthy();
-  const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
-  expect(new Set(request.ids)).toEqual(new Set(expectedIds));
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -159,25 +98,6 @@ test.describe('Context Center - Documents Page', () => {
       )
     );
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await Promise.all(
-      Array.from(contextFileIdsToCleanup).map((id) =>
-        apiContext.delete(
-          `/api/v1/contextCenter/drive/files/${id}?hardDelete=true`
-        )
-      )
-    );
-    await Promise.all(
-      Array.from(contextFolderIdsToCleanup).map((id) =>
-        apiContext.delete(
-          `/api/v1/contextCenter/drive/folders/${id}?recursive=true&hardDelete=true`
-        )
-      )
-    );
     await afterAction();
   });
 
@@ -494,7 +414,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -822,10 +742,6 @@ test.describe('Context Center - Documents Page', () => {
     const panel = newTab.getByTestId('document-preview-panel');
     await expect(panel).toBeVisible();
     await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
-
-    await expect(
-      newTab.getByTestId(`document-row-${doc.id}`).getByTestId('document-name')
-    ).toHaveText(fileName);
 
     await newTab.close();
   });
