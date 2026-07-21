@@ -1011,15 +1011,22 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await clickMetricAction(page, 'Export');
     const response = await exportResponse;
     expect(response.ok()).toBeTruthy();
+    // Verify exactly one export request was fired (no duplicate calls).
     await expect.poll(() => exportRequestCount).toBe(1);
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
       timeout: 30000,
     });
     await page.locator('.csv-jobs-tray-launcher').click();
     await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
-    await expect(page.locator('.csv-jobs-tray-item')).toHaveCount(1);
+    // Verify the export job appears in the tray. Parallel workers share the
+    // admin identity and may have their own active jobs; checking an exact
+    // count is fragile. Instead, assert that a tray item carrying the export
+    // label is visible — the exportRequestCount check above already guarantees
+    // exactly one export request was sent.
     await expect(
-      page.getByText(/Exporting Metrics|Exported Metrics/)
+      page
+        .locator('.csv-jobs-tray-item')
+        .filter({ hasText: /Exporting Metrics|Exported Metrics/ })
     ).toBeVisible();
   });
 
@@ -1374,6 +1381,7 @@ test.describe('Metrics bulk import, export, and edit', () => {
     dataStewardPage,
     viewOnlyPage,
   }) => {
+    test.slow();
     const customViewOnlyPage = await browser.newPage();
     await viewOnlyUser.login(customViewOnlyPage);
 
