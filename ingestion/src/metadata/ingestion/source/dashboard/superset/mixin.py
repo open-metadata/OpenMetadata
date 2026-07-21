@@ -400,7 +400,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
                         children=self.parse_row_data_type(col_parse),
-                        name=truncate_column_name(str(field.id)),
+                        name=truncate_column_name(field.column_name),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),

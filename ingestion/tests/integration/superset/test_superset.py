@@ -218,6 +218,20 @@ MOCK_DATASOURCE_RESPONSE = SupersetDatasource(
 )
 MOCK_DATABASE_RESPONSE = ListDatabaseResult(result=DatabaseResult(database_name="examples", id=1, parameters=None))
 
+MOCK_DATASOURCE_RESPONSE_WITH_SQL = SupersetDatasource(
+    id=99,
+    result=DataSourceResult.model_validate(
+        {
+            "table_name": "sample_table",
+            "sql": "SELECT id FROM sample_table",
+            "description": "rollup dataset",
+            "url": "/tablemodelview/edit/99",
+            "schema": "main",
+            "columns": [{"id": 11, "column_name": "Population", "type": "INT"}],
+        }
+    ),
+)
+
 
 def setup_sample_data(postgres_container):
     engine = sqlalchemy.create_engine(postgres_container.get_connection_url())
@@ -631,6 +645,24 @@ class SupersetUnitTest(TestCase):
         self.superset_db.prepare()
         parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
         assert parsed_datasource[0].dataType.value == "INT"
+        # column name is the real column_name, not the numeric superset column id
+        assert parsed_datasource[0].name.root == "Population"
+
+    def test_datamodel_fields_api(self):
+        """
+        API datamodel carries sql, description and sourceUrl from the dataset payload
+        """
+        self.superset_api.all_charts = {69: MOCK_CHART}
+        with patch.object(
+            self.superset_api.client,
+            "fetch_datasource",
+            return_value=MOCK_DATASOURCE_RESPONSE_WITH_SQL,
+        ):
+            data_model = next(self.superset_api.yield_datamodel(MOCK_DASHBOARD)).right
+        assert data_model.sql.root == "SELECT id FROM sample_table"
+        assert data_model.description.root == "rollup dataset"
+        assert str(data_model.sourceUrl.root).endswith("/tablemodelview/edit/99")
+        assert data_model.columns[0].name.root == "Population"
 
     def test_is_table_to_table_lineage(self):
         table = Table(name="table_name", schema=Schema(name="schema_name"))
