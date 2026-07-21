@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -498,14 +499,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void post_testCaseWithoutEntityLink_4xx(TestNamespace ns) {
+  void post_testCaseWithMissingOrEmptyEntityLink_4xx(TestNamespace ns) {
+    CreateTestCase missingEntityLink = buildRequestWithEntityLink(ns, "no_entity_link", null);
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(missingEntityLink),
+        "Creation should fail when entityLink is missing");
+
+    CreateTestCase emptyEntityLink = buildRequestWithEntityLink(ns, "empty_entity_link", "");
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(emptyEntityLink),
+        "Creation should fail when entityLink is empty");
+  }
+
+  private CreateTestCase buildRequestWithEntityLink(
+      TestNamespace ns, String name, String entityLink) {
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("no_entity_link"));
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
-
-    assertThrows(Exception.class, () -> createEntity(request), "Should fail without entity link");
+    return request;
   }
 
   @Test

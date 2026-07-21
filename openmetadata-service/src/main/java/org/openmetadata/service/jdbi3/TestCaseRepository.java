@@ -492,10 +492,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             .distinct()
             .toList();
 
-    if (fqns.isEmpty()) {
-      return;
-    }
-
     List<CollectionDAO.LatestRecordWithFQNHash> records =
         daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
 
