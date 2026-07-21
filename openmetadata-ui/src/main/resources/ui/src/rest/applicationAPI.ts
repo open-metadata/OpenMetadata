@@ -20,6 +20,7 @@ import { CreateAppRequest } from '../generated/entity/applications/createAppRequ
 import {
   PipelineState,
   PipelineStatus,
+  ProviderType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
@@ -206,7 +207,13 @@ export const getAiAutomationsByService = async (serviceFqn: string) => {
   const response = await APIClient.get<
     PagingResponse<CollateAgentAutomation[]>
   >('/ai/automations', {
-    params: { service: serviceFqn, isTemplate: false },
+    // The list endpoint defaults to provider=user when omitted, which filters
+    // out AutoPilot's provider=automation entries; request them explicitly.
+    params: {
+      service: serviceFqn,
+      isTemplate: false,
+      provider: ProviderType.Automation,
+    },
   });
 
   return response.data;
