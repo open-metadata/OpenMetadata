@@ -95,20 +95,20 @@ class StorageSampler(SamplerInterface):
         if self._columns:
             return self._columns
 
-        if not self.entity.dataModel or not self.entity.dataModel.columns:
+        if not self.entity.dataModel or not self.entity.dataModel.columns:  # pyright: ignore[reportAttributeAccessIssue]
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no data model columns")
             return []
 
-        self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]
+        self._columns = [SQALikeColumn(col.name.root, col.dataType) for col in self.entity.dataModel.columns]  # pyright: ignore[reportAttributeAccessIssue]
         return self._columns
 
     def _get_file_format(self) -> Optional[SupportedTypes]:  # noqa: UP045
         """Extract file format from container"""
-        if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:
+        if not self.entity.fileFormats or len(self.entity.fileFormats) == 0:  # pyright: ignore[reportAttributeAccessIssue]
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no file formats")
             return None
 
-        file_format = self.entity.fileFormats[0].value
+        file_format = self.entity.fileFormats[0].value  # pyright: ignore[reportAttributeAccessIssue]
         try:
             return SupportedTypes(file_format)
         except ValueError:

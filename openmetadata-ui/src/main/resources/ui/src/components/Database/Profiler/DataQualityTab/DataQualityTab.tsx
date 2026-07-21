@@ -787,7 +787,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           'test-case-table-container': true,
           'custom-card-with-table':
             !isUndefined(tableHeader) || removeTableBorder,
-          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary':
+          'tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary':
             isUndefined(tableHeader) && !removeTableBorder,
         })}>
         <Table

@@ -31,7 +31,7 @@
 #     `mvn verify -P search-it`. They run on the embedded bootstrap (testcontainers), not the
 #     baked image, so this job is independent of build-image and runs them serially.
 
-name: JavaUIIT Integration Tests (Nightly)
+name: JavaUIIT Integration Tests Running on PRs
 
 on:
   workflow_dispatch:
