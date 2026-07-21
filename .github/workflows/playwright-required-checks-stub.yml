@@ -19,6 +19,15 @@
 # group. PRs targeting release branches are excluded — they run the real
 # suites via pull_request_target ("safe to test" label) since those branches
 # have no merge queue.
+#
+# Security posture — why an unconditional green stub is safe:
+# 1. Adding a PR to the merge queue requires write access; an untrusted fork
+#    author cannot queue their own PR, so merge_group runs (which use secrets)
+#    only execute code a maintainer has explicitly queued for merge.
+# 2. Only playwright-summary is stubbed. Every other required check
+#    (checkstyles, integration tests, py-tests-status, ui-coverage) still runs
+#    under pull_request_target behind the "safe to test" label verification,
+#    so an unlabeled fork PR cannot turn its required checks green anyway.
 # https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
 name: Playwright Required Checks Stub
 
