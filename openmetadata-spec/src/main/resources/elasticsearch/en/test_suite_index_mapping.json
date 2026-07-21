@@ -184,6 +184,9 @@
       "lastResultTimestamp": {
         "type": "long"
       },
+      "testsRevision": {
+        "type": "long"
+      },
       "owners": {
         "type": "nested",
         "properties": {

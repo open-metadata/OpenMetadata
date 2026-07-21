@@ -28,6 +28,7 @@ import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.AbstractMap;
@@ -88,7 +89,6 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -1585,6 +1585,29 @@ public interface CollectionDAO {
         @Bind("extension") List<String> extension,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") List<String> json);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, JSON_OBJECT('revision', 1)) "
+                + "ON DUPLICATE KEY UPDATE jsonSchema = VALUES(jsonSchema), "
+                + "json = JSON_SET(entity_extension.json, '$.revision', "
+                + "COALESCE(CAST(JSON_UNQUOTE(JSON_EXTRACT(entity_extension.json, '$.revision')) AS UNSIGNED), 0) + 1)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, jsonb_build_object('revision', 1)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, "
+                + "json = jsonb_build_object('revision', "
+                + "COALESCE((entity_extension.json ->> 'revision')::bigint, 0) + 1)",
+        connectionType = POSTGRES)
+    @BatchChunkSize(100)
+    void incrementRevisions(
+        @BindUUID("id") List<UUID> ids,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema);
 
     @ConnectionAwareSqlUpdate(
         value = "UPDATE entity_extension SET json = :json where (json -> '$.id') = :id",
@@ -10923,7 +10946,6 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
-            case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -11727,6 +11749,14 @@ public interface CollectionDAO {
             "SELECT json FROM workflow_instance_state_time_series "
                 + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp ASC")
     List<String> listAllStatesForInstance(@Bind("workflowInstanceId") String workflowInstanceId);
+
+    @SqlQuery(
+        value =
+            "SELECT workflowInstanceId FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceExecutionId = :workflowInstanceExecutionId "
+                + "ORDER BY timestamp ASC LIMIT 1")
+    String findWorkflowInstanceIdByExecutionId(
+        @Bind("workflowInstanceExecutionId") String workflowInstanceExecutionId);
   }
 
   interface RecognizerFeedbackDAO {
@@ -13438,6 +13468,8 @@ public interface CollectionDAO {
   /** DAO for incremental search retry queue records. */
   interface SearchIndexRetryQueueDAO {
 
+    String PROPAGATION_CONTEXT_TOKEN = "__OPENMETADATA_SEARCH_PROPAGATION_V1__:";
+
     @lombok.Getter
     @lombok.AllArgsConstructor
     class SearchIndexRetryRecord {
@@ -13448,20 +13480,65 @@ public interface CollectionDAO {
       private final String entityType;
       private final int retryCount;
       private final java.sql.Timestamp claimedAt;
+      @JsonIgnore private final String claimToken;
+
+      public SearchIndexRetryRecord(
+          String entityId,
+          String entityFqn,
+          String failureReason,
+          String status,
+          String entityType,
+          int retryCount,
+          java.sql.Timestamp claimedAt) {
+        this(entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, null);
+      }
     }
 
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
                 + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
-                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), status = VALUES(status), entityType = VALUES(entityType)",
+                + "ON DUPLICATE KEY UPDATE failureReason = CASE "
+                + "WHEN LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "COALESCE(VALUES(failureReason), '')) > 0 "
+                + "OR LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "COALESCE(failureReason, '')) = 0 THEN VALUES(failureReason) "
+                + "ELSE CONCAT(COALESCE(VALUES(failureReason), ''), CHAR(10), "
+                + "SUBSTRING(failureReason, LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "failureReason))) END, "
+                + "status = VALUES(status), entityType = VALUES(entityType), retryCount = 0, "
+                + "claimedAt = NULL, claimToken = NULL",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
                 + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
                 + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
-                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, entityType = EXCLUDED.entityType",
+                + "failureReason = CASE "
+                + "WHEN POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "COALESCE(EXCLUDED.failureReason, '')) > 0 "
+                + "OR POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "COALESCE(search_index_retry_queue.failureReason, '')) = 0 "
+                + "THEN EXCLUDED.failureReason "
+                + "ELSE COALESCE(EXCLUDED.failureReason, '') || CHR(10) || "
+                + "SUBSTRING(search_index_retry_queue.failureReason FROM "
+                + "POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "search_index_retry_queue.failureReason)) END, "
+                + "status = EXCLUDED.status, "
+                + "entityType = EXCLUDED.entityType, retryCount = 0, claimedAt = NULL, "
+                + "claimToken = NULL",
         connectionType = POSTGRES)
     void upsert(
         @Bind("entityId") String entityId,
@@ -13471,14 +13548,14 @@ public interface CollectionDAO {
         @Bind("entityType") String entityType);
 
     @SqlQuery(
-        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
             + "FROM search_index_retry_queue WHERE status = :status LIMIT :limit")
     @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
     List<SearchIndexRetryRecord> findByStatus(
         @Bind("status") String status, @Bind("limit") int limit);
 
     @SqlQuery(
-        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
             + "FROM search_index_retry_queue WHERE status IN (<statuses>) LIMIT :limit")
     @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
     List<SearchIndexRetryRecord> findByStatuses(
@@ -13486,7 +13563,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
                 + "FROM search_index_retry_queue WHERE status = 'PENDING' "
                 + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
                 + "claimedAt <= DATE_SUB(NOW(), INTERVAL :firstRetryBackoffSeconds SECOND))) "
@@ -13496,7 +13573,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
                 + "FROM search_index_retry_queue WHERE status = 'PENDING' "
                 + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
                 + "claimedAt <= NOW() - (:firstRetryBackoffSeconds * INTERVAL '1 second'))) "
@@ -13540,6 +13617,14 @@ public interface CollectionDAO {
         "DELETE FROM search_index_retry_queue WHERE entityId = :entityId AND entityFqn = :entityFqn")
     int deleteByEntity(@Bind("entityId") String entityId, @Bind("entityFqn") String entityFqn);
 
+    @SqlUpdate(
+        "DELETE FROM search_index_retry_queue WHERE entityId = :entityId AND entityFqn = :entityFqn "
+            + "AND status = 'IN_PROGRESS' AND claimToken = :claimToken")
+    int deleteClaimed(
+        @Bind("entityId") String entityId,
+        @Bind("entityFqn") String entityFqn,
+        @Bind("claimToken") String claimToken);
+
     @SqlUpdate("DELETE FROM search_index_retry_queue WHERE status IN (<statuses>)")
     int deleteByStatuses(@BindList("statuses") List<String> statuses);
 
@@ -13547,27 +13632,31 @@ public interface CollectionDAO {
     int countByStatus(@Bind("status") String status);
 
     @SqlUpdate(
-        "UPDATE search_index_retry_queue SET status = 'IN_PROGRESS', claimedAt = NOW() "
+        "UPDATE search_index_retry_queue SET status = 'IN_PROGRESS', claimedAt = NOW(), "
+            + "claimToken = :claimToken "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
     int claimRecord(
         @Bind("entityId") String entityId,
         @Bind("entityFqn") String entityFqn,
-        @Bind("currentStatus") String currentStatus);
+        @Bind("currentStatus") String currentStatus,
+        @Bind("claimToken") String claimToken);
 
     @SqlUpdate(
-        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
+        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL, claimToken = NULL "
             + "WHERE status = 'IN_PROGRESS' AND claimedAt < :cutoff")
     int recoverStaleInProgress(@Bind("cutoff") java.sql.Timestamp cutoff);
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
-            + "retryCount = retryCount + 1, claimedAt = NOW() "
-            + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
+            + "retryCount = retryCount + 1, claimedAt = NOW(), claimToken = NULL "
+            + "WHERE entityId = :entityId AND entityFqn = :entityFqn "
+            + "AND status = 'IN_PROGRESS' AND claimToken = :claimToken")
     int updateFailureAndRetryCount(
         @Bind("entityId") String entityId,
         @Bind("entityFqn") String entityFqn,
         @Bind("failureReason") String failureReason,
-        @Bind("status") String status);
+        @Bind("status") String status,
+        @Bind("claimToken") String claimToken);
 
     default List<SearchIndexRetryRecord> claimPending(int batchSize) {
       return claimPending(batchSize, 0, 0);
@@ -13587,17 +13676,31 @@ public interface CollectionDAO {
         if (claimed.size() >= batchSize) {
           break;
         }
+        String claimToken = UUID.randomUUID().toString();
         int updated =
-            claimRecord(candidate.getEntityId(), candidate.getEntityFqn(), candidate.getStatus());
+            claimRecord(
+                candidate.getEntityId(),
+                candidate.getEntityFqn(),
+                candidate.getStatus(),
+                claimToken);
         if (updated == 1) {
-          claimed.add(candidate);
+          claimed.add(
+              new SearchIndexRetryRecord(
+                  candidate.getEntityId(),
+                  candidate.getEntityFqn(),
+                  candidate.getFailureReason(),
+                  "IN_PROGRESS",
+                  candidate.getEntityType(),
+                  candidate.getRetryCount(),
+                  new java.sql.Timestamp(System.currentTimeMillis()),
+                  claimToken));
         }
       }
       return claimed;
     }
 
     @SqlQuery(
-        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+        "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt, claimToken "
             + "FROM search_index_retry_queue ORDER BY retryCount DESC, claimedAt DESC "
             + "LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
@@ -13616,7 +13719,8 @@ public interface CollectionDAO {
             rs.getString("status"),
             rs.getString("entityType"),
             rs.getInt("retryCount"),
-            rs.getTimestamp("claimedAt"));
+            rs.getTimestamp("claimedAt"),
+            rs.getString("claimToken"));
       }
     }
   }
