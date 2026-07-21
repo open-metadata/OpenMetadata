@@ -18,6 +18,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonPatch;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -627,55 +630,99 @@ public class TaskWorkflowHandler {
       Object payload,
       TaskExecutionAction action) {
     try {
-      String targetFqn = entity.getFullyQualifiedName();
+      String fieldPath = null;
       List<TagLabel> tagsToAdd = null;
       List<TagLabel> tagsToRemove = null;
 
-      // Try to get tags from payload first (new format with tagsToAdd/tagsToRemove)
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
-        String fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
-        if (fieldPath != null && !fieldPath.isEmpty()) {
-          targetFqn = resolveTagTargetFqn(entity, fieldPath);
-        }
-
+        fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
         tagsToAdd =
             readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
         tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
       }
 
-      // If newValue is provided (from resolution), parse it as the final tags to apply
-      // This is used when user edits the suggestion before accepting
+      // A non-empty resolver-supplied newValue is the final desired tag set (reviewer-edited),
+      // so treat it as a full replace instead of merging with payload's add/remove split.
       if (newValue != null && !newValue.isEmpty()) {
         List<TagLabel> newTags =
             JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
         if (newTags != null && !newTags.isEmpty()) {
           tagsToAdd = newTags;
-          // When using newValue, we're replacing, so don't process tagsToRemove separately
           tagsToRemove = null;
         }
       }
 
-      if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
-        repository.applyTagsDelete(tagsToRemove, targetFqn);
-        LOG.info("[TaskWorkflowHandler] Removed {} tags from '{}'", tagsToRemove.size(), targetFqn);
-      }
-
-      if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
-        repository.applyTags(tagsToAdd, targetFqn);
-        LOG.info("[TaskWorkflowHandler] Added {} tags to '{}'", tagsToAdd.size(), targetFqn);
+      if (isEntityLevelTagPath(fieldPath)) {
+        // Entity-level: patch the entity so the versioned path runs — tag_usage is synced,
+        // version is bumped, change event fires. Same code path as PATCH /v1/tables/{id} tags.
+        patchEntityTags(entity, repository, user, tagsToAdd, tagsToRemove);
+      } else {
+        // Column/field-level: direct DAO write. The versioned path does not currently reach
+        // nested Column tags through this handler (pre-existing gap — tags apply, no bump).
+        String targetFqn = resolveTagTargetFqn(entity, fieldPath);
+        if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
+          repository.applyTagsDelete(tagsToRemove, targetFqn);
+        }
+        if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
+          repository.applyTags(tagsToAdd, targetFqn);
+        }
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
     }
   }
 
+  private boolean isEntityLevelTagPath(String fieldPath) {
+    return fieldPath == null
+        || fieldPath.isEmpty()
+        || "tags".equals(fieldPath)
+        || "entity".equals(fieldPath);
+  }
+
+  private void patchEntityTags(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      List<TagLabel> tagsToAdd,
+      List<TagLabel> tagsToRemove) {
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
+    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
+    if (patch != null && !patch.toJsonArray().isEmpty()) {
+      repository.patch(null, entity.getId(), user, patch, null, null);
+    }
+  }
+
+  private List<TagLabel> mergeTags(
+      List<TagLabel> current, List<TagLabel> toAdd, List<TagLabel> toRemove) {
+    List<TagLabel> merged = new ArrayList<>(current == null ? List.of() : current);
+    if (toRemove != null && !toRemove.isEmpty()) {
+      Set<String> removeFqns =
+          toRemove.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+      merged.removeIf(t -> removeFqns.contains(t.getTagFQN()));
+    }
+    if (toAdd != null && !toAdd.isEmpty()) {
+      Set<String> existing = merged.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+      for (TagLabel t : toAdd) {
+        if (existing.add(t.getTagFQN())) {
+          merged.add(t);
+        }
+      }
+    }
+    return merged;
+  }
+
   private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
-    if (fieldPath == null || fieldPath.isEmpty()) {
+    if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
       return entity.getFullyQualifiedName();
     }
 
     String normalizedFieldPath = fieldPath.replace("\"", "");
+    if (normalizedFieldPath.endsWith(".tags")) {
+      normalizedFieldPath =
+          normalizedFieldPath.substring(0, normalizedFieldPath.length() - ".tags".length());
+    }
 
     if (normalizedFieldPath.startsWith("requestSchema.schemaFields.")) {
       return entity.getFullyQualifiedName()
@@ -1179,6 +1226,16 @@ public class TaskWorkflowHandler {
 
   private String resolveWorkflowResult(
       Task task, String transitionId, TaskResolutionType resolutionType) {
+    // Ask the deployed BPMN first — a running Flowable process instance evaluates outbound flows
+    // against its frozen process definition, so we must write whichever condition string that
+    // deployment expects (post-v210 approve/reject on fresh deploys; legacy true/false on
+    // pre-v210 in-flight instances). Only fall back to the caller-supplied transitionId or the
+    // WorkflowDefinition entity when BPMN inspection cannot decide (e.g. custom transitions).
+    String deployedBpmnResult = resolveResultFromDeployedBpmn(task, resolutionType);
+    if (deployedBpmnResult != null) {
+      return deployedBpmnResult;
+    }
+
     if (transitionId != null) {
       return transitionId;
     }
@@ -1194,13 +1251,24 @@ public class TaskWorkflowHandler {
       return defaultTransitionId;
     }
 
-    if (task != null
-        && (TaskEntityType.RecognizerFeedbackApproval == task.getType()
-            || TaskEntityType.DataQualityReview == task.getType())) {
-      return isPositiveResolution(resolutionType) ? "true" : "false";
-    }
-
     return defaultWorkflowResult(resolutionType);
+  }
+
+  /**
+   * For a task backed by a still-running Flowable process, ask the deployed BPMN what condition
+   * value (e.g. "approve" vs the legacy "true") would fire the outbound flow matching the given
+   * resolution. This shields running pre-2.0 workflow instances from the v210 migration that
+   * rewrites WorkflowDefinition entity edges to the new approve/reject scheme without being able
+   * to retroactively update Flowable's frozen process definitions.
+   */
+  private String resolveResultFromDeployedBpmn(Task task, TaskResolutionType resolutionType) {
+    String result = null;
+    if (task != null && task.getId() != null && resolutionType != null) {
+      result =
+          WorkflowHandler.getInstance()
+              .getExpectedResultForActiveTask(task.getId(), isPositiveResolution(resolutionType));
+    }
+    return result;
   }
 
   /**
