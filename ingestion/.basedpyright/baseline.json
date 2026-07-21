@@ -58518,14 +58518,6 @@
                 }
             },
             {
-                "code": "reportOptionalIterable",
-                "range": {
-                    "startColumn": 83,
-                    "endColumn": 105,
-                    "lineCount": 1
-                }
-            },
-            {
                 "code": "reportAttributeAccessIssue",
                 "range": {
                     "startColumn": 34,

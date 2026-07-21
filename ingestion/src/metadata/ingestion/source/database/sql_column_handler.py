@@ -184,11 +184,7 @@ class SqlColumnHandlerMixin:
             )
             pk_constraints = {}
 
-        pk_columns = (
-            pk_constraints.get("constrained_columns")
-            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
-            else {}
-        )
+        pk_constraint_columns = pk_constraints.get("constrained_columns") if len(pk_constraints) > 0 else None
 
         foreign_columns = []
         for foreign_constraint in foreign_constraints:
@@ -217,7 +213,9 @@ class SqlColumnHandlerMixin:
                     ]
                 )
 
-        pk_columns = [clean_up_starting_ending_double_quotes_in_string(pk_column) for pk_column in pk_columns]
+        pk_columns = [
+            clean_up_starting_ending_double_quotes_in_string(pk_column) for pk_column in pk_constraint_columns or []
+        ]
 
         return pk_columns, unique_columns, foreign_columns
 
