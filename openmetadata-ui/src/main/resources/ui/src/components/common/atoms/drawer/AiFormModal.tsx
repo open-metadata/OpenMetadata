@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
-import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -189,26 +188,16 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Follows the Request Data Access modal, which design named as the
-                reference: its header carries
-                `bg-primary pb-4 shadow-[0_0_16px_0_rgba(0,0,0,0.10)]`.
+            {/* The Request Data Access modal's header verbatim, that form being
+                the reference design named:
+                `bg-primary pb-4 border-t border-secondary
+                 shadow-[0_0_16px_0_rgba(0,0,0,0.10)]`.
 
-                The shadow has no offset, so it radiates rather than casting in
-                one direction — which is why the same value works on both edges
-                here without mirroring. `bg-primary` is load-bearing: an opaque
-                strip is what the shadow sits on, so scrolling content passes
-                beneath it cleanly instead of tinting it.
-
-                That reference also sets `border-t` on its header, which is not
-                copied — on this modal a top border would draw a line across the
-                rounded top edge, above the title. It reads as a copy-paste from
-                its own footer rather than intent.
-
-                `relative z-[1]` lifts the header over the scrolling body, which
-                paints after and would otherwise cover the shadow. Dialog.Header
-                ships no bottom padding, so `pb` keeps the subtitle off the
-                edge. */}
-            <Dialog.Header className="tw:relative tw:z-[1] tw:bg-primary tw:pb-4 tw:shadow-[0_0_16px_0_rgba(0,0,0,0.10)]">
+                `relative z-[1]` is the one addition, and it is functional
+                rather than stylistic: SlideoutMenu.Header stacks above its body
+                on its own, Dialog.Header does not, so without it the scrolling
+                body paints over the shadow and nothing shows. */}
+            <Dialog.Header className="tw:relative tw:z-[1] tw:border-t tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-[0_0_16px_0_rgba(0,0,0,0.10)]">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -293,15 +282,11 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 columns and the footer here — the hint column visibly stops
                 short of it. The columns already run to the modal's edges, so
                 the footer sits directly against them. */}
-            {/* Same shadow as the header — it has no offset, so it needs no
-                mirroring to bound the other edge. Design asked for both edges;
-                the reference only styles its header, its footer taking the
-                component default, which here is Dialog's own rule. That rule is
-                left in place. */}
+            {/* Unstyled, as in the reference: that form puts the treatment on
+                its header alone and leaves the footer to the component default.
+                Here that default is Dialog's own rule. */}
             <Dialog.Footer
-              className={classNames('tw:shadow-[0_0_16px_0_rgba(0,0,0,0.10)]', {
-                'tw:mt-0 tw:sm:mt-0': hasHintColumn,
-              })}>
+              className={hasHintColumn ? 'tw:mt-0 tw:sm:mt-0' : undefined}>
               <Button
                 color="secondary"
                 data-testid={cancelTestId}
