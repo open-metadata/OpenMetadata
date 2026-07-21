@@ -1157,13 +1157,20 @@ test.describe('User Profile Persona Interactions', () => {
         .locator('[data-testid="persona-select-list"] .ant-select-clear')
         .click();
 
+      const updateUserResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          response.request().method() === 'PATCH' &&
+          response.status() === 200
+      );
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
+      await updateUserResponse;
 
       await expect(
         adminPage
