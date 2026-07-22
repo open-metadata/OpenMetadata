@@ -308,6 +308,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
+          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
           renderCard={renderDataProductCard}
