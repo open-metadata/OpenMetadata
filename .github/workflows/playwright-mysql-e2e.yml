@@ -128,6 +128,7 @@ jobs:
           python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "all"
+          install-test-dependencies: "false"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
