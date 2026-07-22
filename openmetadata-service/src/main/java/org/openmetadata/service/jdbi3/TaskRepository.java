@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -90,6 +91,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public static final String COLLECTION_PATH = "/v1/tasks";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
+  private static final int ABOUT_FQN_HASH_IN_BATCH_SIZE = 500;
   public static final String FIELD_ASSIGNEES = "assignees";
 
   public static final String FIELD_REVIEWERS = "reviewers";
@@ -1313,6 +1315,65 @@ public class TaskRepository extends EntityRepository<Task> {
 
     Task patchedTask = patch(null, currentTask.getId(), updatedBy, patch).entity();
     WebsocketNotificationHandler.handleTaskNotification(patchedTask);
+  }
+
+  /**
+   * Hard-delete every task whose about target is one of the given entity FQNs. This is the Task
+   * 2.0 counterpart of {@link FeedRepository#deleteByAbout} — invoked from the entity hard-delete
+   * cleanup so tasks don't outlive their target entity as unmanageable orphans (the about
+   * relationship row is wiped by the generic relationship cleanup, leaving the task with no
+   * target). Uses direct SQL that bypasses {@link EntityRepository#delete} and its cache
+   * invalidation, so callers MUST pass the returned (id, fqn) pairs to
+   * {@link #invalidateTaskCaches} after their enclosing transaction commits.
+   */
+  public List<EntityDAO.EntityIdFqnPair> deleteTasksAboutEntities(List<String> entityFqns) {
+    List<EntityDAO.EntityIdFqnPair> deletedTasks = List.of();
+    List<String> aboutFqnHashes =
+        listOrEmpty(entityFqns).stream()
+            .filter(Objects::nonNull)
+            .map(FullyQualifiedName::buildHash)
+            .toList();
+    if (!aboutFqnHashes.isEmpty()) {
+      List<EntityDAO.EntityIdFqnPair> tasks = listTasksAboutFqnHashes(aboutFqnHashes);
+      if (!tasks.isEmpty()) {
+        List<UUID> taskIds = tasks.stream().map(task -> task.id).filter(Objects::nonNull).toList();
+        daoCollection.relationshipDAO().batchDeleteRelationships(taskIds, Entity.TASK);
+        daoCollection.taskDAO().deleteByIds(taskIds);
+        deletedTasks = tasks;
+      }
+    }
+    return deletedTasks;
+  }
+
+  private List<EntityDAO.EntityIdFqnPair> listTasksAboutFqnHashes(List<String> aboutFqnHashes) {
+    List<EntityDAO.EntityIdFqnPair> tasks = new ArrayList<>();
+    for (int i = 0; i < aboutFqnHashes.size(); i += ABOUT_FQN_HASH_IN_BATCH_SIZE) {
+      List<String> chunk =
+          aboutFqnHashes.subList(
+              i, Math.min(i + ABOUT_FQN_HASH_IN_BATCH_SIZE, aboutFqnHashes.size()));
+      tasks.addAll(daoCollection.taskDAO().listIdAndFqnByAboutFqnHashes(chunk));
+    }
+    return tasks;
+  }
+
+  /**
+   * Invalidate caches for tasks removed by a direct SQL delete. Task is in UNCACHED_ENTITY_TYPES,
+   * so invalidateCacheForEntity clears only the local L1 Guava cache and skips the pub/sub
+   * fan-out (deliberate perf optimization for cascade-heavy paths). In a multi-pod deployment,
+   * peer instances that previously read one of these tasks still hold it in their L1 cache and
+   * would serve the stale row after the bulk SQL DELETE. Publish each (id, fqn) explicitly so
+   * peers drop both their by-id and by-name L1 entries.
+   */
+  public void invalidateTaskCaches(List<EntityDAO.EntityIdFqnPair> tasks, String reason) {
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair task : listOrEmpty(tasks)) {
+      if (task.id != null) {
+        invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+        if (pubsub != null) {
+          pubsub.publish(Entity.TASK, task.id, task.fqn, reason);
+        }
+      }
+    }
   }
 
   @Override

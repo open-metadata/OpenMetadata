@@ -4672,6 +4672,20 @@ public interface CollectionDAO {
     List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
         @Bind("createdById") String createdById, @Bind("category") String category);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM task_entity WHERE aboutFqnHash IN (<aboutFqnHashes>)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json->>'fullyQualifiedName' AS fqn "
+                + "FROM task_entity WHERE aboutFqnHash IN (<aboutFqnHashes>)",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByAboutFqnHashes(
+        @BindList("aboutFqnHashes") List<String> aboutFqnHashes);
+
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
         // Row-aware bucketing so openCount + completedCount = total across mixed task types.

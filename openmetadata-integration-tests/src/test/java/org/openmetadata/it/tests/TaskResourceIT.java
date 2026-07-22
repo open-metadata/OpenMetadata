@@ -4057,6 +4057,88 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Deleting the bot creator should not apply the suggestion payload");
   }
 
+  @Test
+  void testHardDeletingAboutEntityDeletesItsTasks(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "deleted");
+    Table otherTable =
+        TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "survivor");
+
+    Task openTask = createEntity(descriptionUpdateTaskAbout(ns, "orphan-open", table));
+    Task closedTask = createEntity(descriptionUpdateTaskAbout(ns, "orphan-closed", table));
+    closedTask = SdkClients.adminClient().tasks().close(closedTask.getId().toString());
+    assertEquals(TaskEntityStatus.Cancelled, closedTask.getStatus());
+    Task survivorTask = createEntity(descriptionUpdateTaskAbout(ns, "survivor", otherTable));
+
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    awaitTasksDeleted(table.getFullyQualifiedName(), openTask.getId(), closedTask.getId());
+
+    Task survivor = SdkClients.adminClient().tasks().get(survivorTask.getId().toString(), "about");
+    assertEquals(TaskEntityStatus.Open, survivor.getStatus());
+    assertNotNull(survivor.getAbout(), "Task about an unrelated entity must keep its target");
+    assertEquals(otherTable.getFullyQualifiedName(), survivor.getAbout().getFullyQualifiedName());
+  }
+
+  @Test
+  void testSoftDeletingAboutEntityKeepsTasks(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+
+    Task task = createEntity(descriptionUpdateTaskAbout(ns, "soft-delete-kept", table));
+
+    SdkClients.adminClient().tables().delete(table.getId().toString());
+
+    Task kept = SdkClients.adminClient().tasks().get(task.getId().toString());
+    assertEquals(
+        TaskEntityStatus.Open,
+        kept.getStatus(),
+        "Soft-deleting the target entity must not remove or resolve its tasks");
+  }
+
+  @Test
+  void testRecursiveHardDeleteOfParentDeletesDescendantTasks(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+
+    Task task = createEntity(descriptionUpdateTaskAbout(ns, "descendant-cleanup", table));
+
+    SdkClients.adminClient()
+        .databaseSchemas()
+        .delete(schema.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    awaitTasksDeleted(table.getFullyQualifiedName(), task.getId());
+  }
+
+  private CreateTask descriptionUpdateTaskAbout(TestNamespace ns, String suffix, Table table) {
+    return new CreateTask()
+        .withName(ns.prefix(suffix))
+        .withDescription("Task about an entity that will be deleted")
+        .withCategory(TaskCategory.MetadataUpdate)
+        .withType(TaskEntityType.DescriptionUpdate)
+        .withAbout(entityLink("table", table.getFullyQualifiedName()));
+  }
+
+  private void awaitTasksDeleted(String aboutEntityFqn, UUID... taskIds) {
+    Awaitility.await("task cleanup for deleted entity " + aboutEntityFqn)
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              for (UUID taskId : taskIds) {
+                assertThrows(
+                    ApiException.class,
+                    () -> SdkClients.adminClient().tasks().get(taskId.toString()),
+                    "Task about a hard-deleted entity should no longer be retrievable");
+              }
+            });
+  }
+
   private record BotWithUser(Bot bot, User user) {}
 
   private BotWithUser createBotWithJwtUser(TestNamespace ns, String suffix) {

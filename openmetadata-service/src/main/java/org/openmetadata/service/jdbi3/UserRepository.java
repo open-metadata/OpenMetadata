@@ -81,7 +81,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -1370,22 +1369,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
-    // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
-    // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
-    // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
-    // that previously read one of these tasks still hold it in their L1 cache and would serve
-    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
-    // peers drop both their by-id and by-name L1 entries.
-    var pubsub = CacheBundle.getCacheInvalidationPubSub();
-    for (EntityDAO.EntityIdFqnPair task : tasks) {
-      if (task.id == null) {
-        continue;
-      }
-      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
-      if (pubsub != null) {
-        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
-      }
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.invalidateTaskCaches(tasks, "bot-task-cleanup");
   }
 
   static long getTaskCleanupRetryDelayMillis(int attempt) {
