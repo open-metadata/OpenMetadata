@@ -15,28 +15,36 @@ on:
         default: 'main'
         type: string
       pr_number:
-        description: 'PR number to run the workflow for (works for both forked and non-forked PRs)'
+        description: 'PR number to run the workflow for (works for both forked and
+          non-forked PRs)'
         required: false
         type: string
 
 concurrency:
-  group: typescript-generation-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  group: typescript-generation-${{ github.event.pull_request.number ||
+    github.run_id }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' ||
+    github.event.action != 'labeled' || github.event.label.name == 'safe to
+    test' }}
 
 jobs:
   generate-types:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name !=
+      'pull_request_target' || github.event.action != 'labeled' ||
+      github.event.label.name == 'safe to test') }}
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Get PR details for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number !=
+          ''
         id: pr-details
         env:
           PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          BASE_REPO: ${{ github.repository }}
+          BASE_REPO: ${{ github.repository }}TypeScript Type Generation / generate-types
+            (pull_request_target)
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
@@ -48,7 +56,8 @@ jobs:
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
+        if: ${{ github.event_name == 'pull_request_target' && github.actor !=
+          'github-actions[bot]' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -57,7 +66,8 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'github-actions[bot]' }}
+        if: ${{ github.event_name == 'pull_request_target' && github.actor !=
+          'github-actions[bot]' }}
         with:
           github-token: '${{ secrets.GITHUB_TOKEN }}'
           valid-labels: 'safe to test'
@@ -125,6 +135,8 @@ jobs:
         with:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
           ref: ${{ steps.checkout-ref.outputs.ref }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
@@ -157,26 +169,33 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork ==
+          'false'
         run: |
           git commit -m "Update generated TypeScript types"
           git push --force-with-lease
 
       - name: Create PR comment about auto-update
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork ==
+          'false' && (github.event_name == 'pull_request_target' ||
+          github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          issue-number: ${{ github.event.pull_request.number ||
+            github.event.inputs.pr_number }}
           body: |
             ## ✅ TypeScript Types Auto-Updated
 
             The generated TypeScript types have been automatically updated based on JSON schema changes in this PR.
 
       - name: Create PR comment for fork repository
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork ==
+          'true' && (github.event_name == 'pull_request_target' ||
+          github.event.inputs.pr_number != '')
         uses: peter-evans/create-or-update-comment@v4
         with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          issue-number: ${{ github.event.pull_request.number ||
+            github.event.inputs.pr_number }}
           body: |
             ## ⚠️ TypeScript Types Need Update
 
@@ -196,5 +215,6 @@ jobs:
             After pushing the changes, this check will pass automatically.
 
       - name: Fail workflow for fork PRs with type changes
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true'
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork ==
+          'true'
         run: exit 1
