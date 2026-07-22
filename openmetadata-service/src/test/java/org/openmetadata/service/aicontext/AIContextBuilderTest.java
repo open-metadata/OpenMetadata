@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -442,6 +444,63 @@ class AIContextBuilderTest {
     FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
     assertEquals(
         "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
+  void toDataModelContext_prefersCompiledSqlAndMapsMeta() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withPath("models/marts/core/dim_customers.sql")
+            .withDbtSourceProject("banking_redshift")
+            .withSql("SELECT * FROM staging.customers")
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    TableDataModel context = AIContextBuilder.toDataModelContext(dataModel);
+    assertEquals("DBT", context.getModelType());
+    assertEquals("models/marts/core/dim_customers.sql", context.getPath());
+    assertEquals("banking_redshift", context.getSourceProject());
+    assertEquals("SELECT * FROM staging.customers", context.getSql(), "compiled SQL must win");
+  }
+
+  @Test
+  void toDataModelContext_fallsBackToRawSqlWhenCompiledAbsent() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    assertEquals(
+        "SELECT * FROM {{ ref('customers') }}",
+        AIContextBuilder.toDataModelContext(dataModel).getSql());
+  }
+
+  @Test
+  void toDataModelContext_nullWhenAbsentOrEmpty() {
+    assertNull(AIContextBuilder.toDataModelContext(null));
+    assertNull(AIContextBuilder.toDataModelContext(new DataModel()), "empty model must be dropped");
+  }
+
+  @Test
+  void toDataModelContext_boundsOversizedSql() {
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DDL).withSql("SELECT 1 ".repeat(2000));
+    String sql = AIContextBuilder.toDataModelContext(dataModel).getSql();
+    assertTrue(
+        sql.length() <= AIContextBuilder.MAX_DATA_MODEL_SQL_CHARS + 20,
+        "model SQL must be bounded");
+    assertTrue(sql.endsWith("(truncated)"), "bounded SQL must be marked truncated");
+  }
+
+  @Test
+  void buildTableContext_includesDataModelWhenPresent() {
+    Table table =
+        new Table()
+            .withName("orders")
+            .withColumns(List.of())
+            .withDataModel(
+                new DataModel().withModelType(DataModel.ModelType.DBT).withSql("SELECT 1"));
+    TableDataModel dataModel = AIContextBuilder.buildTableContext(table).getDataModel();
+    assertEquals("DBT", dataModel.getModelType());
+    assertEquals("SELECT 1", dataModel.getSql());
   }
 
   @Test
