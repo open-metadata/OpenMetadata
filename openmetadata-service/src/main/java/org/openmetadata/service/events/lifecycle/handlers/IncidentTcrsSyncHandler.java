@@ -35,7 +35,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Mirrors task-first incident lifecycle events into the legacy {@code
@@ -152,7 +151,8 @@ public final class IncidentTcrsSyncHandler {
       EntityReference updatedByRef = null;
       if (!nullOrEmpty(task.getUpdatedBy())) {
         try {
-          User updatedBy = Entity.getEntityByName(Entity.USER, task.getUpdatedBy(), null, Include.ALL);
+          User updatedBy =
+              Entity.getEntityByName(Entity.USER, task.getUpdatedBy(), null, Include.ALL);
           updatedByRef = updatedBy.getEntityReference();
         } catch (EntityNotFoundException e) {
           LOG.error("Updated by user {}: could not find user reference", task.getUpdatedBy());
