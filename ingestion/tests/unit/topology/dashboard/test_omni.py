@@ -182,6 +182,26 @@ def test_resolve_topic_skips_ambiguous_cross_model(omni_source):
     assert omni_source._resolve_topic("orders") is None
 
 
+def test_resolve_topic_qualified_reference(omni_source):
+    """A schema-qualified reference resolves via the qualified index key, in either
+    ``.`` or ``/`` form, and never gets stripped to a bare leaf."""
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC]  # base_schema=ANALYTICS
+    omni_source.prepare()
+    assert omni_source._resolve_topic("ANALYTICS.orders").base_table == "ORDERS"
+    assert omni_source._resolve_topic("ANALYTICS/orders").base_table == "ORDERS"
+
+
+def test_resolve_topic_qualified_reference_never_misroutes(omni_source):
+    """A qualified reference whose schema does not match must NOT fall back to a
+    lone bare-leaf topic (which would attach lineage to the wrong data model)."""
+    # Only an ANALYTICS.orders topic exists; a FINANCE.orders tile must not match it.
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC]
+    omni_source.prepare()
+    assert omni_source._resolve_topic("FINANCE.orders") is None
+
+
 def test_yield_bulk_datamodel(omni_source):
     results = _rights(omni_source.yield_bulk_datamodel(MOCK_TOPIC))
     assert len(results) == 1
@@ -343,6 +363,26 @@ def test_parse_model_yaml_dedupes_topic_and_view_same_name():
     assert topic.label == "Orders Topic"
     assert topic.base_table == "ORDERS"
     assert topic.base_schema == "ANALYTICS"
+
+
+def test_parse_model_yaml_ambiguous_leaf_no_misroute():
+    """Two view files share a leaf name: a bare base_view must be left unresolved
+    (no misroute), while a schema-qualified base_view still resolves correctly."""
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "ANALYTICS/orders.view": "schema: ANALYTICS\ntable_name: ANALYTICS.ORDERS\n",
+        "FINANCE/orders.view": "schema: FINANCE\ntable_name: FINANCE.ORDERS\n",
+        "bare.topic": "base_view: orders\n",
+        "qualified.topic": "base_view: FINANCE/orders\n",
+    }
+    result = OmniApiClient._parse_model_yaml(OmniModel(id="m1", name="m"), files)
+    bare = next(t for t in result if t.name == "bare")
+    qualified = next(t for t in result if t.name == "qualified")
+    # Ambiguous bare leaf -> unresolved rather than bound to the wrong table.
+    assert bare.base_table is None
+    # Qualified reference resolves to the matching physical view.
+    assert qualified.base_table == "FINANCE.ORDERS"
 
 
 def test_list_datamodels_respects_include_flag(omni_source):

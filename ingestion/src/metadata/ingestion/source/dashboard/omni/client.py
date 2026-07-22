@@ -221,7 +221,13 @@ class OmniApiClient:
         (schema + table_name + fields). Each ``.topic`` file -> a curated data
         model that references a base view (for warehouse-table lineage).
         """
-        views: dict = {}
+        # ``view_lookup`` maps every reference form (full path, dotted-qualified and
+        # the bare leaf when unambiguous) to a parsed view, so a schema-qualified
+        # ``base_view`` resolves to the right physical view. ``view_records`` keeps
+        # one entry per view file for the "one data model per view" pass.
+        view_lookup: dict = {}
+        view_records: list = []
+        leaf_seen: set = set()
         topic_defs: dict = {}
         for filename, raw in files.items():
             try:
@@ -233,15 +239,26 @@ class OmniApiClient:
                 continue
             base = filename.split("/")[-1]
             if filename.endswith(".view"):
-                view_key = base[: -len(".view")]
-                if view_key in views:
+                full = filename[: -len(".view")]
+                leaf = base[: -len(".view")]
+                parsed = cls._parse_view(content)
+                view_records.append((leaf, parsed))
+                # Full and dotted-qualified keys are unique; the bare leaf is only
+                # keyed while unambiguous. If two view files share a leaf, drop the
+                # bare key so a bare reference misses (skipping lineage) instead of
+                # resolving to the wrong physical view.
+                view_lookup[full] = parsed
+                view_lookup[full.replace("/", ".")] = parsed
+                if leaf in leaf_seen:
+                    view_lookup.pop(leaf, None)
                     logger.debug(
-                        "View name %r appears more than once in model %s (e.g. %s); the last definition wins",
-                        view_key,
+                        "View leaf %r is ambiguous in model %s; a qualified reference is required",
+                        leaf,
                         model.id,
-                        filename,
                     )
-                views[view_key] = cls._parse_view(content)
+                else:
+                    leaf_seen.add(leaf)
+                    view_lookup[leaf] = parsed
             elif filename.endswith(".topic"):
                 topic_defs[base[: -len(".topic")]] = content
 
@@ -257,12 +274,16 @@ class OmniApiClient:
                 continue
             seen_names.add(topic_name)
             base_view = cls._first(topic_def, _BASE_VIEW_KEYS) or topic_name
-            view = views.get(base_view)
-            if view is None:
-                # ``base_view`` may be schema-qualified (e.g. ``analytics/orders``)
-                # while view files are keyed by their unqualified leaf name.
-                leaf = base_view.replace("/", ".").split(".")[-1]
-                view = views.get(leaf, {})
+            # ``base_view`` may be bare or schema-qualified (``analytics/orders`` or
+            # ``analytics.orders``); try each form. We never strip a qualifier down
+            # to a bare leaf, so a qualified reference cannot bind to an unrelated
+            # view -- it is left unresolved instead.
+            view = (
+                view_lookup.get(base_view)
+                or view_lookup.get(base_view.replace("/", "."))
+                or view_lookup.get(base_view.replace(".", "/"))
+                or {}
+            )
             topics.append(
                 OmniTopic(
                     model_id=model.id,
@@ -278,7 +299,7 @@ class OmniApiClient:
             )
         # Views: one data model per physical table, with its columns. Skip any whose
         # name was already taken by a topic (or another view).
-        for view_name, view in views.items():
+        for view_name, view in view_records:
             if view_name in seen_names:
                 logger.debug(
                     "Skipping view %r: name already used by a topic/view in model %s",

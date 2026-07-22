@@ -140,11 +140,30 @@ class OmniSource(DashboardServiceSource):
         for model in self.client.get_models() or []:
             for topic in self.client.get_model_topics(model) or []:
                 self.topics.append(topic)
-                if topic.base_view:
-                    self._topic_index[topic.base_view].append(topic)
-                if topic.name != topic.base_view:
-                    self._topic_index[topic.name].append(topic)
+                for key in self._topic_index_keys(topic):
+                    self._topic_index[key].append(topic)
         logger.info("Fetched %d Omni topics across models", len(self.topics))
+
+    @staticmethod
+    def _topic_index_keys(topic: OmniTopic) -> set[str]:
+        """Reference keys a tile/base-view may use to point at this topic.
+
+        Includes the bare view/topic name and, when the base schema is known, the
+        schema-qualified forms (``schema.name`` / ``schema/name``). Indexing the
+        qualified forms lets a qualified reference resolve to the correct schema's
+        topic instead of being stripped to a bare leaf that could match an
+        unrelated model/schema.
+        """
+        keys: set[str] = set()
+        names = {topic.name}
+        if topic.base_view:
+            names.add(topic.base_view)
+        for name in names:
+            keys.add(name)
+            if topic.base_schema:
+                keys.add(f"{topic.base_schema}.{name}")
+                keys.add(f"{topic.base_schema}/{name}")
+        return keys
 
     # -- data models (topics) ----------------------------------------------
 
@@ -176,15 +195,17 @@ class OmniSource(DashboardServiceSource):
         """
         if not table_ref:
             return None
-        matches = self._topic_index.get(table_ref) or []
-        if not matches:
-            # Tile / base-view references can be schema-qualified (e.g.
-            # ``analytics.orders`` or ``analytics/orders``) while the index is
-            # keyed by the unqualified Omni view/topic identifier. Fall back to
-            # the leaf so qualified references still resolve.
-            leaf = table_ref.replace("/", ".").split(".")[-1]
-            if leaf != table_ref:
-                matches = self._topic_index.get(leaf) or []
+        # Try the reference as given, then with the qualifier separator swapped
+        # (Omni may use ``.`` or ``/``). Both bare and schema-qualified forms are
+        # indexed in prepare(), so a qualified reference matches the correct
+        # schema's topic. We deliberately do NOT strip a qualifier down to its
+        # bare leaf: that could match an unrelated topic and misroute lineage, so
+        # an unmatched qualified reference is left unresolved instead.
+        matches: list[OmniTopic] = []
+        for candidate in (table_ref, table_ref.replace("/", "."), table_ref.replace(".", "/")):
+            matches = self._topic_index.get(candidate) or []
+            if matches:
+                break
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
