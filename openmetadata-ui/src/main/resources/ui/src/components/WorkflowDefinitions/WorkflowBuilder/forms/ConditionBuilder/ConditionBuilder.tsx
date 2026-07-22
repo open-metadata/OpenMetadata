@@ -21,6 +21,7 @@ import {
   Toggle,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
+import { debounce } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -80,6 +81,8 @@ function ConditionBuilderValueControl(
     }));
   }, [fieldDef, t]);
 
+  const supportsSearch = hasFetchOptions && fieldDef?.supportsSearch !== false;
+
   const loadAsyncOptions = useCallback(
     async (search: string) => {
       if (!fieldDef?.fetchOptions) {
@@ -100,6 +103,18 @@ function ConditionBuilderValueControl(
       }
     },
     [fieldDef]
+  );
+
+  const debouncedLoadAsyncOptions = useMemo(
+    () => debounce((search: string) => loadAsyncOptions(search), 300),
+    [loadAsyncOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedLoadAsyncOptions.cancel();
+    },
+    [debouncedLoadAsyncOptions]
   );
 
   useEffect(() => {
@@ -175,6 +190,7 @@ function ConditionBuilderValueControl(
     <Autocomplete
       className="tw:w-full"
       data-testid={dataTestId}
+      filterOption={supportsSearch ? () => true : undefined}
       isDisabled={disabled ?? false}
       items={items}
       maxVisibleItems={1}
@@ -193,7 +209,10 @@ function ConditionBuilderValueControl(
           label: opt?.label ?? String(key),
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
-      }}>
+      }}
+      onSearchChange={
+        supportsSearch ? debouncedLoadAsyncOptions : undefined
+      }>
       {(item) => (
         <Autocomplete.Item
           id={item.id}
