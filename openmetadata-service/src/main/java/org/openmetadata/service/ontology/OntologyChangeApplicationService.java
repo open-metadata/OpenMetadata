@@ -21,6 +21,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -35,6 +36,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
@@ -58,6 +60,7 @@ public final class OntologyChangeApplicationService {
   private final OntologyChangeOperationExecutor executor;
   private final OntologyChangeEventPublisher eventPublisher;
   private final ChangeTransaction transaction;
+  private final EntityCacheInvalidator cacheInvalidator;
   private final Clock clock;
 
   public OntologyChangeApplicationService(
@@ -78,6 +81,7 @@ public final class OntologyChangeApplicationService {
     this.executor = dependencies.executor();
     this.eventPublisher = dependencies.eventPublisher();
     this.transaction = dependencies.transaction();
+    this.cacheInvalidator = dependencies.cacheInvalidator();
     this.clock = clock;
   }
 
@@ -88,14 +92,32 @@ public final class OntologyChangeApplicationService {
     preflight.validate(changeSet, operations);
     final ApplicationExecution execution =
         new ApplicationExecution(uriInfo, changeSetId, user, new ArrayList<>());
+    final PutResponse<OntologyChangeSet> response = applyOperations(execution, operations);
+    publishApplied(response.getEntity(), user);
+    return response;
+  }
+
+  private PutResponse<OntologyChangeSet> applyOperations(
+      final ApplicationExecution execution, final List<OntologyChangeOperation> operations) {
     PutResponse<OntologyChangeSet> response;
     try {
       response = transaction.execute(() -> applyAtomically(execution, operations));
     } catch (OperationApplicationException failure) {
+      invalidateMutationCaches(execution);
       response = recordFailure(execution, operations, failure);
     }
-    publishApplied(response.getEntity(), user);
+    if (response.getEntity().getState() == OntologyChangeSetState.APPLIED) {
+      invalidateMutationCaches(execution);
+    }
     return response;
+  }
+
+  private void invalidateMutationCaches(final ApplicationExecution execution) {
+    execution.results().stream()
+        .map(OntologyChangeOperationResult::getEntity)
+        .filter(Objects::nonNull)
+        .distinct()
+        .forEach(cacheInvalidator::invalidate);
   }
 
   private PutResponse<OntologyChangeSet> applyAtomically(
@@ -272,7 +294,13 @@ public final class OntologyChangeApplicationService {
         productionPreflight(),
         new OntologyChangeOperationExecutor(termRepository, axiomRepository, clock),
         new OntologyChangeEventPublisher(),
-        work -> termRepository.executeInTransaction(work));
+        work -> termRepository.executeInTransaction(work),
+        OntologyChangeApplicationService::invalidateEntityCache);
+  }
+
+  private static void invalidateEntityCache(final EntityReference entity) {
+    EntityRepository.invalidateCacheForEntity(
+        entity.getType(), entity.getId(), entity.getFullyQualifiedName());
   }
 
   private static OntologyChangePreflight productionPreflight() {
@@ -284,11 +312,17 @@ public final class OntologyChangeApplicationService {
       OntologyChangePreflight preflight,
       OntologyChangeOperationExecutor executor,
       OntologyChangeEventPublisher eventPublisher,
-      ChangeTransaction transaction) {}
+      ChangeTransaction transaction,
+      EntityCacheInvalidator cacheInvalidator) {}
 
   @FunctionalInterface
   interface ChangeTransaction {
     PutResponse<OntologyChangeSet> execute(Supplier<PutResponse<OntologyChangeSet>> work);
+  }
+
+  @FunctionalInterface
+  interface EntityCacheInvalidator {
+    void invalidate(EntityReference entity);
   }
 
   private record ApplicationExecution(

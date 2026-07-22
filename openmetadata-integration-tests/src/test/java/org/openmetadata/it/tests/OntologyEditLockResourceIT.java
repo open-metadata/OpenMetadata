@@ -23,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -38,10 +39,18 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
 
 /**
@@ -113,7 +122,7 @@ public class OntologyEditLockResourceIT {
   @Test
   void acquireRequiresGlossaryTermEditPermission(TestNamespace ns) throws Exception {
     GlossaryTerm term = createTerm(ns);
-    User nonPrivileged = UserTestFactory.createUser(ns, "ontologyLockNoEdit");
+    User nonPrivileged = createUserDeniedGlossaryTermEdits(ns);
 
     HttpResponse<String> response =
         acquire(tokenFor(nonPrivileged), leaseRequest(term.getId(), "denied-session"));
@@ -202,7 +211,7 @@ public class OntologyEditLockResourceIT {
         HTTP_OK,
         acquire(SdkClients.getAdminToken(), leaseRequest(term.getId(), "guarded-session"))
             .statusCode());
-    User nonPrivileged = UserTestFactory.createUser(ns, "ontologyLockDenied");
+    User nonPrivileged = createUserDeniedGlossaryTermEdits(ns);
     String token = tokenFor(nonPrivileged);
 
     HttpResponse<String> getResponse = getLease(token, Entity.GLOSSARY_TERM, term.getId());
@@ -220,6 +229,49 @@ public class OntologyEditLockResourceIT {
   private GlossaryTerm createTerm(TestNamespace ns) {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     return GlossaryTermTestFactory.createSimple(ns, glossary);
+  }
+
+  private User createUserDeniedGlossaryTermEdits(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = ns.shortPrefix("ontologyLockDeny");
+    Policy policy = createDenyPolicy(admin, prefix);
+    Role role = createDenyRole(admin, prefix, policy);
+    User user = createDeniedUser(admin, prefix, role);
+    ns.trackRoot(Entity.USER, user);
+    ns.trackRoot(Entity.ROLE, role);
+    ns.trackRoot(Entity.POLICY, policy);
+    return user;
+  }
+
+  private Policy createDenyPolicy(OpenMetadataClient admin, String prefix) {
+    Rule denyRule =
+        new Rule()
+            .withName(prefix + "Rule")
+            .withResources(List.of(Entity.ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withEffect(Rule.Effect.DENY);
+    return admin
+        .policies()
+        .create(new CreatePolicy().withName(prefix + "Policy").withRules(List.of(denyRule)));
+  }
+
+  private Role createDenyRole(OpenMetadataClient admin, String prefix, Policy policy) {
+    return admin
+        .roles()
+        .create(
+            new CreateRole()
+                .withName(prefix + "Role")
+                .withPolicies(List.of(policy.getFullyQualifiedName())));
+  }
+
+  private User createDeniedUser(OpenMetadataClient admin, String prefix, Role role) {
+    return admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(prefix)
+                .withEmail(prefix + "@test.om.org")
+                .withRoles(List.of(role.getId())));
   }
 
   private AcquireOntologyEditLock leaseRequest(UUID resourceId, String sessionId) {

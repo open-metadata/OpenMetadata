@@ -508,7 +508,8 @@ public class GlossaryTermRelationEdgeIT {
     JsonNode versions = MAPPER.readTree(response.body()).path("versions");
     assertTrue(versions.size() >= 2, "relation mutation must create a new history version");
     for (JsonNode version : versions) {
-      JsonNode changeDescription = version.path("changeDescription");
+      JsonNode versionContent = version.isTextual() ? MAPPER.readTree(version.asText()) : version;
+      JsonNode changeDescription = versionContent.path("changeDescription");
       if (containsFieldChange(changeDescription, "fieldsAdded", "relatedTerms")
           || containsFieldChange(changeDescription, "fieldsDeleted", "relatedTerms")
           || containsFieldChange(changeDescription, "fieldsUpdated", "relatedTerms")) {

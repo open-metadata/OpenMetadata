@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.parallel.Execution;
@@ -61,12 +62,16 @@ public class RelationshipTypeResourceIT
   }
 
   private static CreateRelationshipType request(String name) {
+    URI predicateIri =
+        URI.create(
+            "https://example.org/ontology/"
+                + UUID.nameUUIDFromBytes(name.getBytes(StandardCharsets.UTF_8)));
     return new CreateRelationshipType()
         .withName(name)
         .withDisplayName(name)
         .withDescription("Governed ontology relationship " + name)
-        .withIri(URI.create("https://example.org/ontology/" + name))
-        .withRdfPredicate(URI.create("https://example.org/ontology/" + name))
+        .withIri(predicateIri)
+        .withRdfPredicate(predicateIri)
         .withCategory(RelationshipTypeCategory.CUSTOM)
         .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE))
         .withCrossGlossaryAllowed(true)

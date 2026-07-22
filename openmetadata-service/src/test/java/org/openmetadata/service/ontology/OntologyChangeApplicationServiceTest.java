@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService.ChangeTransaction;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService.Dependencies;
+import org.openmetadata.service.ontology.OntologyChangeApplicationService.EntityCacheInvalidator;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -66,6 +68,7 @@ class OntologyChangeApplicationServiceTest {
   private final OntologyChangeEventPublisher eventPublisher =
       mock(OntologyChangeEventPublisher.class);
   private final RecordingTransaction transaction = new RecordingTransaction();
+  private final EntityCacheInvalidator cacheInvalidator = mock(EntityCacheInvalidator.class);
   private final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
   private final OntologyChangeOperation operation = operation();
   private OntologyChangeSet changeSet;
@@ -85,8 +88,15 @@ class OntologyChangeApplicationServiceTest {
               changeSet.setApplicationResult(result);
               return response(changeSet);
             });
+    doAnswer(
+            invocation -> {
+              assertFalse(transaction.isActive());
+              return null;
+            })
+        .when(cacheInvalidator)
+        .invalidate(any());
     final Dependencies dependencies =
-        new Dependencies(preflight, executor, eventPublisher, transaction);
+        new Dependencies(preflight, executor, eventPublisher, transaction, cacheInvalidator);
     service = new OntologyChangeApplicationService(repository, dependencies, clock);
   }
 
@@ -111,16 +121,18 @@ class OntologyChangeApplicationServiceTest {
     assertEquals(1, transaction.getExecutionCount());
     verify(repository, times(1)).transition(any(), eq(USER), eq(changeSetId), any(), any());
     verify(eventPublisher).publish(EventType.ONTOLOGY_CHANGE_SET_APPLIED, changeSet, USER);
+    verify(cacheInvalidator).invalidate(entity);
   }
 
   @Test
   void rollsBackAppliedOperationsAndSkipsRemainingWork() {
     final OntologyChangeOperation failing = operation();
     final OntologyChangeOperation later = operation();
+    final EntityReference appliedEntity = entity(operation);
     changeSet.setOperations(List.of(operation, failing, later));
     changeSet.setUndoCursor(3);
     when(executor.execute(uriInfo, USER, operation))
-        .thenReturn(new OperationOutcome(entity(operation), 0.2));
+        .thenReturn(new OperationOutcome(appliedEntity, 0.2));
     when(executor.execute(uriInfo, USER, failing))
         .thenThrow(new BadRequestException("term still has children"));
 
@@ -140,6 +152,7 @@ class OntologyChangeApplicationServiceTest {
     assertFalse(transaction.isActive());
     verify(executor, never()).execute(uriInfo, USER, later);
     verify(eventPublisher, never()).publish(any(), any(), any());
+    verify(cacheInvalidator).invalidate(appliedEntity);
   }
 
   @Test
@@ -154,6 +167,7 @@ class OntologyChangeApplicationServiceTest {
     verify(repository).transition(any(), eq(USER), eq(changeSetId), state.capture(), any());
     assertEquals(OntologyChangeSetState.APPLY_FAILED, state.getValue());
     assertFalse(transaction.isActive());
+    verify(cacheInvalidator, never()).invalidate(any());
   }
 
   @Test
