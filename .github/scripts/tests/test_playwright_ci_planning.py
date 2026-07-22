@@ -281,6 +281,37 @@ def test_each_unmapped_file_is_detected_in_a_mixed_change():
     assert unmapped == ["docs/unmapped.md"]
 
 
+def test_selector_exports_direct_changed_specs_for_workflow_routing(tmp_path):
+    selector = load_script("select_playwright_tests")
+    github_output = tmp_path / "github-output.txt"
+
+    selector.write_github_output(
+        github_output,
+        {
+            "mode": "targeted",
+            "selectors": [],
+            "directChangedSpecs": ["playwright/e2e/Pages/Entity.spec.ts"],
+        },
+    )
+
+    assert (
+        'direct_changed_specs=["playwright/e2e/Pages/Entity.spec.ts"]'
+        in github_output.read_text()
+    )
+    assert "lineage_representative_only=true" in github_output.read_text()
+
+    selector.write_github_output(
+        github_output,
+        {
+            "mode": "targeted",
+            "selectors": [],
+            "directChangedSpecs": [selector.LINEAGE_MATRIX_SPEC],
+        },
+    )
+
+    assert github_output.read_text().endswith("lineage_representative_only=false\n")
+
+
 def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries(
     tmp_path, monkeypatch
 ):
@@ -323,6 +354,7 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     )
     assert "playwright/e2e/Pages/HealthCheck.spec.ts" in selected_specs
     assert selection["unmappedFiles"] == ["docs/unmapped.md"]
+    assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
 
 
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
@@ -371,6 +403,7 @@ def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatc
         "playwright/e2e/Smoke.spec.ts"
     }
     assert selection["deletedChangedSpecs"] == [deleted_spec]
+    assert selection["directChangedSpecs"] == []
 
 
 def test_coverage_verifier_detects_missing_and_duplicate_tests(tmp_path):

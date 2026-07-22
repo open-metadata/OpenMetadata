@@ -21,7 +21,7 @@ The common matrix is bounded to 5–24 runners. Serial/global behavior stays in 
 
 The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners.
 
-Targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`; full and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
+Impact-mapped targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`. A direct change to that spec, full CI, and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
 

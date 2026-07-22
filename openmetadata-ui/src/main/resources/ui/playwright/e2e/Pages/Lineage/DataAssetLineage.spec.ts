@@ -79,7 +79,8 @@ const allEntities = {
   worksheet: WorksheetClass,
 };
 const lineageSourceEntities =
-  process.env.CI === 'true' && process.env.PW_EXECUTION_MODE === 'targeted'
+  process.env.CI === 'true' &&
+  process.env.PW_LINEAGE_REPRESENTATIVE_ONLY === 'true'
     ? { table: TableClass }
     : allEntities;
 

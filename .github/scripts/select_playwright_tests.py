@@ -13,6 +13,7 @@ from typing import Any
 
 UI_ROOT = "openmetadata-ui/src/main/resources/ui/"
 RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
+LINEAGE_MATRIX_SPEC = "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts"
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,10 +60,21 @@ def is_mapped_file(path: str, impact_map: dict[str, Any]) -> bool:
 
 
 def write_github_output(path: Path, plan: dict[str, Any]) -> None:
+    direct_changed_specs = plan.get("directChangedSpecs", [])
+    lineage_representative_only = (
+        plan["mode"] == "targeted" and LINEAGE_MATRIX_SPEC not in direct_changed_specs
+    )
     with path.open("a", encoding="utf-8") as output:
         output.write(f"mode={plan['mode']}\n")
         output.write(f"selection={json.dumps(plan, separators=(',', ':'))}\n")
         output.write(f"selected_count={len(plan['selectors'])}\n")
+        output.write(
+            "direct_changed_specs="
+            f"{json.dumps(direct_changed_specs, separators=(',', ':'))}\n"
+        )
+        output.write(
+            f"lineage_representative_only={str(lineage_representative_only).lower()}\n"
+        )
 
 
 def main() -> None:
@@ -79,6 +91,7 @@ def main() -> None:
             "version": 1,
             "mode": "full",
             "reason": f"{args.event_name} requires the complete suite",
+            "directChangedSpecs": [],
             "selectors": [],
         }
     else:
@@ -103,6 +116,7 @@ def main() -> None:
 
         delegated_changed_specs: list[str] = []
         deleted_changed_specs: list[str] = []
+        direct_changed_specs: list[str] = []
         unmapped_files: list[str] = []
         for changed_file in changed_files:
             file_mapped = is_mapped_file(changed_file, impact_map)
@@ -115,6 +129,7 @@ def main() -> None:
                 elif matches(relative_spec, impact_map.get("delegatedSpecs", [])):
                     delegated_changed_specs.append(relative_spec)
                 else:
+                    direct_changed_specs.append(relative_spec)
                     selected.setdefault(relative_spec, set()).add("auto")
                 file_mapped = True
             for mapping in impact_map["mappings"]:
@@ -138,6 +153,7 @@ def main() -> None:
             "unmappedFiles": unmapped_files,
             "delegatedChangedSpecs": sorted(delegated_changed_specs),
             "deletedChangedSpecs": sorted(deleted_changed_specs),
+            "directChangedSpecs": sorted(direct_changed_specs),
             "changedFiles": changed_files,
             "selectors": [
                 {"spec": spec, "projects": sorted(projects)}

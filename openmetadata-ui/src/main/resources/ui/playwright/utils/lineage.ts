@@ -201,6 +201,8 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
+  await page.waitForTimeout(1000);
   const originElement = page.locator(originSelector);
   const destinationElement = page.locator(destinationSelector);
   await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);

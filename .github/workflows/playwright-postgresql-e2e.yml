@@ -183,6 +183,8 @@ jobs:
     outputs:
       mode: ${{ steps.select.outputs.mode }}
       selected_count: ${{ steps.select.outputs.selected_count }}
+      direct_changed_specs: ${{ steps.select.outputs.direct_changed_specs }}
+      lineage_representative_only: ${{ steps.select.outputs.lineage_representative_only }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -291,6 +293,7 @@ jobs:
         env:
           PW_DEDICATED_INGESTION: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+          PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
         run: |
           npx playwright test --list --reporter=json \
             --project=chromium \
@@ -465,6 +468,7 @@ jobs:
       # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
       AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
       PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+      PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || (github.event_name == 'workflow_dispatch' && inputs.protocol || 'http') }}
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_PRESEEDED_STATE: "true"
