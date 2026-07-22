@@ -198,9 +198,14 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Only humans consume this artifact — nothing in .github/ downloads
+      # playwright-report-*, and they only look at it when debugging a
+      # failure. Skipping upload on success saves ~1 minute per green shard
+      # (report + traces run 50-100MB after retries) without losing any
+      # programmatic data.
       - name: Upload Playwright HTML report
         uses: actions/upload-artifact@v4
-        if: always()
+        if: failure() || cancelled()
         continue-on-error: true
         with:
           name: playwright-report--${{ matrix.shardIndex }}
