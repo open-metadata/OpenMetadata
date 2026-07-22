@@ -1,0 +1,52 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# For PRs targeting main, the Playwright E2E suites run only in the merge
+# queue (merge_group event). Branch protection on main requires the
+# `playwright-summary` status on every PR, and a check that never reports on
+# the PR would sit at "Expected" forever and block the PR from entering the
+# queue. This stub reports an instantly-green `playwright-summary` on
+# pull_request events targeting main to satisfy that requirement; the
+# authoritative run happens in playwright-postgresql-e2e.yml on the merge
+# group. PRs targeting release branches are excluded — they run the real
+# suites via pull_request_target ("safe to test" label) since those branches
+# have no merge queue.
+#
+# Security posture — why an unconditional green stub is safe:
+# 1. Adding a PR to the merge queue requires write access; an untrusted fork
+#    author cannot queue their own PR, so merge_group runs (which use secrets)
+#    only execute code a maintainer has explicitly queued for merge.
+# 2. Only playwright-summary is stubbed. Every other required check
+#    (checkstyles, integration tests, py-tests-status, ui-coverage) still runs
+#    under pull_request_target behind the "safe to test" label verification,
+#    so an unlabeled fork PR cannot turn its required checks green anyway.
+# https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks
+name: Playwright Required Checks Stub
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  playwright-summary:
+    name: playwright-summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report merge-queue-only status
+        run: echo "Playwright E2E runs in the merge queue; this stub keeps the required playwright-summary check green on pull requests."
