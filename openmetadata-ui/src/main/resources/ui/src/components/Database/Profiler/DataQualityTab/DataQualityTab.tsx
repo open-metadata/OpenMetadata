@@ -456,19 +456,26 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   ) => {
     return result?.result &&
       result.testCaseStatus !== TestCaseStatus.Success ? (
-      <Tooltip
-        containerClassName="tw:break-all"
-        placement="top"
-        title={result.result}>
-        <TooltipTrigger>
-          <Typography
-            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden tw:whitespace-normal"
-            data-testid={`reason-text-${record.name}`}
-            size="text-sm">
-            {result.result}
-          </Typography>
-        </TooltipTrigger>
-      </Tooltip>
+      // Safari sizes a `display: table-cell` to the unclamped intrinsic height
+      // of a `-webkit-line-clamp` descendant, inflating the row to the full
+      // message height. This wrapper must stay the direct child of the cell
+      // (outside the Tooltip's w-max/h-max button) so its max-height + overflow
+      // actually clip the cell height. Chromium/Firefox are unaffected.
+      <div className="tw:max-h-11 tw:overflow-hidden">
+        <Tooltip
+          containerClassName="tw:break-all"
+          placement="top"
+          title={result.result}>
+          <TooltipTrigger>
+            <Typography
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              data-testid={`reason-text-${record.name}`}
+              size="text-sm">
+              {result.result}
+            </Typography>
+          </TooltipTrigger>
+        </Tooltip>
+      </div>
     ) : (
       '--'
     );
