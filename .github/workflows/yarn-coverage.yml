@@ -30,7 +30,7 @@ jobs:
       ui-changed: ${{ steps.filter.outputs.ui }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         if: ${{ github.event_name == 'merge_group' }}
         with:
           fetch-depth: 0

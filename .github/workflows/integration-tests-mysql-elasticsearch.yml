@@ -62,7 +62,7 @@ jobs:
       backend: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.backend }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         if: ${{ github.event_name == 'merge_group' }}
         with:
           fetch-depth: 0
