@@ -36,7 +36,7 @@ const EntityCardView = <T extends { id: string }>({
 
   return (
     <div
-      className="tw:grid tw:grid-cols-1 tw:md:grid-cols-2 tw:lg:grid-cols-3 tw:gap-4 tw:p-6"
+      className="tw:grid tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))] tw:gap-4 tw:p-6"
       data-testid="card-view-container">
       {entities.map((entity) => (
         <Card
