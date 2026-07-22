@@ -36,12 +36,6 @@ jobs:
         browser-type: ["chromium"]
     environment: test
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:

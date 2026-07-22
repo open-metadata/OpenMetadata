@@ -114,6 +114,13 @@ interface DialogProps extends Omit<AriaDialogProps, 'children'> {
   showCloseButton?: boolean;
   width?: number;
   onClose?: () => void;
+  /**
+   * Classes for the panel itself — the element `width` is applied to.
+   * `className` lands on the outer dialog wrapper, which is not the element
+   * that carries the width, so styling that depends on it (e.g. transitioning
+   * `max-width` when `width` changes) has to go here.
+   */
+  panelClassName?: string;
 }
 
 type DialogComponent = ((props: DialogProps) => JSX.Element) & {
@@ -128,6 +135,7 @@ const DialogBase = ({
   showCloseButton,
   onClose,
   width = 688,
+  panelClassName,
   ...props
 }: DialogProps) => (
   <AriaDialog
@@ -138,7 +146,10 @@ const DialogBase = ({
     )}>
     {({ close }) => (
       <div
-        className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
+        className={cx(
+          'tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl',
+          panelClassName
+        )}
         style={{ maxWidth: width }}>
         <div className="tw:overflow-hidden tw:rounded-2xl">
           {title && (

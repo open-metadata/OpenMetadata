@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Page, test as setup } from '@playwright/test';
-import { DISABLE_ETAG_CONDITIONAL_READS_KEY } from '../../src/rest/etagInterceptor';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -32,6 +31,11 @@ import { loginAsAdmin } from '../utils/initialSetup';
  * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
  * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
  */
+// Keep in sync with DISABLE_ETAG_CONDITIONAL_READS_KEY in src/rest/etagInterceptor.ts.
+// Inlined deliberately: importing it across the playwright -> src boundary resolves to
+// undefined at runtime, which silently wrote the flag under the key "undefined".
+const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
+
 const disableEtagConditionalReads = async (page: Page) => {
   await page.evaluate((key) => {
     localStorage.setItem(key, 'true');
