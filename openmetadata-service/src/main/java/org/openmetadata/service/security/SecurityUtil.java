@@ -384,8 +384,10 @@ public final class SecurityUtil {
     if (enforcePrincipalDomain) {
       // Domains are case-insensitive; IdPs (e.g. Azure preferred_username/UPN) preserve the
       // casing configured in the tenant, which rarely matches the configured domain verbatim
-      Set<String> expectedDomains =
-          nullOrEmpty(allowedDomains) ? Set.of(principalDomain) : allowedDomains;
+      Set<String> expectedDomains = allowedDomains;
+      if (nullOrEmpty(expectedDomains)) {
+        expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
+      }
       if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
