@@ -32,11 +32,13 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
@@ -50,6 +52,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for User entity operations.
@@ -2197,6 +2200,55 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     return SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.GET, "/v1/users/online", null, UserResultList.class, options);
+  }
+
+  @Test
+  void testPatchPersonasWithMinimalReferences(TestNamespace ns) {
+    // A persona reference only requires id and type, which is what a client typically PATCHes.
+    // The updater sorts personas by name, so two un-hydrated references used to fail with a 500.
+    Persona persona1 = createPersona(ns, "one");
+    Persona persona2 = createPersona(ns, "two");
+
+    CreateUser request =
+        new CreateUser()
+            .withName(ns.prefix("persona-user"))
+            .withEmail(toValidEmail(ns.prefix("persona-user")))
+            .withPersonas(List.of(persona1.getEntityReference()));
+    User user = createEntity(request);
+
+    String patch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/personas\",\"value\":"
+                + "[{\"id\":\"%s\",\"type\":\"persona\"},{\"id\":\"%s\",\"type\":\"persona\"}]}]",
+            persona1.getId(), persona2.getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            patch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    User fetched = Users.get(user.getId().toString(), "personas");
+    assertEquals(2, fetched.getPersonas().size(), "Both personas should be persisted");
+    assertTrue(
+        fetched.getPersonas().stream().anyMatch(ref -> ref.getId().equals(persona1.getId())),
+        "First persona should be persisted");
+    assertTrue(
+        fetched.getPersonas().stream().anyMatch(ref -> ref.getId().equals(persona2.getId())),
+        "Second persona should be persisted");
+  }
+
+  private Persona createPersona(TestNamespace ns, String suffix) {
+    return ns.trackRoot(
+        Entity.PERSONA,
+        SdkClients.adminClient()
+            .personas()
+            .create(
+                new CreatePersona()
+                    .withName(ns.shortPrefix("persona_" + suffix))
+                    .withDescription("User personas NPE regression test")));
   }
 
   private static class UserResultList extends ResultList<User> {}
