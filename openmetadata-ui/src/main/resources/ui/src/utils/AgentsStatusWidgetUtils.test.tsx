@@ -115,6 +115,32 @@ describe('automationRunToAppRunRecord', () => {
     ).toBeUndefined();
   });
 
+  it('rolls the per-step records into the job stats the cards read', () => {
+    const result = automationRunToAppRunRecord(
+      run({
+        status: [
+          { records: 12, warnings: 1, errors: 0 },
+          { records: 3, warnings: 0, errors: 2 },
+        ],
+      })
+    );
+    const jobStats = result.successContext?.stats?.jobStats;
+
+    expect(jobStats?.successRecords).toBe(15);
+    expect(jobStats?.totalRecords).toBe(15);
+    expect(jobStats?.failedRecords).toBe(2);
+    expect(jobStats?.warningRecords).toBe(1);
+  });
+
+  it('leaves successContext unset when the run has no steps', () => {
+    expect(
+      automationRunToAppRunRecord(run({ status: [] })).successContext
+    ).toBeUndefined();
+    expect(
+      automationRunToAppRunRecord(run({ status: undefined })).successContext
+    ).toBeUndefined();
+  });
+
   it.each([
     [PipelineState.Queued, Status.Pending],
     [PipelineState.Success, Status.Success],

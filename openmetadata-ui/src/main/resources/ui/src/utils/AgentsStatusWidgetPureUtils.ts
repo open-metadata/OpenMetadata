@@ -67,6 +67,14 @@ export const getAutomationTemplate = (name: string): string | undefined =>
     name.endsWith(`_${template}`)
   );
 
+/** Per-step summary an automation run carries under `status`. */
+export interface AutomationRunStep {
+  records?: number;
+  updated_records?: number;
+  warnings?: number;
+  errors?: number;
+}
+
 /**
  * Minimal run shape the converter needs. Kept structural, and keyed on the state
  * as a plain string, so callers holding their own generated `PipelineState` enum
@@ -78,6 +86,7 @@ export interface AutomationRunLike {
   endDate?: number;
   timestamp?: number;
   runId?: string;
+  status?: AutomationRunStep[];
 }
 
 const PipelineStateToAppRunStatusMap: Record<string, Status> = {
@@ -89,11 +98,42 @@ const PipelineStateToAppRunStatusMap: Record<string, Status> = {
   [PipelineState.Stopped]: Status.Stopped,
 };
 
+const sumStep = (steps: AutomationRunStep[], field: keyof AutomationRunStep) =>
+  steps.reduce((total, step) => total + (step[field] ?? 0), 0);
+
+/**
+ * Rolls the run's per-step summaries into the `jobStats` the agent cards read.
+ * `records` is the processed-asset count the run history also shows, so it feeds
+ * both the success and total buckets; errors and warnings sum across steps.
+ * Returns undefined when the run carries no steps, leaving the counts blank
+ * rather than showing zeros.
+ */
+const buildSuccessContext = (
+  steps: AutomationRunStep[]
+): AppRunRecord['successContext'] => {
+  if (steps.length === 0) {
+    return undefined;
+  }
+  const records = sumStep(steps, 'records');
+
+  return {
+    stats: {
+      jobStats: {
+        totalRecords: records,
+        successRecords: records,
+        failedRecords: sumStep(steps, 'errors'),
+        warningRecords: sumStep(steps, 'warnings'),
+      },
+    },
+  };
+};
+
 /**
  * Maps an automation run onto the `AppRunRecord` shape the agent widgets read.
  * The run carries `pipelineState` and `startDate`/`endDate`; `AppRunRecord` wants
  * a scalar `status` and `startTime`/`endTime`, so the fields are renamed and the
- * state enum mapped.
+ * state enum mapped. The per-step `status` summaries roll up into `successContext`
+ * so the cards show the same asset counts as the run history.
  */
 export const automationRunToAppRunRecord = (
   run: AutomationRunLike
@@ -108,6 +148,7 @@ export const automationRunToAppRunRecord = (
   status: run.pipelineState
     ? PipelineStateToAppRunStatusMap[run.pipelineState]
     : undefined,
+  successContext: buildSuccessContext(run.status ?? []),
   properties: run.runId ? { pipelineRunId: run.runId } : undefined,
 });
 

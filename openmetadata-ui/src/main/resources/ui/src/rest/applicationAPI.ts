@@ -54,6 +54,12 @@ export interface AutomationPipelineRun {
   endDate?: number;
   timestamp?: number;
   runId?: string;
+  status?: Array<{
+    records?: number;
+    updated_records?: number;
+    warnings?: number;
+    errors?: number;
+  }>;
 }
 
 export const getApplicationList = async (params?: AppListParams) => {
