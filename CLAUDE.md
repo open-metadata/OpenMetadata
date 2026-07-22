@@ -227,6 +227,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   - Shadows: `--shadow-xs` through `--shadow-3xl`
   - Border radius: `--radius-none` through `--radius-full`
 - **Color Usage**: Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
+- **Borders — never use `tw:ring-*` to draw an edge.** Rings compile to `box-shadow`, which WebKit does not pixel-snap, so they thin out and can vanish in Safari at non-100% zoom. Use `tw:border-*` where the edge may take layout space, or `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` where it must not. On focusable elements the `outline` is already the focus ring — draw the border on `::after` via `borderAfter` from `@openmetadata/ui-core-components`. Rules, ring→outline translation table, and gotchas (`outline-hidden` erases outline borders; `transition-shadow` won't animate them): [`colors.md` §2.3.1](openmetadata-ui/src/main/resources/ui/docs/colors.md).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)

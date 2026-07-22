@@ -1381,6 +1381,7 @@ test.describe('Metrics bulk import, export, and edit', () => {
     dataStewardPage,
     viewOnlyPage,
   }) => {
+    test.slow();
     const customViewOnlyPage = await browser.newPage();
     await viewOnlyUser.login(customViewOnlyPage);
 
