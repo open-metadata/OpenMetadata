@@ -381,4 +381,55 @@ describe('ConditionBuilder — server-side tag search', () => {
 
     expect(capturedFilterOption).toBeUndefined();
   });
+
+  it('does NOT re-load full list when a search returns zero results', async () => {
+    const tagFieldDef = makeTagFieldDef({
+      fetchOptions: jest.fn().mockResolvedValue([]),
+    });
+
+    await act(async () => {
+      render(
+        <ConditionBuilder
+          fieldDefinitions={[tagFieldDef]}
+          value={{
+            config: {
+              condition: 'AND',
+              rules: { tags: [] },
+            },
+          }}
+          onChange={onChange}
+        />
+      );
+    });
+
+    // Wait for the initial mount load (empty string call)
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    const callsAfterMount = (tagFieldDef.fetchOptions as jest.Mock).mock.calls
+      .length;
+
+    // Simulate typing a search that yields no results — already resolved to []
+    await act(async () => {
+      capturedOnSearchChange?.('nonexistent-tag-xyz');
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    const callsAfterSearch = (tagFieldDef.fetchOptions as jest.Mock).mock.calls
+      .length;
+
+    expect(callsAfterSearch).toBe(callsAfterMount + 1);
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    expect(
+      (tagFieldDef.fetchOptions as jest.Mock).mock.calls.length
+    ).toBe(callsAfterSearch);
+  });
 });

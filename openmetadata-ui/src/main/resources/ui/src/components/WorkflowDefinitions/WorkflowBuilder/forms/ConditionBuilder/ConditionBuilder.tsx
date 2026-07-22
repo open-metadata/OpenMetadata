@@ -118,10 +118,11 @@ function ConditionBuilderValueControl(
   );
 
   useEffect(() => {
-    if (hasFetchOptions && asyncOptions.length === 0) {
+    if (hasFetchOptions) {
+      setAsyncOptions([]);
       loadAsyncOptions('');
     }
-  }, [hasFetchOptions, asyncOptions.length, loadAsyncOptions]);
+  }, [hasFetchOptions, loadAsyncOptions]);
 
   // useListData for the multi-select controls
   const selectedItems = useListData<SelectItemType>({ initialItems: [] });
