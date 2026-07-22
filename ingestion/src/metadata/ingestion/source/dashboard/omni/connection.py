@@ -41,6 +41,7 @@ from metadata.ingestion.connections.test_connections import SourceConnectionExce
 from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 if TYPE_CHECKING:
@@ -87,6 +88,11 @@ def get_connection(connection: OmniConnectionConfig) -> OmniApiClient:
         verify_ssl = None
         if connection.verifySSL:
             verify_ssl = get_verify_ssl_fn(connection.verifySSL)(connection.sslConfig)
+            # `validate` returns the raw CA certificate *content*, but requests
+            # treats a string ``verify`` value as a path to a CA bundle. Write the
+            # certificate to a temp file (kept for the session) and pass its path.
+            if isinstance(verify_ssl, str) and connection.sslConfig:
+                verify_ssl = SSLManager(ca=connection.sslConfig.root.caCertificate).ca_file_path
         return OmniApiClient(connection, verify_ssl=verify_ssl)
     except Exception as exc:
         msg = f"Unknown error connecting with {connection}: {exc}."

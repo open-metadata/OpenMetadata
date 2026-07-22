@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for the Omni dashboard connector."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -363,6 +364,33 @@ def test_parse_model_yaml_dedupes_topic_and_view_same_name():
     assert topic.label == "Orders Topic"
     assert topic.base_table == "ORDERS"
     assert topic.base_schema == "ANALYTICS"
+
+
+def test_get_connection_validate_ssl_writes_ca_to_file(monkeypatch):
+    """verifySSL=validate must pass requests a CA-bundle *path*, not raw PEM."""
+    import metadata.ingestion.source.dashboard.omni.connection as conn_mod
+    from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
+        OmniConnection as OmniConnectionConfig,
+    )
+    from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+
+    captured = {}
+    monkeypatch.setattr(
+        conn_mod,
+        "OmniApiClient",
+        lambda connection, verify_ssl=None: captured.update(verify_ssl=verify_ssl),
+    )
+    pem = "-----BEGIN CERTIFICATE-----\nabc\n-----END CERTIFICATE-----"
+    cfg = OmniConnectionConfig(
+        hostPort="https://acme.omniapp.co",
+        token="t",
+        verifySSL=VerifySSL.validate,
+        sslConfig={"caCertificate": pem},
+    )
+    conn_mod.get_connection(cfg)
+    path = captured["verify_ssl"]
+    assert isinstance(path, str) and Path(path).exists()
+    assert "BEGIN CERTIFICATE" in Path(path).read_text(encoding="utf-8")
 
 
 def test_parse_model_yaml_ambiguous_leaf_no_misroute():
