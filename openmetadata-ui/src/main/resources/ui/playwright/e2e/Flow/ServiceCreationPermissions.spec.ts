@@ -593,9 +593,24 @@ test.describe(
 
       await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
 
-      // Every overflow-menu action is gated behind EditAll, so the menu itself
-      // must not render for a trigger-only user.
-      await expect(agentCard.getByTestId('more-actions')).toBeHidden();
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
+
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
 
       // The pipeline deployed in beforeAll may still be registering in
       // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
