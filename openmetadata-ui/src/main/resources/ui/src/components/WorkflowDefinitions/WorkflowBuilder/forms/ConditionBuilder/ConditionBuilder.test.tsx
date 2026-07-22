@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { ConditionBuilder } from './ConditionBuilder';
 import type { ConditionFieldDefinition } from './ConditionBuilder.interface';
@@ -187,6 +187,13 @@ const makeTagFieldDef = (
   ...override,
 });
 
+const selectTagsField = async () => {
+  const select = screen.getByTestId('condition-builder-row-0-field');
+  await act(async () => {
+    fireEvent.change(select, { target: { value: 'tags' } });
+  });
+};
+
 describe('ConditionBuilder — server-side tag search', () => {
   beforeEach(() => {
     capturedOnSearchChange = undefined;
@@ -211,15 +218,7 @@ describe('ConditionBuilder — server-side tag search', () => {
       );
     });
 
-    // Select the tags field
-    const select = screen.getByTestId('condition-builder-row-0-field');
-    await act(async () => {
-      select.dispatchEvent(
-        Object.assign(new Event('change', { bubbles: true }), {
-          target: { value: 'tags' },
-        })
-      );
-    });
+    await selectTagsField();
 
     expect(tagFieldDef.fetchOptions).toHaveBeenCalledWith('');
   });
@@ -282,16 +281,13 @@ describe('ConditionBuilder — server-side tag search', () => {
       render(
         <ConditionBuilder
           fieldDefinitions={[tagFieldDef]}
-          value={{
-            config: {
-              condition: 'AND',
-              rules: { tags: [] },
-            },
-          }}
+          value={null}
           onChange={onChange}
         />
       );
     });
+
+    await selectTagsField();
 
     await act(async () => {
       jest.runAllTimers();
@@ -389,16 +385,13 @@ describe('ConditionBuilder — server-side tag search', () => {
       render(
         <ConditionBuilder
           fieldDefinitions={[tagFieldDef]}
-          value={{
-            config: {
-              condition: 'AND',
-              rules: { tags: [] },
-            },
-          }}
+          value={null}
           onChange={onChange}
         />
       );
     });
+
+    await selectTagsField();
 
     // Wait for the initial mount load (empty string call)
     await act(async () => {
