@@ -954,7 +954,7 @@ const DomainDetails = ({
           />
         )}
         <Box align="start" className="entity-header tw:mx-5" justify="between">
-          <div className="tw:max-w-[60%]">
+          <div className="entity-header-title-top tw:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
               displayNameClassName="entity-header-title-wrap"

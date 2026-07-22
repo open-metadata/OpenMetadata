@@ -37,6 +37,12 @@
   word-break: break-word;
 }
 
+// When the title wraps onto multiple lines, top-align the icon with the first
+// line instead of centering it against the full (tall) title block.
+.entity-header-title-top .entity-header-title {
+  align-items: flex-start;
+}
+
 .ant-btn.entity-follow-button {
   border-radius: 16px;
   background-color: @primary-button-background;
