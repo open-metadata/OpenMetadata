@@ -14,7 +14,11 @@
 
 name: MySQL PR Playwright E2E Tests
 on:
+  merge_group:
   workflow_dispatch:
+  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
+  # it there. pull_request_target remains only for PRs targeting release
+  # branches, which have no merge queue.
   pull_request_target:
     types:
       - labeled
@@ -22,6 +26,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    branches-ignore:
+      - main
     paths-ignore:
       - ".github/**"
       - "openmetadata-dist/**"
@@ -60,12 +66,6 @@ jobs:
         shardIndex: [1, 2]
         shardTotal: [2]
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -97,8 +97,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Detect ingestion-only changes
         id: changes
         if: ${{ github.event_name == 'pull_request_target' }}
