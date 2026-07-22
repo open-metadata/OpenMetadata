@@ -336,8 +336,9 @@ export default defineConfig({
           },
         ]
       : []),
-    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
-    // They must run in isolation after the main chromium project to avoid flakiness
+    // Planned global-state projects share one single-worker lane backed by their own
+    // database/search clone. Legacy runs retain the Chromium dependency because they
+    // share one mutable environment.
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',

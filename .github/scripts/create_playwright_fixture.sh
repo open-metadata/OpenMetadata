@@ -47,8 +47,15 @@ docker stop --time 30 openmetadata_postgresql openmetadata_opensearch >/dev/null
 resolve_digest() {
   local reference=$1
   local digest
-  docker pull "$reference" >/dev/null
-  digest=$(docker image inspect "$reference" --format '{{index .RepoDigests 0}}')
+  digest=$(
+    docker image inspect "$reference" --format '{{index .RepoDigests 0}}' 2>/dev/null || true
+  )
+  if [[ -z "$digest" || "$digest" != *@sha256:* ]]; then
+    docker pull "$reference" >/dev/null
+    digest=$(
+      docker image inspect "$reference" --format '{{index .RepoDigests 0}}' 2>/dev/null || true
+    )
+  fi
   if [[ -z "$digest" || "$digest" != *@sha256:* ]]; then
     echo "Could not resolve immutable digest for $reference" >&2
     exit 1
