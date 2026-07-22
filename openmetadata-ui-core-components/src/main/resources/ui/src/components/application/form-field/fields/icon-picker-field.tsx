@@ -289,7 +289,7 @@ export const IconPickerField = ({
       />
 
       {isOpen && (
-        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">
+        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt">
           {allowUrl ? (
             <Tabs
               selectedKey={activeTab}

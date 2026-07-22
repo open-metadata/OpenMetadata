@@ -248,10 +248,13 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
 
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
-    Call client.get_version(); on failure, attempt a managed-flavor-specific
+    Call client.test_get_version(); on failure, attempt a managed-flavor-specific
     diagnostic and raise SourceConnectionException with a combined message
     ("<original error>\\n\\n<hint>"). When no hint applies, the original
     exception is re-raised unchanged.
+
+    Uses the strict accessor, not get_version: the latter tolerates a reply it
+    cannot parse, which would pass the gate against any web server.
     """
     from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
         diagnose,
@@ -259,7 +262,7 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
 
     result = None
     try:
-        result = client.get_version()
+        result = client.test_get_version()
     except Exception as exc:
         hint = diagnose(host, auth_config, verify, exc)
         if hint:
@@ -302,6 +305,11 @@ AIRFLOW_ERRORS = ErrorPack(
         "Endpoint not found",
         fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
         "server, not a UI or console page.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited",
+        fix="Airflow (or a gateway in front of it) is throttling the request. Retry in a few "
+        "minutes, or raise the rate limit for the account ingestion uses.",
     ),
     # A URL that is not the Airflow REST API (an SSO login page, the marketing
     # site) answers with HTML that fails to decode as JSON.
