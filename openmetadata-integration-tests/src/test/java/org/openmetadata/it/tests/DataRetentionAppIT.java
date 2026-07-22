@@ -18,12 +18,14 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -126,16 +128,21 @@ public class DataRetentionAppIT {
   }
 
   /** Mirrors FeedRepository's resolution across the pre/post-migration thread table names. */
-  private String resolveThreadTableName() {
+  private String resolveThreadTableName() throws SQLException {
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle -> {
+              String tableExistsQuery =
+                  isPostgres(handle)
+                      ? "SELECT COUNT(*) FROM information_schema.tables "
+                          + "WHERE table_schema = current_schema() AND table_name = :name"
+                      : "SELECT COUNT(*) FROM information_schema.tables "
+                          + "WHERE table_schema = DATABASE() AND table_name = :name";
               for (String candidate :
                   List.of("thread_entity_legacy", "thread_entity_archived", "thread_entity")) {
                 Integer tableCount =
                     handle
-                        .createQuery(
-                            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = :name")
+                        .createQuery(tableExistsQuery)
                         .bind("name", candidate)
                         .mapTo(Integer.class)
                         .one();
@@ -161,15 +168,8 @@ public class DataRetentionAppIT {
                       .one();
               ObjectNode thread = (ObjectNode) MAPPER.readTree(json);
               thread.put("threadTs", createdAtMillis);
-              boolean isPostgres =
-                  handle
-                      .getConnection()
-                      .getMetaData()
-                      .getDatabaseProductName()
-                      .toLowerCase(Locale.ROOT)
-                      .contains("postgres");
               String update =
-                  isPostgres
+                  isPostgres(handle)
                       ? "UPDATE " + threadTable + " SET json = CAST(:json AS jsonb) WHERE id = :id"
                       : "UPDATE " + threadTable + " SET json = :json WHERE id = :id";
               handle
@@ -178,6 +178,15 @@ public class DataRetentionAppIT {
                   .bind("id", threadId.toString())
                   .execute();
             });
+  }
+
+  private boolean isPostgres(Handle handle) throws SQLException {
+    return handle
+        .getConnection()
+        .getMetaData()
+        .getDatabaseProductName()
+        .toLowerCase(Locale.ROOT)
+        .contains("postgres");
   }
 
   private int threadRowCount(String threadTable, UUID threadId) {
