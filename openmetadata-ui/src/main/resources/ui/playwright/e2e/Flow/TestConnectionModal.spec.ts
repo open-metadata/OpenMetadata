@@ -121,6 +121,16 @@ test.describe(
     test.use({ storageState: 'playwright/.auth/admin.json' });
 
     test.beforeEach(async ({ page }) => {
+      await page.route(
+        '**/api/v1/services/ingestionPipelines/status',
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 200, platform: 'airflow' }),
+          });
+        }
+      );
       await redirectToHomePage(page);
     });
 
