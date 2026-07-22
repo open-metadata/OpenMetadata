@@ -24,7 +24,7 @@ export const AvatarOnlineIndicator = ({
 }: AvatarOnlineIndicatorProps) => (
   <span
     className={cx(
-      'tw:absolute tw:right-0 tw:bottom-0 tw:rounded-full tw:ring-[1.5px] tw:ring-bg-primary',
+      'tw:absolute tw:right-0 tw:bottom-0 tw:rounded-full tw:outline-[1.5px] tw:outline-bg-primary',
       status === 'online'
         ? 'tw:bg-fg-success-secondary'
         : 'tw:bg-fg-disabled_subtle',

@@ -39,6 +39,7 @@ from metadata.ingestion.source.database.redshift.connection import (
 
 PROVISIONED_HOST = "my-cluster.abc123.us-east-1.redshift.amazonaws.com"
 SERVERLESS_HOST = "my-workgroup.123456789012.us-east-1.redshift-serverless.amazonaws.com"
+VPCE_HOST = "vpce-0f8b12345678abcde-a1b2c3d4.vpce-svc-0a9f87654321fedcb.us-west-2.vpce.amazonaws.com"
 
 
 class TestHostParsing:
@@ -249,3 +250,161 @@ class TestGetRedshiftIAMCredentials:
 
         with pytest.raises(SourceConnectionException, match="my-workgroup"):
             _get_redshift_iam_credentials(connection)
+
+
+class TestExplicitClusterOverrides:
+    """
+    PrivateLink/VPC endpoint and custom DNS hostnames cannot be parsed for the
+    cluster identifier or workgroup (issue #28127). The explicit connection
+    fields clusterIdentifier/workgroupName take precedence over host parsing.
+    """
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_cluster_identifier_override_wins_over_vpce_host(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.return_value = {
+            "DbUser": "IAM:admin",
+            "DbPassword": "temp-password",
+        }
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+            clusterIdentifier="my-real-cluster",
+        )
+
+        user, password = _get_redshift_iam_credentials(connection)
+
+        assert user == "IAM:admin"
+        assert password == "temp-password"
+        mock_client.get_cluster_credentials.assert_called_once_with(
+            DbUser="admin",
+            ClusterIdentifier="my-real-cluster",
+            AutoCreate=False,
+            DbName="mydb",
+        )
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_workgroup_override_forces_serverless_on_non_serverless_host(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_credentials.return_value = {
+            "dbUser": "IAMR:admin",
+            "dbPassword": "serverless-temp-password",
+        }
+        mock_aws_client_cls.return_value.get_redshift_serverless_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+            workgroupName="my-real-workgroup",
+        )
+
+        user, password = _get_redshift_iam_credentials(connection)
+
+        assert user == "IAMR:admin"
+        assert password == "serverless-temp-password"
+        mock_client.get_credentials.assert_called_once_with(
+            workgroupName="my-real-workgroup",
+            dbName="mydb",
+        )
+
+    def test_both_overrides_set_raises(self):
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+            clusterIdentifier="my-real-cluster",
+            workgroupName="my-real-workgroup",
+        )
+
+        with pytest.raises(SourceConnectionException, match="only one"):
+            _get_redshift_iam_credentials(connection)
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_no_override_standard_host_parsing_unchanged(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.return_value = {
+            "DbUser": "admin",
+            "DbPassword": "pass",
+        }
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{PROVISIONED_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
+            database="mydb",
+        )
+
+        _get_redshift_iam_credentials(connection)
+
+        call_kwargs = mock_client.get_cluster_credentials.call_args[1]
+        assert call_kwargs["ClusterIdentifier"] == "my-cluster"
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_failure_on_vpce_host_without_override_mentions_field(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.side_effect = ClientError(
+            {"Error": {"Code": "ClusterNotFound", "Message": "Cluster not found."}},
+            "GetClusterCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+        )
+
+        with pytest.raises(SourceConnectionException, match="clusterIdentifier"):
+            _get_redshift_iam_credentials(connection)
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_failure_on_standard_host_has_no_privatelink_hint(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "not authorized"}},
+            "GetClusterCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{PROVISIONED_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-east-1")),
+            database="mydb",
+        )
+
+        with pytest.raises(SourceConnectionException) as exc_info:
+            _get_redshift_iam_credentials(connection)
+
+        assert "clusterIdentifier" not in str(exc_info.value)
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_failure_with_override_set_has_no_hint(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.side_effect = ClientError(
+            {"Error": {"Code": "ClusterNotFound", "Message": "Cluster not found."}},
+            "GetClusterCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+            clusterIdentifier="my-real-cluster",
+        )
+
+        with pytest.raises(SourceConnectionException) as exc_info:
+            _get_redshift_iam_credentials(connection)
+
+        assert str(exc_info.value).endswith("Cluster not found.")

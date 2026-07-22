@@ -100,6 +100,52 @@ Theme colors are defined as CSS custom properties in `src/styles/globals.css` wi
 - Use `cx()` (from `tailwind-merge`) to merge class names with conflict resolution
 - Use `isReactComponent()` to type-guard icon props that accept both `FC` and `ReactNode`
 
+### Borders: never use `ring-*` — use `border` or `outline`
+
+`tw:ring-*` compiles to a `box-shadow`, and **WebKit does not pixel-snap box-shadows** — a
+ring used as a border thins out and can vanish entirely in Safari at non-100% zoom. `border`
+and `outline` are snapped and never degrade. The library was migrated off rings; do not
+reintroduce them.
+
+| Situation | Use |
+|---|---|
+| Edge may occupy layout space (static container) | `tw:border tw:border-<token>` |
+| Edge must be layout-neutral and the element's `outline` is free | `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` |
+| Element's `outline` is already the focus ring (any focusable control) | `borderAfter` from `@/utils/tailwindClasses` |
+
+`border` consumes layout, so on content-sized controls it adds 2px of height and makes them
+grow on focus (1px → 2px). That is why controls use `outline`.
+
+```tsx
+import { borderAfter } from '@/utils/tailwindClasses';
+
+// host needs `tw:relative`; colour via `tw:after:outline-<token>`
+cx('tw:relative', borderAfter, 'tw:after:outline-primary',
+   isDisabled && 'tw:disabled:after:outline-disabled_subtle')
+```
+
+`borderAfter2` is the 2px variant. Note `::before` is already used by `button.tsx` and
+`social-button.tsx` for their inner gradient — hence `::after`.
+
+Converting a ring: `ring-inset` → `-outline-offset-N`; **no** `ring-inset` → offset `0` (a
+non-inset ring draws *outward*). Getting this wrong shifts the edge by 1px.
+
+Gotchas:
+- **`tw:outline-hidden` erases an outline border** — remove it from any element whose border
+  is an outline. Unlayered LESS (`outline: none`) beats Tailwind utilities and will kill it.
+- **`tw:transition-shadow` won't animate an outline** — use
+  `tw:transition-[outline-color,outline-width]`. Plain `tw:transition` covers `outline-color`
+  but not `outline-width`.
+- **Keep `tw:shadow-*`** — a real drop shadow, not the ring.
+- Consumers overriding a border must match where it's drawn: `::after` for
+  Button/ButtonUtility/Tab, the element for Input/Select/Badge/Card.
+
+Rings legitimately remain only where `ring-offset-*` fills the gap with a colour
+(`color-picker-field`, `icon-picker-field`) — `outline-offset` leaves it transparent.
+
+Full rationale, measurements, and the anti-pattern table:
+[`openmetadata-ui/src/main/resources/ui/docs/colors.md`](../openmetadata-ui/src/main/resources/ui/docs/colors.md) §2.3.1.
+
 ### Button Color Variants
 
 The `Button` component supports these `color` values:
