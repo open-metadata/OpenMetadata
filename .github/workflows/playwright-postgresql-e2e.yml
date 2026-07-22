@@ -16,10 +16,14 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
-  # Note: paths-ignore removed — the workflow always triggers so that the
-  # required status check (playwright-summary) always completes. Path filtering
-  # is handled inside the workflow via dorny/paths-filter so PRs without
-  # relevant changes skip the expensive jobs while still reporting a passing status.
+  # Note: PRs targeting main do NOT run this workflow — the merge queue
+  # (merge_group) runs the authoritative suite there, and
+  # playwright-required-checks-stub.yml reports the required playwright-summary
+  # check green on those PRs so they can enter the queue. pull_request_target
+  # remains only for PRs targeting release branches (which have no merge
+  # queue), gated by the "safe to test" label. Path filtering is handled inside
+  # the workflow via dorny/paths-filter so PRs without relevant changes skip
+  # the expensive jobs while still reporting a passing status.
   pull_request_target:
     types:
       - labeled
@@ -27,6 +31,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    branches-ignore:
+      - main
 
 permissions:
   contents: read
@@ -87,12 +93,6 @@ jobs:
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -114,8 +114,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
@@ -164,7 +165,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Get all changed files
         id: all-changes
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -244,8 +246,9 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Download Maven build artifact
         id: download-build
         uses: actions/download-artifact@v4
@@ -546,7 +549,7 @@ jobs:
         env:
           EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
-          SOURCE_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \

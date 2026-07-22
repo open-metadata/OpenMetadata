@@ -3408,6 +3408,7 @@
     "find-apps-to-improve-data": "Trouvez des applications pour améliorer vos données",
     "find-in-table": "Trouver dans la table",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "Sélectionnez un champ pour afficher son conseil ici.",
     "fosters-collaboration-among-producers-and-consumers": "Encouragez la collaborations entre les consommateurs et producteurs de données",
     "freshness-sla-description": "<0>{{label}}</0> : les données doivent être mises à jour au cours des <0>{{data}}</0> dernières.",
     "get-started-with-open-metadata": "Démarrer avec {{brandName}}",

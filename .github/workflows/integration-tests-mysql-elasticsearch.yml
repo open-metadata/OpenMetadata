@@ -79,12 +79,6 @@ jobs:
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-mysql-elasticsearch.yml'
 
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.backend == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
   integration-test-build:
     name: Build Integration Test Runtime
     needs: changes
@@ -113,8 +107,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -132,7 +127,7 @@ jobs:
       - name: Build and Bundle Integration Test Runtime
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           project_version="$(mvn --quiet --non-recursive help:evaluate \
             -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
@@ -217,8 +212,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
