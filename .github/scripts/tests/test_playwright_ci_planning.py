@@ -510,3 +510,12 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
         'export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"' in fast_launcher
     )
     assert "provider_address_texas" in fast_launcher
+
+
+def test_normal_vite_build_keeps_hashed_entry_assets():
+    vite_config = (
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
+    ).read_text()
+
+    assert "? 'assets/app-[hash].js'" in vite_config
+    assert ": 'assets/[name]-[hash].js'" in vite_config

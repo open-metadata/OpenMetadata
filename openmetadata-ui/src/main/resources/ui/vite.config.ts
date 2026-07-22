@@ -304,7 +304,7 @@ export default defineConfig(async ({ mode }) => {
         output: {
           entryFileNames: isPlaywrightBuild
             ? 'assets/app-[hash].js'
-            : undefined,
+            : 'assets/[name]-[hash].js',
           assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
