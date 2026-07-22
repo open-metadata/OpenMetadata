@@ -23,10 +23,9 @@ export const waitForSearchIndexed = async (
   index: string,
   options?: { timeout?: number; intervals?: number[] }
 ) => {
-  // An empty q= becomes a match-all query in the search API: hits.total>0
-  // would resolve on the first poll against any non-empty index, silently
-  // bypassing the very race this helper exists to close. Fail fast with a
-  // clear message so a missing FQN is debuggable at the source.
+  // Fail fast on a missing FQN rather than querying with an empty phrase,
+  // so a caller bug is debuggable at the source instead of surfacing as a
+  // confusing timeout.
   if (!entityFqn) {
     throw new Error(
       `waitForSearchIndexed called with empty FQN for index "${index}"`
@@ -39,20 +38,22 @@ export const waitForSearchIndexed = async (
   let intervalIdx = 0;
 
   while (Date.now() - start < timeout) {
+    // Scope the query to the fullyQualifiedName field as an exact quoted
+    // phrase (the same pattern used elsewhere in this suite, e.g.
+    // TestCaseStatusAfterReindex.spec.ts) instead of a bare `q=` full-text
+    // search. A bare query tokenizes a dotted FQN like "org.team.mysql.<uid>"
+    // into "org"/"team"/"mysql"/"uid" and can match unrelated already-indexed
+    // documents sharing a common token — and since that's a relevance-ranked
+    // search, the real match can also rank outside any fixed page size once
+    // enough noise accumulates, so checking hits client-side can't fix it.
     const response = await apiContext.get(
-      `/api/v1/search/query?q=${encodeURIComponent(
+      `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=10`
+      )}%22&index=${index}&from=0&size=5`
     );
 
     if (response.ok()) {
       const data = await response.json();
-      // `q=` is a full-text query, not an exact-FQN filter: a query like
-      // "org.team.mysql.abc123" tokenizes into "org"/"team"/"mysql"/"abc123"
-      // and can match unrelated already-indexed documents sharing a common
-      // token (e.g. any other "mysql" service). `hits.total > 0` alone can
-      // therefore resolve before the entity we're actually waiting on is
-      // indexed. Require an exact FQN match among the returned hits.
       const hits: Array<{ _source?: { fullyQualifiedName?: string } }> =
         data?.hits?.hits ?? [];
       const isIndexed = hits.some(
