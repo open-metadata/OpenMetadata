@@ -94,7 +94,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
 
   const { rawText, isLoading: isLogsLoading } = useAgentLogs(
-    logsFor?.id ?? '',
+    logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
     isLogsAgentActive
