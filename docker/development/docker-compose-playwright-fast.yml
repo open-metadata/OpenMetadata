@@ -52,7 +52,6 @@ services:
     environment:
       discovery.type: single-node
       DISABLE_INSTALL_DEMO_CONFIG: "true"
-      DISABLE_SECURITY_PLUGIN: "true"
       ES_JAVA_OPTS: -Xms2g -Xmx2g
       OPENSEARCH_JAVA_OPTS: -Xms2g -Xmx2g
       plugins.security.disabled: "true"

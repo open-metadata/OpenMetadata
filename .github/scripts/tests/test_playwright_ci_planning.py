@@ -452,3 +452,12 @@ def test_outcome_classifier_reads_include_matrix():
 
     assert error == ""
     assert shards == ["chromium-01", "search-01"]
+
+
+def test_fast_opensearch_config_does_not_duplicate_security_disable():
+    fast_compose = (
+        SCRIPTS.parents[1] / "docker/development/docker-compose-playwright-fast.yml"
+    ).read_text()
+
+    assert 'plugins.security.disabled: "true"' in fast_compose
+    assert "DISABLE_SECURITY_PLUGIN" not in fast_compose
