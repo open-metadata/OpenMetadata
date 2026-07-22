@@ -48,7 +48,7 @@ const HeaderShell = ({
   meta,
   hasStats = false,
   actions,
-  actionsClassName = 'tw:shrink-0',
+  actionsClassName,
   footer,
   variant = 'flat',
   padding = 'default',
@@ -103,7 +103,7 @@ const HeaderShell = ({
           {actions && (
             <Box
               align="center"
-              className={classNames('tw:ml-auto', actionsClassName)}
+              className={classNames('tw:ml-auto tw:shrink-0', actionsClassName)}
               direction="row"
               gap={4}>
               {actions}
