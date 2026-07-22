@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
@@ -14,6 +15,8 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +30,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
@@ -63,6 +67,7 @@ public class TestCaseResolutionStatusRepository
   public static final String INCIDENT_DATE_FIELD_UPDATED_AT = "updatedAt";
   public static final String INCIDENT_SORT_TYPE_ASC = "asc";
   public static final String INCIDENT_SORT_TYPE_DESC = "desc";
+  private static final int TREND_BUCKET_COUNT = 8;
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -444,7 +449,8 @@ public class TestCaseResolutionStatusRepository
     incident.setSeverity(severity);
   }
 
-  protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
+  protected static UUID getOrCreateIncident(
+      TestCase testCase, String updatedBy, String failureReason) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
     Task existing =
@@ -456,10 +462,11 @@ public class TestCaseResolutionStatusRepository
       return existing.getId();
     }
 
-    return createIncidentTask(testCase, updatedBy);
+    return createIncidentTask(testCase, updatedBy, failureReason);
   }
 
-  private static UUID createIncidentTask(TestCase testCase, String updatedBy) {
+  private static UUID createIncidentTask(
+      TestCase testCase, String updatedBy, String failureReason) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
     TestCase fullTestCase =
@@ -482,7 +489,10 @@ public class TestCaseResolutionStatusRepository
             .withType(TaskEntityType.TestCaseResolution)
             .withStatus(TaskEntityStatus.Open)
             .withAbout(fullTestCase.getEntityReference())
-            .withPayload(new TestCaseResolutionPayload().withTestCaseResolutionStatusId(taskId))
+            .withPayload(
+                new TestCaseResolutionPayload()
+                    .withTestCaseResolutionStatusId(taskId)
+                    .withFailureReason(failureReason))
             .withCreatedBy(updatedByRef)
             .withAssignees(assignees)
             .withCreatedAt(System.currentTimeMillis())
@@ -653,7 +663,12 @@ public class TestCaseResolutionStatusRepository
     CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
         dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
     List<TestCaseIncidentGroup> groups =
-        page.counts().stream().map(count -> toIncidentGroup(groupBy, count)).toList();
+        page.counts().stream()
+            .map(
+                count ->
+                    toIncidentGroup(
+                        groupBy, count, page.createdAtByGroupKey().get(count.groupKey())))
+            .toList();
     return new ResultList<>(
         groups,
         getBeforeOffset(offsetInt, limit),
@@ -673,9 +688,24 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static TestCaseIncidentGroup toIncidentGroup(
-      IncidentGroupBy groupBy, CollectionDAO.TestCaseIncidentGroupCount count) {
+      IncidentGroupBy groupBy,
+      CollectionDAO.TestCaseIncidentGroupCount count,
+      List<Long> incidentCreatedAt) {
     TestCaseIncidentGroup group =
-        new TestCaseIncidentGroup().withGroupBy(groupBy).withIncidentCount(count.incidentCount());
+        new TestCaseIncidentGroup()
+            .withGroupBy(groupBy)
+            .withIncidentCount(count.incidentCount())
+            .withStatus(statusFromRank(count.statusRank()))
+            .withAssigneeCount(count.assigneeCount())
+            .withFirstSeen(count.firstSeen())
+            .withLastSeen(count.lastSeen());
+    if (count.severity() != null) {
+      group.withSeverity(Severity.fromValue(count.severity()));
+    }
+    if (!nullOrEmpty(count.assignees())) {
+      group.withAssignees(List.of(count.assignees().split(",")));
+    }
+    setIncidentTrend(group, incidentCreatedAt);
     EntityReference reference = resolveIncidentGroupEntity(count);
     if (reference != null) {
       group
@@ -687,6 +717,50 @@ public class TestCaseResolutionStatusRepository
       setFallbackIncidentGroupIdentity(group, count);
     }
     return group;
+  }
+
+  private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
+    return switch (statusRank) {
+      case 1 -> TestCaseResolutionStatusTypes.Assigned;
+      case 2 -> TestCaseResolutionStatusTypes.Ack;
+      default -> TestCaseResolutionStatusTypes.New;
+    };
+  }
+
+  private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {
+    List<Long> timestamps = listOrEmpty(incidentCreatedAt);
+    if (!timestamps.isEmpty()) {
+      long min = Collections.min(timestamps);
+      long max = Collections.max(timestamps);
+      List<Integer> buckets = bucketIncidentCreatedAt(timestamps, min, max);
+      group.withTrend(buckets).withTrendDirection(trendDirection(buckets, max > min));
+    }
+  }
+
+  private static List<Integer> bucketIncidentCreatedAt(List<Long> timestamps, long min, long max) {
+    int[] buckets = new int[TREND_BUCKET_COUNT];
+    long span = max - min;
+    for (long timestamp : timestamps) {
+      int bucket = span == 0 ? 0 : (int) ((timestamp - min) * TREND_BUCKET_COUNT / span);
+      buckets[Math.min(bucket, TREND_BUCKET_COUNT - 1)]++;
+    }
+    return Arrays.stream(buckets).boxed().toList();
+  }
+
+  private static IncidentTrendDirection trendDirection(List<Integer> buckets, boolean hasSpan) {
+    IncidentTrendDirection result = IncidentTrendDirection.Steady;
+    if (hasSpan) {
+      int half = TREND_BUCKET_COUNT / 2;
+      int firstHalf = buckets.subList(0, half).stream().mapToInt(Integer::intValue).sum();
+      int lastHalf =
+          buckets.subList(half, TREND_BUCKET_COUNT).stream().mapToInt(Integer::intValue).sum();
+      if (lastHalf > firstHalf) {
+        result = IncidentTrendDirection.Rising;
+      } else if (lastHalf < firstHalf) {
+        result = IncidentTrendDirection.Falling;
+      }
+    }
+    return result;
   }
 
   private static EntityReference resolveIncidentGroupEntity(

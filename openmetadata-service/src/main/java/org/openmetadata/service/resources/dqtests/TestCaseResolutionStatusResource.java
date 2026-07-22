@@ -21,6 +21,7 @@ import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
@@ -32,7 +33,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -44,12 +47,18 @@ import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
@@ -57,6 +66,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -78,6 +88,8 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResolutionStatusResource
     extends EntityTimeSeriesResource<TestCaseResolutionStatus, TestCaseResolutionStatusRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseIncidentStatus";
+  private static final int MAX_BULK_CREATE_SIZE = 100;
+  private static final String MAX_BULK_CREATE_SIZE_TEXT = "100";
   private final TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
@@ -173,7 +185,13 @@ public class TestCaseResolutionStatusResource
                   "Filter incidents by the test definition of their test case, by name or fully qualified name",
               schema = @Schema(type = "String"))
           @QueryParam("testDefinition")
-          String testDefinition) {
+          String testDefinition,
+      @Parameter(
+              description =
+                  "Filter incidents by a direct owner (user or team name) of their test case",
+              schema = @Schema(type = "String"))
+          @QueryParam("owner")
+          String owner) {
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -184,13 +202,19 @@ public class TestCaseResolutionStatusResource
 
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-    filter.addQueryParam("assignee", assignee);
+    // "incidentAssignee" compares the record's assignee column; the generic "assignee" param is
+    // owned by the task listing and would hash-match ASSIGNED_TO relationships instead.
+    filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     filter.addQueryParam("domain", domain);
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
+    }
+    UUID testCaseOwnerId = resolveOwnerFilterId(owner);
+    if (testCaseOwnerId != null) {
+      filter.addQueryParam("testCaseOwnerId", testCaseOwnerId.toString());
     }
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
@@ -434,6 +458,135 @@ public class TestCaseResolutionStatusResource
     return create(
         testCaseResolutionStatus,
         testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName());
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateTestCaseResolutionStatus",
+      summary = "Bulk create test case failure statuses",
+      description =
+          "Create a new failure status for multiple test case incidents in one operation — e.g. "
+              + "assigning or resolving a selection of incidents at once, up to a limit of "
+              + MAX_BULK_CREATE_SIZE_TEXT
+              + " per request. Each entry is validated and authorized exactly like a single "
+              + "create; the BulkOperationResult reports per-entry success or failure.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class)))
+      })
+  public Response bulkCreate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<CreateTestCaseResolutionStatus> createRequests) {
+    if (listOrEmpty(createRequests).size() > MAX_BULK_CREATE_SIZE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Bulk request size %d exceeds the maximum of %d entries",
+              createRequests.size(), MAX_BULK_CREATE_SIZE));
+    }
+    Map<String, TestCase> testCasesByFqn = prefetchTestCases(createRequests);
+    EntityReference updatedBy =
+        Entity.getEntityReferenceByName(
+            Entity.USER, securityContext.getUserPrincipal().getName(), Include.ALL);
+    List<BulkResponse> successes = new ArrayList<>();
+    List<BulkResponse> failures = new ArrayList<>();
+    for (CreateTestCaseResolutionStatus createRequest : listOrEmpty(createRequests)) {
+      processBulkEntry(
+          securityContext,
+          createRequest,
+          testCasesByFqn.get(createRequest.getTestCaseReference()),
+          updatedBy,
+          successes,
+          failures);
+    }
+    return Response.ok(buildBulkResult(listOrEmpty(createRequests).size(), successes, failures))
+        .build();
+  }
+
+  // Resolves every referenced test case in one query so the per-entry loop never has to fetch;
+  // entries whose FQN is absent from the map fail individually with a not-found message.
+  private static Map<String, TestCase> prefetchTestCases(
+      List<CreateTestCaseResolutionStatus> createRequests) {
+    List<String> fqns =
+        listOrEmpty(createRequests).stream()
+            .map(CreateTestCaseResolutionStatus::getTestCaseReference)
+            .filter(fqn -> !nullOrEmpty(fqn))
+            .distinct()
+            .toList();
+    Map<String, TestCase> result = new HashMap<>();
+    if (!fqns.isEmpty()) {
+      TestCaseRepository testCaseRepository =
+          (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+      for (TestCase testCase : testCaseRepository.getDao().findEntityByNames(fqns, Include.ALL)) {
+        result.put(testCase.getFullyQualifiedName(), testCase);
+      }
+    }
+    return result;
+  }
+
+  private void processBulkEntry(
+      SecurityContext securityContext,
+      CreateTestCaseResolutionStatus createRequest,
+      TestCase testCase,
+      EntityReference updatedBy,
+      List<BulkResponse> successes,
+      List<BulkResponse> failures) {
+    try {
+      if (testCase == null) {
+        throw new EntityNotFoundException(
+            CatalogExceptionMessage.entityNotFound(
+                Entity.TEST_CASE, createRequest.getTestCaseReference()));
+      }
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      ResourceContextInterface testCaseResourceContext =
+          TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder().entityLink(entityLink).build();
+      authorizer.authorizeRequests(
+          securityContext,
+          buildEditAuthRequests(testCaseResourceContext, entityResourceContext),
+          AuthorizationLogic.ANY);
+
+      TestCaseResolutionStatus status = mapper.createToEntity(createRequest, updatedBy, testCase);
+      repository.createNewRecord(status, testCase.getFullyQualifiedName());
+      successes.add(new BulkResponse().withRequest(createRequest));
+    } catch (AuthorizationException e) {
+      failures.add(
+          new BulkResponse()
+              .withRequest(createRequest)
+              .withMessage("Permission denied: " + e.getMessage())
+              .withStatus(Response.Status.FORBIDDEN.getStatusCode()));
+    } catch (Exception e) {
+      failures.add(
+          new BulkResponse()
+              .withRequest(createRequest)
+              .withMessage(e.getMessage())
+              .withStatus(Response.Status.BAD_REQUEST.getStatusCode()));
+    }
+  }
+
+  private static BulkOperationResult buildBulkResult(
+      int processed, List<BulkResponse> successes, List<BulkResponse> failures) {
+    ApiStatus status = ApiStatus.SUCCESS;
+    if (successes.isEmpty() && !failures.isEmpty()) {
+      status = ApiStatus.FAILURE;
+    } else if (!failures.isEmpty()) {
+      status = ApiStatus.PARTIAL_SUCCESS;
+    }
+    return new BulkOperationResult()
+        .withStatus(status)
+        .withNumberOfRowsProcessed(processed)
+        .withNumberOfRowsPassed(successes.size())
+        .withNumberOfRowsFailed(failures.size())
+        .withSuccessRequest(successes)
+        .withFailedRequest(failures);
   }
 
   @PATCH
@@ -746,6 +899,18 @@ public class TestCaseResolutionStatusResource
       }
     }
     return entityId;
+  }
+
+  private static UUID resolveOwnerFilterId(String owner) {
+    UUID result = null;
+    if (!nullOrEmpty(owner)) {
+      try {
+        result = resolveFilterEntityId(Entity.USER, owner);
+      } catch (EntityNotFoundException e) {
+        result = resolveFilterEntityId(Entity.TEAM, owner);
+      }
+    }
+    return result;
   }
 
   protected static ResourceContextInterface buildEntityResourceContext(

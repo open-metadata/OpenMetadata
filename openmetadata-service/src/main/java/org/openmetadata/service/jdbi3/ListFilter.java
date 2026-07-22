@@ -67,6 +67,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
+    conditions.add(getTestCaseOwnerCondition());
     conditions.add(getIncidentAssigneeCondition());
     conditions.add(getIncidentDomainCondition());
     conditions.add(getIncidentDateRangeCondition());
@@ -469,12 +470,30 @@ public class ListFilter extends Filter<ListFilter> {
     return result;
   }
 
-  // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) ranks
-  // test_case_resolution_status_time_series records per stateId in a CTE aliased {@code i}
-  // (rn = 1 is the incident's latest record; createdAt/updatedAt are its first/last record
-  // timestamps) and joins test_case as {@code tc}. The incident* query params below are only set
-  // by TestCaseResolutionStatusResource#listIncidentGroups, mirroring how originEntityFQN pairs
-  // with the join added by TestCaseResolutionStatusTimeSeriesDAO#addOriginEntityFQNJoin.
+  // Scopes the test_case_resolution_status_time_series listing to the test cases directly owned
+  // by a user or team (owners inherited from the table are resolved at read time and are not
+  // visible to SQL); testCaseOwnerId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseOwnerCondition() {
+    String testCaseOwnerId = queryParams.get("testCaseOwnerId");
+    String result = "";
+    if (!nullOrEmpty(testCaseOwnerId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tcotc.fqnHash FROM test_case tcotc "
+                  + "INNER JOIN entity_relationship tcoer ON tcoer.toId = tcotc.id "
+                  + "WHERE tcoer.fromId = :testCaseOwnerId AND tcoer.fromEntity IN ('%s', '%s') "
+                  + "AND tcoer.toEntity = '%s' AND tcoer.relation = %d)",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
+  // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
+  // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
+  // joins test_case as {@code tc}. The incident* query params below are only set by
+  // TestCaseResolutionStatusResource (incidentAssignee also by the flat list, where it compares
+  // the record's assignee column — the generic "assignee" param belongs to the task listing).
   private String getIncidentAssigneeCondition() {
     String assignee = queryParams.get("incidentAssignee");
     return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";

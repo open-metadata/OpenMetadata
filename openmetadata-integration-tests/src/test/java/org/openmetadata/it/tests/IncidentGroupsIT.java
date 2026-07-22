@@ -1,11 +1,15 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
@@ -27,6 +31,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.Table;
@@ -37,15 +42,20 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Resolved;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -90,12 +100,13 @@ public class IncidentGroupsIT {
   private TestCase testCase4;
   private User pagerUser;
   private List<String> pagerTableFqns;
+  private String schemaFqn;
 
   @BeforeAll
   void setup() throws Exception {
     client = SdkClients.adminClient();
     long ts = System.currentTimeMillis();
-    String schemaFqn = createSchema(ts);
+    schemaFqn = createSchema(ts);
     tableA = createTable(schemaFqn, "incident_groups_table_a_" + ts);
     tableB = createTable(schemaFqn, "incident_groups_table_b_" + ts);
     userA = createUser("incident_groups_user_a_" + ts);
@@ -134,7 +145,7 @@ public class IncidentGroupsIT {
         testCase2,
         TestCaseResolutionStatusTypes.Assigned,
         new Assigned().withAssignee(userA.getEntityReference()));
-    createStatus(testCase3, TestCaseResolutionStatusTypes.New, null);
+    createStatus(testCase3, TestCaseResolutionStatusTypes.New, null, Severity.Severity2);
     createStatus(testCase4, TestCaseResolutionStatusTypes.New, null);
     createStatus(
         testCase4,
@@ -557,6 +568,186 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testGroupAggregates() throws Exception {
+    List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TABLE));
+
+    TestCaseIncidentGroup groupA = findGroup(groups, tableA.getFullyQualifiedName());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned,
+        groupA.getStatus(),
+        "case 2's Assigned outranks case 1's status in the triage order");
+    assertEquals(List.of(userA.getName()), groupA.getAssignees());
+    assertEquals(1, groupA.getAssigneeCount());
+    assertTrue(groupA.getFirstSeen() <= groupA.getLastSeen());
+    assertEquals(
+        2,
+        groupA.getTrend().stream().mapToInt(Integer::intValue).sum(),
+        "trend buckets must add up to the incident count");
+    assertNotNull(groupA.getTrendDirection());
+
+    TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
+    assertEquals(TestCaseResolutionStatusTypes.New, groupB.getStatus());
+    assertEquals(Severity.Severity2, groupB.getSeverity(), "case 3's explicit severity");
+    assertEquals(0, groupB.getAssigneeCount());
+    assertEquals(
+        List.of(1, 0, 0, 0, 0, 0, 0, 0),
+        groupB.getTrend(),
+        "a single open incident lands in the first bucket");
+    assertEquals(IncidentTrendDirection.Steady, groupB.getTrendDirection());
+  }
+
+  @Test
+  void testDbListOwnerFilterScopesToOwner() throws Exception {
+    assertEquals(
+        Set.of(testCase1.getFullyQualifiedName(), testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(new ListParams().withLimit(100).addFilter("owner", userA.getName()))),
+        "user A directly owns cases 1 and 2");
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName(), testCase3.getFullyQualifiedName()),
+        statusTestCaseFqns(
+            listStatuses(new ListParams().withLimit(100).addFilter("owner", userB.getName()))),
+        "user B directly owns cases 2 and 3");
+  }
+
+  @Test
+  void testDbListUnknownOwnerRejected() {
+    ListParams params =
+        new ListParams()
+            .withLimit(10)
+            .addFilter("owner", "incident_groups_unknown_owner_" + System.nanoTime());
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class, () -> client.testCaseResolutionStatuses().list(params));
+    assertEquals(404, error.getStatusCode());
+  }
+
+  @Test
+  void testBulkCreateStatuses() throws Exception {
+    CreateTestCaseResolutionStatus ackCase1 =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase1.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    CreateTestCaseResolutionStatus unknownCase =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference("incident_groups_missing_case_" + System.nanoTime())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+
+    BulkOperationResult result =
+        client.testCaseResolutionStatuses().bulkCreate(List.of(ackCase1, unknownCase));
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(1, result.getNumberOfRowsPassed());
+    assertEquals(1, result.getNumberOfRowsFailed());
+    assertEquals(
+        TestCaseResolutionStatusTypes.Ack,
+        fetchStatuses(testCase1).getFirst().getTestCaseResolutionStatusType(),
+        "the bulk entry must append an Ack record to case 1's incident chain");
+  }
+
+  @Test
+  void testFailedResultDenormalizesFailureSummary() throws Exception {
+    long ts = System.currentTimeMillis();
+    String failureText = "Expected 48210 rows, found 47006";
+    Table summaryTable = createTable(schemaFqn, "incident_groups_summary_" + ts);
+    TestDefinition summaryDefinition =
+        createTestDefinition("incident_groups_summary_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase summaryCase =
+        createTestCase(
+            "incident_groups_summary_case_" + ts,
+            tableLink(summaryTable),
+            summaryDefinition,
+            List.of());
+
+    CreateTestCaseResult failedResult =
+        new CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withResult(failureText);
+    client.testCaseResults().create(summaryCase.getFullyQualifiedName(), failedResult);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              List<TestCaseResolutionStatus> statuses = fetchStatuses(summaryCase);
+              assertFalse(statuses.isEmpty(), "the failed result must open an incident");
+              assertEquals(
+                  failureText,
+                  statuses.getFirst().getFailureSummary(),
+                  "the incident record must carry the denormalized failure text");
+            });
+  }
+
+  // Without a startTs/endTs range the data query skips the timestamp clause but the count query
+  // used to keep it, evaluating BETWEEN NULL AND NULL — total came back 0 and no after-cursor was
+  // ever emitted, so unranged listings could not paginate.
+  @Test
+  void testDbListPagingWithoutTimeRange() throws Exception {
+    ListParams firstPage =
+        new ListParams().withLimit(1).addFilter("testCaseFQN", testCase2.getFullyQualifiedName());
+    ListResponse<TestCaseResolutionStatus> first =
+        client.testCaseResolutionStatuses().list(firstPage);
+
+    assertEquals(2, first.getPaging().getTotal(), "case 2 has a two-record chain");
+    assertEquals(1, first.getData().size());
+    assertNotNull(first.getPaging().getAfter(), "a second page must be reachable");
+
+    ListParams secondPage =
+        new ListParams()
+            .withLimit(1)
+            .addFilter("testCaseFQN", testCase2.getFullyQualifiedName())
+            .addFilter("offset", first.getPaging().getAfter());
+    ListResponse<TestCaseResolutionStatus> second =
+        client.testCaseResolutionStatuses().list(secondPage);
+
+    assertEquals(2, second.getPaging().getTotal());
+    assertEquals(1, second.getData().size());
+    assertNull(second.getPaging().getAfter(), "two records, so page two is the last page");
+    Set<String> ids = new HashSet<>();
+    ids.add(
+        JsonUtils.convertValue(first.getData().getFirst(), TestCaseResolutionStatus.class)
+            .getId()
+            .toString());
+    ids.add(
+        JsonUtils.convertValue(second.getData().getFirst(), TestCaseResolutionStatus.class)
+            .getId()
+            .toString());
+    assertEquals(2, ids.size(), "the two pages must return distinct records");
+  }
+
+  // The `assignee` param used to fall through to ListFilter's task-oriented condition, which
+  // hashes the name and matches ASSIGNED_TO relationship targets — never a time-series record
+  // id — so the DB list silently returned nothing for any assignee.
+  @Test
+  void testDbListAssigneeFilter() throws Exception {
+    List<TestCaseResolutionStatus> records =
+        listStatuses(new ListParams().withLimit(100).addFilter("assignee", userA.getName()));
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(records),
+        "only case 2 has a record assigned to user A");
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned,
+        records.getFirst().getTestCaseResolutionStatusType());
+
+    String endTs = String.valueOf(System.currentTimeMillis() + 60_000);
+    List<TestCaseResolutionStatus> latest =
+        listStatuses(
+            new ListParams()
+                .withLimit(100)
+                .withLatest(true)
+                .addFilter("startTs", "0")
+                .addFilter("endTs", endTs)
+                .addFilter("assignee", userA.getName()));
+    assertEquals(
+        Set.of(testCase2.getFullyQualifiedName()),
+        statusTestCaseFqns(latest),
+        "latest-per-test-case filtering must also honor the assignee");
+  }
+
+  @Test
   void testResolvedStatusRejected() {
     Map<String, String> params = groupParams(GROUP_BY_TABLE);
     params.put("status", TestCaseResolutionStatusTypes.Resolved.value());
@@ -664,12 +855,21 @@ public class IncidentGroupsIT {
 
   private void createStatus(TestCase testCase, TestCaseResolutionStatusTypes type, Object details)
       throws Exception {
+    createStatus(testCase, type, details, null);
+  }
+
+  private void createStatus(
+      TestCase testCase, TestCaseResolutionStatusTypes type, Object details, Severity severity)
+      throws Exception {
     CreateTestCaseResolutionStatus request =
         new CreateTestCaseResolutionStatus()
             .withTestCaseResolutionStatusType(type)
             .withTestCaseReference(testCase.getFullyQualifiedName());
     if (details != null) {
       request.withTestCaseResolutionStatusDetails(details);
+    }
+    if (severity != null) {
+      request.withSeverity(severity);
     }
     client.testCaseResolutionStatuses().create(request);
   }

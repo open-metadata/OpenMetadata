@@ -235,7 +235,13 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       Long endTs,
       boolean latest,
       boolean skipErrors) {
-    int total = timeSeriesDao.listCount(filter, startTs, endTs, latest);
+    // Mirror the data query's branching in listWithOffsetInternal: without a time range the
+    // ranged count would evaluate `timestamp BETWEEN NULL AND NULL`, reporting total = 0 for a
+    // non-empty listing and suppressing the after-cursor.
+    int total =
+        (startTs != null && endTs != null)
+            ? timeSeriesDao.listCount(filter, startTs, endTs, latest)
+            : timeSeriesDao.listCount(filter);
     return listWithOffsetInternal(
         offset, filter, limitParam, startTs, endTs, latest, skipErrors, total);
   }

@@ -10391,12 +10391,12 @@ public interface CollectionDAO {
         // We'll first get the values, remove then from `filter` and then create `outerFilter`
         String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
         filter.removeQueryParam("testCaseResolutionStatusType");
-        String assignee = filter.getQueryParam("assignee");
-        filter.removeQueryParam("assignee");
+        String assignee = filter.getQueryParam("incidentAssignee");
+        filter.removeQueryParam("incidentAssignee");
 
         ListFilter outerFilter = new ListFilter(null);
         outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-        outerFilter.addQueryParam("assignee", assignee);
+        outerFilter.addQueryParam("incidentAssignee", assignee);
 
         String condition = filter.getCondition();
         condition = addOriginEntityFQNJoin(filter, condition);
@@ -10489,28 +10489,43 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
-    // An incident is a stateId chain; the latest record (rn = 1) carries its current status and
-    // assignee, while createdAt/updatedAt are the chain's first/last record timestamps.
+    // An incident is a stateId chain. `chain` folds each stateId to its first/last timestamps
+    // over the (stateId, timestamp) index and `incident` joins back on the last timestamp to
+    // pick the chain's latest record, which carries the current status/assignee/severity. This
+    // replaces ROW_NUMBER/MIN/MAX window functions, which materialized three buffered passes
+    // over the whole table at scale.
     String INCIDENT_GROUPS_CTE =
         """
-        WITH incident AS (
-          SELECT stateId, entityFQNHash, testCaseResolutionStatusType, assignee,
-                 ROW_NUMBER() OVER (PARTITION BY stateId ORDER BY timestamp DESC) AS rn,
-                 MIN(timestamp) OVER (PARTITION BY stateId) AS createdAt,
-                 MAX(timestamp) OVER (PARTITION BY stateId) AS updatedAt
+        WITH chain AS (
+          SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
           FROM test_case_resolution_status_time_series
           <incidentCond>
+          GROUP BY stateId
+        ),
+        incident AS (
+          SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
+                 <severityExpr> AS severity, c.createdAt, c.updatedAt
+          FROM chain c
+          INNER JOIN test_case_resolution_status_time_series t
+            ON t.stateId = c.stateId AND t.timestamp = c.updatedAt
         )
         """;
 
     @SqlQuery(
         INCIDENT_GROUPS_CTE
             + """
-            SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount
+            SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount,
+                   MIN(i.severity) AS severity,
+                   MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank,
+                   <assigneesExpr> AS assignees,
+                   COUNT(DISTINCT i.assignee) AS assigneeCount,
+                   MIN(i.createdAt) AS firstSeen,
+                   MAX(i.updatedAt) AS lastSeen,
+                   COUNT(*) OVER () AS totalGroups
             FROM incident i
             INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
             <dimensionJoin>
-            <cond> AND i.rn = 1 AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
+            <cond> AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
             GROUP BY <groupByCols>
             ORDER BY incidentCount <sortOrder>, groupKey
             LIMIT :limit OFFSET :offset
@@ -10518,6 +10533,8 @@ public interface CollectionDAO {
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
         @Define("incidentCond") String incidentCond,
+        @Define("severityExpr") String severityExpr,
+        @Define("assigneesExpr") String assigneesExpr,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
@@ -10535,14 +10552,35 @@ public interface CollectionDAO {
             FROM incident i
             INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
             <dimensionJoin>
-            <cond> AND i.rn = 1 AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
+            <cond> AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
             """)
     int countIncidentGroups(
         @Define("incidentCond") String incidentCond,
+        @Define("severityExpr") String severityExpr,
         @Define("groupKey") String groupKey,
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String cond,
         @BindMap Map<String, ?> params);
+
+    @SqlQuery(
+        INCIDENT_GROUPS_CTE
+            + """
+            SELECT <groupKey> AS groupKey, i.createdAt AS createdAt
+            FROM incident i
+            INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+            <dimensionJoin>
+            <cond> AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
+            AND <groupKey> IN (<groupKeys>)
+            """)
+    @RegisterRowMapper(IncidentGroupCreatedAtMapper.class)
+    List<IncidentGroupCreatedAt> listIncidentGroupCreatedAt(
+        @Define("incidentCond") String incidentCond,
+        @Define("severityExpr") String severityExpr,
+        @Define("groupKey") String groupKey,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params,
+        @BindList("groupKeys") List<String> groupKeys);
 
     // if originEntityFQN is present, we need to join with test_case table
     static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
@@ -10563,16 +10601,11 @@ public interface CollectionDAO {
         IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
       IncidentGroupSqlParts sqlParts = buildIncidentGroupSqlParts(groupBy, filter);
       IncidentGroupDimension dimension = sqlParts.dimension();
-      int total =
-          countIncidentGroups(
-              sqlParts.scopeCondition(),
-              dimension.groupKey(),
-              dimension.join(),
-              sqlParts.condition(),
-              sqlParts.params());
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               sqlParts.scopeCondition(),
+              severityExpr(),
+              assigneesExpr(),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
@@ -10582,7 +10615,57 @@ public interface CollectionDAO {
               sqlParts.params(),
               limit,
               offset);
-      return new IncidentGroupPage(counts, total);
+      // The page query carries the group total via COUNT(*) OVER (); the standalone count only
+      // runs for an empty page past the end of the list, where no row carries the total.
+      int total;
+      if (!counts.isEmpty()) {
+        total = counts.getFirst().totalGroups();
+      } else if (offset == 0) {
+        total = 0;
+      } else {
+        total =
+            countIncidentGroups(
+                sqlParts.scopeCondition(),
+                severityExpr(),
+                dimension.groupKey(),
+                dimension.join(),
+                sqlParts.condition(),
+                sqlParts.params());
+      }
+      return new IncidentGroupPage(counts, total, fetchIncidentCreatedAt(sqlParts, counts));
+    }
+
+    private Map<String, List<Long>> fetchIncidentCreatedAt(
+        IncidentGroupSqlParts sqlParts, List<TestCaseIncidentGroupCount> counts) {
+      Map<String, List<Long>> result = new HashMap<>();
+      if (!counts.isEmpty()) {
+        List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
+        List<IncidentGroupCreatedAt> rows =
+            listIncidentGroupCreatedAt(
+                sqlParts.scopeCondition(),
+                severityExpr(),
+                sqlParts.dimension().groupKey(),
+                sqlParts.dimension().join(),
+                sqlParts.condition(),
+                sqlParts.params(),
+                groupKeys);
+        for (IncidentGroupCreatedAt row : rows) {
+          result.computeIfAbsent(row.groupKey(), key -> new ArrayList<>()).add(row.createdAt());
+        }
+      }
+      return result;
+    }
+
+    private static String severityExpr() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "json_unquote(json_extract(json, '$.severity'))"
+          : "json ->> 'severity'";
+    }
+
+    private static String assigneesExpr() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "GROUP_CONCAT(DISTINCT i.assignee)"
+          : "STRING_AGG(DISTINCT i.assignee, ',')";
     }
 
     private static IncidentGroupSqlParts buildIncidentGroupSqlParts(
@@ -10611,7 +10694,10 @@ public interface CollectionDAO {
       return result;
     }
 
-    record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
+    record IncidentGroupPage(
+        List<TestCaseIncidentGroupCount> counts,
+        int total,
+        Map<String, List<Long>> createdAtByGroupKey) {}
 
     record IncidentGroupSqlParts(
         String scopeCondition,
@@ -10657,13 +10743,41 @@ public interface CollectionDAO {
     }
   }
 
-  record TestCaseIncidentGroupCount(String groupKey, String groupType, int incidentCount) {}
+  record TestCaseIncidentGroupCount(
+      String groupKey,
+      String groupType,
+      int incidentCount,
+      String severity,
+      int statusRank,
+      String assignees,
+      int assigneeCount,
+      long firstSeen,
+      long lastSeen,
+      int totalGroups) {}
 
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
     @Override
     public TestCaseIncidentGroupCount map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new TestCaseIncidentGroupCount(
-          rs.getString("groupKey"), rs.getString("groupType"), rs.getInt("incidentCount"));
+          rs.getString("groupKey"),
+          rs.getString("groupType"),
+          rs.getInt("incidentCount"),
+          rs.getString("severity"),
+          rs.getInt("statusRank"),
+          rs.getString("assignees"),
+          rs.getInt("assigneeCount"),
+          rs.getLong("firstSeen"),
+          rs.getLong("lastSeen"),
+          rs.getInt("totalGroups"));
+    }
+  }
+
+  record IncidentGroupCreatedAt(String groupKey, long createdAt) {}
+
+  class IncidentGroupCreatedAtMapper implements RowMapper<IncidentGroupCreatedAt> {
+    @Override
+    public IncidentGroupCreatedAt map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupCreatedAt(rs.getString("groupKey"), rs.getLong("createdAt"));
     }
   }
 
