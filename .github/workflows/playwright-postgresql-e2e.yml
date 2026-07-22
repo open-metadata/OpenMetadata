@@ -884,21 +884,34 @@ jobs:
         continue-on-error: true
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
-  playwright-report:
-    if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
-    needs: [detect-changes, plan-playwright, playwright-ci-postgresql]
+  playwright-summary:
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    if: always()
+    needs:
+      [
+        check-changes,
+        build,
+        detect-changes,
+        plan-playwright,
+        prepare-playwright-fixture,
+        playwright-ci-postgresql,
+      ]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
         uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
+        id: download-blobs
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -907,6 +920,8 @@ jobs:
           merge-multiple: true
 
       - name: Download timing metrics
+        id: download-timings
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -914,12 +929,18 @@ jobs:
           path: ${{ runner.temp }}/playwright-timings
 
       - name: Download shard plans
+        id: download-plans
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
 
       - name: Setup Node.js
+        id: setup-node
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
@@ -927,15 +948,25 @@ jobs:
           cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
 
       - name: Install report dependencies
+        id: install-report-dependencies
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
-          yarn --ignore-scripts --frozen-lockfile
+          timeout --foreground --signal=TERM --kill-after=30s 5m \
+            yarn --ignore-scripts --frozen-lockfile
 
       - name: Mark report generation start
+        id: mark-report-start
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Merge HTML report
+        id: merge-report
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ runner.temp }}/playwright-report
@@ -944,37 +975,46 @@ jobs:
             echo "No Playwright blob reports were uploaded" >&2
             exit 1
           fi
-          npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
+          timeout --foreground --signal=TERM --kill-after=30s 3m \
+            npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
 
       - name: Merge and verify timing coverage
+        id: verify-report
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           SOURCE_SHA: ${{ github.sha }}
         run: |
-          python3 .github/scripts/merge_playwright_timings.py \
-            --input-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
-            --mode "$EXECUTION_MODE" \
-            --source-sha "$SOURCE_SHA" \
-            --output "$RUNNER_TEMP/playwright-timing-history/playwright-timing-history.json"
-          python3 .github/scripts/verify_playwright_coverage.py \
-            --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
-            --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
-            --output "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json"
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/merge_playwright_timings.py \
+              --input-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --mode "$EXECUTION_MODE" \
+              --source-sha "$SOURCE_SHA" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-timing-history.json"
+          timeout --foreground --signal=TERM --kill-after=30s 1m \
+            python3 .github/scripts/verify_playwright_coverage.py \
+              --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
+              --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json"
           performance_args=()
           if [[ "$EXECUTION_MODE" == "full" ]]; then
             performance_args+=(--enforce)
           fi
-          python3 .github/scripts/evaluate_playwright_performance.py \
-            --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
-            --request-glob "$RUNNER_TEMP/playwright-timings/**/request-metrics.json" \
-            --phase-glob "$RUNNER_TEMP/playwright-timings/**/shard-phases.json" \
-            --mode "$EXECUTION_MODE" \
-            --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json" \
-            "${performance_args[@]}"
+          timeout --foreground --signal=TERM --kill-after=30s 2m \
+            python3 .github/scripts/evaluate_playwright_performance.py \
+              --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --request-glob "$RUNNER_TEMP/playwright-timings/**/request-metrics.json" \
+              --phase-glob "$RUNNER_TEMP/playwright-timings/**/shard-phases.json" \
+              --mode "$EXECUTION_MODE" \
+              --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json" \
+              "${performance_args[@]}"
           jq . "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
 
       - name: Upload merged Playwright report
-        if: always()
+        id: upload-report
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
@@ -983,7 +1023,9 @@ jobs:
           if-no-files-found: ignore
 
       - name: Record reporting and report-upload duration
-        if: always()
+        id: record-report-duration
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         env:
           EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
         run: |
@@ -1003,7 +1045,9 @@ jobs:
           fi
 
       - name: Upload timing history
-        if: always()
+        id: upload-timing-history
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
           name: playwright-timing-history-${{ needs.detect-changes.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -1011,31 +1055,8 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-  playwright-summary:
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
-    if: always()
-    needs:
-      [
-        check-changes,
-        build,
-        detect-changes,
-        plan-playwright,
-        prepare-playwright-fixture,
-        playwright-ci-postgresql,
-        playwright-report,
-      ]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-
       - name: Download all results JSON
-        if: needs.playwright-ci-postgresql.result != 'skipped'
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
@@ -1069,7 +1090,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Publish consolidated job summary and gate on results
+      - name: Render consolidated job summary and gate on results
         if: always()
         uses: actions/github-script@v8
         env:
@@ -1079,10 +1100,22 @@ jobs:
           PLAN_RESULT: ${{ needs.plan-playwright.result }}
           FIXTURE_RESULT: ${{ needs.prepare-playwright-fixture.result }}
           PLAYWRIGHT_RESULT: ${{ needs.playwright-ci-postgresql.result }}
-          REPORT_RESULT: ${{ needs.playwright-report.result }}
+          SUMMARY_CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          REPORT_DOWNLOAD_BLOBS_OUTCOME: ${{ steps.download-blobs.outcome }}
+          REPORT_DOWNLOAD_TIMINGS_OUTCOME: ${{ steps.download-timings.outcome }}
+          REPORT_DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
+          REPORT_SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          REPORT_INSTALL_OUTCOME: ${{ steps.install-report-dependencies.outcome }}
+          REPORT_START_OUTCOME: ${{ steps.mark-report-start.outcome }}
+          REPORT_MERGE_OUTCOME: ${{ steps.merge-report.outcome }}
+          REPORT_VERIFY_OUTCOME: ${{ steps.verify-report.outcome }}
+          REPORT_UPLOAD_OUTCOME: ${{ steps.upload-report.outcome }}
+          REPORT_DURATION_OUTCOME: ${{ steps.record-report-duration.outcome }}
+          REPORT_HISTORY_OUTCOME: ${{ steps.upload-timing-history.outcome }}
           E2E_CHANGED: ${{ needs.check-changes.outputs.e2e }}
           DOCKER_COMPOSE_CHANGED: ${{ needs.check-changes.outputs.docker-compose }}
           EXPECTED_MATRIX: ${{ needs.plan-playwright.outputs.matrix }}
+          COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -1095,7 +1128,25 @@ jobs:
             const planResult = process.env.PLAN_RESULT;
             const fixtureResult = process.env.FIXTURE_RESULT;
             const upstreamResult = process.env.PLAYWRIGHT_RESULT;
-            const reportResult = process.env.REPORT_RESULT;
+            const reportStepOutcomes = [
+              process.env.SUMMARY_CHECKOUT_OUTCOME,
+              process.env.REPORT_DOWNLOAD_BLOBS_OUTCOME,
+              process.env.REPORT_DOWNLOAD_TIMINGS_OUTCOME,
+              process.env.REPORT_DOWNLOAD_PLANS_OUTCOME,
+              process.env.REPORT_SETUP_NODE_OUTCOME,
+              process.env.REPORT_INSTALL_OUTCOME,
+              process.env.REPORT_START_OUTCOME,
+              process.env.REPORT_MERGE_OUTCOME,
+              process.env.REPORT_VERIFY_OUTCOME,
+              process.env.REPORT_UPLOAD_OUTCOME,
+              process.env.REPORT_DURATION_OUTCOME,
+              process.env.REPORT_HISTORY_OUTCOME,
+            ];
+            const reportResult = upstreamResult === 'skipped'
+              ? 'skipped'
+              : reportStepOutcomes.some(outcome => ['failure', 'cancelled'].includes(outcome))
+              ? 'failure'
+              : 'success';
             const eventAction = context.payload.action;
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
@@ -1360,6 +1411,76 @@ jobs:
             lines.push('</details>');
 
             const body = lines.join('\n');
+            const boundedString = (value, maximumLength) =>
+              String(value ?? '')
+                .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '�')
+                .slice(0, maximumLength);
+            const payloadShards = expectedShards.map(shard => {
+              const result = resultsByShard.get(shard);
+              return {
+                id: boundedString(shard, 64),
+                expected: true,
+                present: Boolean(result),
+                passed: result?.passed.length ?? 0,
+                failed: result?.genuine.length ?? 0,
+                flaky: result?.flaky.length ?? 0,
+                skipped: result?.skipped.length ?? 0,
+              };
+            });
+            for (const result of shardResults) {
+              if (!expectedShards.includes(result.shard)) {
+                payloadShards.push({
+                  id: boundedString(result.shard, 64),
+                  expected: false,
+                  present: true,
+                  passed: result.passed.length,
+                  failed: result.genuine.length,
+                  flaky: result.flaky.length,
+                  skipped: result.skipped.length,
+                });
+              }
+            }
+            if (payloadShards.length > 256) {
+              throw new Error(`Refusing to publish ${payloadShards.length} shard records.`);
+            }
+            if (infrastructureIssues.length > 1024) {
+              throw new Error(`Refusing to publish ${infrastructureIssues.length} infrastructure issues.`);
+            }
+
+            const commentPayload = {
+              version: 1,
+              totals: {
+                passed: totalPassed,
+                failed: totalFailed,
+                flaky: totalFlaky,
+                skipped: totalSkipped,
+              },
+              shards: payloadShards,
+              infrastructureIssueCount: infrastructureIssues.length,
+              infrastructureIssues: infrastructureIssues
+                .slice(0, 100)
+                .map(issue => boundedString(issue, 500)),
+              failures: allGenuine.slice(0, 30).map(test => ({
+                shard: boundedString(test.shard, 64),
+                file: boundedString(test.file, 300),
+                title: boundedString(test.title, 300),
+                error: boundedString(test.error, 1000),
+              })),
+              flakyTests: allFlaky.slice(0, 30).map(test => ({
+                shard: boundedString(test.shard, 64),
+                file: boundedString(test.file, 300),
+                title: boundedString(test.title, 300),
+                retries: Math.max(0, test.retries),
+              })),
+            };
+            const commentPayloadPath = process.env.COMMENT_PAYLOAD_PATH;
+            const serializedCommentPayload = `${JSON.stringify(commentPayload, null, 2)}\n`;
+            if (Buffer.byteLength(serializedCommentPayload, 'utf8') > 262144) {
+              throw new Error('The Playwright comment payload exceeds 256 KiB.');
+            }
+
+            fs.mkdirSync(path.dirname(commentPayloadPath), { recursive: true });
+            fs.writeFileSync(commentPayloadPath, serializedCommentPayload, 'utf8');
 
             try {
               await core.summary.addRaw(body).write();
@@ -1372,3 +1493,13 @@ jobs:
                 `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} pipeline/setup failure(s).`
               );
             }
+
+      - name: Upload Playwright PR comment payload
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-pr-comment-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-pr-comment/summary.json
+          retention-days: 5
+          if-no-files-found: ignore

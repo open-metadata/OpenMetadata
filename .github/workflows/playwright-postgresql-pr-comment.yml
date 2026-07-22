@@ -1,0 +1,541 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Publish PostgreSQL Playwright PR Comment
+
+on:
+  workflow_run:
+    workflows:
+      - Postgresql PR Playwright E2E Tests
+    types:
+      - completed
+
+permissions:
+  actions: read
+  pull-requests: write
+
+concurrency:
+  group: playwright-postgresql-pr-comment-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  publish-playwright-comment:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' ||
+      github.event.workflow_run.event == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download rendered Playwright comment
+        id: download-comment
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: playwright-pr-comment-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: ${{ runner.temp }}/playwright-pr-comment
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Playwright PR comment
+        if: ${{ always() && steps.download-comment.outcome == 'success' }}
+        uses: actions/github-script@v8
+        env:
+          COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const run = context.payload.workflow_run;
+            const sourceSha = run.head_sha;
+            const runAttempt = run.run_attempt ?? 1;
+            const allowedEvents = new Set(['pull_request', 'workflow_dispatch']);
+            const marker = '<!-- playwright-summary -->';
+            const runMarker = `<!-- playwright-run:${run.id}:${runAttempt} -->`;
+            const payloadPath = process.env.COMMENT_PAYLOAD_PATH;
+            const maximumPayloadBytes = 262144;
+            const maximumCount = 1000000;
+            const maximumShards = 256;
+            const maximumInfrastructureIssueCount = 1024;
+            const maximumPublishedInfrastructureIssues = 100;
+            const maximumPublishedTests = 30;
+
+            function assertExactObject(value, label, expectedKeys) {
+              if (
+                value === null ||
+                typeof value !== 'object' ||
+                Array.isArray(value) ||
+                Object.getPrototypeOf(value) !== Object.prototype
+              ) {
+                throw new Error(`${label} must be an object.`);
+              }
+              const actualKeys = Object.keys(value).sort();
+              const sortedExpectedKeys = [...expectedKeys].sort();
+              if (
+                actualKeys.length !== sortedExpectedKeys.length ||
+                actualKeys.some((key, index) => key !== sortedExpectedKeys[index])
+              ) {
+                throw new Error(
+                  `${label} must contain exactly: ${sortedExpectedKeys.join(', ')}.`
+                );
+              }
+              return value;
+            }
+
+            function assertInteger(value, label, minimum, maximum) {
+              if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+                throw new Error(`${label} must be an integer from ${minimum} to ${maximum}.`);
+              }
+              return value;
+            }
+
+            function assertString(value, label, minimumLength, maximumLength, pattern) {
+              if (
+                typeof value !== 'string' ||
+                value.length < minimumLength ||
+                value.length > maximumLength ||
+                /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value) ||
+                (pattern && !pattern.test(value))
+              ) {
+                throw new Error(
+                  `${label} must be a string from ${minimumLength} to ${maximumLength} characters.`
+                );
+              }
+              return value;
+            }
+
+            function assertBoolean(value, label) {
+              if (typeof value !== 'boolean') {
+                throw new Error(`${label} must be a boolean.`);
+              }
+              return value;
+            }
+
+            function assertArray(value, label, maximumLength) {
+              if (!Array.isArray(value) || value.length > maximumLength) {
+                throw new Error(`${label} must be an array with at most ${maximumLength} items.`);
+              }
+              return value;
+            }
+
+            function escapeHtml(value) {
+              return value
+                .replace(/\r\n|\r|\n/g, ' ')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/@/g, '&#64;');
+            }
+
+            function escapeMarkdown(value) {
+              return value
+                .replace(/\r\n|\r|\n/g, ' ')
+                .replace(/[\\`*_{}\[\]()#+\-.!|>~]/g, '\\$&');
+            }
+
+            if (!allowedEvents.has(run.event)) {
+              core.info(`Ignoring Playwright run triggered by ${run.event}.`);
+              return;
+            }
+            if (typeof sourceSha !== 'string' || !/^[0-9a-f]{40}$/i.test(sourceSha)) {
+              throw new Error('The completed Playwright run did not identify a valid source SHA.');
+            }
+            assertInteger(run.id, 'workflow_run.id', 1, Number.MAX_SAFE_INTEGER);
+            assertInteger(runAttempt, 'workflow_run.run_attempt', 1, 1000);
+            if (!fs.existsSync(payloadPath) || !fs.lstatSync(payloadPath).isFile()) {
+              throw new Error('The Playwright comment artifact did not contain summary.json.');
+            }
+            if (fs.statSync(payloadPath).size > maximumPayloadBytes) {
+              throw new Error('The Playwright comment payload exceeds 256 KiB.');
+            }
+
+            let payload;
+            try {
+              payload = JSON.parse(fs.readFileSync(payloadPath, 'utf8'));
+            } catch (error) {
+              throw new Error(`The Playwright comment payload is not valid JSON: ${error.message}`);
+            }
+
+            assertExactObject(payload, 'payload', [
+              'version',
+              'totals',
+              'shards',
+              'infrastructureIssueCount',
+              'infrastructureIssues',
+              'failures',
+              'flakyTests',
+            ]);
+            if (payload.version !== 1) {
+              throw new Error(`Unsupported Playwright comment payload version ${payload.version}.`);
+            }
+
+            const totals = assertExactObject(payload.totals, 'payload.totals', [
+              'passed',
+              'failed',
+              'flaky',
+              'skipped',
+            ]);
+            for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
+              assertInteger(totals[key], `payload.totals.${key}`, 0, maximumCount);
+            }
+
+            const shardIds = new Set();
+            const shardTotals = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
+            const shards = assertArray(payload.shards, 'payload.shards', maximumShards);
+            for (const [index, shard] of shards.entries()) {
+              assertExactObject(shard, `payload.shards[${index}]`, [
+                'id',
+                'expected',
+                'present',
+                'passed',
+                'failed',
+                'flaky',
+                'skipped',
+              ]);
+              assertString(
+                shard.id,
+                `payload.shards[${index}].id`,
+                1,
+                64,
+                /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/
+              );
+              if (shardIds.has(shard.id)) {
+                throw new Error(`payload.shards contains duplicate id ${shard.id}.`);
+              }
+              shardIds.add(shard.id);
+              assertBoolean(shard.expected, `payload.shards[${index}].expected`);
+              assertBoolean(shard.present, `payload.shards[${index}].present`);
+              for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
+                const count = assertInteger(
+                  shard[key],
+                  `payload.shards[${index}].${key}`,
+                  0,
+                  maximumCount
+                );
+                if (!shard.present && count !== 0) {
+                  throw new Error(`Missing shard ${shard.id} cannot report ${key} tests.`);
+                }
+                shardTotals[key] += count;
+              }
+            }
+            for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
+              if (shardTotals[key] !== totals[key]) {
+                throw new Error(
+                  `payload.totals.${key} does not equal the sum of shard ${key} counts.`
+                );
+              }
+            }
+
+            const infrastructureIssueCount = assertInteger(
+              payload.infrastructureIssueCount,
+              'payload.infrastructureIssueCount',
+              0,
+              maximumInfrastructureIssueCount
+            );
+            const infrastructureIssues = assertArray(
+              payload.infrastructureIssues,
+              'payload.infrastructureIssues',
+              maximumPublishedInfrastructureIssues
+            );
+            if (
+              infrastructureIssues.length !==
+              Math.min(infrastructureIssueCount, maximumPublishedInfrastructureIssues)
+            ) {
+              throw new Error('payload.infrastructureIssues has an inconsistent item count.');
+            }
+            for (const [index, issue] of infrastructureIssues.entries()) {
+              assertString(issue, `payload.infrastructureIssues[${index}]`, 1, 500);
+            }
+            if (new Set(infrastructureIssues).size !== infrastructureIssues.length) {
+              throw new Error('payload.infrastructureIssues must not contain duplicates.');
+            }
+
+            const failures = assertArray(
+              payload.failures,
+              'payload.failures',
+              maximumPublishedTests
+            );
+            if (failures.length !== Math.min(totals.failed, maximumPublishedTests)) {
+              throw new Error('payload.failures has an inconsistent item count.');
+            }
+            for (const [index, failure] of failures.entries()) {
+              assertExactObject(failure, `payload.failures[${index}]`, [
+                'shard',
+                'file',
+                'title',
+                'error',
+              ]);
+              assertString(failure.shard, `payload.failures[${index}].shard`, 1, 64);
+              if (!shardIds.has(failure.shard)) {
+                throw new Error(`payload.failures[${index}] references an unknown shard.`);
+              }
+              assertString(failure.file, `payload.failures[${index}].file`, 0, 300);
+              assertString(failure.title, `payload.failures[${index}].title`, 0, 300);
+              assertString(failure.error, `payload.failures[${index}].error`, 0, 1000);
+            }
+
+            const flakyTests = assertArray(
+              payload.flakyTests,
+              'payload.flakyTests',
+              maximumPublishedTests
+            );
+            if (flakyTests.length !== Math.min(totals.flaky, maximumPublishedTests)) {
+              throw new Error('payload.flakyTests has an inconsistent item count.');
+            }
+            for (const [index, flakyTest] of flakyTests.entries()) {
+              assertExactObject(flakyTest, `payload.flakyTests[${index}]`, [
+                'shard',
+                'file',
+                'title',
+                'retries',
+              ]);
+              assertString(flakyTest.shard, `payload.flakyTests[${index}].shard`, 1, 64);
+              if (!shardIds.has(flakyTest.shard)) {
+                throw new Error(`payload.flakyTests[${index}] references an unknown shard.`);
+              }
+              assertString(flakyTest.file, `payload.flakyTests[${index}].file`, 0, 300);
+              assertString(flakyTest.title, `payload.flakyTests[${index}].title`, 0, 300);
+              assertInteger(flakyTest.retries, `payload.flakyTests[${index}].retries`, 0, 100);
+            }
+
+            if (
+              run.conclusion === 'success' &&
+              (totals.failed !== 0 || infrastructureIssueCount !== 0)
+            ) {
+              throw new Error('A successful workflow cannot report test or infrastructure failures.');
+            }
+
+            const conclusionPresentation = {
+              success: { icon: '✅', label: 'succeeded' },
+              failure: { icon: '🔴', label: 'failed' },
+              cancelled: { icon: '⚪', label: 'was cancelled' },
+              timed_out: { icon: '🔴', label: 'timed out' },
+              neutral: { icon: '⚪', label: 'finished neutral' },
+              skipped: { icon: '⚪', label: 'was skipped' },
+              stale: { icon: '⚪', label: 'became stale' },
+              action_required: { icon: '🟡', label: 'requires action' },
+              startup_failure: { icon: '🔴', label: 'failed to start' },
+            };
+            const presentation = conclusionPresentation[run.conclusion] ?? {
+              icon: '⚪',
+              label: 'finished with an unknown conclusion',
+            };
+            const repo = context.repo;
+            const runUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${run.id}`;
+            const lines = [
+              marker,
+              runMarker,
+              `## ${presentation.icon} Playwright Results — workflow ${presentation.label}`,
+              '',
+              `Validated commit \`${sourceSha}\` in [Playwright run ${run.id}, attempt ${runAttempt}](${runUrl}).`,
+              '',
+              `✅ ${totals.passed} passed · ❌ ${totals.failed} failed · 🟡 ${totals.flaky} flaky · ⏭️ ${totals.skipped} skipped`,
+              '',
+            ];
+
+            if (infrastructureIssueCount > 0) {
+              lines.push(`### Pipeline and setup failures (${infrastructureIssueCount})`);
+              lines.push('');
+              for (const issue of infrastructureIssues) {
+                lines.push(`- <code>${escapeHtml(issue)}</code>`);
+              }
+              if (infrastructureIssueCount > infrastructureIssues.length) {
+                lines.push(`- ... and ${infrastructureIssueCount - infrastructureIssues.length} more`);
+              }
+              lines.push('');
+            }
+
+            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
+            lines.push('|-------|--------|--------|-------|---------|');
+            for (const shard of shards.filter(item => item.expected)) {
+              if (!shard.present) {
+                lines.push(`| ⛔ Shard ${escapeMarkdown(shard.id)} | — | — | — | — |`);
+                continue;
+              }
+              const status = shard.failed > 0 ? '🔴' : shard.flaky > 0 ? '🟡' : '✅';
+              lines.push(
+                `| ${status} Shard ${escapeMarkdown(shard.id)} | ${shard.passed} | ${shard.failed} | ${shard.flaky} | ${shard.skipped} |`
+              );
+            }
+            lines.push('');
+
+            if (failures.length > 0) {
+              lines.push('### Genuine Failures (failed on all attempts)');
+              lines.push('');
+              for (const failure of failures) {
+                const shortFile = failure.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(
+                  `<details><summary>❌ <code>${escapeHtml(shortFile)}</code> › <code>${escapeHtml(failure.title)}</code> (shard ${escapeHtml(failure.shard)})</summary>`
+                );
+                lines.push('');
+                lines.push(`<pre><code>${escapeHtml(failure.error)}</code></pre>`);
+                lines.push('</details>');
+                lines.push('');
+              }
+              if (totals.failed > failures.length) {
+                lines.push(`... and ${totals.failed - failures.length} more failures`);
+                lines.push('');
+              }
+            }
+
+            if (flakyTests.length > 0) {
+              lines.push(`<details><summary>🟡 ${totals.flaky} flaky test(s) (passed on retry)</summary>`);
+              lines.push('');
+              for (const flakyTest of flakyTests) {
+                const shortFile = flakyTest.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(
+                  `- <code>${escapeHtml(shortFile)}</code> › <code>${escapeHtml(flakyTest.title)}</code> (shard ${escapeHtml(flakyTest.shard)}, ${flakyTest.retries} ${flakyTest.retries === 1 ? 'retry' : 'retries'})`
+                );
+              }
+              if (totals.flaky > flakyTests.length) {
+                lines.push(`- ... and ${totals.flaky - flakyTests.length} more`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
+            }
+
+            lines.push(`📦 [Download artifacts](${runUrl})`);
+            lines.push('');
+            lines.push('<details><summary>How to debug locally</summary>');
+            lines.push('');
+            lines.push('```bash');
+            lines.push('# Download playwright-test-results-<shard> artifact and unzip');
+            lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
+            lines.push('```');
+            lines.push('</details>');
+
+            const body = lines.join('\n');
+            if (Buffer.byteLength(body, 'utf8') > 65536) {
+              throw new Error('The validated Playwright comment exceeds 64 KiB.');
+            }
+
+            const repositoryId = run.repository?.id;
+            const payloadPullNumbers = [
+              ...new Set(
+                (run.pull_requests || [])
+                  .filter(pull => !pull.base?.repo?.id || pull.base.repo.id === repositoryId)
+                  .map(pull => pull.number)
+                  .filter(Number.isInteger)
+              ),
+            ];
+
+            let candidates = [];
+            if (payloadPullNumbers.length > 0) {
+              for (const pullNumber of payloadPullNumbers) {
+                const { data: pull } = await github.rest.pulls.get({
+                  ...repo,
+                  pull_number: pullNumber,
+                });
+                if (pull.state === 'open') candidates.push(pull);
+              }
+            } else {
+              const { data: associatedPulls } =
+                await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                  ...repo,
+                  commit_sha: sourceSha,
+                  per_page: 100,
+                });
+              candidates = associatedPulls.filter(
+                pull =>
+                  pull.state === 'open' &&
+                  pull.head?.sha === sourceSha &&
+                  pull.base?.repo?.full_name === `${repo.owner}/${repo.repo}`
+              );
+            }
+
+            const matchingPulls = candidates.filter(pull => pull.head?.sha === sourceSha);
+            if (matchingPulls.length === 0) {
+              if (candidates.length > 0) {
+                core.notice(
+                  `Skipping stale Playwright run ${run.id}: source ${sourceSha} is no longer an open PR head.`
+                );
+              } else {
+                core.notice(`No open pull request is associated with Playwright source ${sourceSha}.`);
+              }
+              return;
+            }
+            if (matchingPulls.length > 1) {
+              core.warning(
+                `Playwright source ${sourceSha} is the head of multiple open pull requests; refusing to choose one.`
+              );
+              return;
+            }
+
+            const { data: pull } = await github.rest.pulls.get({
+              ...repo,
+              pull_number: matchingPulls[0].number,
+            });
+            if (pull.state !== 'open' || pull.head?.sha !== sourceSha) {
+              core.notice(
+                `Skipping stale Playwright run ${run.id}: PR #${pull.number} now points to ${pull.head?.sha}.`
+              );
+              return;
+            }
+
+            let existingComment;
+            for await (const response of github.paginate.iterator(
+              github.rest.issues.listComments,
+              { ...repo, issue_number: pull.number, per_page: 100 }
+            )) {
+              existingComment = response.data.find(
+                comment =>
+                  comment.user?.login === 'github-actions[bot]' &&
+                  comment.body?.includes(marker)
+              );
+              if (existingComment) break;
+            }
+
+            const existingRunMatch = existingComment?.body?.match(
+              /<!-- playwright-run:(\d+):(\d+) -->/
+            );
+            if (existingRunMatch) {
+              const existingRunId = BigInt(existingRunMatch[1]);
+              const existingAttempt = BigInt(existingRunMatch[2]);
+              const currentRunId = BigInt(String(run.id));
+              const currentAttempt = BigInt(String(runAttempt));
+              const existingRunIsNewer =
+                existingRunId > currentRunId ||
+                (existingRunId === currentRunId && existingAttempt > currentAttempt);
+
+              if (existingRunIsNewer) {
+                core.notice(
+                  `Skipping Playwright run ${run.id} attempt ${runAttempt}: the PR comment already contains newer run ${existingRunId} attempt ${existingAttempt}.`
+                );
+                return;
+              }
+            }
+
+            const { data: currentPull } = await github.rest.pulls.get({
+              ...repo,
+              pull_number: pull.number,
+            });
+            if (currentPull.state !== 'open' || currentPull.head?.sha !== sourceSha) {
+              core.notice(
+                `Skipping stale Playwright run ${run.id}: PR #${currentPull.number} now points to ${currentPull.head?.sha}.`
+              );
+              return;
+            }
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                ...repo,
+                comment_id: existingComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                ...repo,
+                issue_number: currentPull.number,
+                body,
+              });
+            }
