@@ -25,9 +25,15 @@ postgres_source=$(docker inspect openmetadata_postgresql --format '{{range .Moun
 opensearch_source=$(docker inspect openmetadata_opensearch --format '{{range .Mounts}}{{if eq .Destination "/usr/share/opensearch/data"}}{{.Source}}{{end}}{{end}}')
 opensearch_reference=$(docker inspect openmetadata_opensearch --format '{{.Config.Image}}')
 ingestion_image_id=$(docker inspect openmetadata_ingestion --format '{{.Image}}')
+search_cluster_alias=$(
+  docker inspect openmetadata_server --format '{{range .Config.Env}}{{println .}}{{end}}' |
+    sed -n 's/^ELASTICSEARCH_CLUSTER_ALIAS=//p' |
+    head -1 |
+    sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/^"([^"]+)"$/\1/'
+)
 
-if [[ -z "$postgres_source" || -z "$opensearch_source" ]]; then
-  echo "Could not resolve PostgreSQL or OpenSearch data directories" >&2
+if [[ -z "$postgres_source" || -z "$opensearch_source" || -z "$search_cluster_alias" ]]; then
+  echo "Could not resolve PostgreSQL, OpenSearch, or search cluster fixture settings" >&2
   exit 1
 fi
 
@@ -104,6 +110,7 @@ jq -n \
   --arg sourceSha "$source_sha" \
   --arg postgresImage "$postgres_image" \
   --arg opensearchImage "$opensearch_image" \
+  --arg searchClusterAlias "$search_cluster_alias" \
   --arg ingestionImage "$ingestion_image" \
   --arg ingestionImageId "$ingestion_image_id" \
   --arg schemaHash "$schema_hash" \
@@ -115,6 +122,7 @@ jq -n \
     sourceSha: $sourceSha,
     postgresImage: $postgresImage,
     opensearchImage: $opensearchImage,
+    searchClusterAlias: $searchClusterAlias,
     ingestionImage: $ingestionImage,
     ingestionImageId: $ingestionImageId,
     schemaHash: $schemaHash,

@@ -80,6 +80,17 @@ if [[ "$(jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)" ||
   echo "The Playwright fixture does not match the checked-out source, schema, or seed" >&2
   exit 1
 fi
+if ! PW_SEARCH_CLUSTER_ALIAS=$(
+  jq -er '.searchClusterAlias | select(type == "string" and length > 0)' "$manifest"
+); then
+  echo "The Playwright fixture does not declare its search cluster alias" >&2
+  exit 1
+fi
+if [[ ! "$PW_SEARCH_CLUSTER_ALIAS" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "The Playwright fixture has an invalid search cluster alias" >&2
+  exit 1
+fi
+export PW_SEARCH_CLUSTER_ALIAS
 
 playwright_state="$runtime_root/data/playwright-state"
 if [[ ! -s "$playwright_state/auth/admin.json" ||
@@ -156,6 +167,21 @@ for service in postgresql opensearch; do
   fi
 done
 
+for seeded_index in table_search_index tag_search_index user_search_index; do
+  index_response=$(mktemp "$runtime_root/tmp/${seeded_index}.XXXXXX")
+  if ! curl -fsS \
+    "http://127.0.0.1:9200/${PW_SEARCH_CLUSTER_ALIAS}_${seeded_index}/_count" \
+    > "$index_response" ||
+    ! jq -e '.count | numbers | select(. > 0)' "$index_response" >/dev/null; then
+    cat "$index_response" >&2 || true
+    curl -fsS 'http://127.0.0.1:9200/_cat/aliases?v' >&2 || true
+    curl -fsS 'http://127.0.0.1:9200/_cat/indices?v' >&2 || true
+    echo "The restored Playwright fixture has no seeded ${seeded_index} data for alias ${PW_SEARCH_CLUSTER_ALIAS}" >&2
+    exit 1
+  fi
+  rm -f "$index_response"
+done
+
 curl -fsS -X PUT "http://127.0.0.1:9200/_all/_settings" \
   -H 'Content-Type: application/json' \
   -d '{"index":{"number_of_replicas":0}}' >/dev/null
@@ -187,6 +213,7 @@ echo "$capture_pid" > "$PW_SERVER_CAPTURE_PID_FILE"
   export DB_USER=openmetadata_user
   export DB_USER_PASSWORD=openmetadata_password
   export ELASTICSEARCH_HOST=127.0.0.1
+  export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"
   export ELASTICSEARCH_PORT=9200
   export ELASTICSEARCH_SCHEME=http
   export LOG_DIR="$runtime_root/logs"
@@ -260,6 +287,27 @@ chmod 0600 "$temporary_admin_api_token"
 sudo mv "$temporary_admin_api_token" "$admin_api_token"
 sudo chown "$(id -u):$(id -g)" "$admin_api_token"
 rm -f "$token_refresh_response"
+
+seed_search_url="http://localhost:8585/api/v1/search/query"
+seed_search_args=(-fsS --retry 4 --retry-all-errors --retry-delay 1 --get)
+if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
+  seed_search_url="https://localhost:8585/api/v1/search/query"
+  seed_search_args+=(--insecure)
+fi
+seed_search_response=$(mktemp "$runtime_root/tmp/seed-search.XXXXXX")
+if ! curl "${seed_search_args[@]}" \
+  -H "Authorization: Bearer $refreshed_admin_token" \
+  --data-urlencode 'q=provider_address_texas' \
+  --data-urlencode 'index=table_search_index' \
+  --data-urlencode 'from=0' \
+  --data-urlencode 'size=1' \
+  "$seed_search_url" > "$seed_search_response" ||
+  ! jq -e '(.hits.hits // []) | length > 0' "$seed_search_response" >/dev/null; then
+  cat "$seed_search_response" >&2 || true
+  echo "OpenMetadata cannot query seeded data through search alias ${PW_SEARCH_CLUSTER_ALIAS}" >&2
+  exit 1
+fi
+rm -f "$seed_search_response"
 
 if [[ -n "$ingestion_image_path" ]]; then
   PW_AIRFLOW_CONTAINER=openmetadata_ingestion
@@ -337,6 +385,7 @@ fi
   echo "PW_ENTITY_STATE_LINK=$PW_ENTITY_STATE_LINK"
   echo "PW_POSTGRES_IMAGE=$PW_POSTGRES_IMAGE"
   echo "PW_OPENSEARCH_IMAGE=$PW_OPENSEARCH_IMAGE"
+  echo "PW_SEARCH_CLUSTER_ALIAS=$PW_SEARCH_CLUSTER_ALIAS"
 } >> "$GITHUB_ENV"
 
 startup_complete=true

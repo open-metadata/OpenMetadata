@@ -55,6 +55,7 @@ LANE_WORKERS = {
 }
 TARGET_MS = 20 * 60 * 1000
 EFFICIENCY = 0.85
+COMMON_MAX_SHARDS = 32
 FALLBACK_TEST_MS = 20_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
@@ -268,7 +269,7 @@ def include_project_dependencies(
 
 def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane == "chromium":
-        return (5, 24) if mode == "full" else (1, 24)
+        return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
         "domain-isolation",
         "global-state",
@@ -302,7 +303,7 @@ def assign_lpt(units: list[Unit], count: int) -> list[list[Unit]]:
 
 def predicted_execution_ms(units: list[Unit], workers: int) -> int:
     return max(
-        math.ceil(sum(unit.weight_ms for unit in units) / workers),
+        math.ceil(sum(unit.weight_ms for unit in units) / (workers * EFFICIENCY)),
         max((unit.weight_ms for unit in units), default=0),
     )
 
@@ -315,11 +316,17 @@ def assign_lane_within_budget(
     workers = LANE_WORKERS.get(lane, 3)
     while True:
         shards = [shard for shard in assign_lpt(units, count) if shard]
-        if (
-            all(predicted_execution_ms(shard, workers) <= TARGET_MS for shard in shards)
-            or count >= maximum
-        ):
+        if all(predicted_execution_ms(shard, workers) <= TARGET_MS for shard in shards):
             return shards
+        if count >= maximum:
+            heaviest_ms = max(
+                predicted_execution_ms(shard, workers) for shard in shards
+            )
+            raise SystemExit(
+                f"Lane {lane} needs more than {maximum} shards to stay within the "
+                f"20-minute plan budget; the heaviest shard is predicted at "
+                f"{heaviest_ms / 60_000:.1f}m"
+            )
         count += 1
 
 

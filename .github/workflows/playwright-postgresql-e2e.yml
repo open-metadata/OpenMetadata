@@ -342,6 +342,8 @@ jobs:
   prepare-playwright-fixture:
     needs: [build, detect-changes, plan-playwright]
     runs-on: ubuntu-latest
+    env:
+      ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
     steps:
       - name: Checkout
         uses: actions/checkout@v5

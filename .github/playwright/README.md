@@ -17,9 +17,9 @@ SSO stays in its dedicated workflow, while knowledge graph and ontology share on
 ceil(total weighted worker time / (3 workers * 20 minutes * 0.85))
 ```
 
-The common matrix is bounded to 5–24 runners. Serial/global behavior stays in one-worker lanes. Large suites listed in `AUDITED_PARALLEL_SUITES` are split at test granularity only after confirming that they are not serial and do not depend on earlier tests. The planner fails when any remaining atomic unit exceeds 20 minutes.
+The common matrix is bounded to 5–32 runners. The upper bound leaves room for the current 1,356-minute baseline to produce the 27 runners required by the formula instead of silently under-sharding it at 24. Serial/global behavior stays in one-worker lanes. Large suites listed in `AUDITED_PARALLEL_SUITES` are split at test granularity only after confirming that they are not serial and do not depend on earlier tests. The planner fails when any remaining atomic unit or bounded lane exceeds 20 minutes.
 
-The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners.
+The `Basic` and `chromium` projects share that common 32-runner cap and are balanced together; they are not separate pools of standard hosted runners.
 
 Impact-mapped targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`. A direct change to that spec, full CI, and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
 
@@ -27,7 +27,7 @@ The `@ingestion` project is excluded from common Chromium only when the dynamic 
 
 ## Golden fixture
 
-The preparation job runs migrations, sample ingestion, reindexing, authentication setup, and shared entity prerequisites once. The fixture manifest records the source commit, schema hash, seed hash/version, Playwright-state hash, PostgreSQL and OpenSearch image digests, and the ingestion image ID. Each shard validates the manifest, extracts database/search/auth state under `/dev/shm`, and starts the built OpenMetadata distribution directly on the host. The pre-seeded response manifest keeps the randomly named shared entities stable across the fixture builder and shard processes.
+The preparation job runs migrations, sample ingestion, reindexing, authentication setup, and shared entity prerequisites once. The fixture manifest records the source commit, schema hash, seed hash/version, Playwright-state hash, PostgreSQL and OpenSearch image digests, search cluster alias, and the ingestion image ID. Each shard validates the manifest, extracts database/search/auth state under `/dev/shm`, verifies the seeded search indexes, and starts the built OpenMetadata distribution directly on the host with the recorded alias. The pre-seeded response manifest keeps the randomly named shared entities stable across the fixture builder and shard processes.
 
 Standard shards do not build Docker images, run migrations, start Airflow, ingest sample data, reindex, repeat authentication, or recreate shared entity prerequisites. PostgreSQL durability is disabled for the disposable clone, OpenSearch uses a 2 GiB heap and zero replicas, and routine logs are bounded.
 

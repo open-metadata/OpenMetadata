@@ -38,7 +38,36 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     planner = load_script("build_playwright_shards")
 
     assert planner.PROJECT_LANES["Basic"] == "chromium"
-    assert planner.lane_bounds("chromium", "full") == (5, 24)
+    assert planner.lane_bounds("chromium", "full") == (5, 32)
+
+
+def test_full_common_baseline_uses_27_shards_at_85_percent_efficiency():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            f"{index}.spec.ts",
+            str(index),
+            weight_ms=1_000_000,
+        )
+        for index in range(81)
+    ]
+    units.append(
+        planner.Unit("chromium", "remainder.spec.ts", "remainder", weight_ms=363_055)
+    )
+
+    assert planner.shard_count(units, "chromium", "full") == 27
+
+
+def test_predicted_execution_applies_runner_efficiency():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=1_040_000)
+        for index in range(3)
+    ]
+
+    assert sum(unit.weight_ms for unit in units) / 3 < planner.TARGET_MS
+    assert planner.predicted_execution_ms(units, 3) > planner.TARGET_MS
 
 
 def test_planner_adds_a_shard_when_lpt_assignment_exceeds_budget():
@@ -461,3 +490,23 @@ def test_fast_opensearch_config_does_not_duplicate_security_disable():
 
     assert 'plugins.security.disabled: "true"' in fast_compose
     assert "DISABLE_SECURITY_PLUGIN" not in fast_compose
+
+
+def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
+    fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
+    fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
+    workflow = (
+        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
+        "  playwright-ci-postgresql:", 1
+    )[0]
+
+    assert "searchClusterAlias: $searchClusterAlias" in fixture_builder
+    assert "ELASTICSEARCH_CLUSTER_ALIAS: openmetadata" in fixture_job
+    assert "s/^[[:space:]]+//" in fixture_builder
+    assert ".searchClusterAlias" in fast_launcher
+    assert (
+        'export ELASTICSEARCH_CLUSTER_ALIAS="$PW_SEARCH_CLUSTER_ALIAS"' in fast_launcher
+    )
+    assert "provider_address_texas" in fast_launcher
