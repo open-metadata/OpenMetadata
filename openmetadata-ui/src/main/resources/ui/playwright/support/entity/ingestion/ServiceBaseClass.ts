@@ -221,8 +221,6 @@ class ServiceBaseClass {
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
 
-    await page.getByTestId('more-actions').first().click();
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
@@ -230,7 +228,7 @@ class ServiceBaseClass {
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
         response.status() === 200
     );
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
 
     await triggerPipeline;
 
@@ -617,8 +615,6 @@ class ServiceBaseClass {
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
 
-    await page.getByTestId('more-actions').first().click();
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
@@ -627,7 +623,7 @@ class ServiceBaseClass {
         response.status() === 200
     );
 
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
     await triggerPipeline;
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results

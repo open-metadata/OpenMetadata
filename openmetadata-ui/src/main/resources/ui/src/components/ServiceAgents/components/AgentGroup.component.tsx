@@ -29,7 +29,7 @@ interface AgentGroupProps {
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
   titleKey: string;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
