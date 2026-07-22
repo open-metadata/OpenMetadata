@@ -61,6 +61,7 @@ import org.openmetadata.service.Entity;
 @ExtendWith(TestNamespaceExtension.class)
 public class OntologyBulkIT {
   private static final int BACKGROUND_ROW_COUNT = 501;
+  private static final int MAXIMUM_JOB_LIST_SIZE = 100;
 
   @AfterEach
   void cleanup(final TestNamespace namespace) {

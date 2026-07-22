@@ -17,12 +17,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
@@ -69,6 +73,7 @@ public class RdfInferenceMaterializationIT {
   private static final String VALIDATE_PATH = RULES_PATH + "/validate";
   private static final String MATERIALIZE_PATH = RULES_PATH + "/materialize";
   private static final String DATA_CONSUMER_EMAIL = "data-consumer@open-metadata.org";
+  private static final int TOKEN_TTL_SECONDS = 3600;
 
   @BeforeAll
   static void ensureDataConsumerUser() {
@@ -256,6 +261,65 @@ public class RdfInferenceMaterializationIT {
                 .formatted(INFERRED_PREDICATE, SOURCE_PREDICATE));
   }
 
+  private static InferenceRule ruleWithBody(final String name, final String body) {
+    return rule(name).withRuleBody(body);
+  }
+
+  private static ValidationOutcome validateRule(final InferenceRule rule) throws Exception {
+    final HttpResponse<String> response = adminRequest("POST", VALIDATE_PATH, json(rule));
+    assertEquals(200, response.statusCode(), response.body());
+    final JsonNode result = OBJECT_MAPPER.readTree(response.body());
+    final List<String> errors = new ArrayList<>();
+    result.path("errors").forEach(error -> errors.add(error.asText()));
+    return new ValidationOutcome(result.path("valid").asBoolean(), errors);
+  }
+
+  private static String firstSystemRuleName() {
+    return SdkClients.adminClient().inferenceRules().list().getRules().stream()
+        .filter(status -> Boolean.TRUE.equals(status.getSystemRule()))
+        .map(status -> status.getRule().getName())
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("No system inference rule is available"));
+  }
+
+  private static String json(final InferenceRule rule) throws Exception {
+    return OBJECT_MAPPER.writeValueAsString(rule);
+  }
+
+  private static HttpResponse<String> adminRequest(
+      final String method, final String path, final String body) throws Exception {
+    return request(SdkClients.getAdminToken(), method, path, body);
+  }
+
+  private static HttpResponse<String> nonAdminRequest(
+      final String method, final String path, final String body) throws Exception {
+    return request(dataConsumerToken(), method, path, body);
+  }
+
+  private static HttpResponse<String> request(
+      final String token, final String method, final String path, final String body)
+      throws Exception {
+    final HttpRequest.BodyPublisher publisher =
+        body == null
+            ? HttpRequest.BodyPublishers.noBody()
+            : HttpRequest.BodyPublishers.ofString(body);
+    final HttpRequest.Builder builder =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(30));
+    if (body != null) {
+      builder.header("Content-Type", "application/json");
+    }
+    return HTTP_CLIENT.send(
+        builder.method(method, publisher).build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  private static String dataConsumerToken() {
+    return JwtAuthProvider.tokenFor(
+        DATA_CONSUMER_EMAIL, DATA_CONSUMER_EMAIL, new String[] {"DataConsumer"}, TOKEN_TTL_SECONDS);
+  }
+
   private static void verifyMaterializationLifecycle(
       final InferenceRuleService service, final MaterializationFixture fixture) throws Exception {
     insertSourceTriple(fixture);
@@ -363,4 +427,14 @@ public class RdfInferenceMaterializationIT {
 
   private record MaterializationFixture(
       String ruleName, String subject, String object, String graphUri) {}
+
+  private record ValidationOutcome(boolean valid, List<String> errors) {
+    private ValidationOutcome {
+      errors = List.copyOf(errors);
+    }
+
+    private boolean hasError(final String expectedMessage) {
+      return errors.stream().anyMatch(error -> error.contains(expectedMessage));
+    }
+  }
 }
