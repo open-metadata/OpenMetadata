@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import { File06 } from '@untitledui/icons';
-import classNames from 'classnames';
-import { EntityType } from '../enums/entity.enum';
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
-import {
-  LANDING_WIDGET_DEFAULT_ICON_URL,
-  LANDING_WIDGET_ENTITY_ICON_URL_MAP,
-} from './LandingPageWidgetIconUtils.constants';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
+import searchClassBase from './SearchClassBase';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
@@ -50,21 +45,31 @@ export const getEntityIcon = (
     );
   }
 
-  if (entityType === EntityType.KNOWLEDGE_PAGE) {
+
+  const customIconUrl =
+    customizeMyDataPageClassBase.getLandingPageWidgetEntityIconUrl(item);
+
+  if (customIconUrl) {
     return (
-      <File06
-        className={classNames('tw:text-quaternary', className)}
-        strokeWidth={1.5}
+      <img
+        alt={item.name ?? entityType}
+        className={className}
+        src={customIconUrl}
       />
     );
   }
 
-  const iconUrl =
-    customizeMyDataPageClassBase.getLandingPageWidgetEntityIconUrl(item) ??
-    LANDING_WIDGET_ENTITY_ICON_URL_MAP[entityType] ??
-    LANDING_WIDGET_DEFAULT_ICON_URL;
+  const entityIcon = searchClassBase.getEntityIcon(entityType, `tw:text-quaternary ${className}`);
+
+  if (entityIcon) {
+    return entityIcon;
+  }
 
   return (
-    <img alt={item.name ?? entityType} className={className} src={iconUrl} />
+    <img
+      alt={item.name ?? entityType}
+      className={className}
+      src={defaultServiceIconUrl}
+    />
   );
 };

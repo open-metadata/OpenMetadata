@@ -202,8 +202,8 @@ function FollowingWidget({
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
+                        <div className="d-flex items-center justify-center flex-shrink">
+                          {getEntityIcon(item, 'tw:w-6! !tw:h-6')}
                         </div>
                       }
                       type="text">
