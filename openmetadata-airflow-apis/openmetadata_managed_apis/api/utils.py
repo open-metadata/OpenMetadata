@@ -13,6 +13,7 @@ import importlib
 import os
 import re
 import sys
+import threading
 import traceback
 from multiprocessing import Process
 from typing import Optional
@@ -205,10 +206,55 @@ class ScanDagsTask(Process):
         return scheduler_job
 
 
-def scan_dags_job_background():
+_scan_lock = threading.Lock()
+_current_scan: Optional[ScanDagsTask] = None
+
+
+def _start_scan():
+    """Start a new ScanDagsTask and spawn a reaper thread to join it.
+
+    Must be called while holding _scan_lock.
     """
-    Runs the scheduler scan in another thread
-    to not block the API call
-    """
+    global _current_scan  # pylint: disable=global-statement
     process = ScanDagsTask()
     process.start()
+    _current_scan = process
+    reaper = threading.Thread(target=_reap_scan, args=(process,), daemon=True)
+    reaper.start()
+
+
+def _reap_scan(process: ScanDagsTask):
+    """Wait for the scan process to finish and release resources.
+
+    Runs in a daemon thread.  Only joins the process and clears module
+    state — never forks a new process, because forking from a non-main
+    thread with the default ``fork`` start-method can deadlock.
+    """
+    process.join()
+    with _scan_lock:
+        global _current_scan  # pylint: disable=global-statement
+        if _current_scan is process:
+            _current_scan = None
+
+
+def scan_dags_job_background():
+    """
+    Runs the scheduler scan in a separate process
+    to not block the API call.
+
+    Uses a per-worker guard to prevent spawning multiple concurrent
+    ScanDagsTask processes from the same Python worker. Each process
+    imports the full Airflow scheduler stack, so spawning duplicates
+    increases memory usage and can create orphaned SchedulerJob entries
+    in the Airflow DB. This guard does not coordinate across multiple
+    Gunicorn workers or other processes.
+
+    If a scan is already running when a new deploy arrives, the call
+    is skipped.  Newly deployed DAGs will be discovered by the next
+    deploy-triggered scan or by Airflow's periodic scheduler.
+    """
+    with _scan_lock:
+        if _current_scan is not None and _current_scan.is_alive():
+            logger.info("DAG scan already in progress, skipping")
+            return
+        _start_scan()
