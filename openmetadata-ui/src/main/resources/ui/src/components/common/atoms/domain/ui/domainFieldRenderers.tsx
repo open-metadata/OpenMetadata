@@ -41,7 +41,7 @@ interface OwnedEntity {
 export const renderDomainNameCell = (
   entity: Domain | DataProduct
 ): ReactNode => (
-  <Box align="center" direction="row" gap={3}>
+  <Box align="start" className="tw:max-w-[480px]" direction="row" gap={3}>
     <Avatar size="md" {...getEntityAvatarProps(entity)} />
     <Typography size="text-sm" weight="medium">
       {getEntityName(entity)}

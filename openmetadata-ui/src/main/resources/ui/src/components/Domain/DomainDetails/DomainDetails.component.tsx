@@ -953,10 +953,11 @@ const DomainDetails = ({
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
-        <Box align="end" className="entity-header tw:mx-5">
-          <div className="tw:flex-1">
+        <Box align="start" className="entity-header tw:mx-5" justify="between">
+          <div className="tw:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
+              displayNameClassName="entity-header-title-wrap"
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
               entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
@@ -964,6 +965,7 @@ const DomainDetails = ({
               icon={iconData}
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
+              nameClassName="entity-header-title-wrap"
               serviceName=""
               suffix={
                 !isTreeView && (
@@ -975,7 +977,7 @@ const DomainDetails = ({
           </div>
           <Box
             align="center"
-            className="domain-header-action-container tw:pb-1"
+            className="domain-header-action-container tw:pb-1 tw:shrink-0"
             gap={3}
             justify="end">
             {!isVersionsView && addButtonContent.length > 0 && (

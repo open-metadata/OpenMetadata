@@ -805,10 +805,14 @@ const DomainTreeView = ({
             key={identifier}
             textValue={getEntityName(node)}>
             <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
-              <Box align="center" direction="row" gap={2}>
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                direction="row"
+                gap={2}>
                 <Avatar size="xs" {...getEntityAvatarProps(node)} />
                 <Typography
-                  className="tw:text-primary"
+                  className="tw:text-primary tw:min-w-0"
                   size="text-sm"
                   weight="regular">
                   {getEntityName(node)}

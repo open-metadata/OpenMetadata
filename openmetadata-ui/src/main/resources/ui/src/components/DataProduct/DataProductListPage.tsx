@@ -170,9 +170,13 @@ const DataProductListPage = ({
             entity.displayName !== entity.name;
 
           return (
-            <Box align="center" direction="row" gap={3}>
+            <Box
+              align="start"
+              className="tw:max-w-[480px]"
+              direction="row"
+              gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box direction="col">
+              <Box className="tw:min-w-0" direction="col">
                 <Typography size="text-sm" weight="medium">
                   {entityName}
                 </Typography>
@@ -202,7 +206,11 @@ const DataProductListPage = ({
           const domain = domains[0];
 
           return (
-            <Box align="center" direction="row" gap={1}>
+            <Box
+              align="start"
+              className="tw:max-w-[320px]"
+              direction="row"
+              gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
               <Typography size="text-sm">
                 {domain.displayName || domain.name}

@@ -37,7 +37,7 @@ export const useDomainCardTemplates = () => {
   const renderDomainCard = useCallback(
     (entity: Domain): ReactNode => (
       <Box direction="col" gap={4}>
-        <Box align="center" direction="row" gap={3}>
+        <Box align="start" className="tw:min-w-0" direction="row" gap={3}>
           <Avatar size="md" {...getEntityAvatarProps(entity)} />
           <Typography size="text-sm" weight="medium">
             {getEntityName(entity)}
@@ -88,9 +88,9 @@ export const useDomainCardTemplates = () => {
 
       return (
         <Box direction="col" gap={4}>
-          <Box align="center" direction="row" gap={3}>
+          <Box align="start" className="tw:min-w-0" direction="row" gap={3}>
             <Avatar size="md" {...getEntityAvatarProps(entity)} />
-            <Box direction="col">
+            <Box className="tw:min-w-0" direction="col">
               <Typography size="text-sm" weight="medium">
                 {entityName}
               </Typography>
