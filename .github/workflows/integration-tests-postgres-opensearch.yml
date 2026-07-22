@@ -52,16 +52,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    # pull_request_target uses the GitHub API and does not require a checkout. Pushes are
-    # already scoped by the trigger paths above; merge queue and manual runs exercise the
-    # full suite. Keep the trigger paths and filter list in sync.
+    # pull_request_target uses the GitHub API and does not require a checkout. Merge
+    # queue runs check out the merge-queue commit so dorny can diff against
+    # merge_group.base_sha and skip the heavy work when nothing backend-relevant
+    # changed. Push and workflow_dispatch remain force-true — push is already
+    # gated by the trigger paths above, and workflow_dispatch is an explicit
+    # "run the full suite" request. Keep the trigger paths and filter list in sync.
     outputs:
-      backend: ${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.backend }}
+      backend: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.backend }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             backend:
               - 'openmetadata-service/**'

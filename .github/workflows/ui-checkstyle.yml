@@ -42,9 +42,17 @@ jobs:
     outputs:
       ui-changed: ${{ steps.filter.outputs.ui }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
               - 'openmetadata-ui/src/main/resources/ui/**'
@@ -55,9 +63,9 @@ jobs:
   authorize:
     needs: check-changes
     if: |
-      github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request_target' && needs.check-changes.outputs.ui-changed == 'true' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      needs.check-changes.outputs.ui-changed == 'true' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
