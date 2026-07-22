@@ -19,6 +19,7 @@ import {
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 
 /**
  * Payload persisted in `sessionStorage[APP_MODE_SESSION_KEY]`.
@@ -321,3 +322,47 @@ export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
  * active mode is the default.
  */
 export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
+
+/**
+ * Synchronously resolve the app mode a freshly-authenticated user should
+ * land in, using the same precedence as {@link useResolvedAppMode} minus
+ * the async persona lookup:
+ *
+ *   1. `sessionStorage` tuple (mid-session re-auth in an already-AI tab)
+ *   2. Fresh cross-tab hint (a sibling tab in this browser is in AI)
+ *   3. User's stored `preferences.appMode` (the "remember" checkbox)
+ *   4. `DEFAULT_APP_MODE`
+ *
+ * Persona-based resolution requires an API call and is deferred to
+ * `useResolvedAppMode`, which runs after login and will re-write the mode
+ * if the persona disagrees. This helper only exists so the post-login
+ * redirect can pick the right landing route (`/` for non-default modes,
+ * `/my-data` for Classic) without waiting for the async resolver.
+ *
+ * Pure — no side effects. Safe to call from event handlers.
+ */
+export const resolveInitialAppMode = (userName?: string): string => {
+  // Distinguish "explicit session tuple" from "no session at all" by
+  // reading the raw sessionStorage payload. `useAppModeStore.currentMode`
+  // returns `DEFAULT_APP_MODE` in BOTH cases, which would let a
+  // sibling-tab AI hint override an explicit Classic session — exactly
+  // what the resolver's `validSession` check guards against.
+  const session = readSession();
+  if (session) {
+    return session.mode;
+  }
+
+  const hint = readHint();
+  if (isHintFresh(hint) && hint && hint.mode !== DEFAULT_APP_MODE) {
+    return hint.mode;
+  }
+
+  if (userName) {
+    const pref = usePersistentStorage.getState().getUserPreference(userName);
+    if (pref?.appMode && pref.appMode !== DEFAULT_APP_MODE) {
+      return pref.appMode;
+    }
+  }
+
+  return DEFAULT_APP_MODE;
+};
