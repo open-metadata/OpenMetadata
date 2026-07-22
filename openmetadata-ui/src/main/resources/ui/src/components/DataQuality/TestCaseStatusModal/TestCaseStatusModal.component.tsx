@@ -23,17 +23,10 @@ import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import {
   getListTestCaseIncidentByStateId,
-  postTestCaseIncidentStatus,
   transitionIncident,
 } from '../../../rest/incidentManagerAPI';
-import {
-  createTask,
-  ResolveTask,
-  TaskCategory,
-  TaskEntityType,
-  TaskResolutionType,
-} from '../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { ResolveTask, TaskResolutionType } from '../../../rest/tasksAPI';
+import { reopenResolvedIncident } from '../../../utils/DataQuality/IncidentManagerUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import {
   fetchOptions,
@@ -99,8 +92,6 @@ export const TestCaseStatusModal = ({
     }));
   }, [data]);
 
-  // Ack/Assigned reopens the same incident via the TCRS endpoint (the backend reopens the
-  // existing task); only an explicit New starts a fresh incident.
   const handleReopenFromResolved = async (
     targetStatus: TestCaseResolutionStatusTypes,
     formData: CreateTestCaseResolutionStatus
@@ -111,53 +102,30 @@ export const TestCaseStatusModal = ({
       return;
     }
 
-    if (targetStatus === TestCaseResolutionStatusTypes.New) {
-      const newTask = await createTask({
-        name: `Incident: ${testCaseName}`,
-        category: TaskCategory.Incident,
-        type: TaskEntityType.TestCaseResolution,
-        about: getEntityFeedLink('testCase', testCaseFqn),
-      });
-
-      const refreshed = await getListTestCaseIncidentByStateId(newTask.id);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        onSubmit(latest);
-      }
-      onCancel();
-
-      return;
-    }
-
     const assignee = updatedAssignees?.length > 0 ? updatedAssignees[0] : null;
-    let statusDetails: CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails'];
-    if (targetStatus === TestCaseResolutionStatusTypes.Assigned && assignee) {
-      statusDetails = {
-        assignee: {
-          id: assignee.value ?? assignee.id,
-          type: EntityType.USER,
-          name: assignee.name,
-          fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
-          displayName: assignee.displayName,
-        },
-      };
-    } else if (targetStatus === TestCaseResolutionStatusTypes.Resolved) {
-      statusDetails = formData.testCaseResolutionStatusDetails;
-    }
-
-    const reopened = await postTestCaseIncidentStatus({
-      testCaseReference: testCaseFqn,
-      testCaseResolutionStatusType: targetStatus,
-      testCaseResolutionStatusDetails: statusDetails,
+    const latest = await reopenResolvedIncident({
+      testCaseFqn,
+      testCaseName,
+      targetStatus,
+      currentStateId: data?.stateId,
+      details: {
+        assignee: assignee
+          ? {
+              id: assignee.value ?? assignee.id,
+              type: EntityType.USER,
+              name: assignee.name,
+              fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
+              displayName: assignee.displayName,
+            }
+          : undefined,
+        reason: formData.testCaseResolutionStatusDetails?.testCaseFailureReason,
+        comment:
+          formData.testCaseResolutionStatusDetails?.testCaseFailureComment,
+      },
     });
 
-    const stateId = reopened?.stateId ?? data?.stateId;
-    if (stateId) {
-      const refreshed = await getListTestCaseIncidentByStateId(stateId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        onSubmit(latest);
-      }
+    if (latest) {
+      onSubmit(latest);
     }
     onCancel();
   };
