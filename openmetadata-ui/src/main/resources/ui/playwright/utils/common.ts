@@ -129,7 +129,7 @@ type CreateNewPageResult = {
 type NavigatedPageResult = CreateNewPageResult & { page: Page };
 type APIOnlyPageResult = CreateNewPageResult & { page?: never };
 
-const getSavedAdminToken = async () => {
+export const getSavedAdminToken = async () => {
   const tokenFile = JSON.parse(await readFile(adminApiTokenFile, 'utf8')) as {
     token: string;
   };
@@ -137,13 +137,36 @@ const getSavedAdminToken = async () => {
   return tokenFile.token;
 };
 
+const createValidatedWorkerAdminAPIContext = async () => {
+  const apiContext = await getAuthContext(await getSavedAdminToken());
+
+  try {
+    const response = await apiContext.get('/api/v1/users/loggedInUser');
+
+    try {
+      if (!response.ok()) {
+        throw new Error(
+          `Saved admin token validation failed (${response.status()})`
+        );
+      }
+    } finally {
+      await response.dispose();
+    }
+
+    return apiContext;
+  } catch (error) {
+    await apiContext.dispose();
+    throw error;
+  }
+};
+
 export const getWorkerAdminAPIContext = () => {
-  workerAdminAPIContext ??= getSavedAdminToken()
-    .then(getAuthContext)
-    .catch((error) => {
+  workerAdminAPIContext ??= createValidatedWorkerAdminAPIContext().catch(
+    (error) => {
       workerAdminAPIContext = undefined;
       throw error;
-    });
+    }
+  );
 
   return workerAdminAPIContext;
 };

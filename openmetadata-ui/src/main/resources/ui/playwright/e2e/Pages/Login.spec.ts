@@ -41,10 +41,8 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction, page } = await performAdminLogin(
-        browser
-      );
-      const response = await page.request.get(
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const response = await apiContext.get(
         `/api/v1/users/name/${user.getUserDisplayName()}`
       );
 

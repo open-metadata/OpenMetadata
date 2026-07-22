@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { DataProduct } from '../../../support/domain/DataProduct';
 import { Domain } from '../../../support/domain/Domain';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
@@ -48,11 +48,7 @@ import { performAdminLogin } from '../../../utils/admin';
 
 // Helper function to create task and verify resolution
 async function createAndResolveTask(
-  apiContext: ReturnType<typeof performAdminLogin> extends Promise<infer T>
-    ? T extends { apiContext: infer A }
-      ? A
-      : never
-    : never,
+  apiContext: APIRequestContext,
   entityType: string,
   entityId: string,
   entityFqn: string,
