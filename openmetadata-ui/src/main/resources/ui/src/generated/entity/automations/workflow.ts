@@ -1073,8 +1073,6 @@ export interface ConfigObject {
      *
      * To Connect to Dagster Cloud
      *
-     * Generated Token to connect to Databricks.
-     *
      * Generated Token to connect to DBTCloud.
      *
      * Token to connect to Stitch api doc
@@ -1917,6 +1915,21 @@ export interface ConfigObject {
      * Verify ( Connection Argument for SSL ) to connect to Trino.
      */
     verify?: string;
+    /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
     /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for

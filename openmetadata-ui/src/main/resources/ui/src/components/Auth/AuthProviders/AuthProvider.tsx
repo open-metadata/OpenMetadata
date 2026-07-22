@@ -37,6 +37,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
@@ -54,6 +55,7 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { clearAppMode, resolveInitialAppMode } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
@@ -239,6 +241,11 @@ export const AuthProvider = ({
     clearEtagCache();
     queryClient.clear();
 
+    // Drop the tab-scoped app-mode session so the next user boots into
+    // their own persona/preference-resolved mode rather than inheriting
+    // this user's transient mode.
+    clearAppMode();
+
     setApplicationLoading(false);
 
     // Clear the refresh flag (used after refresh is complete)
@@ -250,6 +257,30 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      // Non-default app modes (e.g. AskCollate's 'ai') own their own
+      // shell and land pages — navigating to /my-data would drop the
+      // user on the Classic My Data page even though their tab is in
+      // AI mode. Route to `/` and let the mode-specific route tree
+      // render its own landing page.
+      //
+      // At post-login redirect time `useResolvedAppMode` has not yet
+      // run, so the useAppMode store alone only reflects the
+      // sessionStorage tuple (empty on a fresh login). `resolveInitialAppMode`
+      // consults the same synchronously-available signals as the
+      // resolver — session tuple → fresh cross-tab hint → user's
+      // stored preference — so a user whose "remember" checkbox is on
+      // AI or whose sibling tab is in AI lands on `/` from the start
+      // instead of being bounced through `/my-data` and then flipped
+      // to AI by the resolver a tick later. Persona (async) stays
+      // with the resolver.
+      const userName = useApplicationStore.getState().currentUser?.name;
+      const appMode = resolveInitialAppMode(userName);
+      if (appMode !== DEFAULT_APP_MODE) {
+        navigate(ROUTES.HOME);
+
+        return;
+      }
+
       // Check if provider uses OidcAuthenticator which has routing logic
       const usesOidcAuthenticator = [
         AuthProviderEnum.Google,

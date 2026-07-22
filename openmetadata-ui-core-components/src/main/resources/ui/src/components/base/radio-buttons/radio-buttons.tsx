@@ -6,6 +6,7 @@ import {
   type RadioProps as AriaRadioProps,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export interface RadioGroupContextType {
   size?: 'sm' | 'md';
@@ -31,9 +32,13 @@ export const RadioButtonBase = ({
   return (
     <div
       className={cx(
-        'tw:flex tw:size-4 tw:min-h-4 tw:min-w-4 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded-full tw:bg-primary tw:ring-1 tw:ring-primary tw:ring-inset',
+        // Border on ::after — the element's own outline is reserved for the focus ring below.
+        'tw:relative tw:flex tw:size-4 tw:min-h-4 tw:min-w-4 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded-full tw:bg-primary',
+        `${borderAfter} tw:after:outline-primary`,
         size === 'md' && 'tw:size-5 tw:min-h-5 tw:min-w-5',
-        isSelected && !isDisabled && 'tw:bg-brand-solid tw:ring-brand-solid',
+        isSelected &&
+          !isDisabled &&
+          'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
           'tw:cursor-not-allowed tw:border-disabled tw:bg-disabled_subtle',
         isFocusVisible &&

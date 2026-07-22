@@ -702,21 +702,52 @@ export const verifyDomainLinkInCard = async (
   await expect(domainLink).toBeEnabled();
 };
 
+export const waitForSearchResult = async (
+  page: Page,
+  searchTerm: string,
+  result: Locator
+) => {
+  let hasSubmittedSearch = false;
+
+  await expect
+    .poll(
+      async () => {
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.request().method() === 'GET',
+          { timeout: 15_000 }
+        );
+
+        if (hasSubmittedSearch) {
+          await Promise.all([searchResponse, page.reload()]);
+        } else {
+          await page.getByTestId('searchBox').fill(searchTerm);
+          await Promise.all([
+            searchResponse,
+            page.getByTestId('searchBox').press('Enter'),
+          ]);
+          hasSubmittedSearch = true;
+        }
+        await waitForAllLoadersToDisappear(page);
+
+        return result.isVisible();
+      },
+      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
-  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
-  await page.getByTestId('searchBox').press('Enter');
-  await page.locator('[data-testid*="table-data-card"]').first().waitFor();
-
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-
-  await expect(entityCard).toBeVisible();
-
   const domainLink = entityCard.getByTestId('domain-link').first();
 
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
+  await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
 };
