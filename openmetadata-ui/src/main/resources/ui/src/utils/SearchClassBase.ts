@@ -173,6 +173,7 @@ class SearchClassBase {
       { value: SearchIndex.COLUMN, label: t('label.column') },
       { value: SearchIndex.TOPIC, label: t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: t('label.dashboard') },
+      { value: SearchIndex.CHART, label: t('label.chart') },
       { value: SearchIndex.PIPELINE, label: t('label.pipeline') },
       { value: SearchIndex.MLMODEL, label: t('label.ml-model') },
       { value: SearchIndex.CONTAINER, label: t('label.container') },
