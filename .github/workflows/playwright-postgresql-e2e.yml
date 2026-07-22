@@ -290,6 +290,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PW_DEDICATED_INGESTION: "true"
+          PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
         run: |
           npx playwright test --list --reporter=json \
             --project=chromium \

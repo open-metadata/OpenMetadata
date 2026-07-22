@@ -78,6 +78,10 @@ const allEntities = {
   spreadsheet: SpreadsheetClass,
   worksheet: WorksheetClass,
 };
+const lineageSourceEntities =
+  process.env.CI === 'true' && process.env.PW_EXECUTION_MODE === 'targeted'
+    ? { table: TableClass }
+    : allEntities;
 
 const columnLevelEntities = {
   table: TableClass,
@@ -139,7 +143,7 @@ test.describe('Data asset lineage', () => {
     await redirectToHomePage(page);
   });
 
-  Object.entries(allEntities).forEach(([key, EntityClass]) => {
+  Object.entries(lineageSourceEntities).forEach(([key, EntityClass]) => {
     const lineageEntity = new EntityClass();
 
     test(`verify create lineage for entity - ${startCase(key)}`, async ({

@@ -122,7 +122,9 @@ export default defineConfig({
   workers: process.env.CI
     ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
     : undefined,
-  maxFailures: 500,
+  // Stop catastrophically broken shards after enough failures to establish
+  // that the run cannot be useful. Healthy runs never approach this limit.
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: reporters,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
