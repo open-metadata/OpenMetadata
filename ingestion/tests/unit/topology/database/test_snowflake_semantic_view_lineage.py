@@ -45,6 +45,15 @@ def test_extract_column_refs():
     assert extract_column_refs("count(*)") == []
 
 
+def test_extract_column_refs_handles_quoted_and_qualified():
+    # double-quoted identifiers (incl. spaces) are unquoted
+    assert extract_column_refs('"orders"."o totalprice"') == [("orders", "o totalprice")]
+    # database/schema-qualified references collapse to the last two segments
+    assert extract_column_refs("db.public.orders.o_totalprice") == [("orders", "o_totalprice")]
+    # mixed quoting
+    assert extract_column_refs('SUM("orders".amount)') == [("orders", "amount")]
+
+
 def test_match_semantic_name_is_case_insensitive():
     assert match_semantic_name("line_amount", COLUMNS) == "LINE_AMOUNT"
     assert match_semantic_name("NOT_THERE", COLUMNS) is None
@@ -206,3 +215,18 @@ def test_build_view_lineage_skips_when_view_entity_missing():
     extractor.resolve_table_by_fqn = MagicMock(return_value=None)
     result = list(extractor._build_view_lineage("DB", "PUBLIC", "SALES_ANALYSIS", TABLE_MAP, COLUMNS))
     assert result == []
+
+
+def test_semantic_view_lineage_is_gated_by_include_flag():
+    from metadata.ingestion.source.database.snowflake.lineage import SnowflakeLineageSource
+
+    def enabled(process_view, include_semantic):
+        self_mock = MagicMock()
+        self_mock.source_config.processViewLineage = process_view
+        self_mock.service_connection.includeSemanticViews = include_semantic
+        return SnowflakeLineageSource._is_semantic_view_lineage_enabled(self_mock)
+
+    assert enabled(True, True) is True
+    assert enabled(True, False) is False
+    assert enabled(False, True) is False
+    assert enabled(False, False) is False
