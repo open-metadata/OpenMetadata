@@ -80,7 +80,7 @@ describe('HeaderShell', () => {
       />
     );
 
-    expect(container.querySelector('.tw\\:ml-auto')).not.toBeNull();
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass('tw:shrink-0');
     expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
@@ -95,8 +95,7 @@ describe('HeaderShell', () => {
 
     expect(container.querySelector('.tw\\:ml-auto')).toHaveClass(
       'tw:min-w-0',
-      'tw:flex-1',
-      'tw:shrink-0'
+      'tw:flex-1'
     );
   });
 
