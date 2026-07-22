@@ -25,12 +25,13 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 class RdfValidationServiceTest {
+  private static final String TURTLE_FORMAT = "turtle";
 
   @Test
   void validatesAnEntityUsingDescribe() {
     RdfRepository repository = enabledRepository();
     String entityUri = "https://open-metadata.org/entity/table/example";
-    when(repository.executeSparqlQueryDirect("DESCRIBE <" + entityUri + ">", "text/turtle"))
+    when(repository.executeSparqlQueryDirect("DESCRIBE <" + entityUri + ">", TURTLE_FORMAT))
         .thenReturn("");
 
     RdfValidationService.ValidationResult result =
@@ -46,7 +47,7 @@ class RdfValidationServiceTest {
   void validatesTheFullGraphUsingConstruct() {
     RdfRepository repository = enabledRepository();
     when(repository.executeSparqlQueryDirect(
-            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }", "text/turtle"))
+            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }", TURTLE_FORMAT))
         .thenReturn("");
 
     RdfValidationService.ValidationResult result =
@@ -55,7 +56,7 @@ class RdfValidationServiceTest {
     assertEquals("full-graph", result.scope());
     verify(repository)
         .executeSparqlQueryDirect(
-            eq("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }"), eq("text/turtle"));
+            eq("CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }"), eq(TURTLE_FORMAT));
   }
 
   @Test
@@ -73,7 +74,7 @@ class RdfValidationServiceTest {
   @Test
   void includesParseContextForMalformedRepositoryData() {
     RdfRepository repository = enabledRepository();
-    when(repository.executeSparqlQueryDirect(anyString(), eq("text/turtle")))
+    when(repository.executeSparqlQueryDirect(anyString(), eq(TURTLE_FORMAT)))
         .thenReturn("not turtle }");
 
     IllegalStateException exception =

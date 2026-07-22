@@ -194,7 +194,7 @@
         "type": "boolean"
       },
       "owners": {
-        "type": "object",
+        "type": "nested",
         "dynamic": false,
         "properties": {
           "id": {

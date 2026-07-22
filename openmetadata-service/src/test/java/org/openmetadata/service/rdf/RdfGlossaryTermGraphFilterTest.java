@@ -68,7 +68,7 @@ class RdfGlossaryTermGraphFilterTest {
     assertTrue(query.contains("VALUES ?selectedTerm { <" + glossaryTermUri + "> }"));
     assertTrue(query.contains("?selectedTerm ?candidateRelation ?term1"));
     assertTrue(query.contains("?term1 ?candidateRelation ?selectedTerm"));
-    assertTrue(query.contains("?selectedTerm om:belongsToGlossary <" + glossaryUri + "> ."));
+    assertTrue(query.contains("?selectedTerm skos:inScheme <" + glossaryUri + "> ."));
     assertTrue(query.contains("FILTER(?term1 = ?selectedTerm || ?term2 = ?selectedTerm)"));
     assertTrue(query.contains("<https://open-metadata.org/ontology/seeAlso>"));
     QueryFactory.create(query);

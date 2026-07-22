@@ -1731,10 +1731,7 @@ public class RdfRepository {
     // the requested glossary are dropped. For term-filtered queries, require
     // the selected term to be in the glossary while allowing direct neighbors
     // to come from another glossary.
-    // The predicate is om:belongsToGlossary (see governance.jsonld @context for
-    // GlossaryTerm.glossary); the previous om:belongsTo predicate is never
-    // written, which made the downstream FILTER a no-op and leaked every
-    // glossary's terms.
+    // GlossaryTerm.glossary is mapped to skos:inScheme in governance.jsonld.
     if (glossaryId != null && glossaryTermId == null) {
       String glossaryUri = config.getBaseUri().toString() + "entity/glossary/" + glossaryId;
       queryBuilder.append("    ?term1 skos:inScheme <").append(glossaryUri).append("> . ");

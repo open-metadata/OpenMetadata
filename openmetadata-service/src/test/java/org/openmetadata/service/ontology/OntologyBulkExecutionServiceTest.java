@@ -61,7 +61,8 @@ class OntologyBulkExecutionServiceTest {
 
     assertEquals(OntologyBulkExecutionMode.SYNCHRONOUS, submission.getExecutionMode());
     assertNotNull(stored.get());
-    assertEquals(CREATED_TERM_ID, stored.get().getOperations().getFirst().getTargetId());
+    assertNull(stored.get().getOperations().getFirst().getTargetId());
+    assertEquals(CREATED_TERM_ID, stored.get().getOperations().getFirst().getTerm().getId());
     assertEquals(1, stored.get().getUndoCursor());
     assertEquals(stored.get().getId(), submission.getResult().getChangeSet().getId());
     verify(scheduler, never()).schedule(any(), any(), anyInt(), anyString());
