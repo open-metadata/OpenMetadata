@@ -17,7 +17,7 @@ import { lazy } from 'react';
 import {
   ReactComponent as DataProductIcon,
   ReactComponent as DefaultDataProductIcon,
-} from '../assets/svg/ic-data-product.svg';
+} from '../assets/svg/entity/data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -144,14 +144,14 @@ export interface DataProductDetailPageTabProps {
 export const getDataProductIconByUrl = (iconURL?: string) => {
   const iconElement = renderIcon(iconURL, {
     size: 24,
-    className: 'tw:h-6 tw:w-6',
+    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
   });
 
   if (iconElement) {
     return iconElement;
   }
 
-  return <DefaultDataProductIcon className="data-product-default-icon" />;
+  return <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />;
 };
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
