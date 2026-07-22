@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page, test as setup } from '@playwright/test';
+import { mkdir, writeFile } from 'fs/promises';
 import { DISABLE_ETAG_CONDITIONAL_READS_KEY } from '../../src/rest/etagInterceptor';
 import {
   EDIT_DESCRIPTION_RULE,
@@ -20,7 +21,7 @@ import {
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
-import { getApiContext, uuid } from '../utils/common';
+import { getApiContext, getToken, uuid } from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
 
 /**
@@ -46,6 +47,7 @@ const editTagsFile = 'playwright/.auth/editTags.json';
 const editGlossaryTermFile = 'playwright/.auth/editGlossaryTerm.json';
 const viewOnlyFile = 'playwright/.auth/viewOnly.json';
 const ownerFile = 'playwright/.auth/owner.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
 
 const userUUID = uuid();
 
@@ -128,6 +130,13 @@ setup('authenticate all users', async ({ browser }) => {
     await admin.login(newAdminPage);
 
     await newAdminPage.waitForURL('**/my-data');
+
+    await mkdir('playwright/.auth', { recursive: true });
+    await writeFile(
+      adminApiTokenFile,
+      JSON.stringify({ token: await getToken(newAdminPage) }),
+      { mode: 0o600 }
+    );
 
     const { apiContext, afterAction } = await getApiContext(adminPage);
 

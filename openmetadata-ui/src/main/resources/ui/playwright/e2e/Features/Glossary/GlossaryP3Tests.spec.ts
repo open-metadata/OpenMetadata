@@ -783,7 +783,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
   }) => {
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
 
     try {
       // Navigate directly to a non-existent glossary (without redirectToHomePage)
@@ -833,7 +835,9 @@ test.describe('Glossary P3 Tests', () => {
   test('should show error state when navigating to non-existent term', async ({
     browser,
   }) => {
-    const { apiContext, page, afterAction } = await createNewPage(browser);
+    const { apiContext, page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {

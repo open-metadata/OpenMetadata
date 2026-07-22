@@ -252,7 +252,7 @@ export class UserClass {
     userName = this.data.email,
     password = this.data.password
   ) {
-    await page.goto('/');
+    await page.goto('/signin');
     try {
       await page.waitForURL('**/signin', { timeout: 5000 });
     } catch {

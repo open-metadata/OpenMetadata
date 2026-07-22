@@ -19,6 +19,8 @@ import {
   request,
 } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
@@ -29,6 +31,10 @@ import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
+
+const adminStorageStateFile = 'playwright/.auth/admin.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
+let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -54,11 +60,17 @@ export const getToken = async (page: Page) => {
 };
 
 export const getAuthContext = async (token: string) => {
+  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+
   return await request.newContext({
+    baseURL:
+      process.env.PLAYWRIGHT_TEST_BASE_URL ??
+      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
     // Default timeout is 30s making it to 1m for AUTs
     timeout: 90000,
+    ignoreHTTPSErrors: isH2Mode,
     extraHTTPHeaders: {
-      Connection: 'keep-alive',
+      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
       Authorization: `Bearer ${token}`,
     },
   });
@@ -68,7 +80,7 @@ export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/', {
+  await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
@@ -109,26 +121,101 @@ export const removeLandingBanner = async (page: Page) => {
   }
 };
 
-export const createNewPage = async (browser: Browser) => {
-  // create a new page
-  const page = await browser.newPage();
-  await redirectToHomePage(page);
-
-  // get the token
-  const token = await getToken(page);
-
-  // create a new context with the token
-  const apiContext = await getAuthContext(token);
-
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
+type CreateNewPageResult = {
+  afterAction: () => Promise<void>;
+  apiContext: APIRequestContext;
 };
 
+type NavigatedPageResult = CreateNewPageResult & { page: Page };
+type APIOnlyPageResult = CreateNewPageResult & { page?: never };
+
+const getSavedAdminToken = async () => {
+  const tokenFile = JSON.parse(await readFile(adminApiTokenFile, 'utf8')) as {
+    token: string;
+  };
+
+  return tokenFile.token;
+};
+
+export const getWorkerAdminAPIContext = () => {
+  workerAdminAPIContext ??= getSavedAdminToken().then(getAuthContext);
+
+  return workerAdminAPIContext;
+};
+
+export const disposeWorkerAdminAPIContext = async () => {
+  const apiContext = workerAdminAPIContext;
+  workerAdminAPIContext = undefined;
+  if (apiContext) {
+    await (await apiContext).dispose();
+  }
+};
+
+export function createNewPage(
+  browser: Browser,
+  options: { navigate: true }
+): Promise<NavigatedPageResult>;
+export function createNewPage(
+  browser: Browser,
+  options?: { navigate?: false }
+): Promise<APIOnlyPageResult>;
+export async function createNewPage(
+  browser: Browser,
+  { navigate = false }: { navigate?: boolean } = {}
+): Promise<NavigatedPageResult | APIOnlyPageResult> {
+  let page: Page | undefined;
+  let ownsApiContext = false;
+  if (navigate) {
+    page = await browser.newPage({
+      storageState: existsSync(adminStorageStateFile)
+        ? adminStorageStateFile
+        : undefined,
+    });
+    await redirectToHomePage(page);
+  }
+
+  let apiContext: APIRequestContext;
+  try {
+    apiContext = await getWorkerAdminAPIContext();
+  } catch {
+    if (!page) {
+      page = await browser.newPage({
+        storageState: existsSync(adminStorageStateFile)
+          ? adminStorageStateFile
+          : undefined,
+      });
+      await redirectToHomePage(page);
+    }
+    apiContext = await getAuthContext(await getToken(page));
+    ownsApiContext = true;
+  }
+
+  const afterAction = async () => {
+    if (ownsApiContext) {
+      await apiContext.dispose();
+    }
+    await page?.close();
+  };
+
+  if (navigate) {
+    if (!page) {
+      throw new Error('Expected a navigated page');
+    }
+
+    return { page, apiContext, afterAction };
+  }
+
+  return { apiContext, afterAction };
+}
+
 export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  if (existsSync(adminApiTokenFile)) {
+    const apiContext = await getWorkerAdminAPIContext();
+    const afterAction = async () => undefined;
+
+    return { apiContext, afterAction };
+  }
+
   const context = await browser.newContext({
     storageState: 'playwright/.auth/admin.json',
   });

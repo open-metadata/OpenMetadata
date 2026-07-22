@@ -1,0 +1,74 @@
+services:
+  postgresql:
+    image: ${PW_POSTGRES_IMAGE:-postgres:15}
+    pull_policy: missing
+    restart: "no"
+    command:
+      - postgres
+      - -c
+      - max_wal_size=512MB
+      - -c
+      - min_wal_size=64MB
+      - -c
+      - wal_level=minimal
+      - -c
+      - max_wal_senders=0
+      - -c
+      - checkpoint_completion_target=0.5
+      - -c
+      - checkpoint_timeout=30s
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - work_mem=32MB
+    volumes:
+      - type: bind
+        source: ${PW_POSTGRES_DATA_DIR:?PW_POSTGRES_DATA_DIR is required}
+        target: /var/lib/postgresql/data
+    healthcheck:
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "1"
+
+  opensearch:
+    image: ${PW_OPENSEARCH_IMAGE:-opensearchproject/opensearch:3.4.0}
+    restart: "no"
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      ES_JAVA_OPTS: -Xms2g -Xmx2g
+      OPENSEARCH_JAVA_OPTS: -Xms2g -Xmx2g
+      plugins.security.disabled: "true"
+    volumes:
+      - type: bind
+        source: ${PW_OPENSEARCH_DATA_DIR:?PW_OPENSEARCH_DATA_DIR is required}
+        target: /usr/share/opensearch/data
+    healthcheck:
+      interval: 2s
+      timeout: 2s
+      retries: 90
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "1"

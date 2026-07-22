@@ -16,7 +16,7 @@ import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
 export const authenticateAdminPage = async (page: Page) => {
-  await page.goto('/');
+  await page.goto('/my-data');
   await page.waitForURL((url) => {
     return (
       url.pathname.includes('/my-data') || url.pathname.includes('/signin')
@@ -35,8 +35,12 @@ export const createAdminApiContext = async (): Promise<{
   apiContext: APIRequestContext;
   afterAction: () => Promise<void>;
 }> => {
+  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
   const loginContext = await request.newContext({
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585',
+    baseURL:
+      process.env.PLAYWRIGHT_TEST_BASE_URL ??
+      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
+    ignoreHTTPSErrors: isH2Mode,
     timeout: 90000,
   });
 

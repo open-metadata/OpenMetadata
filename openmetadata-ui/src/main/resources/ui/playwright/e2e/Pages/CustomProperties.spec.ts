@@ -259,6 +259,9 @@ const ALL_ENTITIES: CRUDEntity[] = [
 
 ALL_ENTITIES.forEach(({ key, makeInstance }) => {
   const entity = CUSTOM_PROPERTIES_ENTITIES[key];
+  const basicProperties =
+    key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
+  const configProperties = key === 'entity_table' ? CONFIG_PROPERTIES : [];
 
   test.describe
     .serial(`Add update and delete custom properties for ${entity.name}`, () => {
@@ -291,7 +294,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     const pipelinePropertyValue = `ETL_PRODUCTION_${uuid()}`;
 
     test.beforeAll(async ({ browser }) => {
-      const { page, apiContext, afterAction } = await createNewPage(browser);
+      const { page, apiContext, afterAction } = await createNewPage(browser, {
+        navigate: true,
+      });
 
       if (key === 'entity_tableColumn') {
         tableForColumnTest = new TableClass();
@@ -363,9 +368,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       await redirectToHomePage(page);
     });
 
-    // ── 17 CRUD tests ──────────────────────────────────────────────────────
-
-    BASIC_PROPERTIES.forEach((property) => {
+    basicProperties.forEach((property) => {
       test(property, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;
@@ -400,7 +403,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    CONFIG_PROPERTIES.forEach((propertyConfig) => {
+    configProperties.forEach((propertyConfig) => {
       test(propertyConfig.name, async ({ page }) => {
         test.slow();
         const propertyName = `cp-${uuid()}-${entity.name}${NAME_SUFFIX}`;

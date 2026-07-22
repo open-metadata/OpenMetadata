@@ -108,6 +108,8 @@ export default defineConfig(async ({ mode }) => {
     env.VITE_DEV_SERVER_TARGET ||
     env.DEV_SERVER_TARGET ||
     'http://localhost:8585/';
+  const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
+  const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -300,6 +302,9 @@ export default defineConfig(async ({ mode }) => {
       modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
+          entryFileNames: isPlaywrightBuild
+            ? 'assets/app-[hash].js'
+            : undefined,
           assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
@@ -314,6 +319,45 @@ export default defineConfig(async ({ mode }) => {
           manualChunks: (id: string) => {
             if (!id.includes('node_modules')) {
               return;
+            }
+            if (isPlaywrightBundle) {
+              if (
+                id.includes('node_modules/elkjs') ||
+                id.includes('node_modules/@reactflow') ||
+                id.includes('node_modules/prosemirror') ||
+                id.includes('node_modules/@tiptap') ||
+                id.includes('node_modules/codemirror') ||
+                id.includes('node_modules/@codemirror') ||
+                id.includes('node_modules/recharts')
+              ) {
+                return 'vendor-e2e-specialists';
+              }
+              if (
+                id.includes('node_modules/react') ||
+                id.includes('node_modules/react-dom') ||
+                id.includes('node_modules/react-router')
+              ) {
+                return 'vendor-e2e-framework';
+              }
+              if (
+                id.includes('node_modules/antd') ||
+                id.includes('@openmetadata/ui-core-components') ||
+                id.includes('@untitledui/icons')
+              ) {
+                return 'vendor-e2e-ui';
+              }
+
+              const packagePath = id.split(/node_modules[\\/]/).pop() ?? id;
+              const [scopeOrName, scopedName] = packagePath.split(/[\\/]/);
+              const packageName = scopeOrName.startsWith('@')
+                ? `${scopeOrName}/${scopedName}`
+                : scopeOrName;
+              const bucket = [...packageName].reduce(
+                (hash, character) => (hash * 31 + character.charCodeAt(0)) % 8,
+                0
+              );
+
+              return `vendor-e2e-${bucket}`;
             }
             // Antd remains its own vendor chunk — almost every route touches some
             // part of it, so the cache-sharing argument holds. Tree-shaking inside

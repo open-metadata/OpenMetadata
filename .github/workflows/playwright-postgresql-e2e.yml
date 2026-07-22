@@ -15,11 +15,30 @@
 name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
+  schedule:
+    - cron: "30 7 * * *"
   workflow_dispatch:
-  # Note: paths-ignore removed — the workflow always triggers so that the
-  # required status check (playwright-summary) always completes. Path filtering
-  # is handled inside the workflow via dorny/paths-filter so PRs without
-  # relevant changes skip the expensive jobs while still reporting a passing status.
+    inputs:
+      full_suite:
+        description: Run the complete duration-balanced suite
+        required: true
+        type: boolean
+        default: true
+      protocol:
+        description: Application protocol used by Playwright
+        required: true
+        type: choice
+        options:
+          - http
+          - h2
+        default: http
+      coarse_bundle:
+        description: Build the CI-only coarse Vite bundle
+        required: true
+        type: boolean
+        default: true
+  # The workflow always triggers so every eligible PR runs mandatory smoke coverage.
+  # The impact map decides which additional suites and canaries are required.
   pull_request_target:
     types:
       - labeled
@@ -29,6 +48,7 @@ on:
       - ready_for_review
 
 permissions:
+  actions: read
   contents: read
   pull-requests: read
 
@@ -72,7 +92,20 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - '.github/actions/setup-openmetadata-test-environment/**'
+              - '.github/playwright/**'
+              - '.github/scripts/build_playwright_shards.py'
+              - '.github/scripts/capture_playwright_server_output.py'
               - '.github/scripts/classify_playwright_outcome.py'
+              - '.github/scripts/create_playwright_fixture.sh'
+              - '.github/scripts/evaluate_playwright_performance.py'
+              - '.github/scripts/import_playwright_json_timings.py'
+              - '.github/scripts/merge_playwright_timings.py'
+              - '.github/scripts/select_playwright_tests.py'
+              - '.github/scripts/start_playwright_fast_environment.sh'
+              - '.github/scripts/stop_playwright_fast_environment.sh'
+              - '.github/scripts/summarize_playwright_requests.py'
+              - '.github/scripts/tests/test_playwright_ci_planning.py'
+              - '.github/scripts/verify_playwright_coverage.py'
               - '.github/workflows/playwright-postgresql-e2e.yml'
             docker-compose:
               - 'docker/development/docker-compose.yml'
@@ -83,8 +116,6 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
-       needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Verify PR merge commit is available
@@ -114,8 +145,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -135,6 +165,9 @@ jobs:
         run: sudo make install_antlr_cli
 
       - name: Build with Maven
+        env:
+          PW_E2E_BUILD: "true"
+          PW_E2E_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}
         run: mvn -DskipTests clean package
 
       - name: Upload Maven build artifact
@@ -150,72 +183,268 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
-       needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
-      spec_only_mode: ${{ steps.compute.outputs.spec_only_mode }}
-      changed_specs: ${{ steps.compute.outputs.changed_specs }}
-      matrix: ${{ steps.compute.outputs.matrix }}
+      mode: ${{ steps.select.outputs.mode }}
+      selected_count: ${{ steps.select.outputs.selected_count }}
     steps:
       - name: Checkout
-        if: ${{ github.event_name == 'pull_request_target' }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           filter: blob:none
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
+
       - name: Get all changed files
         id: all-changes
         if: ${{ github.event_name == 'pull_request_target' }}
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
 
-      - name: Get changed runnable spec files
-        id: changed-specs
-        if: ${{ github.event_name == 'pull_request_target' }}
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
-        with:
-          path: openmetadata-ui/src/main/resources/ui
-          files: |
-            playwright/e2e/**/*.spec.ts
-          files_ignore: |
-            playwright/e2e/**/SystemCertificationTags.spec.ts
-            playwright/e2e/**/IntakeForm.spec.ts
-
-      - name: Compute spec-only mode and matrix
-        id: compute
+      - name: Select PR coverage
+        id: select
         env:
           ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
-          SPEC_FILES: ${{ steps.changed-specs.outputs.all_changed_files }}
         run: |
-          FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6,7],"shardTotal":[7]}'
-          SPEC_MATRIX='{"shardIndex":[1],"shardTotal":[1]}'
+          mkdir -p "$RUNNER_TEMP/playwright-selection"
+          # shellcheck disable=SC2086
+          printf '%s\n' $ALL_FILES > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          python3 .github/scripts/select_playwright_tests.py \
+            --event-name "${{ github.event_name }}" \
+            --changed-files "$RUNNER_TEMP/playwright-selection/changed-files.txt" \
+            --impact-map .github/playwright/impact-map.json \
+            --full-suite "${{ inputs.full_suite || false }}" \
+            --output "$RUNNER_TEMP/playwright-selection/selection.json" \
+            --github-output "$GITHUB_OUTPUT"
+          jq '{mode, reason, selected: (.selectors | length)}' \
+            "$RUNNER_TEMP/playwright-selection/selection.json"
 
-          ALL_COUNT=$(echo "$ALL_FILES" | wc -w)
-          SPEC_COUNT=$(echo "$SPEC_FILES" | wc -w)
+      - name: Upload Playwright selection
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-selection
+          path: ${{ runner.temp }}/playwright-selection/selection.json
+          retention-days: 1
 
-          if [ "$SPEC_COUNT" -gt 0 ] && [ "$ALL_COUNT" -eq "$SPEC_COUNT" ]; then
-            {
-              echo "spec_only_mode=true"
-              echo "changed_specs=$SPEC_FILES"
-              echo "matrix=$SPEC_MATRIX"
-            } >> "$GITHUB_OUTPUT"
-            echo "Spec-only mode: ${SPEC_COUNT} spec(s) changed"
-          else
-            {
-              echo "spec_only_mode=false"
-              echo "changed_specs="
-              echo "matrix=$FULL_MATRIX"
-            } >> "$GITHUB_OUTPUT"
-            echo "Full suite mode (total=${ALL_COUNT}, runnable-specs=${SPEC_COUNT})"
+  plan-playwright:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
+      requires_airflow: ${{ steps.plan.outputs.requires_airflow }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Download selection
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-selection
+          path: ${{ runner.temp }}/playwright-selection
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+          cache: yarn
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          yarn --ignore-scripts --frozen-lockfile
+
+      - name: Seed Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      - name: Install cached Chromium
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright install chromium
+
+      - name: Download recent full-suite timings
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/playwright-history"
+          gh run list \
+            --workflow playwright-postgresql-e2e.yml \
+            --status success \
+            --limit 50 \
+            --json databaseId,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | .[].databaseId' | while read -r run_id; do
+              full_count=$(find "$RUNNER_TEMP/playwright-history" -name 'playwright-timing-history.json' -type f -print0 2>/dev/null | xargs -0 -I{} jq -r 'select(.mode == "full") | .sourceSha' {} | wc -l | tr -d ' ')
+              [[ "$full_count" -ge 3 ]] && break
+              run_dir="$RUNNER_TEMP/playwright-history/$run_id"
+              mkdir -p "$run_dir"
+              gh run download "$run_id" \
+                --pattern 'playwright-timing-history-full-*' \
+                --dir "$run_dir" || true
+            done
+
+      - name: Discover tests
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PW_DEDICATED_INGESTION: "true"
+        run: |
+          npx playwright test --list --reporter=json \
+            --project=chromium \
+            --project=Basic \
+            --project=Ingestion \
+            --project=DataAssetRulesEnabled \
+            --project=DataAssetRulesDisabled \
+            --project=SearchRBAC \
+            --project=DomainIsolation \
+            --project=Reindex \
+            --project=GlobalSettings \
+            --project=SystemCertificationTags \
+            --project=IntakeForm \
+            --project=search-nightly \
+            > "$RUNNER_TEMP/playwright-test-list.json"
+
+      - name: Build duration-aware shard plans
+        id: plan
+        run: |
+          history_args=()
+          while IFS= read -r history_file; do
+            if jq -e '.mode == "full"' "$history_file" >/dev/null; then
+              history_args+=(--history "$history_file")
+            fi
+          done < <(find "$RUNNER_TEMP/playwright-history" -name 'playwright-timing-history.json' -type f 2>/dev/null | sort)
+          if [[ ${#history_args[@]} -eq 0 ]]; then
+            history_args=(--history .github/playwright/timing-baseline.json)
           fi
 
-  playwright-ci-postgresql:
-    needs: [build, detect-changes]
+          python3 .github/scripts/build_playwright_shards.py \
+            --test-list "$RUNNER_TEMP/playwright-test-list.json" \
+            --selection "$RUNNER_TEMP/playwright-selection/selection.json" \
+            "${history_args[@]}" \
+            --output-dir "$RUNNER_TEMP/playwright-plans" \
+            --github-output "$GITHUB_OUTPUT"
+          jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
+            "$RUNNER_TEMP/playwright-plans/matrix.json"
+
+      - name: Upload shard plans
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-shard-plans
+          path: ${{ runner.temp }}/playwright-plans
+          retention-days: 1
+
+  prepare-playwright-fixture:
+    needs: [build, detect-changes, plan-playwright]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Download Maven build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openmetadata-build
+          path: openmetadata-dist/target
+
+      - name: Prepare seeded environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        env:
+          STRICT_DAG_VALIDATION: "true"
+          VALIDATION_TIMEOUT_SECONDS: "600"
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -s true"
+          ingestion_dependency: "playwright"
+          lightweight-ingestion: "true"
+
+      - name: Setup Node.js for fixture state
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+          cache: yarn
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      - name: Install fixture-state dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          yarn --ignore-scripts --frozen-lockfile
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
+      - name: Install fixture-state browser
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          npx playwright install-deps chromium
+          npx playwright install chromium
+
+      - name: Seed reusable Playwright auth and entity state
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PLAYWRIGHT_IS_OSS: "true"
+          PW_DEDICATED_INGESTION: "true"
+        run: |
+          npx playwright test --project=entity-data-setup --reporter=line
+          test -s playwright/.auth/admin.json
+          test -s playwright/.auth/admin-api-token.json
+          test -s playwright/output/entity-response-data.json
+
+      - name: Snapshot PostgreSQL and OpenSearch
+        env:
+          REQUIRES_AIRFLOW: ${{ needs.plan-playwright.outputs.requires_airflow }}
+        run: |
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          mkdir -p "$RUNNER_TEMP/playwright-fixture"
+          fixture_args=("$RUNNER_TEMP/playwright-fixture/playwright-fixture.tar.zst")
+          if [[ "$REQUIRES_AIRFLOW" == "true" ]]; then
+            fixture_args+=("$RUNNER_TEMP/playwright-fixture/playwright-ingestion-image.tar.zst")
+          fi
+          ./.github/scripts/create_playwright_fixture.sh "${fixture_args[@]}"
+
+      - name: Upload seeded fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-seeded-fixture
+          path: ${{ runner.temp }}/playwright-fixture/playwright-fixture.tar.zst
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload ingestion image
+        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-ingestion-image
+          path: ${{ runner.temp }}/playwright-fixture/playwright-ingestion-image.tar.zst
+          compression-level: 0
+          retention-days: 1
+
+      - name: Clean fixture builder
+        if: always()
+        run: |
+          docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
+          sudo rm -rf "$GITHUB_WORKSPACE/docker/development/docker-volume"
+
+  playwright-ci-postgresql:
+    needs: [build, detect-changes, plan-playwright, prepare-playwright-fixture]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
       contents: read
@@ -226,131 +455,173 @@ jobs:
       # long-lived storageState session the page fixtures rely on and 401 every request. Raise
       # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
       AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
+      PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+      PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || (github.event_name == 'workflow_dispatch' && inputs.protocol || 'http') }}
+      PW_SHARD_ID: ${{ matrix.shardId }}
+      PW_PRESEEDED_STATE: "true"
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
     steps:
-      - name: Free Disk Space (Ubuntu)
-        id: free-disk
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
+      - name: Mark shard start
+        run: echo "PW_JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+
       - name: Download Maven build artifact
         id: download-build
         uses: actions/download-artifact@v4
         with:
           name: openmetadata-build
-          path: openmetadata-dist/target
+          path: ${{ runner.temp }}/openmetadata-build
+
+      - name: Download seeded fixture
+        id: download-fixture
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-seeded-fixture
+          path: ${{ runner.temp }}/playwright-fixture
+
+      - name: Download ingestion image
+        id: download-ingestion-image
+        if: ${{ matrix.requiresAirflow }}
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-ingestion-image
+          path: ${{ runner.temp }}/playwright-ingestion-image
+
+      - name: Download shard plans
+        id: download-plans
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-shard-plans
+          path: ${{ runner.temp }}/playwright-plans
+
+      - name: Resolve fast-environment inputs
+        id: fast-inputs
+        env:
+          PLAN_NAME: ${{ matrix.plan }}
+          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow }}
+        run: |
+          distribution=$(find "$RUNNER_TEMP/openmetadata-build" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
+          fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit)
+          plan="$RUNNER_TEMP/playwright-plans/$PLAN_NAME"
+          ingestion_image=""
+          if [[ "$REQUIRES_AIRFLOW" == "true" ]]; then
+            ingestion_image=$(find "$RUNNER_TEMP/playwright-ingestion-image" -maxdepth 2 -type f -name 'playwright-ingestion-image.tar.zst' -print -quit)
+          fi
+
+          for input in "$distribution" "$fixture" "$plan"; do
+            if [[ -z "$input" || ! -f "$input" ]]; then
+              echo "Missing fast-environment input: $input" >&2
+              exit 1
+            fi
+          done
+          if [[ "$REQUIRES_AIRFLOW" == "true" && ( -z "$ingestion_image" || ! -f "$ingestion_image" ) ]]; then
+            echo "Missing ingestion image for the Airflow lane" >&2
+            exit 1
+          fi
+
+          {
+            echo "distribution=$(realpath "$distribution")"
+            echo "fixture=$(realpath "$fixture")"
+            echo "plan=$(realpath "$plan")"
+            echo "ingestion_image=${ingestion_image:+$(realpath "$ingestion_image")}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Mark environment setup start
+        run: echo "PW_ENVIRONMENT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
       - name: Setup Openmetadata Test Environment
         id: setup-environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          args: "-d postgresql -s true"
-          ingestion_dependency: "all"
+          fast-mode: "true"
+          fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
+          distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
+          ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
+
+      - name: Record environment setup duration
+        run: |
+          finished_at=$(date +%s)
+          echo "PW_ENVIRONMENT_FINISHED_AT=$finished_at" >> "$GITHUB_ENV"
+          echo "PW_ENVIRONMENT_SECONDS=$((finished_at - PW_ENVIRONMENT_STARTED_AT))" >> "$GITHUB_ENV"
 
       - name: Setup Node.js
         id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+          cache: yarn
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
 
       - name: Install dependencies
         id: install-dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
+        run: |
+          corepack enable
+          yarn --ignore-scripts --frozen-lockfile
+
+      - name: Restore Playwright browser cache
+        id: restore-browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+
       - name: Install Playwright Browsers
         id: install-browsers
-        run: npx playwright@1.57.0 install chromium --with-deps
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          npx playwright install-deps chromium
+          npx playwright install chromium
+
       - name: Run Playwright tests
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "$SPEC_ONLY" = "true" ]; then
-            echo "🔹 Spec-only mode: running changed specs → ${CHANGED_SPECS}"
+          plan_file="${{ steps.fast-inputs.outputs.plan }}"
+          mapfile -t projects < <(jq -r '.projects[]' "$plan_file")
+          mapfile -t files < <(jq -r '.files[]' "$plan_file")
 
-            PROJECT_ARGS=""
-
-            # DataAssetRulesEnabled runs standalone; its deps (setup) are resolved automatically
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesEnabled\.spec\.ts"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesEnabled"
-            fi
-            # DataAssetRulesDisabled depends on DataAssetRulesEnabled — Playwright resolves this automatically
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesDisabled\.spec\.ts"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesDisabled"
-            fi
-            # SearchRBAC depends on the full DataAssetRules chain — Playwright resolves this automatically
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "SearchRBAC\.spec\.ts"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=SearchRBAC"
-            fi
-            # DomainIsolation uses serial workers and its own testMatch
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DomainIsolation/"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=DomainIsolation"
-            fi
-            # Search relevance specs use the dedicated search-nightly project.
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "playwright/e2e/Search/"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=search-nightly"
-            fi
-            # Regular chromium specs: anything not in a special-project category.
-            # Also add Basic because chromium has grepInvert:[@basic], so @basic-tagged tests
-            # in the changed files would be silently skipped without it.
-            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -qvE "(DataAssetRulesEnabled\.spec\.ts|DataAssetRulesDisabled\.spec\.ts|SearchRBAC\.spec\.ts|DomainIsolation/|playwright/e2e/Search/)"; then
-              PROJECT_ARGS="$PROJECT_ARGS --project=chromium --project=Basic"
-            fi
-
-            [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium --project=Basic"
-
-            # shellcheck disable=SC2086
-            npx playwright test $PROJECT_ARGS $CHANGED_SPECS
-
-          elif [ "${{ matrix.shardIndex }}" = "1" ]; then
-            echo "🔹 Running DataAssetRules-only tests on shard 1"
-
-            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
-            npx playwright test \
-              --project=setup \
-              --project=DataAssetRulesEnabled \
-              --project=DataAssetRulesDisabled \
-              --project=Basic \
-              --project=SearchRBAC \
-              --project=DomainIsolation
-
-          elif [ "${{ matrix.shardIndex }}" = "2" ]; then
-            echo "🔹 Running search relevance tests on shard 2"
-
-            npx playwright test \
-              --project=search-nightly \
-              playwright/e2e/Search/SearchRelevance.spec.ts \
-              --workers=1
-
-          else
-            # Shards 3-7 run common chromium tests equally distributed (5-way sharding)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
-            echo "🔹 Running common chromium tests on shard ${CHROMIUM_SHARD}/5"
-            npx playwright test \
-              --project=chromium \
-              --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+          if [[ ${#projects[@]} -eq 0 || ${#files[@]} -eq 0 ]]; then
+            echo "Shard plan has no projects or files" >&2
+            jq . "$plan_file" >&2
+            exit 1
           fi
 
+          project_args=()
+          for project in "${projects[@]}"; do
+            project_args+=("--project=$project")
+          done
+
+          if [[ -f "$PW_SERVER_CAPTURE_PID_FILE" ]]; then
+            kill -USR2 "$(cat "$PW_SERVER_CAPTURE_PID_FILE")"
+          fi
+          jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
+          started_at=$(date +%s)
+          set +e
+          timeout --signal=TERM --kill-after=30s 21m \
+            npx playwright test "${project_args[@]}" "${files[@]}"
+          test_exit=$?
+          set -e
+          finished_at=$(date +%s)
+          echo "PW_EXECUTION_SECONDS=$((finished_at - started_at))" >> "$GITHUB_ENV"
+          if [[ -f "$PW_SERVER_CAPTURE_PID_FILE" ]]; then
+            kill -USR1 "$(cat "$PW_SERVER_CAPTURE_PID_FILE")" || true
+          fi
+          exit "$test_exit"
+
         env:
-          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
-          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
+          PW_SHARD_ID: ${{ matrix.shardId }}
+          PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+          PW_WORKERS: ${{ matrix.workers }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -401,71 +672,140 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Record shard phase metrics
+        if: always()
+        env:
+          SHARD_ID: ${{ matrix.shardId }}
+          LANE: ${{ matrix.lane }}
+        run: |
+          output="openmetadata-ui/src/main/resources/ui/playwright/output/shard-phases.json"
+          mkdir -p "$(dirname "$output")"
+          now=$(date +%s)
+          jq -n \
+            --arg shardId "$SHARD_ID" \
+            --arg lane "$LANE" \
+            --argjson environmentSeconds "${PW_ENVIRONMENT_SECONDS:-0}" \
+            --argjson executionSeconds "${PW_EXECUTION_SECONDS:-0}" \
+            --argjson elapsedSeconds "$((now - PW_JOB_STARTED_AT))" \
+            '{
+              version: 1,
+              shardId: $shardId,
+              lane: $lane,
+              environmentSeconds: $environmentSeconds,
+              executionSeconds: $executionSeconds,
+              elapsedBeforeUploadSeconds: $elapsedSeconds
+            }' > "$output"
+
+      - name: Summarize shard requests
+        if: always()
+        continue-on-error: true
+        env:
+          SHARD_ID: ${{ matrix.shardId }}
+        run: |
+          if [[ -f "${PW_SERVER_CAPTURE_PID_FILE:-}" ]]; then
+            kill -USR1 "$(cat "$PW_SERVER_CAPTURE_PID_FILE")" || true
+            sleep 1
+          fi
+          python3 .github/scripts/summarize_playwright_requests.py \
+            --log "${PW_SERVER_LOG:-$RUNNER_TEMP/missing-openmetadata-server.log}" \
+            --aggregate "${PW_REQUEST_METRICS:-$RUNNER_TEMP/missing-request-metrics.json}" \
+            --output "openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json" \
+            --shard-id "$SHARD_ID"
+          jq '{shardId, totalRequests, apiRequests, staticRequests, apiBytes, staticBytes, appBoots, topApiEndpoints}' \
+            openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json
+
       - name: Record shard execution status
         if: always()
         env:
-          FREE_DISK_OUTCOME: ${{ steps.free-disk.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           DOWNLOAD_BUILD_OUTCOME: ${{ steps.download-build.outcome }}
+          DOWNLOAD_FIXTURE_OUTCOME: ${{ steps.download-fixture.outcome }}
+          DOWNLOAD_INGESTION_IMAGE_OUTCOME: ${{ steps.download-ingestion-image.outcome }}
+          DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
+          FAST_INPUTS_OUTCOME: ${{ steps.fast-inputs.outcome }}
           SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_DEPENDENCIES_OUTCOME: ${{ steps.install-dependencies.outcome }}
+          RESTORE_BROWSER_OUTCOME: ${{ steps.restore-browser.outcome }}
           INSTALL_BROWSERS_OUTCOME: ${{ steps.install-browsers.outcome }}
           TEST_OUTCOME: ${{ steps.run-tests.outcome }}
         run: |
           STATUS_DIR="openmetadata-ui/src/main/resources/ui/playwright/output"
           mkdir -p "$STATUS_DIR"
           jq -n \
-            --arg shard "${{ matrix.shardIndex }}" \
-            --arg freeDisk "$FREE_DISK_OUTCOME" \
+            --arg shard "${{ matrix.shardId }}" \
             --arg checkout "$CHECKOUT_OUTCOME" \
             --arg downloadBuild "$DOWNLOAD_BUILD_OUTCOME" \
+            --arg downloadFixture "$DOWNLOAD_FIXTURE_OUTCOME" \
+            --arg downloadIngestionImage "$DOWNLOAD_INGESTION_IMAGE_OUTCOME" \
+            --arg downloadPlans "$DOWNLOAD_PLANS_OUTCOME" \
+            --arg fastInputs "$FAST_INPUTS_OUTCOME" \
             --arg setupEnvironment "$SETUP_ENVIRONMENT_OUTCOME" \
             --arg setupNode "$SETUP_NODE_OUTCOME" \
             --arg installDependencies "$INSTALL_DEPENDENCIES_OUTCOME" \
+            --arg restoreBrowser "$RESTORE_BROWSER_OUTCOME" \
             --arg installBrowsers "$INSTALL_BROWSERS_OUTCOME" \
             --arg tests "$TEST_OUTCOME" \
             '{
               shard: $shard,
               steps: {
-                freeDisk: $freeDisk,
                 checkout: $checkout,
                 downloadBuild: $downloadBuild,
+                downloadFixture: $downloadFixture,
+                downloadIngestionImage: $downloadIngestionImage,
+                downloadPlans: $downloadPlans,
+                fastInputs: $fastInputs,
                 setupEnvironment: $setupEnvironment,
                 setupNode: $setupNode,
                 installDependencies: $installDependencies,
+                restoreBrowser: $restoreBrowser,
                 installBrowsers: $installBrowsers,
                 tests: $tests
               }
             }' > "$STATUS_DIR/ci-status.json"
 
-      - name: Upload Playwright HTML report
+      - name: Upload Playwright blob report
         uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
-          name: playwright-report-${{ matrix.shardIndex }}
+          name: playwright-blob-${{ matrix.shardId }}
           overwrite: true
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/blob-report
+          compression-level: 0
           retention-days: 5
           if-no-files-found: ignore
 
-      - name: Upload test results (screenshots, traces)
+      - name: Upload failure-only test results
+        uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        continue-on-error: true
+        with:
+          name: playwright-test-results-${{ matrix.shardId }}
+          overwrite: true
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Upload timing and request metrics
         uses: actions/upload-artifact@v4
         if: always()
         continue-on-error: true
         with:
-          name: playwright-test-results-${{ matrix.shardIndex }}
+          name: playwright-timings-${{ matrix.shardId }}
           overwrite: true
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
-          retention-days: 5
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/playwright-timings.json
+            openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json
+            openmetadata-ui/src/main/resources/ui/playwright/output/shard-phases.json
+          retention-days: 30
           if-no-files-found: ignore
 
       - name: Upload results JSON for summary
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-results-json-${{ matrix.shardIndex }}
+          name: playwright-results-json-${{ matrix.shardId }}
           overwrite: true
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/results.json
@@ -481,21 +821,24 @@ jobs:
           mkdir -p "$DIAGNOSTICS_DIR"
           df -h > "$DIAGNOSTICS_DIR/disk-usage.txt" 2>&1 || true
           docker system df > "$DIAGNOSTICS_DIR/docker-disk-usage.txt" 2>&1 || true
-          if [ -f docker/development/docker-compose-postgres.yml ]; then
-            docker compose -f docker/development/docker-compose-postgres.yml ps --all \
+          if [[ -n "${PW_SERVER_LOG:-}" && -f "$PW_SERVER_LOG" ]]; then
+            tail -n 5000 "$PW_SERVER_LOG" > "$DIAGNOSTICS_DIR/openmetadata-server.log" 2>&1 || true
+          fi
+          if [[ -n "${PW_RUNTIME_ROOT:-}" ]]; then
+            docker compose \
+              -f docker/development/docker-compose-postgres.yml \
+              -f docker/development/docker-compose-playwright-fast.yml \
+              ps --all \
               > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
-            docker compose -f docker/development/docker-compose-postgres.yml logs --no-color --tail 5000 \
+            docker compose \
+              -f docker/development/docker-compose-postgres.yml \
+              -f docker/development/docker-compose-playwright-fast.yml \
+              logs --no-color --tail 5000 postgresql opensearch \
               > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
-            # The tailed all-services log above only covers the last ~minute of the
-            # chatty server on a multi-hour shard, which misses the failing test's
-            # window. Capture the full server log (untailed) so index/search
-            # behavior at the time of the failure is available.
-            docker compose -f docker/development/docker-compose-postgres.yml \
-              logs --no-color --no-log-prefix openmetadata-server \
-              > "$DIAGNOSTICS_DIR/openmetadata-server-full.log" 2>&1 || true
-            # OpenSearch thread-pool rejected/completed counters are cumulative over
-            # the whole run, so they reveal write/refresh/search rejections even when
-            # they happened before the tail window.
+            if [[ -n "${PW_AIRFLOW_CONTAINER:-}" ]]; then
+              docker logs --tail 5000 "$PW_AIRFLOW_CONTAINER" \
+                > "$DIAGNOSTICS_DIR/airflow.log" 2>&1 || true
+            fi
             curl -s "http://localhost:9200/_cat/thread_pool/write,refresh,search,search_throttled?v&h=node_name,name,active,queue,rejected,completed" \
               > "$DIAGNOSTICS_DIR/opensearch-thread-pool.txt" 2>&1 || true
             curl -s "http://localhost:9200/_cat/indices?v&h=index,health,status,docs.count,store.size,refresh.total,refresh.total_time,search.query_total&s=index" \
@@ -507,7 +850,7 @@ jobs:
         if: failure() || cancelled()
         continue-on-error: true
         with:
-          name: playwright-ci-diagnostics-${{ matrix.shardIndex }}
+          name: playwright-ci-diagnostics-${{ matrix.shardId }}
           path: ${{ runner.temp }}/playwright-ci-diagnostics
           retention-days: 5
           if-no-files-found: ignore
@@ -515,15 +858,148 @@ jobs:
       - name: Clean Up
         if: always()
         continue-on-error: true
+        run: ./.github/scripts/stop_playwright_fast_environment.sh
+
+  playwright-report:
+    if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+    needs: [detect-changes, plan-playwright, playwright-ci-postgresql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Download blob reports
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: playwright-blob-*
+          path: ${{ runner.temp }}/playwright-blobs
+          merge-multiple: true
+
+      - name: Download timing metrics
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: playwright-timings-*
+          path: ${{ runner.temp }}/playwright-timings
+
+      - name: Download shard plans
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-shard-plans
+          path: ${{ runner.temp }}/playwright-plans
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+          cache: yarn
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      - name: Install report dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
         run: |
-          cd ./docker/development
-          docker compose down --remove-orphans
-          sudo rm -rf "${PWD}/docker-volume"
+          corepack enable
+          yarn --ignore-scripts --frozen-lockfile
+
+      - name: Mark report generation start
+        run: echo "PW_REPORT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Merge HTML report
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PLAYWRIGHT_HTML_OUTPUT_DIR: ${{ runner.temp }}/playwright-report
+        run: |
+          if ! find "$RUNNER_TEMP/playwright-blobs" -type f -name '*.zip' -print -quit | grep -q .; then
+            echo "No Playwright blob reports were uploaded" >&2
+            exit 1
+          fi
+          npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
+
+      - name: Merge and verify timing coverage
+        env:
+          EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 .github/scripts/merge_playwright_timings.py \
+            --input-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+            --mode "$EXECUTION_MODE" \
+            --source-sha "$SOURCE_SHA" \
+            --output "$RUNNER_TEMP/playwright-timing-history/playwright-timing-history.json"
+          python3 .github/scripts/verify_playwright_coverage.py \
+            --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
+            --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+            --output "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json"
+          performance_args=()
+          if [[ "$EXECUTION_MODE" == "full" ]]; then
+            performance_args+=(--enforce)
+          fi
+          python3 .github/scripts/evaluate_playwright_performance.py \
+            --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+            --request-glob "$RUNNER_TEMP/playwright-timings/**/request-metrics.json" \
+            --phase-glob "$RUNNER_TEMP/playwright-timings/**/shard-phases.json" \
+            --mode "$EXECUTION_MODE" \
+            --output "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json" \
+            "${performance_args[@]}"
+          jq . "$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+
+      - name: Upload merged Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-report
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Record reporting and report-upload duration
+        if: always()
+        env:
+          EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+        run: |
+          performance="$RUNNER_TEMP/playwright-timing-history/playwright-performance.json"
+          [[ -f "$performance" ]] || exit 0
+          report_seconds=$(($(date +%s) - PW_REPORT_STARTED_AT))
+          jq \
+            --argjson reportSeconds "$report_seconds" \
+            '.metrics.reportingSeconds = $reportSeconds |
+             .targets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
+             .targetsMet = ([.targets[]] | all)' \
+            "$performance" > "$performance.tmp"
+          mv "$performance.tmp" "$performance"
+          if [[ "$EXECUTION_MODE" == "full" && "$report_seconds" -gt 120 ]]; then
+            echo "Playwright reporting and report upload exceeded two minutes" >&2
+            exit 1
+          fi
+
+      - name: Upload timing history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-timing-history-${{ needs.detect-changes.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-timing-history
+          retention-days: 30
+          if-no-files-found: warn
 
   playwright-summary:
     name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
     if: always()
-    needs: [check-changes, build, detect-changes, playwright-ci-postgresql]
+    needs:
+      [
+        check-changes,
+        build,
+        detect-changes,
+        plan-playwright,
+        prepare-playwright-fixture,
+        playwright-ci-postgresql,
+        playwright-report,
+      ]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -547,9 +1023,9 @@ jobs:
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
         env:
-          EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
+          EXPECTED_MATRIX: ${{ needs.plan-playwright.outputs.matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
-          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
@@ -577,10 +1053,13 @@ jobs:
           CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           DETECT_CHANGES_RESULT: ${{ needs.detect-changes.result }}
+          PLAN_RESULT: ${{ needs.plan-playwright.result }}
+          FIXTURE_RESULT: ${{ needs.prepare-playwright-fixture.result }}
           PLAYWRIGHT_RESULT: ${{ needs.playwright-ci-postgresql.result }}
+          REPORT_RESULT: ${{ needs.playwright-report.result }}
           E2E_CHANGED: ${{ needs.check-changes.outputs.e2e }}
           DOCKER_COMPOSE_CHANGED: ${{ needs.check-changes.outputs.docker-compose }}
-          EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
+          EXPECTED_MATRIX: ${{ needs.plan-playwright.outputs.matrix }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -590,15 +1069,18 @@ jobs:
             const checkChangesResult = process.env.CHECK_CHANGES_RESULT;
             const buildResult = process.env.BUILD_RESULT;
             const detectChangesResult = process.env.DETECT_CHANGES_RESULT;
+            const planResult = process.env.PLAN_RESULT;
+            const fixtureResult = process.env.FIXTURE_RESULT;
             const upstreamResult = process.env.PLAYWRIGHT_RESULT;
+            const reportResult = process.env.REPORT_RESULT;
             const eventAction = context.payload.action;
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
             const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
-            const testsRequired = context.eventName === 'merge_group' ||
-              context.eventName === 'workflow_dispatch' ||
-              process.env.E2E_CHANGED === 'true' ||
-              process.env.DOCKER_COMPOSE_CHANGED === 'true';
+            const testsRequired = context.eventName === 'pull_request_target' ||
+              context.eventName === 'merge_group' ||
+              context.eventName === 'schedule' ||
+              context.eventName === 'workflow_dispatch';
 
             if (isDraft) {
               console.log('Playwright E2E tests are not required while the PR is a draft.');
@@ -630,18 +1112,27 @@ jobs:
               addInfrastructureIssue(`The build job finished with status \`${buildResult}\`.`);
             }
             if (detectChangesResult !== 'success') {
-              addInfrastructureIssue(`Shard detection finished with status \`${detectChangesResult}\`.`);
+              addInfrastructureIssue(`Test selection finished with status \`${detectChangesResult}\`.`);
+            }
+            if (planResult !== 'success') {
+              addInfrastructureIssue(`Duration-aware shard planning finished with status \`${planResult}\`.`);
+            }
+            if (fixtureResult !== 'success') {
+              addInfrastructureIssue(`Seeded fixture preparation finished with status \`${fixtureResult}\`.`);
             }
             if (upstreamResult === 'cancelled') {
               addInfrastructureIssue('The Playwright shard matrix was cancelled.');
             } else if (upstreamResult === 'skipped') {
               addInfrastructureIssue('The Playwright shard matrix was unexpectedly skipped.');
             }
+            if (!['success', 'skipped'].includes(reportResult)) {
+              addInfrastructureIssue(`Merged report and coverage validation finished with status \`${reportResult}\`.`);
+            }
 
             let expectedShards = [];
             try {
               const matrix = JSON.parse(process.env.EXPECTED_MATRIX || '{}');
-              expectedShards = (matrix.shardIndex || []).map(String);
+              expectedShards = (matrix.include || []).map(entry => String(entry.shardId));
               if (expectedShards.length === 0) {
                 addInfrastructureIssue('No expected Playwright shards were declared.');
               }

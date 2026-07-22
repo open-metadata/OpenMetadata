@@ -217,10 +217,19 @@ def _expected_shards(explicit: list[str], matrix_json: str) -> tuple[list[str], 
         matrix = json.loads(matrix_json)
         if not isinstance(matrix, dict):
             raise ValueError("matrix root is not an object")
-        shard_indexes = matrix.get("shardIndex", [])
-        if not isinstance(shard_indexes, list):
-            raise ValueError("shardIndex is not an array")
-        shards.update(str(shard) for shard in shard_indexes)
+        if "include" in matrix:
+            includes = matrix["include"]
+            if not isinstance(includes, list):
+                raise ValueError("include is not an array")
+            for entry in includes:
+                if not isinstance(entry, dict) or not entry.get("shardId"):
+                    raise ValueError("each include entry must contain shardId")
+                shards.add(str(entry["shardId"]))
+        else:
+            shard_indexes = matrix.get("shardIndex", [])
+            if not isinstance(shard_indexes, list):
+                raise ValueError("shardIndex is not an array")
+            shards.update(str(shard) for shard in shard_indexes)
     except (ValueError, json.JSONDecodeError) as error:
         return sorted(shards), str(error)
     return sorted(shards), ""
