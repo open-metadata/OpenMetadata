@@ -617,5 +617,25 @@ describe('agentsDataMapper', () => {
 
       expect(getLogTaskFieldForType(log, PipelineType.Lineage)).toBe('');
     });
+
+    it('should pick the generic logs key whatever the pipeline type', () => {
+      const log: IngestionPipelineLogByIdInterface = { logs: 'fqn logs' };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
+      expect(getLogTaskFieldForType(log, PipelineType.Usage)).toBe('fqn logs');
+    });
+
+    it('should prefer the generic logs key over the type-specific field', () => {
+      const log: IngestionPipelineLogByIdInterface = {
+        logs: 'fqn logs',
+        ingestion_task: 'metadata logs',
+      };
+
+      expect(getLogTaskFieldForType(log, PipelineType.Metadata)).toBe(
+        'fqn logs'
+      );
+    });
   });
 });
