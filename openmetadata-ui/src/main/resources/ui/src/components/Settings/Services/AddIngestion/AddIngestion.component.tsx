@@ -12,7 +12,6 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Form, Input } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import {
   forwardRef,
@@ -23,10 +22,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
-import {
-  DEFAULT_SCHEDULE_CRON_DAILY,
-  SCHEDULAR_OPTIONS,
-} from '../../../../constants/Schedular.constants';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
@@ -43,12 +39,10 @@ import {
   IngestionWorkflowFormHandle,
 } from '../../../../interface/service.interface';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
-import { generateFormFields } from '../../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getDefaultFilterPropertyValues } from '../../../../utils/IngestionConfigUtils';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -60,12 +54,12 @@ import {
   AddIngestionHandle,
   AddIngestionProps,
 } from './IngestionWorkflow.interface';
-import ScheduleInterval from './Steps/ScheduleInterval';
 import {
   IngestionExtraConfig,
   ScheduleIntervalHandle,
   WorkflowExtraConfig,
 } from './Steps/ScheduleInterval.interface';
+import ScheduleIntervalStep from './Steps/ScheduleIntervalStep';
 
 const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
   function AddIngestion(
@@ -349,21 +343,6 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
       [activeIngestionStep]
     );
 
-    const raiseOnErrorFormField = useMemo(
-      () => getRaiseOnErrorFormField(onFocus),
-      [onFocus]
-    );
-
-    const schedularOptionsTranslated = useMemo(
-      () =>
-        SCHEDULAR_OPTIONS.map((option) => ({
-          ...option,
-          title: t(option.title),
-          description: t(option.description),
-        })),
-      [t]
-    );
-
     return (
       <div data-testid="add-ingestion-container">
         <Typography className="tw:m-0" size="text-xl" weight="semibold">
@@ -404,7 +383,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           )}
 
           {activeIngestionStep === 2 && (
-            <ScheduleInterval<IngestionExtraConfig>
+            <ScheduleIntervalStep
               buttonProps={{
                 okText: isUndefined(data)
                   ? t('label.add-deploy')
@@ -416,29 +395,16 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
               initialData={{
                 cron: data?.airflowConfig.scheduleInterval,
                 raiseOnError: data?.raiseOnError ?? true,
+                retries,
               }}
               isEditMode={isEditMode}
               ref={scheduleIntervalRef}
-              schedularOptions={schedularOptionsTranslated}
               showActionButtons={!hideFooter}
               status={saveState}
               onBack={() => handlePrev(1)}
-              onDeploy={handleScheduleIntervalDeployClick}>
-              <Col span={24}>
-                <Form.Item
-                  colon={false}
-                  initialValue={retries}
-                  label={t('label.number-of-retries')}
-                  name="retries">
-                  <Input
-                    min={0}
-                    type="number"
-                    onFocus={() => onFocus('root/retries')}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
-            </ScheduleInterval>
+              onDeploy={handleScheduleIntervalDeployClick}
+              onFocus={onFocus}
+            />
           )}
 
           {activeIngestionStep > 2 && handleViewServiceClick && (

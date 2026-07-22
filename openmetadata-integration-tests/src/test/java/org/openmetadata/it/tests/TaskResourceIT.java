@@ -959,6 +959,138 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testPatchAssigneesWithMinimalReferences(TestNamespace ns) {
+    // Regression: an EntityReference only requires id and type, which is exactly what the re-assign
+    // dialog sends. Two or more such references used to fail with a 500 because the updater sorts
+    // assignees by name and the references were never hydrated.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("patch-multi-assignee"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = createEntity(request);
+
+    String patch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/assignees\",\"value\":"
+                + "[{\"id\":\"%s\",\"type\":\"user\"},{\"id\":\"%s\",\"type\":\"team\"}]}]",
+            shared.USER2.getId(), shared.TEAM1.getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            patch,
+            org.openmetadata.sdk.network.RequestOptions.builder()
+                .header("Content-Type", "application/json-patch+json")
+                .build());
+
+    Task fetched = SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees");
+
+    assertEquals(2, fetched.getAssignees().size(), "Both assignees should be persisted");
+    assertTrue(
+        fetched.getAssignees().stream().anyMatch(ref -> ref.getId().equals(shared.USER2.getId())),
+        "Newly added user assignee should be persisted");
+    assertTrue(
+        fetched.getAssignees().stream().anyMatch(ref -> ref.getId().equals(shared.TEAM1.getId())),
+        "Newly added team assignee should be persisted");
+  }
+
+  @Test
+  void testPatchReviewersWithMinimalReferences(TestNamespace ns) {
+    // Reviewers are diffed and sorted exactly like assignees, so they carry the same regression.
+    // Unlike assignees they cannot mix a team with users, so this uses two users.
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("patch-multi-reviewer"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()))
+            .withReviewers(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = createEntity(request);
+
+    String patch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/reviewers\",\"value\":"
+                + "[{\"id\":\"%s\",\"type\":\"user\"},{\"id\":\"%s\",\"type\":\"user\"}]}]",
+            shared.USER2.getId(), shared.USER3.getId());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            patch,
+            org.openmetadata.sdk.network.RequestOptions.builder()
+                .header("Content-Type", "application/json-patch+json")
+                .build());
+
+    Task fetched = SdkClients.adminClient().tasks().get(task.getId().toString(), "reviewers");
+
+    assertEquals(2, fetched.getReviewers().size(), "Both reviewers should be persisted");
+    assertTrue(
+        fetched.getReviewers().stream().anyMatch(ref -> ref.getId().equals(shared.USER2.getId())),
+        "First reviewer should be persisted");
+    assertTrue(
+        fetched.getReviewers().stream().anyMatch(ref -> ref.getId().equals(shared.USER3.getId())),
+        "Second reviewer should be persisted");
+  }
+
+  @Test
+  void testTaskRemainsEditableAfterAssigneeIsHardDeleted(TestNamespace ns) {
+    // A user can be permanently deleted while tasks still reference them. Hydration must label the
+    // dangling reference rather than reject it, otherwise every later edit of an unrelated field
+    // would fail and the task would be stuck.
+    SharedEntities shared = SharedEntities.get();
+    String userName = "orphanassignee_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = userName + "@test.om.org";
+    User victim =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(userName).withEmail(email));
+
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("orphan-assignee-task"))
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval)
+                .withAssignees(
+                    List.of(victim.getFullyQualifiedName(), shared.USER1.getFullyQualifiedName())));
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/users/" + victim.getId() + "?hardDelete=true&recursive=false",
+            null,
+            org.openmetadata.sdk.network.RequestOptions.builder().build());
+
+    String patch = "[{\"op\":\"replace\",\"path\":\"/priority\",\"value\":\"High\"}]";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/tasks/" + task.getId(),
+            patch,
+            org.openmetadata.sdk.network.RequestOptions.builder()
+                .header("Content-Type", "application/json-patch+json")
+                .build());
+
+    Task fetched = SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees");
+    assertEquals(
+        TaskPriority.High,
+        fetched.getPriority(),
+        "Unrelated field edits must still succeed when an assignee no longer resolves");
+  }
+
+  @Test
   void testFilerCannotChangePriorityViaPatch(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
     CreateTask request =
