@@ -93,7 +93,9 @@ const PipelineStateToAppRunStatusMap: Record<string, Status> = {
   [PipelineState.Queued]: Status.Pending,
   [PipelineState.Success]: Status.Success,
   [PipelineState.Failed]: Status.Failed,
-  [PipelineState.PartialSuccess]: Status.Failed,
+  // A partial run finished with warnings, not failures: the agent widgets and the
+  // AI Automations pages both count it as successful.
+  [PipelineState.PartialSuccess]: Status.Success,
   [PipelineState.Running]: Status.Running,
   [PipelineState.Stopped]: Status.Stopped,
 };

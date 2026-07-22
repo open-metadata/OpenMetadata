@@ -12,7 +12,6 @@
  */
 
 import { NO_RUNS_STATUS } from '../../constants/ServiceInsightsTab.constants';
-import { CollateAgentAutomation } from '../../rest/applicationAPI';
 import {
   AppRunRecord,
   Status,
@@ -24,6 +23,7 @@ import {
 import { WorkflowInstance } from '../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../generated/governance/workflows/workflowInstanceState';
 import { ServicesType } from '../../interface/service.interface';
+import { CollateAgentAutomation } from '../../rest/applicationAPI';
 import {
   ChartData,
   ChartSeriesData,

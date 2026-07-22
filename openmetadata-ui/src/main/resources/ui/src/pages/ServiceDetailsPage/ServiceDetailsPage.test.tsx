@@ -1543,6 +1543,7 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
       });
+
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
     });
 

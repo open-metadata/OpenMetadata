@@ -216,7 +216,10 @@ const ServiceInsightsTab = ({
 
       sessionIdRef.current = sessionId;
     }
-  }, [serviceName, sessionIdRef.current]);
+    // The entity link is built from the service FQN, so the callback has to be
+    // rebuilt once the service resolves. Without it the session opens with an
+    // empty link and the stream reports no workflow instances.
+  }, [serviceName, serviceCategory, serviceDetails.fullyQualifiedName]);
 
   const getAgentStatuses = async () => {
     try {

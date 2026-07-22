@@ -43,7 +43,6 @@ import {
   TIER_AUTOMATION_TEMPLATE,
 } from '../constants/Applications.constant';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import type { CollateAgentAutomation } from '../rest/applicationAPI';
 import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
   PipelineType,
@@ -54,6 +53,7 @@ import {
   WorkflowStatus,
   type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
+import type { CollateAgentAutomation } from '../rest/applicationAPI';
 import { t } from './i18next/LocalUtil';
 
 export const getAgentIconFromType = (agentType: string) => {

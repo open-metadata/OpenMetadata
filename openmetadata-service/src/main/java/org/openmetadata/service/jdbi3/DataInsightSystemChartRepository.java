@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
@@ -36,6 +37,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
@@ -148,15 +150,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     return index;
   }
 
-  /**
-   * Fetch ingestion pipeline status for a specific service
-   * @param serviceName Service name to search for
-   * @return List of pipeline statuses for the service
-   */
   // AI Automations are a Collate entity; referenced by type name so this compiles without it.
   private static final String AI_AUTOMATION = "aiAutomation";
 
-  private static final String NO_RUNS_STATUS = "noRuns";
+  private static final String NO_RUNS_STATUS = "NO_RUNS";
   private static final long AUTOMATION_STATUS_WINDOW_MS = 24 * 60 * 60 * 1000L;
   // Service types AutoPilot creates automations for; the automation hangs off the service.
   private static final List<String> SERVICE_TYPES_WITH_AUTOMATIONS =
@@ -165,53 +162,96 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   /**
    * Status of the AI Automations AutoPilot runs for a service, for the live agent panel.
    *
-   * <p>Automations are a Collate entity, so they are reached through the entity registry by type
-   * name rather than a compile-time repository: the type is absent in an OSS-only deployment, in
-   * which case this returns empty. Each automation owns its ingestion pipeline through a CONTAINS
-   * relationship, and the pipeline's latest status is the automation's latest run.
+   * <p>Automations are a Collate entity, so they are reached by type name through their CONTAINS
+   * relationship to the service rather than through a compile-time repository. An OSS-only
+   * deployment holds no such relationships, so this returns empty there. Each automation owns its
+   * ingestion pipeline the same way, and the pipeline's latest status is its latest run.
+   *
+   * @param entityLink the streamed service link, e.g. {@code <#E::databaseService::mysql_prod>}
+   * @param serviceName the session's service name, used when the link is absent
    */
-  private List<Map> getAutomationStatus(String serviceName) {
+  private List<Map> getAutomationStatus(String entityLink, String serviceName) {
     List<Map> automationStatus = new ArrayList<>();
-    if (serviceName == null || serviceName.trim().isEmpty()) {
-      return automationStatus;
-    }
     try {
-      EntityRepository<?> automationRepository = Entity.getEntityRepository(AI_AUTOMATION);
       IngestionPipelineRepository pipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(INGESTION_PIPELINE);
-      if (automationRepository == null || pipelineRepository == null) {
-        return automationStatus;
-      }
-      for (EntityReference automation : listServiceAutomations(serviceName)) {
+      for (EntityReference automation : listServiceAutomations(entityLink, serviceName)) {
         Map<String, Object> status = buildAutomationStatus(automation, pipelineRepository);
         if (status != null) {
           automationStatus.add(status);
         }
       }
     } catch (EntityNotFoundException e) {
-      // aiAutomation is not registered (OSS-only deployment): nothing to stream.
-      LOG.debug("AI Automations not available, skipping automation status");
+      // The service the session streams was deleted, so it has no automations to report.
+      LOG.debug("AI Automations not available for {}: {}", entityLink, e.getMessage());
     } catch (Exception e) {
-      LOG.error("Error fetching AI Automation status for service {}", serviceName, e);
+      LOG.error("Error fetching AI Automation status for {}", entityLink, e);
     }
     return automationStatus;
   }
 
-  /** The service owns its automations through a CONTAINS relationship. */
-  private List<EntityReference> listServiceAutomations(String serviceName) {
-    for (String serviceType : SERVICE_TYPES_WITH_AUTOMATIONS) {
+  /**
+   * The service owns its automations through a CONTAINS relationship.
+   *
+   * <p>The link pins the service type, so it is the unambiguous path. A session opened before the
+   * service finished loading carries no link, in which case probing by name still reports the
+   * automations rather than leaving the panel with nothing to show.
+   */
+  private List<EntityReference> listServiceAutomations(String entityLink, String serviceName) {
+    EntityLink serviceLink = parseServiceLink(entityLink);
+    return serviceLink == null
+        ? automationsByName(serviceName)
+        : automationsOf(serviceLink.getEntityType(), serviceLink.getEntityFQN());
+  }
+
+  private List<EntityReference> automationsOf(String serviceType, String serviceFqn) {
+    EntityInterface service =
+        (EntityInterface) Entity.getEntityByName(serviceType, serviceFqn, "", Include.NON_DELETED);
+    return Entity.getEntityRepository(serviceType)
+        .findTo(service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
+  }
+
+  /** Names are unique only within a service type, so the first type holding automations wins. */
+  private List<EntityReference> automationsByName(String serviceName) {
+    List<EntityReference> automations = List.of();
+    if (!nullOrEmpty(serviceName)) {
+      automations =
+          SERVICE_TYPES_WITH_AUTOMATIONS.stream()
+              .map(serviceType -> automationsOrEmpty(serviceType, serviceName))
+              .filter(found -> !found.isEmpty())
+              .findFirst()
+              .orElseGet(List::of);
+    }
+    return automations;
+  }
+
+  private List<EntityReference> automationsOrEmpty(String serviceType, String serviceName) {
+    List<EntityReference> automations = List.of();
+    try {
+      automations = automationsOf(serviceType, serviceName);
+    } catch (EntityNotFoundException e) {
+      // The name belongs to a different service type, if any.
+    }
+    return automations;
+  }
+
+  /**
+   * The link identifies the service the session streams. Service names are unique only within a
+   * service type, so the link's type is what pins the lookup to one service.
+   */
+  private EntityLink parseServiceLink(String entityLink) {
+    EntityLink serviceLink = null;
+    if (entityLink != null && !entityLink.trim().isEmpty()) {
       try {
-        EntityInterface service =
-            (EntityInterface)
-                Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
-        EntityRepository<?> serviceRepository = Entity.getEntityRepository(serviceType);
-        return serviceRepository.findTo(
-            service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
-      } catch (Exception e) {
-        // Not this service type, try the next.
+        EntityLink parsed = EntityLink.parse(entityLink);
+        if (SERVICE_TYPES_WITH_AUTOMATIONS.contains(parsed.getEntityType())) {
+          serviceLink = parsed;
+        }
+      } catch (IllegalArgumentException e) {
+        LOG.debug("Skipping automation status for unparseable entity link {}", entityLink);
       }
     }
-    return List.of();
+    return serviceLink;
   }
 
   private Map<String, Object> buildAutomationStatus(
@@ -271,6 +311,12 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     };
   }
 
+  /**
+   * Fetch ingestion pipeline status for a specific service
+   *
+   * @param serviceName Service name to search for
+   * @return List of pipeline statuses for the service
+   */
   private List<Map> getIngestionPipelineStatus(String serviceName) {
     List<Map> combinedStatus = new ArrayList<>();
     final int pageSize = 100;
@@ -630,7 +676,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           existingSession.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(serviceName),
-          getAutomationStatus(serviceName),
+          getAutomationStatus(existingSession.getEntityLink(), serviceName),
           getWorkflowInstances(
               existingSession.getEntityLink(),
               existingSession.getDataStartTime(),
@@ -735,7 +781,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         STREAM_DURATION_MS,
         UPDATE_INTERVAL_MS,
         getIngestionPipelineStatus(serviceName),
-        getAutomationStatus(serviceName),
+        getAutomationStatus(entityLink, serviceName),
         getWorkflowInstances(entityLink, startTime, endTime));
 
     // Schedule the streaming task
@@ -827,7 +873,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           session.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(session.getServiceName()),
-          getAutomationStatus(session.getServiceName()),
+          getAutomationStatus(session.getEntityLink(), session.getServiceName()),
           getWorkflowInstances(
               session.getEntityLink(), session.getDataStartTime(), session.getDataEndTime()));
 
@@ -883,7 +929,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           remainingTime,
           UPDATE_INTERVAL_MS,
           ingestionPipelineStatus,
-          getAutomationStatus(session.getServiceName()),
+          getAutomationStatus(session.getEntityLink(), session.getServiceName()),
           workflowInstances);
 
     } catch (IOException e) {

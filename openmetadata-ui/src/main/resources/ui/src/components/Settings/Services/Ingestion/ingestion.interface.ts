@@ -14,11 +14,11 @@
 import { AirflowStatusContextType } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { CollateAgentAutomation } from '../../../../rest/applicationAPI';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ServicesType } from '../../../../interface/service.interface';
+import { CollateAgentAutomation } from '../../../../rest/applicationAPI';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 

@@ -16,11 +16,11 @@ import {
   AppRunRecord,
   Status,
 } from '../generated/entity/applications/appRunRecord';
+import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   WorkflowInstance,
   WorkflowStatus,
 } from '../generated/governance/workflows/workflowInstance';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   AutomationPipelineRun,
   CollateAgentAutomation,
@@ -98,13 +98,13 @@ describe('automationRunToAppRunRecord', () => {
   });
 
   it('measures an unfinished run against the current time', () => {
-    jest.spyOn(Date, 'now').mockReturnValue(9_000);
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(9_000);
 
     expect(
       automationRunToAppRunRecord(run({ endDate: undefined })).executionTime
     ).toBe(8_000);
 
-    jest.spyOn(Date, 'now').mockRestore();
+    nowSpy.mockRestore();
   });
 
   it('leaves execution time unset when the run has no start date', () => {
@@ -145,7 +145,7 @@ describe('automationRunToAppRunRecord', () => {
     [PipelineState.Queued, Status.Pending],
     [PipelineState.Success, Status.Success],
     [PipelineState.Failed, Status.Failed],
-    [PipelineState.PartialSuccess, Status.Failed],
+    [PipelineState.PartialSuccess, Status.Success],
     [PipelineState.Running, Status.Running],
     [PipelineState.Stopped, Status.Stopped],
   ])('maps pipeline state %s to app run status %s', (state, expected) => {
