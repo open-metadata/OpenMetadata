@@ -336,16 +336,14 @@ export default defineConfig({
           },
         ]
       : []),
-    // Planned global-state projects share one single-worker lane backed by their own
-    // database/search clone. Legacy runs retain the Chromium dependency because they
-    // share one mutable environment.
+    // Each planned matrix job restores its own database/search clone. These projects
+    // share one single-worker job, while legacy runs retain the Chromium dependency
+    // because they share one mutable environment.
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: hasDedicatedIngestionLane
-        ? authDependencies
-        : ['setup', 'chromium'],
+      dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
     },
@@ -353,9 +351,7 @@ export default defineConfig({
       name: 'IntakeForm',
       testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: hasDedicatedIngestionLane
-        ? authDependencies
-        : ['setup', 'chromium'],
+      dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
       grep: shardGrep,
       fullyParallel: false,
     },
