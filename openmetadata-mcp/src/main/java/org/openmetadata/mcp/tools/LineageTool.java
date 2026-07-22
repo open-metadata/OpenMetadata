@@ -16,7 +16,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
-public class LineageTool implements McpTool<Map<String, Object>> {
+public class LineageTool implements McpTool {
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer,

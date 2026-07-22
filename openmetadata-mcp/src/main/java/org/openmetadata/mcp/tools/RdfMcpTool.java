@@ -21,7 +21,7 @@ import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
-abstract class RdfMcpTool<T> implements McpTool<T> {
+abstract class RdfMcpTool<T> implements TypedMcpTool<T> {
 
   private final Supplier<RdfRepository> repositorySupplier;
 

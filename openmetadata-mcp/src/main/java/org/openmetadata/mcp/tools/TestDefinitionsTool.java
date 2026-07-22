@@ -22,7 +22,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
-public class TestDefinitionsTool implements McpTool<Map<String, Object>> {
+public class TestDefinitionsTool implements McpTool {
 
   private static final int DEFAULT_LIMIT = 10;
   private static final int MAX_LIMIT = 50;

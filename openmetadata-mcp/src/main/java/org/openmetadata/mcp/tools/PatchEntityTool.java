@@ -22,7 +22,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class PatchEntityTool implements McpTool<Map<String, Object>> {
+public class PatchEntityTool implements McpTool {
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {

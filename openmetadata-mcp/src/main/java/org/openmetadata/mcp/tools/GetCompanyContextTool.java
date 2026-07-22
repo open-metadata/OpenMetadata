@@ -20,7 +20,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Fetches a single Company Context knowledge pill (a {@link ContextMemory}) by FQN. */
 @Slf4j
-public class GetCompanyContextTool implements McpTool<Map<String, Object>> {
+public class GetCompanyContextTool implements McpTool {
 
   private static final String NOT_A_SHARED_PILL_ERROR =
       "Requested entity is not a shared Company Context knowledge pill";

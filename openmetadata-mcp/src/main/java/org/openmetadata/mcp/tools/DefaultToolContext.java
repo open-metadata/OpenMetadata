@@ -72,7 +72,7 @@ public class DefaultToolContext {
     Map<String, Object> params = request.arguments();
     Object result;
     try {
-      McpTool<?> tool;
+      McpTool tool;
       switch (toolName) {
         case "search_metadata":
           tool = new SearchMetadataTool();

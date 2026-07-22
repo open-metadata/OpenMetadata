@@ -20,7 +20,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
-public class GetEntityTool implements McpTool<Map<String, Object>> {
+public class GetEntityTool implements McpTool {
 
   // Fields to exclude from response to optimize LLM context usage
   // These fields are typically verbose and not useful for LLM understanding

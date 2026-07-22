@@ -30,7 +30,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns one deterministic, line-bounded part of a persona's shared AI context document. */
-public class GetPersonaContextTool implements McpTool<Map<String, Object>> {
+public class GetPersonaContextTool implements McpTool {
   private static final int PART_RESPONSE_BUDGET = McpResponseTrim.MAX_RESPONSE_CHARS - 10_000;
 
   @Override

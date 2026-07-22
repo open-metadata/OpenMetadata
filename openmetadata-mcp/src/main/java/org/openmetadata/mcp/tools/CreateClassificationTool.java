@@ -22,7 +22,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateClassificationTool implements McpTool<Map<String, Object>> {
+public class CreateClassificationTool implements McpTool {
 
   @Override
   public Map<String, Object> execute(

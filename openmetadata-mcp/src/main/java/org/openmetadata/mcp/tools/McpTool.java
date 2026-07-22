@@ -6,12 +6,12 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
-public interface McpTool<T> {
-  T execute(
+public interface McpTool {
+  Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException;
 
-  T execute(
+  Map<String, Object> execute(
       Authorizer authorizer,
       Limits limits,
       CatalogSecurityContext securityContext,

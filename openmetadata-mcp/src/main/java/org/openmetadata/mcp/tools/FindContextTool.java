@@ -29,7 +29,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * per asset before being returned.
  */
 @Slf4j
-public class FindContextTool implements McpTool<Map<String, Object>> {
+public class FindContextTool implements McpTool {
   private static final int DEFAULT_SIZE = 10;
   private static final int MAX_SIZE = 50;
   private static final String FORMAT_JSON = "json";

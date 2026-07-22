@@ -40,7 +40,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  * the tool — the repository and its UI/RCA callers are untouched.
  */
 @Slf4j
-public class GetLineageTool implements McpTool<Map<String, Object>> {
+public class GetLineageTool implements McpTool {
 
   // Defaults matching ai-platform GetLineageTool.kt for consistency
   private static final int DEFAULT_DEPTH = 3;
