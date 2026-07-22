@@ -161,10 +161,15 @@ jobs:
       - name: Commit and push changes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
+          HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref || github.event.inputs.branch }}
+        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
         run: |
           git commit -m "Update generated TypeScript types"
-          git push --force-with-lease "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:${{ github.event.pull_request.head.ref }}"
+          # checkout ran with persist-credentials: false, so re-attach the token to origin.
+          # Pushing to a bare URL instead would break --force-with-lease: it has no
+          # remote-tracking ref to lease against and the push is rejected as "stale info".
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push --force-with-lease origin "HEAD:${HEAD_REF}"
 
       - name: Create PR comment about auto-update
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
