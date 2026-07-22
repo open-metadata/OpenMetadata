@@ -151,10 +151,7 @@ class LifeCycleQueryMixin:
                 entity=Table,
                 entity_name=self.context.get().table,
                 entity_fqn=table_fqn,
-                query=self.life_cycle_query.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                ),
+                query=self.get_life_cycle_query(),
             )
         except Exception as exc:
             yield Either(
