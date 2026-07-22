@@ -480,8 +480,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         (which is only exposed at region/org level). Otherwise we fall back to the
         dataset-scoped created-only query.
         """
-        database = self.context.get().database
-        schema_name = self.context.get().database_schema
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
         region = self._get_schema_region(schema_name)
         if region:
             query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(

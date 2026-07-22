@@ -99,7 +99,7 @@ class LifeCycleQueryMixin:
         """Convert a source timestamp into an AccessDetails, defaulting to the minimum date."""
         source_datetime = value if value else datetime.min
         timestamp_value = datetime_to_timestamp(source_datetime, milliseconds=True)
-        return AccessDetails(timestamp=Timestamp(timestamp_value))
+        return AccessDetails(timestamp=Timestamp(timestamp_value))  # pyright: ignore[reportCallIssue]
 
     def get_life_cycle_data(self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str):  # noqa: UP006
         """
@@ -108,9 +108,11 @@ class LifeCycleQueryMixin:
         try:
             life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
             if life_cycle_data:
-                life_cycle = LifeCycle(created=self._build_access_details(life_cycle_data.created_at))
-                if life_cycle_data.updated_at:
-                    life_cycle.updated = self._build_access_details(life_cycle_data.updated_at)
+                life_cycle = LifeCycle(  # pyright: ignore[reportCallIssue]
+                    created=self._build_access_details(life_cycle_data.created_at)  # pyright: ignore[reportAttributeAccessIssue]
+                )
+                if life_cycle_data.updated_at:  # pyright: ignore[reportAttributeAccessIssue]
+                    life_cycle.updated = self._build_access_details(life_cycle_data.updated_at)  # pyright: ignore[reportAttributeAccessIssue]
 
                 yield Either(right=OMetaLifeCycleData(entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle))
         except Exception as exc:
