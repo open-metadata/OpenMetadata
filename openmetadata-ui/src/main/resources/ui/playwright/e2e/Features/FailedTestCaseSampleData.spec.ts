@@ -131,3 +131,112 @@ test(
     await table.delete(apiContext);
   }
 );
+
+test(
+  'Failed rows sample fetch is gated on failed status',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    // A passing test case — a failed-rows sample can never exist for it, so the
+    // UI must not request one.
+    const passingTestCase = await table.createTestCase(apiContext, {
+      name: `pw_passing_row_count_${uuid()}`,
+    });
+    await table.addTestCaseResult(
+      apiContext,
+      passingTestCase.fullyQualifiedName,
+      {
+        result: 'Passing (fixture)',
+        testCaseStatus: 'Success',
+        testResultValue: [{ name: 'rowCount', value: '100' }],
+        timestamp: Date.now(),
+      }
+    );
+
+    // A failing test case with no computed failed-rows sample stored — the UI
+    // still requests it (status is Failed) but the backend answers 404.
+    const failedTestCase = await table.createTestCase(apiContext, {
+      name: `pw_failing_no_sample_${uuid()}`,
+    });
+    await table.addTestCaseResult(
+      apiContext,
+      failedTestCase.fullyQualifiedName,
+      {
+        result: 'Failed (fixture)',
+        testCaseStatus: 'Failed',
+        testResultValue: [{ name: 'rowCount', value: '0' }],
+        timestamp: Date.now(),
+      }
+    );
+
+    await test.step(
+      'passing test case does not request the failed-rows sample',
+      async () => {
+        // Intercept so any failed-rows request is caught the moment it starts,
+        // independent of response timing.
+        let sampleRequested = false;
+        await page.route('**/failedRowsSample', async (route) => {
+          sampleRequested = true;
+          await route.continue();
+        });
+
+        const testCaseDetails = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/dataQuality/testCases/name/') &&
+            res.status() === 200
+        );
+        // The results tab loads its own testCaseResults on the same mount that
+        // would have fired the sample fetch — awaiting it is a deterministic
+        // "the tab has mounted and settled" signal.
+        const testCaseResults = page.waitForResponse(
+          (res) =>
+            res.url().includes('/dataQuality/testCases/testCaseResults/') &&
+            res.request().method() === 'GET'
+        );
+        await page.goto(
+          `test-case/${encodeURIComponent(
+            passingTestCase.fullyQualifiedName
+          )}/test-case-results`
+        );
+        await testCaseDetails;
+        await testCaseResults;
+        await page
+          .locator('[data-testid="test-case-result-tab-container"]')
+          .waitFor({ state: 'visible' });
+
+        await page.unroute('**/failedRowsSample');
+        expect(sampleRequested).toBe(false);
+      }
+    );
+
+    await test.step(
+      'failed test case without a sample gets a 404 and shows no error toast',
+      async () => {
+        const failedRowsSample = page.waitForResponse((res) =>
+          res.url().includes('/failedRowsSample')
+        );
+        await page.goto(
+          `test-case/${encodeURIComponent(
+            failedTestCase.fullyQualifiedName
+          )}/test-case-results`
+        );
+        const response = await failedRowsSample;
+        expect(response.status()).toBe(404);
+
+        await page
+          .locator('[data-testid="test-case-result-tab-container"]')
+          .waitFor({ state: 'visible' });
+
+        // The 404 is the expected "no sample stored" empty state — it must not
+        // surface as an error toast.
+        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+      }
+    );
+
+    // Cleanup
+    await table.delete(apiContext);
+  }
+);

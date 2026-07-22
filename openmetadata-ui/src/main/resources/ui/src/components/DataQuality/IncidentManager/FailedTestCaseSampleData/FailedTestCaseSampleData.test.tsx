@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import React, { Fragment } from 'react';
-import { TestCase } from '../../../../generated/tests/testCase';
+import {
+  TestCase,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import FailedTestCaseSampleData from './FailedTestCaseSampleData.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -164,6 +169,7 @@ const mockTestCase: TestCase = {
   fullyQualifiedName: FQN,
   inspectionQuery: 'SELECT * FROM t',
   entityLink: '<#E::table::svc.db.schema.table>',
+  testCaseResult: { testCaseStatus: TestCaseStatus.Failed },
 } as TestCase;
 
 describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', () => {
@@ -196,5 +202,73 @@ describe('FailedTestCaseSampleData - observabilityRouterClassBase migration', ()
       FQN,
       TestCasePageTabs.SQL_QUERY
     );
+  });
+});
+
+describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getTestCaseFailedSampleData as jest.Mock).mockResolvedValue({
+      columns: ['c1'],
+      rows: [['r1']],
+    });
+  });
+
+  it('should fetch the failed-rows sample when the test case has failed', async () => {
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledWith(mockTestCase.id)
+    );
+  });
+
+  it('should not fetch the failed-rows sample when the test case is not failed', async () => {
+    const passingTestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+    } as TestCase;
+
+    render(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
+
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).not.toHaveBeenCalled()
+    );
+  });
+
+  it('should not fetch when the test case has no result yet', async () => {
+    const noResultTestCase = {
+      ...mockTestCase,
+      testCaseResult: undefined,
+    } as TestCase;
+
+    render(<FailedTestCaseSampleData testCaseData={noResultTestCase} />);
+
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).not.toHaveBeenCalled()
+    );
+  });
+
+  it('should silently ignore a 404 (no sample stored) without toasting', async () => {
+    (getTestCaseFailedSampleData as jest.Mock).mockRejectedValueOnce({
+      response: { status: 404 },
+    } as AxiosError);
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalled()
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('should surface a non-404 error (e.g. 500) via a toast', async () => {
+    const serverError = { response: { status: 500 } } as AxiosError;
+    (getTestCaseFailedSampleData as jest.Mock).mockRejectedValueOnce(
+      serverError
+    );
+
+    render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(serverError));
   });
 });
