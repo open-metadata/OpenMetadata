@@ -87,15 +87,15 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
 
     try {
       await navigateToOntologyExplorer(page);
-      await page.getByTestId('mode-tab-library').click();
+      await page.getByTestId('ontology-library-trigger').click();
 
       await expect(page.getByTestId('ontology-pack-catalogue')).toBeVisible();
-      await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
-        'Available'
-      );
-      await expect(page.getByTestId('ontology-pack-isa-95')).toContainText(
-        'External'
-      );
+      await expect(
+        page.getByTestId('ontology-pack-details-fibo')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-pack-details-isa-95')
+      ).toBeVisible();
 
       await page.getByTestId('ontology-pack-details-fibo').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();
@@ -168,7 +168,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
                 version: FIBO_VERSION,
               },
             ],
-            readOnly: true,
+            readOnly: false,
           },
         });
 
@@ -182,8 +182,12 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       ).toContainText(TARGET_GLOSSARY);
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
 
-      await page.getByTestId('mode-tab-library').click();
+      await page.getByTestId('ontology-library-trigger').click();
       await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+        'Installed'
+      );
+      await page.getByTestId('ontology-pack-fibo').click();
+      await expect(page.getByTestId('ontology-pack-detail')).toContainText(
         `Installed · ${FIBO_VERSION}`
       );
     } finally {

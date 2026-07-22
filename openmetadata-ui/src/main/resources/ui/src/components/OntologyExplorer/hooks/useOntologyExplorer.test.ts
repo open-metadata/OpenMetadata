@@ -236,4 +236,68 @@ describe('useOntologyExplorer', () => {
     expect(mockGetOntologyStudioAssets).not.toHaveBeenCalled();
     expect(mockGetGlossaryTermsAssetCounts).not.toHaveBeenCalled();
   });
+
+  it('loads one bounded asset page when a data cluster requests more', async () => {
+    const termId = '00000000-0000-0000-0000-000000000004';
+    mockGetGlossaryTerms.mockResolvedValue({ data: [], paging: {} });
+    mockGetOntologyStudioDataGraph.mockResolvedValue({
+      clusters: [
+        {
+          assetCount: 101,
+          assets: Array.from({ length: 4 }, (_, index) => ({
+            entity: {
+              id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+              name: `Asset${index}`,
+              type: 'table',
+            },
+          })),
+          term: {
+            fullyQualifiedName: 'LoadedGlossary.PagedTerm',
+            id: termId,
+            name: 'PagedTerm',
+          },
+        },
+      ],
+      edges: [],
+      paging: { limit: 12, offset: 0, total: 1 },
+    });
+    mockGetOntologyStudioAssets.mockResolvedValue({
+      data: [],
+      paging: { limit: 6, offset: 4, total: 101 },
+    });
+    const { result } = renderHook(() =>
+      useOntologyExplorer({ scope: 'global' })
+    );
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    act(() => result.current.handleModeChange('data'));
+    await waitFor(() =>
+      expect(result.current.filteredGraphData?.nodes).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: termId })])
+      )
+    );
+    const termNode = result.current.filteredGraphData?.nodes.find(
+      (node) => node.id === termId
+    );
+
+    expect(termNode).toBeDefined();
+
+    if (!termNode) {
+      throw new Error('Paged term was not loaded into the data graph');
+    }
+    act(() =>
+      result.current.handleGraphNodeClick(termNode, undefined, {
+        dataModeLoadMoreBadgeClick: true,
+      })
+    );
+
+    await waitFor(() =>
+      expect(mockGetOntologyStudioAssets).toHaveBeenCalledWith(
+        termId,
+        6,
+        4,
+        expect.anything()
+      )
+    );
+  });
 });

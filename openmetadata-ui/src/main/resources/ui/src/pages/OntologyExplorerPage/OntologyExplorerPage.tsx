@@ -146,6 +146,7 @@ const OntologyExplorerPage: React.FC = () => {
   const [selectedGlossaryId, setSelectedGlossaryId] = useState<string>();
   const [authoringGlossaryId, setAuthoringGlossaryId] = useState<string>();
   const [pendingGlossaryName, setPendingGlossaryName] = useState<string>();
+  const [explorerRevision, setExplorerRevision] = useState(0);
   const [generatedQuery, setGeneratedQuery] = useState<string>();
   const [isGlossaryMenuOpen, setIsGlossaryMenuOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -193,6 +194,14 @@ const OntologyExplorerPage: React.FC = () => {
 
   const handleGlossariesChange = useCallback((items: Glossary[]) => {
     setGlossaries(items);
+  }, []);
+
+  const handleOpenGlossary = useCallback((glossaryName: string) => {
+    setPendingGlossaryName(glossaryName);
+    setIsLibraryOpen(false);
+    setMode('view');
+    setViewSurface('graph');
+    setExplorerRevision((revision) => revision + 1);
   }, []);
 
   useEffect(() => {
@@ -663,6 +672,7 @@ const OntologyExplorerPage: React.FC = () => {
               height="100%"
               isAuthoringMode={mode === 'edit'}
               isEditMode={mode === 'edit' && editLease.isOwned}
+              key={explorerRevision}
               scope="global"
               showHealth={mode === 'view'}
               surface={explorerSurface}
@@ -688,11 +698,7 @@ const OntologyExplorerPage: React.FC = () => {
               selectedGlossary?.ontologyConfiguration?.installedPacks ?? []
             }
             onClose={() => setIsLibraryOpen(false)}
-            onOpenGlossary={(glossaryName) => {
-              setPendingGlossaryName(glossaryName);
-              setIsLibraryOpen(false);
-              setMode('view');
-            }}
+            onOpenGlossary={handleOpenGlossary}
           />
         ) : null}
       </main>

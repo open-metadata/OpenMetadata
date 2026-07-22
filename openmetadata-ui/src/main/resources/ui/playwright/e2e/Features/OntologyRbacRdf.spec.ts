@@ -82,7 +82,7 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('shows read/query/library routes but removes authoring for a read-only user', async ({
+  test('shows read/query/library access but removes authoring for a read-only user', async ({
     browser,
   }) => {
     const { page, afterAction } = await performUserLogin(browser, reader);
@@ -93,10 +93,10 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
 
       await expect(page.getByTestId('mode-tab-view')).toBeVisible();
       await expect(page.getByTestId('mode-tab-query')).toBeVisible();
-      await expect(page.getByTestId('mode-tab-library')).toBeVisible();
+      await expect(page.getByTestId('ontology-library-trigger')).toBeVisible();
       await expect(page.getByTestId('mode-tab-edit')).toBeHidden();
 
-      await page.getByTestId('mode-tab-library').click();
+      await page.getByTestId('ontology-library-trigger').click();
       await expect(page.getByTestId('ontology-pack-catalogue')).toBeVisible();
       await page.getByTestId('ontology-pack-details-fibo').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();

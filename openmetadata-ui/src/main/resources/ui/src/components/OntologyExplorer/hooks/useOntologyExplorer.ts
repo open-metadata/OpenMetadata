@@ -1372,9 +1372,11 @@ export function useOntologyExplorer({
       if (explorationMode === 'data' && isTermNode(node)) {
         if (meta?.dataModeLoadMoreBadgeClick) {
           const loaded = node.loadedAssetCount ?? 0;
-          const total = node.assetCount ?? termAssetCounts[node.id] ?? 0;
-          const remaining = Math.max(1, total - loaded);
-          void appendTermAssetsForTerm(node, remaining, loaded);
+          void appendTermAssetsForTerm(
+            node,
+            DATA_MODE_ASSET_LOAD_PAGE_SIZE,
+            loaded
+          );
           setSelectedNode(null);
 
           return;

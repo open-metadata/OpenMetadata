@@ -11,13 +11,15 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { Glossary } from '../../generated/entity/data/glossary';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
 interface ExplorerMockProps {
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
+  onGlossariesChange?: (glossaries: Glossary[]) => void;
   showHealth?: boolean;
   surface?: string;
 }
@@ -36,6 +38,7 @@ interface PageLayoutMockProps {
 
 interface LibraryMockProps {
   onClose?: () => void;
+  onOpenGlossary?: (glossaryName: string) => void;
 }
 
 const mockOntologyExplorer = jest.fn<void, [ExplorerMockProps]>();
@@ -101,10 +104,15 @@ jest.mock('../../components/OntologyExplorer', () => ({
 
 jest.mock('../../components/OntologyExplorer/OntologyLibrary', () => ({
   __esModule: true,
-  default: jest.fn(({ onClose }: LibraryMockProps) => (
+  default: jest.fn(({ onClose, onOpenGlossary }: LibraryMockProps) => (
     <div data-testid="ontology-library">
       <button type="button" onClick={onClose}>
         Close library
+      </button>
+      <button
+        type="button"
+        onClick={() => onOpenGlossary?.('InstalledGlossary')}>
+        Open installed glossary
       </button>
     </div>
   )),
@@ -295,6 +303,33 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close library' }));
 
     expect(screen.queryByTestId('ontology-library')).not.toBeInTheDocument();
+  });
+
+  it('refreshes the explorer and selects a glossary opened from the library', () => {
+    render(<OntologyExplorerPage />);
+
+    const originalExplorer = screen.getByTestId('ontology-explorer');
+
+    fireEvent.click(screen.getByTestId('ontology-library-trigger'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Open installed glossary' })
+    );
+
+    expect(screen.queryByTestId('ontology-library')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-explorer')).not.toBe(originalExplorer);
+
+    const explorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
+    const installedGlossary: Glossary = {
+      description: 'Installed ontology pack',
+      id: 'installed-glossary-id',
+      name: 'InstalledGlossary',
+    };
+
+    act(() => explorerProps?.onGlossariesChange?.([installedGlossary]));
+
+    expect(
+      screen.getByTestId('ontology-glossary-menu-trigger')
+    ).toHaveTextContent(installedGlossary.name);
   });
 
   it('does not expose Edit mode to a read-only user', () => {
