@@ -179,11 +179,14 @@ ORDER BY procedure_start_time DESC
 BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
 select
-table_name as table_name,
-creation_time as created_at
-from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES
-where table_schema = '{schema_name}'
-and table_catalog = '{database_name}'
+t.table_name as table_name,
+t.creation_time as created_at,
+s.storage_last_modified_time as updated_at
+from `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLES t
+left join `{database_name}`.`{schema_name}`.INFORMATION_SCHEMA.TABLE_STORAGE s
+on t.table_name = s.table_name
+where t.table_schema = '{schema_name}'
+and t.table_catalog = '{database_name}'
 """
 )
 

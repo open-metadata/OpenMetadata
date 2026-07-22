@@ -59,6 +59,7 @@ from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
+    BIGQUERY_LIFE_CYCLE_QUERY,
 )
 
 mock_bq_config = {
@@ -429,6 +430,13 @@ class BigqueryUnitTest(TestCase):
             ),
             EXPECTED_URL,
         )
+
+    def test_life_cycle_query_selects_last_modified(self):
+        query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME)
+
+        self.assertIn("creation_time as created_at", query)
+        self.assertIn("storage_last_modified_time as updated_at", query)
+        self.assertIn("INFORMATION_SCHEMA.TABLE_STORAGE", query)
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
     def test_yield_database(self, get_database_tag_labels):
