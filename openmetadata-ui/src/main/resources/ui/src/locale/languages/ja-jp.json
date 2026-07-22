@@ -3408,6 +3408,7 @@
     "find-apps-to-improve-data": "データを改善するアプリケーションを探す",
     "find-in-table": "テーブル内で検索",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "フィールドを選択すると、ここにヒントが表示されます。",
     "fosters-collaboration-among-producers-and-consumers": "データの生産者と消費者の間での協力を促進します。",
     "freshness-sla-description": "<0>{{label}}</0>: データは過去<0>{{data}}</0>以内に更新される必要があります",
     "get-started-with-open-metadata": "{{brandName}} を始めましょう",

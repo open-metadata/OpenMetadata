@@ -3408,6 +3408,7 @@
     "find-apps-to-improve-data": "查找应用以改进您的数据",
     "find-in-table": "在数据表中查找",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "选择任意字段以在此处查看提示。",
     "fosters-collaboration-among-producers-and-consumers": "促进数据生产者和使用者之间的合作",
     "freshness-sla-description": "<0>{{label}}</0>：数据必须在过去 <0>{{data}}</0> 内更新。",
     "get-started-with-open-metadata": "开始使用 {{brandName}}",

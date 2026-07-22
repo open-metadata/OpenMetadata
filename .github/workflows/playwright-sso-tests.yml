@@ -27,6 +27,9 @@ name: SSO Playwright E2E Tests
 
 on:
   merge_group:
+  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
+  # it there. pull_request_target remains only for PRs targeting release
+  # branches, which have no merge queue.
   pull_request_target:
     types:
       - labeled
@@ -34,6 +37,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    branches-ignore:
+      - main
     paths:
       - "openmetadata-ui/src/main/resources/ui/src/components/Auth/**"
       - "openmetadata-ui/src/main/resources/ui/src/rest/auth-API*"
@@ -87,12 +92,6 @@ jobs:
         provider: ${{ github.event_name == 'pull_request_target' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
 
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
