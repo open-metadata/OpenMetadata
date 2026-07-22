@@ -119,5 +119,3 @@ Legacy in-process inference is bounded by `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` 
 The complete-lineage endpoint intentionally does not impose a row limit on its property-path query. Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed expands at most 100 related graph candidates before reranking to the caller's requested result limit. Use the complete-lineage endpoint or direct SPARQL for exhaustive graph traversal.
 
 For local startup and API examples, see [RDF/Apache Jena Local Development Guide](rdf-local-development.md).
-
-Ontology Studio configuration, security, and release checks are documented in [Ontology Studio 2.0](ontology-studio-2.0.md).
