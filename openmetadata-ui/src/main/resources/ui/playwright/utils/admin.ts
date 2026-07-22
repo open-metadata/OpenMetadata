@@ -83,7 +83,12 @@ export const createAdminApiContext = async (): Promise<{
 };
 
 export const performAdminLogin = async (browser: Browser) => {
-  const page = await browser.newPage();
+  const page = await browser.newPage({
+    storageState:
+      process.env.PW_PRESEEDED_STATE === 'true'
+        ? 'playwright/.auth/admin.json'
+        : undefined,
+  });
   await authenticateAdminPage(page);
   await redirectToHomePage(page);
 
