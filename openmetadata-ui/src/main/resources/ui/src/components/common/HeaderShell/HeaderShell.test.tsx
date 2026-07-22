@@ -84,6 +84,24 @@ describe('HeaderShell', () => {
     expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
+  it('allows the actions container to fill the remaining row', () => {
+    const { container } = render(
+      <HeaderShell
+        actions={<button data-testid="actions">Add</button>}
+        actionsLayout="fill"
+        title="With Fill Actions"
+      />
+    );
+
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass(
+      'tw:min-w-0',
+      'tw:flex-1'
+    );
+    expect(container.querySelector('.tw\\:ml-auto')).not.toHaveClass(
+      'tw:shrink-0'
+    );
+  });
+
   it('applies the Figma gradient and brand border on the gradient variant', () => {
     render(<HeaderShell title="Gradient" variant="gradient" />);
 
