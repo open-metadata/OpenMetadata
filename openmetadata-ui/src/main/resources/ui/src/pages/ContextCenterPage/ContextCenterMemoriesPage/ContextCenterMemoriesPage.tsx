@@ -740,23 +740,24 @@ const ContextCenterMemoriesPage: FC = () => {
                       strokeWidth={2.5}
                     />
                   </AriaButton>
-                  <Dropdown.Popover className="tw:flex tw:flex-col tw:max-h-80!">
-                    <div className="tw:p-2 tw:border-b tw:border-secondary">
-                      <Input
-                        autoFocus
-                        className="tw:w-full"
-                        icon={SearchLg}
-                        placeholder={t('label.search-entity', {
-                          entity: t('label.author'),
-                        })}
-                        value={authorSearch}
-                        onChange={(value) => {
-                          setAuthorSearch(value);
-                        }}
-                      />
-                    </div>
+                  <Dropdown.Popover>
+                    <div className="tw:flex tw:flex-col tw:max-h-80 tw:overflow-hidden">
+                      <div className="tw:shrink-0 tw:p-2 tw:border-b tw:border-secondary">
+                        <Input
+                          autoFocus
+                          className="tw:w-full"
+                          icon={SearchLg}
+                          placeholder={t('label.search-entity', {
+                            entity: t('label.author'),
+                          })}
+                          value={authorSearch}
+                          onChange={(value) => {
+                            setAuthorSearch(value);
+                          }}
+                        />
+                      </div>
+                      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto">
                     <Dropdown.Menu
-                      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
                       selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                       selectionMode="single"
                       onAction={(key) => {
@@ -826,6 +827,8 @@ const ContextCenterMemoriesPage: FC = () => {
                         </Typography>
                       </Box>
                     )}
+                      </div>
+                    </div>
                   </Dropdown.Popover>
                 </Dropdown.Root>
               </Box>
