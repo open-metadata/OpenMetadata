@@ -14,6 +14,7 @@ workspace_root=${GITHUB_WORKSPACE:-$(pwd)}
 runtime_root="/dev/shm/openmetadata-playwright-${GITHUB_RUN_ID:-local}-${PW_SHARD_ID:-local}"
 compose_file="docker/development/docker-compose-postgres.yml"
 fast_compose_file="docker/development/docker-compose-playwright-fast.yml"
+fingerprint_script="$workspace_root/.github/scripts/playwright_cache_fingerprint.py"
 
 if [[ ! -d /dev/shm ]]; then
   echo "/dev/shm is required for the Playwright fast environment" >&2
@@ -59,25 +60,29 @@ if [[ ! -f "$manifest" ]]; then
   exit 1
 fi
 
-current_schema_hash=$(
-  git ls-files -z bootstrap/sql openmetadata-spec |
-    sort -z |
-    xargs -0 sha256sum |
-    sha256sum |
-    cut -d ' ' -f1
-)
-current_seed_hash=$(
-  git ls-files -z ingestion/examples/sample_data ingestion/pipelines/sample_data.yaml ingestion/pipelines/extended_sample_data.yaml |
-    sort -z |
-    xargs -0 sha256sum |
-    sha256sum |
-    cut -d ' ' -f1
-)
-if [[ "$(jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)" ||
+current_fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)
+current_schema_hash=$(python3 "$fingerprint_script" --kind schema)
+current_seed_hash=$(python3 "$fingerprint_script" --kind seed)
+current_seed_version=$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' pom.xml | head -1)
+if [[ "$(jq -r .version "$manifest")" != "2" ||
+      "$(jq -r .compatibilityHash "$manifest")" != "$current_fixture_compatibility_hash" ||
       "$(jq -r .schemaHash "$manifest")" != "$current_schema_hash" ||
       "$(jq -r .seedHash "$manifest")" != "$current_seed_hash" ]]; then
   jq . "$manifest" >&2
-  echo "The Playwright fixture does not match the checked-out source, schema, or seed" >&2
+  echo "The Playwright fixture does not match the fixture format, schema, seed, or setup code" >&2
+  exit 1
+fi
+if [[ "$(jq -r .seedVersion "$manifest")" != "$current_seed_version" ]]; then
+  echo "The Playwright fixture seed version does not match the checked-out source" >&2
+  exit 1
+fi
+if ! jq -e '
+  (.sourceSha | type == "string" and test("^[0-9a-f]{40}$")) and
+  (.createdAt | type == "string" and length > 0) and
+  (.postgresImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$")) and
+  (.opensearchImage | type == "string" and test("^[^ @]+@sha256:[0-9a-f]{64}$"))
+' "$manifest" >/dev/null; then
+  echo "The Playwright fixture has invalid provenance or image digests" >&2
   exit 1
 fi
 if ! PW_SEARCH_CLUSTER_ALIAS=$(
@@ -140,9 +145,32 @@ PW_POSTGRES_IMAGE=$(jq -r .postgresImage "$manifest")
 PW_OPENSEARCH_IMAGE=$(jq -r .opensearchImage "$manifest")
 
 if [[ -n "$ingestion_image_path" ]]; then
+  ingestion_manifest_path="${ingestion_image_path%.tar.zst}.manifest.json"
+  if [[ ! -s "$ingestion_manifest_path" ]]; then
+    echo "The Playwright ingestion image has no sidecar manifest" >&2
+    exit 1
+  fi
+  current_ingestion_compatibility_hash=$(python3 "$fingerprint_script" --kind ingestion)
+  ingestion_archive_hash=$(sha256sum "$ingestion_image_path" | cut -d ' ' -f1)
+  if [[ "$(jq -r .version "$ingestion_manifest_path")" != "1" ||
+        "$(jq -r .compatibilityHash "$ingestion_manifest_path")" != "$current_ingestion_compatibility_hash" ||
+        "$(jq -r .archiveHash "$ingestion_manifest_path")" != "$ingestion_archive_hash" ]]; then
+    jq . "$ingestion_manifest_path" >&2
+    echo "The Playwright ingestion image does not match its source or archive digest" >&2
+    exit 1
+  fi
+  if ! jq -e '
+    (.sourceSha | type == "string" and test("^[0-9a-f]{40}$")) and
+    (.createdAt | type == "string" and length > 0) and
+    (.image | type == "string" and test("^openmetadata-playwright-ingestion:[0-9a-f]{64}$")) and
+    (.imageId | type == "string" and test("^sha256:[0-9a-f]{64}$"))
+  ' "$ingestion_manifest_path" >/dev/null; then
+    echo "The Playwright ingestion image manifest is invalid" >&2
+    exit 1
+  fi
   zstd -dc "$ingestion_image_path" | docker image load >/dev/null
-  ingestion_image=$(jq -r .ingestionImage "$manifest")
-  ingestion_image_id=$(jq -r .ingestionImageId "$manifest")
+  ingestion_image=$(jq -r .image "$ingestion_manifest_path")
+  ingestion_image_id=$(jq -r .imageId "$ingestion_manifest_path")
   if [[ -z "$ingestion_image" || -z "$ingestion_image_id" ||
         "$(docker image inspect "$ingestion_image" --format '{{.Id}}')" != "$ingestion_image_id" ]]; then
     echo "The restored Playwright ingestion image does not match the fixture" >&2
@@ -163,6 +191,15 @@ for service in postgresql opensearch; do
   if [[ "$status" != "healthy" ]]; then
     docker logs "$container_id" >&2
     echo "$service did not become healthy" >&2
+    exit 1
+  fi
+  expected_image="$PW_POSTGRES_IMAGE"
+  if [[ "$service" == "opensearch" ]]; then
+    expected_image="$PW_OPENSEARCH_IMAGE"
+  fi
+  expected_image_id=$(docker image inspect "$expected_image" --format '{{.Id}}')
+  if [[ "$(docker inspect "$container_id" --format '{{.Image}}')" != "$expected_image_id" ]]; then
+    echo "$service did not start from the immutable image declared by the fixture" >&2
     exit 1
   fi
 done
@@ -254,39 +291,21 @@ if ! curl -fsS http://127.0.0.1:8586/healthcheck >/dev/null; then
   exit 1
 fi
 
-admin_storage_state="$playwright_state/auth/admin.json"
 admin_api_token="$playwright_state/auth/admin-api-token.json"
-if ! admin_session=$(
-  jq -er '.cookies[] | select(.name == "OM_SESSION") | .value' "$admin_storage_state"
-); then
-  echo "The restored Playwright admin state has no active session" >&2
-  exit 1
-fi
-token_refresh_url="http://localhost:8585/api/v1/auth/refresh"
-token_refresh_args=(-fsS --retry 4 --retry-all-errors --retry-delay 1 -X POST)
+auth_base_url="http://localhost:8585"
 if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
-  token_refresh_url="https://localhost:8585/api/v1/auth/refresh"
-  token_refresh_args+=(--insecure)
+  auth_base_url="https://localhost:8585"
 fi
-token_refresh_response=$(mktemp "$runtime_root/tmp/admin-token-refresh.XXXXXX")
-if ! curl "${token_refresh_args[@]}" \
-  --cookie "OM_SESSION=$admin_session" \
-  "$token_refresh_url" > "$token_refresh_response"; then
-  echo "Could not refresh the restored Playwright admin session" >&2
+if ! python3 "$workspace_root/.github/scripts/rotate_playwright_auth_state.py" \
+  --auth-dir "$playwright_state/auth" \
+  --base-url "$auth_base_url"; then
+  echo "Could not regenerate the cached Playwright sessions" >&2
   exit 1
 fi
-if ! refreshed_admin_token=$(
-  jq -er '.accessToken | select(type == "string" and length > 0)' "$token_refresh_response"
-); then
-  echo "The admin session refresh returned no access token" >&2
+if ! refreshed_admin_token=$(jq -er '.token | select(type == "string" and length > 0)' "$admin_api_token"); then
+  echo "Session regeneration returned no admin access token" >&2
   exit 1
 fi
-temporary_admin_api_token=$(mktemp "$runtime_root/tmp/admin-api-token.XXXXXX")
-jq -n --arg token "$refreshed_admin_token" '{token: $token}' > "$temporary_admin_api_token"
-chmod 0600 "$temporary_admin_api_token"
-sudo mv "$temporary_admin_api_token" "$admin_api_token"
-sudo chown "$(id -u):$(id -g)" "$admin_api_token"
-rm -f "$token_refresh_response"
 
 seed_search_url="http://localhost:8585/api/v1/search/query"
 seed_search_args=(-fsS --retry 4 --retry-all-errors --retry-delay 1 --get)

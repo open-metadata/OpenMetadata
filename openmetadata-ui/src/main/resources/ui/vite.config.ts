@@ -166,6 +166,7 @@ export default defineConfig(async ({ mode }) => {
           filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
         }),
       mode === 'production' &&
+        !isPlaywrightBundle &&
         viteCompression({
           algorithm: 'brotliCompress',
           ext: '.br',
@@ -289,7 +290,7 @@ export default defineConfig(async ({ mode }) => {
       target: ['chrome93', 'edge93', 'firefox91', 'safari16'],
       minify: mode === 'production' ? 'esbuild' : false,
       cssMinify: 'esbuild',
-      cssCodeSplit: true,
+      cssCodeSplit: !isPlaywrightBundle,
       reportCompressedSize: false,
       chunkSizeWarningLimit: 1500,
       // Vite auto-emits <link rel="modulepreload"> for the entry chunk's
@@ -301,6 +302,12 @@ export default defineConfig(async ({ mode }) => {
       // count, and we're not the right project to be carrying it.
       modulePreload: { polyfill: false },
       rollupOptions: {
+        onwarn(warning, warn) {
+          if (isPlaywrightBundle && warning.code === 'CIRCULAR_CHUNK') {
+            throw new Error(warning.message);
+          }
+          warn(warning);
+        },
         output: {
           entryFileNames: isPlaywrightBuild
             ? 'assets/app-[hash].js'
@@ -324,27 +331,12 @@ export default defineConfig(async ({ mode }) => {
               if (
                 id.includes('node_modules/elkjs') ||
                 id.includes('node_modules/@reactflow') ||
-                id.includes('node_modules/prosemirror') ||
-                id.includes('node_modules/@tiptap') ||
-                id.includes('node_modules/codemirror') ||
-                id.includes('node_modules/@codemirror') ||
-                id.includes('node_modules/recharts')
+                id.includes('node_modules/reactflow')
               ) {
-                return 'vendor-e2e-specialists';
+                return 'vendor-e2e-lineage';
               }
-              if (
-                id.includes('node_modules/react') ||
-                id.includes('node_modules/react-dom') ||
-                id.includes('node_modules/react-router')
-              ) {
-                return 'vendor-e2e-framework';
-              }
-              if (
-                id.includes('node_modules/antd') ||
-                id.includes('@openmetadata/ui-core-components') ||
-                id.includes('@untitledui/icons')
-              ) {
-                return 'vendor-e2e-ui';
+              if (id.includes('node_modules/recharts')) {
+                return 'vendor-e2e-charts';
               }
 
               const packagePath = id.split(/node_modules[\\/]/).pop() ?? id;
@@ -352,12 +344,10 @@ export default defineConfig(async ({ mode }) => {
               const packageName = scopeOrName.startsWith('@')
                 ? `${scopeOrName}/${scopedName}`
                 : scopeOrName;
-              const bucket = [...packageName].reduce(
-                (hash, character) => (hash * 31 + character.charCodeAt(0)) % 8,
-                0
-              );
 
-              return `vendor-e2e-${bucket}`;
+              return ['react', 'react-dom', 'scheduler'].includes(packageName)
+                ? 'vendor-e2e-framework'
+                : 'vendor-e2e-core';
             }
             // Antd remains its own vendor chunk — almost every route touches some
             // part of it, so the cache-sharing argument holds. Tree-shaking inside

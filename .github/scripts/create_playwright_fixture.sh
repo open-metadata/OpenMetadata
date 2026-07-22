@@ -15,6 +15,7 @@ workspace_root=${GITHUB_WORKSPACE:-$(pwd)}
 playwright_root="$workspace_root/openmetadata-ui/src/main/resources/ui/playwright"
 auth_source="$playwright_root/.auth"
 entity_state_source="$playwright_root/output/entity-response-data.json"
+fingerprint_script="$workspace_root/.github/scripts/playwright_cache_fingerprint.py"
 
 cleanup() {
   sudo rm -rf "$stage_dir"
@@ -80,20 +81,10 @@ sudo cp -a "$entity_state_source" "$stage_dir/playwright-state/entity-response-d
 
 postgres_image=$(resolve_digest postgres:15)
 opensearch_image=$(resolve_digest "$opensearch_reference")
-schema_hash=$(
-  git ls-files -z bootstrap/sql openmetadata-spec |
-    sort -z |
-    xargs -0 sha256sum |
-    sha256sum |
-    cut -d ' ' -f1
-)
-seed_hash=$(
-  git ls-files -z ingestion/examples/sample_data ingestion/pipelines/sample_data.yaml ingestion/pipelines/extended_sample_data.yaml |
-    sort -z |
-    xargs -0 sha256sum |
-    sha256sum |
-    cut -d ' ' -f1
-)
+fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)
+ingestion_compatibility_hash=$(python3 "$fingerprint_script" --kind ingestion)
+schema_hash=$(python3 "$fingerprint_script" --kind schema)
+seed_hash=$(python3 "$fingerprint_script" --kind seed)
 seed_version=$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' pom.xml | head -1)
 playwright_state_hash=$(
   cd "$stage_dir/playwright-state"
@@ -104,27 +95,28 @@ playwright_state_hash=$(
     cut -d ' ' -f1
 )
 source_sha=$(git rev-parse HEAD)
-ingestion_image="openmetadata-playwright-ingestion:${source_sha}"
+created_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+ingestion_image="openmetadata-playwright-ingestion:${ingestion_compatibility_hash}"
 docker image tag "$ingestion_image_id" "$ingestion_image"
 jq -n \
   --arg sourceSha "$source_sha" \
+  --arg createdAt "$created_at" \
+  --arg compatibilityHash "$fixture_compatibility_hash" \
   --arg postgresImage "$postgres_image" \
   --arg opensearchImage "$opensearch_image" \
   --arg searchClusterAlias "$search_cluster_alias" \
-  --arg ingestionImage "$ingestion_image" \
-  --arg ingestionImageId "$ingestion_image_id" \
   --arg schemaHash "$schema_hash" \
   --arg seedHash "$seed_hash" \
   --arg seedVersion "$seed_version" \
   --arg playwrightStateHash "$playwright_state_hash" \
   '{
-    version: 1,
+    version: 2,
     sourceSha: $sourceSha,
+    createdAt: $createdAt,
+    compatibilityHash: $compatibilityHash,
     postgresImage: $postgresImage,
     opensearchImage: $opensearchImage,
     searchClusterAlias: $searchClusterAlias,
-    ingestionImage: $ingestionImage,
-    ingestionImageId: $ingestionImageId,
     schemaHash: $schemaHash,
     seedHash: $seedHash,
     seedVersion: $seedVersion,
@@ -140,5 +132,23 @@ echo "Created Playwright fixture at $output_path ($(du -h "$output_path" | cut -
 if [[ -n "$ingestion_output_path" ]]; then
   mkdir -p "$(dirname "$ingestion_output_path")"
   docker image save "$ingestion_image" | zstd -T0 -3 -f -o "$ingestion_output_path"
+  ingestion_archive_hash=$(sha256sum "$ingestion_output_path" | cut -d ' ' -f1)
+  ingestion_manifest_path="${ingestion_output_path%.tar.zst}.manifest.json"
+  jq -n \
+    --arg sourceSha "$source_sha" \
+    --arg createdAt "$created_at" \
+    --arg compatibilityHash "$ingestion_compatibility_hash" \
+    --arg image "$ingestion_image" \
+    --arg imageId "$ingestion_image_id" \
+    --arg archiveHash "$ingestion_archive_hash" \
+    '{
+      version: 1,
+      sourceSha: $sourceSha,
+      createdAt: $createdAt,
+      compatibilityHash: $compatibilityHash,
+      image: $image,
+      imageId: $imageId,
+      archiveHash: $archiveHash
+    }' > "$ingestion_manifest_path"
   echo "Created Playwright ingestion image at $ingestion_output_path ($(du -h "$ingestion_output_path" | cut -f1))"
 fi

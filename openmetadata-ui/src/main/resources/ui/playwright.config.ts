@@ -146,6 +146,11 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    {
+      name: 'bundle-smoke',
+      testMatch: '**/bundle.smoke.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
       name: 'setup',
