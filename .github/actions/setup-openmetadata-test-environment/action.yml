@@ -102,10 +102,26 @@ runs:
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: astral-sh/setup-uv@v7
 
+    # Cache the ingestion Python venv across runs. Key on the ingestion
+    # dep manifests + this action file so a package change or an install
+    # step edit invalidates it. On cache hit, subsequent `uv pip install`
+    # calls are near-no-ops (uv skips already-satisfied packages), which
+    # saves ~2-4 minutes per shard on the postgresql-e2e workflow.
+    - name: Cache ingestion Python venv
+      id: cache-python-venv
+      uses: actions/cache@v4
+      with:
+        path: env
+        key: ${{ runner.os }}-py${{ inputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-py${{ inputs.python-version }}-om-venv-
+
     - name: Generate Models
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
-        python3 -m venv env
+        if [ ! -f env/bin/activate ]; then
+          python3 -m venv env
+        fi
         source env/bin/activate
         sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
