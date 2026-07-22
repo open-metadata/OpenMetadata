@@ -77,7 +77,8 @@ jobs:
           # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
