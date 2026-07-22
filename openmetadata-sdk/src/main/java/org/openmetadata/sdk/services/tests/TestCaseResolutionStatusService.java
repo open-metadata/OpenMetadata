@@ -7,6 +7,7 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.utils.ResultList;
@@ -106,6 +107,23 @@ public class TestCaseResolutionStatusService {
     return new ListResponse<>(result);
   }
 
+  /**
+   * List open incident counts grouped by a dimension (table, testDefinition, or owner).
+   *
+   * @param queryParams Query parameters; `groupBy` is required
+   * @return List of incident groups with counts
+   */
+  public ListResponse<TestCaseIncidentGroup> listIncidentGroups(Map<String, String> queryParams)
+      throws OpenMetadataException {
+    String path = BASE_PATH + "/incidentGroups";
+    if (queryParams != null && !queryParams.isEmpty()) {
+      path += "?" + buildQueryString(queryParams);
+    }
+    ResultList<TestCaseIncidentGroup> result =
+        httpClient.execute(HttpMethod.GET, path, null, getIncidentGroupResultListType());
+    return new ListResponse<>(result);
+  }
+
   // ===================================================================
   // CREATE OPERATIONS
   // ===================================================================
@@ -155,6 +173,11 @@ public class TestCaseResolutionStatusService {
   @SuppressWarnings("unchecked")
   private Class<ResultList<TestCaseResolutionStatus>> getResultListType() {
     return (Class<ResultList<TestCaseResolutionStatus>>) (Class<?>) ResultList.class;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Class<ResultList<TestCaseIncidentGroup>> getIncidentGroupResultListType() {
+    return (Class<ResultList<TestCaseIncidentGroup>>) (Class<?>) ResultList.class;
   }
 
   // ===================================================================

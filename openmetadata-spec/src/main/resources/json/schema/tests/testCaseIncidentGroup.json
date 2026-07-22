@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCaseIncidentGroup.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseIncidentGroup",
+  "description": "Aggregated count of open test case incidents for a given grouping dimension.",
+  "javaType": "org.openmetadata.schema.tests.type.TestCaseIncidentGroup",
+  "type": "object",
+  "definitions": {
+    "incidentGroupBy": {
+      "description": "Dimension used to group test case incidents.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentGroupBy",
+      "type": "string",
+      "enum": ["table", "testDefinition", "owner"],
+      "javaEnums": [
+        {"name": "Table"},
+        {"name": "TestDefinition"},
+        {"name": "Owner"}
+      ]
+    }
+  },
+  "properties": {
+    "groupBy": {
+      "description": "Dimension the incidents are grouped by.",
+      "$ref": "#/definitions/incidentGroupBy"
+    },
+    "id": {
+      "description": "Unique identifier of the entity the group represents.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the entity the group represents.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display name of the entity the group represents.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the entity the group represents.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "incidentCount": {
+      "description": "Number of distinct open incidents in the group.",
+      "type": "integer"
+    }
+  },
+  "required": ["groupBy", "name", "incidentCount"],
+  "additionalProperties": false
+}

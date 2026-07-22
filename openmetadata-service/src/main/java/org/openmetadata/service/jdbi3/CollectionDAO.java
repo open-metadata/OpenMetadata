@@ -164,6 +164,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -187,6 +189,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -10396,8 +10399,9 @@ public interface CollectionDAO {
         outerFilter.addQueryParam("assignee", assignee);
 
         String condition = filter.getCondition();
-        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+        condition = addOriginEntityFQNJoin(filter, condition);
 
+        String outerCondition = outerFilter.getCondition();
         return listWithOffset(
             getTimeSeriesTableName(),
             filter.getQueryParams(),
@@ -10407,11 +10411,11 @@ public interface CollectionDAO {
             offset,
             startTs,
             endTs,
-            filter.getQueryParams(),
-            outerFilter.getCondition());
+            outerFilter.getQueryParams(),
+            outerCondition);
       }
       String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      condition = addOriginEntityFQNJoin(filter, condition);
       return listWithOffset(
           getTimeSeriesTableName(),
           filter.getQueryParams(),
@@ -10425,7 +10429,7 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
       String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      condition = addOriginEntityFQNJoin(filter, condition);
       return latest
           ? listCount(
               getTimeSeriesTableName(),
@@ -10440,7 +10444,7 @@ public interface CollectionDAO {
     @Override
     default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
       String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      condition = addOriginEntityFQNJoin(filter, condition);
       return listWithOffset(
           getTimeSeriesTableName(), filter.getQueryParams(), condition, limit, offset);
     }
@@ -10448,7 +10452,7 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      condition = addOriginEntityFQNJoin(filter, condition);
       return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
     }
 
@@ -10484,6 +10488,183 @@ public interface CollectionDAO {
                 + ")",
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
+
+    // An incident is a stateId chain; the latest record (rn = 1) carries its current status and
+    // assignee, while createdAt/updatedAt are the chain's first/last record timestamps.
+    String INCIDENT_GROUPS_CTE =
+        """
+        WITH incident AS (
+          SELECT stateId, entityFQNHash, testCaseResolutionStatusType, assignee,
+                 ROW_NUMBER() OVER (PARTITION BY stateId ORDER BY timestamp DESC) AS rn,
+                 MIN(timestamp) OVER (PARTITION BY stateId) AS createdAt,
+                 MAX(timestamp) OVER (PARTITION BY stateId) AS updatedAt
+          FROM test_case_resolution_status_time_series
+          <incidentCond>
+        )
+        """;
+
+    @SqlQuery(
+        INCIDENT_GROUPS_CTE
+            + """
+            SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount
+            FROM incident i
+            INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+            <dimensionJoin>
+            <cond> AND i.rn = 1 AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
+            GROUP BY <groupByCols>
+            ORDER BY incidentCount <sortOrder>, groupKey
+            LIMIT :limit OFFSET :offset
+            """)
+    @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
+    List<TestCaseIncidentGroupCount> listIncidentGroups(
+        @Define("incidentCond") String incidentCond,
+        @Define("groupKey") String groupKey,
+        @Define("groupType") String groupType,
+        @Define("groupByCols") String groupByCols,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @Define("sortOrder") String sortOrder,
+        @BindMap Map<String, ?> params,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery(
+        INCIDENT_GROUPS_CTE
+            + """
+            SELECT COUNT(DISTINCT <groupKey>)
+            FROM incident i
+            INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+            <dimensionJoin>
+            <cond> AND i.rn = 1 AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
+            """)
+    int countIncidentGroups(
+        @Define("incidentCond") String incidentCond,
+        @Define("groupKey") String groupKey,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @BindMap Map<String, ?> params);
+
+    // if originEntityFQN is present, we need to join with test_case table
+    static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
+      String result = condition;
+      if ((filter.getQueryParam("originEntityFQN") != null)
+          || (filter.getQueryParam("include") != null)) {
+        result =
+            """
+                INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
+                ON entityFQNHash = testCaseHash
+                """
+                + condition;
+      }
+      return result;
+    }
+
+    default IncidentGroupPage listIncidentGroups(
+        IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
+      IncidentGroupSqlParts sqlParts = buildIncidentGroupSqlParts(groupBy, filter);
+      IncidentGroupDimension dimension = sqlParts.dimension();
+      int total =
+          countIncidentGroups(
+              sqlParts.scopeCondition(),
+              dimension.groupKey(),
+              dimension.join(),
+              sqlParts.condition(),
+              sqlParts.params());
+      List<TestCaseIncidentGroupCount> counts =
+          listIncidentGroups(
+              sqlParts.scopeCondition(),
+              dimension.groupKey(),
+              dimension.groupType(),
+              dimension.groupByCols(),
+              dimension.join(),
+              sqlParts.condition(),
+              sortOrder,
+              sqlParts.params(),
+              limit,
+              offset);
+      return new IncidentGroupPage(counts, total);
+    }
+
+    private static IncidentGroupSqlParts buildIncidentGroupSqlParts(
+        IncidentGroupBy groupBy, ListFilter filter) {
+      Map<String, Object> params = new HashMap<>();
+      String scopeCondition = buildIncidentGroupScopeCondition(filter, params);
+      String condition = filter.getCondition();
+      params.putAll(filter.getQueryParams());
+      params.put("resolvedStatus", TestCaseResolutionStatusTypes.Resolved.value());
+      return new IncidentGroupSqlParts(
+          scopeCondition, condition, IncidentGroupDimension.from(groupBy), params);
+    }
+
+    // Pushes the test case scope into the CTE so incidents are ranked over a single FQN's
+    // records, and removes it from the filter so ListFilter does not re-apply it in the outer
+    // condition.
+    private static String buildIncidentGroupScopeCondition(
+        ListFilter filter, Map<String, Object> params) {
+      String result = "";
+      String testCaseFQNHash = filter.getQueryParam("entityFQNHash");
+      if (!nullOrEmpty(testCaseFQNHash)) {
+        filter.removeQueryParam("entityFQNHash");
+        params.put("testCaseFQNHash", testCaseFQNHash);
+        result = "WHERE entityFQNHash = :testCaseFQNHash";
+      }
+      return result;
+    }
+
+    record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
+
+    record IncidentGroupSqlParts(
+        String scopeCondition,
+        String condition,
+        IncidentGroupDimension dimension,
+        Map<String, Object> params) {}
+
+    record IncidentGroupDimension(
+        String groupKey, String groupType, String groupByCols, String join) {
+
+      static IncidentGroupDimension from(IncidentGroupBy groupBy) {
+        return switch (groupBy) {
+          case Table -> forTable();
+          case TestDefinition -> forRelationship(
+              CONTAINS, String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION));
+          case Owner -> forRelationship(
+              OWNS, String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM));
+        };
+      }
+
+      // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
+      // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
+      // instead.
+      private static IncidentGroupDimension forTable() {
+        String tableFqn =
+            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
+                : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+        return new IncidentGroupDimension(
+            tableFqn, String.format("'%s'", Entity.TABLE), tableFqn, "");
+      }
+
+      private static IncidentGroupDimension forRelationship(
+          Relationship relation, String fromEntityCondition) {
+        String join =
+            String.format(
+                "INNER JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
+                    + "AND %s AND er.toEntity = '%s'",
+                relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
+        return new IncidentGroupDimension(
+            "er.fromId", "er.fromEntity", "er.fromId, er.fromEntity", join);
+      }
+    }
+  }
+
+  record TestCaseIncidentGroupCount(String groupKey, String groupType, int incidentCount) {}
+
+  class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
+    @Override
+    public TestCaseIncidentGroupCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new TestCaseIncidentGroupCount(
+          rs.getString("groupKey"), rs.getString("groupType"), rs.getInt("incidentCount"));
+    }
   }
 
   interface TestCaseResultTimeSeriesDAO extends EntityTimeSeriesDAO {

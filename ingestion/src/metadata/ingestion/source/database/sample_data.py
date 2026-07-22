@@ -2386,6 +2386,14 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
 
             yield Either(right=OMetaLogicalTestSuiteSample(test_suite=test_suite, test_cases=test_cases))
 
+    def _get_test_case_owners(self, test_case: dict) -> EntityReferenceList | None:
+        owners = []
+        for owner_name in test_case.get("owners", []):
+            user: User | None = self.metadata.get_by_name(User, fqn=owner_name)
+            if user:
+                owners.append(EntityReference(id=user.id.root, type="user"))
+        return EntityReferenceList(owners) if owners else None
+
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
         """Ingest test cases"""
         for test_suite in self.tests_suites["tests"]:
@@ -2403,6 +2411,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                             TestCaseParameterValue(**param_values) for param_values in test_case["parameterValues"]
                         ],
                         useDynamicAssertion=test_case.get("useDynamicAssertion", False),
+                        owners=self._get_test_case_owners(test_case),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
@@ -2457,27 +2466,30 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         """Iterate over all the testSuite and testCase and ingest them"""
         for test_case_results in self.tests_case_results["testCaseResults"]:
             table_fqn = test_case_results.get("tableFqn", "sample_data.ecommerce_db.shopify.dim_address")
+            test_case_fqn = f"{table_fqn}.{test_case_results['name']}"
             case = self.metadata.get_by_name(
                 TestCase,
-                f"{table_fqn}.{test_case_results['name']}",
+                test_case_fqn,
                 fields=["testSuite", "testDefinition"],
             )
-            if case:
-                for days, result in enumerate(test_case_results["results"]):
-                    test_case_result_req = OMetaTestCaseResultsSample(
-                        test_case_results=TestCaseResult(
-                            timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
-                            testCaseStatus=result["testCaseStatus"],
-                            result=result["result"],
-                            testResultValue=[
-                                TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
-                            ],
-                            minBound=result.get("minBound"),
-                            maxBound=result.get("maxBound"),
-                        ),
-                        test_case_name=case.fullyQualifiedName.root,
-                    )
-                    yield Either(right=test_case_result_req)
+            if not case:
+                logger.warning(f"Test case {test_case_fqn} not found. Skipping its sample results.")
+                continue
+            for days, result in enumerate(test_case_results["results"]):
+                test_case_result_req = OMetaTestCaseResultsSample(
+                    test_case_results=TestCaseResult(
+                        timestamp=Timestamp(int((datetime.now() - timedelta(days=days)).timestamp() * 1000)),
+                        testCaseStatus=result["testCaseStatus"],
+                        result=result["result"],
+                        testResultValue=[
+                            TestResultValue.model_validate(res_value) for res_value in result["testResultValues"]
+                        ],
+                        minBound=result.get("minBound"),
+                        maxBound=result.get("maxBound"),
+                    ),
+                    test_case_name=case.fullyQualifiedName.root,
+                )
+                yield Either(right=test_case_result_req)
             if test_case_results.get("failedRowsSample"):
                 self.metadata.ingest_failed_rows_sample(
                     case,

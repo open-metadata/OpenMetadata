@@ -1,5 +1,8 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,14 +31,20 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.IncidentGroupBy;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -80,13 +89,17 @@ public class TestCaseResolutionStatusResource
     /* Required for serde */
   }
 
+  public static class TestCaseIncidentGroupResultList extends ResultList<TestCaseIncidentGroup> {
+    /* Required for serde */
+  }
+
   @GET
   @Operation(
       operationId = "getTestCaseResolutionStatus",
       summary = "List the test case failure statuses",
       description =
           "Get a list of all the test case failure statuses, optionally filtered by `startTs` and `endTs` of the status creation, "
-              + "status, assignee, and test case id. "
+              + "status, assignee, test case id, and the test definition of the test case. "
               + "Use cursor-based pagination to limit the number of "
               + "entries in the list using `limit` and `before` or `after` query params.",
       responses = {
@@ -154,7 +167,13 @@ public class TestCaseResolutionStatusResource
           String originEntityFQN,
       @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
           @QueryParam("domain")
-          String domain) {
+          String domain,
+      @Parameter(
+              description =
+                  "Filter incidents by the test definition of their test case, by name or fully qualified name",
+              schema = @Schema(type = "String"))
+          @QueryParam("testDefinition")
+          String testDefinition) {
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
     ResourceContextInterface entityResourceContext =
         buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
@@ -169,8 +188,138 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
     filter.addQueryParam("domain", domain);
+    UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
+    if (testDefinitionId != null) {
+      filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
+    }
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+  }
+
+  @GET
+  @Path("/incidentGroups")
+  @Operation(
+      operationId = "listTestCaseIncidentGroups",
+      summary = "List open incident counts grouped by a dimension",
+      description =
+          "Get the number of distinct open incidents grouped by `table`, `testDefinition`, or `owner`. "
+              + "Resolved incidents are never included. Optionally filter by open statuses, current "
+              + "assignee, test case, domain, and a date range applied to the incident's `createdAt` "
+              + "or `updatedAt` timestamp. Use `limit` and the `paging.before`/`paging.after` cursors "
+              + "as the `offset` query param to paginate the groups.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of incident groups with counts",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseIncidentGroupResultList.class)))
+      })
+  public ResultList<TestCaseIncidentGroup> listIncidentGroups(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Dimension to group incidents by",
+              required = true,
+              schema = @Schema(implementation = IncidentGroupBy.class))
+          @QueryParam("groupBy")
+          String groupBy,
+      @Parameter(
+              description =
+                  "Filter incidents by their current open status. Repeatable or comma-separated; `Resolved` is rejected.",
+              schema = @Schema(implementation = TestCaseResolutionStatusTypes.class))
+          @QueryParam("status")
+          List<String> statuses,
+      @Parameter(
+              description = "Filter incidents by their current assignee",
+              schema = @Schema(type = "String"))
+          @QueryParam("assignee")
+          String assignee,
+      @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
+          @QueryParam("testCaseFQN")
+          String testCaseFQN,
+      @Parameter(
+              description = "Incident timestamp the `startTs`/`endTs` range applies to",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT,
+                        TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_UPDATED_AT
+                      }))
+          @QueryParam("dateField")
+          @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT)
+          String dateField,
+      @Parameter(
+              description = "Filter incidents after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter incidents before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(description = "Limit the number of groups returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          int limit,
+      @Parameter(
+              description =
+                  "Returns the list of groups at the offset. Use the `paging.before`/`paging.after` "
+                      + "cursor from a previous response",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          String offset,
+      @Parameter(
+              description = "Sort type for the incident count",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {
+                        TestCaseResolutionStatusRepository.INCIDENT_SORT_TYPE_ASC,
+                        TestCaseResolutionStatusRepository.INCIDENT_SORT_TYPE_DESC
+                      }))
+          @QueryParam("sortType")
+          @DefaultValue(TestCaseResolutionStatusRepository.INCIDENT_SORT_TYPE_DESC)
+          String sortType) {
+    IncidentGroupBy groupByDimension = parseIncidentGroupBy(groupBy);
+    List<TestCaseResolutionStatusTypes> statusFilters = parseIncidentStatuses(statuses);
+
+    ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
+    ResourceContextInterface entityResourceContext =
+        buildEntityResourceContext(testCaseFQN, null, null);
+    List<AuthRequest> requests =
+        buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
+    ListFilter filter = new ListFilter(null);
+    if (!statusFilters.isEmpty()) {
+      filter.addQueryParam(
+          "testCaseResolutionStatusType",
+          statusFilters.stream()
+              .map(TestCaseResolutionStatusTypes::value)
+              .collect(Collectors.joining(",")));
+    }
+    filter.addQueryParam("incidentAssignee", assignee);
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
+    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
+    if (domainId != null) {
+      filter.addQueryParam("incidentDomainId", domainId.toString());
+    }
+    filter.addQueryParam("incidentDateField", dateField);
+    if (startTs != null) {
+      filter.addQueryParam("incidentStartTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      filter.addQueryParam("incidentEndTs", String.valueOf(endTs));
+    }
+    return repository.listIncidentGroups(groupByDimension, filter, sortType, limit, offset);
   }
 
   @GET
@@ -543,6 +692,60 @@ public class TestCaseResolutionStatusResource
         new AuthRequest(
             new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
             testCaseResourceContext));
+  }
+
+  private static IncidentGroupBy parseIncidentGroupBy(String groupBy) {
+    IncidentGroupBy result;
+    if (nullOrEmpty(groupBy)) {
+      throw new IllegalArgumentException("Query parameter 'groupBy' is required");
+    }
+    try {
+      result = IncidentGroupBy.fromValue(groupBy);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid groupBy '%s'. Must be one of %s",
+              groupBy, Stream.of(IncidentGroupBy.values()).map(IncidentGroupBy::value).toList()));
+    }
+    return result;
+  }
+
+  private static List<TestCaseResolutionStatusTypes> parseIncidentStatuses(List<String> statuses) {
+    List<TestCaseResolutionStatusTypes> result = new ArrayList<>();
+    for (String statusParam : listOrEmpty(statuses)) {
+      for (String value : statusParam.split(",")) {
+        result.add(parseIncidentStatus(value.trim()));
+      }
+    }
+    return result;
+  }
+
+  private static TestCaseResolutionStatusTypes parseIncidentStatus(String value) {
+    TestCaseResolutionStatusTypes result;
+    try {
+      result = TestCaseResolutionStatusTypes.fromValue(value);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(String.format("Invalid status '%s'", value));
+    }
+    if (result == TestCaseResolutionStatusTypes.Resolved) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Status '%s' is not allowed; incident groups only count open incidents",
+              TestCaseResolutionStatusTypes.Resolved.value()));
+    }
+    return result;
+  }
+
+  private static UUID resolveFilterEntityId(String entityType, String name) {
+    UUID entityId = null;
+    if (!nullOrEmpty(name)) {
+      EntityReference result =
+          Entity.getEntityReferenceByName(entityType, name, Include.NON_DELETED);
+      if (!nullOrEmpty(result)) {
+        entityId = result.getId();
+      }
+    }
+    return entityId;
   }
 
   protected static ResourceContextInterface buildEntityResourceContext(

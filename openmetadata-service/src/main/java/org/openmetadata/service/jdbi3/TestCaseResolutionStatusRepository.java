@@ -4,6 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
+import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
@@ -23,9 +26,11 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
+import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
@@ -45,6 +50,7 @@ import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResour
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
@@ -53,6 +59,10 @@ public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String TIME_TO_RESPONSE = "timeToResponse";
   public static final String TIME_TO_RESOLUTION = "timeToResolution";
+  public static final String INCIDENT_DATE_FIELD_CREATED_AT = "createdAt";
+  public static final String INCIDENT_DATE_FIELD_UPDATED_AT = "updatedAt";
+  public static final String INCIDENT_SORT_TYPE_ASC = "asc";
+  public static final String INCIDENT_SORT_TYPE_DESC = "desc";
 
   public TestCaseResolutionStatusRepository() {
     super(
@@ -434,21 +444,6 @@ public class TestCaseResolutionStatusRepository
     incident.setSeverity(severity);
   }
 
-  public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
-    // if originEntityFQN is present, we need to join with test_case table
-    if ((filter.getQueryParam("originEntityFQN") != null)
-        || (filter.getQueryParam("include") != null)) {
-      condition =
-          """
-              INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted FROM test_case) tc \
-              ON entityFQNHash = testCaseHash
-              """
-              + condition;
-    }
-
-    return condition;
-  }
-
   protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
@@ -648,5 +643,75 @@ public class TestCaseResolutionStatusRepository
         .filter(r -> r.getTimestamp() != null)
         .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
         .orElse(records.get(records.size() - 1));
+  }
+
+  public ResultList<TestCaseIncidentGroup> listIncidentGroups(
+      IncidentGroupBy groupBy, ListFilter filter, String sortType, int limit, String offset) {
+    int offsetInt = getOffset(offset);
+    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao =
+        (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
+    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
+        dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
+    List<TestCaseIncidentGroup> groups =
+        page.counts().stream().map(count -> toIncidentGroup(groupBy, count)).toList();
+    return new ResultList<>(
+        groups,
+        getBeforeOffset(offsetInt, limit),
+        getAfterOffset(offsetInt, limit, page.total()),
+        page.total());
+  }
+
+  private static String incidentGroupSortOrder(String sortType) {
+    return switch (sortType == null ? INCIDENT_SORT_TYPE_DESC : sortType) {
+      case INCIDENT_SORT_TYPE_ASC -> "ASC";
+      case INCIDENT_SORT_TYPE_DESC -> "DESC";
+      default -> throw new IllegalArgumentException(
+          String.format(
+              "Invalid sortType '%s'. Must be one of [%s, %s]",
+              sortType, INCIDENT_SORT_TYPE_ASC, INCIDENT_SORT_TYPE_DESC));
+    };
+  }
+
+  private static TestCaseIncidentGroup toIncidentGroup(
+      IncidentGroupBy groupBy, CollectionDAO.TestCaseIncidentGroupCount count) {
+    TestCaseIncidentGroup group =
+        new TestCaseIncidentGroup().withGroupBy(groupBy).withIncidentCount(count.incidentCount());
+    EntityReference reference = resolveIncidentGroupEntity(count);
+    if (reference != null) {
+      group
+          .withId(reference.getId())
+          .withName(reference.getName())
+          .withDisplayName(reference.getDisplayName())
+          .withFullyQualifiedName(reference.getFullyQualifiedName());
+    } else {
+      setFallbackIncidentGroupIdentity(group, count);
+    }
+    return group;
+  }
+
+  private static EntityReference resolveIncidentGroupEntity(
+      CollectionDAO.TestCaseIncidentGroupCount count) {
+    EntityReference result = null;
+    try {
+      result =
+          Entity.TABLE.equals(count.groupType())
+              ? Entity.getEntityReferenceByName(Entity.TABLE, count.groupKey(), Include.ALL)
+              : Entity.getEntityReferenceById(
+                  count.groupType(), UUID.fromString(count.groupKey()), Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug(
+          "Incident group {} '{}' could not be resolved", count.groupType(), count.groupKey());
+    }
+    return result;
+  }
+
+  private static void setFallbackIncidentGroupIdentity(
+      TestCaseIncidentGroup group, CollectionDAO.TestCaseIncidentGroupCount count) {
+    if (Entity.TABLE.equals(count.groupType())) {
+      List<String> fqnParts = List.of(FullyQualifiedName.split(count.groupKey()));
+      group.withName(fqnParts.getLast()).withFullyQualifiedName(count.groupKey());
+    } else {
+      group.withName(count.groupKey());
+    }
   }
 }
