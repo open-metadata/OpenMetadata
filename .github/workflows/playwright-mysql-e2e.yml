@@ -16,6 +16,9 @@ name: MySQL PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
+  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
+  # it there. pull_request_target remains only for PRs targeting release
+  # branches, which have no merge queue.
   pull_request_target:
     types:
       - labeled
@@ -23,6 +26,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    branches-ignore:
+      - main
     paths-ignore:
       - ".github/**"
       - "openmetadata-dist/**"
