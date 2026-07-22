@@ -342,9 +342,14 @@ export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
  * Pure — no side effects. Safe to call from event handlers.
  */
 export const resolveInitialAppMode = (userName?: string): string => {
-  const sessionMode = useAppModeStore.getState().currentMode;
-  if (sessionMode !== DEFAULT_APP_MODE) {
-    return sessionMode;
+  // Distinguish "explicit session tuple" from "no session at all" by
+  // reading the raw sessionStorage payload. `useAppModeStore.currentMode`
+  // returns `DEFAULT_APP_MODE` in BOTH cases, which would let a
+  // sibling-tab AI hint override an explicit Classic session — exactly
+  // what the resolver's `validSession` check guards against.
+  const session = readSession();
+  if (session) {
+    return session.mode;
   }
 
   const hint = readHint();

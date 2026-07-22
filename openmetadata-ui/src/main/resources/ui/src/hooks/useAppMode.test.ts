@@ -445,6 +445,36 @@ describe('resolveInitialAppMode', () => {
     expect(resolveInitialAppMode(TEST_USER)).toBe('ai');
   });
 
+  // Regression: an explicit Classic session tuple must win over a
+  // fresh AI hint from a sibling tab. Reading only in-memory
+  // `currentMode` conflates "no session" with "explicit Classic
+  // session" (both return DEFAULT_APP_MODE), which used to let a
+  // stray AI hint reroute a Classic re-auth to `/`.
+  it('explicit Classic session tuple wins over a fresh AI hint', () => {
+    act(() => {
+      writeAppMode(DEFAULT_APP_MODE);
+    });
+    // Overwrite the hint that writeAppMode just wrote (also DEFAULT)
+    // with a conflicting AI hint from a hypothetical sibling tab.
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: Date.now() })
+    );
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('explicit Classic session tuple wins over a conflicting stored AI preference', () => {
+    act(() => {
+      writeAppMode(DEFAULT_APP_MODE);
+    });
+    usePersistentStorage
+      .getState()
+      .setUserPreference(TEST_USER, { appMode: 'ai' });
+
+    expect(resolveInitialAppMode(TEST_USER)).toBe(DEFAULT_APP_MODE);
+  });
+
   it('fresh hint wins over a conflicting stored user preference', () => {
     globalThis.window.localStorage.setItem(
       APP_MODE_HINT_STORAGE_KEY,
