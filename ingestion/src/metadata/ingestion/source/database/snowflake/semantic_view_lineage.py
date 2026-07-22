@@ -54,7 +54,12 @@ BaseTable = tuple[str, str, str]
 # A semantic view identified within a database by (schema, view)
 ViewKey = tuple[str, str]
 
-_COLUMN_REF_RE = re.compile(r"([A-Za-z_][\w$]*)\.([A-Za-z_][\w$]*)")
+# A single identifier segment: a double-quoted name or a bare name.
+_IDENTIFIER = r'"[^"]*"|[A-Za-z_][\w$]*'
+# A dotted chain of two or more identifier segments (e.g. ``orders.amount``,
+# ``"orders"."o amount"``, ``db.schema.orders.amount``).
+_COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
+_SEGMENT_RE = re.compile(_IDENTIFIER)
 _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
@@ -69,9 +74,26 @@ def _quote_db(database: str) -> str:
     return database.replace('"', '""')
 
 
+def _unquote_identifier(identifier: str) -> str:
+    """Strip surrounding double quotes from a Snowflake identifier segment."""
+    unquoted = identifier
+    if len(identifier) >= 2 and identifier[0] == '"' and identifier[-1] == '"':
+        unquoted = identifier[1:-1]
+    return unquoted
+
+
 def extract_column_refs(expression: Optional[str]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
-    """Extract ``table.column`` references from a semantic object's expression."""
-    return _COLUMN_REF_RE.findall(expression) if expression else []
+    """Extract ``(table, column)`` references from a semantic object's expression.
+
+    Handles bare, double-quoted, and multi-part qualified identifiers, always
+    taking the last two segments of each dotted chain as ``(table, column)``.
+    """
+    refs = []
+    for chain in _COLUMN_REF_RE.findall(expression or ""):
+        segments = _SEGMENT_RE.findall(chain)
+        if len(segments) >= 2:
+            refs.append((_unquote_identifier(segments[-2]), _unquote_identifier(segments[-1])))
+    return refs
 
 
 def match_semantic_name(name_ref: str, columns: Dict[str, dict]) -> Optional[str]:  # noqa: UP006, UP045

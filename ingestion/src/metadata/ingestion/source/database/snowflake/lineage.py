@@ -240,10 +240,23 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         yield from super().yield_query_lineage()
 
     def _iter(self, *args, **kwargs) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
-        """Run the base lineage producers, then append semantic view lineage."""
+        """Run the base lineage producers, then append semantic view lineage.
+
+        Semantic view lineage stays opt-in behind the same `includeSemanticViews`
+        connection flag that gates metadata discovery (default false) so lineage
+        runs on non-Enterprise accounts — where the SEMANTIC_* catalog views do
+        not exist — never issue the extra per-database queries.
+        """
         yield from super()._iter(*args, **kwargs)
-        if self.source_config.processViewLineage:
+        if self._is_semantic_view_lineage_enabled():
             yield from self.yield_semantic_view_lineage()
+
+    def _is_semantic_view_lineage_enabled(self) -> bool:
+        """Semantic view lineage requires both view lineage processing and the
+        `includeSemanticViews` opt-in (Enterprise-only catalog views)."""
+        return bool(self.source_config.processViewLineage) and bool(
+            getattr(self.service_connection, "includeSemanticViews", False)
+        )
 
     def yield_semantic_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """Build lineage from Snowflake semantic views to their base tables."""

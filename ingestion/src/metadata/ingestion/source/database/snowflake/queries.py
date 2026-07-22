@@ -229,6 +229,12 @@ SNOWFLAKE_GET_STAGES = """
 SHOW STAGES IN SCHEMA "{schema}"
 """
 
+# NOTE: the column names differ (intentionally) between the semantic catalog
+# views. INFORMATION_SCHEMA.SEMANTIC_VIEWS exposes CATALOG / SCHEMA / NAME,
+# whereas the child views (SEMANTIC_TABLES / SEMANTIC_DIMENSIONS / _FACTS /
+# _METRICS) expose SEMANTIC_VIEW_CATALOG / SEMANTIC_VIEW_SCHEMA /
+# SEMANTIC_VIEW_NAME. So `WHERE SCHEMA` here vs `WHERE SEMANTIC_VIEW_SCHEMA`
+# below is correct, not a mismatch.
 SNOWFLAKE_GET_SEMANTIC_VIEWS = """
 SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = '{schema}'
 """
