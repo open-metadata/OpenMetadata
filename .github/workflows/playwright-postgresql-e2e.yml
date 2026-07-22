@@ -43,10 +43,18 @@ jobs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             e2e:
               - 'openmetadata-service/**'
@@ -83,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
@@ -144,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
@@ -589,8 +597,7 @@ jobs:
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
             const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
-            const testsRequired = context.eventName === 'merge_group' ||
-              context.eventName === 'workflow_dispatch' ||
+            const testsRequired = context.eventName === 'workflow_dispatch' ||
               process.env.E2E_CHANGED === 'true' ||
               process.env.DOCKER_COMPOSE_CHANGED === 'true';
 

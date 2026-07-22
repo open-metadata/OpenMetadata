@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import { getRelationTypeUsageCounts } from '../../rest/glossaryAPI';
@@ -199,5 +200,37 @@ describe('GlossaryTermRelationSettingsPage', () => {
     );
 
     expect(screen.queryByText(EXISTING_TYPE.name)).not.toBeInTheDocument();
+  });
+
+  it('paginates first-class relationship types', async () => {
+    const relationshipTypes = Array.from(
+      { length: PAGE_SIZE_BASE + 1 },
+      (_, index) =>
+        createRelationshipTypeMock({
+          id: `relationship-type-${index}`,
+          name: `relationshipType${String(index).padStart(2, '0')}`,
+        })
+    );
+    mockListRelationshipTypes.mockResolvedValue({
+      data: relationshipTypes,
+      paging: { total: relationshipTypes.length },
+    });
+
+    render(<GlossaryTermRelationSettingsPage />);
+
+    await screen.findByTestId('relationship-type-table');
+
+    expect(screen.getAllByTestId(/^mock-edit-/)).toHaveLength(PAGE_SIZE_BASE);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next Page' }));
+
+    expect(
+      await screen.findByTestId(
+        `mock-edit-${relationshipTypes[PAGE_SIZE_BASE].name}`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(relationshipTypes[0].name)
+    ).not.toBeInTheDocument();
   });
 });

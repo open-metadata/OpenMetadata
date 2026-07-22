@@ -107,22 +107,7 @@ const DataProductListPage = ({
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const { pageHeader } = usePageHeader({
-    titleKey: 'label.data-product-plural',
-    descriptionMessageKey: 'message.data-product-description',
-    createPermission: permissions.dataProduct?.Create || false,
-    addButtonLabelKey: 'label.add-data-product',
-    onAddClick: openDrawer,
-    learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
-    variant: isAiMode ? 'search' : undefined,
-    breadcrumb: headerBreadcrumb,
-  });
-
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.data-product',
-    count: dataProductListing.totalEntities,
-    loading: dataProductListing.loading,
-  });
+  const showHeaderSearch = isAiMode && !renderPageHeader;
 
   const [searchInputValue, setSearchInputValue] = useState(
     dataProductListing.urlState.searchQuery ?? ''
@@ -143,6 +128,36 @@ const DataProductListPage = ({
       debouncedSearch.cancel();
     };
   }, [debouncedSearch]);
+
+  const searchInputProps = {
+    icon: SearchLg,
+    placeholder: t('label.search'),
+    value: searchInputValue,
+    onChange: (value: string) => {
+      setSearchInputValue(value);
+      debouncedSearch(value);
+    },
+  };
+
+  const { pageHeader } = usePageHeader({
+    titleKey: 'label.data-product-plural',
+    descriptionMessageKey: 'message.data-product-description',
+    createPermission: permissions.dataProduct?.Create || false,
+    addButtonLabelKey: 'label.add-data-product',
+    onAddClick: openDrawer,
+    learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
+    variant: isAiMode ? 'search' : undefined,
+    search: showHeaderSearch ? (
+      <Input className="tw:w-72" {...searchInputProps} />
+    ) : undefined,
+    breadcrumb: headerBreadcrumb,
+  });
+
+  const { titleAndCount } = useTitleAndCount({
+    titleKey: 'label.data-product',
+    count: dataProductListing.totalEntities,
+    loading: dataProductListing.loading,
+  });
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
@@ -357,17 +372,10 @@ const DataProductListPage = ({
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
-            <Input
-              className="tw:max-w-86"
-              icon={SearchLg}
-              placeholder={t('label.search')}
-              value={searchInputValue}
-              onChange={(value) => {
-                setSearchInputValue(value);
-                debouncedSearch(value);
-              }}
-            />
+            {!showHeaderSearch && titleAndCount}
+            {!showHeaderSearch && (
+              <Input className="tw:max-w-86" {...searchInputProps} />
+            )}
             {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle value={view} onChange={setView} />

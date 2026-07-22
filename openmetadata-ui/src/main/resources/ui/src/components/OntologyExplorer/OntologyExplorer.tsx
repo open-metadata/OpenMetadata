@@ -14,11 +14,12 @@
 import {
   Button,
   Card,
+  EmptyPlaceholder,
   Input,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchMd } from '@untitledui/icons';
+import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -31,6 +32,7 @@ import React, {
 } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import { UpdateTermRelation } from '../../generated/api/data/updateTermRelation';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -40,7 +42,12 @@ import {
   removeTermRelationById,
   updateTermRelationById,
 } from '../../rest/glossaryAPI';
+import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../common/EmptyPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -93,6 +100,79 @@ function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
       <Typography as="p" className="tw:text-center tw:text-tertiary">
         {message}
       </Typography>
+    </div>
+  );
+}
+
+function OntologyOnboardingEmptyState() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid="ontology-graph-onboarding">
+      <EmptyPlaceholder
+        description={t('message.ontology-empty-description')}
+        features={[
+          {
+            key: 'relationships',
+            icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+            title: t('label.relationship-plural'),
+            description: t(
+              'message.ontology-relationships-feature-description'
+            ),
+          },
+          {
+            key: 'the-graph',
+            icon: <Cube02 className="tw:text-fg-warning-primary" />,
+            title: t('label.the-graph'),
+            description: t('message.ontology-graph-feature-description'),
+          },
+          {
+            key: 'what-it-unlocks',
+            icon: <CubeOutline className="tw:text-fg-success-primary" />,
+            title: t('label.what-it-unlocks'),
+            description: t('message.ontology-unlocks-feature-description'),
+          },
+        ]}
+        footer={
+          <Button
+            color="primary"
+            data-testid="ontology-browse-glossary"
+            onPress={() => navigate(getGlossaryPath())}>
+            {t('label.browse-glossary')}
+          </Button>
+        }
+        title={t('message.ontology-empty-title')}
+        variant="features"
+      />
+    </div>
+  );
+}
+
+function FilteredGraphEmptyState({
+  description,
+  testId,
+}: {
+  readonly description: string;
+  readonly testId: string;
+}) {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid={testId}>
+      <NoFilteredResultsPlaceholder description={description} />
+    </div>
+  );
+}
+
+function SearchGraphEmptyState() {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid="ontology-graph-search-empty">
+      <NoSearchResultsPlaceholder />
     </div>
   );
 }
@@ -453,33 +533,47 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       hierarchyGraphData.edges.length === 0
     ) {
       return (
-        <GraphEmptyState
-          message={t('message.no-hierarchical-relations-found')}
+        <FilteredGraphEmptyState
+          description={t('message.no-hierarchical-relations-found')}
           testId="ontology-graph-hierarchy-empty"
         />
       );
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      if (filters.searchQuery.trim().length > 0) {
+        return <SearchGraphEmptyState />;
+      }
+
       if (hasRelationFilter) {
         return (
-          <GraphEmptyState
-            message={t('message.no-relations-for-selected-filter')}
+          <FilteredGraphEmptyState
+            description={t('message.no-relations-for-selected-filter')}
             testId="ontology-graph-no-relations"
           />
         );
       }
 
       const hasActiveFilter =
-        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        filters.viewMode !== 'overview';
+
+      if (hasActiveFilter) {
+        return (
+          <FilteredGraphEmptyState
+            description={t('message.no-data-available-for-selected-filter')}
+            testId="ontology-graph-empty"
+          />
+        );
+      }
+
+      if (scope === 'global') {
+        return <OntologyOnboardingEmptyState />;
+      }
 
       return (
         <GraphEmptyState
-          message={
-            hasActiveFilter
-              ? t('message.no-data-available-for-selected-filter')
-              : t('message.no-glossary-terms-found')
-          }
+          message={t('message.no-glossary-terms-found')}
           testId="ontology-graph-empty"
         />
       );
@@ -491,8 +585,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (hasNoMatchingRelationEdges && !loading) {
       return (
-        <GraphEmptyState
-          message={t('message.no-relations-for-selected-filter')}
+        <FilteredGraphEmptyState
+          description={t('message.no-relations-for-selected-filter')}
           testId="ontology-graph-no-relations"
         />
       );
@@ -620,6 +714,16 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   }
 
+  const showOnboardingEmptyState =
+    scope === 'global' &&
+    !loading &&
+    graphDataToShow !== null &&
+    graphDataToShow.nodes.length === 0 &&
+    withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
+    withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
+    filters.viewMode === 'overview' &&
+    !filters.searchQuery.trim();
+
   return (
     <div
       className={classNames(
@@ -641,196 +745,205 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           )}>
           {surface === 'graph' ? (
             <>
-              {explorationMode === 'data' ? (
-                <Card
-                  className={classNames(
-                    scope === 'global'
-                      ? 'tw:bottom-3.5 tw:left-3.5'
-                      : 'tw:right-4 tw:top-4',
-                    'tw:absolute tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
-                    ONTOLOGY_TOOLBAR_CARD_CLASS
-                  )}
-                  data-testid="ontology-data-edge-legend">
-                  <span className="tw:flex tw:items-center tw:gap-2">
-                    <span className="tw:w-7 tw:border-t-2 tw:border-dashed tw:border-brand" />
-                    <Typography size="text-xs" weight="medium">
-                      {t('label.semantic-edge-inferred')}
-                    </Typography>
-                  </span>
-                  <span className="tw:flex tw:items-center tw:gap-2">
-                    <span className="tw:w-7 tw:border-t-2 tw:border-tertiary" />
-                    <Typography size="text-xs" weight="medium">
-                      {t('label.observed-lineage')}
-                    </Typography>
-                  </span>
-                </Card>
-              ) : null}
-              {scope === 'global' ? (
+              {!showOnboardingEmptyState ? (
                 <>
-                  {explorationMode === 'model' ? (
-                    <label
+                  {explorationMode === 'data' ? (
+                    <Card
                       className={classNames(
-                        'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:flex tw:w-[216px] tw:items-center tw:gap-2',
-                        'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2 tw:shadow-sm'
-                      )}>
-                      <SearchMd
-                        aria-hidden="true"
-                        className="tw:size-3.5 tw:shrink-0 tw:text-tertiary"
-                      />
-                      <input
-                        className={classNames(
-                          'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
-                          'tw:text-xs tw:leading-normal tw:font-normal tw:text-primary tw:outline-none',
-                          'tw:placeholder:text-placeholder'
-                        )}
-                        data-testid="ontology-graph-search"
-                        placeholder={`${t('label.find-concept')}\u2026`}
-                        value={searchInput}
-                        onChange={(event) => setSearchInput(event.target.value)}
-                      />
-                    </label>
+                        scope === 'global'
+                          ? 'tw:bottom-3.5 tw:left-3.5'
+                          : 'tw:right-4 tw:top-4',
+                        'tw:absolute tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
+                        ONTOLOGY_TOOLBAR_CARD_CLASS
+                      )}
+                      data-testid="ontology-data-edge-legend">
+                      <span className="tw:flex tw:items-center tw:gap-2">
+                        <span className="tw:w-7 tw:border-t-2 tw:border-dashed tw:border-brand" />
+                        <Typography size="text-xs" weight="medium">
+                          {t('label.semantic-edge-inferred')}
+                        </Typography>
+                      </span>
+                      <span className="tw:flex tw:items-center tw:gap-2">
+                        <span className="tw:w-7 tw:border-t-2 tw:border-tertiary" />
+                        <Typography size="text-xs" weight="medium">
+                          {t('label.observed-lineage')}
+                        </Typography>
+                      </span>
+                    </Card>
                   ) : null}
-                  <Tabs
-                    className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
-                    data-testid="ontology-layer-switch"
-                    selectedKey={explorationMode}
-                    onSelectionChange={handleExplorationModeSelection}>
-                    <Tabs.List
-                      className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:ring-1 tw:ring-secondary! tw:shadow-xs"
-                      size="sm"
-                      type="button-border">
-                      <Tabs.Item
-                        className={(state) =>
-                          classNames(
-                            'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                            state.isSelected
-                              ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                              : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-                          )
-                        }
-                        id="model"
-                        label={t('label.model')}
-                      />
-                      <Tabs.Item
-                        className={(state) =>
-                          classNames(
-                            'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
-                            state.isSelected
-                              ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
-                              : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
-                          )
-                        }
-                        id="data"
-                        isDisabled={loading || isLoadingMore || isAuthoringMode}
-                        label={t('label.data')}
-                      />
-                    </Tabs.List>
-                    <Tabs.Panel className="tw:hidden" id="model" />
-                    <Tabs.Panel className="tw:hidden" id="data" />
-                  </Tabs>
-                </>
-              ) : (
-                <>
-                  <Card
-                    className={classNames(
-                      'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
-                      ONTOLOGY_TOOLBAR_CARD_CLASS
-                    )}>
-                    <Tabs
-                      className="tw:w-fit!"
-                      selectedKey={explorationMode}
-                      onSelectionChange={handleExplorationModeSelection}>
-                      <Tabs.List size="sm" type="button-border">
-                        <Tabs.Item id="model" label={t('label.model')} />
-                        <Tabs.Item
-                          className={(state) =>
-                            state.isDisabled ? 'tw:cursor-not-allowed!' : ''
-                          }
-                          id="data"
-                          isDisabled={
-                            loading || isLoadingMore || isAuthoringMode
-                          }
-                          label={t('label.data')}
+                  {scope === 'global' ? (
+                    <>
+                      {explorationMode === 'model' ? (
+                        <label
+                          className={classNames(
+                            'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:flex tw:w-[216px] tw:items-center tw:gap-2',
+                            'tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2 tw:shadow-sm'
+                          )}>
+                          <SearchMd
+                            aria-hidden="true"
+                            className="tw:size-3.5 tw:shrink-0 tw:text-tertiary"
+                          />
+                          <input
+                            className={classNames(
+                              'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
+                              'tw:text-xs tw:leading-normal tw:font-normal tw:text-primary tw:outline-none',
+                              'tw:placeholder:text-placeholder'
+                            )}
+                            data-testid="ontology-graph-search"
+                            placeholder={`${t('label.find-concept')}\u2026`}
+                            value={searchInput}
+                            onChange={(event) =>
+                              setSearchInput(event.target.value)
+                            }
+                          />
+                        </label>
+                      ) : null}
+                      <Tabs
+                        className="tw:absolute tw:right-3.5 tw:top-3.5 tw:z-6 tw:w-fit!"
+                        data-testid="ontology-layer-switch"
+                        selectedKey={explorationMode}
+                        onSelectionChange={handleExplorationModeSelection}>
+                        <Tabs.List
+                          className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:ring-1 tw:ring-secondary! tw:shadow-xs"
+                          size="sm"
+                          type="button-border">
+                          <Tabs.Item
+                            className={(state) =>
+                              classNames(
+                                'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
+                                state.isSelected
+                                  ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
+                                  : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
+                              )
+                            }
+                            id="model"
+                            label={t('label.model')}
+                          />
+                          <Tabs.Item
+                            className={(state) =>
+                              classNames(
+                                'tw:rounded-md! tw:px-4! tw:py-1.5! tw:font-body tw:text-[11px]! tw:leading-normal tw:font-semibold!',
+                                state.isSelected
+                                  ? 'tw:bg-brand-primary! tw:text-brand-secondary! tw:shadow-none!'
+                                  : 'tw:bg-transparent! tw:text-quaternary! tw:shadow-none!'
+                              )
+                            }
+                            id="data"
+                            isDisabled={
+                              loading || isLoadingMore || isAuthoringMode
+                            }
+                            label={t('label.data')}
+                          />
+                        </Tabs.List>
+                        <Tabs.Panel className="tw:hidden" id="model" />
+                        <Tabs.Panel className="tw:hidden" id="data" />
+                      </Tabs>
+                    </>
+                  ) : (
+                    <>
+                      <Card
+                        className={classNames(
+                          'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
+                          ONTOLOGY_TOOLBAR_CARD_CLASS
+                        )}>
+                        <Tabs
+                          className="tw:w-fit!"
+                          selectedKey={explorationMode}
+                          onSelectionChange={handleExplorationModeSelection}>
+                          <Tabs.List size="sm" type="button-border">
+                            <Tabs.Item id="model" label={t('label.model')} />
+                            <Tabs.Item
+                              className={(state) =>
+                                state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                              }
+                              id="data"
+                              isDisabled={
+                                loading || isLoadingMore || isAuthoringMode
+                              }
+                              label={t('label.data')}
+                            />
+                          </Tabs.List>
+                          <Tabs.Panel className="tw:hidden" id="model" />
+                          <Tabs.Panel className="tw:hidden" id="data" />
+                        </Tabs>
+                        <Input
+                          data-testid="ontology-graph-search"
+                          icon={SearchMd}
+                          inputClassName="tw:pl-10"
+                          placeholder={t('label.search-in-graph')}
+                          value={searchInput}
+                          onChange={setSearchInput}
                         />
-                      </Tabs.List>
-                      <Tabs.Panel className="tw:hidden" id="model" />
-                      <Tabs.Panel className="tw:hidden" id="data" />
-                    </Tabs>
-                    <Input
-                      data-testid="ontology-graph-search"
-                      icon={SearchMd}
-                      inputClassName="tw:pl-10"
-                      placeholder={t('label.search-in-graph')}
-                      value={searchInput}
-                      onChange={setSearchInput}
-                    />
-                    <ExportGraphPanel
-                      onExportJsonLd={
-                        rdfEnabled && exportableGlossaryId
-                          ? handleExportJsonLd
-                          : undefined
-                      }
-                      onExportPng={handleExportPng}
-                      onExportRdfXml={
-                        rdfEnabled && exportableGlossaryId
-                          ? handleExportRdfXml
-                          : undefined
-                      }
-                      onExportSvg={handleExportSvg}
-                      onExportTurtle={
-                        rdfEnabled && exportableGlossaryId
-                          ? handleExportTurtle
-                          : undefined
-                      }
-                    />
-                    <GraphSettingsPanel
-                      settings={settings}
-                      onSettingsChange={handleSettingsChange}
-                    />
-                  </Card>
+                        <ExportGraphPanel
+                          onExportJsonLd={
+                            rdfEnabled && exportableGlossaryId
+                              ? handleExportJsonLd
+                              : undefined
+                          }
+                          onExportPng={handleExportPng}
+                          onExportRdfXml={
+                            rdfEnabled && exportableGlossaryId
+                              ? handleExportRdfXml
+                              : undefined
+                          }
+                          onExportSvg={handleExportSvg}
+                          onExportTurtle={
+                            rdfEnabled && exportableGlossaryId
+                              ? handleExportTurtle
+                              : undefined
+                          }
+                        />
+                        <GraphSettingsPanel
+                          settings={settings}
+                          onSettingsChange={handleSettingsChange}
+                        />
+                      </Card>
+                    </>
+                  )}
+
+                  {scope !== 'global' || explorationMode !== 'data' ? (
+                    <Card
+                      className={classNames(
+                        'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
+                        ONTOLOGY_TOOLBAR_CARD_CLASS
+                      )}
+                      data-testid="ontology-graph-controls">
+                      <OntologyControlButtons
+                        isLoading={loading}
+                        onFitToScreen={handleFitToScreen}
+                        onRefresh={handleRefresh}
+                        onZoomIn={handleZoomIn}
+                        onZoomOut={handleZoomOut}
+                      />
+                    </Card>
+                  ) : null}
+
+                  {scope !== 'global' && pageableTermNodes.length > 0 ? (
+                    <Card
+                      className={classNames(
+                        'tw:absolute tw:bottom-4 tw:left-4 tw:flex tw:max-w-80 tw:flex-col tw:gap-2 tw:p-2',
+                        ONTOLOGY_TOOLBAR_CARD_CLASS
+                      )}
+                      data-testid="ontology-data-pagination">
+                      {pageableTermNodes.map((node) => (
+                        <Button
+                          color="secondary"
+                          data-testid={`ontology-load-more-assets-${node.id}`}
+                          key={node.id}
+                          size="sm"
+                          onPress={() =>
+                            handleGraphNodeClick(node, undefined, {
+                              dataModeLoadMoreBadgeClick: true,
+                            })
+                          }>
+                          {t('label.load-more')} · {node.label} ·{' '}
+                          {(node.assetCount ?? 0) -
+                            (node.loadedAssetCount ?? 0)}
+                        </Button>
+                      ))}
+                    </Card>
+                  ) : null}
                 </>
-              )}
-
-              {scope !== 'global' || explorationMode !== 'data' ? (
-                <Card
-                  className={classNames(
-                    'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-                    ONTOLOGY_TOOLBAR_CARD_CLASS
-                  )}
-                  data-testid="ontology-graph-controls">
-                  <OntologyControlButtons
-                    isLoading={loading}
-                    onFitToScreen={handleFitToScreen}
-                    onRefresh={handleRefresh}
-                    onZoomIn={handleZoomIn}
-                    onZoomOut={handleZoomOut}
-                  />
-                </Card>
-              ) : null}
-
-              {scope !== 'global' && pageableTermNodes.length > 0 ? (
-                <Card
-                  className={classNames(
-                    'tw:absolute tw:bottom-4 tw:left-4 tw:flex tw:max-w-80 tw:flex-col tw:gap-2 tw:p-2',
-                    ONTOLOGY_TOOLBAR_CARD_CLASS
-                  )}
-                  data-testid="ontology-data-pagination">
-                  {pageableTermNodes.map((node) => (
-                    <Button
-                      color="secondary"
-                      data-testid={`ontology-load-more-assets-${node.id}`}
-                      key={node.id}
-                      size="sm"
-                      onPress={() =>
-                        handleGraphNodeClick(node, undefined, {
-                          dataModeLoadMoreBadgeClick: true,
-                        })
-                      }>
-                      {t('label.load-more')} · {node.label} ·{' '}
-                      {(node.assetCount ?? 0) - (node.loadedAssetCount ?? 0)}
-                    </Button>
-                  ))}
-                </Card>
               ) : null}
 
               <div

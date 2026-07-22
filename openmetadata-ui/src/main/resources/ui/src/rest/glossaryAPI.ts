@@ -29,6 +29,7 @@ import { OntologyStudioDataGraph } from '../generated/api/data/ontologyStudioDat
 import { OntologyStudioSummary } from '../generated/api/data/ontologyStudioSummary';
 import { UpdateTermRelation } from '../generated/api/data/updateTermRelation';
 import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
+import { GlossaryTermRelationType } from '../generated/configuration/glossaryTermRelationSettings';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
@@ -600,6 +601,53 @@ export const getGlossaryTermRelationSettings = async () => {
   );
 
   return response.data?.config_value;
+};
+
+const GLOSSARY_TERM_RELATION_TYPES_URL =
+  '/system/settings/glossaryTermRelationSettings/relationTypes';
+
+export const getGlossaryTermRelationTypes = async (
+  params: ListParamsWithOffset
+): Promise<PagingResponse<GlossaryTermRelationType[]>> => {
+  const response = await APIClient.get<
+    PagingResponse<GlossaryTermRelationType[]>
+  >(GLOSSARY_TERM_RELATION_TYPES_URL, { params });
+
+  return response.data;
+};
+
+export const createGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.post<GlossaryTermRelationType>(
+    GLOSSARY_TERM_RELATION_TYPES_URL,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const updateGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.put<GlossaryTermRelationType>(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationType.name
+    )}`,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const deleteGlossaryTermRelationType = async (
+  relationTypeName: string
+): Promise<void> => {
+  await APIClient.delete(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationTypeName
+    )}`
+  );
 };
 
 export const updateGlossaryTermRelationSettings = async (settings: unknown) => {

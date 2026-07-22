@@ -301,10 +301,12 @@ jobs:
   search-it-external:
     # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
     # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
-    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
-    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    # serially or they collide with "Job is already running". `needs` enforces ordering;
+    # `!cancelled()` keeps each job's own toggle independent (so it still runs if ui-it was
+    # skipped/failed) while STILL honoring a manual cancel — plain `always()` forces the job to
+    # start even when you cancel the run, which is why cancelling never stopped search-it/scale-it.
     needs: [ui-it-external]
-    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -437,7 +439,7 @@ jobs:
     # cancelled every night without ever completing. Larger sizes can still be requested on demand
     # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:

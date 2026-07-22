@@ -31,6 +31,7 @@ export interface UserPreferences {
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
+  connectionsViewMode?: 'grid' | 'list';
   /**
    * Boot-time app-mode preference — the "open in this mode when I log in"
    * checkbox in the app-mode switcher. `null` means "no explicit preference,

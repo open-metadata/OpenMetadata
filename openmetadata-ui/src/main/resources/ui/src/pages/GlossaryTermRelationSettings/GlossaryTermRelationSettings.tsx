@@ -18,6 +18,7 @@ import {
   Divider,
   Modal,
   ModalOverlay,
+  PaginationCardWithControls,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -27,6 +28,11 @@ import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
@@ -49,6 +55,10 @@ import {
 import { validateRelationshipTypeForm } from './RelationshipTypeForm.validation';
 import RelationshipTypeTable from './RelationshipTypeTable';
 
+const RELATIONSHIP_TYPE_FETCH_PAGE_SIZE = 1000;
+const RELATIONSHIP_TYPE_FIELDS = 'owners,reviewers';
+const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
+
 const GlossaryTermRelationSettingsPage = () => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -66,6 +76,8 @@ const GlossaryTermRelationSettingsPage = () => {
     DEFAULT_RELATIONSHIP_TYPE_FORM
   );
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -75,15 +87,24 @@ const GlossaryTermRelationSettingsPage = () => {
       ),
     [t]
   );
+  const visibleRelationshipTypes = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+
+    return relationshipTypes.slice(start, start + pageSize);
+  }, [currentPage, pageSize, relationshipTypes]);
+  const totalPages = Math.max(
+    Math.ceil(relationshipTypes.length / pageSize),
+    1
+  );
 
   const fetchRelationshipTypes = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [relationshipTypeResponse, usageResponse] = await Promise.all([
-        listRelationshipTypes({ fields: 'owners,reviewers', limit: 1000 }),
+      const [fetchedRelationshipTypes, usageResponse] = await Promise.all([
+        fetchAllRelationshipTypes(),
         getRelationTypeUsageCounts(),
       ]);
-      setRelationshipTypes(relationshipTypeResponse.data);
+      setRelationshipTypes(fetchedRelationshipTypes);
       setUsageCounts(usageResponse);
     } catch (error) {
       showErrorToast(
@@ -109,6 +130,9 @@ const GlossaryTermRelationSettingsPage = () => {
   }, []);
 
   const openEditForm = useCallback((relationshipType: RelationshipType) => {
+    if (relationshipType.systemDefined) {
+      return;
+    }
     setEditingRelationshipType(relationshipType);
     setFormValues(toRelationshipTypeForm(relationshipType));
     setFormErrors({});
@@ -141,7 +165,14 @@ const GlossaryTermRelationSettingsPage = () => {
       const saved = editingRelationshipType
         ? await updateRelationshipType(request)
         : await createRelationshipType(request);
-      setRelationshipTypes((current) => upsertRelationshipType(current, saved));
+      const updatedRelationshipTypes = upsertRelationshipType(
+        relationshipTypes,
+        saved
+      );
+      setRelationshipTypes(updatedRelationshipTypes);
+      setCurrentPage(
+        getRelationshipTypePage(updatedRelationshipTypes, saved.id, pageSize)
+      );
       closeForm();
       showSuccessToast(
         t(
@@ -161,7 +192,14 @@ const GlossaryTermRelationSettingsPage = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [closeForm, editingRelationshipType, formValues, t]);
+  }, [
+    closeForm,
+    editingRelationshipType,
+    formValues,
+    pageSize,
+    relationshipTypes,
+    t,
+  ]);
 
   const saveRelationshipType = useCallback(async () => {
     const isValid = validateForm();
@@ -175,11 +213,13 @@ const GlossaryTermRelationSettingsPage = () => {
       setIsSaving(true);
       try {
         await deleteRelationshipType(selectedRelationshipType.id);
-        setRelationshipTypes((current) =>
-          current.filter(
-            (relationshipType) =>
-              relationshipType.id !== selectedRelationshipType.id
-          )
+        const updatedRelationshipTypes = relationshipTypes.filter(
+          (relationshipType) =>
+            relationshipType.id !== selectedRelationshipType.id
+        );
+        setRelationshipTypes(updatedRelationshipTypes);
+        setCurrentPage((page) =>
+          clampPage(page, updatedRelationshipTypes.length, pageSize)
         );
         setDeleteTarget(undefined);
         showSuccessToast(
@@ -198,7 +238,7 @@ const GlossaryTermRelationSettingsPage = () => {
         setIsSaving(false);
       }
     },
-    [t]
+    [pageSize, relationshipTypes, t]
   );
 
   const confirmDelete = useCallback(async () => {
@@ -236,13 +276,28 @@ const GlossaryTermRelationSettingsPage = () => {
             {t('label.loading')}
           </div>
         ) : (
-          <RelationshipTypeTable
-            isAdminUser={Boolean(isAdminUser)}
-            relationshipTypes={relationshipTypes}
-            usageCounts={usageCounts}
-            onDelete={setDeleteTarget}
-            onEdit={openEditForm}
-          />
+          <>
+            <RelationshipTypeTable
+              isAdminUser={Boolean(isAdminUser)}
+              relationshipTypes={visibleRelationshipTypes}
+              usageCounts={usageCounts}
+              onDelete={setDeleteTarget}
+              onEdit={openEditForm}
+            />
+            {relationshipTypes.length > PAGE_SIZE_BASE ? (
+              <PaginationCardWithControls
+                page={currentPage}
+                pageSize={pageSize}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                total={totalPages}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(nextPageSize) => {
+                  setPageSize(nextPageSize);
+                  setCurrentPage(1);
+                }}
+              />
+            ) : null}
+          </>
         )}
 
         <SlideoutMenu
@@ -349,6 +404,45 @@ const GlossaryTermRelationSettingsPage = () => {
     </PageLayoutV1>
   );
 };
+
+const fetchAllRelationshipTypes = async (): Promise<RelationshipType[]> => {
+  const relationshipTypes: RelationshipType[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await listRelationshipTypes({
+      fields: RELATIONSHIP_TYPE_FIELDS,
+      limit: RELATIONSHIP_TYPE_FETCH_PAGE_SIZE,
+      ...(after ? { after } : {}),
+    });
+    relationshipTypes.push(...response.data);
+    after = response.paging.after;
+  } while (after);
+
+  return relationshipTypes;
+};
+
+const getRelationshipTypePage = (
+  relationshipTypes: RelationshipType[],
+  relationshipTypeId: string,
+  pageSize: number
+): number => {
+  const index = relationshipTypes.findIndex(
+    (relationshipType) => relationshipType.id === relationshipTypeId
+  );
+
+  return Math.floor(Math.max(index, 0) / pageSize) + 1;
+};
+
+const clampPage = (
+  currentPage: number,
+  relationshipTypeCount: number,
+  pageSize: number
+): number =>
+  Math.min(
+    currentPage,
+    Math.max(Math.ceil(relationshipTypeCount / pageSize), 1)
+  );
 
 const upsertRelationshipType = (
   current: RelationshipType[],

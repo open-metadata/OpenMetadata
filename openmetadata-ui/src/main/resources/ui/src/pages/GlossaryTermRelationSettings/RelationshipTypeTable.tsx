@@ -176,9 +176,13 @@ const RelationshipTypeRow = ({
             color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
             icon={Edit05}
-            isDisabled={!isAdminUser}
+            isDisabled={!isAdminUser || relationshipType.systemDefined}
             size="sm"
-            tooltip={t('label.edit')}
+            tooltip={
+              relationshipType.systemDefined
+                ? t('label.system-defined')
+                : t('label.edit')
+            }
             onClick={() => onEdit(relationshipType)}
           />
           <ButtonUtility
