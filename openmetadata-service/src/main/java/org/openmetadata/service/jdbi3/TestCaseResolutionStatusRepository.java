@@ -686,10 +686,7 @@ public class TestCaseResolutionStatusRepository
         dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
     List<TestCaseIncidentGroup> groups =
         page.counts().stream()
-            .map(
-                count ->
-                    toIncidentGroup(
-                        groupBy, count, page.createdAtByGroupKey().get(count.groupKey())))
+            .map(count -> toIncidentGroup(groupBy, count, parseIncidentCreatedAt(count)))
             .toList();
     return new ResultList<>(
         groups,
@@ -739,6 +736,14 @@ public class TestCaseResolutionStatusRepository
       setFallbackIncidentGroupIdentity(group, count);
     }
     return group;
+  }
+
+  private static List<Long> parseIncidentCreatedAt(CollectionDAO.TestCaseIncidentGroupCount count) {
+    List<Long> result = List.of();
+    if (!nullOrEmpty(count.incidentCreatedAt())) {
+      result = Arrays.asList(JsonUtils.readValue(count.incidentCreatedAt(), Long[].class));
+    }
+    return result;
   }
 
   private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
