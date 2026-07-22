@@ -44,6 +44,7 @@ services:
       options:
         max-size: 10m
         max-file: "1"
+        compress: "false"
 
   opensearch:
     image: ${PW_OPENSEARCH_IMAGE:-opensearchproject/opensearch:3.4.0}
@@ -72,3 +73,4 @@ services:
       options:
         max-size: 10m
         max-file: "1"
+        compress: "false"

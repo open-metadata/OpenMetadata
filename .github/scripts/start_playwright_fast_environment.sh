@@ -279,6 +279,7 @@ if [[ -n "$ingestion_image_path" ]]; then
     --log-driver local \
     --log-opt max-size=10m \
     --log-opt max-file=1 \
+    --log-opt compress=false \
     --env AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session \
     --env AIRFLOW__CORE__EXECUTOR=LocalExecutor \
     --env AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS=/opt/airflow/dag_generated_configs \
