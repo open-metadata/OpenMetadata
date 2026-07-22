@@ -958,7 +958,7 @@ const DomainDetails = ({
           className="entity-header tw:mx-5 tw:gap-y-3"
           justify="between"
           wrap="wrap">
-          <div className="entity-header-title-top tw:max-w-[60%]">
+          <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
               displayNameClassName="entity-header-title-wrap"
@@ -981,9 +981,10 @@ const DomainDetails = ({
           </div>
           <Box
             align="center"
-            className="domain-header-action-container tw:pb-1 tw:shrink-0"
+            className="domain-header-action-container tw:pb-1 tw:shrink-0 tw:max-w-full"
             gap={3}
-            justify="end">
+            justify="end"
+            wrap="wrap">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 data-testid="domain-details-add-button-menu"

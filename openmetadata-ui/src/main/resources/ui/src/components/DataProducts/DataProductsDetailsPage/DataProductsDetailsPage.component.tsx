@@ -819,7 +819,7 @@ const DataProductsDetailsPage = ({
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
-            <div className="entity-header-title-top tw:max-w-[60%]">
+            <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 badge={statusBadge}
                 breadcrumb={[]}
@@ -838,8 +838,8 @@ const DataProductsDetailsPage = ({
                 titleColor={dataProduct.style?.color}
               />
             </div>
-            <div className="tw:shrink-0">
-              <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+            <div className="tw:shrink-0 tw:max-w-full">
+              <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
                 {dataProductClassBase.getRequestDataAccessButton()}
 
                 {!isVersionsView && dataProductPermission.Create && (
