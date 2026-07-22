@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EntityStatus,
-  Provenance,
-} from '../generated/api/data/updateTermRelation';
+import { Provenance, Status } from '../generated/api/data/updateTermRelation';
 import {
   getOntologyStudioAssets,
   getOntologyStudioDataGraph,
@@ -43,7 +40,7 @@ describe('glossaryAPI stable relationship operations', () => {
     const update = {
       provenance: Provenance.Imported,
       relationType: 'partOf',
-      status: EntityStatus.Approved,
+      status: Status.Approved,
     };
     const response = { data: { id: 'term-id' } };
     mockedApiClient.put.mockResolvedValue(response);

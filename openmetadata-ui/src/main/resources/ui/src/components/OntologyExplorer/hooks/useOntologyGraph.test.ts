@@ -19,11 +19,17 @@ import {
   stripNodePositionsForDataMode,
 } from './useOntologyGraph';
 
-// @antv/g6 is not in the Jest transform allowlist and pulls a heavy canvas
-// runtime. The pure helpers under test never construct a Graph — they only read
-// getNodeData/getEdgeData/getComboData off a stub — so an empty module mock is
-// enough to let the module import cleanly.
-jest.mock('@antv/g6', () => ({}));
+jest.mock('@antv/g6', () => ({
+  Circle: class {},
+  ExtensionCategory: { COMBO: 'combo', EDGE: 'edge', NODE: 'node' },
+  Line: class {},
+  Polyline: class {},
+  Quadratic: class {},
+  Rect: class {},
+  RectCombo: class {},
+  idOf: (value: unknown) => value,
+  register: jest.fn(),
+}));
 
 // graphStyles (imported transitively by the module) measures text on a canvas.
 // Mirror the sibling useGraphData.test.ts mock so module import stays headless.

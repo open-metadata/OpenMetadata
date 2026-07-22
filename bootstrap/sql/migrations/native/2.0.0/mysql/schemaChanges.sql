@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS background_job_logs (
   CONSTRAINT fk_background_job_logs_job_id
     FOREIGN KEY (jobId) REFERENCES background_jobs(id)
     ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS task_entity (
     id varchar(36) NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS task_entity (
     KEY idx_created_by_id (createdById),
     KEY idx_created_by_category (createdById, category),
     KEY idx_approved_by_id (approvedById)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- For 2.0.0 environments that ran the CREATE TABLE above before the
 -- approvedById generated column was added inline, attach it now. CREATE TABLE
@@ -106,7 +106,7 @@ DEALLOCATE PREPARE stmt;
 
 CREATE TABLE IF NOT EXISTS new_task_sequence (
     id bigint NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO new_task_sequence (id) SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM new_task_sequence);
 
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS activity_stream (
     KEY idx_activity_event_type (eventType, timestamp),
     KEY idx_activity_entity_fqn (entityFqnHash, timestamp),
     KEY idx_activity_about (aboutFqnHash, timestamp)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 PARTITION BY RANGE (timestamp) (
     -- Catch-all partition - ActivityStreamPartitionManager will reorganize this
     -- by splitting it into monthly partitions as needed
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS activity_stream_config (
     UNIQUE KEY uk_domain_config (domainId),
     KEY idx_scope (scope),
     KEY idx_enabled (enabled)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =====================================================
 -- ANNOUNCEMENT ENTITY TABLE
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS announcement_entity (
     KEY idx_announcement_start_time (startTime),
     KEY idx_announcement_end_time (endTime),
     KEY idx_announcement_deleted (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =====================================================
 -- TASK FORM SCHEMA ENTITY TABLE
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS task_form_schema_entity (
     KEY idx_task_form_schema_name (name),
     KEY idx_task_form_schema_task_type (taskType),
     KEY idx_task_form_schema_deleted (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- =====================================================
 -- KNOWLEDGE CENTER + CONTEXT CENTER DRIVE (Collate → OM port)
@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS drive_folder (
   PRIMARY KEY (id),
   UNIQUE KEY unique_drive_folder_name (nameHash),
   INDEX idx_drive_folder_updated_at (updatedAt)
-) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Context Center Drive: File entity table (uploaded PDF/image/spreadsheet/office docs).
 CREATE TABLE IF NOT EXISTS context_file (
@@ -262,7 +262,7 @@ CREATE TABLE IF NOT EXISTS context_file (
   PRIMARY KEY (id),
   UNIQUE KEY unique_context_file_name (nameHash),
   INDEX idx_context_file_updated_at (updatedAt)
-) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Attachments: Asset entity table for uploaded file blobs referenced by ContextFiles, Pages, etc.
 -- Existing Collate customers have this from 1.7.0-collate. CREATE TABLE IF NOT EXISTS is a no-op for them.
@@ -295,7 +295,7 @@ CREATE TABLE IF NOT EXISTS context_file_content (
   PRIMARY KEY (id),
   UNIQUE KEY unique_context_file_content_name (nameHash),
   INDEX idx_context_file_content_updated_at (updatedAt)
-) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Distributed reindex job tracking.
 CREATE TABLE IF NOT EXISTS search_index_job (
@@ -319,7 +319,7 @@ CREATE TABLE IF NOT EXISTS search_index_job (
   registeredServerCount INT DEFAULT NULL,
   PRIMARY KEY (id),
   KEY idx_search_index_job_status_created_at (status, createdAt DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Retry queue for failed search-index writes.
 CREATE TABLE IF NOT EXISTS search_index_retry_queue (
@@ -334,7 +334,7 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
 -- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS context_memory (
   PRIMARY KEY (id),
   UNIQUE KEY unique_context_memory_name (nameHash),
   INDEX idx_context_memory_updated_at (updatedAt)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- AI Governance Studio (Phase 4): framework + control entity tables.
 CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
@@ -384,7 +384,7 @@ CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
     UNIQUE KEY unique_name (fqnHash),
     INDEX name_index (name),
     INDEX deleted_index (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI Governance Framework entities';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Governance Framework entities';
 
 CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
@@ -399,7 +399,7 @@ CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
     UNIQUE KEY unique_name (fqnHash),
     INDEX name_index (name),
     INDEX deleted_index (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI Framework Control entities';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Framework Control entities';
 
 CREATE TABLE IF NOT EXISTS audit_report_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     INDEX status_index (status),
     INDEX deleted_index (deleted),
     INDEX request_signature_index (requestSignature)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI Audit Report entities';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS `user_session` (
   `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
@@ -438,7 +438,7 @@ CREATE TABLE IF NOT EXISTS `user_session` (
   KEY `user_session_expiry` (`status`,`expiresAt`),
   KEY `user_session_idle_expiry` (`status`,`idleExpiresAt`),
   KEY `user_session_prune` (`status`,`updatedAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Per-entity `name` index for entity tables first created in 2.0.0, so the
 -- distributed reindex's `... ORDER BY name, id LIMIT 1 OFFSET :n` cursor query
@@ -479,7 +479,7 @@ CREATE TABLE IF NOT EXISTS relationship_type_entity (
   UNIQUE KEY relationship_type_fqn_hash_unique (fqnHash),
   KEY relationship_type_name_index (name),
   KEY relationship_type_deleted_index (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ontology_axiom_entity (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -498,7 +498,7 @@ CREATE TABLE IF NOT EXISTS ontology_axiom_entity (
   KEY ontology_axiom_glossary_type_index (glossaryId, axiomType),
   KEY ontology_axiom_status_index (entityStatus),
   KEY ontology_axiom_deleted_index (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ontology_change_set_entity (
   id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -515,7 +515,7 @@ CREATE TABLE IF NOT EXISTS ontology_change_set_entity (
   KEY ontology_change_set_state_index (state),
   KEY ontology_change_set_updated_by_index (updatedBy),
   KEY ontology_change_set_deleted_index (deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ontology_annex (
   glossaryId varchar(36) NOT NULL,
@@ -528,7 +528,7 @@ CREATE TABLE IF NOT EXISTS ontology_annex (
   PRIMARY KEY (glossaryId, revision),
   UNIQUE KEY ontology_annex_checksum_unique (glossaryId, checksum),
   KEY ontology_annex_created_at_index (createdAt)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ontology_edit_lock (
   resourceType varchar(128) NOT NULL,
@@ -542,7 +542,7 @@ CREATE TABLE IF NOT EXISTS ontology_edit_lock (
   PRIMARY KEY (resourceType, resourceId),
   KEY ontology_edit_lock_expiry_index (expiresAt),
   KEY ontology_edit_lock_holder_index (holderId, sessionId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS rdf_inference_rule (
   name varchar(64) NOT NULL,
@@ -556,7 +556,7 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
   lastError text DEFAULT NULL,
   PRIMARY KEY (name),
   KEY rdf_inference_rule_dirty_index (dirty, deleted)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 ALTER TABLE entity_relationship ADD COLUMN relationshipId varchar(36) DEFAULT NULL;
 

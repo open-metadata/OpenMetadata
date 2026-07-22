@@ -146,17 +146,11 @@ describe('getCanvasColor', () => {
   });
 
   it('returns the fallback hex when document is not available', () => {
-    const restoreDocument = jest.replaceProperty(
-      global as typeof globalThis & { document?: Document },
-      'document',
-      undefined as unknown as Document
-    );
+    jest
+      .spyOn(globalThis, 'document', 'get')
+      .mockReturnValue(undefined as unknown as Document);
 
-    try {
-      expect(getCanvasColor('var(--color-missing)', '#abcdef')).toBe('#abcdef');
-    } finally {
-      restoreDocument.restore();
-    }
+    expect(getCanvasColor('var(--color-missing)', '#abcdef')).toBe('#abcdef');
   });
 
   it('returns the input unchanged when it is not a var() token', () => {

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.migration.utils.v200;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -20,11 +21,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class OntologySqlMigrationParityTest {
+  private static final Pattern MYSQL_TABLE_COLLATION =
+      Pattern.compile("default\\s+charset=utf8mb4\\s+collate=([a-z0-9_]+)");
+  private static final Set<String> CANONICAL_MYSQL_TABLE_COLLATIONS = Set.of("utf8mb4_0900_ai_ci");
   private static final List<String> ONTOLOGY_TABLES =
       List.of(
           "relationship_type_entity",
@@ -33,6 +41,15 @@ class OntologySqlMigrationParityTest {
           "ontology_annex",
           "ontology_edit_lock",
           "rdf_inference_rule");
+
+  @Test
+  void mysqlCleanAndUpgradeTableCollationsStayAligned() throws IOException {
+    final DialectSql mysql =
+        dialects().filter(dialect -> dialect.name().equals("mysql")).findFirst().orElseThrow();
+
+    assertEquals(CANONICAL_MYSQL_TABLE_COLLATIONS, tableCollations(read(mysql.cleanSchema())));
+    assertEquals(CANONICAL_MYSQL_TABLE_COLLATIONS, tableCollations(read(mysql.schemaChanges())));
+  }
 
   @ParameterizedTest(name = "{0} clean and 2.0 upgrade schemas stay aligned")
   @MethodSource("dialects")
@@ -82,6 +99,14 @@ class OntologySqlMigrationParityTest {
 
   private static String read(final Path path) throws IOException {
     return Files.readString(path).toLowerCase(Locale.ROOT);
+  }
+
+  private static Set<String> tableCollations(final String sql) {
+    return MYSQL_TABLE_COLLATION
+        .matcher(sql)
+        .results()
+        .map(result -> result.group(1))
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   private static Stream<DialectSql> dialects() {
