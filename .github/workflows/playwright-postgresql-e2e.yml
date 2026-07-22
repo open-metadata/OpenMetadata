@@ -16,14 +16,24 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
-  # Note: PRs targeting main do NOT run this workflow — the merge queue
-  # (merge_group) runs the authoritative suite there, and
-  # playwright-required-checks-stub.yml reports the required playwright-summary
-  # check green on those PRs so they can enter the queue. pull_request_target
-  # remains only for PRs targeting release branches (which have no merge
-  # queue), gated by the "safe to test" label. Path filtering is handled inside
-  # the workflow via dorny/paths-filter so PRs without relevant changes skip
-  # the expensive jobs while still reporting a passing status.
+  # Note: PRs targeting main run this workflow only when the run-playwright
+  # label is present. The merge queue (merge_group) remains the authoritative
+  # required suite, and playwright-required-checks-stub.yml reports the required
+  # playwright-summary check green on unlabeled main PRs so they can enter the
+  # queue. pull_request_target remains only for PRs targeting release branches
+  # (which have no merge queue), gated by the "safe to test" label. Path
+  # filtering is handled inside the workflow via dorny/paths-filter so PRs
+  # without relevant changes skip the expensive jobs while still reporting a
+  # passing status.
+  pull_request:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    branches:
+      - main
   pull_request_target:
     types:
       - labeled
@@ -40,11 +50,13 @@ permissions:
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'run-playwright') }}
 
 jobs:
   check-changes:
+    name: ${{ github.event_name == 'pull_request' && 'check-changes (run-playwright)' || 'check-changes' }}
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'run-playwright') && (github.event.action != 'labeled' || github.event.label.name == 'run-playwright')) }}
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
@@ -85,11 +97,14 @@ jobs:
               - 'docker/development/docker-compose-postgres.yml'
 
   build:
+    name: ${{ github.event_name == 'pull_request' && 'build (run-playwright)' || 'build' }}
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-playwright') &&
+        (github.event.action != 'labeled' || github.event.label.name == 'run-playwright')) ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
@@ -146,11 +161,14 @@ jobs:
           retention-days: 1
 
   detect-changes:
+    name: ${{ github.event_name == 'pull_request' && 'detect-changes (run-playwright)' || 'detect-changes' }}
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-playwright') &&
+        (github.event.action != 'labeled' || github.event.label.name == 'run-playwright')) ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
@@ -213,6 +231,7 @@ jobs:
           fi
 
   playwright-ci-postgresql:
+    name: ${{ github.event_name == 'pull_request' && 'playwright-ci-postgresql (run-playwright)' || 'playwright-ci-postgresql' }}
     needs: [build, detect-changes]
     runs-on: ubuntu-latest
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' }}
@@ -521,8 +540,8 @@ jobs:
           sudo rm -rf "${PWD}/docker-volume"
 
   playwright-summary:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
-    if: always()
+    name: ${{ github.event_name == 'pull_request' && 'playwright-summary (run-playwright)' || github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    if: ${{ always() && (github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'run-playwright') && (github.event.action != 'labeled' || github.event.label.name == 'run-playwright'))) }}
     needs: [check-changes, build, detect-changes, playwright-ci-postgresql]
     runs-on: ubuntu-latest
     permissions:
@@ -532,7 +551,7 @@ jobs:
       - name: Checkout trusted CI classifier
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
+          ref: ${{ (github.event_name == 'pull_request_target' || github.event_name == 'pull_request') && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
 
       - name: Download all results JSON
@@ -594,9 +613,12 @@ jobs:
             const eventAction = context.payload.action;
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
-            const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+            const isNonTestLabelEvent = context.eventName === 'pull_request_target' &&
+              eventAction === 'labeled' && labelName !== 'safe to test';
             const testsRequired = context.eventName === 'merge_group' ||
               context.eventName === 'workflow_dispatch' ||
+              (context.eventName === 'pull_request' &&
+                (context.payload.pull_request?.labels || []).some(label => label.name === 'run-playwright')) ||
               process.env.E2E_CHANGED === 'true' ||
               process.env.DOCKER_COMPOSE_CHANGED === 'true';
 

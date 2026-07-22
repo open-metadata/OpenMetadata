@@ -15,9 +15,14 @@
 name: Postgres Playwright Integration Tests
 on:
   merge_group:
-  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
-  # it there. pull_request_target remains only for PRs targeting release
-  # branches, which have no merge queue.
+  # PRs targeting main run this workflow only when the run-playwright label is
+  # present. The merge queue (merge_group) remains the authoritative required
+  # suite. pull_request_target remains only for PRs targeting release branches,
+  # which have no merge queue.
+  pull_request:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    branches:
+      - main
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     branches-ignore:
@@ -28,13 +33,13 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'run-playwright') }}
 
 jobs:
   playwright-postgresql:
-    name: ${{ github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-postgresql (ignored label)' || 'playwright-postgresql' }}
+    name: ${{ github.event_name == 'pull_request' && 'playwright-postgresql (run-playwright)' || github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-postgresql (ignored label)' || 'playwright-postgresql' }}
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || (contains(github.event.pull_request.labels.*.name, 'run-playwright') && (github.event.action != 'labeled' || github.event.label.name == 'run-playwright'))) && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     strategy:
       fail-fast: false
       matrix:
