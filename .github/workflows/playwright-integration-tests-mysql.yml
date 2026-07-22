@@ -14,8 +14,17 @@
 
 name: MySQL Playwright Integration Tests
 on:
+  merge_group:
+  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
+  # it there. pull_request_target remains only for PRs targeting release
+  # branches, which have no merge queue.
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -23,6 +32,7 @@ concurrency:
 
 jobs:
   playwright-mysql:
+    name: ${{ github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-mysql (ignored label)' || 'playwright-mysql' }}
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     strategy:
@@ -60,7 +70,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v4
@@ -70,11 +82,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Get yarn cache directory path
-        if: steps.cache-output.outputs.exit-code == 0
         id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(yarn cache dir)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
-        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -101,12 +111,15 @@ jobs:
           make run_e2e_tests
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: playwright-artifacts
           path: ingestion/tests/e2e/artifacts/
           retention-days: 1
       - name: Clean Up
+        if: always()
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"

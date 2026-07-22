@@ -86,12 +86,12 @@ import {
 
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset' +
+  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:outline-1 tw:-outline-offset-1' +
   ' tw:cursor-pointer tw:transition tw:duration-100' +
-  ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
+  ' tw:ease-linear hover:tw:outline-brand tw:whitespace-nowrap';
 
-const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
+const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:outline-primary`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:outline-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();

@@ -261,6 +261,22 @@ WHERE extension LIKE 'app.version.%'
   AND json->>'$.name' = 'DataInsightsApplication'
   AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
 
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');
+
 -- Drop data product ports pointing at a column ('tableColumn' has no repository, so it 500s
 -- portsView). relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
 DELETE FROM entity_relationship

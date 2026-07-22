@@ -82,7 +82,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
           <button
             className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
               isSelected
-                ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
+                ? 'tw:border-utility-brand-600 tw:bg-primary tw:outline-4 tw:outline-utility-brand-600/10'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
             data-testid="run-history-item"

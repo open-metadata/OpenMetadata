@@ -77,7 +77,8 @@ jobs:
           # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -129,7 +130,7 @@ jobs:
           badge-title: Coverage
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: npm install -g sonarqube-scanner
+        run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
