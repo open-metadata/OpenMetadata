@@ -740,7 +740,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       strokeWidth={2.5}
                     />
                   </AriaButton>
-                  <Dropdown.Popover>
+                  <Dropdown.Popover className="tw:flex tw:flex-col tw:max-h-80!">
                     <div className="tw:p-2 tw:border-b tw:border-secondary">
                       <Input
                         autoFocus
@@ -756,6 +756,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       />
                     </div>
                     <Dropdown.Menu
+                      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
                       selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                       selectionMode="single"
                       onAction={(key) => {
