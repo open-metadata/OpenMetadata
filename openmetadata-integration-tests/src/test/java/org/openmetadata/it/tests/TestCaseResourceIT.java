@@ -1983,6 +1983,78 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_hardDeleteReapsResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_reap_children"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    org.openmetadata.schema.tests.type.TestCaseResolutionStatus status =
+        client.testCaseResolutionStatuses().create(newStatus);
+    UUID statusId = status.getId();
+
+    assertEquals(
+        1,
+        countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+        "resolution-status time-series row should exist before delete");
+    assertEquals(
+        1, countRelationshipsTo(statusId), "parentOf relationship should exist before delete");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.testCases().delete(testCase.getId().toString(), params);
+
+    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
+    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
+    Awaitility.await("resolution-status children reaped after hard delete")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                  "resolution-status time-series row must be hard deleted with its test case");
+              assertEquals(
+                  0,
+                  countRelationshipsTo(statusId),
+                  "parentOf relationship must be cleaned up, otherwise it is left orphaned");
+            });
+  }
+
+  private int countRowsById(String tableName, String id) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
+                    .bind("id", id)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private int countRelationshipsTo(UUID toId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE toId = :id")
+                    .bind("id", toId.toString())
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

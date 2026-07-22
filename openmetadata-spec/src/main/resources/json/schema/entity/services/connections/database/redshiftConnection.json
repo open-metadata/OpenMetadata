@@ -59,6 +59,16 @@
       "description": "Host and port of the Redshift service.",
       "type": "string"
     },
+    "clusterIdentifier": {
+      "title": "Cluster Identifier",
+      "description": "Redshift cluster identifier. Leave empty for standard Redshift hostnames (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).",
+      "type": "string"
+    },
+    "workgroupName": {
+      "title": "Workgroup Name",
+      "description": "Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless -> Workgroups.",
+      "type": "string"
+    },
     "database": {
       "title": "Database",
       "description": "Initial Redshift database to connect to. If you want to ingest all databases, set ingestAllDatabases to true.",
