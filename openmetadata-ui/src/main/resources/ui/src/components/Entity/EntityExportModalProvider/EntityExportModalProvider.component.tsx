@@ -82,6 +82,9 @@ export const EntityExportModalProvider = ({
   );
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
+  const pendingCSVExportResponsesRef = useRef<
+    Map<string, Partial<CSVExportWebsocketResponse>>
+  >(new Map());
 
   // Holds the in-flight export's onError so the async (websocket) failure
   // branches can notify the caller without a stale closure over exportData.
@@ -131,6 +134,130 @@ export const EntityExportModalProvider = ({
     setExportData(data);
   }, []);
 
+  const handleCSVExportSuccess = useCallback(
+    (data: string, fileName?: string) => {
+      if (isBulkEdit) {
+        setCSVExportData(data);
+      } else {
+        const csvFileName =
+          fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
+        downloadFile(data, `${csvFileName}.csv`);
+      }
+      setDownloading(false);
+      handleCancel();
+      setCSVExportJob(undefined);
+      csvExportJobRef.current = undefined;
+      pendingCSVExportResponsesRef.current.clear();
+      exportOnErrorRef.current = undefined;
+    },
+    [isBulkEdit]
+  );
+
+  const handleClearCSVExportData = useCallback(() => {
+    setCSVExportData(undefined);
+    setCSVExportError(undefined);
+    setCSVExportJob(undefined);
+    setExportData(null);
+    csvExportJobRef.current = undefined;
+    pendingCSVExportResponsesRef.current.clear();
+    exportOnErrorRef.current = undefined;
+  }, []);
+
+  const applyCSVExportJobUpdate = useCallback(
+    (response: Partial<CSVExportWebsocketResponse>) => {
+      const activeJob = csvExportJobRef.current;
+
+      if (!activeJob?.jobId) {
+        return;
+      }
+
+      const updatedCSVExportJob: Partial<CSVExportJob> = {
+        ...activeJob,
+        ...response,
+        jobId: activeJob.jobId,
+        fileName: activeJob.fileName,
+      };
+
+      setCSVExportJob(updatedCSVExportJob);
+      csvExportJobRef.current = updatedCSVExportJob;
+
+      if (response.status === 'COMPLETED' && response.data !== undefined) {
+        handleCSVExportSuccess(response.data, activeJob.fileName);
+      } else if (response.status === 'COMPLETED') {
+        // Completion events no longer carry the CSV (it can be arbitrarily
+        // large) — download it from the job result endpoint instead.
+        const { jobId, fileName } = activeJob;
+        getCsvAsyncJobResult(jobId)
+          .then((csvData) => {
+            if (csvExportJobRef.current?.jobId === jobId) {
+              handleCSVExportSuccess(csvData, fileName);
+            }
+          })
+          .catch((error) => {
+            if (csvExportJobRef.current?.jobId !== jobId) {
+              return;
+            }
+            showErrorToast(error as AxiosError);
+            setDownloading(false);
+            exportOnErrorRef.current?.();
+            exportOnErrorRef.current = undefined;
+            csvExportJobRef.current = undefined;
+            pendingCSVExportResponsesRef.current.clear();
+            if (isBulkEdit) {
+              setCSVExportError(t('message.unexpected-error'));
+            }
+          });
+      } else if (response.status === 'IN_PROGRESS') {
+        // Keep downloading state true during progress
+        setDownloading(true);
+      } else {
+        // FAILED / CANCELLED — notify the caller (mirrors the synchronous
+        // catch), drop the job ref so a late message can't re-merge, and show a
+        // generic error to the bulk-edit grid so it stops waiting on an export
+        // that will never arrive. The raw backend error is not surfaced — it can
+        // leak internal details (stack traces, SQL, entity internals).
+        setDownloading(false);
+        exportOnErrorRef.current?.();
+        exportOnErrorRef.current = undefined;
+        csvExportJobRef.current = undefined;
+        pendingCSVExportResponsesRef.current.clear();
+        if (isBulkEdit) {
+          setCSVExportError(t('message.unexpected-error'));
+        }
+      }
+    },
+    [isBulkEdit, handleCSVExportSuccess, t]
+  );
+
+  const handleCSVExportJobUpdate = useCallback(
+    (response: Partial<CSVExportWebsocketResponse>) => {
+      const activeJob = csvExportJobRef.current;
+      const responseJobId = response.jobId;
+
+      if (!activeJob || !responseJobId) {
+        return;
+      }
+
+      if (!activeJob.jobId) {
+        const pendingResponse =
+          pendingCSVExportResponsesRef.current.get(responseJobId);
+        pendingCSVExportResponsesRef.current.set(responseJobId, {
+          ...pendingResponse,
+          ...response,
+        });
+
+        return;
+      }
+
+      if (responseJobId !== activeJob.jobId) {
+        return;
+      }
+
+      applyCSVExportJobUpdate(response);
+    },
+    [applyCSVExportJobUpdate]
+  );
+
   const handleExport = async ({
     fileName,
     exportType,
@@ -173,10 +300,7 @@ export const EntityExportModalProvider = ({
       }
 
       setDownloading(true);
-
-      // assigning the job data to ref here, as exportData.onExport may take time to return the data
-      // and websocket connection may be respond before that, so we need to keep the job data in ref
-      // to handle the download
+      pendingCSVExportResponsesRef.current.clear();
       csvExportJobRef.current = {
         fileName: fileName,
       };
@@ -194,15 +318,26 @@ export const EntityExportModalProvider = ({
         }
         handleCancel();
         setDownloading(false);
+        csvExportJobRef.current = undefined;
+        pendingCSVExportResponsesRef.current.clear();
+        exportOnErrorRef.current = undefined;
       } else {
         const jobData = {
           jobId: data.jobId,
           fileName: fileName,
           message: data.message,
         };
+        const pendingResponse = pendingCSVExportResponsesRef.current.get(
+          data.jobId
+        );
 
         setCSVExportJob(jobData);
         csvExportJobRef.current = jobData;
+        pendingCSVExportResponsesRef.current.clear();
+
+        if (pendingResponse) {
+          applyCSVExportJobUpdate(pendingResponse);
+        }
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -213,98 +348,9 @@ export const EntityExportModalProvider = ({
       exportData.onError?.();
       exportOnErrorRef.current = undefined;
       csvExportJobRef.current = undefined;
+      pendingCSVExportResponsesRef.current.clear();
     }
   };
-
-  const handleCSVExportSuccess = useCallback(
-    (data: string, fileName?: string) => {
-      if (isBulkEdit) {
-        setCSVExportData(data);
-      } else {
-        const csvFileName =
-          fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
-        downloadFile(data, `${csvFileName}.csv`);
-      }
-      setDownloading(false);
-      handleCancel();
-      setCSVExportJob(undefined);
-      csvExportJobRef.current = undefined;
-      exportOnErrorRef.current = undefined;
-    },
-    [isBulkEdit]
-  );
-
-  const handleClearCSVExportData = useCallback(() => {
-    setCSVExportData(undefined);
-    setCSVExportError(undefined);
-    setCSVExportJob(undefined);
-    setExportData(null);
-    csvExportJobRef.current = undefined;
-    exportOnErrorRef.current = undefined;
-  }, []);
-
-  const handleCSVExportJobUpdate = useCallback(
-    (response: Partial<CSVExportWebsocketResponse>) => {
-      // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
-      if (!csvExportJobRef.current) {
-        return;
-      }
-      const updatedCSVExportJob: Partial<CSVExportJob> = {
-        ...response,
-        ...csvExportJobRef.current,
-      };
-
-      setCSVExportJob(updatedCSVExportJob);
-
-      csvExportJobRef.current = updatedCSVExportJob;
-
-      if (response.status === 'COMPLETED' && response.data) {
-        handleCSVExportSuccess(
-          response.data ?? '',
-          csvExportJobRef.current?.fileName
-        );
-      } else if (response.status === 'COMPLETED') {
-        // Completion events no longer carry the CSV (it can be arbitrarily
-        // large) — download it from the job result endpoint instead.
-        const jobId = response.jobId ?? csvExportJobRef.current?.jobId;
-        if (jobId) {
-          getCsvAsyncJobResult(jobId)
-            .then((csvData) =>
-              handleCSVExportSuccess(csvData, csvExportJobRef.current?.fileName)
-            )
-            .catch((error) => {
-              showErrorToast(error as AxiosError);
-              setDownloading(false);
-              exportOnErrorRef.current?.();
-              exportOnErrorRef.current = undefined;
-              csvExportJobRef.current = undefined;
-              if (isBulkEdit) {
-                setCSVExportError(t('message.unexpected-error'));
-              }
-            });
-        } else {
-          setDownloading(false);
-        }
-      } else if (response.status === 'IN_PROGRESS') {
-        // Keep downloading state true during progress
-        setDownloading(true);
-      } else {
-        // FAILED / CANCELLED — notify the caller (mirrors the synchronous
-        // catch), drop the job ref so a late message can't re-merge, and show a
-        // generic error to the bulk-edit grid so it stops waiting on an export
-        // that will never arrive. The raw backend error is not surfaced — it can
-        // leak internal details (stack traces, SQL, entity internals).
-        setDownloading(false);
-        exportOnErrorRef.current?.();
-        exportOnErrorRef.current = undefined;
-        csvExportJobRef.current = undefined;
-        if (isBulkEdit) {
-          setCSVExportError(t('message.unexpected-error'));
-        }
-      }
-    },
-    [isBulkEdit, handleCSVExportSuccess, t]
-  );
 
   const runTrayExport = useCallback(async (data: ExportData) => {
     // CSV-only exports skip the modal and surface in the global CsvJobsTray

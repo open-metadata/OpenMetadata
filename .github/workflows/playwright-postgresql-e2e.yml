@@ -55,7 +55,9 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
+  # PR and manual runs for the same branch supersede stale commits. This also
+  # lets a manually dispatched full-suite run replace the automatic PR subset.
+  group: playwright-ci-postgresql-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:

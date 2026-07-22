@@ -18,8 +18,8 @@
  *   StoredProcedure, DashboardDataModel, Metric, Chart,
  *   ApiCollection, ApiEndpoint, DataProduct, Domain, TableColumn.
  *
- * Each entity type has ONE describe.serial block so no two workers can ever run
- * CP create/edit/delete operations for the same entity type simultaneously.
+ * Each entity type has one default-mode describe block so its CP operations
+ * remain sequential without replaying every preceding test on a retry.
  *
  * Entity setup (prepareCustomProperty) is done in beforeAll, not inside tests,
  * so cleanup always runs in afterAll even when a test fails mid-way.
@@ -263,8 +263,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
   const configProperties = key === 'entity_table' ? CONFIG_PROPERTIES : [];
 
-  test.describe
-    .serial(`Add update and delete custom properties for ${entity.name}`, () => {
+  test.describe(`Add update and delete custom properties for ${entity.name}`, () => {
+    test.describe.configure({ mode: 'default' });
+
     let mainEntity: AssetTypes | OtherTypes = {} as AssetTypes | OtherTypes;
     let responseData:
       | AssetTypes['entityResponseData']
