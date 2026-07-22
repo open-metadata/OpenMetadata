@@ -33,6 +33,15 @@ const mockExportJob = {
   message: 'Export initiated successfyully',
 };
 
+const createDeferredExport = () => {
+  let resolve: (value: typeof mockExportJob) => void = () => undefined;
+  const promise = new Promise<typeof mockExportJob>((resolver) => {
+    resolve = resolver;
+  });
+
+  return { promise, resolve };
+};
+
 // Multi-type export keeps the modal (the type picker is needed for image/PDF);
 // a CSV-only export now skips the modal and runs into the tray instead.
 const mockShowModal: ExportData = {
@@ -80,6 +89,51 @@ const WebsocketConsumerComponent = () => {
         }>
         Complete
       </button>
+    </>
+  );
+};
+
+const JobCorrelationConsumer = ({
+  onExport,
+}: {
+  onExport: ExportData['onExport'];
+}) => {
+  const { triggerExportForBulkEdit, onUpdateCSVExportJob, csvExportData } =
+    useEntityExportModalProvider();
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          triggerExportForBulkEdit({
+            name: 'correlated-export',
+            exportTypes: [ExportTypes.CSV],
+            onExport,
+          })
+        }>
+        Start correlated export
+      </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: 'unrelated-job',
+            status: 'COMPLETED',
+            data: 'unrelated,data',
+          })
+        }>
+        Complete unrelated job
+      </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: mockExportJob.jobId,
+            status: 'COMPLETED',
+            data: 'matching,data',
+          })
+        }>
+        Complete matching job
+      </button>
+      <div data-testid="correlated-export-data">{csvExportData ?? ''}</div>
     </>
   );
 };
@@ -258,6 +312,74 @@ describe('EntityExportModalProvider component', () => {
       expect(downloadFile).toHaveBeenCalledWith(
         'name\nmetric_one',
         expect.stringContaining('.csv')
+      )
+    );
+  });
+
+  it('ignores an unrelated completion after the active export job is known', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+    const exportRequest = createDeferredExport();
+    const onExport = jest.fn().mockReturnValue(exportRequest.promise);
+
+    render(
+      <EntityExportModalProvider>
+        <JobCorrelationConsumer onExport={onExport} />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start correlated export'));
+    });
+
+    await waitFor(() => expect(onExport).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      exportRequest.resolve(mockExportJob);
+      await exportRequest.promise;
+    });
+
+    fireEvent.click(screen.getByText('Complete unrelated job'));
+
+    expect(screen.getByTestId('correlated-export-data')).toBeEmptyDOMElement();
+
+    fireEvent.click(screen.getByText('Complete matching job'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('correlated-export-data')).toHaveTextContent(
+        'matching,data'
+      )
+    );
+  });
+
+  it('processes a matching completion buffered before the export job resolves', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+    const exportRequest = createDeferredExport();
+    const onExport = jest.fn().mockReturnValue(exportRequest.promise);
+
+    render(
+      <EntityExportModalProvider>
+        <JobCorrelationConsumer onExport={onExport} />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start correlated export'));
+    });
+
+    await waitFor(() => expect(onExport).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByText('Complete matching job'));
+
+    expect(screen.getByTestId('correlated-export-data')).toBeEmptyDOMElement();
+
+    await act(async () => {
+      exportRequest.resolve(mockExportJob);
+      await exportRequest.promise;
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('correlated-export-data')).toHaveTextContent(
+        'matching,data'
       )
     );
   });
