@@ -68,9 +68,13 @@ export const ColorPickerField = ({
               'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:transition tw:duration-150',
               !disabled && 'tw:hover:scale-[1.02]',
               disabled && 'tw:opacity-50',
-              isSelected && 'tw:ring-2 tw:ring-white tw:ring-offset-2',
-              !isSelected && 'tw:ring-1 tw:ring-black/5',
-              'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2'
+              // `ring-2 ring-white ring-offset-2` painted a 2px white offset over a 4px white
+              // ring — both white, so it read as one 4px white band at offset 0.
+              isSelected && 'tw:outline-4 tw:outline-white',
+              !isSelected && 'tw:outline-1 tw:outline-black/5'
+              // The focus ring is intentionally omitted: Button already applies
+              // `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`,
+              // which is exactly what the removed focus-visible ring duplicated.
             )}
             color="tertiary"
             data-testid={dataTestId ? `${dataTestId}-${index}` : undefined}

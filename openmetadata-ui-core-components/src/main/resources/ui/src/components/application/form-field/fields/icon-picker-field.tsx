@@ -204,11 +204,14 @@ export const IconPickerField = ({
               'aria-label': item.label ?? item.id,
               'aria-pressed': isSelected,
               className: cx(
-                'tw:size-9 tw:rounded-lg tw:p-0! tw:ring-1 tw:ring-secondary_alt tw:transition tw:duration-150',
+                'tw:size-9 tw:rounded-lg tw:p-0! tw:outline-1 tw:outline-secondary_alt tw:transition tw:duration-150',
                 isSelected
-                  ? 'tw:bg-primary_hover tw:ring-brand'
+                  ? 'tw:bg-primary_hover tw:outline-brand'
                   : 'tw:bg-primary tw:hover:bg-primary_hover',
-                'tw:focus-visible:ring-2 tw:focus-visible:ring-brand'
+                // The old focus ring had no `ring-offset`, so it sat flush against Button's
+                // own 2px focus outline at offset 2 and read as a single 4px brand band.
+                // `outline-4` at offset 0 reproduces that; both override Button's defaults.
+                'tw:focus-visible:outline-4 tw:focus-visible:outline-offset-0'
               ),
               color: 'tertiary' as const,
               size: 'sm' as const,
@@ -265,11 +268,13 @@ export const IconPickerField = ({
           ariaLabel ?? placeholder ?? labels?.emptyState ?? 'Select icon'
         }
         className={cx(
-          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:ring-1 tw:ring-black/5 tw:transition tw:duration-150',
+          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:outline-1 tw:outline-black/5 tw:transition tw:duration-150',
           !disabled && 'tw:hover:scale-[1.02]',
           disabled && 'tw:opacity-50',
-          'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2',
-          isOpen && 'tw:ring-2 tw:ring-brand tw:ring-offset-2'
+          // No focus-visible rule here: Button already applies
+          // `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`,
+          // which is exactly what the removed focus-visible ring duplicated.
+          isOpen && 'tw:outline-2 tw:outline-brand tw:outline-offset-2'
         )}
         color="tertiary"
         data-testid={dataTestId}

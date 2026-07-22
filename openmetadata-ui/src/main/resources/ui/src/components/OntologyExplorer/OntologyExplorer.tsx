@@ -52,7 +52,7 @@ const ONTOLOGY_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
-  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
 interface GraphEmptyStateProps {
   readonly message: string;
@@ -363,7 +363,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       style={{ height }}>
       {scope === 'global' && (
         <Card
-          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-none"
+          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:shadow-none"
           data-testid="ontology-explorer-header">
           <FilterToolbar
             filters={filters}

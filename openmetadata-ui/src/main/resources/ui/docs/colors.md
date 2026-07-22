@@ -272,18 +272,45 @@ it. `Button`/`ButtonUtility`/`Tab` draw on `::after` → use `tw:after:outline-<
 - **`tw:shadow-*` is a real drop shadow** — keep it; it is not the ring.
 - **`--shadow-skeumorphic`** (`globals.css`) contains an inset `0 0 0 1px` layer and has the
   same Safari fragility as a ring.
+- **Suppressors may carry an important modifier — and the two forms are not
+  interchangeable.** A `ring-0` written as `tw:!ring-0` is just as dead as a plain one once
+  the border is an outline, so it must become `tw:!outline-0`. But when the target draws its
+  border on `::after`, the replacement **must use the suffix form**
+  `tw:after:outline-0!` — the prefix form `tw:!after:outline-0` (`!` before a variant)
+  compiles to **nothing at all**, silently reproducing the bug it was meant to fix. Verify
+  any important-modified class actually generates CSS before trusting it.
+- **Searching for leftovers: use `[^a-zA-Z]ring-`.** Narrower patterns miss real cases —
+  `tw:ring-` misses variant forms (`tw:focus-visible:ring-2`, `tw:has-[&>select]:ring-1`)
+  and `:ring` misses important-prefixed ones (`tw:!ring-0`). An ESLint
+  `no-restricted-syntax` rule now enforces this in all three UI packages; prefer fixing the
+  code over adding to its allow-list.
 
-#### The few places rings legitimately remain
+#### No exceptions
 
-- **`ring-offset-*` halos** (`color-picker-field`, `icon-picker-field`): `ring-offset-color`
-  *fills* the offset gap; `outline-offset` leaves it transparent. Not reproducible.
-- **`Avatar` consumers** (`OwnerReveal`, `OwnerStackOverflow`): `Avatar` already uses an
-  outline, so a second outline would clobber it. Use Avatar's `contrastBorder` API.
-- **`ring-0` on `Card`**: `Card` uses a real `border` and never had a ring, so the suppressor
-  is already inert. Converting it would kill Card's focus outline.
+There are **zero** remaining `ring-*` usages, and the ESLint rule has **no allow-list**. Cases
+that once looked unconvertible all had an exact equivalent:
 
-Ban enforced by review — if you are adding `tw:ring-*` for an edge, you want `border` or
-`outline`.
+- **`ring-offset-*` halos.** The offset gap is filled with `--tw-ring-offset-color`, whose
+  default is `#fff`. When the ring colour is *also* white the two merge into a single
+  `(ring + offset)`px band — e.g. `ring-2 ring-white ring-offset-2` is exactly
+  `outline-4 outline-white`. Where the colours differ, `outline-offset-N` reproduces the
+  geometry and leaves the gap transparent (identical over a white backdrop, and avoids a
+  hardcoded white gap in dark mode).
+- **Consumer focus rings on `Button`.** `Button` already applies
+  `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`. A consumer
+  `focus-visible:ring-2 ring-brand ring-offset-2` duplicates it exactly — delete rather than
+  convert. If the consumer ring had **no** `ring-offset`, it sat flush against Button's
+  outline and read as one `4px` band: use `focus-visible:outline-4 focus-visible:outline-offset-0`.
+- **`Avatar` consumers.** `Avatar` draws its contrast border with the element `outline`, so a
+  consumer outline would clobber it — but its root has `tw:relative` and no `::after`, so the
+  extra edge goes on `::after`. These rings are non-inset, so use **offset 0**; do *not* reuse
+  `borderAfter`, which bakes in `-outline-offset-1`.
+- **`ring-0` on `Card`.** `Card` uses a real `border` and never had a ring, so the suppressor
+  was inert — just delete it.
+- **A ring colour with no width class** (e.g. `ring-secondary` alone) is *not* dead when the
+  component supplies the width. On a migrated component whose border moved to `::after`, the
+  override must become `after:outline-<token>` — deleting it silently leaves the default
+  colour.
 
 ---
 

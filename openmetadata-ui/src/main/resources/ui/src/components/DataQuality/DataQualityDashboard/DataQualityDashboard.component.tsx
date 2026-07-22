@@ -70,7 +70,7 @@ const DataQualityDashboard = ({
   });
 
   const cardClassName = classNames('data-quality-dashboard-card-section', {
-    'tw:ring-0': isGovernanceView,
+    // `Card` draws a real border, so no edge suppressor is needed — only the shadow.
     'tw:shadow-none': isGovernanceView,
   });
 
