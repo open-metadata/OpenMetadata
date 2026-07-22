@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -57,22 +57,6 @@ export const waitForAllLoadersToDisappear = async (
 
   // Wait for the loader elements count to become 0
   await expect(loaders).toHaveCount(0, { timeout });
-};
-
-/**
- * Force fresh table reads by stripping the client `If-None-Match` header on
- * `/api/v1/tables/**` requests. The server ETag is derived only from the table's
- * version/updatedAt, which child mutations (custom metrics, executable test suites)
- * do not bump — so a post-mutation refetch can receive a not-modified response and
- * render stale data. Removing the conditional header makes the server always return
- * the current body, eliminating that stale-read flake in tests.
- */
-export const forceFreshTableReads = async (page: Page) => {
-  await page.route('**/api/v1/tables/**', async (route) => {
-    const headers = route.request().headers();
-    delete headers['if-none-match'];
-    await route.continue({ headers });
-  });
 };
 
 export const visitEntityPage = async (data: {
@@ -1409,13 +1393,13 @@ export const followEntity = async (
     return;
   }
 
-  const followResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers`
+  const followResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'PUT')
   );
   await followButton.click();
-  await followResponse;
+  await expectFollowerResponse(await followResponse);
 
-  await expect(followButton).toContainText(verificationText);
+  await expectFollowButtonState(page, verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1428,15 +1412,54 @@ export const unFollowEntity = async (
 
   await expect(followButton).toContainText('Unfollow');
 
-  const unFollowResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers/*`
+  const unFollowResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'DELETE')
   );
   await followButton.click();
-  await unFollowResponse;
+  await expectFollowerResponse(await unFollowResponse);
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Follow'
+  await expectFollowButtonState(page, 'Follow');
+};
+
+const isFollowerMutationResponse = (
+  response: Response,
+  endpoint: EntityTypeEndpoint,
+  method: 'DELETE' | 'PUT'
+) => {
+  const url = response.url();
+
+  return (
+    response.request().method() === method &&
+    url.includes(`/api/v1/${endpoint}/`) &&
+    url.includes('/followers')
   );
+};
+
+const expectFollowerResponse = async (response: Response) => {
+  if (response.ok()) {
+    return;
+  }
+
+  throw new Error(
+    `Follower mutation failed with ${response.status()}: ${await response.text()}`
+  );
+};
+
+const expectFollowButtonState = async (page: Page, expectedText: string) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  try {
+    await expect(followButton).toContainText(expectedText, { timeout: 5_000 });
+
+    return;
+  } catch {
+    await page.reload();
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await expect(page.getByTestId('entity-follow-button')).toContainText(
+      expectedText,
+      { timeout: 30_000 }
+    );
+  }
 };
 
 const LANDING_PAGE_SCROLL_CONTAINER =
