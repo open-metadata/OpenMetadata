@@ -305,18 +305,16 @@ describe('ConditionBuilder — server-side tag search', () => {
     });
 
     // Before debounce fires, fetchOptions should not have been called again
-    const callCountBeforeDebounce = (
-      tagFieldDef.fetchOptions as jest.Mock
-    ).mock.calls.length;
+    const callCountBeforeDebounce = (tagFieldDef.fetchOptions as jest.Mock).mock
+      .calls.length;
 
     // Fire debounce
     await act(async () => {
       jest.runAllTimers();
     });
 
-    const callCountAfterDebounce = (
-      tagFieldDef.fetchOptions as jest.Mock
-    ).mock.calls.length;
+    const callCountAfterDebounce = (tagFieldDef.fetchOptions as jest.Mock).mock
+      .calls.length;
 
     expect(callCountAfterDebounce).toBeGreaterThan(callCountBeforeDebounce);
 
@@ -428,8 +426,8 @@ describe('ConditionBuilder — server-side tag search', () => {
       jest.runAllTimers();
     });
 
-    expect(
-      (tagFieldDef.fetchOptions as jest.Mock).mock.calls.length
-    ).toBe(callsAfterSearch);
+    expect((tagFieldDef.fetchOptions as jest.Mock).mock.calls.length).toBe(
+      callsAfterSearch
+    );
   });
 });

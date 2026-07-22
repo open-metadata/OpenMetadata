@@ -211,9 +211,7 @@ function ConditionBuilderValueControl(
         });
         onChange([...selectedItems.items.map((i) => i.id), String(key)]);
       }}
-      onSearchChange={
-        supportsSearch ? debouncedLoadAsyncOptions : undefined
-      }>
+      onSearchChange={supportsSearch ? debouncedLoadAsyncOptions : undefined}>
       {(item) => (
         <Autocomplete.Item
           id={item.id}
