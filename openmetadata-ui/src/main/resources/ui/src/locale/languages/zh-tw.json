@@ -3408,6 +3408,7 @@
     "find-apps-to-improve-data": "尋找改善資料的應用程式",
     "find-in-table": "在資料表中尋找",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "選擇任一欄位以在此處查看提示。",
     "fosters-collaboration-among-producers-and-consumers": "設定組織目標和 KPI，以主動推動公司的資料文化。透過及時的報告 fostering 一種持續改進的文化，以監控資料健康狀況。",
     "freshness-sla-description": "<0>{{label}}</0>：資料必須在過去 <0>{{data}}</0> 內更新。",
     "get-started-with-open-metadata": "開始使用 {{brandName}}",
