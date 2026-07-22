@@ -568,9 +568,11 @@ export const scrollHierarchyToNode = async (
   page: Page,
   displayName: string
 ) => {
+  const scrollContainer = page.getByTestId('article-list-container');
   const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
   const node = hierarchy.getByTestId(`page-node-${displayName}`);
 
+  await scrollContainer.waitFor({ state: 'visible' });
   await hierarchy.waitFor({ state: 'visible' });
 
   const getLastNode = () =>
@@ -594,7 +596,7 @@ export const scrollHierarchyToNode = async (
       })
       .catch(() => null);
 
-    await hierarchy.hover();
+    await scrollContainer.hover();
     await page.mouse.wheel(0, 3000);
     await expect(
       hierarchy.locator('[data-testid^="page-node-"]').first()

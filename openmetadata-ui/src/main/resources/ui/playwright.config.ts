@@ -43,6 +43,9 @@ const hasDedicatedIngestionLane =
   Boolean(shardPlan) || process.env.PW_DEDICATED_INGESTION === 'true';
 const isPlannedShard = Boolean(shardPlan);
 const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
+const preseededAdminState = hasPreseededState
+  ? { storageState: 'playwright/.auth/admin.json' }
+  : {};
 const authDependencies = hasPreseededState ? [] : ['setup'];
 const entityDependencies = hasPreseededState
   ? []
@@ -159,7 +162,7 @@ export default defineConfig({
     },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], ...preseededAdminState },
       grep: shardGrep,
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: entityDependencies,

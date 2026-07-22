@@ -38,10 +38,10 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     planner = load_script("build_playwright_shards")
 
     assert planner.PROJECT_LANES["Basic"] == "chromium"
-    assert planner.lane_bounds("chromium", "full") == (5, 32)
+    assert planner.lane_bounds("chromium", "full") == (5, 40)
 
 
-def test_full_common_baseline_uses_27_shards_at_85_percent_efficiency():
+def test_full_common_baseline_uses_36_shards_with_runtime_reserve():
     planner = load_script("build_playwright_shards")
     units = [
         planner.Unit(
@@ -56,7 +56,14 @@ def test_full_common_baseline_uses_27_shards_at_85_percent_efficiency():
         planner.Unit("chromium", "remainder.spec.ts", "remainder", weight_ms=363_055)
     )
 
-    assert planner.shard_count(units, "chromium", "full") == 27
+    assert planner.shard_count(units, "chromium", "full") == 36
+
+
+def test_common_lane_uses_a_15_minute_allocation_budget():
+    planner = load_script("build_playwright_shards")
+
+    assert planner.shard_budget_ms_for_lane("chromium") == 15 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
 
 
 def test_predicted_execution_applies_runner_efficiency():
@@ -70,7 +77,7 @@ def test_predicted_execution_applies_runner_efficiency():
     assert planner.predicted_execution_ms(units, 3) > planner.TARGET_MS
 
 
-def test_planner_adds_a_shard_when_lpt_assignment_exceeds_budget():
+def test_common_assignment_stays_within_the_execution_ceiling():
     planner = load_script("build_playwright_shards")
     units = [
         planner.Unit("chromium", f"{index}.spec.ts", str(index), weight_ms=940_000)
@@ -79,7 +86,7 @@ def test_planner_adds_a_shard_when_lpt_assignment_exceeds_budget():
 
     shards = planner.assign_lane_within_budget(units, "chromium", "targeted")
 
-    assert len(shards) == 5
+    assert len(shards) == 6
     assert all(
         planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
         for shard in shards

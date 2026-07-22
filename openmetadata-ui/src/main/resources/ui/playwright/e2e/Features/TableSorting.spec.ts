@@ -204,10 +204,14 @@ test.describe('Table Sorting', () => {
       await afterAction();
     });
 
-    test('should have sorting on name column', async ({ page }) => {
-      await page.goto('/settings/services/dataObservability?tab=pipelines');
-      await testTableSorting(page, 'Name', 1);
-    });
+    test(
+      'should have sorting on name column',
+      { tag: '@ingestion' },
+      async ({ page }) => {
+        await page.goto('/settings/services/dataObservability?tab=pipelines');
+        await testTableSorting(page, 'Name', 1);
+      }
+    );
   });
 
   test.describe('Data Models Table', () => {

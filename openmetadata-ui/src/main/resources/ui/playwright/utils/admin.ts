@@ -16,19 +16,24 @@ import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
 export const authenticateAdminPage = async (page: Page) => {
-  await page.goto('/my-data');
-  await page.waitForURL((url) => {
-    return (
-      url.pathname.includes('/my-data') || url.pathname.includes('/signin')
-    );
-  });
+  await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+  const requiresLogin = await Promise.race([
+    page
+      .locator('#email')
+      .waitFor({ state: 'visible' })
+      .then(() => true),
+    page
+      .getByTestId('left-sidebar')
+      .waitFor({ state: 'attached' })
+      .then(() => false),
+  ]);
 
-  if (page.url().includes('/signin')) {
+  if (requiresLogin) {
     const admin = new AdminClass();
     await admin.login(page);
   }
 
-  await redirectToHomePage(page);
+  await page.waitForURL('**/my-data', { waitUntil: 'domcontentloaded' });
 };
 
 export const createAdminApiContext = async (): Promise<{

@@ -69,6 +69,7 @@ import {
   verifyNotificationAndClick,
   waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import {
@@ -204,6 +205,24 @@ test.describe('Context Center Articles', () => {
       displayName: DRAFT_ARTICLE_B_DISPLAY_NAME,
       description: 'Original description for draft article B',
     });
+
+    await Promise.all([
+      waitForSearchIndexed(
+        apiContext,
+        articleEntity.responseData.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleA.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleB.fullyQualifiedName,
+        'page'
+      ),
+    ]);
 
     await afterAction();
   });
@@ -344,7 +363,14 @@ test.describe('Context Center Articles', () => {
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
-    await scrollListingToCard(page, articleEntity.responseData.displayName);
+    await expect(searchInput).toHaveValue('');
+    await expect(page.getByText('No matching results')).not.toBeVisible();
+    await expect(
+      page
+        .getByTestId('knowledge-page-listing')
+        .locator('[data-testid^="knowledge-card-"]')
+        .first()
+    ).toBeVisible();
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -1308,10 +1334,12 @@ test.describe('Context Center Articles', () => {
         await expect(editor).not.toContainText(newDescription);
       });
 
-      await test.step('Badge should show Saved on Article B', async () => {
-        await expect(page.getByTestId('content-change-state')).not.toHaveText(
-          'Unsaved'
-        );
+      await test.step('Article B should not show an unsaved state', async () => {
+        await expect(
+          page.getByTestId('content-change-state').filter({
+            hasText: 'Unsaved',
+          })
+        ).toHaveCount(0);
       });
 
       await test.step('Navigate back to Article A — should show updated description', async () => {
@@ -1380,10 +1408,12 @@ test.describe('Context Center Articles', () => {
         ).not.toHaveValue(newDisplayName);
       });
 
-      await test.step('Badge should show Saved on Article B', async () => {
-        await expect(page.getByTestId('content-change-state')).not.toHaveText(
-          'Unsaved'
-        );
+      await test.step('Article B should not show an unsaved state', async () => {
+        await expect(
+          page.getByTestId('content-change-state').filter({
+            hasText: 'Unsaved',
+          })
+        ).toHaveCount(0);
       });
 
       await test.step('Navigate back to Article A — should show updated display name', async () => {

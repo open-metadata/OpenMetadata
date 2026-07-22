@@ -54,8 +54,9 @@ LANE_WORKERS = {
     "search": 1,
 }
 TARGET_MS = 20 * 60 * 1000
+COMMON_SHARD_BUDGET_MS = 15 * 60 * 1000
 EFFICIENCY = 0.85
-COMMON_MAX_SHARDS = 32
+COMMON_MAX_SHARDS = 40
 FALLBACK_TEST_MS = 20_000
 AUDITED_PARALLEL_SUITES = {
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
@@ -281,11 +282,17 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     return (1, 1)
 
 
+def shard_budget_ms_for_lane(lane: str) -> int:
+    return COMMON_SHARD_BUDGET_MS if lane == "chromium" else TARGET_MS
+
+
 def shard_count(units: list[Unit], lane: str, mode: str) -> int:
     workers = LANE_WORKERS.get(lane, 3)
     minimum, maximum = lane_bounds(lane, mode)
     total_weight = sum(unit.weight_ms for unit in units)
-    calculated = math.ceil(total_weight / (workers * TARGET_MS * EFFICIENCY))
+    calculated = math.ceil(
+        total_weight / (workers * shard_budget_ms_for_lane(lane) * EFFICIENCY)
+    )
     return max(minimum, min(maximum, max(1, calculated)))
 
 

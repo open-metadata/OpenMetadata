@@ -57,13 +57,13 @@ type WorkerFixtures = {
 
 export const test = base.extend<NamespaceFixtures, WorkerFixtures>({
   adminApiContext: [
-    async (_workerFixtures, use) => {
+    async ({ browserName: _browserName }, use) => {
       await use(await getWorkerAdminAPIContext());
       await disposeWorkerAdminAPIContext();
     },
     { scope: 'worker' },
   ],
-  testNamespace: async (_fixtures, use, testInfo) => {
+  testNamespace: async ({ browserName: _browserName }, use, testInfo) => {
     const runId = process.env.GITHUB_RUN_ID ?? 'local';
     const shardId = process.env.PW_SHARD_ID ?? 'local';
     const testId = testInfo.testId.replaceAll(/[^a-zA-Z0-9]+/g, '-').slice(-32);
