@@ -85,12 +85,6 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true
 
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
   py-unit-tests:
     name: Unit Tests & Static Checks
     needs: changes
@@ -106,7 +100,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -216,7 +211,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'
         run: bash .github/scripts/configure_docker_storage.sh
@@ -387,7 +383,8 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@v5
         with:

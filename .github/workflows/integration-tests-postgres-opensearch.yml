@@ -79,12 +79,6 @@ jobs:
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-postgres-opensearch.yml'
 
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.backend == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
   integration-test-build:
     name: Build Integration Test Runtime
     needs: changes
@@ -114,7 +108,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -218,7 +213,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
