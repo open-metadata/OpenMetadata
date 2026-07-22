@@ -17,8 +17,6 @@ export type HeaderShellVariant = 'flat' | 'gradient';
 
 export type HeaderShellPadding = 'default' | 'comfortable';
 
-export type HeaderShellActionsLayout = 'auto' | 'fill';
-
 export interface HeaderShellProps {
   /** Leading visual: featured icon tile, service logo, or avatar. */
   leading?: ReactNode;
@@ -39,8 +37,8 @@ export interface HeaderShellProps {
   hasStats?: boolean;
   /** Right-aligned actions (search, buttons, view toggle). */
   actions?: ReactNode;
-  /** Controls whether actions shrink to their content or fill the remaining row. */
-  actionsLayout?: HeaderShellActionsLayout;
+  /** Classes applied to the actions container. */
+  actionsClassName?: string;
   /** Footer row rendered full-width under the header, typically the tab strip. */
   footer?: ReactNode;
   /** Visual treatment. 'gradient' applies the brand-tinted card per Figma. */

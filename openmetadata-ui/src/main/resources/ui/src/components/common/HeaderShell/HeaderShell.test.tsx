@@ -84,12 +84,12 @@ describe('HeaderShell', () => {
     expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
-  it('allows the actions container to fill the remaining row', () => {
+  it('applies a custom class name to the actions container', () => {
     const { container } = render(
       <HeaderShell
         actions={<button data-testid="actions">Add</button>}
-        actionsLayout="fill"
-        title="With Fill Actions"
+        actionsClassName="tw:min-w-0 tw:flex-1"
+        title="With Custom Actions"
       />
     );
 
