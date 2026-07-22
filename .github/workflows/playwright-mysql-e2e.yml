@@ -95,10 +95,9 @@ jobs:
           disable-reviews: true # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Detect ingestion-only changes
         id: changes
@@ -115,7 +114,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -130,7 +129,7 @@ jobs:
           ingestion_dependency: "all"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
@@ -199,7 +198,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         continue-on-error: true
         with:
@@ -226,7 +225,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure() || cancelled()
         continue-on-error: true
         with:

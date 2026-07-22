@@ -139,18 +139,18 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Setup JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven Dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -166,10 +166,10 @@ jobs:
           PW_E2E_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}
         run: mvn -DskipTests clean package
 
-      - name: Upload Maven build artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload OpenMetadata distribution
+        uses: actions/upload-artifact@v6
         with:
-          name: openmetadata-build
+          name: openmetadata-distribution
           overwrite: true
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           retention-days: 1
@@ -185,7 +185,7 @@ jobs:
       selected_count: ${{ steps.select.outputs.selected_count }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
@@ -216,7 +216,7 @@ jobs:
             "$RUNNER_TEMP/playwright-selection/selection.json"
 
       - name: Upload Playwright selection
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection/selection.json
@@ -231,19 +231,19 @@ jobs:
       requires_airflow: ${{ steps.plan.outputs.requires_airflow }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download selection
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
           cache: yarn
@@ -256,7 +256,7 @@ jobs:
           yarn --ignore-scripts --frozen-lockfile
 
       - name: Seed Playwright browser cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -329,7 +329,7 @@ jobs:
             "$RUNNER_TEMP/playwright-plans/matrix.json"
 
       - name: Upload shard plans
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -340,15 +340,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Download Maven build artifact
-        uses: actions/download-artifact@v4
+      - name: Download OpenMetadata distribution
+        uses: actions/download-artifact@v7
         with:
-          name: openmetadata-build
+          name: openmetadata-distribution
           path: openmetadata-dist/target
 
       - name: Prepare seeded environment
@@ -363,7 +363,7 @@ jobs:
           lightweight-ingestion: "true"
 
       - name: Setup Node.js for fixture state
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
           cache: yarn
@@ -376,7 +376,7 @@ jobs:
           yarn --ignore-scripts --frozen-lockfile
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -414,7 +414,7 @@ jobs:
           ./.github/scripts/create_playwright_fixture.sh "${fixture_args[@]}"
 
       - name: Upload seeded fixture
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-seeded-fixture
           path: ${{ runner.temp }}/playwright-fixture/playwright-fixture.tar.zst
@@ -423,7 +423,7 @@ jobs:
 
       - name: Upload ingestion image
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-ingestion-image
           path: ${{ runner.temp }}/playwright-fixture/playwright-ingestion-image.tar.zst
@@ -464,21 +464,21 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Download Maven build artifact
-        id: download-build
-        uses: actions/download-artifact@v4
+      - name: Download OpenMetadata distribution
+        id: download-distribution
+        uses: actions/download-artifact@v7
         with:
-          name: openmetadata-build
-          path: ${{ runner.temp }}/openmetadata-build
+          name: openmetadata-distribution
+          path: ${{ runner.temp }}/openmetadata-distribution
 
       - name: Download seeded fixture
         id: download-fixture
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ runner.temp }}/playwright-fixture
@@ -486,14 +486,14 @@ jobs:
       - name: Download ingestion image
         id: download-ingestion-image
         if: ${{ matrix.requiresAirflow }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ runner.temp }}/playwright-ingestion-image
 
       - name: Download shard plans
         id: download-plans
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -504,7 +504,7 @@ jobs:
           PLAN_NAME: ${{ matrix.plan }}
           REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow }}
         run: |
-          distribution=$(find "$RUNNER_TEMP/openmetadata-build" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
+          distribution=$(find "$RUNNER_TEMP/openmetadata-distribution" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
           fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit)
           plan="$RUNNER_TEMP/playwright-plans/$PLAN_NAME"
           ingestion_image=""
@@ -551,7 +551,7 @@ jobs:
 
       - name: Setup Node.js
         id: setup-node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
           cache: yarn
@@ -566,7 +566,7 @@ jobs:
 
       - name: Restore Playwright browser cache
         id: restore-browser
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
@@ -714,7 +714,7 @@ jobs:
         if: always()
         env:
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
-          DOWNLOAD_BUILD_OUTCOME: ${{ steps.download-build.outcome }}
+          DOWNLOAD_DISTRIBUTION_OUTCOME: ${{ steps.download-distribution.outcome }}
           DOWNLOAD_FIXTURE_OUTCOME: ${{ steps.download-fixture.outcome }}
           DOWNLOAD_INGESTION_IMAGE_OUTCOME: ${{ steps.download-ingestion-image.outcome }}
           DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
@@ -731,7 +731,7 @@ jobs:
           jq -n \
             --arg shard "${{ matrix.shardId }}" \
             --arg checkout "$CHECKOUT_OUTCOME" \
-            --arg downloadBuild "$DOWNLOAD_BUILD_OUTCOME" \
+            --arg downloadDistribution "$DOWNLOAD_DISTRIBUTION_OUTCOME" \
             --arg downloadFixture "$DOWNLOAD_FIXTURE_OUTCOME" \
             --arg downloadIngestionImage "$DOWNLOAD_INGESTION_IMAGE_OUTCOME" \
             --arg downloadPlans "$DOWNLOAD_PLANS_OUTCOME" \
@@ -746,7 +746,7 @@ jobs:
               shard: $shard,
               steps: {
                 checkout: $checkout,
-                downloadBuild: $downloadBuild,
+                downloadDistribution: $downloadDistribution,
                 downloadFixture: $downloadFixture,
                 downloadIngestionImage: $downloadIngestionImage,
                 downloadPlans: $downloadPlans,
@@ -761,7 +761,7 @@ jobs:
             }' > "$STATUS_DIR/ci-status.json"
 
       - name: Upload Playwright blob report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         continue-on-error: true
         with:
@@ -773,7 +773,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload failure-only test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -784,7 +784,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload timing and request metrics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         continue-on-error: true
         with:
@@ -798,7 +798,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: playwright-results-json-${{ matrix.shardId }}
@@ -842,7 +842,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -865,13 +865,13 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: playwright-blob-*
@@ -879,20 +879,20 @@ jobs:
           merge-multiple: true
 
       - name: Download timing metrics
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: playwright-timings-*
           path: ${{ runner.temp }}/playwright-timings
 
       - name: Download shard plans
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
           cache: yarn
@@ -947,7 +947,7 @@ jobs:
 
       - name: Upload merged Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-report
@@ -976,7 +976,7 @@ jobs:
 
       - name: Upload timing history
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-timing-history-${{ needs.detect-changes.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-timing-history
@@ -1001,14 +1001,14 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download all results JSON
         if: needs.playwright-ci-postgresql.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: playwright-results-json-*
@@ -1034,7 +1034,7 @@ jobs:
       - name: Upload Playwright shadow-gate ledger
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-shadow-gate-postgresql-pr-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
@@ -1043,7 +1043,7 @@ jobs:
 
       - name: Publish consolidated job summary and gate on results
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
           BUILD_RESULT: ${{ needs.build.result }}
