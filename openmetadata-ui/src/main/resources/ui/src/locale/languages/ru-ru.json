@@ -3408,6 +3408,7 @@
     "find-apps-to-improve-data": "Найдите приложения, чтобы улучшить ваши данные",
     "find-in-table": "Найти в таблице",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "Выберите любое поле, чтобы увидеть подсказку здесь.",
     "fosters-collaboration-among-producers-and-consumers": "Способствует сотрудничеству между производителями и потребителями данных.",
     "freshness-sla-description": "<0>{{label}}</0>: Данные должны быть обновлены за последние <0>{{data}}</0>.",
     "get-started-with-open-metadata": "Начните работу с {{brandName}}",
