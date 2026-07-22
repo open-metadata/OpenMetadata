@@ -14,6 +14,9 @@ REST Auth & Client for Apache Superset
 
 import json
 import traceback
+from operator import attrgetter
+
+from cachetools import LRUCache, cachedmethod
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
@@ -102,6 +105,8 @@ class SupersetAPIClient:
             verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = TrackedREST(client_config, source_name="superset")
+        self._datasource_cache = LRUCache(maxsize=512)
+        self._database_cache = LRUCache(maxsize=512)
 
     def get_dashboard_count(self) -> int:
         resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
@@ -214,6 +219,7 @@ class SupersetAPIClient:
         response = self.client.get(f"/chart/{chart_id}")
         return response  # noqa: RET504
 
+    @cachedmethod(attrgetter("_datasource_cache"))
     def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
         Fetch data source
@@ -235,6 +241,7 @@ class SupersetAPIClient:
 
         return SupersetDatasource()
 
+    @cachedmethod(attrgetter("_database_cache"))
     def fetch_database(self, database_id: str) -> ListDatabaseResult:
         """
         Fetch database
