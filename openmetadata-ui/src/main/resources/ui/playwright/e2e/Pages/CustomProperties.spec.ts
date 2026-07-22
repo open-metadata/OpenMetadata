@@ -262,6 +262,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
   test.describe
     .serial(`Add update and delete custom properties for ${entity.name}`, () => {
+    // Disable retries for this serial block. Playwright reruns an entire
+    // describe.serial on any test failure, so with the global retries=2 a
+    // single flake multiplies into ~3× block-level wall time — the biggest
+    // single source of retry waste on the postgresql-e2e workflow. Fail fast
+    // instead so the real flake surfaces and gets fixed.
+    test.describe.configure({ retries: 0 });
+
     let mainEntity: AssetTypes | OtherTypes = {} as AssetTypes | OtherTypes;
     let responseData:
       | AssetTypes['entityResponseData']
