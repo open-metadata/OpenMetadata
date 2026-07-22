@@ -96,7 +96,6 @@ const reporters: ReporterDescription[] = [
         ],
       ]
     : []),
-  ['@flakiness/playwright', { flakinessProject: 'OpenMetadata/OpenMetadata' }],
 ];
 
 /**

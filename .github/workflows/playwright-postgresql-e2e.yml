@@ -472,7 +472,6 @@ jobs:
     environment: test
     permissions:
       contents: read
-      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
       # workers, retries). The production default of 5 active sessions per user would evict the
