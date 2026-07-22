@@ -1012,11 +1012,11 @@
       <version>${jena.version}</version>
     </dependency>
     
-    <!-- Apache Calcite for SQL parsing -->
+    <!-- Apache Calcite for SQL parsing. 1.42.0 fixes CVE-2026-46718 (unsafe reflection). -->
     <dependency>
       <groupId>org.apache.calcite</groupId>
       <artifactId>calcite-core</artifactId>
-      <version>1.36.0</version>
+      <version>1.42.0</version>
       <exclusions>
         <exclusion>
           <groupId>commons-lang</groupId>
