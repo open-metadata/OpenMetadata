@@ -36,7 +36,7 @@ on:
         description: Build the CI-only coarse Vite bundle
         required: true
         type: boolean
-        default: true
+        default: false
   # Every eligible PR runs smoke, changed specs, impact-mapped suites, and
   # canaries. Keep this unprivileged: these jobs build PR code, populate caches,
   # and exchange artifacts. Merge queue, schedule, and full dispatch runs still
@@ -163,7 +163,7 @@ jobs:
       - name: Build with Maven
         env:
           PW_E2E_BUILD: "true"
-          PW_E2E_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}
+          PW_E2E_BUNDLE: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle }}
         run: mvn -DskipTests clean package
 
       - name: Upload OpenMetadata distribution
@@ -397,6 +397,18 @@ jobs:
           test -s playwright/.auth/admin.json
           test -s playwright/.auth/admin-api-token.json
           test -s playwright/output/entity-response-data.json
+
+      - name: Upload fixture-state failure diagnostics
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-fixture-state-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+            openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Snapshot PostgreSQL and OpenSearch
         env:
