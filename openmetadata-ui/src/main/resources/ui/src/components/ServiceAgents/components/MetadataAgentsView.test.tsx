@@ -48,9 +48,13 @@ const baseAgent: Agent = {
 jest.mock('./AgentGroup.component', () => ({
   __esModule: true,
   default: ({
+    agents,
     onAction,
+    onRunDetails,
   }: {
+    agents: Agent[];
     onAction: (action: string, agent: Agent) => void;
+    onRunDetails: (agent: Agent) => void;
   }) => (
     <div>
       {['run', 'redeploy', 'kill', 'pause', 'resume', 'edit', 'delete'].map(
@@ -68,13 +72,25 @@ jest.mock('./AgentGroup.component', () => ({
         onClick={() => onAction('unknown', baseAgent)}>
         unknown
       </button>
+      <button
+        data-testid="dispatch-run-details"
+        onClick={() => onRunDetails(agents[0])}>
+        run details
+      </button>
     </div>
   ),
 }));
 
-jest.mock('./RunHistoryDrawer.component', () =>
-  jest.fn().mockImplementation(() => <p>RunHistoryDrawer</p>)
-);
+const mockRunHistoryDrawer = jest.fn();
+
+jest.mock('./RunHistoryDrawer.component', () => ({
+  __esModule: true,
+  default: (props: { agent: Agent }) => {
+    mockRunHistoryDrawer(props);
+
+    return <p>RunHistoryDrawer</p>;
+  },
+}));
 
 jest.mock('../../common/LogViewerModal/LogViewerModal.component', () =>
   jest.fn().mockImplementation(() => <p>LogViewerModal</p>)
@@ -146,18 +162,20 @@ jest.mock('../../../utils/IngestionUtils', () => ({
   getLogViewerStatusFromAgentStatus: jest.fn(),
 }));
 
-const renderView = () =>
-  render(
-    <MetadataAgentsView
-      showAddAgent
-      agents={[baseAgent]}
-      ingestionPipelineList={[]}
-      serviceCategory={ServiceCategory.DATABASE_SERVICES}
-      serviceDetails={{ name: 'service' } as ServicesType}
-      serviceName="service"
-      onRefresh={mockOnRefresh}
-    />
-  );
+const viewWithAgents = (agents: Agent[]) => (
+  <MetadataAgentsView
+    showAddAgent
+    agents={agents}
+    ingestionPipelineList={[]}
+    serviceCategory={ServiceCategory.DATABASE_SERVICES}
+    serviceDetails={{ name: 'service' } as ServicesType}
+    serviceName="service"
+    onRefresh={mockOnRefresh}
+  />
+);
+
+const renderView = (agents: Agent[] = [baseAgent]) =>
+  render(viewWithAgents(agents));
 
 describe('MetadataAgentsView', () => {
   beforeEach(() => {
@@ -230,6 +248,26 @@ describe('MetadataAgentsView', () => {
     expect(mockDeleteIngestionPipelineById).toHaveBeenCalledWith(baseAgent.id);
     expect(mockOnRefresh).toHaveBeenCalled();
     expect(screen.queryByTestId('confirm-delete')).not.toBeInTheDocument();
+  });
+
+  it('should hand the run history drawer the live agent when its status changes while open', () => {
+    const { rerender } = renderView();
+
+    fireEvent.click(screen.getByTestId('dispatch-run-details'));
+
+    expect(mockRunHistoryDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        agent: expect.objectContaining({ status: 'success' }),
+      })
+    );
+
+    rerender(viewWithAgents([{ ...baseAgent, status: 'queued' }]));
+
+    expect(mockRunHistoryDrawer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        agent: expect.objectContaining({ status: 'queued' }),
+      })
+    );
   });
 
   it('should ignore an unknown action', () => {

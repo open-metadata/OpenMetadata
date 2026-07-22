@@ -84,6 +84,9 @@ const AgentCard: FC<AgentCardProps> = ({
   const isQueued = agent.status === 'queued';
   const isSuccess = agent.status === 'success';
   const isNone = agent.status === 'none';
+  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+  // flag means the agent is running and only an explicit false means paused.
+  const isPaused = agent.enabled === false;
   const showLastRunMetric =
     isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
   const finishedSuffix = agent.finishedAt
@@ -155,7 +158,17 @@ const AgentCard: FC<AgentCardProps> = ({
           <Box
             align="center"
             className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            {agent.enabled ? (
+            {isPaused ? (
+              <Badge
+                className="tw:gap-1.5 tw:font-semibold"
+                color="warning"
+                data-testid="paused-pipeline-badge"
+                size="sm"
+                type="pill-color">
+                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+                {t('label.paused')}
+              </Badge>
+            ) : (
               <>
                 <StatusPill status={agent.status} />
                 {isRunning && (
@@ -199,16 +212,6 @@ const AgentCard: FC<AgentCardProps> = ({
                   />
                 )}
               </>
-            ) : (
-              <Badge
-                className="tw:gap-1.5 tw:font-semibold"
-                color="warning"
-                data-testid="paused-pipeline-badge"
-                size="sm"
-                type="pill-color">
-                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
-                {t('label.paused')}
-              </Badge>
             )}
           </Box>
           {isRunning && (

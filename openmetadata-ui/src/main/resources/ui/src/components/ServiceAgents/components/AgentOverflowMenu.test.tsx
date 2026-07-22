@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import AgentOverflowMenu from './AgentOverflowMenu.component';
 
@@ -64,11 +64,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     },
     Item: ({
       children,
+      icon: Icon,
       id,
       isDisabled,
       ...props
     }: {
       children: ReactNode;
+      icon?: FC;
       id?: string;
       isDisabled?: boolean;
       'data-testid'?: string;
@@ -80,6 +82,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
           mockMenuAction.current?.(id ?? '');
           mockOpenChange.current?.(false);
         }}>
+        {Icon && <Icon />}
         {children}
       </button>
     ),

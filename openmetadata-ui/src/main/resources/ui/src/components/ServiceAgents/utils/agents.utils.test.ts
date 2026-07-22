@@ -66,4 +66,14 @@ describe('canRunAgent', () => {
   it('should block running while permissions are unresolved', () => {
     expect(canRunAgent(baseAgent)).toBe(false);
   });
+
+  it('should block running a paused agent', () => {
+    expect(
+      canRunAgent({ ...baseAgent, enabled: false }, ALL_AGENT_PERMISSIONS)
+    ).toBe(false);
+  });
+
+  it('should allow running when the enabled flag is absent, since it defaults to true', () => {
+    expect(canRunAgent(baseAgent, ALL_AGENT_PERMISSIONS)).toBe(true);
+  });
 });

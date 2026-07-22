@@ -110,6 +110,22 @@ describe('AgentCard', () => {
     );
   });
 
+  it('should show the paused badge instead of the status zone for a paused agent', () => {
+    renderCard({ ...baseAgent, enabled: false });
+
+    expect(screen.getByTestId('paused-pipeline-badge')).toBeInTheDocument();
+    expect(screen.queryByText('StatusPill')).not.toBeInTheDocument();
+  });
+
+  it('should treat an absent enabled flag as enabled, since the schema defaults it to true', () => {
+    renderCard(baseAgent);
+
+    expect(
+      screen.queryByTestId('paused-pipeline-badge')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('StatusPill')).toBeInTheDocument();
+  });
+
   it('should show both schedule parts comma-separated when scheduled', () => {
     mockScheduleTexts.mockReturnValue({
       descriptionFirstPart: 'At 02:00 AM',
