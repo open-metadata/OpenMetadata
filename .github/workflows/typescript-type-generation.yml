@@ -159,10 +159,12 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit and push changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false'
         run: |
           git commit -m "Update generated TypeScript types"
-          git push --force-with-lease
+          git push --force-with-lease "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:${{ github.event.pull_request.head.ref }}"
 
       - name: Create PR comment about auto-update
         if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request_target' || github.event.inputs.pr_number != '')
