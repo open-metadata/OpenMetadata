@@ -213,14 +213,14 @@ describe('getFormattedAgentsList', () => {
 });
 
 describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
-  it('preserves REST-populated Collate agents when a tick carries no app status', () => {
+  it('keeps the Collate agents when a frame carries no app status', () => {
     const preserved = getFormattedAgentsList(
       {},
       [],
       [{ id: 'a1', name: 'svc_TierAutomation' }]
     );
 
-    // A live tick with only ingestion status must not drop the Collate agent.
+    // Terminal frames carry no payload, so the agents already on screen stay.
     const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
 
     expect(result.map((a) => a.agentType)).toEqual(['TierAutomation']);

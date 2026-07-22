@@ -161,9 +161,9 @@ export const getFormattedAgentsList = (
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
   collateAIagentsLiveInfo: CollateAgentLiveInfo[],
-  // The stream carries only ingestion-pipeline status, so a tick leaves the
-  // Collate agents empty. Fall back to the ones already formatted from the REST
-  // poll rather than dropping them from the widget on every tick.
+  // Terminal frames (stream completed, or an error fetching chart data) carry no
+  // payload, so keep the agents already on screen instead of blanking them as the
+  // run finishes.
   preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
