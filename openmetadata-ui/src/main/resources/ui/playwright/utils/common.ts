@@ -138,7 +138,12 @@ const getSavedAdminToken = async () => {
 };
 
 export const getWorkerAdminAPIContext = () => {
-  workerAdminAPIContext ??= getSavedAdminToken().then(getAuthContext);
+  workerAdminAPIContext ??= getSavedAdminToken()
+    .then(getAuthContext)
+    .catch((error) => {
+      workerAdminAPIContext = undefined;
+      throw error;
+    });
 
   return workerAdminAPIContext;
 };

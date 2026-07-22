@@ -227,6 +227,40 @@ if ! curl -fsS http://127.0.0.1:8586/healthcheck >/dev/null; then
   exit 1
 fi
 
+admin_storage_state="$playwright_state/auth/admin.json"
+admin_api_token="$playwright_state/auth/admin-api-token.json"
+if ! admin_session=$(
+  jq -er '.cookies[] | select(.name == "OM_SESSION") | .value' "$admin_storage_state"
+); then
+  echo "The restored Playwright admin state has no active session" >&2
+  exit 1
+fi
+token_refresh_url="http://localhost:8585/api/v1/auth/refresh"
+token_refresh_args=(-fsS --retry 4 --retry-all-errors --retry-delay 1 -X POST)
+if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
+  token_refresh_url="https://localhost:8585/api/v1/auth/refresh"
+  token_refresh_args+=(--insecure)
+fi
+token_refresh_response=$(mktemp "$runtime_root/tmp/admin-token-refresh.XXXXXX")
+if ! curl "${token_refresh_args[@]}" \
+  --cookie "OM_SESSION=$admin_session" \
+  "$token_refresh_url" > "$token_refresh_response"; then
+  echo "Could not refresh the restored Playwright admin session" >&2
+  exit 1
+fi
+if ! refreshed_admin_token=$(
+  jq -er '.accessToken | select(type == "string" and length > 0)' "$token_refresh_response"
+); then
+  echo "The admin session refresh returned no access token" >&2
+  exit 1
+fi
+temporary_admin_api_token=$(mktemp "$runtime_root/tmp/admin-api-token.XXXXXX")
+jq -n --arg token "$refreshed_admin_token" '{token: $token}' > "$temporary_admin_api_token"
+chmod 0600 "$temporary_admin_api_token"
+sudo mv "$temporary_admin_api_token" "$admin_api_token"
+sudo chown "$(id -u):$(id -g)" "$admin_api_token"
+rm -f "$token_refresh_response"
+
 if [[ -n "$ingestion_image_path" ]]; then
   PW_AIRFLOW_CONTAINER=openmetadata_ingestion
   export PW_AIRFLOW_CONTAINER

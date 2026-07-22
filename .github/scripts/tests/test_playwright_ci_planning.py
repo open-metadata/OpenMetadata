@@ -100,6 +100,68 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_timing_import_keeps_project_executions_separate(tmp_path, monkeypatch):
+    importer = load_script("import_playwright_json_timings")
+    report = tmp_path / "results.json"
+    output = tmp_path / "timings.json"
+    report.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "Pages/Entity.spec.ts",
+                        "specs": [
+                            {
+                                "id": "shared-spec-id",
+                                "title": "renders entity details",
+                                "tests": [
+                                    {
+                                        "projectName": "chromium",
+                                        "status": "expected",
+                                        "results": [{"duration": 100}],
+                                    },
+                                    {
+                                        "projectName": "Basic",
+                                        "status": "flaky",
+                                        "results": [
+                                            {"duration": 200},
+                                            {"duration": 50},
+                                        ],
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "import_playwright_json_timings.py",
+            "--input-glob",
+            str(report),
+            "--output",
+            str(output),
+        ],
+    )
+
+    importer.main()
+
+    timings = json.loads(output.read_text())["tests"]
+    assert [timing["project"] for timing in timings] == ["Basic", "chromium"]
+    project_metrics = [
+        (timing["durationMs"], timing["attempts"], timing["retries"])
+        for timing in timings
+    ]
+    assert project_metrics == [
+        (250, 2, 1),
+        (100, 1, 0),
+    ]
+
+
 def test_ingestion_plans_request_airflow(tmp_path):
     planner = load_script("build_playwright_shards")
     unit = planner.Unit(

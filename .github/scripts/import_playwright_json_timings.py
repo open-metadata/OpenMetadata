@@ -26,7 +26,7 @@ def iter_specs(suite: dict[str, Any]) -> Iterable[dict[str, Any]]:
 
 def main() -> None:
     args = parse_args()
-    timings: dict[str, dict[str, Any]] = {}
+    timings: dict[tuple[str, str], dict[str, Any]] = {}
     for filename in sorted(glob.glob(args.input_glob)):
         report = json.loads(Path(filename).read_text(encoding="utf-8"))
         for suite in report.get("suites", []):
@@ -34,12 +34,13 @@ def main() -> None:
                 for test in spec.get("tests", []):
                     if not spec.get("id"):
                         continue
+                    project = test.get("projectName", "")
                     results = test.get("results", [])
                     timing = timings.setdefault(
-                        spec["id"],
+                        (spec["id"], project),
                         {
                             "id": spec["id"],
-                            "project": test.get("projectName", ""),
+                            "project": project,
                             "file": spec.get("file", suite.get("file", "")),
                             "title": spec.get("title", ""),
                             "durationMs": 0,
@@ -58,7 +59,10 @@ def main() -> None:
         "version": 1,
         "mode": "full",
         "sourceSha": args.source_sha,
-        "tests": sorted(timings.values(), key=lambda timing: timing["id"]),
+        "tests": sorted(
+            timings.values(),
+            key=lambda timing: (timing["id"], timing["project"]),
+        ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(

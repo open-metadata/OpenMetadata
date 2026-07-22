@@ -39,7 +39,10 @@ on:
         default: true
   # The workflow always triggers so every eligible PR runs mandatory smoke coverage.
   # The impact map decides which additional suites and canaries are required.
-  pull_request_target:
+  # PR code runs only in the unprivileged pull_request context. In particular,
+  # do not change this to pull_request_target: the jobs below build PR code,
+  # populate caches, and exchange artifacts between jobs.
+  pull_request:
     types:
       - labeled
       - opened
@@ -54,7 +57,7 @@ permissions:
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   check-changes:
@@ -65,7 +68,7 @@ jobs:
     steps:
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           filters: |
             e2e:
@@ -116,17 +119,17 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha == '' }}
         run: |
           echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
           exit 1
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -135,7 +138,7 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
@@ -145,7 +148,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -183,7 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       mode: ${{ steps.select.outputs.mode }}
       selected_count: ${{ steps.select.outputs.selected_count }}
@@ -191,14 +194,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
 
       - name: Get all changed files
         id: all-changes
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
 
       - name: Select PR coverage
@@ -237,7 +240,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download selection
@@ -346,7 +349,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download Maven build artifact
@@ -470,7 +473,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download Maven build artifact
@@ -871,7 +874,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
@@ -925,7 +928,7 @@ jobs:
       - name: Merge and verify timing coverage
         env:
           EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           python3 .github/scripts/merge_playwright_timings.py \
             --input-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
@@ -988,7 +991,7 @@ jobs:
           if-no-files-found: warn
 
   playwright-summary:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
     if: always()
     needs:
       [
@@ -1003,12 +1006,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write # Posts the consolidated PR comment
     steps:
-      - name: Checkout trusted CI classifier
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Download all results JSON
@@ -1025,7 +1027,7 @@ jobs:
         env:
           EXPECTED_MATRIX: ${{ needs.plan-playwright.outputs.matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
@@ -1046,7 +1048,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Post consolidated PR comment and gate on results
+      - name: Publish consolidated job summary and gate on results
         if: always()
         uses: actions/github-script@v7
         env:
@@ -1077,7 +1079,7 @@ jobs:
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
             const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
-            const testsRequired = context.eventName === 'pull_request_target' ||
+            const testsRequired = context.eventName === 'pull_request' ||
               context.eventName === 'merge_group' ||
               context.eventName === 'schedule' ||
               context.eventName === 'workflow_dispatch';
@@ -1097,7 +1099,6 @@ jobs:
 
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
-            const prNumber = context.payload.pull_request?.number;
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
             const commentMarker = '<!-- playwright-summary -->';
             const infrastructureIssues = [];
@@ -1343,39 +1344,6 @@ jobs:
               await core.summary.addRaw(body).write();
             } catch (error) {
               core.warning(`Could not write the Playwright job summary: ${error.message}`);
-            }
-
-            if (prNumber) {
-              try {
-                let existingComment = null;
-                for await (const response of github.paginate.iterator(
-                  github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-                )) {
-                  const found = response.data.find(c =>
-                    c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-                  );
-                  if (found) { existingComment = found; break; }
-                }
-
-                for await (const response of github.paginate.iterator(
-                  github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-                )) {
-                  for (const c of response.data) {
-                    if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                      await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                      console.log(`Deleted old per-shard comment ${c.id}`);
-                    }
-                  }
-                }
-
-                if (existingComment) {
-                  await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-                } else {
-                  await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
-                }
-              } catch (error) {
-                core.warning(`Could not publish the Playwright PR comment: ${error.message}`);
-              }
             }
 
             if (totalFailed > 0 || infrastructureIssues.length > 0) {
