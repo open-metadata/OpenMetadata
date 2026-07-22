@@ -94,12 +94,6 @@ jobs:
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-postgres-elasticsearch-redis.yml'
 
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.backend == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
   integration-test-build:
     name: Build Integration Test Runtime
     needs: changes
