@@ -29,8 +29,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.omni.metadata import (
+    _DATAMODEL_LINEAGE_SENTINEL,
     OmniDashboardDetails,
     OmniSource,
 )
@@ -249,16 +252,40 @@ def test_yield_dashboard_lineage_details(omni_source):
     omni_source.metadata.get_by_name = MagicMock(return_value=dashboard_entity)
 
     # MOCK_DASHBOARD_DETAILS has two tiles, both referencing the "orders" view.
+    # Per-dashboard lineage now only draws dashboard <- data-model edges; the
+    # table -> data-model edges are emitted from the bulk data-model stage.
     edges = [
         r
         for r in _rights(omni_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
         if isinstance(r, AddLineageRequest)
     ]
-    # One table -> datamodel edge (bulk, de-duped) + one dashboard <- datamodel edge.
-    assert len(edges) == 2
+    assert len(edges) == 1
     pairs = {(e.edge.fromEntity.type, e.edge.toEntity.type) for e in edges}
-    assert ("table", "dashboardDataModel") in pairs
-    assert ("dashboardDataModel", "dashboard") in pairs
+    assert pairs == {("dashboardDataModel", "dashboard")}
+
+
+def test_yield_bulk_datamodel_lineage_without_dashboards(omni_source):
+    """The sentinel row flushes a Barrier and draws table -> data-model lineage,
+    so lineage is produced even for models that have no dashboards."""
+    omni_source.topics = [MOCK_TOPIC]
+
+    datamodel_entity = DashboardDataModel(
+        id="550e8400-e29b-41d4-a716-446655440010",
+        name="sales.orders",
+        dataModelType="OmniDataModel",
+        columns=[],
+    )
+    table_entity = Table(id="550e8400-e29b-41d4-a716-446655440011", name="ORDERS", columns=[])
+    omni_source._get_datamodel_entity = lambda topic: datamodel_entity
+    omni_source._get_table_entity = lambda topic, db_service_prefix=None: table_entity
+
+    results = list(omni_source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+    rights = [r.right for r in results if isinstance(r, Either) and r.right is not None]
+    assert any(isinstance(r, Barrier) for r in rights)
+    lineage = [r for r in rights if isinstance(r, OMetaLineageRequest)]
+    assert len(lineage) == 1
+    edge = lineage[0].lineage_request.edge
+    assert (edge.fromEntity.type, edge.toEntity.type) == ("table", "dashboardDataModel")
 
 
 @pytest.mark.parametrize(
@@ -321,7 +348,10 @@ def test_parse_model_yaml_dedupes_topic_and_view_same_name():
 def test_list_datamodels_respects_include_flag(omni_source):
     omni_source.topics = [MOCK_TOPIC]
     omni_source.source_config.includeDataModels = True
-    assert [t.name for t in omni_source.list_datamodels()] == ["orders"]
+    produced = list(omni_source.list_datamodels())
+    # A trailing sentinel drives the bulk table-lineage emission.
+    assert [t.name for t in produced if isinstance(t, OmniTopic)] == ["orders"]
+    assert produced[-1] is _DATAMODEL_LINEAGE_SENTINEL
 
     omni_source.source_config.includeDataModels = False
     assert list(omni_source.list_datamodels()) == []

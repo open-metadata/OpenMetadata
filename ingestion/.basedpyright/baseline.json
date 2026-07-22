@@ -22444,6 +22444,14 @@
                 }
             },
             {
+                "code": "reportMissingParameterType",
+                "range": {
+                    "startColumn": 35,
+                    "endColumn": 40,
+                    "lineCount": 1
+                }
+            },
+            {
                 "code": "reportCallIssue",
                 "range": {
                     "startColumn": 32,
@@ -22473,6 +22481,14 @@
                     "startColumn": 18,
                     "endColumn": 13,
                     "lineCount": 7
+                }
+            },
+            {
+                "code": "reportCallIssue",
+                "range": {
+                    "startColumn": 14,
+                    "endColumn": 74,
+                    "lineCount": 1
                 }
             },
             {

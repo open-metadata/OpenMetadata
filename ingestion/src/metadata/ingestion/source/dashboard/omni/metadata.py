@@ -50,6 +50,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.omni.models import (
@@ -77,6 +78,11 @@ DEFAULT_PROJECT = "default"
 
 # Bound the data model entity cache so it cannot grow unbounded on large catalogs.
 DATAMODEL_CACHE_SIZE = 1000
+
+# Marker the bulk data-model producer appends after all topics so the processor
+# can emit data-model -> table lineage once every data model has been written,
+# independent of whether the instance has any dashboards.
+_DATAMODEL_LINEAGE_SENTINEL = object()
 
 # Map Omni field data types to OpenMetadata column types.
 OMNI_DATATYPE_MAP = {
@@ -142,7 +148,7 @@ class OmniSource(DashboardServiceSource):
 
     # -- data models (topics) ----------------------------------------------
 
-    def list_datamodels(self) -> Iterable[OmniTopic]:
+    def list_datamodels(self) -> Iterable:
         """Producer for the bulk data model topology node."""
         if not self.source_config.includeDataModels:
             return
@@ -152,6 +158,9 @@ class OmniSource(DashboardServiceSource):
                 self.status.filter(datamodel_name, "Data model (Topic) filtered out.")
                 continue
             yield topic
+        # Emitted after every data model so the processor can draw table lineage
+        # once they are all persisted, even when the instance has no dashboards.
+        yield _DATAMODEL_LINEAGE_SENTINEL
 
     @staticmethod
     def _datamodel_name(topic: OmniTopic) -> str:
@@ -204,7 +213,13 @@ class OmniSource(DashboardServiceSource):
                 logger.warning("Error building column %s: %s", field.name, exc)
         return columns
 
-    def yield_bulk_datamodel(self, model: OmniTopic) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+    def yield_bulk_datamodel(self, model) -> Iterable[Either]:
+        # The producer appends a sentinel after all topics: once we see it, every
+        # data model has been yielded, so we flush and draw table lineage. This
+        # makes table lineage independent of whether any dashboard exists.
+        if model is _DATAMODEL_LINEAGE_SENTINEL:
+            yield from self._yield_bulk_datamodel_lineage()
+            return
         try:
             datamodel_request = CreateDashboardDataModelRequest(
                 name=EntityName(self._datamodel_name(model)),
@@ -226,6 +241,37 @@ class OmniSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _yield_bulk_datamodel_lineage(self) -> Iterable[Either]:
+        """Flush the written data models, then draw their warehouse-table lineage.
+
+        Runs in the bulk data-model stage (before any dashboard is processed), so
+        table lineage is emitted even for models/topics that no dashboard uses.
+        """
+        # Persist the data models buffered by this stage before resolving them.
+        yield Either(right=Barrier(reason="omni_datamodel_lineage_flush"))
+        for db_service_prefix in self.get_db_service_prefixes() or [None]:
+            for lineage in self._yield_datamodel_table_lineage(db_service_prefix) or []:
+                yield from self.yield_lineage_request(lineage)
+
+    def _yield_datamodel_table_lineage(
+        self, db_service_prefix: str | None = None
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Yield warehouse-table -> data-model lineage for every topic that resolves
+        to a physical table, once per configured db-service prefix."""
+        prefix_key = db_service_prefix or "__none__"
+        if prefix_key in self._datamodel_table_lineage_prefixes:
+            return
+        self._datamodel_table_lineage_prefixes.add(prefix_key)
+        for topic in self.topics:
+            if not topic.base_table:
+                continue
+            datamodel_entity = self._get_datamodel_entity(topic)
+            table_entity = self._get_table_entity(topic, db_service_prefix)
+            if datamodel_entity and table_entity:
+                lineage = self._get_add_lineage_request(to_entity=datamodel_entity, from_entity=table_entity)
+                if lineage:
+                    yield lineage
 
     # -- dashboards ---------------------------------------------------------
 
@@ -389,27 +435,10 @@ class OmniSource(DashboardServiceSource):
         )
         dashboard_entity = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
 
-        # Emit data-model -> warehouse-table lineage for every view/topic, once per
-        # configured db-service prefix. Data models are persisted by now (the base
-        # class flushes a Barrier before the lineage stage), so this is independent
-        # of which dashboard uses them. The base class calls this method once per
-        # entry in dbServicePrefixes, so we de-dupe on the prefix.
-        # NOTE: this runs during dashboard lineage processing; an instance with a
-        # model but zero dashboards still gets data models, but table lineage is only
-        # emitted once at least one dashboard is processed.
-        prefix_key = db_service_prefix or "__none__"
-        if prefix_key not in self._datamodel_table_lineage_prefixes:
-            self._datamodel_table_lineage_prefixes.add(prefix_key)
-            for topic in self.topics:
-                if not topic.base_table:
-                    continue
-                datamodel_entity = self._get_datamodel_entity(topic)
-                table_entity = self._get_table_entity(topic, db_service_prefix)
-                if datamodel_entity and table_entity:
-                    lineage = self._get_add_lineage_request(to_entity=datamodel_entity, from_entity=table_entity)
-                    if lineage:
-                        yield lineage
-
+        # Data-model -> warehouse-table lineage is emitted from the bulk data-model
+        # stage (see ``_yield_bulk_datamodel_lineage``) so it does not depend on a
+        # dashboard being present. Here we only draw dashboard <- data-model edges
+        # for the tiles of this dashboard.
         seen_topics = set()
         for tile in dashboard_details.dashboard.queryPresentations or []:
             table_ref = tile.query.table if tile.query else None

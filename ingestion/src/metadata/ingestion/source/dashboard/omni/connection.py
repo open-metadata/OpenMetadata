@@ -13,24 +13,66 @@
 Source connection handler
 """
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from requests.exceptions import SSLError
+
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
 )
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
+    call_endpoint,
+    http_status,
+    verify_access,
+)
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
     OmniConnection as OmniConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_registry import get_verify_ssl_fn
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+
+logger = ingestion_logger()
+
+
+OMNI_ERRORS = ErrorPack(
+    when(http_status(401)).diagnose(
+        "Authentication failed",
+        fix="Omni rejected the API token (401). Check the token value and that it has not been "
+        "revoked, and that Host Port points at your Omni organization (https://<org>.omniapp.co).",
+    ),
+    when(http_status(403)).diagnose(
+        "Insufficient permissions",
+        fix="The token is valid but not authorized (403). Use an organization API token that can "
+        "read models and documents.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limit reached",
+        fix="Omni throttled the request (429). The default limit is 60 requests/min; wait and "
+        "retry, or ask Omni to raise the limit for the API key.",
+    ),
+    when(Matchers.exception(SSLError)).diagnose(
+        "TLS verification failed",
+        fix="The server's certificate could not be verified. Provide the CA certificate under SSL "
+        "Config with Verify SSL set to 'validate', or set Verify SSL to 'ignore' for a "
+        "self-signed certificate.",
+    ),
+).including(NETWORK_ERRORS)
 
 
 def get_connection(connection: OmniConnectionConfig) -> OmniApiClient:
@@ -51,32 +93,45 @@ def get_connection(connection: OmniConnectionConfig) -> OmniApiClient:
         raise SourceConnectionException(msg) from exc
 
 
-class OmniConnection(BaseConnection[OmniConnectionConfig, OmniApiClient]):
-    def _get_client(self) -> OmniApiClient:
-        return get_connection(self.service_connection)
+class OmniChecks:
+    """Test-connection checks for Omni.
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: AutomationWorkflow | None = None,
-        timeout_seconds: int | None = THREE_MIN,
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        client = self.client
-        service_connection = self.service_connection
+    ``CheckAccess`` is the gate: reading the borrowed client and hitting the
+    models endpoint authenticates, so a bad token or unreachable host fails
+    there and ``GetDashboards`` is skipped.
+    """
 
-        test_fn = {
-            "CheckAccess": client.test_access,
-            "GetDashboards": client.test_get_documents,
-        }
+    errors = OMNI_ERRORS
 
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+    def __init__(self, client: Borrowed[OmniApiClient]) -> None:
+        self._client = client
+
+    @check(DashboardStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        # Lambda, not a bound method: the request must run inside verify_access's
+        # try so a bad token/host is caught and classified.
+        return verify_access(
+            lambda: self._client.client.test_access(),  # noqa: PLW0108
+            command="authenticate and list models",
         )
+
+    @check(DashboardStep.GetDashboards)
+    def get_dashboards(self) -> Evidence:
+        command = "list documents"
+        call_endpoint(lambda: self._client.client.test_get_documents(), command=command)  # noqa: PLW0108
+        return Evidence(summary="documents are readable", command=command)
+
+
+class OmniConnection(BaseConnection[OmniConnectionConfig, OmniApiClient]):
+    # Omni is rate-limited (60 req/min by default); keep a generous per-step
+    # budget so a throttled test does not fail spuriously.
+    step_timeout_seconds = THREE_MIN
+
+    def _get_client(self) -> OmniApiClient:
+        client = get_connection(self.service_connection)
+        # Release the underlying HTTP session when the connection is closed.
+        self._on_close(client.close)
+        return client
+
+    def checks(self) -> ChecksProvider:
+        return OmniChecks(client=self.borrow())
