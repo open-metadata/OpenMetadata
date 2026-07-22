@@ -807,7 +807,7 @@ const DomainTreeView = ({
             <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
               <Box
                 align="center"
-                className="tw:min-w-0"
+                className="tw:min-w-0 tw:[overflow-wrap:anywhere]"
                 direction="row"
                 gap={2}>
                 <Avatar size="xs" {...getEntityAvatarProps(node)} />

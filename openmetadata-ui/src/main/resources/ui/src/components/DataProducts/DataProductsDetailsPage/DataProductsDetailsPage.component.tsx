@@ -818,7 +818,7 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <div className="tw:flex tw:mx-5 tw:items-start tw:justify-between">
+          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
             <div className="entity-header-title-top tw:max-w-[60%]">
               <EntityHeader
                 badge={statusBadge}

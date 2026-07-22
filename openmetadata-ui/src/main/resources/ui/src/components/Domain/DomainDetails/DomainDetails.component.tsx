@@ -953,7 +953,11 @@ const DomainDetails = ({
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
-        <Box align="start" className="entity-header tw:mx-5" justify="between">
+        <Box
+          align="start"
+          className="entity-header tw:mx-5 tw:gap-y-3"
+          justify="between"
+          wrap="wrap">
           <div className="entity-header-title-top tw:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}

@@ -39,6 +39,10 @@ import {
   getGlossaryTags,
 } from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import {
+  COMPACT_CELL_WRAP_CLASS,
+  NAME_CELL_WRAP_CLASS,
+} from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
@@ -172,7 +176,7 @@ const DataProductListPage = ({
           return (
             <Box
               align="start"
-              className="tw:max-w-[480px]"
+              className={NAME_CELL_WRAP_CLASS}
               direction="row"
               gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
@@ -208,7 +212,7 @@ const DataProductListPage = ({
           return (
             <Box
               align="start"
-              className="tw:max-w-[320px]"
+              className={COMPACT_CELL_WRAP_CLASS}
               direction="row"
               gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
