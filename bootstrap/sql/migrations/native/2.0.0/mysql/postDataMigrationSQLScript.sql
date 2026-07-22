@@ -276,3 +276,10 @@ SET json = JSON_ARRAY_APPEND(
 )
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');
+
+-- Drop data product ports pointing at a column ('tableColumn' has no repository, so it 500s
+-- portsView). relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
+DELETE FROM entity_relationship
+WHERE fromEntity = 'dataProduct'
+  AND toEntity = 'tableColumn'
+  AND relation IN (23, 24);
