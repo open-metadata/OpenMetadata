@@ -36,7 +36,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
   descriptionBox,
@@ -94,21 +94,21 @@ const test = base.extend<{
   dataConsumerPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
+    const adminPage = await browser.newPage({ storageState: undefined });
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ storageState: undefined });
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
 });
 
-test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll('Setup pre-requests', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await dataConsumerUser.create(apiContext);
@@ -117,8 +117,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup shared entities', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.afterAll('Cleanup shared entities', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await tableEntity.delete(apiContext);
   await user.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -135,15 +135,15 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Setup pre-requests', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       await entity.create(apiContext);
       await afterAction();
     });
 
-    test.afterAll('Cleanup entity', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.afterAll('Cleanup entity', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
       await entity.delete(apiContext);
       await afterAction();
     });
@@ -2136,8 +2136,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const customPolicy = new PolicyClass();
       const customRole = new RolesClass();
 
-      test.beforeAll(async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+      test.beforeAll(async () => {
+        const { apiContext, afterAction } = await createAdminApiContext();
 
         await customPolicy.create(apiContext, [
           ...DATA_CONSUMER_RULES,
@@ -2271,8 +2271,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,
@@ -2346,8 +2346,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,

@@ -83,9 +83,8 @@ export const createAdminApiContext = async (): Promise<{
 };
 
 export const performAdminLogin = async (browser: Browser) => {
-  const admin = new AdminClass();
   const page = await browser.newPage();
-  await admin.login(page);
+  await authenticateAdminPage(page);
   await redirectToHomePage(page);
 
   const token = await getToken(page);
