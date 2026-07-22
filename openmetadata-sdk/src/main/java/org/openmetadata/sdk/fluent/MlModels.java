@@ -297,4 +297,14 @@ public final class MlModels {
       return new MlModelDeleter(client, mlModel.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().mlModels().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().mlModels().getContextByName(fqn);
+  }
 }

@@ -204,21 +204,24 @@ public class IndexMappingVersionTracker {
 
   private record MappingEntry(String hash, JsonNode json) {}
 
+  /**
+   * Drift is computed against the field-safety-hardened bundled mapping (all languages) each index is
+   * actually built from — the same {@link SearchIndexSettings#harden} pass {@code
+   * SearchRepository.readIndexMapping} applies at index-creation time — so both a shipped mapping
+   * change and a change to the configured {@link SearchFieldLimits} surface as a reindex-required
+   * drift until the entity is reindexed. {@link IndexMappingLoader} is the source of truth for entity
+   * types and file paths, covering camelCase types (e.g. {@code glossaryTerm}) without hand-built
+   * paths.
+   */
   private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
     Map<String, MappingEntry> mappings = new HashMap<>();
-
-    // Use IndexMappingLoader as the source of truth for entity types and their mapping file paths.
-    // This avoids constructing file paths manually and ensures all entity types are covered,
-    // including camelCase ones like glossaryTerm, databaseSchema, etc.
     Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
-
     for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
       MappingEntry mappingEntry = toMappingEntry(entry.getKey(), entry.getValue());
       if (mappingEntry != null) {
         mappings.put(entry.getKey(), mappingEntry);
       }
     }
-
     return mappings;
   }
 
@@ -247,28 +250,28 @@ public class IndexMappingVersionTracker {
   }
 
   private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
+    JsonNode result = null;
     try {
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
       String[] languages = {"en", "jp", "ru", "zh"};
-
       for (String lang : languages) {
-        // Use the indexMappingFile from indexMapping.json which has the correct path template
         String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
           if (stream != null) {
             String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            allLanguageMappings.put(lang, MAPPER.readTree(mappingContent));
+            String hardened =
+                SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
+            allLanguageMappings.put(lang, MAPPER.readTree(hardened));
           }
         }
       }
-
       if (!allLanguageMappings.isEmpty()) {
-        return MAPPER.valueToTree(allLanguageMappings);
+        result = MAPPER.valueToTree(allLanguageMappings);
       }
     } catch (Exception e) {
       LOG.debug("Could not load mapping for entity: {}", entityType, e);
     }
-    return null;
+    return result;
   }
 
   private String computeHash(JsonNode mapping) throws IOException, IndexMappingHashException {

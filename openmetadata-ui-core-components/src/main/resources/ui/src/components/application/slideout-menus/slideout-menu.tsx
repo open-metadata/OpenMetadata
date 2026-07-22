@@ -1,3 +1,5 @@
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { cx } from '@/utils/cx';
 import {
   type ComponentPropsWithRef,
   type ReactNode,
@@ -14,8 +16,6 @@ import {
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
 } from 'react-aria-components';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { cx } from '@/utils/cx';
 
 interface ModalOverlayProps
   extends AriaModalOverlayProps,
@@ -70,7 +70,9 @@ export const Dialog = (props: DialogProps) => (
     role="dialog"
     {...props}
     className={cx(
-      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:ring-1 tw:ring-secondary_alt tw:outline-hidden',
+      // `outline-hidden` removed: the outline now draws this panel's border (it replaced a
+      // ring, which WebKit does not pixel-snap), so suppressing it would erase the border.
+      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
       props.className
     )}
   />
@@ -147,12 +149,12 @@ const Header = ({
     <header
       {...props}
       className={cx(
-        'tw:relative tw:z-1 tw:w-full tw:px-4 tw:pt-6 tw:md:px-6',
+        'tw:relative tw:z-1 tw:w-full tw:px-4 tw:pt-6 tw:md:px-6 tw:pr-8',
         className
       )}>
       {children}
       <CloseButton
-        className="tw:absolute tw:top-3 tw:right-3 tw:shrink-0"
+        className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
         size="md"
         onClick={onClose}
       />

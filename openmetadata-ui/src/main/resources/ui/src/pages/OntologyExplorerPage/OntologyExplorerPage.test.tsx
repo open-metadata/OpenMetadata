@@ -22,12 +22,29 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+  Box: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        className,
+        'data-testid': testId,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+        'data-testid'?: string;
+      }) => (
+        <div className={className} data-testid={testId}>
+          {children}
+        </div>
+      )
+    ),
   Card: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     )),
-  Divider: jest.fn().mockImplementation(() => <hr />),
+  Dot: jest.fn().mockImplementation(() => <span data-testid="stats-dot" />),
   Skeleton: jest.fn().mockImplementation(() => <div data-testid="skeleton" />),
   Typography: jest
     .fn()
@@ -42,10 +59,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
-  Home02: () => <div>Home02</div>,
-}));
-
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -54,7 +67,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 }));
 
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
     __esModule: true,
     default: jest.fn(() => <div data-testid="breadcrumb" />),
@@ -79,7 +92,7 @@ describe('OntologyExplorerPage', () => {
 
     expect(screen.getByTestId('heading')).toBeInTheDocument();
     expect(screen.getByTestId('beta-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('beta-badge')).toHaveTextContent('label.beta');
+    expect(screen.getByTestId('beta-badge')).toHaveTextContent('LABEL.BETA');
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
   });

@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Tooltip as MuiTooltip } from '@mui/material';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -40,52 +41,48 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  let muiTags = false;
+  let newTagsUI = false;
   try {
     const context = useGenericContext();
-    muiTags = context.muiTags || false;
+    newTagsUI = context.newTagsUI || false;
   } catch {
     // Context not available, use default TagsV1
   }
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (muiTags) {
+      if (newTagsUI) {
         const tagName = getTagName(tag, true);
         const redirectLink = getTagRedirectLink(tag);
 
         return (
-          <MuiTooltip
-            enterDelay={500}
+          <Tooltip
+            arrow
+            delay={500}
             key={tag.tagFQN}
-            placement="bottom-start"
-            slotProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: 'common.black',
-                  color: 'common.white',
-                },
-              },
-            }}
+            placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Link
-              className={classNames(
-                'w-full',
-                { 'diff-added tw-mx-1': tag?.added },
-                { 'diff-removed': tag?.removed }
-              )}
-              data-testid="tag-redirect-link"
-              to={redirectLink}>
-              <TagChip
-                data-testid="tags"
-                label={tagName}
-                labelDataTestId={`tag-${tag.tagFQN}`}
-                size="large"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            </Link>
-          </MuiTooltip>
+            <Focusable>
+              <Link
+                className={classNames(
+                  'tw:w-max',
+                  { 'diff-added tw-mx-1': tag?.added },
+                  { 'diff-removed': tag?.removed }
+                )}
+                data-testid="tag-redirect-link"
+                to={redirectLink}>
+                <TagChip
+                  data-testid="tags"
+                  icon={tag.style?.iconURL}
+                  label={tagName}
+                  labelDataTestId={`tag-${tag.tagFQN}`}
+                  size="small"
+                  tagColor={tag.style?.color}
+                  variant="blueGray"
+                />
+              </Link>
+            </Focusable>
+          </Tooltip>
         );
       }
 
@@ -105,7 +102,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook, entityFqn]
+    [newTagsUI, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first

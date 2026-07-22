@@ -75,7 +75,7 @@ describe('AlertRecentEventsTab', () => {
     );
   });
 
-  it('should display error placeholder when no data is available', async () => {
+  it('should display empty placeholder when no data is available', async () => {
     (getAlertEventsFromId as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [] })
     );
@@ -84,7 +84,7 @@ describe('AlertRecentEventsTab', () => {
       render(<AlertRecentEventsTab alertDetails={mockAlertDetails} />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
   it('should display recent events list', async () => {

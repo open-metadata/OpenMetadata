@@ -241,6 +241,29 @@ describe('EntityUtilClassBase', () => {
     expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
   });
 
+  it('should fall through to the default table path for ingestion pipelines', () => {
+    // The logs viewer is now an in-place modal (no route), so ingestion-pipeline
+    // entity links resolve to the default entity path instead of a `/logs` URL.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseServices',
+      'bigquery-beta'
+    );
+
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
   describe('getFqnParts', () => {
     it('should return undefined columnFqn if type is NOT provided', () => {
       const fqn = 'service.database.schema.table';

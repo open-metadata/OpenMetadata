@@ -9,10 +9,12 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -42,7 +44,7 @@ public class SemanticSearchTool implements McpTool {
           "Semantic search is not enabled. Configure vector embeddings in the OpenMetadata server settings.");
     }
 
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
     if (vectorService == null) {
       return errorResponse("Vector search service is not initialized");
     }
@@ -52,6 +54,7 @@ public class SemanticSearchTool implements McpTool {
 
     int from = McpParams.getInt(params, "from", 0);
     from = Math.max(from, 0);
+    from = VectorPagingContract.cursorOffsetOrDefault(params, from);
 
     int k = McpParams.getInt(params, "k", DEFAULT_K);
     k = Math.min(Math.max(k, 1), MAX_K);
@@ -64,7 +67,7 @@ public class SemanticSearchTool implements McpTool {
     try {
       VectorSearchResponse response =
           vectorService.search(query, filters, size, from, k, threshold);
-      return buildResponse(query, response, size);
+      return buildResponse(query, response, size, from);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
       return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
@@ -82,7 +85,7 @@ public class SemanticSearchTool implements McpTool {
   }
 
   private Map<String, Object> buildResponse(
-      String query, VectorSearchResponse response, int requestedSize) {
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     Map<String, Object> result = new HashMap<>();
     result.put("query", query);
     result.put("tookMillis", response.getTookMillis());
@@ -107,16 +110,47 @@ public class SemanticSearchTool implements McpTool {
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
-    if (cleanedResults.size() >= requestedSize) {
+    int rawCount = cleanedResults.size();
+    fitResultsToBudget(result, cleanedResults);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
+            + "Adjust 'threshold' to filter by similarity score.");
+    return result;
+  }
+
+  /**
+   * Ensures the response stays under the dispatch-level size cap by returning fewer <em>results</em>
+   * (never mangling the ones kept), so semantic_search never falls through to the empty-stub nuke.
+   * Uses {@link ResponseBudget} to fit results by measuring each result's real serialized size.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result, List<Map<String, Object>> cleanedResults) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(cleanedResults, overhead);
+    if (fit < cleanedResults.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, fit));
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
       result.put(
           "message",
           String.format(
-              "Showing %d results. Increase 'size' or refine your query for different results. "
-                  + "Adjust 'threshold' to filter by similarity score.",
-              cleanedResults.size()));
+              "Returning %d of %d results to stay within the response size budget. "
+                  + "Refine the query or lower 'size' for a smaller response.",
+              trimmed.size(), cleanedResults.size()));
     }
+  }
 
-    return result;
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   private Map<String, Object> cleanHit(Map<String, Object> hit) {

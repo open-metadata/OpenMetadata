@@ -31,7 +31,7 @@ export interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   currentVersionData?: T;
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
-  muiTags?: boolean;
+  newTagsUI?: boolean;
   columnFqn?: string;
 }
 
@@ -48,7 +48,7 @@ export interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   updateWidgetHeight: (widgetId: string, height: number) => void;
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
-  muiTags: boolean;
+  newTagsUI: boolean;
   entityRules: DataAssetRuleValidation;
   selectedColumn: ColumnOrTask | null;
   isColumnDetailOpen: boolean;

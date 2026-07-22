@@ -78,28 +78,30 @@
     font-weight: 600;
   }
 
-  .lvm-dots {
-    display: inline-flex;
-    flex-shrink: 0;
-    gap: 6px;
-  }
-
   .lvm-dot {
     display: inline-block;
     width: 11px;
     height: 11px;
     border-radius: 9999px;
 
-    &--red {
-      background-color: #ff5f56;
+    &--live {
+      background-color: var(--lvm-level-ok);
+      animation: lvm-pulse 1.2s ease-in-out infinite;
     }
 
-    &--amber {
-      background-color: #ffbd2e;
+    &--done {
+      background-color: var(--lvm-text-muted);
+    }
+  }
+
+  @keyframes lvm-pulse {
+    0%,
+    100% {
+      opacity: 1;
     }
 
-    &--green {
-      background-color: #27c93f;
+    50% {
+      opacity: 0.3;
     }
   }
 
@@ -185,6 +187,11 @@
     cursor: pointer;
 
     &:hover {
+      background-color: var(--lvm-surface-2);
+      color: var(--lvm-text);
+    }
+
+    &--active {
       background-color: var(--lvm-surface-2);
       color: var(--lvm-text);
     }

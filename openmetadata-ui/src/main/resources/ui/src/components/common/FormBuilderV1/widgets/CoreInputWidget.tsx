@@ -58,7 +58,7 @@ const CoreInputWidget = ({
       return;
     }
 
-    onChange(nextValue);
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
   };
 
   const description = schema.description ?? options.help;

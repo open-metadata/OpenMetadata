@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.POST_CREATED;
 import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
@@ -56,24 +57,34 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -86,6 +97,8 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 @Collection(name = "feeds")
 public class FeedResource {
   public static final String COLLECTION_PATH = "/v1/feed/";
+  private static final String TASK_OLD_VALUE_FIELD = "oldValue";
+  private static final String TASK_SUGGESTION_FIELD = "suggestion";
   private final FeedMapper mapper = new FeedMapper();
   private final PostMapper postMapper = new PostMapper();
   private final FeedRepository dao;
@@ -199,10 +212,25 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus) {
+          TaskStatus taskStatus,
+      @Parameter(
+              description =
+                  "Filter threads created on or after this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description =
+                  "Filter threads created on or before this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("endTs")
+          Long endTs) {
     rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
+    if (startTs != null && endTs != null && startTs > endTs) {
+      throw BadRequestException.of("startTs must be less than or equal to endTs");
+    }
     FeedFilter filter =
         FeedFilter.builder()
             .threadType(threadType)
@@ -212,6 +240,8 @@ public class FeedResource {
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
             .before(before)
             .after(after)
+            .startTs(startTs)
+            .endTs(endTs)
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .domains(
@@ -359,7 +389,9 @@ public class FeedResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    rejectLegacyAnnouncementThread(dao.get(UUID.fromString(id)));
+    Thread original = dao.get(UUID.fromString(id));
+    rejectLegacyAnnouncementThread(original);
+    authorizeThreadEdit(securityContext, original);
     PatchResponse<Thread> response =
         dao.patchThread(
             uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
@@ -422,12 +454,56 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
     rejectLegacyAnnouncementAccess(create.getType() == ThreadType.Announcement);
+    validateCreateThread(create);
+    authorizeThreadCreate(securityContext, create);
     Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
         .entity(thread)
         .header(CHANGE_CUSTOM_HEADER, THREAD_CREATED)
         .build();
+  }
+
+  private void authorizeThreadCreate(SecurityContext securityContext, CreateThread create) {
+    if (create.getType() == ThreadType.Task) {
+      if (nullOrEmpty(create.getAbout())) {
+        throw new IllegalArgumentException("Task thread requires an 'about' entity link");
+      }
+      EntityLink about = EntityLink.parse(create.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
+      authorizer.authorize(securityContext, entityOpContext, entityResourceContext);
+    }
+  }
+
+  /**
+   * Authorize an edit on an existing task thread with ANY-of semantics: pass if the caller has
+   * {@code EditTask} on the target entity (per-entity grant, e.g. owner via {@code isOwner}) OR
+   * {@code EditAll} on the existing thread instance (covers the original creator and admin-style
+   * thread-resource grants). Mirrors the TestCase pattern for an EXISTING child entity.
+   */
+  private void authorizeThreadEdit(SecurityContext securityContext, Thread thread) {
+    if (thread.getType() == ThreadType.Task && !nullOrEmpty(thread.getAbout())) {
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TASK);
+      OperationContext threadOpContext =
+          new OperationContext(Entity.THREAD, MetadataOperation.EDIT_ALL);
+      ResourceContextInterface threadResourceContext =
+          new ThreadResourceContext(thread.getCreatedBy());
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(entityOpContext, entityResourceContext),
+              new AuthRequest(threadOpContext, threadResourceContext)),
+          AuthorizationLogic.ANY);
+    }
   }
 
   @POST
@@ -605,5 +681,75 @@ public class FeedResource {
   private void rejectLegacyAnnouncementThread(Thread thread) {
     rejectLegacyAnnouncementAccess(
         thread != null && thread.getType() != null && thread.getType() == ThreadType.Announcement);
+  }
+
+  private void validateCreateThread(CreateThread create) {
+    if (create.getAbout() == null || create.getAbout().isBlank()) {
+      throw new IllegalArgumentException("Thread about is required.");
+    }
+    validateTaskThreadShape(create);
+    validateLegacyTaskDetails(create);
+  }
+
+  private void validateTaskThreadShape(CreateThread create) {
+    if (create.getTaskDetails() == null && create.getType() == ThreadType.Task) {
+      throw new IllegalArgumentException("Task details are required for task threads.");
+    }
+    if (create.getTaskDetails() != null && create.getType() != ThreadType.Task) {
+      throw new IllegalArgumentException("Task details are only allowed for task threads.");
+    }
+  }
+
+  private void validateLegacyTaskDetails(CreateThread create) {
+    if (create.getTaskDetails() != null) {
+      TaskType taskType = create.getTaskDetails().getType();
+      validateTaskType(taskType);
+      validateRequestApprovalTask(create.getAbout(), taskType);
+      validateTagTaskValues(create, taskType);
+    }
+  }
+
+  private void validateTaskType(TaskType taskType) {
+    if (taskType == null) {
+      throw new IllegalArgumentException("Task type is required for task threads.");
+    }
+    if (!isSupportedLegacyFeedTask(taskType)) {
+      throw new IllegalArgumentException(
+          String.format("Task type %s is not supported by feed threads.", taskType));
+    }
+  }
+
+  private void validateRequestApprovalTask(String about, TaskType taskType) {
+    if (taskType == TaskType.RequestApproval) {
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(about);
+      if (entityLink.getLinkType() != MessageParser.EntityLink.LinkType.ENTITY) {
+        throw new IllegalArgumentException("RequestApproval tasks must target an entity.");
+      }
+    }
+  }
+
+  private void validateTagTaskValues(CreateThread create, TaskType taskType) {
+    if (EntityUtil.isTagTask(taskType)) {
+      validateTagTaskValue(create.getTaskDetails().getOldValue(), TASK_OLD_VALUE_FIELD);
+      validateTagTaskValue(create.getTaskDetails().getSuggestion(), TASK_SUGGESTION_FIELD);
+    }
+  }
+
+  private boolean isSupportedLegacyFeedTask(TaskType taskType) {
+    return EntityUtil.isDescriptionTask(taskType)
+        || EntityUtil.isTagTask(taskType)
+        || EntityUtil.isApprovalTask(taskType)
+        || EntityUtil.isTestCaseFailureResolutionTask(taskType);
+  }
+
+  private void validateTagTaskValue(String value, String fieldName) {
+    if (!nullOrEmpty(value) && !value.isBlank()) {
+      try {
+        JsonUtils.readObjects(value, TagLabel.class);
+      } catch (JsonParsingException ex) {
+        throw new IllegalArgumentException(
+            String.format("Task %s must be valid JSON for tag tasks.", fieldName), ex);
+      }
+    }
   }
 }

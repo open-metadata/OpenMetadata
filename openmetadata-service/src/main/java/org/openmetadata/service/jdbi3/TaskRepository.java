@@ -39,6 +39,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -90,6 +91,7 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String COLLECTION_PATH = "/v1/tasks";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
   public static final String FIELD_ASSIGNEES = "assignees";
+
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
@@ -104,10 +106,12 @@ public class TaskRepository extends EntityRepository<Task> {
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
    * Granted are intermediate stages in multi-stage approval/grant workflows, not terminal states.
-   * Every other status — Rejected, Revoked, Completed, Cancelled, Failed, and any future status
-   * such as Expired — is terminal and frees the creator to file a new Data Access Request for the
-   * same entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus}
-   * predicate and the {@code active} status group in {@link ListFilter}.
+   * ManualRevoke means access was granted at the source and the workflow is parked waiting for a
+   * human to confirm the revoke — the access is still live, so a new DAR against the same entity
+   * must be blocked. Every other status — Rejected, Revoked, Completed, Cancelled, Failed,
+   * Expired — is terminal and frees the creator to file a new Data Access Request for the same
+   * entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus} predicate
+   * and the {@code active} status group in {@link ListFilter}.
    */
   public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
       List.of(
@@ -115,7 +119,20 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskEntityStatus.InProgress,
           TaskEntityStatus.Pending,
           TaskEntityStatus.Approved,
-          TaskEntityStatus.Granted);
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke);
+
+  /**
+   * Set view of {@link #NON_TERMINAL_TASK_STATUSES} for O(1) membership checks. Derived from the
+   * canonical list so the two cannot drift — the DAR duplicate-check test guards the list, and this
+   * inherits that guarantee automatically.
+   */
+  public static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      Set.copyOf(NON_TERMINAL_TASK_STATUSES);
+
+  public static boolean isTerminalStatus(TaskEntityStatus status) {
+    return status != null && !NON_TERMINAL_STATUSES.contains(status);
+  }
 
   private static final List<String> NON_TERMINAL_TASK_STATUS_VALUES =
       NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
@@ -340,6 +357,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
     if (!update) {
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
       validateNoDuplicateActiveDataAccessRequest(task);
     }
 
@@ -423,11 +441,12 @@ public class TaskRepository extends EntityRepository<Task> {
     try {
       List<EntityReference> owners = Entity.getOwners(about);
       if (!nullOrEmpty(owners)) {
-        task.setAssignees(owners);
+        List<EntityReference> expandedAssignees = expandTeamsToUsers(owners);
+        task.setAssignees(expandedAssignees);
         LOG.debug(
             "Task {} defaulting assignees to entity owners: {}",
             task.getTaskId(),
-            owners.stream().map(EntityReference::getName).toList());
+            expandedAssignees.stream().map(EntityReference::getName).toList());
       }
     } catch (Exception e) {
       LOG.debug(
@@ -436,6 +455,31 @@ public class TaskRepository extends EntityRepository<Task> {
           about.getId(),
           e.getMessage());
     }
+  }
+
+  private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
+    List<EntityReference> result = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      if (!Entity.TEAM.equals(ref.getType())) {
+        result.add(ref);
+        continue;
+      }
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, ref.getId(), "users", Include.NON_DELETED);
+        if (!nullOrEmpty(team.getUsers())) {
+          result.addAll(team.getUsers());
+        }
+        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+        // (e.g. Data Access Requests) an empty assignee list triggers the node's
+        // emptyAssigneeStrategy
+        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
+        // being pinned to a member-less team.
+      } catch (Exception e) {
+        LOG.debug(
+            "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());
+      }
+    }
+    return result;
   }
 
   /**
@@ -1113,6 +1157,7 @@ public class TaskRepository extends EntityRepository<Task> {
       case Cancelled -> TaskEntityStatus.Cancelled;
       case Revoked -> TaskEntityStatus.Revoked;
       case TimedOut -> TaskEntityStatus.Failed;
+      case Expired -> TaskEntityStatus.Expired;
     };
   }
 
@@ -1579,9 +1624,12 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
-        if (updated.getStatus() != TaskEntityStatus.Open
-            && updated.getStatus() != TaskEntityStatus.InProgress
-            && updated.getStatus() != TaskEntityStatus.Pending) {
+        // Only stamp a fallback Completed resolution when the task is actually moving to a
+        // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
+        // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)
+        // are still in-flight — a Completed resolution at that point misrepresents the lifecycle
+        // and leaks into downstream consumers / reporting.
+        if (isTerminalStatus(updated.getStatus())) {
           updated.setResolution(
               updated.getResolution() != null
                   ? updated.getResolution()

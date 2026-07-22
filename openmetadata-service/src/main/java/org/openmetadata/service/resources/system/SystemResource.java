@@ -1,7 +1,6 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -32,6 +31,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -42,6 +42,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -49,11 +55,9 @@ import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
-import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
@@ -76,7 +80,6 @@ import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -84,11 +87,12 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
-import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -110,6 +114,15 @@ import org.openmetadata.service.util.email.EmailUtil;
 @LatencyPhase
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
+  private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
+      Executors.newFixedThreadPool(
+          2,
+          runnable -> {
+            Thread thread = new Thread(runnable, "search-fitness-analyzer");
+            thread.setDaemon(true);
+            return thread;
+          });
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -117,7 +130,6 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
-  private final AISettingsHandler aiSettingsHandler = new AISettingsHandler();
   private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
@@ -182,18 +194,6 @@ public class SystemResource {
     systemRepository.createOrUpdate(settings);
     LOG.info("Default searchSettings loaded successfully.");
     return searchSettings;
-  }
-
-  public AISettings loadDefaultAiSettings() throws IOException {
-    List<String> jsonDataFiles =
-        EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
-    if (jsonDataFiles.isEmpty()) {
-      throw new IllegalArgumentException("Default AI settings file not found.");
-    }
-    String json =
-        CommonUtil.getResourceAsStream(
-            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
-    return JsonUtils.readValue(json, AISettings.class);
   }
 
   @GET
@@ -320,6 +320,58 @@ public class SystemResource {
   }
 
   @GET
+  @Path("/search/fitness")
+  @Hidden
+  @Operation(
+      operationId = "getSearchClusterFitness",
+      hidden = true,
+      summary = "Diagnose whether the search cluster is sized for current data",
+      description =
+          "Internal admin-only diagnostic. Returns a structured fitness report covering cluster "
+              + "status, per-index data footprint (size + average doc bytes), disk watermarks, "
+              + "heap/CPU, thread-pool rejections, circuit breaker trips, shard layout, and "
+              + "capacity recommendations. Not part of the public API surface.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search cluster fitness report",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchClusterFitnessReport.class)))
+      })
+  public Response getSearchClusterFitness(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    SearchClusterFitnessAnalyzer analyzer =
+        new SearchClusterFitnessAnalyzer(Entity.getSearchRepository());
+    SearchClusterFitnessReport report = computeFitnessWithTimeout(analyzer);
+    return Response.ok().entity(report).build();
+  }
+
+  private SearchClusterFitnessReport computeFitnessWithTimeout(
+      SearchClusterFitnessAnalyzer analyzer) {
+    Future<SearchClusterFitnessReport> future = SEARCH_FITNESS_EXECUTOR.submit(analyzer::analyze);
+    try {
+      return future.get(SEARCH_FITNESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      throw new ServiceUnavailableException(
+          "Search cluster fitness analysis exceeded "
+              + SEARCH_FITNESS_TIMEOUT_SECONDS
+              + "s — the cluster is slow or unreachable. Try again or inspect the cluster directly.");
+    } catch (InterruptedException e) {
+      future.cancel(true);
+      Thread.currentThread().interrupt();
+      throw new UnhandledServerException("Search cluster fitness analysis was interrupted");
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      throw new UnhandledServerException(
+          "Search cluster fitness analysis failed: " + cause.getMessage(), cause);
+    }
+  }
+
+  @GET
   @Path("/settings/profilerConfiguration")
   @Operation(
       operationId = "getProfilerConfigurationSetting",
@@ -433,34 +485,10 @@ public class SystemResource {
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
     }
-
-    if (AI_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
-      try {
-        AISettings defaults = loadDefaultAiSettings();
-        AISettings incoming =
-            JsonUtils.convertValue(settingName.getConfigValue(), AISettings.class);
-        aiSettingsHandler.validateAISettings(incoming);
-        settingName.setConfigValue(aiSettingsHandler.mergeAISettings(defaults, incoming));
-      } catch (IOException e) {
-        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
-        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
-      }
-    }
-
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
-    reinitMcpChatServiceIfNeeded(settingName.getConfigType());
 
     return response;
-  }
-
-  private void reinitMcpChatServiceIfNeeded(SettingsType configType) {
-    if (configType == AI_SETTINGS) {
-      AISettings aiSettings =
-          SettingsCache.getSettingOrDefault(AI_SETTINGS, null, AISettings.class);
-      McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
-      McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
-    }
   }
 
   @PUT
@@ -493,26 +521,11 @@ public class SystemResource {
 
     authorizer.authorizeAdmin(securityContext);
 
-    Object defaults;
-    if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
-      defaults = loadDefaultSearchSettings(true);
-    } else if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
-      try {
-        AISettings defaultAiSettings = loadDefaultAiSettings();
-        Settings setting =
-            new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
-        systemRepository.createOrUpdate(setting);
-        SettingsCache.invalidateSettings(AI_SETTINGS.value());
-        reinitMcpChatServiceIfNeeded(AI_SETTINGS);
-        defaults = defaultAiSettings;
-      } catch (IOException e) {
-        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
-        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
-      }
-    } else {
+    if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
-    return Response.ok(defaults).build();
+    SearchSettings settings = loadDefaultSearchSettings(true);
+    return Response.ok(settings).build();
   }
 
   @PUT

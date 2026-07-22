@@ -2174,6 +2174,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
         dataConsumerPage,
       }) => {
+        test.slow(true);
+
         await entity.visitEntityPage(dataConsumerPage);
 
         await expect(
@@ -2307,6 +2309,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
           dataConsumerPage,
         }) => {
+          test.slow(true);
+
           await tableEntity.visitEntityPage(dataConsumerPage);
 
           await dataConsumerPage

@@ -68,7 +68,10 @@ export default defineConfig({
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
-    ['@flakiness/playwright', { flakinessProject: 'OpenMetadata/OpenMetadata' }],
+    [
+      '@flakiness/playwright',
+      { flakinessProject: 'OpenMetadata/OpenMetadata' },
+    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -105,7 +108,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
-      grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
+      grepInvert: [
+        /@data-insight/,
+        /@basic/,
+        /@knowledge-graph/,
+        /@ontology-rdf/,
+      ],
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
@@ -136,7 +144,11 @@ export default defineConfig({
       : []),
     {
       name: 'sso-auth',
-      testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
+      testMatch: [
+        '**/OktaSelfSignupClaims.spec.ts',
+        '**/SSOLogin.spec.ts',
+        '**/SSORenewal.spec.ts',
+      ],
       use: { ...devices['Desktop Chrome'] },
       fullyParallel: false,
       workers: 1,
@@ -174,6 +186,13 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
+      name: 'Ontology RDF',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      grep: /ontology-rdf/,
+      teardown: 'entity-data-teardown',
+    },
+    {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
@@ -191,7 +210,7 @@ export default defineConfig({
       name: 'Basic',
       grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       fullyParallel: true,
     },
     {

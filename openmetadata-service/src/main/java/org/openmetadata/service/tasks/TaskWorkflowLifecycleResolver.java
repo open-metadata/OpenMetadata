@@ -416,6 +416,7 @@ public final class TaskWorkflowLifecycleResolver {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
@@ -551,11 +552,10 @@ public final class TaskWorkflowLifecycleResolver {
               schemaWithProperties(
                   Map.of(
                       "requestedAccess", stringProperty(),
-                      "duration", stringProperty(),
                       "reason", stringProperty(),
                       "assets", Map.of("type", "array", "items", objectProperty()),
                       "ticketId", stringProperty(),
-                      "expirationDate", stringProperty())))
+                      "expirationDate", numberProperty())))
           : null;
       case TestCaseResolution, IncidentResolution -> taskCategory == TaskCategory.Incident
           ? defaultSchema(
@@ -630,6 +630,10 @@ public final class TaskWorkflowLifecycleResolver {
 
   private static Map<String, Object> stringProperty() {
     return Map.of("type", "string");
+  }
+
+  private static Map<String, Object> numberProperty() {
+    return Map.of("type", "number");
   }
 
   private static Map<String, Object> objectProperty() {

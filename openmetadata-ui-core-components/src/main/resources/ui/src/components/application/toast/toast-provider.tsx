@@ -68,7 +68,7 @@ export const ToastProvider = ({
   return (
     <ToastRegion
       className={cx(
-        'tw:fixed tw:z-200 tw:flex tw:flex-col tw:gap-2 tw:outline-none',
+        'tw:fixed tw:z-[1000] tw:flex tw:flex-col tw:gap-2 tw:outline-none',
         classes.region
       )}
       queue={toastQueue}>

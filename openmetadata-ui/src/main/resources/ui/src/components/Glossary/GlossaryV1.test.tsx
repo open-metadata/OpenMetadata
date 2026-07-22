@@ -95,9 +95,6 @@ jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockReturnValue(<div>Breadcrumb</div>)
 );
 
-jest.mock('../Modals/EntityDeleteModal/EntityDeleteModal', () =>
-  jest.fn().mockReturnValue(<div>Entity Delete Modal</div>)
-);
 jest.mock('../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<span>U</span>)
 );

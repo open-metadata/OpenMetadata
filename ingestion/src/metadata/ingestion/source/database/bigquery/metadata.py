@@ -71,11 +71,13 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import (
     clear_constraint_cache,
     clear_constraint_cache_for_schema,
     clone_connection_for_project,
+    get_bigquery_client_for_project,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -108,7 +110,6 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -645,35 +646,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return [
             schema_name
             for schema_name in self.get_raw_database_schema_names()
-            if not filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                (
-                    fqn.build(
-                        self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=project_id,
-                        schema_name=schema_name,
-                    )
-                    if self.source_config.useFqnForFiltering
-                    else schema_name
-                ),
-            )
+            if not self._is_schema_filtered(project_id, schema_name)
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
+        project_id = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+                database_name=project_id,
                 schema_name=schema_name,
             )
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
-            ):
+            if self._is_schema_filtered(project_id, schema_name):
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
@@ -821,21 +807,67 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return None
 
+    def _raw_dataset_names(self, project_id: str) -> Iterable[str]:
+        """Dataset IDs for ``project_id``, context-free (does not read the walk's
+        current database). Honors a single configured ``databaseSchema``. Reuses the
+        walk's client when set, else builds a lightweight project-scoped client so
+        the totals hook (which runs before ``set_inspector``) can still list."""
+        configured_schema = getattr(self.service_connection, "databaseSchema", None)
+        if configured_schema:
+            yield configured_schema
+        else:
+            client = self.client or get_bigquery_client_for_project(project_id, self.service_connection)
+            for dataset in client.list_datasets(project_id):  # pyright: ignore[reportAttributeAccessIssue]
+                yield dataset.dataset_id
+
+    def _kept_schema_counts(self, project_ids: List[str]) -> Optional[Dict[str, int]]:  # noqa: UP006,UP045
+        """Post-filter dataset count per project from ``list_datasets``. Returns
+        ``None`` when any project's listing fails, so the caller reconciles the
+        schema total instead of seeding partial scopes."""
+        counts: Dict[str, int] = {}  # noqa: UP006
+        try:
+            for project_id in project_ids:
+                counts[project_id] = sum(
+                    1
+                    for dataset in self._raw_dataset_names(project_id)
+                    if not self._is_schema_filtered(project_id, dataset)
+                )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "BigQuery dataset listing failed (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        return counts
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` (filtered project count) and per-project
+        ``DatabaseSchema`` (filtered dataset count) counters upfront. When dataset
+        listing fails for any project, mark the schema counter reconcilable so the
+        walk fills its total instead."""
+        filtered_projects = [
+            project_id for project_id in self.project_ids if not self._is_database_filtered(project_id)
+        ]
+        totals.set_total(Database.__name__, len(filtered_projects))
+        kept_by_project = self._kept_schema_counts(filtered_projects)
+        if kept_by_project is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            for project_id, count in kept_by_project.items():
+                totals.seed_scope_total(DatabaseSchema.__name__, project_id, count)
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self.project_ids
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
-            database_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=project_id,
-            )
-            if filter_by_database(
-                self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else project_id,
-            ):
+            if self._is_database_filtered(project_id):
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=project_id,
+                )
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:

@@ -52,8 +52,7 @@
               "telephone",
               "cell",
               "cellphone",
-              "mobile",
-              "call"
+              "mobile"
             ]
           },
           "confidenceThreshold": 0.6,
@@ -241,10 +240,6 @@
             "context": [
               "cvv",
               "cvc",
-              "security",
-              "code",
-              "verification",
-              "card",
               "cvv2",
               "cid",
               "csc"
@@ -270,14 +265,11 @@
             "name": "UsBankRecognizer",
             "supportedLanguage": "en",
             "context": [
-              "check",
               "account",
               "acct",
               "bank",
-              "save",
               "debit",
               "bank_account",
-              "bank",
               "account_number"
             ]
           },
@@ -337,13 +329,10 @@
             "name": "UsSsnRecognizer",
             "supportedLanguage": "en",
             "context": [
-              "social",
-              "security",
               "ssn",
               "ssns",
               "ssid",
-              "national_id",
-              "id_number"
+              "national_id"
             ]
           },
           "confidenceThreshold": 0.6,
@@ -637,8 +626,7 @@
               "eth",
               "litecoin",
               "ltc",
-              "wallet",
-              "address"
+              "wallet"
             ]
           },
           "confidenceThreshold": 0.6,
@@ -762,7 +750,6 @@
               "PERSON"
             ],
             "context": [
-              "name",
               "first_name",
               "last_name",
               "given_name",

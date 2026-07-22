@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edge, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
+import { useLineageEdgeColors } from '../../../hooks/useLineageEdgeColors';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { ECanvasButtonType } from '../../../utils/CanvasButtonUtils';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
@@ -37,7 +37,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   onEdgeHover,
   hoverEdge,
 }) => {
-  const theme = useTheme();
+  const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -103,7 +103,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     canvasRef,
     edges,
     dqHighlightedEdges,
-    theme,
+    colors: edgeColors,
     hoverEdge,
     containerWidth: containerSize.width,
     containerHeight: containerSize.height,
