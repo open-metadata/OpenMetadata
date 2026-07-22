@@ -933,7 +933,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (allowedDomains != null
           && !allowedDomains.isEmpty()
           && !allowedDomains.contains("all")
-          && !allowedDomains.contains(domain)) {
+          && allowedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
         LOG.warn(
             "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
         throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
