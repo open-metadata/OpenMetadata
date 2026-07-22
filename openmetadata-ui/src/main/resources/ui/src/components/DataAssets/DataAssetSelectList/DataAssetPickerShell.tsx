@@ -219,7 +219,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   }, [isOpen, onOpenChange]);
 
   return (
-    <div className="tw:relative" ref={wrapperRef}>
+    <div className="tw:relative tw:leading-0" ref={wrapperRef}>
       {renderTrigger({ isOpen, open, close })}
 
       {isOpen && (
@@ -236,7 +236,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
       {isOpen && (
         <Box
           className={classNames(
-            'tw:absolute tw:z-50 tw:w-95 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:overflow-hidden',
+            'tw:absolute tw:z-50 tw:w-95 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:overflow-hidden',
             popoverAlign === 'right' ? 'tw:right-0' : 'tw:left-0',
             popoverPlacement === 'top'
               ? 'tw:bottom-full tw:mb-1'
@@ -259,7 +259,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                   t('label.search-entity', { entity: t('label.asset-plural') })
                 }
                 value={searchText}
-                wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none tw:ring-0"
+                wrapperClassName="tw:rounded-none tw:bg-transparent tw:shadow-none tw:outline-0"
                 onChange={(value) => onSearchChange?.(value)}
               />
             </Box>

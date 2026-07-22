@@ -94,7 +94,7 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await expect(page.locator('table')).toBeVisible();
 
-      await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
 
       // Verify current page shows page 1
       const tableRows = page.locator('table tbody tr');
@@ -104,11 +104,11 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await test.step('Test pagination navigation', async () => {
       const nextPageResponse = page.waitForResponse('/api/v1/search/query?*');
-      await page.locator('[data-testid="next"]').click();
+      await page.getByLabel('Next Page').click();
       await nextPageResponse;
 
       const prevPageResponse = page.waitForResponse('/api/v1/search/query?*');
-      await page.locator('[data-testid="previous"]').click();
+      await page.getByLabel('Previous Page').click();
       await prevPageResponse;
     });
 

@@ -155,7 +155,9 @@ test.describe(
     });
 
     test('should show all the customize options', async ({ adminPage }) => {
-      await expect(adminPage.getByText('Navigation')).toBeVisible();
+      await expect(
+        adminPage.getByText('Navigation', { exact: true })
+      ).toBeVisible();
       await expect(adminPage.getByText('Home Page')).toBeVisible();
       await expect(adminPage.getByText('Governance')).toBeVisible();
       await expect(adminPage.getByText('Data Assets')).toBeVisible();
@@ -182,7 +184,7 @@ test.describe(
     });
 
     test('Navigation check default state', async ({ adminPage }) => {
-      await adminPage.getByText('Navigation').click();
+      await adminPage.getByText('Navigation', { exact: true }).click();
       await checkDefaultStateForNavigationTree(adminPage);
     });
 
@@ -201,7 +203,7 @@ test.describe(
         navigationPersona.data.name,
         true
       );
-      await adminPage.getByText('Navigation').click();
+      await adminPage.getByText('Navigation', { exact: true }).click();
 
       await test.step('hide navigation items and validate with persona', async () => {
         // Hide Explore

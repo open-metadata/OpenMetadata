@@ -14,7 +14,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DataType } from '../../../generated/entity/data/table';
+import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
@@ -228,42 +228,113 @@ describe('ExploreSearchCard - Card container', () => {
     expect(card).toHaveClass('explore-search-card');
     expect(card).toHaveClass('highlight-card');
   });
+
+  it('renders human-readable ranking explanations from matched query names and score explanation', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: [
+          'ranking:closeName:text',
+          'ranking:descriptionContext:text',
+        ],
+        score: 42.125,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 42.125,
+          details: [
+            {
+              description: 'avgdl, average length of field',
+              value: 509.8754,
+            },
+            {
+              description:
+                'ConstantScore(displayName.keyword:provider_address_texas)^30.000002',
+              value: 60,
+            },
+            {
+              description:
+                'weight(displayName:provider_address_texas in 123) [PerFieldSimilarity], result of:',
+              value: 40,
+            },
+            {
+              description: 'max of:',
+              value: 2.125,
+              details: [
+                {
+                  description: 'weight(description:texas in 123)',
+                  value: 2.125,
+                },
+              ],
+            },
+          ],
+        },
+      }
+    );
+
+    expect(screen.getByTestId('ranking-details')).toHaveTextContent(
+      'label.ranking-detail-plural'
+    );
+    expect(screen.getByTestId('ranking-stage-closeName')).toHaveTextContent(
+      'label.close-name'
+    );
+    expect(screen.getByTestId('ranking-stage-closeName')).toHaveTextContent(
+      'message.search-ranking-close-name-explanation'
+    );
+    expect(
+      screen.getByTestId('ranking-stage-descriptionContext')
+    ).toHaveTextContent('label.description-context');
+    expect(screen.getByTestId('ranking-details')).toHaveTextContent(
+      'message.search-ranking-signals-explanation'
+    );
+    expect(screen.getByTestId('ranking-score')).toHaveTextContent(
+      'label.score'
+    );
+    expect(screen.getByTestId('ranking-score-explanation')).toHaveTextContent(
+      'label.reason'
+    );
+    expect(
+      screen.getAllByTestId('ranking-score-contributor')[0]
+    ).toHaveTextContent('displayName: provider_address_texas');
+    expect(
+      screen.getByTestId('ranking-score-explanation')
+    ).not.toHaveTextContent('avgdl');
+  });
 });
 
-describe('ExploreSearchCard - Data type badge', () => {
+describe('ExploreSearchCard - Entity type tags', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders the column data type as the first metadata badge for column cards', () => {
+  it('does not render column data type as a metadata tag for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
       dataType: DataType.String,
       dataTypeDisplay: 'STRING',
     });
 
-    expect(screen.getByTestId('Type')).toHaveTextContent('STRING');
+    expect(screen.queryByTestId('Type')).not.toBeInTheDocument();
+    expect(screen.queryByText('STRING')).not.toBeInTheDocument();
   });
 
-  it('preserves complex column data type syntax in uppercase', () => {
-    const complexDataType =
-      'struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>';
-
+  it('does not render NULL constraint as a metadata tag for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
-      dataType: DataType.Struct,
-      dataTypeDisplay: complexDataType,
-    });
+      constraint: Constraint.Null,
+    } as Partial<ExploreSearchCardProps['source']>);
 
-    expect(screen.getByTestId('Type')).toHaveTextContent(
-      complexDataType.toUpperCase()
-    );
-    expect(screen.getByText(complexDataType.toUpperCase())).toHaveClass(
-      'tw:max-w-full',
-      'tw:min-h-5.5',
-      'tw:break-words',
-      'tw:whitespace-normal'
-    );
+    expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
+    expect(screen.queryByText(Constraint.Null)).not.toBeInTheDocument();
+  });
+
+  it('does not render constraint metadata for column cards', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      constraint: Constraint.PrimaryKey,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
+    expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
   });
 });
 

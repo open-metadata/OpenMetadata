@@ -91,7 +91,7 @@ export type LineageEdge = {
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .locator('[data-testid="lineage-layer-column-btn"]:not([data-selected])')
     .waitFor();
   await clickOutside(page); // close Layer popover
 };
@@ -101,7 +101,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
-    .evaluate((el) => el.classList.contains('Mui-selected'));
+    .evaluate((el) => el.hasAttribute('data-selected'));
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
@@ -239,6 +239,11 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+};
+
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -738,7 +743,7 @@ export const fillLineageConfigForm = async (
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .locator('[data-testid="lineage-layer-column-btn"][data-selected]')
     .waitFor();
   await clickOutside(page); // Close Layer popover
 };

@@ -13,8 +13,13 @@ import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.elasticsearch.core.search.Highlight;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,10 +31,13 @@ import org.openmetadata.schema.api.search.Aggregation;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -59,6 +67,7 @@ public class ElasticSearchSourceBuilderFactory
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
   private static final float FUNCTION_BOOST_FACTOR = 0.3f;
+  private static final String RANKING_QUERY_PREFIX = "ranking:";
 
   private final SearchSettings searchSettings;
 
@@ -207,8 +216,7 @@ public class ElasticSearchSourceBuilderFactory
     return allFields;
   }
 
-  public es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSearchQueryBuilderV2(
-      String query, Map<String, Float> fields) {
+  public Query buildSearchQueryBuilderV2(String query, Map<String, Float> fields) {
     Map<String, Float> fuzzyFields =
         fields.entrySet().stream()
             .filter(entry -> isFuzzyField(entry.getKey()))
@@ -219,23 +227,23 @@ public class ElasticSearchSourceBuilderFactory
             .filter(entry -> isNonFuzzyField(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
+    Query fuzzyQuery =
         ElasticQueryBuilder.queryStringQuery(
             query,
             fuzzyFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            Operator.And,
             "1",
             10,
             3,
             DEFAULT_TIE_BREAKER,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+            TextQueryType.MostFields);
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQuery =
+    Query nonFuzzyQuery =
         ElasticQueryBuilder.multiMatchQuery(
             query,
             nonFuzzyFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            TextQueryType.MostFields,
+            Operator.And,
             String.valueOf(DEFAULT_TIE_BREAKER),
             "0");
 
@@ -247,10 +255,7 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   public ElasticSearchRequestBuilder searchBuilderV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query,
-      es.co.elastic.clients.elasticsearch.core.search.Highlight highlightBuilder,
-      int fromOffset,
-      int size) {
+      Query query, Highlight highlightBuilder, int fromOffset, int size) {
     ElasticSearchRequestBuilder builder = new ElasticSearchRequestBuilder();
     builder.query(query);
     if (highlightBuilder != null) {
@@ -263,8 +268,7 @@ public class ElasticSearchSourceBuilderFactory
 
   public ElasticSearchRequestBuilder buildUserOrTeamSearchBuilderV2(
       String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    Query queryBuilder = buildSearchQueryBuilderV2(query, UserIndex.getFields());
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -292,8 +296,7 @@ public class ElasticSearchSourceBuilderFactory
     return searchRequestBuilder;
   }
 
-  public es.co.elastic.clients.elasticsearch.core.search.Highlight buildHighlightsV2(
-      List<String> fields) {
+  public Highlight buildHighlightsV2(List<String> fields) {
     ElasticHighlightBuilder hb = new ElasticHighlightBuilder();
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
@@ -373,40 +376,34 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   public ElasticSearchRequestBuilder buildColumnSearchBuilderV2(String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder;
+    Query queryBuilder;
     if (nullOrEmpty(query) || "*".equals(query.trim())) {
-      queryBuilder =
-          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(q -> q.matchAll(m -> m));
+      queryBuilder = Query.of(q -> q.matchAll(m -> m));
     } else {
       Map<String, Float> fields = ColumnSearchIndex.getFields();
       queryBuilder =
           ElasticQueryBuilder.multiMatchQuery(
               query,
               fields,
-              es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.BestFields,
-              es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+              TextQueryType.BestFields,
+              Operator.Or,
               String.valueOf(DEFAULT_TIE_BREAKER),
               "0");
     }
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(List.of("name", "displayName", "description"));
+    Highlight hb = buildHighlightsV2(List.of("name", "displayName", "description"));
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildServiceSearchBuilderV2(String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(new ArrayList<>());
+    Query queryBuilder = buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
+    Highlight hb = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildContextMemorySearchBuilderV2(
       String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        buildSearchQueryBuilderV2(query, ContextMemoryIndex.getFields());
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(List.of("title", "summary", "question", "answer"));
+    Query queryBuilder = buildSearchQueryBuilderV2(query, ContextMemoryIndex.getFields());
+    Highlight hb = buildHighlightsV2(List.of("title", "summary", "question", "answer"));
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
@@ -429,12 +426,9 @@ public class ElasticSearchSourceBuilderFactory
       boolean explain,
       boolean includeAggregations) {
     AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
-        buildBaseQueryV2(query, assetConfig);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
-        applyFunctionScoringV2(baseQuery, assetConfig);
-    es.co.elastic.clients.elasticsearch.core.search.Highlight highlightBuilder =
-        buildHighlightingIfNeededV2(query, assetConfig);
+    Query baseQuery = buildBaseQueryV2(query, assetConfig);
+    Query finalQuery = applyFunctionScoringV2(baseQuery, assetConfig);
+    Highlight highlightBuilder = buildHighlightingIfNeededV2(query, assetConfig);
 
     ElasticSearchRequestBuilder searchRequestBuilder =
         createSearchSourceBuilderV2(finalQuery, from, size);
@@ -459,10 +453,8 @@ public class ElasticSearchSourceBuilderFactory
   public ElasticSearchRequestBuilder buildAggregateSearchBuilderV2(
       String query, int from, int size, boolean includeAggregations) {
     AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
-        buildQueryWithMatchTypesV2(query, compositeConfig);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
-        applyFunctionScoringV2(baseQuery, compositeConfig);
+    Query baseQuery = buildQueryWithMatchTypesV2(query, compositeConfig);
+    Query finalQuery = applyFunctionScoringV2(baseQuery, compositeConfig);
 
     ElasticSearchRequestBuilder searchRequestBuilder =
         searchBuilderV2(finalQuery, null, from, size);
@@ -484,34 +476,28 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   public ElasticSearchRequestBuilder buildTestCaseSearchV2(String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
+    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseIndex.getFields());
+    Highlight hb = buildHighlightsV2(List.of("testSuite.name", "testSuite.description"));
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildTestCaseResultSearchV2(String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(new ArrayList<>());
+    Query queryBuilder = buildSearchQueryBuilderV2(query, TestCaseResultIndex.getFields());
+    Highlight hb = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildTestCaseResolutionStatusSearchV2(
       String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+    Query queryBuilder =
         buildSearchQueryBuilderV2(query, TestCaseResolutionStatusIndex.getFields());
-    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
-        buildHighlightsV2(new ArrayList<>());
+    Highlight hb = buildHighlightsV2(new ArrayList<>());
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
   public ElasticSearchRequestBuilder buildCostAnalysisReportDataSearchV2(
       String query, int from, int size) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
-        ElasticQueryBuilder.queryStringQuery(query);
+    Query queryBuilder = ElasticQueryBuilder.queryStringQuery(query);
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -522,10 +508,8 @@ public class ElasticSearchSourceBuilderFactory
         query,
         defaultConfig.getAssetType());
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
-        buildQueryWithMatchTypesV2(query, defaultConfig);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
-        applyGlobalBoostsV2(baseQuery);
+    Query baseQuery = buildQueryWithMatchTypesV2(query, defaultConfig);
+    Query finalQuery = applyGlobalBoostsV2(baseQuery);
 
     ElasticSearchRequestBuilder searchRequestBuilder =
         createCommonSearchSourceBuilderV2(finalQuery, from, size);
@@ -538,21 +522,17 @@ public class ElasticSearchSourceBuilderFactory
   public ElasticSearchRequestBuilder buildEntitySpecificAggregateSearchBuilderV2(
       String query, int from, int size) {
     AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
-        buildQueryWithMatchTypesV2(query, compositeConfig);
+    Query baseQuery = buildQueryWithMatchTypesV2(query, compositeConfig);
 
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        collectAllBoostFunctionsV2();
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query finalQuery =
-        applyBoostFunctionsV2(baseQuery, functions);
+    List<FunctionScore> functions = collectAllBoostFunctionsV2();
+    Query finalQuery = applyBoostFunctionsV2(baseQuery, functions);
 
     ElasticSearchRequestBuilder searchRequestBuilder =
         searchBuilderV2(finalQuery, null, from, size);
     return addAggregationV2(searchRequestBuilder);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildBaseQueryV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildBaseQueryV2(String query, AssetTypeConfiguration assetConfig) {
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
     } else if (containsQuerySyntax(query)) {
@@ -562,30 +542,29 @@ public class ElasticSearchSourceBuilderFactory
     }
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildComplexSyntaxQueryV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildComplexSyntaxQueryV2(String query, AssetTypeConfiguration assetConfig) {
     Map<String, Float> fuzzyFields = new HashMap<>();
     Map<String, Float> nonFuzzyFields = new HashMap<>();
 
     classifyFields(assetConfig, fuzzyFields, nonFuzzyFields);
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
+    Query fuzzyQuery =
         ElasticQueryBuilder.queryStringQuery(
             query,
             fuzzyFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            Operator.And,
             "1",
             10,
             3,
             DEFAULT_TIE_BREAKER,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+            TextQueryType.MostFields);
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQuery =
+    Query nonFuzzyQuery =
         ElasticQueryBuilder.multiMatchQuery(
             query,
             nonFuzzyFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+            TextQueryType.MostFields,
+            Operator.And,
             String.valueOf(DEFAULT_TIE_BREAKER),
             "0");
 
@@ -597,8 +576,13 @@ public class ElasticSearchSourceBuilderFactory
         .build();
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSimpleQueryV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildSimpleQueryV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchRankingHelper.unescapePlainTextQuery(query);
+    RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
+    if (ranking != null) {
+      return buildRankedSimpleQueryV2(query, assetConfig, ranking);
+    }
+
     ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
     MatchTypeMultipliers multipliers = getMatchTypeMultipliers(assetConfig);
     Map<String, Map<String, Float>> fieldsByMatchType = groupFieldsByMatchType(assetConfig);
@@ -616,6 +600,166 @@ public class ElasticSearchSourceBuilderFactory
     return ElasticQueryBuilder.boolQuery().must(combinedQuery.build()).build();
   }
 
+  private Query buildRankedSimpleQueryV2(
+      String query, AssetTypeConfiguration assetConfig, RankingConfiguration ranking) {
+    List<Query> stageQueries = new ArrayList<>();
+    String significantQuery = SearchRankingHelper.significantQueryText(query, ranking);
+    String exactSignificantQuery =
+        SearchRankingHelper.significantQueryTextPreservingCase(query, ranking);
+
+    for (RankingStage stage : listOrEmpty(ranking.getStages())) {
+      Query stageQuery =
+          buildRankingStageQueryV2(
+              query, significantQuery, exactSignificantQuery, stage, assetConfig);
+      if (stageQuery != null) {
+        stageQueries.add(stageQuery);
+      }
+    }
+
+    if (stageQueries.isEmpty()) {
+      return buildLegacySimpleQueryV2(query, assetConfig);
+    }
+
+    ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
+    combinedQuery.should(
+        stageQueries.size() == 1
+            ? stageQueries.getFirst()
+            : ElasticQueryBuilder.disMaxQuery(
+                stageQueries, SearchRankingHelper.disMaxTieBreaker(ranking)));
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
+    combinedQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  private Query buildLegacySimpleQueryV2(String query, AssetTypeConfiguration assetConfig) {
+    ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
+    MatchTypeMultipliers multipliers = getMatchTypeMultipliers(assetConfig);
+    Map<String, Map<String, Float>> fieldsByMatchType = groupFieldsByMatchType(assetConfig);
+
+    addExactMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_EXACT), multipliers.exactMatch);
+    addPhraseMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_PHRASE), multipliers.phraseMatch);
+    addFuzzyMatchQueriesV2(
+        combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
+    addStandardMatchQueriesV2(combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_STANDARD));
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
+
+    combinedQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  private Query buildRankingStageQueryV2(
+      String originalQuery,
+      String significantQuery,
+      String exactSignificantQuery,
+      RankingStage stage,
+      AssetTypeConfiguration assetConfig) {
+    if (stage.getFields() == null || stage.getFields().isEmpty()) {
+      return null;
+    }
+
+    RankingStage.MatchType matchType =
+        stage.getMatchType() == null ? RankingStage.MatchType.STANDARD : stage.getMatchType();
+    return switch (matchType) {
+      case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
+      case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
+      case FUZZY -> buildTextRankingStageQueryV2(
+          significantQuery, stage, assetConfig, getFuzziness(significantQuery));
+      case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
+          significantQuery, stage, assetConfig);
+      case STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, "0");
+    };
+  }
+
+  private Query buildExactRankingStageQueryV2(
+      String originalQuery, String exactSignificantQuery, RankingStage stage) {
+    List<String> exactQueries = new ArrayList<>();
+    exactQueries.add(originalQuery);
+    exactQueries.add(exactSignificantQuery);
+    List<String> exactTexts = SearchRankingHelper.exactMatchTexts(exactQueries);
+    if (exactTexts.isEmpty()) {
+      return null;
+    }
+
+    ElasticQueryBuilder.BoolQueryBuilder exactQuery = ElasticQueryBuilder.boolQuery();
+    float weight = SearchRankingHelper.stageWeight(stage);
+    for (String field : stage.getFields()) {
+      for (int index = 0; index < exactTexts.size(); index++) {
+        exactQuery.should(
+            ElasticQueryBuilder.termQuery(
+                field,
+                exactTexts.get(index),
+                null,
+                rankingQueryName(stage, field, String.valueOf(index))));
+      }
+    }
+    exactQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
+  }
+
+  private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
+    ElasticQueryBuilder.BoolQueryBuilder phraseQuery = ElasticQueryBuilder.boolQuery();
+    float weight = SearchRankingHelper.stageWeight(stage);
+    for (String field : stage.getFields()) {
+      phraseQuery.should(
+          ElasticQueryBuilder.matchPhraseQuery(field, query, null, rankingQueryName(stage, field)));
+    }
+    phraseQuery.minimumShouldMatch(1);
+    return ElasticQueryBuilder.constantScoreQuery(phraseQuery.build(), weight);
+  }
+
+  private Query buildTokenCoverageRankingStageQueryV2(
+      String query, RankingStage stage, AssetTypeConfiguration assetConfig) {
+    List<String> terms = SearchRankingHelper.queryTerms(query);
+    if (terms.isEmpty()) {
+      return null;
+    }
+    Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
+    ElasticQueryBuilder.BoolQueryBuilder coverageQuery = ElasticQueryBuilder.boolQuery();
+    for (int index = 0; index < terms.size(); index++) {
+      coverageQuery.should(
+          ElasticQueryBuilder.multiMatchQuery(
+              terms.get(index),
+              fields,
+              TextQueryType.BestFields,
+              Operator.And,
+              String.valueOf(DEFAULT_TIE_BREAKER),
+              "0",
+              null,
+              null,
+              rankingQueryName(stage, "token", String.valueOf(index)),
+              SearchRankingHelper.stageSearchAnalyzer(stage)));
+    }
+    coverageQuery.minimumShouldMatch(SearchRankingHelper.minimumShouldMatch(stage));
+    return ElasticQueryBuilder.constantScoreQuery(
+        coverageQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
+  private Query buildTextRankingStageQueryV2(
+      String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
+    Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
+    return ElasticQueryBuilder.multiMatchQuery(
+        query,
+        fields,
+        TextQueryType.BestFields,
+        Operator.Or,
+        String.valueOf(DEFAULT_TIE_BREAKER),
+        fuzziness,
+        SearchRankingHelper.minimumShouldMatch(stage),
+        SearchRankingHelper.stageWeight(stage),
+        rankingQueryName(stage, "text"),
+        SearchRankingHelper.stageSearchAnalyzer(stage));
+  }
+
+  private String rankingQueryName(RankingStage stage, String field) {
+    return RANKING_QUERY_PREFIX + stage.getName() + ":" + field;
+  }
+
+  private String rankingQueryName(RankingStage stage, String field, String suffix) {
+    return rankingQueryName(stage, field) + ":" + suffix;
+  }
+
   /**
    * Adds a nested {@code customPropertiesTyped} clause for each admin-configured {@code
    * extension.<name>} search field. The raw {@code extension} field is {@code enabled:false} so an
@@ -631,9 +775,8 @@ public class ElasticSearchSourceBuilderFactory
     }
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query customPropertyNestedQueryV2(
-      String query, CustomPropertySearchFields.Spec spec) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query inner =
+  private Query customPropertyNestedQueryV2(String query, CustomPropertySearchFields.Spec spec) {
+    Query inner =
         ElasticQueryBuilder.boolQuery()
             .must(customPropertyTermV2(CustomPropertySearchFields.NAME_FIELD, spec.propertyName()))
             .must(customPropertyValueQueryV2(query, spec))
@@ -642,12 +785,11 @@ public class ElasticSearchSourceBuilderFactory
         CustomPropertySearchFields.CUSTOM_PROPERTIES_TYPED, inner);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query customPropertyValueQueryV2(
-      String query, CustomPropertySearchFields.Spec spec) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query result;
+  private Query customPropertyValueQueryV2(String query, CustomPropertySearchFields.Spec spec) {
+    Query result;
     if (spec.exact()) {
       result =
-          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+          Query.of(
               q ->
                   q.term(
                       t ->
@@ -656,7 +798,7 @@ public class ElasticSearchSourceBuilderFactory
                               .boost(spec.boost())));
     } else {
       result =
-          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+          Query.of(
               q ->
                   q.match(
                       m ->
@@ -667,10 +809,8 @@ public class ElasticSearchSourceBuilderFactory
     return result;
   }
 
-  private static es.co.elastic.clients.elasticsearch._types.query_dsl.Query customPropertyTermV2(
-      String field, String value) {
-    return es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
-        q -> q.term(t -> t.field(field).value(value)));
+  private static Query customPropertyTermV2(String field, String value) {
+    return Query.of(q -> q.term(t -> t.field(field).value(value)));
   }
 
   private void addExactMatchQueriesV2(
@@ -683,7 +823,7 @@ public class ElasticSearchSourceBuilderFactory
       fields.forEach(
           (field, boost) ->
               exactMatchQuery.should(
-                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                  Query.of(
                       q ->
                           q.term(
                               t ->
@@ -706,7 +846,7 @@ public class ElasticSearchSourceBuilderFactory
       fields.forEach(
           (field, boost) ->
               phraseMatchQuery.should(
-                  es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+                  Query.of(
                       q ->
                           q.matchPhrase(
                               m -> m.field(field).query(query).boost(boost * multiplier)))));
@@ -735,21 +875,18 @@ public class ElasticSearchSourceBuilderFactory
       String fuzziness = getFuzziness(query);
       int maxExpansions = getMaxExpansions(query);
 
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQuery =
-          es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+      Query fuzzyQuery =
+          Query.of(
               q ->
                   q.multiMatch(
                       m ->
                           m.query(query)
                               .fields(fieldList)
-                              .type(
-                                  es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType
-                                      .MostFields)
+                              .type(TextQueryType.MostFields)
                               .fuzziness(fuzziness)
                               .maxExpansions(maxExpansions)
                               .prefixLength(1)
-                              .operator(
-                                  es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or)
+                              .operator(Operator.Or)
                               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
                               .tieBreaker((double) DEFAULT_TIE_BREAKER)
                               .boost(multiplier)));
@@ -773,55 +910,46 @@ public class ElasticSearchSourceBuilderFactory
               .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
       if (!fuzzyFields.isEmpty()) {
-        es.co.elastic.clients.elasticsearch._types.query_dsl.Query fuzzyQueryBuilder =
-            createStandardFuzzyQueryV2(query, fuzzyFields);
+        Query fuzzyQueryBuilder = createStandardFuzzyQueryV2(query, fuzzyFields);
         combinedQuery.should(fuzzyQueryBuilder);
       }
 
       if (!nonFuzzyFields.isEmpty()) {
-        es.co.elastic.clients.elasticsearch._types.query_dsl.Query nonFuzzyQueryBuilder =
-            createStandardNonFuzzyQueryV2(query, nonFuzzyFields);
+        Query nonFuzzyQueryBuilder = createStandardNonFuzzyQueryV2(query, nonFuzzyFields);
         combinedQuery.should(nonFuzzyQueryBuilder);
       }
     }
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardFuzzyQueryV2(
-      String query, Map<String, Float> fields) {
+  private Query createStandardFuzzyQueryV2(String query, Map<String, Float> fields) {
     return ElasticQueryBuilder.multiMatchQuery(
         query,
         fields,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.Or,
+        TextQueryType.MostFields,
+        Operator.Or,
         String.valueOf(DEFAULT_TIE_BREAKER),
         getFuzziness(query));
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query createStandardNonFuzzyQueryV2(
-      String query, Map<String, Float> fields) {
+  private Query createStandardNonFuzzyQueryV2(String query, Map<String, Float> fields) {
     return ElasticQueryBuilder.multiMatchQuery(
         query,
         fields,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
+        TextQueryType.MostFields,
+        Operator.And,
         String.valueOf(DEFAULT_TIE_BREAKER),
         "0");
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore
-      buildTermBoostFunctionV2(TermBoost tb) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query filter =
-        ElasticQueryBuilder.termQuery(tb.getField(), tb.getValue());
+  private FunctionScore buildTermBoostFunctionV2(TermBoost tb) {
+    Query filter = ElasticQueryBuilder.termQuery(tb.getField(), tb.getValue());
     return ElasticQueryBuilder.weightFunction(filter, tb.getBoost());
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore
-      buildFieldValueBoostFunctionV2(FieldValueBoost fvb) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query condition =
-        buildConditionQueryV2(fvb);
+  private FunctionScore buildFieldValueBoostFunctionV2(FieldValueBoost fvb) {
+    Query condition = buildConditionQueryV2(fvb);
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier modifier =
-        toFieldValueFactorModifierV2(fvb.getModifier());
+    FieldValueFactorModifier modifier = toFieldValueFactorModifierV2(fvb.getModifier());
 
     return ElasticQueryBuilder.fieldValueFactorFunction(
         condition,
@@ -831,8 +959,7 @@ public class ElasticSearchSourceBuilderFactory
         modifier);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildConditionQueryV2(
-      FieldValueBoost fvb) {
+  private Query buildConditionQueryV2(FieldValueBoost fvb) {
     if (fvb.getCondition() == null || fvb.getCondition().getRange() == null) {
       return ElasticQueryBuilder.matchAllQuery();
     }
@@ -848,62 +975,49 @@ public class ElasticSearchSourceBuilderFactory
     return ElasticQueryBuilder.rangeQuery(field, gte, lte, gt, lt);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-      toFieldValueFactorModifierV2(FieldValueBoost.Modifier modifier) {
+  private FieldValueFactorModifier toFieldValueFactorModifierV2(FieldValueBoost.Modifier modifier) {
     if (modifier == null) {
       return null;
     }
 
     return switch (modifier.value()) {
-      case "log" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Log;
-      case "log1p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Log1p;
-      case "sqrt" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Sqrt;
-      case "square" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Square;
-      case "ln" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier.Ln;
-      case "ln1p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Ln1p;
-      case "ln2p" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier
-          .Ln2p;
-      case "reciprocal" -> es.co.elastic.clients.elasticsearch._types.query_dsl
-          .FieldValueFactorModifier.Reciprocal;
+      case "log" -> FieldValueFactorModifier.Log;
+      case "log1p" -> FieldValueFactorModifier.Log1p;
+      case "sqrt" -> FieldValueFactorModifier.Sqrt;
+      case "square" -> FieldValueFactorModifier.Square;
+      case "ln" -> FieldValueFactorModifier.Ln;
+      case "ln1p" -> FieldValueFactorModifier.Ln1p;
+      case "ln2p" -> FieldValueFactorModifier.Ln2p;
+      case "reciprocal" -> FieldValueFactorModifier.Reciprocal;
       default -> null;
     };
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode toScoreModeV2(
-      String mode) {
+  private FunctionScoreMode toScoreModeV2(String mode) {
     return switch (mode.toLowerCase()) {
-      case "avg" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Avg;
-      case "max" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Max;
-      case "min" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Min;
-      case "multiply" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode
-          .Multiply;
-      case "first" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.First;
-      default -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Sum;
+      case "avg" -> FunctionScoreMode.Avg;
+      case "max" -> FunctionScoreMode.Max;
+      case "min" -> FunctionScoreMode.Min;
+      case "multiply" -> FunctionScoreMode.Multiply;
+      case "first" -> FunctionScoreMode.First;
+      default -> FunctionScoreMode.Sum;
     };
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode toBoostModeV2(
-      String mode) {
+  private FunctionBoostMode toBoostModeV2(String mode) {
     return switch (mode.toLowerCase()) {
-      case "sum" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Sum;
-      case "avg" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Avg;
-      case "max" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Max;
-      case "min" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Min;
-      case "replace" -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode
-          .Replace;
-      default -> es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Multiply;
+      case "sum" -> FunctionBoostMode.Sum;
+      case "avg" -> FunctionBoostMode.Avg;
+      case "max" -> FunctionBoostMode.Max;
+      case "min" -> FunctionBoostMode.Min;
+      case "replace" -> FunctionBoostMode.Replace;
+      default -> FunctionBoostMode.Multiply;
     };
   }
 
-  private List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore>
-      collectBoostFunctionsV2(AssetTypeConfiguration assetConfig) {
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        new ArrayList<>();
+  private List<FunctionScore> collectBoostFunctionsV2(
+      AssetTypeConfiguration assetConfig, RankingConfiguration ranking) {
+    List<FunctionScore> functions = new ArrayList<>();
 
     // Add baseline weight of 1.0 so that assets with no tier/usage retain their text score
     // when boostMode is multiply. Without this, function_score could be 0 and zero out the
@@ -912,21 +1026,31 @@ public class ElasticSearchSourceBuilderFactory
 
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       searchSettings.getGlobalSettings().getTermBoosts().stream()
+          .filter(
+              termBoost -> SearchRankingHelper.signalFieldEnabled(ranking, termBoost.getField()))
           .map(this::buildTermBoostFunctionV2)
           .forEach(functions::add);
     }
     if (assetConfig.getTermBoosts() != null) {
       assetConfig.getTermBoosts().stream()
+          .filter(
+              termBoost -> SearchRankingHelper.signalFieldEnabled(ranking, termBoost.getField()))
           .map(this::buildTermBoostFunctionV2)
           .forEach(functions::add);
     }
     if (searchSettings.getGlobalSettings().getFieldValueBoosts() != null) {
       searchSettings.getGlobalSettings().getFieldValueBoosts().stream()
+          .filter(
+              fieldValueBoost ->
+                  SearchRankingHelper.signalFieldEnabled(ranking, fieldValueBoost.getField()))
           .map(this::buildFieldValueBoostFunctionV2)
           .forEach(functions::add);
     }
     if (assetConfig.getFieldValueBoosts() != null) {
       assetConfig.getFieldValueBoosts().stream()
+          .filter(
+              fieldValueBoost ->
+                  SearchRankingHelper.signalFieldEnabled(ranking, fieldValueBoost.getField()))
           .map(this::buildFieldValueBoostFunctionV2)
           .forEach(functions::add);
     }
@@ -934,36 +1058,33 @@ public class ElasticSearchSourceBuilderFactory
     return functions;
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyFunctionScoringV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery,
-      AssetTypeConfiguration assetConfig) {
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        collectBoostFunctionsV2(assetConfig);
+  private Query applyFunctionScoringV2(Query baseQuery, AssetTypeConfiguration assetConfig) {
+    RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
+    List<FunctionScore> functions = collectBoostFunctionsV2(assetConfig, ranking);
 
     if (functions.isEmpty()) {
       return baseQuery;
     }
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode scoreMode;
-    if (assetConfig.getScoreMode() != null) {
-      scoreMode = toScoreModeV2(assetConfig.getScoreMode().value());
-    } else {
-      scoreMode = es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Sum;
-    }
-
-    es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode boostMode;
-    if (assetConfig.getBoostMode() != null) {
-      boostMode = toBoostModeV2(assetConfig.getBoostMode().value());
-    } else {
-      boostMode = es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Sum;
-    }
+    String scoreModeValue =
+        assetConfig.getScoreMode() != null ? assetConfig.getScoreMode().value() : "sum";
+    String boostModeValue =
+        assetConfig.getBoostMode() != null ? assetConfig.getBoostMode().value() : "sum";
+    FunctionScoreMode scoreMode =
+        toScoreModeV2(SearchRankingHelper.signalScoreMode(ranking, scoreModeValue));
+    FunctionBoostMode boostMode =
+        toBoostModeV2(SearchRankingHelper.signalBoostMode(ranking, boostModeValue));
 
     return ElasticQueryBuilder.functionScoreQuery(
-        baseQuery, functions, scoreMode, boostMode, FUNCTION_BOOST_FACTOR);
+        baseQuery,
+        functions,
+        scoreMode,
+        boostMode,
+        FUNCTION_BOOST_FACTOR,
+        SearchRankingHelper.signalMaxBoost(ranking));
   }
 
-  private es.co.elastic.clients.elasticsearch.core.search.Highlight buildHighlightingIfNeededV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Highlight buildHighlightingIfNeededV2(String query, AssetTypeConfiguration assetConfig) {
     if (query == null || query.trim().isEmpty()) {
       return null;
     }
@@ -977,8 +1098,7 @@ public class ElasticSearchSourceBuilderFactory
     return null;
   }
 
-  private ElasticSearchRequestBuilder createSearchSourceBuilderV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query, int from, int size) {
+  private ElasticSearchRequestBuilder createSearchSourceBuilderV2(Query query, int from, int size) {
     int maxHits = searchSettings.getGlobalSettings().getMaxResultHits();
     ElasticSearchRequestBuilder builder = new ElasticSearchRequestBuilder();
     builder.query(query);
@@ -1016,8 +1136,7 @@ public class ElasticSearchSourceBuilderFactory
     }
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildQueryWithMatchTypesV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildQueryWithMatchTypesV2(String query, AssetTypeConfiguration assetConfig) {
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
     }
@@ -1029,26 +1148,23 @@ public class ElasticSearchSourceBuilderFactory
     return buildSimpleQueryWithTypesV2(query, assetConfig);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildComplexQueryV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildComplexQueryV2(String query, AssetTypeConfiguration assetConfig) {
     Map<String, Float> allFields = extractAllFields(assetConfig);
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryStringBuilder =
+    Query queryStringBuilder =
         ElasticQueryBuilder.queryStringQuery(
-            query,
-            allFields,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.Operator.And,
-            null,
-            50,
-            0,
-            0.5,
-            es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType.MostFields);
+            query, allFields, Operator.And, null, 50, 0, 0.5, TextQueryType.MostFields);
 
     return ElasticQueryBuilder.boolQuery().must(queryStringBuilder).build();
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildSimpleQueryWithTypesV2(
-      String query, AssetTypeConfiguration assetConfig) {
+  private Query buildSimpleQueryWithTypesV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchRankingHelper.unescapePlainTextQuery(query);
+    RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
+    if (ranking != null) {
+      return buildRankedSimpleQueryV2(query, assetConfig, ranking);
+    }
+
     ElasticQueryBuilder.BoolQueryBuilder combinedQuery = ElasticQueryBuilder.boolQuery();
     MatchTypeMultipliers multipliers = getMatchTypeMultipliers(assetConfig);
     Map<String, Map<String, Float>> fieldsByType = groupFieldsByMatchType(assetConfig);
@@ -1075,10 +1191,8 @@ public class ElasticSearchSourceBuilderFactory
     addStandardMatchQueriesV2(combinedQuery, query, fieldsByType.get(MATCH_TYPE_STANDARD));
   }
 
-  private List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore>
-      collectGlobalBoostFunctionsV2() {
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        new ArrayList<>();
+  private List<FunctionScore> collectGlobalBoostFunctionsV2() {
+    List<FunctionScore> functions = new ArrayList<>();
 
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       searchSettings.getGlobalSettings().getTermBoosts().stream()
@@ -1095,25 +1209,19 @@ public class ElasticSearchSourceBuilderFactory
     return functions;
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyGlobalBoostsV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery) {
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        collectGlobalBoostFunctionsV2();
+  private Query applyGlobalBoostsV2(Query baseQuery) {
+    List<FunctionScore> functions = collectGlobalBoostFunctionsV2();
 
     if (functions.isEmpty()) {
       return baseQuery;
     }
 
     return ElasticQueryBuilder.functionScoreQuery(
-        baseQuery,
-        functions,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Sum,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Sum,
-        FUNCTION_BOOST_FACTOR);
+        baseQuery, functions, FunctionScoreMode.Sum, FunctionBoostMode.Sum, FUNCTION_BOOST_FACTOR);
   }
 
   private ElasticSearchRequestBuilder createCommonSearchSourceBuilderV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query query, int from, int size) {
+      Query query, int from, int size) {
     return createSearchSourceBuilderV2(query, from, size);
   }
 
@@ -1124,9 +1232,8 @@ public class ElasticSearchSourceBuilderFactory
     }
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore
-      buildEntitySpecificTermBoostV2(String assetType, TermBoost tb) {
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query filter =
+  private FunctionScore buildEntitySpecificTermBoostV2(String assetType, TermBoost tb) {
+    Query filter =
         ElasticQueryBuilder.boolQuery()
             .must(ElasticQueryBuilder.termQuery("entityType", assetType))
             .must(ElasticQueryBuilder.termQuery(tb.getField(), tb.getValue()))
@@ -1135,29 +1242,26 @@ public class ElasticSearchSourceBuilderFactory
     return ElasticQueryBuilder.weightFunction(filter, tb.getBoost());
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore
-      buildEntitySpecificFieldValueBoostV2(String assetType, FieldValueBoost fvb) {
+  private FunctionScore buildEntitySpecificFieldValueBoostV2(
+      String assetType, FieldValueBoost fvb) {
     ElasticQueryBuilder.BoolQueryBuilder conditionBuilder =
         ElasticQueryBuilder.boolQuery()
             .must(ElasticQueryBuilder.termQuery("entityType", assetType));
 
     if (fvb.getCondition() != null && fvb.getCondition().getRange() != null) {
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query rangeQuery =
-          buildRangeQueryV2(fvb);
+      Query rangeQuery = buildRangeQueryV2(fvb);
       conditionBuilder.must(rangeQuery);
     }
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.Query condition = conditionBuilder.build();
+    Query condition = conditionBuilder.build();
 
-    es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier modifier =
-        toFieldValueFactorModifierV2(fvb.getModifier());
+    FieldValueFactorModifier modifier = toFieldValueFactorModifierV2(fvb.getModifier());
 
     return ElasticQueryBuilder.fieldValueFactorFunction(
         condition, fvb.getField(), fvb.getFactor(), fvb.getMissing(), modifier);
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query buildRangeQueryV2(
-      FieldValueBoost fvb) {
+  private Query buildRangeQueryV2(FieldValueBoost fvb) {
     var range = fvb.getCondition().getRange();
     String field = fvb.getField();
 
@@ -1170,9 +1274,7 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   private void addAssetTypeBoostsV2(
-      List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions,
-      String assetType,
-      AssetTypeConfiguration assetConfig) {
+      List<FunctionScore> functions, String assetType, AssetTypeConfiguration assetConfig) {
 
     if (assetConfig.getTermBoosts() != null) {
       assetConfig.getTermBoosts().stream()
@@ -1187,8 +1289,7 @@ public class ElasticSearchSourceBuilderFactory
     }
   }
 
-  private void addEntitySpecificBoostsV2(
-      List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions) {
+  private void addEntitySpecificBoostsV2(List<FunctionScore> functions) {
     List<String> dataAssetTypes =
         List.of(
             "table",
@@ -1217,12 +1318,10 @@ public class ElasticSearchSourceBuilderFactory
         .orElse(null);
   }
 
-  private List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore>
-      collectAllBoostFunctionsV2() {
+  private List<FunctionScore> collectAllBoostFunctionsV2() {
 
     // Add global boosts
-    List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions =
-        new ArrayList<>(collectGlobalBoostFunctionsV2());
+    List<FunctionScore> functions = new ArrayList<>(collectGlobalBoostFunctionsV2());
 
     // Add entity-specific boosts
     addEntitySpecificBoostsV2(functions);
@@ -1230,18 +1329,12 @@ public class ElasticSearchSourceBuilderFactory
     return functions;
   }
 
-  private es.co.elastic.clients.elasticsearch._types.query_dsl.Query applyBoostFunctionsV2(
-      es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery,
-      List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions) {
+  private Query applyBoostFunctionsV2(Query baseQuery, List<FunctionScore> functions) {
     if (functions.isEmpty()) {
       return baseQuery;
     }
 
     return ElasticQueryBuilder.functionScoreQuery(
-        baseQuery,
-        functions,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode.Sum,
-        es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode.Sum,
-        FUNCTION_BOOST_FACTOR);
+        baseQuery, functions, FunctionScoreMode.Sum, FunctionBoostMode.Sum, FUNCTION_BOOST_FACTOR);
   }
 }

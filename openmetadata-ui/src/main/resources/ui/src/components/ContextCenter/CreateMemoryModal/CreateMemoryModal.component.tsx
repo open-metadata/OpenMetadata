@@ -43,7 +43,6 @@ import {
   Lock01,
   Plus,
   Share07,
-  Trash01,
   X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
@@ -63,7 +62,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -100,7 +100,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
-import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import {
   CreateMemoryModalProps,
   MemoryFormValues,
@@ -254,6 +253,20 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       t('label.edit-entity', { entity: t('label.memory') });
   }
 
+  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
+
+  const memorySourceLink = useMemo(() => {
+    if (!memorySource) {
+      return undefined;
+    }
+
+    return memorySource.type === EntityType.KNOWLEDGE_PAGE
+      ? contextCenterClassBase.getArticlePath(
+          memorySource.fullyQualifiedName ?? ''
+        )
+      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+  }, [memorySource]);
+
   const submitLabel = isEditMode
     ? t('label.save-entity', { entity: t('label.change-plural') })
     : t('label.create-entity', { entity: t('label.memory') });
@@ -284,20 +297,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
-
-  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
-
-  const memorySourceLink = useMemo(() => {
-    if (!memorySource) {
-      return undefined;
-    }
-
-    return memorySource.type === EntityType.KNOWLEDGE_PAGE
-      ? contextCenterClassBase.getArticlePath(
-          memorySource.fullyQualifiedName ?? ''
-        )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
-  }, [memorySource]);
 
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
@@ -786,14 +785,38 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                     {/* Section 4: Linked Data Assets */}
                     <div className="tw:flex tw:flex-col tw:gap-2">
-                      <Typography
-                        className="tw:text-tertiary"
-                        size="text-xs"
-                        weight="semibold">
-                        {`${t('label.linked-data-asset-plural')} (${
-                          linkedAssets.length
-                        })`}
-                      </Typography>
+                      <Box align="center" justify="between">
+                        <Typography
+                          className="tw:text-tertiary"
+                          size="text-xs"
+                          weight="semibold">
+                          {`${t('label.linked-data-asset-plural')} (${
+                            linkedAssets.length
+                          })`}
+                        </Typography>
+                        {!isViewOnly && (
+                          <DataAssetSelectList
+                            placeholder={t('label.search-assets-to-link')}
+                            popoverAlign="right"
+                            popoverClassName="tw:h-100"
+                            renderTrigger={({ open }) => (
+                              <Button
+                                className="tw:px-2.5 tw:py-1.5"
+                                color="link-color"
+                                iconLeading={Plus}
+                                size="sm"
+                                onPress={open}>
+                                {t('label.link-an-entity', {
+                                  entity: t('label.asset'),
+                                })}
+                              </Button>
+                            )}
+                            searchIndex={SearchIndex.DATA_ASSET}
+                            value={linkedAssets}
+                            onChange={handleAssetChange}
+                          />
+                        )}
+                      </Box>
 
                       {isViewOnly ? (
                         <LinkedAssetsReadOnly assets={linkedAssets} />
@@ -826,25 +849,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               })}
                             </div>
                           )}
-                          <DataAssetSelectList
-                            placeholder={t('label.search-assets-to-link')}
-                            popoverClassName="tw:h-100"
-                            renderTrigger={({ open }) => (
-                              <Button
-                                className="tw:px-2.5 tw:py-1.5"
-                                color="tertiary"
-                                iconLeading={Plus}
-                                size="sm"
-                                onPress={open}>
-                                {t('label.link-an-entity', {
-                                  entity: t('label.asset'),
-                                })}
-                              </Button>
-                            )}
-                            searchIndex={SearchIndex.DATA_ASSET}
-                            value={linkedAssets}
-                            onChange={handleAssetChange}
-                          />
                         </>
                       )}
                     </div>
@@ -1082,9 +1086,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             ))}
                       </Card>
                     </div>
-                    {isViewOnly && memoryToEdit?.id && (
-                      <DerivedOntologyCard memoryId={memoryToEdit.id} />
-                    )}
                   </div>
 
                   {/* Sticky footer */}
@@ -1093,7 +1094,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       {Boolean(memoryToEdit) && canDelete && (
                         <Button
                           color="tertiary-destructive"
-                          iconLeading={Trash01}
+                          iconLeading={TrashIcon}
                           isDisabled={isDeleting || isSubmitting}
                           isLoading={isDeleting}
                           size="sm"

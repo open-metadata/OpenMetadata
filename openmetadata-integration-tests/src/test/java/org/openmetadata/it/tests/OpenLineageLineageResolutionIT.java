@@ -32,6 +32,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -60,6 +62,7 @@ import org.openmetadata.sdk.fluent.wrappers.FluentTable;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @ExtendWith(TestNamespaceExtension.class)
+@Execution(ExecutionMode.SAME_THREAD)
 public class OpenLineageLineageResolutionIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();

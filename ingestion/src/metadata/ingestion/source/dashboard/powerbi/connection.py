@@ -13,60 +13,193 @@
 Source connection handler
 """
 
-from typing import Optional
+from __future__ import annotations
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from typing import TYPE_CHECKING
+
+from metadata.core.connections.test_connection import (
+    Diagnosis,
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
 )
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
+    fetch_list,
+    http_status,
+    verify_access,
+)
+from metadata.core.connections.test_connection.classifier import chain_text
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection as PowerBIConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.client import (
     PowerBiApiClient,
     PowerBiClient,
 )
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
 
 
-def get_connection(connection: PowerBIConnectionConfig) -> PowerBiClient:
+def _contains_any(*tokens: str) -> Matcher:
+    """Match when any of ``tokens`` appears in the error (or its cause chain).
+
+    MSAL reports a bad authority through more than one message shape - a malformed
+    tenant, a blank tenant - so a single ``Matchers.contains`` token would miss
+    some; this ORs the stable tokens across those shapes."""
+    lowered = tuple(token.lower() for token in tokens)
+
+    def match(error: BaseException) -> bool:
+        chain = chain_text(error)
+        return any(token in chain for token in lowered)
+
+    return match
+
+
+ENTRA_ERRORS_DOC = "https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes"
+
+
+def _token_error(code: str) -> Matcher:
+    """Match an AADSTS code in a token-acquisition failure.
+
+    Gated on InvalidSourceException so a status-coded REST error echoing an AADSTS
+    code still classifies by its status.
     """
-    Create connection
+    lowered = code.lower()
+    return lambda error: Matchers.exception(InvalidSourceException)(error) and lowered in chain_text(error)
+
+
+POWERBI_ERRORS = ErrorPack(
+    # MSAL returns its error as a dict, which the client interpolates into the
+    # InvalidSourceException message - that is what makes the code matchable text.
+    # Codes: ENTRA_ERRORS_DOC.
+    when(_token_error("AADSTS7000215")).diagnose(
+        "Invalid client secret",
+        fix="Microsoft Entra rejected the Client Secret (AADSTS7000215). Check it was copied "
+        "whole, has not expired, and is the secret *value* rather than the secret ID.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
+    when(_token_error("AADSTS700016")).diagnose(
+        "Application not found in this tenant",
+        fix="The app registration was not found in this directory (AADSTS700016). Check the "
+        "Client ID and Tenant ID match the same tenant, and that an administrator has "
+        "installed or consented to the application there.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
+    when(_token_error("AADSTS90002")).diagnose(
+        "Tenant not found",
+        fix="Microsoft Entra does not know this tenant (AADSTS90002). Check the Tenant ID is the "
+        "correct GUID or tenant name for your organization.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
+    # CheckAccess acquires the OAuth token, so a bad secret fails there as an
+    # InvalidSourceException - not here. Any 401/403 from a REST call therefore
+    # means the token was accepted but Power BI would not authorize the call, so
+    # neither diagnosis points at the credentials. Per Microsoft's REST API
+    # troubleshooting guide, a service principal that is not enabled for the
+    # (admin) APIs returns 401, while a missing workspace/resource grant returns
+    # 403 - so the two split on tenant-enablement vs. workspace access.
+    when(Matchers.exception(InvalidSourceException)).diagnose(
+        "Authentication failed",
+        fix="Could not acquire an OAuth token. Check the Client ID, Client Secret, and Tenant ID, "
+        "and that the app registration is allowed to request the configured scope.",
+    ),
+    when(http_status(401)).diagnose(
+        "Power BI did not authorize the service principal",
+        fix="The token was accepted but Power BI rejected the call (401). In the Fabric admin "
+        "portal enable 'Allow service principals to use Power BI APIs' (and the read-only admin "
+        "APIs setting when Use Admin APIs is on), add the service principal to the allowed "
+        "security group, and grant the app registration the required API permission.",
+    ),
+    when(http_status(403)).diagnose(
+        "Insufficient permissions",
+        fix="The service principal is authenticated but not authorized for this resource (403). "
+        "Add it as a member (or admin) of the target workspace and grant the permissions the "
+        "call needs.",
+    ),
+    when(http_status(404)).diagnose(
+        "Resource not found",
+        fix="The requested resource was not found (404). Check the API URL and that the configured "
+        "tenant/workspace exists and is visible to the service principal.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited by Power BI",
+        fix="Power BI is throttling this service principal (429). Retry once the current window "
+        "has elapsed; the admin APIs throttle per user per time window.",
+    ),
+    # Kept last: authority/instance-discovery failures are MSAL ValueErrors that
+    # carry no HTTP status, so a broad substring match here must not shadow a
+    # status-coded 401/403/404 whose message happens to echo the authority URL.
+    when(_contains_any("authority", "should consist of an https url")).diagnose(
+        "Invalid tenant or authority",
+        fix="The authority could not be resolved. Check the Tenant ID (a valid GUID or "
+        "tenant name) and the Authority URI, e.g. https://login.microsoftonline.com/.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+class PowerBIChecks:
+    """Test-connection checks for PowerBI.
+
+    ``CheckAccess`` is the gate: it acquires an OAuth token, so a bad service
+    principal fails fast before any list endpoint is dialled. ``GetDashboards``
+    then exercises list access.
+
+    ``CheckAccess`` is the gate: reading the borrowed client does MSAL discovery
+    and acquires the token, so a bad service principal fails there.
     """
-    file_client = None
-    if connection.pbitFilesSource:
-        file_client = PowerBiFileClient(connection)
-    return PowerBiClient(api_client=PowerBiApiClient(connection), file_client=file_client)
+
+    errors = POWERBI_ERRORS
+
+    def __init__(self, powerbi: Borrowed[PowerBiClient]) -> None:
+        self._powerbi = powerbi
+
+    def _client(self) -> PowerBiApiClient:
+        return self._powerbi.client.api_client
+
+    @check(DashboardStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        return verify_access(
+            lambda: self._client().get_auth_token(),
+            command="acquire OAuth token",
+        )
+
+    @check(DashboardStep.GetDashboards)
+    def get_dashboards(self) -> Evidence:
+        return fetch_list(
+            lambda: self._client().test_fetch_dashboards(),
+            noun="dashboard",
+            command="fetch dashboards",
+            empty_caveat=Diagnosis(
+                title="No dashboards visible",
+                remediation="The connection works but returned no dashboards. Confirm the service "
+                "principal has access to a workspace that contains dashboards - an empty result can "
+                "also mean the listing was filtered or could not be read.",
+            ),
+        )
 
 
 class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
     def _get_client(self) -> PowerBiClient:
-        return get_connection(self.service_connection)
-
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
         """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
+        Create connection
         """
-        client = self.client
-        service_connection = self.service_connection
-        test_fn = {"GetDashboards": client.api_client.fetch_dashboards}
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+        file_client = None
+        if self.service_connection.pbitFilesSource:
+            file_client = PowerBiFileClient(self.service_connection)
+        return PowerBiClient(
+            api_client=PowerBiApiClient(self.service_connection),
+            file_client=file_client,
         )
+
+    def checks(self) -> ChecksProvider:
+        return PowerBIChecks(powerbi=self.borrow())

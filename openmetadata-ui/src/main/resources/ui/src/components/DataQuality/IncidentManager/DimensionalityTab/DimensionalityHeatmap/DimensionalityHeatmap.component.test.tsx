@@ -11,31 +11,14 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import type { ThemeColors } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { TestCaseStatus } from '../../../../../generated/tests/dimensionResult';
 import DimensionalityHeatmap from './DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap.interface';
 
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-  },
-});
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({

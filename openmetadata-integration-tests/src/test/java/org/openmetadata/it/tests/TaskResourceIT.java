@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -83,6 +84,9 @@ import org.openmetadata.schema.type.BulkTaskOperationType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.DataAccessPermission;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
+import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -1809,6 +1813,80 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(1, countByAbout.getOpen(), "One task should still be open");
   }
 
+  /**
+   * The count SQL buckets rows row-aware on {@code type} so {@code Approved} lands in Open for
+   * DataAccessRequest (non-terminal — awaiting grant) and in Completed for non-DAR task types
+   * where it is terminal. This keeps openCount + completedCount = total across a mixed inbox
+   * and was the regression that produced Open(10) + Closed(4) &gt; All(13) when the UI mapped
+   * Open to the {@code active} bucket. See ListFilter.buildTaskStatusGroupCondition and
+   * CollectionDAO.TaskDAO#getTaskCountSummary.
+   */
+  @Test
+  void testGetCount_ApprovedDarInOpenBucket_ApprovedGlossaryInClosedBucket(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String tableFqn = table.getFullyQualifiedName();
+    String tableLink = entityLink("table", tableFqn);
+
+    Task glossaryTask =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("bucket-glossary-approved"))
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval)
+                .withAbout(tableLink));
+
+    DataAccessRequestPayload darPayload =
+        new DataAccessRequestPayload()
+            .withAccessType(DataAccessType.FullAccess)
+            .withRequestedAccess(DataAccessPermission.Read)
+            .withReason("integration-test")
+            .withExpirationDate(System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000);
+
+    Task darTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("bucket-dar-approved"))
+                    .withCategory(TaskCategory.DataAccess)
+                    .withType(TaskEntityType.DataAccessRequest)
+                    .withAbout(tableLink)
+                    .withPayload(darPayload));
+
+    ResolveTask approve =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Approved for bucket test");
+
+    Task resolvedGlossary =
+        SdkClients.adminClient().tasks().resolve(glossaryTask.getId().toString(), approve);
+    Task resolvedDar =
+        SdkClients.adminClient().tasks().resolve(darTask.getId().toString(), approve);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedGlossary.getStatus());
+    assertEquals(TaskEntityStatus.Approved, resolvedDar.getStatus());
+
+    TaskCount count = SdkClients.adminClient().tasks().getCountByAboutEntity(tableFqn);
+
+    assertEquals(2, count.getTotal(), "Both tasks are about the same table");
+    assertEquals(1, count.getOpen(), "DAR row with status=Approved must land in the open bucket");
+    assertEquals(
+        1,
+        count.getCompleted(),
+        "Glossary row with status=Approved must land in the completed bucket");
+    assertEquals(
+        count.getTotal(),
+        count.getOpen() + count.getCompleted(),
+        "openCount + completedCount must reconcile with total for a mixed inbox");
+    assertEquals(
+        2,
+        count.getApproved(),
+        "approvedCount is a raw status counter — both rows have status=Approved and land here"
+            + " regardless of the row-aware open/completed bucket routing");
+  }
+
   @Test
   void testTaskAboutFqnHashIsStoredCorrectly(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
@@ -2055,6 +2133,84 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(3, visibleTasks.getData().size(), "Visible list should de-duplicate the union");
     assertEquals(3, visibleCount.getTotal(), "All-view count should match the visible task union");
     assertEquals(3, visibleCount.getOpen(), "All-view open count should match visible open tasks");
+  }
+
+  @Test
+  void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = createDomain(ns, "time-range-domain");
+    Table ownedTable =
+        createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of(shared.USER1_REF));
+
+    Task assignedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "time-range-assigned", ownedTable)
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+    Task createdTask =
+        SdkClients.user1Client()
+            .tasks()
+            .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
+
+    // assignedTask is visible to user1 both via /visible and /owned (about a
+    // user1-owned table); createdTask exercises /created (createdBy user1).
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+        assignedTask.getId(),
+        assignedTask.getCreatedAt());
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+        assignedTask.getId(),
+        assignedTask.getCreatedAt());
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+        createdTask.getId(),
+        createdTask.getCreatedAt());
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.user1Client()
+                .tasks()
+                .listVisible(null, null, null, null, null, 2000L, 1000L),
+        "Inverted startTs > endTs should return 400");
+  }
+
+  private void assertTimeRangeFilters(
+      BiFunction<Long, Long, ListResponse<Task>> lister, UUID taskId, long createdAt) {
+    ListResponse<Task> inRange = lister.apply(createdAt - 1000, createdAt + 1000);
+    assertTrue(
+        inRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should appear when its createdAt is inside the window");
+    assertEquals(
+        inRange.getData().size(),
+        inRange.getTotal(),
+        "paging.total must reflect the time-filtered rows, not an unfiltered count");
+
+    ListResponse<Task> boundary = lister.apply(createdAt, createdAt);
+    assertTrue(
+        boundary.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should appear when the window bounds equal its createdAt (bounds are inclusive)");
+
+    ListResponse<Task> pastRange = lister.apply(createdAt - 5000, createdAt - 1000);
+    assertFalse(
+        pastRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should be excluded when the window ends before its createdAt (endTs upper bound)");
+
+    ListResponse<Task> futureRange = lister.apply(createdAt + 1000, createdAt + 5000);
+    assertFalse(
+        futureRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should be excluded when the window starts after its createdAt (startTs lower bound)");
   }
 
   // ==================== Entity Change Application Tests ====================

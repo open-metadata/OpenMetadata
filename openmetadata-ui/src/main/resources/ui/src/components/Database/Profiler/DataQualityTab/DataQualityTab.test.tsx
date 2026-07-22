@@ -203,9 +203,37 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div {...props}>{children}</div>
   );
 
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
     Box: MockBox,
     Button: MockButton,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,
     Tooltip: ({
@@ -246,16 +274,6 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () =>
 );
 
 jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
-);
-
-jest.mock(
   '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
   () =>
     jest
@@ -273,8 +291,15 @@ jest.mock(
       )
 );
 
-jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteForm', () =>
-  jest.fn().mockImplementation(() => <div data-testid="bundle-suite-form" />)
+jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () =>
+  jest.fn().mockImplementation(({ onClose, open }) => (
+    <div data-testid="bundle-suite-form-drawer">
+      <div>open: {open ? 'true' : 'false'}</div>
+      <button data-testid="bundle-suite-drawer-close-btn" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
@@ -330,11 +355,14 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <span>Loader</span>)
 );
 
-jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () =>
-  jest.fn().mockImplementation(({ visible, onCancel }) =>
-    visible ? (
+jest.mock('../../../common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(({ open, onCancel, onDelete }) =>
+    open ? (
       <div>
-        <p>DeleteWidgetModal</p>
+        <p>DeleteModal</p>
+        <button data-testid="confirm-button" onClick={onDelete}>
+          delete
+        </button>
         <button onClick={onCancel}>cancel</button>
       </div>
     ) : null
@@ -342,13 +370,13 @@ jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () =>
 );
 
 jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1',
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () =>
-    jest.fn().mockImplementation(({ open, onCancel, onUpdate }) =>
+    jest.fn().mockImplementation(({ open, variant, onClose, onUpdate }) =>
       open ? (
-        <div>
+        <div data-testid="test-case-form-v1" data-variant={variant}>
           <p>EditTestCaseModal</p>
-          <button onClick={onCancel}>cancel</button>
+          <button onClick={onClose}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
       ) : null
@@ -523,14 +551,79 @@ describe('DataQualityTab test', () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('Should show empty placeholder when testCases is empty', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} testCases={[]} />);
-    });
+  it('should render the empty placeholder when there are no test cases', () => {
+    render(<DataQualityTab {...mockProps} isLoading={false} testCases={[]} />);
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-test-cases-yet')).toBeInTheDocument();
+  });
+
+  it('should render the filtered empty copy when filters are active', () => {
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        isLoading={false}
+        testCases={[]}
+      />
+    );
 
     expect(
-      await screen.findByTestId('filter-table-placeholder')
+      screen.getByText('message.no-matching-test-cases')
     ).toBeInTheDocument();
+  });
+
+  it('should render the empty-state CTA when emptyStateAction is provided and no active filters', async () => {
+    const mockOnPress = jest.fn();
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: mockOnPress,
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    const actionButton = screen.getByTestId(
+      'empty-placeholder-action-new-test-case'
+    );
+
+    expect(actionButton).toBeInTheDocument();
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    await act(async () => {
+      fireEvent.click(actionButton);
+    });
+
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-test-case')
+    ).not.toBeInTheDocument();
   });
 
   it('Should show NextPrevious when pagingData and showPagination are provided', async () => {
@@ -664,6 +757,59 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(editButton).not.toBeDisabled();
+  });
+
+  it('Should render TestCaseFormDrawer in drawer variant by default when editing', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toBeInTheDocument();
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'drawer');
+  });
+
+  it('Should forward editVariant="modal" as TestCaseFormDrawer variant', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} editVariant="modal" />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'modal');
   });
 
   it('Delete functionality - menu item is accessible', async () => {
@@ -1001,5 +1147,29 @@ describe('DataQualityTab test', () => {
 
     expect(queuedReason).toBeInTheDocument();
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
+  });
+
+  describe('BundleSuiteFormDrawer integration', () => {
+    it('should render BundleSuiteFormDrawer unconditionally with open=false by default', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} enableBulkActions />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
+
+    it('should render BundleSuiteFormDrawer unconditionally even without enableBulkActions', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
   });
 });

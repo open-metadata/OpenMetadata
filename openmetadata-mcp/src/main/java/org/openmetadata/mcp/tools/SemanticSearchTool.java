@@ -10,10 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -43,7 +44,7 @@ public class SemanticSearchTool implements McpTool {
           "Semantic search is not enabled. Configure vector embeddings in the OpenMetadata server settings.");
     }
 
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
     if (vectorService == null) {
       return errorResponse("Vector search service is not initialized");
     }
@@ -53,6 +54,7 @@ public class SemanticSearchTool implements McpTool {
 
     int from = McpParams.getInt(params, "from", 0);
     from = Math.max(from, 0);
+    from = VectorPagingContract.cursorOffsetOrDefault(params, from);
 
     int k = McpParams.getInt(params, "k", DEFAULT_K);
     k = Math.min(Math.max(k, 1), MAX_K);
@@ -65,7 +67,7 @@ public class SemanticSearchTool implements McpTool {
     try {
       VectorSearchResponse response =
           vectorService.search(query, filters, size, from, k, threshold);
-      return buildResponse(query, response, size);
+      return buildResponse(query, response, size, from);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
       return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
@@ -83,7 +85,7 @@ public class SemanticSearchTool implements McpTool {
   }
 
   private Map<String, Object> buildResponse(
-      String query, VectorSearchResponse response, int requestedSize) {
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     Map<String, Object> result = new HashMap<>();
     result.put("query", query);
     result.put("tookMillis", response.getTookMillis());
@@ -108,16 +110,16 @@ public class SemanticSearchTool implements McpTool {
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
-    if (cleanedResults.size() >= requestedSize) {
-      result.put(
-          "message",
-          String.format(
-              "Showing %d results. Increase 'size' or refine your query for different results. "
-                  + "Adjust 'threshold' to filter by similarity score.",
-              cleanedResults.size()));
-    }
-
+    int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
+            + "Adjust 'threshold' to filter by similarity score.");
     return result;
   }
 

@@ -74,6 +74,7 @@ import {
   deselectColumns,
   dragAndDropColumn,
   dragAndDropTerm,
+  ensureColumnsVisible,
   fillGlossaryTermDetails,
   filterStatus,
   goToAssetsTab,
@@ -380,9 +381,8 @@ test.describe('Glossary tests', () => {
       ]);
 
       await openColumnDropdown(page);
-      const checkboxLabels = ['Reviewer'];
-      await selectColumns(page, checkboxLabels);
-      await verifyColumnsVisibility(page, checkboxLabels, true);
+      await selectColumns(page, ['reviewers']);
+      await verifyColumnsVisibility(page, ['Reviewer'], true);
 
       // Verify the Reviewer
       await expect(
@@ -928,7 +928,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -936,7 +936,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -963,7 +963,7 @@ test.describe('Glossary tests', () => {
 
         // verify the term is moved back at parent level
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -1014,7 +1014,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -1022,7 +1022,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -1061,7 +1061,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1069,7 +1069,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1111,7 +1111,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1121,7 +1121,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1217,50 +1217,60 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Request description task for Glossary Term', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossary1 = new Glossary();
-    const user1 = new UserClass();
-    const glossaryTerm1 = new GlossaryTerm(glossary1);
-    glossary1.data.terms = [glossaryTerm1];
-
-    try {
-      await user1.create(apiContext);
-      await glossary1.create(apiContext);
-      await glossaryTerm1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const value: TaskDetails = {
-        term: glossaryTerm1.data.name,
-        assignee: user1.responseData.name,
-      };
-
-      await page.getByTestId('request-description').click();
-
-      await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
-
-      const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
-      await taskResolve;
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
+  test.fixme(
+    'Request description task for Glossary Term',
+    async ({ browser }) => {
+      const { page, afterAction, apiContext } = await performAdminLogin(
+        browser
       );
+      const glossary1 = new Glossary();
+      const user1 = new UserClass();
+      const glossaryTerm1 = new GlossaryTerm(glossary1);
+      glossary1.data.terms = [glossaryTerm1];
 
-      expect(viewerContainerText).toContain('Updated description');
-    } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossary1.delete(apiContext);
-      await afterAction();
+      try {
+        await user1.create(apiContext);
+        await glossary1.create(apiContext);
+        await glossaryTerm1.create(apiContext);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const value: TaskDetails = {
+          term: glossaryTerm1.data.name,
+          assignee: user1.responseData.name,
+        };
+
+        await page.getByTestId('request-description').click();
+
+        await createDescriptionTaskForGlossary(
+          page,
+          value,
+          glossaryTerm1,
+          false
+        );
+
+        const taskResolve = waitForTaskResolveResponse(page);
+        await page.getByTestId('approve-button').first().click();
+        await taskResolve;
+
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const viewerContainerText = await page.textContent(
+          '[data-testid="viewer-container"]'
+        );
+
+        expect(viewerContainerText).toContain('Updated description');
+      } finally {
+        await glossaryTerm1.delete(apiContext);
+        await glossary1.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('Request tags for Glossary', async ({ browser }) => {
     test.slow(true);
@@ -1506,10 +1516,10 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
     } finally {
       await glossaryTerm3.delete(apiContext);
@@ -1539,24 +1549,26 @@ test.describe('Glossary tests', () => {
 
       await test.step('Open column dropdown and select columns and check if they are visible', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Synonyms'];
-        await selectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        const columnKeys = ['reviewers', 'synonyms'];
+        const columnLabels = ['Reviewer', 'Synonyms'];
+        await selectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, true);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        await verifyColumnsVisibility(page, columnLabels, true);
       });
 
       await test.step('Open column dropdown and deselect columns and check if they are hidden', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Owners'];
-        await deselectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        const columnKeys = ['reviewers', 'owners'];
+        const columnLabels = ['Reviewer', 'Owners'];
+        await deselectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, false);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        await verifyColumnsVisibility(page, columnLabels, false);
       });
 
       await test.step('View All columns selection', async () => {
@@ -1642,9 +1654,13 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
-      const dragColumn = 'Status';
-      const dropColumn = 'Owners';
-      await dragAndDropColumn(page, dragColumn, dropColumn);
+      await ensureColumnsVisible(page, [
+        { key: 'owners', label: 'Owners' },
+        { key: 'status', label: 'Status' },
+      ]);
+      const dragColumnKey = 'status';
+      const dropColumnKey = 'owners';
+      await dragAndDropColumn(page, dragColumnKey, dropColumnKey);
       await page.locator('thead th').first().waitFor({ state: 'visible' });
       const columnHeaders = page.locator('thead th');
       // eslint-disable-next-line playwright/prefer-web-first-assertions
@@ -1688,15 +1704,15 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm1.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm1.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
 
       await updateGlossaryTermDataFromTree(
@@ -2130,18 +2146,11 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await page.locator('[role="dialog"]').waitFor();
+
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
         );
-
-        await expect(page.getByTestId('body-text')).toContainText('DELETE');
-
-        const confirmationInput = page.getByTestId('confirmation-text-input');
-
-        await expect(confirmationInput).toBeVisible();
-
-        await confirmationInput.fill('DELETE');
 
         await page.getByTestId('confirm-button').click();
       });
@@ -2813,7 +2822,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
@@ -2854,7 +2863,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();

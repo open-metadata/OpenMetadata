@@ -24,11 +24,12 @@ import {
 import {
   ArrowRight,
   ChevronRight,
+  SearchLg,
   Tag01 as TagIcon,
   XClose,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, some } from 'lodash';
+import { debounce, isEmpty, isUndefined, some } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -49,7 +50,6 @@ import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSe
 import TreeAsyncSelectList from '../../../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer';
 import { useFilterSelection } from '../../../components/common/atoms/filters/useFilterSelection';
-import { useSearch } from '../../../components/common/atoms/navigation/useSearch';
 import {
   CellRenderer,
   ColumnConfig,
@@ -1820,13 +1820,25 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     onFilterChange: columnGridListing.handleFilterChange,
   });
 
-  // Set up search
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search-columns'),
-    onSearchChange: columnGridListing.handleSearchChange,
-    initialSearchQuery: columnGridListing.urlState.searchQuery,
-    customStyles: { searchBoxWidth: 260 },
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    columnGridListing.urlState.searchQuery ?? ''
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(columnGridListing.handleSearchChange, 300),
+    [columnGridListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(columnGridListing.urlState.searchQuery ?? '');
+  }, [columnGridListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const getAllDescendantIds = useCallback(
     (parentId: string): string[] => {
@@ -2489,11 +2501,22 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
 
       {/* Table Container - Same structure as DomainListPage */}
-      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:ring-1 tw:ring-secondary">
+      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary">
         <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
           <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
             {/* Search */}
-            <div className="tw:shrink-0">{search}</div>
+            <div className="tw:shrink-0">
+              <Input
+                className="tw:max-w-86"
+                icon={SearchLg}
+                placeholder={t('label.search-columns')}
+                value={searchInputValue}
+                onChange={(value) => {
+                  setSearchInputValue(value);
+                  debouncedSearch(value);
+                }}
+              />
+            </div>
             <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">
               {/* Filters + Add Filter */}
               <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">

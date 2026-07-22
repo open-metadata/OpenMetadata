@@ -41,17 +41,17 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
-  let muiTags = false;
+  let newTagsUI = false;
   try {
     const context = useGenericContext();
-    muiTags = context.muiTags || false;
+    newTagsUI = context.newTagsUI || false;
   } catch {
     // Context not available, use default TagsV1
   }
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (muiTags) {
+      if (newTagsUI) {
         const tagName = getTagName(tag, true);
         const redirectLink = getTagRedirectLink(tag);
 
@@ -73,9 +73,10 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 to={redirectLink}>
                 <TagChip
                   data-testid="tags"
+                  icon={tag.style?.iconURL}
                   label={tagName}
                   labelDataTestId={`tag-${tag.tagFQN}`}
-                  size="large"
+                  size="small"
                   tagColor={tag.style?.color}
                   variant="blueGray"
                 />
@@ -101,7 +102,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook, entityFqn]
+    [newTagsUI, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first

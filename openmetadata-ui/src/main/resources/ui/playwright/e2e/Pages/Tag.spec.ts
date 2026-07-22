@@ -168,7 +168,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
-    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Cube01', exact: true })
+      .click();
     await adminPage
       .getByRole('button', { name: 'Select color #F14C75' })
       .click();
@@ -196,8 +198,6 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
-
-    await adminPage.getByTestId('confirmation-text-input').fill('DELETE');
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();

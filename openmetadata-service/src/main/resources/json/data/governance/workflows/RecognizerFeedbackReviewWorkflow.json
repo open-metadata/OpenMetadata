@@ -92,12 +92,12 @@
     {
       "from": "ReviewFeedback",
       "to": "ApplyApprovedFeedback",
-      "condition": "true"
+      "condition": "approve"
     },
     {
       "from": "ReviewFeedback",
       "to": "RejectFeedback",
-      "condition": "false"
+      "condition": "reject"
     },
     {
       "from": "ApplyApprovedFeedback",

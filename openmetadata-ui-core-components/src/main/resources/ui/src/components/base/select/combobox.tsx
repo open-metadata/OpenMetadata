@@ -21,6 +21,7 @@ import { Popover } from '@/components/base/select/popover';
 import {
   type SelectCommonProps,
   SelectContext,
+  SelectEmptyState,
   type SelectItemType,
   sizes,
 } from '@/components/base/select/select';
@@ -96,9 +97,13 @@ const ComboBoxValue = ({
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:cursor-text tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition-shadow tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone — the
+          // outline IS the border and focus indicator. `transition-shadow` animated only
+          // box-shadow, so it must name the outline properties now.
+          'tw:relative tw:flex tw:w-full tw:cursor-text tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
-          isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           size === 'sm' ? 'tw:min-h-9' : 'tw:min-h-10',
           sizes[size].root
         )
@@ -172,7 +177,7 @@ const ComboBoxValue = ({
               <span
                 aria-hidden="true"
                 className={cx(
-                  'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:ring-1 tw:ring-secondary tw:select-none tw:ring-inset',
+                  'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:select-none',
                   isDisabled && 'tw:bg-transparent tw:text-disabled'
                 )}>
                 ⌘K
@@ -209,6 +214,7 @@ export const ComboBox = ({
   children,
   items,
   shortcutClassName,
+  emptyState,
   ...otherProps
 }: ComboBoxProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -247,7 +253,10 @@ export const ComboBox = ({
               triggerRef={triggerRef}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
-                items={items}>
+                items={items}
+                renderEmptyState={() => (
+                  <SelectEmptyState emptyState={emptyState} />
+                )}>
                 {children}
               </AriaListBox>
             </Popover>

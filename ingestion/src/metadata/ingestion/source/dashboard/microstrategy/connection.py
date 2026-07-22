@@ -31,16 +31,9 @@ from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrate
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MicroStrategyConnectionConfig) -> MicroStrategyClient:
-    """
-    Create connection
-    """
-    return MicroStrategyClient(connection)
-
-
 class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, MicroStrategyClient]):
     def _get_client(self) -> MicroStrategyClient:
-        return get_connection(self.service_connection)
+        return MicroStrategyClient(self.service_connection)
 
     def test_connection(
         self,
