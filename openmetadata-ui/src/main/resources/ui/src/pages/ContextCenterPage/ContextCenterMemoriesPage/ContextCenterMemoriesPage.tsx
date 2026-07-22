@@ -756,7 +756,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       />
                     </div>
                     <Dropdown.Menu
-                      className="tw:max-h-64 tw:overflow-y-auto"
+                      className="tw:max-h-90 tw:overflow-y-auto"
                       selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                       selectionMode="single"
                       onAction={(key) => {
