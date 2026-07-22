@@ -95,6 +95,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchGenerationRef = useRef(0);
+  const folderFetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
   const isLoadingMoreFoldersRef = useRef(false);
   const folderViewRef = useRef<DocumentFolderViewHandle>(null);
@@ -109,8 +110,13 @@ const ContextCenterDocumentsPage: FC = () => {
   }, []);
 
   const fetchFolders = useCallback(async () => {
+    folderFetchGenerationRef.current += 1;
+    const generation = folderFetchGenerationRef.current;
     try {
       const response = await listFolders();
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
       setFolders(response.data);
       setFoldersAfter(response.paging.after);
       setTotalFolderCount(response.paging.total ?? response.data.length);
@@ -126,8 +132,12 @@ const ContextCenterDocumentsPage: FC = () => {
     }
     isLoadingMoreFoldersRef.current = true;
     setIsLoadingMoreFolders(true);
+    const generation = folderFetchGenerationRef.current;
     try {
       const response = await listFolders({ after: foldersAfter });
+      if (generation !== folderFetchGenerationRef.current) {
+        return;
+      }
       setFolders((prev) => [...prev, ...response.data]);
       setFoldersAfter(response.paging.after);
     } catch (err) {
