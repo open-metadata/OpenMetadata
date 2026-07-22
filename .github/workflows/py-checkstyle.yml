@@ -69,13 +69,13 @@ jobs:
 
       - name: Checkout
         if: ${{ steps.scope.outputs.python == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           persist-credentials: false
       - name: Set up Python 3.10
         if: ${{ steps.scope.outputs.python == 'true' }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
@@ -104,7 +104,7 @@ jobs:
 
       - name: Create a comment in the PR with the instructions
         if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event_name == 'pull_request_target' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

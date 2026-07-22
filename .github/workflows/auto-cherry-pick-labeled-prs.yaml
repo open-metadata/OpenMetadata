@@ -39,7 +39,7 @@ jobs:
         branch: ${{ fromJson(needs.get_release_branch.outputs.release_branches) }}
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -60,7 +60,7 @@ jobs:
           git push origin ${{ matrix.branch }}
       - name: Post a comment on failure
         if: steps.cherry_pick.outcome != 'success' || steps.push_changes.outcome != 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
@@ -76,7 +76,7 @@ jobs:
             })
       - name: Post a comment on success
         if: steps.cherry_pick.outcome == 'success' && steps.push_changes.outcome == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = context.payload.pull_request.number;

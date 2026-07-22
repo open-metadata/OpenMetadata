@@ -95,7 +95,7 @@ jobs:
         py-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           persist-credentials: false
@@ -144,7 +144,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-unit-test-results-${{ matrix.py-version }}
           path: |
@@ -159,7 +159,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-unit
           path: ingestion/.coverage
@@ -205,7 +205,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           persist-credentials: false
@@ -266,7 +266,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
@@ -275,7 +275,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: |
@@ -315,7 +315,7 @@ jobs:
       - name: Upload runner and service diagnostics
         if: ${{ failure() || cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -374,14 +374,14 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
@@ -397,7 +397,7 @@ jobs:
         shell: bash
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-*
           path: ingestion/coverage-data/
