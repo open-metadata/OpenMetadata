@@ -160,10 +160,8 @@ class PostgresIngestionClass extends ServiceBaseClass {
         // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
         await page.waitForTimeout(3000);
         await getAgentCard(page, response.data[0].name)
-          .getByTestId('more-actions')
+          .getByTestId('run-agent-button')
           .click();
-
-        await page.getByTestId('run-button').click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
 
