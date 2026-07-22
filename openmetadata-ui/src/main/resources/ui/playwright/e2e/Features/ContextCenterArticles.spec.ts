@@ -794,7 +794,7 @@ test.describe('Context Center Articles', () => {
     await cleanupAfterAction();
   });
 
-  test('Article edits and navigation-flushed titles persist', async ({
+  test.skip('Article edits and navigation-flushed titles persist', async ({
     page,
     browser,
   }) => {

@@ -184,11 +184,7 @@ class SqlColumnHandlerMixin:
             )
             pk_constraints = {}
 
-        pk_columns = (
-            pk_constraints.get("constrained_columns")
-            if len(pk_constraints) > 0 and pk_constraints.get("constrained_columns")
-            else {}
-        )
+        pk_columns = (pk_constraints.get("constrained_columns") if pk_constraints else None) or []
 
         foreign_columns = []
         for foreign_constraint in foreign_constraints:
