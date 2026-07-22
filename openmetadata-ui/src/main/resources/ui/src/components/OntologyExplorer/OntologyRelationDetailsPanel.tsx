@@ -22,8 +22,8 @@ import { XClose } from '@untitledui/icons';
 import { Key, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  EntityStatus as UpdateEntityStatus,
   Provenance as UpdateProvenance,
+  Status as UpdateEntityStatus,
   UpdateTermRelation,
 } from '../../generated/api/data/updateTermRelation';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
