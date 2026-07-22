@@ -279,6 +279,15 @@ it. `Button`/`ButtonUtility`/`Tab` draw on `::after` → use `tw:after:outline-<
   `tw:after:outline-0!` — the prefix form `tw:!after:outline-0` (`!` before a variant)
   compiles to **nothing at all**, silently reproducing the bug it was meant to fix. Verify
   any important-modified class actually generates CSS before trusting it.
+- **A static `outline-<colour>` leaks into the focus ring.** Core components declare their
+  focus indicator as a *base* colour plus `focus-visible:outline-2
+  focus-visible:outline-offset-2` — **width and offset only, no colour**. So when a consumer
+  sets its own base `outline-<colour>` for a resting border, tailwind-merge makes the consumer
+  win and **the focus ring renders in that static colour**. `outline-black/5` becomes a
+  5%-opacity focus ring; `outline-brand-600/12` becomes 12% — i.e. no visible focus indicator.
+  Whenever you put a static outline colour on a focusable element, either pair it with an
+  explicit `tw:focus-visible:outline-<colour>`, or move the static edge to `::after` and leave
+  the element's `outline` to focus. `Card`'s outline in particular is reserved for focus.
 - **Searching for leftovers: use `[^a-zA-Z]ring-`.** Narrower patterns miss real cases —
   `tw:ring-` misses variant forms (`tw:focus-visible:ring-2`, `tw:has-[&>select]:ring-1`)
   and `:ring` misses important-prefixed ones (`tw:!ring-0`). An ESLint

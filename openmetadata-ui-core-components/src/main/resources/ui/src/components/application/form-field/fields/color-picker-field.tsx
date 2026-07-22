@@ -71,10 +71,12 @@ export const ColorPickerField = ({
               // `ring-2 ring-white ring-offset-2` painted a 2px white offset over a 4px white
               // ring — both white, so it read as one 4px white band at offset 0.
               isSelected && 'tw:outline-4 tw:outline-white',
-              !isSelected && 'tw:outline-1 tw:outline-black/5'
-              // The focus ring is intentionally omitted: Button already applies
-              // `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`,
-              // which is exactly what the removed focus-visible ring duplicated.
+              !isSelected && 'tw:outline-1 tw:outline-black/5',
+              // The focus colour must be set explicitly. Button contributes the focus
+              // *width/offset* only (`focus-visible:outline-2 focus-visible:outline-offset-2`);
+              // its `outline-brand` is a base colour that the swatch colours above override,
+              // so without this the focus ring would inherit `white`/`black/5`.
+              'tw:focus-visible:outline-brand'
             )}
             color="tertiary"
             data-testid={dataTestId ? `${dataTestId}-${index}` : undefined}

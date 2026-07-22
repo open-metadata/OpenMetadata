@@ -210,8 +210,10 @@ export const IconPickerField = ({
                   : 'tw:bg-primary tw:hover:bg-primary_hover',
                 // The old focus ring had no `ring-offset`, so it sat flush against Button's
                 // own 2px focus outline at offset 2 and read as a single 4px brand band.
-                // `outline-4` at offset 0 reproduces that; both override Button's defaults.
-                'tw:focus-visible:outline-4 tw:focus-visible:outline-offset-0'
+                // `outline-4` at offset 0 reproduces that. The colour must be set here too:
+                // Button only contributes focus width/offset, and its base `outline-brand`
+                // is overridden by the base colours above.
+                'tw:focus-visible:outline-4 tw:focus-visible:outline-offset-0 tw:focus-visible:outline-brand'
               ),
               color: 'tertiary' as const,
               size: 'sm' as const,
@@ -271,9 +273,11 @@ export const IconPickerField = ({
           'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:outline-1 tw:outline-black/5 tw:transition tw:duration-150',
           !disabled && 'tw:hover:scale-[1.02]',
           disabled && 'tw:opacity-50',
-          // No focus-visible rule here: Button already applies
-          // `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`,
-          // which is exactly what the removed focus-visible ring duplicated.
+          // The focus colour must be set explicitly. Button contributes the focus
+          // *width/offset* only; its `outline-brand` is a base colour that
+          // `outline-black/5` above overrides, so without this the focus ring would be
+          // 5% black — effectively invisible.
+          'tw:focus-visible:outline-brand',
           isOpen && 'tw:outline-2 tw:outline-brand tw:outline-offset-2'
         )}
         color="tertiary"
