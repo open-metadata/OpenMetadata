@@ -59,7 +59,7 @@ export const getEntityIcon = (
     );
   }
 
-  const entityIcon = searchClassBase.getEntityIcon(entityType, `tw:text-quaternary ${className}`);
+  const entityIcon = searchClassBase.getEntityIcon(entityType, `tw:text-quaternary tw:shrink-0 ${className}`);
 
   if (entityIcon) {
     return entityIcon;
