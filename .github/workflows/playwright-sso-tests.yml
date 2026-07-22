@@ -26,6 +26,10 @@
 name: SSO Playwright E2E Tests
 
 on:
+  merge_group:
+  # PRs targeting main skip this workflow — the merge queue (merge_group) runs
+  # it there. pull_request_target remains only for PRs targeting release
+  # branches, which have no merge queue.
   pull_request_target:
     types:
       - labeled
@@ -33,6 +37,8 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+    branches-ignore:
+      - main
     paths:
       - "openmetadata-ui/src/main/resources/ui/src/components/Auth/**"
       - "openmetadata-ui/src/main/resources/ui/src/rest/auth-API*"
@@ -86,12 +92,6 @@ jobs:
         provider: ${{ github.event_name == 'pull_request_target' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
 
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -124,8 +124,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v4
@@ -296,7 +297,7 @@ jobs:
         continue-on-error: true
         env:
           MATRIX_OUTCOME: ${{ needs.sso-auth-tests.result }}
-          SOURCE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/sso-results-json-*/sso-results.json' \
