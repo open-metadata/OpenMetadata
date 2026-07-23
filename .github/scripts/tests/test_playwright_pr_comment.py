@@ -3,26 +3,32 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import textwrap
 from pathlib import Path
 
 
 ROOT = Path(__file__).parents[3]
+HELPER = ROOT / ".github/scripts/publish_playwright_pr_comment.cjs"
 WORKFLOW = ROOT / ".github/workflows/playwright-postgresql-pr-comment.yml"
 SOURCE_SHA = "a" * 40
 
 
-def comment_script() -> str:
+def test_comment_workflow_uses_a_small_trusted_helper_wrapper():
     workflow = WORKFLOW.read_text(encoding="utf-8")
     script = workflow.split("          script: |\n", 1)[1]
-    return textwrap.dedent(script)
+
+    assert len(script) < 21_000
+    assert "ref: ${{ github.event.repository.default_branch }}" in workflow
+    assert "persist-credentials: false" in workflow
+    assert (
+        "require('./.github/scripts/publish_playwright_pr_comment.cjs')" in script
+    )
 
 
 def render_comment(tmp_path: Path, payload: dict) -> subprocess.CompletedProcess[str]:
     payload_path = tmp_path / "summary.json"
     payload_path.write_text(json.dumps(payload), encoding="utf-8")
-    script = textwrap.indent(comment_script(), "    ")
     harness = f"""
+const publishPlaywrightPrComment = require({json.dumps(str(HELPER))});
 const sourceSha = {json.dumps(SOURCE_SHA)};
 let capturedBody = null;
 const pull = {{
@@ -69,7 +75,7 @@ const github = {{
 
 (async () => {{
   try {{
-{script}
+    await publishPlaywrightPrComment({{ github, context, core }});
     process.stdout.write(JSON.stringify({{ body: capturedBody }}));
   }} catch (error) {{
     console.error(error.stack || error.message);

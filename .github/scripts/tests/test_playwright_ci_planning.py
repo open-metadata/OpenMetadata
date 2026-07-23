@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -1241,6 +1243,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
     ).read_text()
+    summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
     summary_job = workflow.split("  playwright-summary:", 1)[1]
     coverage_step = workflow.split(
         "      - name: Verify Playwright timing coverage", 1
@@ -1254,27 +1257,145 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
     assert "if: ${{ always() && !cancelled() }}" in summary_job
-    assert "zero-attempt; reason unknown" in workflow
-    assert "CI/reporting failure(s)" in workflow
-    assert "### CI and reporting failures" in workflow
-    assert "specFile.endsWith('.setup.ts')" in workflow
-    assert "lifecycleFailures" in workflow
-    assert "lifecycleFlaky" in workflow
+    assert (
+        "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
+    )
+    assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
+    summary_script = summary_job.split("          script: |\n", 1)[1].split(
+        "\n      - name:", 1
+    )[0]
+    assert len(summary_script) < 21_000
+    assert "- '.github/scripts/render_playwright_summary.cjs'" in workflow
+    assert "'${{ github.run_id }}'" not in summary_helper
+    assert "process.env.GITHUB_RUN_ID" in summary_helper
+    assert "zero-attempt; reason unknown" in summary_helper
+    assert "CI/reporting failure(s)" in summary_helper
+    assert "### CI and reporting failures" in summary_helper
+    assert "specFile.endsWith('.setup.ts')" in summary_helper
+    assert "lifecycleFailures" in summary_helper
+    assert "lifecycleFlaky" in summary_helper
     assert ".blockingTargets.reportingAtMostTwoMinutes" in workflow
     assert ".blockingTargetsMet = ([.blockingTargets[]] | all)" in workflow
-    assert "### Performance targets" in workflow
-    assert "### Performance convergence warnings" in workflow
-    assert "Blocking targets enforce CI" in workflow
-    assert "convergenceWarnings" in workflow
-    assert "workflowWallSeconds" in workflow
-    assert "Full workflow signal wall (to summary)" in workflow
-    assert "Maximum shard-job elapsed before upload" in workflow
-    assert "version: 2" in workflow
+    assert "### Performance targets" in summary_helper
+    assert "### Performance convergence warnings" in summary_helper
+    assert "Blocking targets enforce CI" in summary_helper
+    assert "convergenceWarnings" in summary_helper
+    assert "workflowWallSeconds" in summary_helper
+    assert "Full workflow signal wall (to summary)" in summary_helper
+    assert "Maximum shard-job elapsed before upload" in summary_helper
+    assert "version: 2" in summary_helper
     performance_reporter = (
         SCRIPTS.parents[1]
         / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"
     ).read_text()
     assert "lifecycleTests" in performance_reporter
+
+
+def test_playwright_summary_commonjs_helper_executes(tmp_path):
+    helper = SCRIPTS / "render_playwright_summary.cjs"
+    results_dir = tmp_path / "results/playwright-results-json-chromium-01"
+    results_dir.mkdir(parents=True)
+    (results_dir / "results.json").write_text(
+        json.dumps(
+            {
+                "suites": [
+                    {
+                        "file": "playwright/e2e/example.spec.ts",
+                        "specs": [
+                            {
+                                "title": "passes",
+                                "tests": [
+                                    {
+                                        "status": "expected",
+                                        "results": [{}],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
+    )
+    (results_dir / "ci-status.json").write_text(
+        json.dumps({"steps": {"tests": "success"}})
+    )
+    payload_path = tmp_path / "playwright-pr-comment/summary.json"
+    harness = f"""
+const {{ renderPlaywrightSummary }} = require({json.dumps(str(helper))});
+let summaryBody = '';
+let failure = null;
+const summary = {{
+  addRaw(body) {{
+    summaryBody = body;
+    return summary;
+  }},
+  async write() {{}},
+}};
+const core = {{
+  summary,
+  warning() {{}},
+  setFailed(message) {{
+    failure = message;
+  }},
+}};
+
+(async () => {{
+  await renderPlaywrightSummary({{
+    github: {{}},
+    context: {{
+      eventName: 'workflow_dispatch',
+      payload: {{}},
+      repo: {{ owner: 'open-metadata', repo: 'OpenMetadata' }},
+    }},
+    core,
+  }});
+  process.stdout.write(JSON.stringify({{ summaryBody, failure }}));
+}})().catch(error => {{
+  console.error(error.stack || error.message);
+  process.exitCode = 1;
+}});
+"""
+    env = os.environ.copy()
+    env.update(
+        {
+            "CHECK_CHANGES_RESULT": "success",
+            "CACHE_KEYS_RESULT": "success",
+            "BUILD_RESULT": "success",
+            "DETECT_CHANGES_RESULT": "success",
+            "PLAN_RESULT": "success",
+            "FIXTURE_RESTORE_RESULT": "success",
+            "FIXTURE_RESULT": "success",
+            "PLAYWRIGHT_RESULT": "success",
+            "EXPECTED_MATRIX": json.dumps(
+                {"include": [{"shardId": "chromium-01"}]}
+            ),
+            "RUNNER_TEMP": str(tmp_path),
+            "COMMENT_PAYLOAD_PATH": str(payload_path),
+            "GITHUB_RUN_ID": "12345",
+        }
+    )
+
+    completed = subprocess.run(
+        ["node", "-e", harness],
+        cwd=tmp_path,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    rendered = json.loads(completed.stdout)
+    assert rendered["failure"] is None
+    assert "all 1 tests passed" in rendered["summaryBody"]
+    assert (
+        "https://github.com/open-metadata/OpenMetadata/actions/runs/12345"
+        in rendered["summaryBody"]
+    )
+    payload = json.loads(payload_path.read_text())
+    assert payload["totals"]["passed"] == 1
+    assert payload["shards"][0]["id"] == "chromium-01"
 
 
 def test_normal_vite_build_keeps_hashed_entry_assets():
