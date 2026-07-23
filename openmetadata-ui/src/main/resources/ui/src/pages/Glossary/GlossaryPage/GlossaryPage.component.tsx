@@ -16,7 +16,7 @@ import {
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen01, Dataflow01, File02, Plus } from '@untitledui/icons';
+import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -502,7 +502,7 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="tw:relative full-height">
+      <div className="tw:relative full-height tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary">
         <EmptyPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
@@ -520,7 +520,7 @@ const GlossaryPage = () => {
             },
             {
               key: 'link-to-data',
-              icon: <Dataflow01 className="tw:text-fg-success-primary" />,
+              icon: <Data className="tw:text-fg-success-primary" />,
               title: t('label.link-them-to-data'),
               description: t('message.link-them-to-data-description'),
             },

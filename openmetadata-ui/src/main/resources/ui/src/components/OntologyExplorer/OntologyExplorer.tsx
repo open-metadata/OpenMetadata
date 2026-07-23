@@ -12,17 +12,25 @@
  */
 
 import {
+  Button,
   Card,
+  EmptyPlaceholder,
   Input,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchMd } from '@untitledui/icons';
+import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { getGlossaryPath } from '../../utils/RouterUtils';
+import {
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../common/EmptyPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -67,6 +75,79 @@ function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
       <Typography as="p" className="tw:text-center tw:text-tertiary">
         {message}
       </Typography>
+    </div>
+  );
+}
+
+function OntologyOnboardingEmptyState() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid="ontology-graph-onboarding">
+      <EmptyPlaceholder
+        description={t('message.ontology-empty-description')}
+        features={[
+          {
+            key: 'relationships',
+            icon: <LayoutGrid01 className="tw:text-fg-brand-primary" />,
+            title: t('label.relationship-plural'),
+            description: t(
+              'message.ontology-relationships-feature-description'
+            ),
+          },
+          {
+            key: 'the-graph',
+            icon: <Cube02 className="tw:text-fg-warning-primary" />,
+            title: t('label.the-graph'),
+            description: t('message.ontology-graph-feature-description'),
+          },
+          {
+            key: 'what-it-unlocks',
+            icon: <CubeOutline className="tw:text-fg-success-primary" />,
+            title: t('label.what-it-unlocks'),
+            description: t('message.ontology-unlocks-feature-description'),
+          },
+        ]}
+        footer={
+          <Button
+            color="primary"
+            data-testid="ontology-browse-glossary"
+            onPress={() => navigate(getGlossaryPath())}>
+            {t('label.browse-glossary')}
+          </Button>
+        }
+        title={t('message.ontology-empty-title')}
+        variant="features"
+      />
+    </div>
+  );
+}
+
+function FilteredGraphEmptyState({
+  description,
+  testId,
+}: {
+  readonly description: string;
+  readonly testId: string;
+}) {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid={testId}>
+      <NoFilteredResultsPlaceholder description={description} />
+    </div>
+  );
+}
+
+function SearchGraphEmptyState() {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid="ontology-graph-search-empty">
+      <NoSearchResultsPlaceholder />
     </div>
   );
 }
@@ -221,33 +302,47 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       hierarchyGraphData.edges.length === 0
     ) {
       return (
-        <GraphEmptyState
-          message={t('message.no-hierarchical-relations-found')}
+        <FilteredGraphEmptyState
+          description={t('message.no-hierarchical-relations-found')}
           testId="ontology-graph-hierarchy-empty"
         />
       );
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      if (filters.searchQuery.trim().length > 0) {
+        return <SearchGraphEmptyState />;
+      }
+
       if (hasRelationFilter) {
         return (
-          <GraphEmptyState
-            message={t('message.no-relations-for-selected-filter')}
+          <FilteredGraphEmptyState
+            description={t('message.no-relations-for-selected-filter')}
             testId="ontology-graph-no-relations"
           />
         );
       }
 
       const hasActiveFilter =
-        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        filters.viewMode !== 'overview';
+
+      if (hasActiveFilter) {
+        return (
+          <FilteredGraphEmptyState
+            description={t('message.no-data-available-for-selected-filter')}
+            testId="ontology-graph-empty"
+          />
+        );
+      }
+
+      if (scope === 'global') {
+        return <OntologyOnboardingEmptyState />;
+      }
 
       return (
         <GraphEmptyState
-          message={
-            hasActiveFilter
-              ? t('message.no-data-available-for-selected-filter')
-              : t('message.no-glossary-terms-found')
-          }
+          message={t('message.no-glossary-terms-found')}
           testId="ontology-graph-empty"
         />
       );
@@ -259,8 +354,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (hasNoMatchingRelationEdges && !loading) {
       return (
-        <GraphEmptyState
-          message={t('message.no-relations-for-selected-filter')}
+        <FilteredGraphEmptyState
+          description={t('message.no-relations-for-selected-filter')}
           testId="ontology-graph-no-relations"
         />
       );
@@ -352,6 +447,20 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   }
 
+  // The onboarding empty state stands in for the whole graph when a global
+  // ontology has no terms and no filters are applied; in that case the graph
+  // chrome (filter toolbar, mode/search/export bar, zoom controls) has nothing
+  // to act on, so it is hidden to match the clean empty layout.
+  const showOnboardingEmptyState =
+    scope === 'global' &&
+    !loading &&
+    graphDataToShow !== null &&
+    graphDataToShow.nodes.length === 0 &&
+    withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
+    withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
+    filters.viewMode === 'overview' &&
+    !filters.searchQuery.trim();
+
   return (
     <div
       className={classNames(
@@ -361,7 +470,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      {scope === 'global' && (
+      {scope === 'global' && !showOnboardingEmptyState && (
         <Card
           className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:shadow-none"
           data-testid="ontology-explorer-header">
@@ -393,78 +502,82 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           className={classNames(
             'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
             'tw:border tw:border-utility-gray-blue-100',
-            scope === 'global'
+            scope === 'global' && !showOnboardingEmptyState
               ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
               : 'tw:rounded-lg'
           )}>
-          <Card
-            className={classNames(
-              'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
-              ONTOLOGY_TOOLBAR_CARD_CLASS
-            )}>
-            <Tabs
-              className="tw:w-fit!"
-              selectedKey={explorationMode}
-              onSelectionChange={(key) => {
-                if (key === 'model' || key === 'data') {
-                  handleModeChange(key as ExplorationMode);
-                }
-              }}>
-              <Tabs.List size="sm" type="button-border">
-                <Tabs.Item id="model" label={t('label.model')} />
-                <Tabs.Item
-                  className={(state) =>
-                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
-                  }
-                  id="data"
-                  isDisabled={loading || isLoadingMore}
-                  label={t('label.data')}
+          {!showOnboardingEmptyState && (
+            <>
+              <Card
+                className={classNames(
+                  'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
+                  ONTOLOGY_TOOLBAR_CARD_CLASS
+                )}>
+                <Tabs
+                  className="tw:w-fit!"
+                  selectedKey={explorationMode}
+                  onSelectionChange={(key) => {
+                    if (key === 'model' || key === 'data') {
+                      handleModeChange(key as ExplorationMode);
+                    }
+                  }}>
+                  <Tabs.List size="sm" type="button-border">
+                    <Tabs.Item id="model" label={t('label.model')} />
+                    <Tabs.Item
+                      className={(state) =>
+                        state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                      }
+                      id="data"
+                      isDisabled={loading || isLoadingMore}
+                      label={t('label.data')}
+                    />
+                  </Tabs.List>
+                  <Tabs.Panel className="tw:hidden" id="model" />
+                  <Tabs.Panel className="tw:hidden" id="data" />
+                </Tabs>
+                <Input
+                  data-testid="ontology-graph-search"
+                  icon={SearchMd}
+                  inputClassName="tw:pl-10"
+                  placeholder={t('label.search-in-graph')}
+                  value={searchInput}
+                  onChange={setSearchInput}
                 />
-              </Tabs.List>
-              <Tabs.Panel className="tw:hidden" id="model" />
-              <Tabs.Panel className="tw:hidden" id="data" />
-            </Tabs>
-            <Input
-              data-testid="ontology-graph-search"
-              icon={SearchMd}
-              inputClassName="tw:pl-10"
-              placeholder={t('label.search-in-graph')}
-              value={searchInput}
-              onChange={setSearchInput}
-            />
-            <ExportGraphPanel
-              onExportPng={handleExportPng}
-              onExportRdfXml={
-                rdfEnabled && exportableGlossaryId
-                  ? handleExportRdfXml
-                  : undefined
-              }
-              onExportSvg={handleExportSvg}
-              onExportTurtle={
-                rdfEnabled && exportableGlossaryId
-                  ? handleExportTurtle
-                  : undefined
-              }
-            />
-            <GraphSettingsPanel
-              settings={settings}
-              onSettingsChange={handleSettingsChange}
-            />
-          </Card>
+                <ExportGraphPanel
+                  onExportPng={handleExportPng}
+                  onExportRdfXml={
+                    rdfEnabled && exportableGlossaryId
+                      ? handleExportRdfXml
+                      : undefined
+                  }
+                  onExportSvg={handleExportSvg}
+                  onExportTurtle={
+                    rdfEnabled && exportableGlossaryId
+                      ? handleExportTurtle
+                      : undefined
+                  }
+                />
+                <GraphSettingsPanel
+                  settings={settings}
+                  onSettingsChange={handleSettingsChange}
+                />
+              </Card>
 
-          <Card
-            className={classNames(
-              'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-              ONTOLOGY_TOOLBAR_CARD_CLASS
-            )}>
-            <OntologyControlButtons
-              isLoading={loading}
-              onFitToScreen={handleFitToScreen}
-              onRefresh={handleRefresh}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-            />
-          </Card>
+              <Card
+                className={classNames(
+                  'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
+                  ONTOLOGY_TOOLBAR_CARD_CLASS
+                )}>
+                <OntologyControlButtons
+                  isLoading={loading}
+                  onFitToScreen={handleFitToScreen}
+                  onRefresh={handleRefresh}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                />
+              </Card>
+            </>
+          )}
 
           <div
             className={classNames(
