@@ -324,6 +324,34 @@ export default defineConfig(async ({ mode }) => {
             return `assets/[name]-[hash][extname]`;
           },
           manualChunks: (id: string) => {
+            const normalizedId = id.split('?')[0].replaceAll('\\', '/');
+
+            if (isPlaywrightBundle) {
+              // Keep every connector schema independently lazy so the minimum
+              // chunk-size pass cannot attach shared shell code and preload the
+              // full connector catalog during an authenticated app boot.
+              if (normalizedId.includes('/src/jsons/connectionSchemas/')) {
+                const schemaPath = normalizedId.split(
+                  '/src/jsons/connectionSchemas/'
+                )[1];
+
+                return `app-e2e-schema-${schemaPath
+                  .replace(/\.json$/, '')
+                  .replaceAll(/[^a-zA-Z0-9_-]/g, '-')}`;
+              }
+              if (
+                normalizedId.includes('/src/components/MyData/') ||
+                normalizedId.includes('/src/pages/MyDataPage/') ||
+                normalizedId.includes('/src/components/KnowledgeCenter/') ||
+                normalizedId.includes('/src/utils/LandingPageWidget/') ||
+                /\/src\/utils\/(?:CustomizeMyDataPage|CustomizableLandingPage|DataAssetService|LandingPageWidgetIconUtils)/.test(
+                  normalizedId
+                )
+              ) {
+                return 'app-e2e-runtime';
+              }
+            }
+
             if (!id.includes('node_modules')) {
               return;
             }
@@ -335,10 +363,6 @@ export default defineConfig(async ({ mode }) => {
               ) {
                 return 'vendor-e2e-lineage';
               }
-              if (id.includes('node_modules/recharts')) {
-                return 'vendor-e2e-charts';
-              }
-
               const packagePath = id.split(/node_modules[\\/]/).pop() ?? id;
               const [scopeOrName, scopedName] = packagePath.split(/[\\/]/);
               const packageName = scopeOrName.startsWith('@')
@@ -347,7 +371,7 @@ export default defineConfig(async ({ mode }) => {
 
               return ['react', 'react-dom', 'scheduler'].includes(packageName)
                 ? 'vendor-e2e-framework'
-                : 'vendor-e2e-core';
+                : 'app-e2e-runtime';
             }
             // Antd remains its own vendor chunk — almost every route touches some
             // part of it, so the cache-sharing argument holds. Tree-shaking inside
@@ -438,13 +462,11 @@ export default defineConfig(async ({ mode }) => {
               return `vendor-${unscopedMatch[1]}`;
             }
           },
-          // Merge any chunk smaller than this back into its primary importer. Keeps
-          // the per-package split sane for big packages while preventing the long
-          // tail of ~1 KB utility packages from each becoming their own HTTP
-          // request. 10 KB is a balance — small enough that lodash / dayjs /
-          // classnames stay separable, large enough that 200 tiny packages don't
-          // each get a network roundtrip.
-          experimentalMinChunkSize: 10 * 1024,
+          // The CI-only coarse bundle trades fine-grained browser caching for
+          // fewer cold-context requests. Production keeps the existing 10 KiB
+          // threshold, while Playwright groups small application modules more
+          // aggressively without collapsing route or connector boundaries.
+          experimentalMinChunkSize: isPlaywrightBundle ? 32 * 1024 : 10 * 1024,
         },
       },
     },

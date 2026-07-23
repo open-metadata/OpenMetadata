@@ -17,6 +17,29 @@ ACCESS_LOG = re.compile(
     r'"[^"]*" "[^"]*" (?P<duration>\d+)'
 )
 APP_ENTRY = re.compile(r"^/assets/app-[A-Za-z0-9_-]+\.js$")
+STATIC_RESOURCE_SUFFIXES = {
+    "css": "stylesheet",
+    "gif": "image",
+    "ico": "image",
+    "jpeg": "image",
+    "jpg": "image",
+    "js": "javascript",
+    "mjs": "javascript",
+    "png": "image",
+    "svg": "image",
+    "webp": "image",
+    "woff": "font",
+    "woff2": "font",
+}
+
+
+def static_resource_type(path: str) -> str:
+    filename = path.rsplit("/", 1)[-1]
+    if "." not in filename:
+        return "document"
+    suffix = filename.rsplit(".", 1)[-1].lower()
+
+    return STATIC_RESOURCE_SUFFIXES.get(suffix, "other")
 
 
 def parse_args() -> argparse.Namespace:
@@ -31,7 +54,9 @@ def parse_args() -> argparse.Namespace:
 class RequestAccumulator:
     def __init__(self) -> None:
         self.counters: Counter[str] = Counter()
-        self.endpoints: Counter[str] = Counter()
+        self.api_endpoints: Counter[str] = Counter()
+        self.static_endpoints: Counter[str] = Counter()
+        self.static_resource_types: Counter[str] = Counter()
         self.statuses: Counter[str] = Counter()
 
     def add(self, line: str) -> None:
@@ -48,9 +73,12 @@ class RequestAccumulator:
         self.counters[f"{kind}ServerMs"] += int(match["duration"])
         self.statuses[f"{kind}:{match['status']}"] += 1
         if kind == "api":
-            self.endpoints[f"{match['method']} {path}"] += 1
-        elif APP_ENTRY.match(path):
-            self.counters["appBoots"] += 1
+            self.api_endpoints[f"{match['method']} {path}"] += 1
+        else:
+            self.static_endpoints[f"{match['method']} {path}"] += 1
+            self.static_resource_types[static_resource_type(path)] += 1
+            if APP_ENTRY.match(path):
+                self.counters["appBoots"] += 1
 
     def add_all(self, lines: Iterable[str]) -> None:
         for line in lines:
@@ -64,9 +92,16 @@ class RequestAccumulator:
             + self.counters["staticRequests"],
             **dict(self.counters),
             "statuses": dict(sorted(self.statuses.items())),
+            "apiEndpointCounts": dict(sorted(self.api_endpoints.items())),
             "topApiEndpoints": [
                 {"endpoint": endpoint, "requests": requests}
-                for endpoint, requests in self.endpoints.most_common(25)
+                for endpoint, requests in self.api_endpoints.most_common(25)
+            ],
+            "staticResourceTypes": dict(sorted(self.static_resource_types.items())),
+            "staticEndpointCounts": dict(sorted(self.static_endpoints.items())),
+            "topStaticEndpoints": [
+                {"endpoint": endpoint, "requests": requests}
+                for endpoint, requests in self.static_endpoints.most_common(50)
             ],
         }
 

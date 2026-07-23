@@ -626,14 +626,6 @@ jobs:
           npx playwright install-deps chromium
           npx playwright install chromium
 
-      - name: Verify the built application boots
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        working-directory: openmetadata-ui/src/main/resources/ui
-        env:
-          PLAYWRIGHT_IS_OSS: "true"
-          PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
-        run: npx playwright test --project=bundle-smoke --reporter=line
-
       - name: Seed reusable Playwright auth and entity state
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -645,6 +637,15 @@ jobs:
           test -s playwright/.auth/admin.json
           test -s playwright/.auth/admin-api-token.json
           test -s playwright/output/entity-response-data.json
+
+      - name: Verify the authenticated application bundle
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          PLAYWRIGHT_IS_OSS: "true"
+          PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
+          PW_PRESEEDED_STATE: "true"
+        run: npx playwright test --project=bundle-smoke --reporter=line
 
       - name: Upload fixture-state failure diagnostics
         if: ${{ failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
@@ -871,7 +872,7 @@ jobs:
           npx playwright install-deps chromium
           npx playwright install chromium
 
-      - name: Verify the restored application bundle
+      - name: Verify the restored authenticated application bundle
         id: verify-bundle
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
@@ -1008,7 +1009,7 @@ jobs:
             --aggregate "${PW_REQUEST_METRICS:-$RUNNER_TEMP/missing-request-metrics.json}" \
             --output "openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json" \
             --shard-id "$SHARD_ID"
-          jq '{shardId, totalRequests, apiRequests, staticRequests, apiBytes, staticBytes, appBoots, topApiEndpoints}' \
+          jq '{shardId, totalRequests, apiRequests, staticRequests, apiBytes, staticBytes, appBoots, staticResourceTypes, topApiEndpoints, topStaticEndpoints}' \
             openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json
 
       - name: Record shard execution status

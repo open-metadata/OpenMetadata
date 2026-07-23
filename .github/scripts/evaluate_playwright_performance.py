@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,29 @@ def percentage(numerator: float, denominator: float) -> float:
     return round(100 * numerator / denominator, 2) if denominator else 0.0
 
 
+def aggregate_ranked_counts(
+    payloads: list[dict[str, Any]], counts_key: str, ranked_key: str, limit: int
+) -> list[dict[str, Any]]:
+    counts: Counter[str] = Counter()
+    for payload in payloads:
+        endpoint_counts = payload.get(counts_key)
+        if isinstance(endpoint_counts, dict):
+            counts.update(
+                {
+                    str(endpoint): int(requests)
+                    for endpoint, requests in endpoint_counts.items()
+                }
+            )
+            continue
+        for item in payload.get(ranked_key, []):
+            counts[str(item["endpoint"])] += int(item["requests"])
+
+    return [
+        {"endpoint": endpoint, "requests": count}
+        for endpoint, count in counts.most_common(limit)
+    ]
+
+
 def main() -> None:
     args = parse_args()
     timings = load_files(args.timing_glob)
@@ -45,12 +69,21 @@ def main() -> None:
     retry_worker_ms = sum(int(test.get("retryDurationMs", 0)) for test in tests)
     flaky_tests = sum(test.get("outcome") == "flaky" for test in tests)
     total_requests = sum(int(shard.get("totalRequests", 0)) for shard in requests)
+    api_requests = sum(int(shard.get("apiRequests", 0)) for shard in requests)
     static_requests = sum(int(shard.get("staticRequests", 0)) for shard in requests)
     api_bytes = sum(int(shard.get("apiBytes", 0)) for shard in requests)
     static_bytes = sum(int(shard.get("staticBytes", 0)) for shard in requests)
     api_server_ms = sum(int(shard.get("apiServerMs", 0)) for shard in requests)
     static_server_ms = sum(int(shard.get("staticServerMs", 0)) for shard in requests)
     app_boots = sum(int(shard.get("appBoots", 0)) for shard in requests)
+    static_resource_types: Counter[str] = Counter()
+    for shard in requests:
+        static_resource_types.update(
+            {
+                resource_type: int(count)
+                for resource_type, count in shard.get("staticResourceTypes", {}).items()
+            }
+        )
 
     chromium_seconds = sorted(
         int(phase.get("executionSeconds", 0))
@@ -68,6 +101,8 @@ def main() -> None:
         "executedTests": len(executed_tests),
         "attempts": attempts,
         "totalRequests": total_requests,
+        "apiRequests": api_requests,
+        "staticRequests": static_requests,
         "apiBytes": api_bytes,
         "staticBytes": static_bytes,
         "apiServerMs": api_server_ms,
@@ -77,6 +112,13 @@ def main() -> None:
             round(static_requests / app_boots, 2) if app_boots else 0.0
         ),
         "appBootsPerAttempt": round(app_boots / attempts, 2) if attempts else 0.0,
+        "staticResourceTypes": dict(sorted(static_resource_types.items())),
+        "topApiEndpoints": aggregate_ranked_counts(
+            requests, "apiEndpointCounts", "topApiEndpoints", 20
+        ),
+        "topStaticEndpoints": aggregate_ranked_counts(
+            requests, "staticEndpointCounts", "topStaticEndpoints", 20
+        ),
         "flakyRatePercent": percentage(flaky_tests, len(executed_tests)),
         "retryWorkerPercent": percentage(retry_worker_ms, total_worker_ms),
         "commonShardSkewPercent": skew_percent,

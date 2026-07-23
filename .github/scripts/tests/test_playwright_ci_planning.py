@@ -476,6 +476,43 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     assert payload["topApiEndpoints"] == [
         {"endpoint": "GET /api/v1/search/query", "requests": 1}
     ]
+    assert payload["apiEndpointCounts"] == {"GET /api/v1/search/query": 1}
+    assert payload["staticResourceTypes"] == {"javascript": 1}
+    assert payload["staticEndpointCounts"] == {"GET /assets/app-Ab_12.js": 1}
+    assert payload["topStaticEndpoints"] == [
+        {"endpoint": "GET /assets/app-Ab_12.js", "requests": 1}
+    ]
+
+
+def test_performance_metrics_aggregate_ranked_endpoint_counts():
+    evaluator = load_script("evaluate_playwright_performance")
+    payloads = [
+        {"staticEndpointCounts": {"GET /assets/app-a.js": 2}},
+        {
+            "staticEndpointCounts": {
+                "GET /assets/app-a.js": 3,
+                "GET /assets/shared.js": 4,
+            }
+        },
+    ]
+
+    assert evaluator.aggregate_ranked_counts(
+        payloads, "staticEndpointCounts", "topStaticEndpoints", 2
+    ) == [
+        {"endpoint": "GET /assets/app-a.js", "requests": 5},
+        {"endpoint": "GET /assets/shared.js", "requests": 4},
+    ]
+
+
+def test_performance_metrics_support_legacy_ranked_endpoint_counts():
+    evaluator = load_script("evaluate_playwright_performance")
+    payloads = [
+        {"topStaticEndpoints": [{"endpoint": "GET /assets/app-a.js", "requests": 2}]}
+    ]
+
+    assert evaluator.aggregate_ranked_counts(
+        payloads, "staticEndpointCounts", "topStaticEndpoints", 2
+    ) == [{"endpoint": "GET /assets/app-a.js", "requests": 2}]
 
 
 def test_outcome_classifier_reads_include_matrix():

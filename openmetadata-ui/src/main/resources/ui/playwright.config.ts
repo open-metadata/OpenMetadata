@@ -149,7 +149,11 @@ export default defineConfig({
     {
       name: 'bundle-smoke',
       testMatch: '**/bundle.smoke.ts',
-      use: { ...devices['Desktop Chrome'] },
+      dependencies: authDependencies,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
     },
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
