@@ -72,10 +72,6 @@ export interface CreateLLMModel {
      */
     modelEvaluation?: ModelEvaluation;
     /**
-     * Type of LLM model
-     */
-    modelType?: ModelType;
-    /**
      * Model provider (e.g., 'OpenAI', 'Anthropic', 'Meta')
      */
     modelProvider?: string;
@@ -83,6 +79,10 @@ export interface CreateLLMModel {
      * Detailed model specifications
      */
     modelSpecifications?: ModelSpecifications;
+    /**
+     * Type of LLM model
+     */
+    modelType?: ModelType;
     /**
      * Version of the model
      */
@@ -130,15 +130,6 @@ export enum ModelCapability {
     TextGeneration = "TextGeneration",
     ToolUse = "ToolUse",
     Vision = "Vision",
-}
-
-export enum ModelType {
-    Adapter = "Adapter",
-    BaseModel = "BaseModel",
-    Custom = "Custom",
-    Distilled = "Distilled",
-    FineTuned = "FineTuned",
-    Quantized = "Quantized",
 }
 
 /**
@@ -487,6 +478,18 @@ export interface ModelSpecifications {
      * Quantization method if applicable
      */
     quantization?: string;
+}
+
+/**
+ * Type of LLM model
+ */
+export enum ModelType {
+    Adapter = "Adapter",
+    BaseModel = "BaseModel",
+    Custom = "Custom",
+    Distilled = "Distilled",
+    FineTuned = "FineTuned",
+    Quantized = "Quantized",
 }
 
 /**
