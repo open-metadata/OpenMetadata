@@ -1,5 +1,23 @@
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Snowflake unique constraint reflection unit tests
+"""
+
 from unittest.mock import Mock
-from metadata.ingestion.source.database.snowflake.utils import _get_schema_unique_constraints
+
+from metadata.ingestion.source.database.snowflake.utils import (
+    _get_schema_unique_constraints,
+)
+
 
 def test_snowflake_unique_constraint_collision():
     # Mocking self (SnowflakeDialect)
@@ -10,29 +28,17 @@ def test_snowflake_unique_constraint_collision():
     connection_mock = Mock()
 
     # Mocking the result of connection.execute(...)
-    # Simulating two tables 'table_1' and 'table_2' inside the same schema 
+    # Simulating two tables 'table_1' and 'table_2' inside the same schema
     # both sharing an identical constraint name like "unique_id"
     row1 = Mock()
-    row1._mapping = {
-        "constraint_name": "unique_id",
-        "table_name": "table_1",
-        "column_name": "id"
-    }
+    row1._mapping = {"constraint_name": "unique_id", "table_name": "table_1", "column_name": "id"}
 
     row2 = Mock()
-    row2._mapping = {
-        "constraint_name": "unique_id",
-        "table_name": "table_2",
-        "column_name": "id"
-    }
-    
+    row2._mapping = {"constraint_name": "unique_id", "table_name": "table_2", "column_name": "id"}
+
     # Composite constraint on table_2 (second column of the same unique key)
     row3 = Mock()
-    row3._mapping = {
-        "constraint_name": "unique_id",
-        "table_name": "table_2",
-        "column_name": "email"
-    }
+    row3._mapping = {"constraint_name": "unique_id", "table_name": "table_2", "column_name": "email"}
 
     result_mock = [row1, row2, row3]
     connection_mock.execute.return_value = result_mock
