@@ -26,18 +26,20 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
-import { useRequiredParams } from '../../../../utils/useRequiredParams';
 
 export const CustomizablePageHeader = ({
   disableSave,
+  hasNavigationBlocker = false,
   onAddWidget,
   onReset,
   onSave,
   personaName,
 }: {
   disableSave?: boolean;
+  hasNavigationBlocker?: boolean;
   onAddWidget?: () => void;
   onReset: () => void;
   onSave: () => Promise<void>;
@@ -64,10 +66,10 @@ export const CustomizablePageHeader = ({
   const isNavigationPage = pageFqn === 'navigation';
   const isAppModePage = pageFqn === 'app-mode';
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     // Go back in history
     navigate(-1);
-  };
+  }, [navigate]);
 
   const { modalTitle, modalDescription, okText, cancelText } = useMemo(() => {
     if (confirmationModalType === 'reset') {
@@ -113,9 +115,9 @@ export const CustomizablePageHeader = ({
     if (confirmationModalType === 'reset') {
       handleCloseResetModal();
     } else {
+      setConfirmationModalOpen(false);
       handleCancel();
     }
-    setConfirmationModalOpen(false);
   }, [confirmationModalType, handleCancel, onReset]);
 
   const i18Values = useMemo(
@@ -129,13 +131,13 @@ export const CustomizablePageHeader = ({
   );
 
   const handleClose = useCallback(() => {
-    if (!disableSave) {
+    if (!disableSave && !hasNavigationBlocker) {
       setConfirmationModalType('close');
       setConfirmationModalOpen(true);
     } else {
       handleCancel();
     }
-  }, [disableSave, handleCancel]);
+  }, [disableSave, hasNavigationBlocker, handleCancel]);
 
   const subTitle = useMemo(() => {
     if (isNavigationPage) {

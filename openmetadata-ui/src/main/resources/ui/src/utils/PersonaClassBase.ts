@@ -13,6 +13,7 @@
 import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification-colored-new.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
@@ -32,7 +33,6 @@ import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored
 import { ReactComponent as MetricIcon } from '../assets/svg/metric-colored-new.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as NavigationIcon } from '../assets/svg/navigation.svg';
-import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipelines-colored-new.svg';
 import { ReactComponent as SearchIndexIcon } from '../assets/svg/search-index-colored-new.svg';
 import { ReactComponent as SpreadsheetIcon } from '../assets/svg/spreadsheet-colored-new.svg';

@@ -228,6 +228,7 @@ function CustomizeMyData({
             entity: t('label.landing-page'),
           })}>
           <CustomizablePageHeader
+            hasNavigationBlocker
             disableSave={disableSave}
             personaName={getEntityName(personaDetails)}
             onAddWidget={handleOpenCustomiseHomeModal}

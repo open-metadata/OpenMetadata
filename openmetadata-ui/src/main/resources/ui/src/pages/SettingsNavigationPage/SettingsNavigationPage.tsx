@@ -21,16 +21,16 @@ import { NavigationBlocker } from '../../components/common/NavigationBlocker/Nav
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
-import { Persona } from '../../generated/entity/teams/persona';
-import { getEntityName } from '../../utils/EntityNameUtils';
 
 interface Props {
   persona: Persona;
@@ -44,10 +44,10 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const { plugins = [] } = useApplicationsProvider();
 
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
-    getHiddenKeysFromNavigationItems(currentNavigation, plugins),
+    getHiddenKeysFromNavigationItems(currentNavigation, plugins)
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    getTreeDataForNavigationItems(currentNavigation, plugins),
+    getTreeDataForNavigationItems(currentNavigation, plugins)
   );
 
   const disableSave = useMemo(() => {
@@ -73,7 +73,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
     const loop = (
       data: TreeDataNode[],
       key: React.Key,
-      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void,
+      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void
     ) => {
       for (let i = 0; i < data.length; i++) {
         if (data[i].key === key) {
@@ -130,7 +130,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
 
   const handleRemoveToggle = (checked: boolean, key: string) => {
     setHiddenKeys((prev) =>
-      checked ? prev.filter((i) => i !== key) : [...prev, key],
+      checked ? prev.filter((i) => i !== key) : [...prev, key]
     );
   };
 
@@ -151,6 +151,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
+              hasNavigationBlocker
               disableSave={disableSave}
               personaName={getEntityName(persona)}
               onReset={handleReset}

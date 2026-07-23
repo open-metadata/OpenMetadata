@@ -94,6 +94,7 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
+              hasNavigationBlocker
               disableSave={disableSave}
               personaName={t('label.customize-your-app-mode')}
               onReset={handleReset}
