@@ -64,10 +64,39 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
+// Pages that already have the network strip installed, so redirectToHomePage
+// (called many times per spec) does not stack duplicate routes.
+const etagStripInstalled = new WeakSet<Page>();
+
+/**
+ * Strip the client `If-None-Match` header from `/api/v1/**` requests at the
+ * Playwright network layer.
+ *
+ * The UI attaches an ETag conditional-GET interceptor; the server ETag only
+ * covers version/updatedAt, so a refetch racing a relationship-only or child
+ * mutation (followers, votes, customMetrics, testSuite) is answered 304 and the
+ * UI renders a stale body — a flaky-assertion source across the suite. Removing
+ * the header here forces the server to always return the current body, and it
+ * works regardless of the deployed bundle (unlike the localStorage opt-out,
+ * which depends on the bundle carrying the interceptor guard).
+ */
+export const stripEtagConditionalReads = async (page: Page) => {
+  if (etagStripInstalled.has(page)) {
+    return;
+  }
+  etagStripInstalled.add(page);
+  await page.route('**/api/v1/**', async (route) => {
+    const headers = route.request().headers();
+    delete headers['if-none-match'];
+    await route.continue({ headers });
+  });
+};
+
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  await stripEtagConditionalReads(page);
   await page.goto('/', {
     waitUntil: 'domcontentloaded',
   });

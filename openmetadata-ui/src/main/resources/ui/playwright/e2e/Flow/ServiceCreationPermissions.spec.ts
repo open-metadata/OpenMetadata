@@ -91,7 +91,7 @@ const test = base.extend<{
   },
 });
 
-const openPipelineActions = async (page: Page) => {
+const visitAgentCard = async (page: Page) => {
   await redirectToHomePage(page);
   await adminOwnedService.visitEntityPage(page);
 
@@ -102,9 +102,15 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = getAgentCard(page, ingestionPipelineName).getByTestId(
-    'more-actions'
-  );
+  const agentCard = getAgentCard(page, ingestionPipelineName);
+
+  await agentCard.waitFor();
+
+  return agentCard;
+};
+
+const openPipelineActions = async (page: Page) => {
+  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
 
   await actionButton.waitFor();
   await actionButton.click();
@@ -583,11 +589,28 @@ test.describe(
     test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
       pipelineTriggerPage: page,
     }) => {
-      await openPipelineActions(page);
+      let agentCard = await visitAgentCard(page);
 
-      await expect(page.getByTestId('run-button')).toBeVisible();
-      await expect(page.getByTestId('edit-button')).toBeHidden();
-      await expect(page.getByTestId('kill-button')).toBeHidden();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
+
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
+
+      const actionsDropdown = page.getByTestId('actions-dropdown');
+
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
+
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
 
       // The pipeline deployed in beforeAll may still be registering in
       // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
@@ -602,12 +625,12 @@ test.describe(
                 response.request().method() === 'POST'
             );
 
-            await page.getByTestId('run-button').click();
+            await agentCard.getByTestId('run-agent-button').click();
 
             const response = await triggerResponse;
 
             if (response.status() !== 200) {
-              await openPipelineActions(page);
+              agentCard = await visitAgentCard(page);
             }
 
             return response.status();
@@ -624,7 +647,11 @@ test.describe(
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
       await expect(page.getByTestId('re-deploy-button')).toBeVisible();
-      await expect(page.getByTestId('run-button')).toBeHidden();
+      await expect(
+        getAgentCard(page, ingestionPipelineName).getByTestId(
+          'run-agent-button'
+        )
+      ).toBeHidden();
     });
   }
 );

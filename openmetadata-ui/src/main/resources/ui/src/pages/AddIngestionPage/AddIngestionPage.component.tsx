@@ -341,7 +341,7 @@ const AddIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel tw:!bg-transparent"
+      className="content-height-with-resizable-panel tw:bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

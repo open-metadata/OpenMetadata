@@ -77,7 +77,10 @@ export const Popover = ({
       {...popoverProps}
       className={(state) =>
         cx(
-          'tw:origin-(--trigger-anchor-point) tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+          // `outline-hidden` removed: the outline now draws this popover's border (it
+          // replaced a ring, which WebKit does not pixel-snap), so suppressing it would
+          // erase the border.
+          'tw:origin-(--trigger-anchor-point) tw:rounded-xl tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-left:slide-in-from-right-0.5 tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Browser, Page, test as base } from '@playwright/test';
+import { stripEtagConditionalReads } from '../../utils/common';
 
 // Define the type for our custom fixtures
 export type CustomFixtures = {
@@ -24,69 +25,78 @@ export type CustomFixtures = {
   ownerPage: Page;
 };
 
+// Open a role page with the ETag conditional-read strip installed, so every
+// fixture-based spec gets fresh entity reads regardless of the deployed bundle
+// (see stripEtagConditionalReads in utils/common).
+const openRolePage = async (browser: Browser, storageState: string) => {
+  const page = await browser.newPage({ storageState });
+  await stripEtagConditionalReads(page);
+
+  return page;
+};
+
 // Create a new test object with our custom fixtures
 export const test = base.extend<CustomFixtures>({
   // Admin page as default page value
   page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage({
-      storageState: 'playwright/.auth/admin.json',
-    });
+    const adminPage = await openRolePage(
+      browser,
+      'playwright/.auth/admin.json'
+    );
 
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/dataConsumer.json',
-    });
+    const page = await openRolePage(
+      browser,
+      'playwright/.auth/dataConsumer.json'
+    );
 
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/dataSteward.json',
-    });
+    const page = await openRolePage(
+      browser,
+      'playwright/.auth/dataSteward.json'
+    );
 
     await use(page);
     await page.close();
   },
   ownerPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/owner.json',
-    });
+    const page = await openRolePage(browser, 'playwright/.auth/owner.json');
 
     await use(page);
     await page.close();
   },
   editDescriptionPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editDescription.json',
-    });
+    const page = await openRolePage(
+      browser,
+      'playwright/.auth/editDescription.json'
+    );
 
     await use(page);
     await page.close();
   },
   editTagsPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editTags.json',
-    });
+    const page = await openRolePage(browser, 'playwright/.auth/editTags.json');
 
     await use(page);
     await page.close();
   },
   editGlossaryTermPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/editGlossaryTerm.json',
-    });
+    const page = await openRolePage(
+      browser,
+      'playwright/.auth/editGlossaryTerm.json'
+    );
 
     await use(page);
     await page.close();
   },
   viewOnlyPage: async ({ browser }, use) => {
-    const page = await browser.newPage({
-      storageState: 'playwright/.auth/viewOnly.json',
-    });
+    const page = await openRolePage(browser, 'playwright/.auth/viewOnly.json');
 
     await use(page);
     await page.close();
