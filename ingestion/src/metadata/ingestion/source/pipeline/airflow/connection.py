@@ -246,26 +246,22 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
         raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
 
 
-def _test_task_detail_access_rest(client) -> bool:  # pyright: ignore[reportMissingParameterType]
+def _test_task_detail_access_rest(client) -> None:  # pyright: ignore[reportMissingParameterType]
     """
-    HTTP equivalent of _test_task_detail_access for the REST/MWAA path:
-    read one DAG's tasks to confirm the /tasks endpoint is reachable and
-    readable. A broken endpoint / missing permission raises HTTPError from
-    the underlying client; a 2xx-but-empty body (see _parse_response) is
-    caught by the missing-"tasks"-key check below.
+    REST/MWAA sibling of _test_task_detail_access: read one DAG's tasks to
+    confirm the /tasks endpoint is reachable and permitted. A denied or broken
+    endpoint raises from the underlying client and fails the step. Any body it
+    returns is accepted — ingestion itself tolerates the response via
+    get("tasks", []), so a shape mismatch is a format quirk, not an access
+    failure, and must not fail this mandatory gate.
+
+    Signals success by returning normally and failure by raising; verify_access
+    reads only the exception, so there is no value to return.
     """
     dags = (client.list_dags(limit=1) or {}).get("dags") or []
-    if dags:
-        try:
-            dag_id = dags[0]["dag_id"]
-        except (KeyError, TypeError) as e:
-            raise AirflowTaskDetailsAccessError(
-                f"Task details access error: malformed DAG list entry {dags[0]!r}"
-            ) from e
-        response = client.get_dag_tasks(dag_id)
-        if not isinstance(response, dict) or "tasks" not in response:
-            raise AirflowTaskDetailsAccessError(f"Task details access error: unexpected response {response}")
-    return True
+    dag_id = dags[0].get("dag_id") if dags and isinstance(dags[0], dict) else None
+    if dag_id:
+        client.get_dag_tasks(dag_id)
 
 
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
