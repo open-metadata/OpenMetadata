@@ -122,7 +122,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String[] tokens = newRegistrationRequest.getEmail().split("@");
       String emailDomain = tokens[1];
       Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
+      if (!allowedDomains.contains("all")
+          && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");

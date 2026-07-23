@@ -180,6 +180,42 @@ public class GlossaryTermRelationSettingsIT {
   @ResourceLock(
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
       mode = ResourceAccessMode.READ_WRITE)
+  void test_paginatedRelationTypeApiRejectsDuplicateNames() throws Exception {
+    String relationTypeName = "paginatedType" + System.currentTimeMillis();
+    try {
+      assertEquals(
+          201,
+          createRelationTypeAndGetStatus(relationTypeName),
+          "Creating a relation type should return 201");
+      assertEquals(
+          409,
+          createRelationTypeAndGetStatus(relationTypeName.toUpperCase()),
+          "Relation type names should be unique regardless of case");
+
+      HttpResponse<String> listResponse =
+          sendAdminRequest(
+              HttpRequest.newBuilder()
+                  .uri(
+                      URI.create(
+                          SdkClients.getServerUrl()
+                              + "/v1/system/settings/glossaryTermRelationSettings/relationTypes?limit=1&offset=0"))
+                  .GET());
+      assertEquals(200, listResponse.statusCode());
+      JsonNode result = MAPPER.readTree(listResponse.body());
+      assertEquals(1, result.get("data").size());
+      assertEquals(1, result.get("paging").get("limit").asInt());
+      assertEquals(0, result.get("paging").get("offset").asInt());
+      assertTrue(result.get("paging").get("total").asInt() > 1);
+    } finally {
+      deleteRelationTypeAndGetStatus(relationTypeName);
+      deleteRelationTypeAndGetStatus(relationTypeName.toUpperCase());
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_deleteRelationTypeProtection(TestNamespace ns) throws Exception {
     String customTypeName = "testCustomType" + System.currentTimeMillis();
 
@@ -444,6 +480,12 @@ public class GlossaryTermRelationSettingsIT {
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
       mode = ResourceAccessMode.READ_WRITE)
   void test_systemDefinedRelationTypeCannotBeDeleted() throws Exception {
+    int deleteStatus = deleteRelationTypeAndGetStatus("relatedTo");
+    assertTrue(
+        deleteStatus >= 400,
+        "The relation-type DELETE endpoint must reject system-defined relation types. Got: "
+            + deleteStatus);
+
     JsonNode currentSettings = getSettings();
     ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
 
@@ -688,6 +730,49 @@ public class GlossaryTermRelationSettingsIT {
 
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     return response.statusCode();
+  }
+
+  private int createRelationTypeAndGetStatus(String name) throws Exception {
+    ObjectNode relationType = MAPPER.createObjectNode();
+    relationType.put("name", name);
+    relationType.put("displayName", "Paginated Type");
+    relationType.put("category", "associative");
+
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes"))
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(relationType))));
+    return response.statusCode();
+  }
+
+  private int deleteRelationTypeAndGetStatus(String name) throws Exception {
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes/"
+                            + name))
+                .DELETE());
+    return response.statusCode();
+  }
+
+  private HttpResponse<String> sendAdminRequest(HttpRequest.Builder requestBuilder)
+      throws Exception {
+    HttpRequest request =
+        requestBuilder
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType)
