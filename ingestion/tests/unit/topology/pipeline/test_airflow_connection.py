@@ -1126,16 +1126,39 @@ def _backend_config():
     return AirflowConnectionConfig(hostPort="http://airflow.example.com:8080", connection=BackendConnection())
 
 
+def _sqlite_backend_config():
+    from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
+        SQLiteConnection as SQLiteConnectionConfig,
+    )
+    from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+        AirflowConnection as AirflowConnectionConfig,
+    )
+
+    return AirflowConnectionConfig(hostPort="http://airflow.example.com:8080", connection=SQLiteConnectionConfig())
+
+
+def _settings_bound_to(engine):
+    """A stand-in for airflow.settings whose Session().get_bind() returns engine,
+    matching how the Airflow 2.x backend path reaches the process-global engine."""
+    session = MagicMock()
+    session.get_bind.return_value = engine
+    session_ctx = MagicMock()
+    session_ctx.__enter__.return_value = session
+    settings = MagicMock()
+    settings.engine = engine
+    settings.Session = MagicMock(return_value=session_ctx)
+    return settings
+
+
 class TestBackendEngineDisposal:
     def test_borrowed_backend_engine_is_not_disposed(self):
         borrowed_engine = MagicMock(spec=Engine)
-        fake_settings = MagicMock()
-        fake_settings.engine = borrowed_engine
+        settings = _settings_bound_to(borrowed_engine)
         with _airflow_connection_module() as airflow_connection:
             owner = airflow_connection.AirflowConnection(_backend_config())
             with (
-                patch.object(airflow_connection, "settings", fake_settings),
-                patch.object(airflow_connection, "_get_connection", return_value=borrowed_engine),
+                patch.object(airflow_connection, "IS_AIRFLOW_3", False),
+                patch.object(airflow_connection, "settings", settings),
             ):
                 assert owner.client is borrowed_engine
                 owner.close()
@@ -1143,18 +1166,12 @@ class TestBackendEngineDisposal:
         borrowed_engine.dispose.assert_not_called()
 
     def test_om_built_engine_is_disposed(self):
-        borrowed_engine = MagicMock(spec=Engine)
-        om_engine = MagicMock(spec=Engine)
-        fake_settings = MagicMock()
-        fake_settings.engine = borrowed_engine
         with _airflow_connection_module() as airflow_connection:
-            owner = airflow_connection.AirflowConnection(_backend_config())
-            with (
-                patch.object(airflow_connection, "settings", fake_settings),
-                patch.object(airflow_connection, "_get_connection", return_value=om_engine),
-            ):
-                assert owner.client is om_engine
+            owner = airflow_connection.AirflowConnection(_sqlite_backend_config())
+            with patch.object(Engine, "dispose", autospec=True) as mock_dispose:
+                engine = owner.client
+                assert isinstance(engine, Engine)
                 owner.close()
 
-        om_engine.dispose.assert_called_once()
-        borrowed_engine.dispose.assert_not_called()
+        mock_dispose.assert_called_once()
+        assert mock_dispose.call_args[0][0] is engine
