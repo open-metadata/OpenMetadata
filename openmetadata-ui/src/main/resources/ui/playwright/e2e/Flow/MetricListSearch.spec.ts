@@ -100,6 +100,8 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
+    const initialCount = await page.getByTestId('metric-name').count();
+
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538
       // cancelled this request on the re-render that typing triggered, so the
@@ -136,12 +138,10 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
       await clearResponse;
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page.getByTestId('metric-name').filter({ hasText: matchName })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('metric-name').filter({ hasText: otherName })
-      ).toBeVisible();
+      // The list is paginated — specific names may not be on page 1 after
+      // the full list is restored. Verify restoration by checking the visible
+      // row count on the current page is back to the pre-search count.
+      await expect(page.getByTestId('metric-name')).toHaveCount(initialCount);
     });
   });
 });
