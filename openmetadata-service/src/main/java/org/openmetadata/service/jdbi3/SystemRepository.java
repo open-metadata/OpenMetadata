@@ -14,6 +14,7 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -75,6 +77,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -104,6 +107,7 @@ import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -114,6 +118,8 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 @Repository
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
+  private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
+      "Glossary term relation settings changed while the JSON Patch was being applied";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
@@ -333,6 +339,9 @@ public class SystemRepository {
   }
 
   public Response patchSetting(String settingName, JsonPatch patch) {
+    if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
+      return patchGlossaryTermRelationSettings(patch);
+    }
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
     JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
@@ -348,6 +357,39 @@ public class SystemRepository {
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
+    String expectedJson = dao.getGlossaryTermRelationSettingsJson();
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    }
+
+    GlossaryTermRelationSettings current =
+        JsonUtils.readValue(expectedJson, GlossaryTermRelationSettings.class);
+    JsonValue patched;
+    try {
+      patched = JsonUtils.applyPatch(current, patch);
+    } catch (JsonException exception) {
+      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED, exception);
+    }
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+    GlossaryTermRelationSettingsUtil.normalize(updated);
+    GlossaryTermRelationSettingsUtil.validateUniqueNames(updated);
+    String updatedJson = JsonUtils.pojoToJson(updated);
+    int updatedRows = dao.updateGlossaryTermRelationSettingsIfCurrent(expectedJson, updatedJson);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED);
+    }
+
+    SettingsCache.invalidateSettings(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    Settings response =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, response, ENTITY_UPDATED)).toResponse();
   }
 
   private void postUpdate(SettingsType settingsType) {
