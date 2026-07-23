@@ -16,7 +16,6 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
-  PaginationCardWithControls,
   SlideoutMenu,
   TextArea,
   Typography,
@@ -31,6 +30,8 @@ import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/Header
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -190,14 +191,13 @@ const WorkflowsPage = () => {
   );
 
   const handlePageChange = useCallback(
-    (page: number) => {
-      if (page > currentPage && paging.after) {
-        getWorkflows(page, { [CursorType.AFTER]: paging.after });
-      } else if (page < currentPage && paging.before) {
-        getWorkflows(page, { [CursorType.BEFORE]: paging.before });
+    ({ cursorType, currentPage: page }: PagingHandlerParams) => {
+      const cursor = cursorType ? paging[cursorType] : undefined;
+      if (cursorType && cursor) {
+        getWorkflows(page, { [cursorType]: cursor });
       }
     },
-    [getWorkflows, paging, currentPage]
+    [getWorkflows, paging]
   );
 
   useEffect(() => {
@@ -369,19 +369,23 @@ const WorkflowsPage = () => {
                 ))}
               </div>
             </div>
-            <PaginationCardWithControls
-              data-testid="workflows-pagination"
-              page={currentPage}
-              pageSize={pageSize}
-              pageSizeOptions={[
-                PAGE_SIZE_BASE,
-                PAGE_SIZE_MEDIUM,
-                PAGE_SIZE_LARGE,
-              ]}
-              total={Math.max(1, Math.ceil(paging.total / pageSize))}
-              onPageChange={handlePageChange}
-              onPageSizeChange={setPageSize}
-            />
+            <div
+              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-primary tw:px-6 tw:py-3"
+              data-testid="workflows-pagination">
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={loading}
+                pageSize={pageSize}
+                pageSizeOptions={[
+                  PAGE_SIZE_BASE,
+                  PAGE_SIZE_MEDIUM,
+                  PAGE_SIZE_LARGE,
+                ]}
+                paging={paging}
+                pagingHandler={handlePageChange}
+                onShowSizeChange={setPageSize}
+              />
+            </div>
           </div>
         )}
       </div>
