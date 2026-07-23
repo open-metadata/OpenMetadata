@@ -79,12 +79,16 @@ async function navigateToGlossaryRelationsGraph(
   await waitForGraphLoaded(page);
 }
 
-test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () => {
+test.describe(
+  'Ontology Explorer — RDF exports (Turtle and RDF/XML)',
+  { tag: ['@ontology-rdf'] },
+  () => {
   test('Turtle (.ttl) option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     // Mock RDF status so the export options are rendered.
     await page.route('**/api/v1/rdf/status**', (route) =>
@@ -106,6 +110,7 @@ test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () 
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -124,6 +129,7 @@ test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () 
   test('Turtle export triggers a .ttl file download', async ({ browser }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -156,6 +162,7 @@ test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () 
   test('RDF/XML export triggers a .rdf file download', async ({ browser }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -189,6 +196,7 @@ test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () 
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     // RDF disabled — the options must not appear.
     await page.route('**/api/v1/rdf/status**', (route) =>
@@ -210,14 +218,19 @@ test.describe.skip('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () 
 
     await page.close();
   });
-});
+  }
+);
 
-test.describe('Ontology Explorer — RDF graph data loading', () => {
+test.describe(
+  'Ontology Explorer — RDF graph data loading',
+  { tag: ['@ontology-rdf'] },
+  () => {
   test('term Relations Graph requests /rdf/glossary/graph scoped to the selected term (glossaryTermId) when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -226,7 +239,6 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
       route.fulfill({ json: graphJson() })
     );
 
-    await redirectToHomePage(page);
     await rdfTerm1.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
 
@@ -273,6 +285,7 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -310,6 +323,7 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     const pageErrors: string[] = [];
     page.on('pageerror', (error) => pageErrors.push(error.message));
@@ -373,6 +387,7 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
     test.slow();
     const page = await browser.newPage();
     await adminUser.login(page);
+    await redirectToHomePage(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -397,4 +412,5 @@ test.describe('Ontology Explorer — RDF graph data loading', () => {
 
     await page.close();
   });
-});
+  }
+);
