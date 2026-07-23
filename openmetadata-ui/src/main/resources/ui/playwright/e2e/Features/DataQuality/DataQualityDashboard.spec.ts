@@ -643,7 +643,10 @@ test.describe(
           page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
         ).toContainText('Failed');
         await expect(
-          page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
+          page
+            .getByRole('row', { name: uniquenessTestCaseName })
+            .getByRole('gridcell', { exact: true, name: '--' })
+            .last()
         ).toHaveText('--');
       });
 
