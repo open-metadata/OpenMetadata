@@ -57,19 +57,21 @@ test.describe('Glossary P3 Tests', () => {
         .locator(descriptionBox)
         .fill('Glossary with unicode characters');
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (res) =>
+            res.url().endsWith('/api/v1/glossaries') &&
+            res.request().method() === 'POST'
+        ),
+        // A stale navigation toast can overlap this centered button. Keyboard
+        // activation exercises the same form submission without a pointer race.
+        page.getByTestId('save-glossary').press('Enter'),
+      ]);
+      glossary.responseData = await response.json();
+      expect(response.ok()).toBe(true);
 
-      try {
-        const response = await glossaryResponse;
-        glossary.responseData = await response.json();
-
-        // Verify glossary was created
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-      } catch {
-        // Some systems may not support unicode in names - test passes if we get here
-        expect(true).toBe(true);
-      }
+      // Verify glossary was created
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
     } finally {
       if (glossary.responseData) {
         await glossary.delete(apiContext);

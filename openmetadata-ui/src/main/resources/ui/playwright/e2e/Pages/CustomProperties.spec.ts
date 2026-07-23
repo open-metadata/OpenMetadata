@@ -266,6 +266,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     key === 'entity_table'
       ? Object.values(CustomPropertyTypeByName)
       : [CustomPropertyTypeByName.STRING];
+  const preparedPropertyTypes =
+    key === 'entity_container'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.HYPERLINK_CP]
+      : valuePropertyTypes;
 
   test.describe(`Add update and delete custom properties for ${entity.name}`, () => {
     test.describe.configure({ mode: 'default' });
@@ -309,7 +313,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       } else if (makeInstance !== null) {
         mainEntity = makeInstance();
         await mainEntity.create(apiContext);
-        await mainEntity.prepareCustomProperty(apiContext, valuePropertyTypes);
+        await mainEntity.prepareCustomProperty(
+          apiContext,
+          preparedPropertyTypes
+        );
 
         if (key === 'entity_table') {
           for (let i = 0; i < 5; i++) {

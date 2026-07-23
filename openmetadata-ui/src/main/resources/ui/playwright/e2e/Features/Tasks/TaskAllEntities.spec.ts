@@ -100,6 +100,8 @@ async function createAndResolveTask(
 }
 
 test.describe('Task Resolution - Table Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -266,6 +268,8 @@ test.describe('Task Resolution - Table Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Topic Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -432,6 +436,8 @@ test.describe('Task Resolution - Topic Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Dashboard Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -601,6 +607,8 @@ test.describe('Task Resolution - Dashboard Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Pipeline Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -770,6 +778,8 @@ test.describe('Task Resolution - Pipeline Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Container Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -939,6 +949,8 @@ test.describe('Task Resolution - Container Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - MLModel Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1108,6 +1120,8 @@ test.describe('Task Resolution - MLModel Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - SearchIndex Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1277,6 +1291,8 @@ test.describe('Task Resolution - SearchIndex Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Glossary Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1412,6 +1428,8 @@ test.describe('Task Resolution - Glossary Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - GlossaryTerm Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1552,6 +1570,8 @@ test.describe('Task Resolution - GlossaryTerm Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Metric Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1721,6 +1741,8 @@ test.describe('Task Resolution - Metric Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - File Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1856,6 +1878,8 @@ test.describe('Task Resolution - File Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - Directory Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();
@@ -1994,6 +2018,8 @@ test.describe('Task Resolution - Directory Entity (All Task Types)', () => {
 });
 
 test.describe('Task Resolution - DataProduct Entity (All Task Types)', () => {
+  test.describe.configure({ mode: 'default' });
+
   const adminUser = new UserClass();
   const ownerUser = new UserClass();
   const newOwner = new UserClass();

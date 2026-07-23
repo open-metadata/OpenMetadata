@@ -236,7 +236,7 @@ export const EntityExportModalProvider = ({
       setCSVExportJob(updatedCSVExportJob);
       csvExportJobRef.current = updatedCSVExportJob;
 
-      if (response.status === 'COMPLETED' && response.data !== undefined) {
+      if (response.status === 'COMPLETED' && isString(response.data)) {
         handleCSVExportSuccess(response.data, activeJob.fileName);
       } else if (response.status === 'COMPLETED') {
         stopCSVExportPolling();

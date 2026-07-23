@@ -9,6 +9,7 @@ import re
 from collections import Counter
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import parse_qs, urlsplit
 
 
 ACCESS_LOG = re.compile(
@@ -16,7 +17,7 @@ ACCESS_LOG = re.compile(
     r'(?P<path>\S+) HTTP/[^\"]+" (?P<status>\d{3}) (?P<bytes>\S+) '
     r'"[^"]*" "[^"]*" (?P<duration>\d+)'
 )
-APP_ENTRY = re.compile(r"^/assets/app-[A-Za-z0-9_-]+\.js$")
+APP_ENTRY = re.compile(r"^/assets/app-entry-[A-Za-z0-9_-]+\.js$")
 STATIC_RESOURCE_SUFFIXES = {
     "css": "stylesheet",
     "gif": "image",
@@ -63,7 +64,14 @@ class RequestAccumulator:
         match = ACCESS_LOG.search(line)
         if not match:
             return
-        path = match["path"].split("?", 1)[0]
+        request_url = urlsplit(match["path"])
+        path = request_url.path
+        if path == "/favicon.ico":
+            diagnostics = parse_qs(request_url.query)
+            if diagnostics.get("playwright-app-boot") == ["1"]:
+                self.counters["appBoots"] += 1
+            if diagnostics.get("playwright-ui-scenario") == ["1"]:
+                self.counters["uiScenarios"] += 1
         kind = "api" if path.startswith("/api/") else "static"
         response_bytes = match["bytes"]
         self.counters[f"{kind}Requests"] += 1
@@ -78,7 +86,7 @@ class RequestAccumulator:
             self.static_endpoints[f"{match['method']} {path}"] += 1
             self.static_resource_types[static_resource_type(path)] += 1
             if APP_ENTRY.match(path):
-                self.counters["appBoots"] += 1
+                self.counters["appEntryRequests"] += 1
 
     def add_all(self, lines: Iterable[str]) -> None:
         for line in lines:
@@ -86,7 +94,7 @@ class RequestAccumulator:
 
     def payload(self, shard_id: str) -> dict[str, object]:
         return {
-            "version": 1,
+            "version": 2,
             "shardId": shard_id,
             "totalRequests": self.counters["apiRequests"]
             + self.counters["staticRequests"],

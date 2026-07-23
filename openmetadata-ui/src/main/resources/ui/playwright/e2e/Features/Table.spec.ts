@@ -248,7 +248,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
-    await pageSizeDropdown.hover();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
 
     const pageSizeOption = page
       .locator('.ant-dropdown:not(.ant-dropdown-hidden)')

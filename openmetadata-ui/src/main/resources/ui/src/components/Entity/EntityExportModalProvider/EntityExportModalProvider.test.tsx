@@ -94,6 +94,16 @@ const WebsocketConsumerComponent = () => {
         }>
         Complete
       </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            data: null,
+            jobId: mockExportJob.jobId,
+            status: 'COMPLETED',
+          })
+        }>
+        Complete with null data
+      </button>
     </>
   );
 };
@@ -330,7 +340,7 @@ describe('EntityExportModalProvider component', () => {
 
     fireEvent.click(await screen.findByText('Manage'));
 
-    const exportBtn = await screen.findByText('label.export');
+    const exportBtn = await screen.findByTestId('submit-button');
 
     await act(async () => {
       fireEvent.click(exportBtn);
@@ -338,6 +348,42 @@ describe('EntityExportModalProvider component', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByText('Complete'));
+    });
+
+    expect(getCsvAsyncJobResult).toHaveBeenCalledWith(
+      mockExportJob.jobId,
+      expect.objectContaining({ aborted: expect.any(Boolean) })
+    );
+
+    await waitFor(() =>
+      expect(downloadFile).toHaveBeenCalledWith(
+        'name\nmetric_one',
+        expect.stringContaining('.csv')
+      )
+    );
+  });
+
+  it('Completion event with null data downloads the CSV from the job result endpoint', async () => {
+    (getCsvAsyncJobResult as jest.Mock).mockResolvedValueOnce(
+      'name\nmetric_one'
+    );
+
+    render(
+      <EntityExportModalProvider>
+        <WebsocketConsumerComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+
+    const exportBtn = await screen.findByTestId('submit-button');
+
+    await act(async () => {
+      fireEvent.click(exportBtn);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Complete with null data'));
     });
 
     expect(getCsvAsyncJobResult).toHaveBeenCalledWith(

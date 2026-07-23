@@ -132,6 +132,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const entityName = entity.getType();
 
   test.describe(key, () => {
+    test.describe.configure({ mode: 'default' });
+
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 

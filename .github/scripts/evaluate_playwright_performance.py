@@ -33,6 +33,16 @@ def percentage(numerator: float, denominator: float) -> float:
     return round(100 * numerator / denominator, 2) if denominator else 0.0
 
 
+def has_valid_boot_measurement(
+    app_boots: int, ui_scenarios: int, app_entry_requests: int
+) -> bool:
+    return (
+        ui_scenarios > 0
+        and app_boots >= ui_scenarios
+        and app_boots >= app_entry_requests
+    )
+
+
 def aggregate_ranked_counts(
     payloads: list[dict[str, Any]], counts_key: str, ranked_key: str, limit: int
 ) -> list[dict[str, Any]]:
@@ -75,6 +85,7 @@ def main() -> None:
     lifecycle_attempts = sum(
         int(test.get("attempts", 0)) for test in executed_lifecycle_tests
     )
+    stability_attempts = attempts + lifecycle_attempts
     product_worker_ms = sum(int(test.get("durationMs", 0)) for test in tests)
     lifecycle_worker_ms = sum(
         int(test.get("durationMs", 0)) for test in lifecycle_tests
@@ -98,6 +109,10 @@ def main() -> None:
     api_server_ms = sum(int(shard.get("apiServerMs", 0)) for shard in requests)
     static_server_ms = sum(int(shard.get("staticServerMs", 0)) for shard in requests)
     app_boots = sum(int(shard.get("appBoots", 0)) for shard in requests)
+    ui_scenarios = sum(int(shard.get("uiScenarios", 0)) for shard in requests)
+    app_entry_requests = sum(
+        int(shard.get("appEntryRequests", 0)) for shard in requests
+    )
     static_resource_types: Counter[str] = Counter()
     for shard in requests:
         static_resource_types.update(
@@ -125,7 +140,7 @@ def main() -> None:
         "lifecycleTests": len(lifecycle_tests),
         "executedLifecycleTests": len(executed_lifecycle_tests),
         "lifecycleAttempts": lifecycle_attempts,
-        "stabilityAttempts": attempts + lifecycle_attempts,
+        "stabilityAttempts": stability_attempts,
         "productWorkerMs": product_worker_ms,
         "lifecycleWorkerMs": lifecycle_worker_ms,
         "totalWorkerMs": total_worker_ms,
@@ -142,11 +157,25 @@ def main() -> None:
         "staticBytes": static_bytes,
         "apiServerMs": api_server_ms,
         "staticServerMs": static_server_ms,
-        "requestsPerAttempt": round(total_requests / attempts, 2) if attempts else 0.0,
+        "appBoots": app_boots,
+        "uiScenarios": ui_scenarios,
+        "appEntryRequests": app_entry_requests,
+        "requestsPerAttempt": (
+            round(total_requests / stability_attempts, 2)
+            if stability_attempts
+            else 0.0
+        ),
         "staticRequestsPerAppBoot": (
             round(static_requests / app_boots, 2) if app_boots else 0.0
         ),
-        "appBootsPerAttempt": round(app_boots / attempts, 2) if attempts else 0.0,
+        "appBootsPerAttempt": (
+            round(app_boots / stability_attempts, 2)
+            if stability_attempts
+            else 0.0
+        ),
+        "appBootsPerUIScenario": (
+            round(app_boots / ui_scenarios, 2) if ui_scenarios else 0.0
+        ),
         "staticResourceTypes": dict(sorted(static_resource_types.items())),
         "topApiEndpoints": aggregate_ranked_counts(
             requests, "apiEndpointCounts", "topApiEndpoints", 20
@@ -191,7 +220,11 @@ def main() -> None:
         "requestsPerAttemptBelowTwoHundred": metrics["requestsPerAttempt"] < 200,
         "staticRequestsPerAppBootBelowOneHundred": app_boots > 0
         and metrics["staticRequestsPerAppBoot"] < 100,
-        "atMostOneAppBootPerAttempt": metrics["appBootsPerAttempt"] <= 1,
+        "atMostOneAppBootPerUIScenario": ui_scenarios > 0
+        and metrics["appBootsPerUIScenario"] <= 1,
+        "appBootMeasurementIntegrity": has_valid_boot_measurement(
+            app_boots, ui_scenarios, app_entry_requests
+        ),
     }
     output = {
         "version": 1,

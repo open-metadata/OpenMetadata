@@ -214,7 +214,7 @@ def load_history(
             continue
         for test in payload.get("tests", []):
             test_id = test.get("id")
-            duration = int(test.get("durationMs", 0))
+            duration = max(0, int(test.get("durationMs", 0)))
             if test_id and duration > 0:
                 durations[test_id].append(duration)
                 identity = (
@@ -222,6 +222,8 @@ def load_history(
                     test.get("leafTitle", test.get("title", "")),
                 )
                 identity_durations[identity].append(duration)
+            elif test_id and test.get("outcome") == "skipped":
+                durations[test_id].append(0)
 
     weights = {test_id: percentile_75(values) for test_id, values in durations.items()}
     identity_weights = {
@@ -229,6 +231,23 @@ def load_history(
         for identity, values in identity_durations.items()
     }
     return weights, identity_weights
+
+
+def apply_history_weights(
+    units: list[Unit],
+    test_weights: dict[str, int],
+    identity_weights: dict[tuple[str, str], int],
+) -> None:
+    for unit in units:
+        unit.weight_ms = sum(
+            test_weights.get(
+                test_id,
+                identity_weights.get(
+                    (unit.file, unit.test_names[test_id]), FALLBACK_TEST_MS
+                ),
+            )
+            for test_id in unit.test_ids
+        )
 
 
 def normalize_spec(path: str) -> str:
@@ -399,18 +418,7 @@ def main() -> None:
     if not units:
         raise SystemExit("Playwright selection produced no runnable test units")
 
-    for unit in units:
-        unit.weight_ms = sum(
-            test_weights.get(
-                test_id,
-                identity_weights.get(
-                    (unit.file, unit.test_names[test_id]), FALLBACK_TEST_MS
-                ),
-            )
-            for test_id in unit.test_ids
-        )
-        if unit.weight_ms == 0:
-            unit.weight_ms = FALLBACK_TEST_MS
+    apply_history_weights(units, test_weights, identity_weights)
 
     oversized_units = [unit for unit in units if unit.weight_ms > TARGET_MS]
     if oversized_units:

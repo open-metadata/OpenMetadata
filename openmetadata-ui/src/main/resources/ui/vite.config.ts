@@ -310,7 +310,7 @@ export default defineConfig(async ({ mode }) => {
         },
         output: {
           entryFileNames: isPlaywrightBuild
-            ? 'assets/app-[hash].js'
+            ? 'assets/app-entry-[hash].js'
             : 'assets/[name]-[hash].js',
           assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
@@ -487,6 +487,7 @@ export default defineConfig(async ({ mode }) => {
     cacheDir: 'node_modules/.vite',
 
     define: {
+      'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'

@@ -1010,7 +1010,7 @@ jobs:
             --aggregate "${PW_REQUEST_METRICS:-$RUNNER_TEMP/missing-request-metrics.json}" \
             --output "openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json" \
             --shard-id "$SHARD_ID"
-          jq '{shardId, totalRequests, apiRequests, staticRequests, apiBytes, staticBytes, appBoots, staticResourceTypes, topApiEndpoints, topStaticEndpoints}' \
+          jq '{shardId, totalRequests, apiRequests, staticRequests, apiBytes, staticBytes, appBoots, uiScenarios, appEntryRequests, staticResourceTypes, topApiEndpoints, topStaticEndpoints}' \
             openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json
 
       - name: Record shard execution status

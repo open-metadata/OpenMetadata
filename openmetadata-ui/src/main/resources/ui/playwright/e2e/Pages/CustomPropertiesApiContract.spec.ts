@@ -12,6 +12,7 @@
  */
 
 import type { APIRequestContext, APIResponse } from '@playwright/test';
+import { createHash } from 'crypto';
 import { expect, test, TestNamespace } from '../../fixtures/testNamespace';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -489,11 +490,26 @@ const removeCustomProperty = async ({
   );
 };
 
+const getReferenceUserName = (namespace: TestNamespace) => {
+  const namespacedUserName = namespace.name('reference-user');
+
+  if (namespacedUserName.length <= 64) {
+    return namespacedUserName;
+  }
+
+  const userNameHash = createHash('sha256')
+    .update(namespacedUserName)
+    .digest('hex')
+    .slice(0, 32);
+
+  return `${namespacedUserName.slice(0, 31)}-${userNameHash}`;
+};
+
 const createReferenceUser = async (
   apiContext: APIRequestContext,
   namespace: TestNamespace
 ) => {
-  const userName = namespace.name('reference-user');
+  const userName = getReferenceUserName(namespace);
   const response = await apiContext.post('/api/v1/users/signup', {
     data: {
       email: `${userName}@example.com`,

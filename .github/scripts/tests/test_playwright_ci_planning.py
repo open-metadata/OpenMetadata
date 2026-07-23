@@ -136,6 +136,99 @@ def test_history_uses_p75_and_leaf_identity_fallback(tmp_path):
     assert identity_weights[("Features/Ingestion.spec.ts", "runs ingestion")] == 250
 
 
+def test_history_includes_retry_time_and_only_preserves_explicit_skips(tmp_path):
+    planner = load_script("build_playwright_shards")
+    history = tmp_path / "history.json"
+    history.write_text(
+        json.dumps(
+            {
+                "mode": "full",
+                "tests": [
+                    {
+                        "id": "flaky-test",
+                        "file": "Features/Entity.spec.ts",
+                        "leafTitle": "runs once",
+                        "durationMs": 150,
+                        "retryDurationMs": 50,
+                    },
+                    {
+                        "id": "known-skip",
+                        "file": "Features/Entity.spec.ts",
+                        "leafTitle": "zero observation",
+                        "durationMs": 0,
+                        "outcome": "skipped",
+                    },
+                    {
+                        "id": "expected-zero",
+                        "file": "Features/Entity.spec.ts",
+                        "leafTitle": "expected zero",
+                        "durationMs": 0,
+                        "outcome": "expected",
+                    },
+                ],
+            }
+        )
+    )
+
+    weights, identity_weights = planner.load_history([history])
+    units = [
+        planner.Unit(
+            "chromium",
+            "Features/Entity.spec.ts",
+            "known skip",
+            test_ids={"known-skip"},
+            test_names={"known-skip": "zero observation"},
+        ),
+        planner.Unit(
+            "chromium",
+            "Features/Entity.spec.ts",
+            "expected zero",
+            test_ids={"expected-zero"},
+            test_names={"expected-zero": "expected zero"},
+        ),
+        planner.Unit(
+            "chromium",
+            "Features/Entity.spec.ts",
+            "same identity as skip",
+            test_ids={"new-same-identity"},
+            test_names={"new-same-identity": "zero observation"},
+        ),
+        planner.Unit(
+            "chromium",
+            "Features/New.spec.ts",
+            "new test",
+            test_ids={"new-test"},
+            test_names={"new-test": "new test"},
+        ),
+    ]
+
+    planner.apply_history_weights(units, weights, identity_weights)
+
+    assert weights["flaky-test"] == 150
+    assert weights["known-skip"] == 0
+    assert "expected-zero" not in weights
+    assert ("Features/Entity.spec.ts", "zero observation") not in identity_weights
+    assert units[0].weight_ms == 0
+    assert units[1].weight_ms == planner.FALLBACK_TEST_MS
+    assert units[2].weight_ms == planner.FALLBACK_TEST_MS
+    assert units[3].weight_ms == planner.FALLBACK_TEST_MS
+
+
+def test_versioned_baseline_only_uses_zero_weight_for_skipped_ids():
+    planner = load_script("build_playwright_shards")
+    baseline = SCRIPTS.parents[0] / "playwright/timing-baseline.json"
+    payload = json.loads(baseline.read_text())
+    zero_tests = [test for test in payload["tests"] if test["durationMs"] == 0]
+
+    weights, _ = planner.load_history([baseline])
+
+    assert any(test["outcome"] == "expected" for test in zero_tests)
+    assert all(
+        (weights.get(test["id"]) == 0) == (test["outcome"] == "skipped")
+        for test in zero_tests
+    )
+
+
 def test_timing_import_keeps_project_executions_separate(tmp_path, monkeypatch):
     importer = load_script("import_playwright_json_timings")
     report = tmp_path / "results.json"
@@ -663,7 +756,7 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     requests = load_script("summarize_playwright_requests")
     accumulator = requests.RequestAccumulator()
     accumulator.add(
-        '127.0.0.1 "GET /assets/app-Ab_12.js HTTP/1.1" 200 120 "-" "ua" 4\n'
+        '127.0.0.1 "GET /assets/app-entry-Ab_12.js HTTP/1.1" 200 120 "-" "ua" 4\n'
     )
     accumulator.add(
         '127.0.0.1 "GET /api/v1/search/query?q=x HTTP/1.1" 200 80 "-" "ua" 7\n'
@@ -671,19 +764,43 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
 
     payload = accumulator.payload("chromium-01")
 
+    assert payload["version"] == 2
     assert payload["totalRequests"] == 2
     assert payload["staticBytes"] == 120
     assert payload["apiBytes"] == 80
-    assert payload["appBoots"] == 1
+    assert payload["appEntryRequests"] == 1
     assert payload["topApiEndpoints"] == [
         {"endpoint": "GET /api/v1/search/query", "requests": 1}
     ]
     assert payload["apiEndpointCounts"] == {"GET /api/v1/search/query": 1}
     assert payload["staticResourceTypes"] == {"javascript": 1}
-    assert payload["staticEndpointCounts"] == {"GET /assets/app-Ab_12.js": 1}
+    assert payload["staticEndpointCounts"] == {
+        "GET /assets/app-entry-Ab_12.js": 1
+    }
     assert payload["topStaticEndpoints"] == [
-        {"endpoint": "GET /assets/app-Ab_12.js", "requests": 1}
+        {"endpoint": "GET /assets/app-entry-Ab_12.js", "requests": 1}
     ]
+
+
+def test_request_metrics_count_ui_scenarios_without_counting_manual_chunk_boots():
+    requests = load_script("summarize_playwright_requests")
+    accumulator = requests.RequestAccumulator()
+    accumulator.add_all(
+        [
+            '127.0.0.1 "GET /favicon.ico?playwright-app-boot=1&playwright-ui-scenario=1 HTTP/1.1" 200 10 "-" "ua" 1\n',
+            '127.0.0.1 "GET /favicon.ico?playwright-app-boot=1 HTTP/1.1" 200 10 "-" "ua" 1\n',
+            '127.0.0.1 "GET /assets/app-entry-Ab_12.js HTTP/1.1" 200 120 "-" "ua" 4\n',
+            '127.0.0.1 "GET /assets/app-e2e-runtime-Xy_34.js HTTP/1.1" 200 80 "-" "ua" 2\n',
+            '127.0.0.1 "GET /assets/app-e2e-schema-database-Xy_34.js HTTP/1.1" 200 40 "-" "ua" 1\n',
+        ]
+    )
+
+    payload = accumulator.payload("chromium-01")
+
+    assert payload["staticRequests"] == 5
+    assert payload["appBoots"] == 2
+    assert payload["uiScenarios"] == 1
+    assert payload["appEntryRequests"] == 1
 
 
 def test_performance_metrics_aggregate_ranked_endpoint_counts():
@@ -739,7 +856,12 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
             }
         ],
     }
-    requests = {"totalRequests": 100}
+    requests = {
+        "totalRequests": 100,
+        "appBoots": 3,
+        "uiScenarios": 3,
+        "appEntryRequests": 2,
+    }
     phases = {"lane": "chromium", "executionSeconds": 1}
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -768,17 +890,35 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
 
     evaluator.main()
 
-    metrics = json.loads(output.read_text())["metrics"]
+    performance = json.loads(output.read_text())
+    metrics = performance["metrics"]
     assert metrics["tests"] == 1
     assert metrics["attempts"] == 1
     assert metrics["lifecycleTests"] == 1
     assert metrics["lifecycleAttempts"] == 2
+    assert metrics["stabilityAttempts"] == 3
+    assert metrics["requestsPerAttempt"] == 33.33
+    assert metrics["appBootsPerAttempt"] == 1
+    assert metrics["appBootsPerUIScenario"] == 1
+    assert metrics["appEntryRequests"] == 2
+    assert performance["targets"]["atMostOneAppBootPerUIScenario"] is True
+    assert performance["targets"]["appBootMeasurementIntegrity"] is True
+    assert "atMostOneAppBootPerAttempt" not in performance["targets"]
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
     assert metrics["lifecycleFlakyRatePercent"] == 100
     assert metrics["flakyRatePercent"] == 50
     assert metrics["lifecycleRetryWorkerPercent"] == 50
     assert metrics["retryWorkerPercent"] == 25
+
+
+def test_boot_measurement_integrity_requires_beacons_for_entry_requests():
+    evaluator = load_script("evaluate_playwright_performance")
+
+    assert evaluator.has_valid_boot_measurement(2, 1, 1) is True
+    assert evaluator.has_valid_boot_measurement(0, 0, 1) is False
+    assert evaluator.has_valid_boot_measurement(1, 1, 2) is False
+    assert evaluator.has_valid_boot_measurement(1, 2, 1) is False
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -971,6 +1111,18 @@ def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
     ).read_text()
+    app_entry = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/src/index.tsx"
+    ).read_text()
 
-    assert "? 'assets/app-[hash].js'" in vite_config
+    assert "? 'assets/app-entry-[hash].js'" in vite_config
     assert ": 'assets/[name]-[hash].js'" in vite_config
+    assert (
+        "'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild)"
+        in vite_config
+    )
+    assert "if (!import.meta.env.PW_E2E_BUILD)" in app_entry
+    assert "sessionStorage.getItem(scenarioKey)" in app_entry
+    assert "'playwright-app-boot': '1'" in app_entry
+    assert "diagnostics.set('playwright-ui-scenario', '1')" in app_entry

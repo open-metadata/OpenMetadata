@@ -27,6 +27,7 @@ import { StoredProcedureClass } from '../../../support/entity/StoredProcedureCla
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { WorksheetClass } from '../../../support/entity/WorksheetClass';
+import { authenticateAdminPage } from '../../../utils/admin';
 import {
   clickOutside,
   getApiContext,
@@ -141,7 +142,7 @@ test.describe('Data asset lineage', () => {
   );
 
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    await authenticateAdminPage(page);
   });
 
   Object.entries(lineageSourceEntities).forEach(([key, EntityClass]) => {
@@ -295,7 +296,7 @@ test.describe('Column Level Lineage', () => {
   );
 
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    await authenticateAdminPage(page);
   });
 
   Object.entries(columnLevelEntities).forEach(([key, EntityClassSource]) => {
@@ -486,7 +487,7 @@ test.describe('Temp lineage table nodes', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    await authenticateAdminPage(page);
   });
 
   test('should render temp lineage table nodes on canvas', async ({ page }) => {
