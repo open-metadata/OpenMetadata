@@ -84,12 +84,15 @@ def test_all_generated_models_are_buildable():
 
 def test_generated_models_defer_build_is_enabled():
     """A generated model inherits defer_build and is unbuilt at import."""
-    # Fresh interpreter: __pydantic_complete__ flips to True on first validation.
+    # Fresh interpreter (completeness flips on first validation) with the toggle
+    # unset, so this asserts the default rather than an ambient OM_PYDANTIC_DEFER_BUILD.
+    env = {key: value for key, value in os.environ.items() if key != "OM_PYDANTIC_DEFER_BUILD"}
     result = subprocess.run(
         [sys.executable, "-c", _DEFER_PROBE],
         capture_output=True,
         text=True,
         check=False,
+        env=env,
     )
     assert result.returncode == 0, f"defer_build probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
