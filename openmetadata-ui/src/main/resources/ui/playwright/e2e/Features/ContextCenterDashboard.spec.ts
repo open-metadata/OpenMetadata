@@ -225,8 +225,8 @@ test.describe('Context Center - Dashboard', () => {
       const mostCitedCard = page.getByTestId('most-cited-memories-card');
       await expect(mostCitedCard).toBeVisible();
 
-      const firstItem = mostCitedCard.locator('.tw\\:py-1\\.5').first();
-      await expect(firstItem).toContainText(title);
+      const firstItem = mostCitedCard.getByTestId('most-cited-count').first();
+      await expect(firstItem).toContainText('Cited 999999 times');
     });
   });
 
