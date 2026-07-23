@@ -23,6 +23,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.lang.reflect.Method;
 import java.util.*;
 import org.junit.jupiter.api.AfterAll;
@@ -38,6 +42,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests for the validateLineageDetails logic in LineageRepository.
@@ -171,6 +176,42 @@ class LineageRepositoryTest {
     assertTrue(
         deserializedDetails.getColumnsLineage() == null
             || deserializedDetails.getColumnsLineage().isEmpty());
+  }
+
+  @Test
+  void testValidateLineageDetails_EntityOnlyAI_lineageDoesNotLogColumnErrors() {
+    LineageRepository repository = new LineageRepository();
+    EntityReference llmModel =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("llmModel")
+            .withFullyQualifiedName("service.model");
+    EntityReference aiApplication =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("aiApplication")
+            .withFullyQualifiedName("application");
+    LineageDetails details =
+        new LineageDetails()
+            .withDescription("Uses the model")
+            .withSource(LineageDetails.Source.MANUAL);
+    Logger logger = (Logger) LoggerFactory.getLogger(LineageRepository.class);
+    ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+
+    try {
+      String result = repository.validateLineageDetails(llmModel, aiApplication, details);
+
+      assertNotNull(result);
+      assertTrue(
+          appender.list.stream()
+              .filter(event -> event.getLevel() == Level.ERROR)
+              .noneMatch(event -> event.getFormattedMessage().contains("for column lineage")));
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+    }
   }
 
   @Test

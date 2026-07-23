@@ -19,6 +19,10 @@ export interface CreateLLMModel {
      */
     baseModel: string;
     /**
+     * Capabilities of this model
+     */
+    capabilities?: ModelCapability[];
+    /**
      * Certifications this model has received
      */
     certifications?: string[];
@@ -68,6 +72,10 @@ export interface CreateLLMModel {
      */
     modelEvaluation?: ModelEvaluation;
     /**
+     * Type of LLM model
+     */
+    modelType?: ModelType;
+    /**
      * Model provider (e.g., 'OpenAI', 'Anthropic', 'Meta')
      */
     modelProvider?: string;
@@ -88,6 +96,10 @@ export interface CreateLLMModel {
      */
     owners?: EntityReference[];
     /**
+     * Provider's internal model ID
+     */
+    providerModelId?: string;
+    /**
      * Regulatory compliance standards met
      */
     regulatoryCompliance?: string[];
@@ -107,6 +119,26 @@ export interface CreateLLMModel {
      * Training data and methodology information
      */
     trainingMetadata?: TrainingMetadata;
+}
+
+export enum ModelCapability {
+    Audio = "Audio",
+    Chat = "Chat",
+    CodeGeneration = "CodeGeneration",
+    Embeddings = "Embeddings",
+    FunctionCalling = "FunctionCalling",
+    TextGeneration = "TextGeneration",
+    ToolUse = "ToolUse",
+    Vision = "Vision",
+}
+
+export enum ModelType {
+    Adapter = "Adapter",
+    BaseModel = "BaseModel",
+    Custom = "Custom",
+    Distilled = "Distilled",
+    FineTuned = "FineTuned",
+    Quantized = "Quantized",
 }
 
 /**
