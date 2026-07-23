@@ -35,6 +35,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class LLMModelRepository extends EntityRepository<LLMModel> {
+  private static final String FIELD_CAPABILITIES = "capabilities";
+  private static final String FIELD_CERTIFICATIONS = "certifications";
+  private static final String FIELD_DETECTION = "detection";
+  private static final String FIELD_EVIDENCE = "evidence";
+  private static final String FIELD_MODEL_TYPE = "modelType";
+  private static final String FIELD_PROVIDER_MODEL_ID = "providerModelId";
+  private static final String FIELD_REGULATORY_COMPLIANCE = "regulatoryCompliance";
+  private static final String FIELD_REMEDIATION_ACTIONS = "remediationActions";
   private static final String MODEL_UPDATE_FIELDS = "usedByAgents,reviewers";
   private static final String MODEL_PATCH_FIELDS = "usedByAgents,reviewers";
 
@@ -194,6 +202,8 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
       compareAndUpdate(
           "baseModel",
           () -> recordChange("baseModel", original.getBaseModel(), updated.getBaseModel()));
+      updateModelIdentity();
+      updateCapabilities();
       compareAndUpdate(
           "modelVersion",
           () ->
@@ -247,6 +257,66 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
                   "governanceStatus",
                   original.getGovernanceStatus(),
                   updated.getGovernanceStatus()));
+      updateGovernanceEvidence();
+      updateCompliance();
+    }
+
+    private void updateModelIdentity() {
+      compareAndUpdate(
+          FIELD_MODEL_TYPE,
+          () -> recordChange(FIELD_MODEL_TYPE, original.getModelType(), updated.getModelType()));
+      compareAndUpdate(
+          FIELD_PROVIDER_MODEL_ID,
+          () ->
+              recordChange(
+                  FIELD_PROVIDER_MODEL_ID,
+                  original.getProviderModelId(),
+                  updated.getProviderModelId()));
+    }
+
+    private void updateCapabilities() {
+      compareAndUpdate(
+          FIELD_CAPABILITIES,
+          () ->
+              recordChange(
+                  FIELD_CAPABILITIES, original.getCapabilities(), updated.getCapabilities(), true));
+    }
+
+    private void updateGovernanceEvidence() {
+      compareAndUpdate(
+          FIELD_DETECTION,
+          () ->
+              recordChange(FIELD_DETECTION, original.getDetection(), updated.getDetection(), true));
+      compareAndUpdate(
+          FIELD_EVIDENCE,
+          () -> recordChange(FIELD_EVIDENCE, original.getEvidence(), updated.getEvidence(), true));
+      compareAndUpdate(
+          FIELD_REMEDIATION_ACTIONS,
+          () ->
+              recordChange(
+                  FIELD_REMEDIATION_ACTIONS,
+                  original.getRemediationActions(),
+                  updated.getRemediationActions(),
+                  true));
+    }
+
+    private void updateCompliance() {
+      compareAndUpdate(
+          FIELD_CERTIFICATIONS,
+          () ->
+              recordChange(
+                  FIELD_CERTIFICATIONS,
+                  original.getCertifications(),
+                  updated.getCertifications(),
+                  true));
+      compareAndUpdate(
+          FIELD_REGULATORY_COMPLIANCE,
+          () ->
+              recordChange(
+                  FIELD_REGULATORY_COMPLIANCE,
+                  original.getRegulatoryCompliance(),
+                  updated.getRegulatoryCompliance(),
+                  true));
     }
   }
 }

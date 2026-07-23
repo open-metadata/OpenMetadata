@@ -720,10 +720,10 @@ public class LineageRepository {
       return null;
     }
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    Set<String> fromColumns = getChildrenNames(from);
-    Set<String> toColumns = getChildrenNames(to);
 
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
+      Set<String> fromColumns = getChildrenNames(from);
+      Set<String> toColumns = getChildrenNames(to);
       List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
       for (ColumnLineage columnLineage : columnsLineage) {
         if (!toColumns.contains(
