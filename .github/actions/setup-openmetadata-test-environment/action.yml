@@ -27,6 +27,15 @@ inputs:
     description: Whether to install Java, Node, and the OpenMetadata server
     required: false
     default: "true"
+  install-test-dependencies:
+    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
+    # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
+    # workflows that invoke Python on the runner. Playwright E2E workflows drive
+    # the browser and let the ingestion Docker container run its own installs, so
+    # they can pass "false" here to shave ~3-4 minutes per shard off setup.
+    description: Whether to install the ingestion Python packages needed to run ingestion / py-tests on the runner
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -80,6 +89,7 @@ runs:
       shell: bash
 
     - name: Install Python Dependencies
+      if: ${{ inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
         uv pip install "setuptools<81"

@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -396,6 +398,109 @@ class AIContextBuilderTest {
     assertTrue(content.contains("Total revenue from completed orders."), "missing description");
     assertTrue(
         content.contains("SUM(amount) WHERE status = 'completed'"), "missing expression code");
+  }
+
+  @Test
+  void unescapeRichText_decodesHtmlEntitiesFromBlockEditorContent() {
+    assertEquals(
+        "```\ncode\n```",
+        AIContextBuilder.unescapeRichText("&#96;&#96;&#96;\ncode\n&#96;&#96;&#96;"),
+        "backtick entities must decode to a real markdown code fence");
+    assertEquals(
+        "aum >= 250k for the bank's clients",
+        AIContextBuilder.unescapeRichText("aum &gt;&#61; 250k for the bank&#39;s clients"),
+        "operator and apostrophe entities must decode");
+  }
+
+  @Test
+  void unescapeRichText_leavesPlainTextNullAndBareAmpersandUntouched() {
+    assertEquals("R&D spend", AIContextBuilder.unescapeRichText("R&D spend"));
+    assertEquals("", AIContextBuilder.unescapeRichText(""));
+    assertNull(AIContextBuilder.unescapeRichText(null));
+  }
+
+  @Test
+  void metricContent_unescapesDescriptionAndPreservesExpressionCode() {
+    Metric metric =
+        new Metric()
+            .withName("HighValue")
+            .withDescription("Flag when deposits &gt;&#61; 50k for the bank&#39;s book.")
+            .withMetricExpression(new MetricExpression().withCode("SUM(deposit) >= 50000"));
+    String content = AIContextBuilder.metricContent(metric);
+    assertTrue(
+        content.contains("deposits >= 50k for the bank's book."),
+        "metric description entities must be unescaped");
+    assertTrue(content.contains("SUM(deposit) >= 50000"), "expression code must pass through raw");
+  }
+
+  @Test
+  void toFieldContexts_unescapesColumnDescriptionEntities() {
+    Column column =
+        new Column()
+            .withName("value_segment")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDescription(
+                "private_banking when aum &gt;&#61; 250k, else the bank&#39;s default");
+    FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
+    assertEquals(
+        "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
+  void toDataModelContext_prefersCompiledSqlAndMapsMeta() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withPath("models/marts/core/dim_customers.sql")
+            .withDbtSourceProject("banking_redshift")
+            .withSql("SELECT * FROM staging.customers")
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    TableDataModel context = AIContextBuilder.toDataModelContext(dataModel);
+    assertEquals("DBT", context.getModelType());
+    assertEquals("models/marts/core/dim_customers.sql", context.getPath());
+    assertEquals("banking_redshift", context.getSourceProject());
+    assertEquals("SELECT * FROM staging.customers", context.getSql(), "compiled SQL must win");
+  }
+
+  @Test
+  void toDataModelContext_fallsBackToRawSqlWhenCompiledAbsent() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    assertEquals(
+        "SELECT * FROM {{ ref('customers') }}",
+        AIContextBuilder.toDataModelContext(dataModel).getSql());
+  }
+
+  @Test
+  void toDataModelContext_nullWhenAbsentOrEmpty() {
+    assertNull(AIContextBuilder.toDataModelContext(null));
+    assertNull(AIContextBuilder.toDataModelContext(new DataModel()), "empty model must be dropped");
+  }
+
+  @Test
+  void toDataModelContext_boundsOversizedSql() {
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DDL).withSql("SELECT 1 ".repeat(2000));
+    String sql = AIContextBuilder.toDataModelContext(dataModel).getSql();
+    assertTrue(
+        sql.length() <= AIContextBuilder.MAX_DATA_MODEL_SQL_CHARS + 20,
+        "model SQL must be bounded");
+    assertTrue(sql.endsWith("(truncated)"), "bounded SQL must be marked truncated");
+  }
+
+  @Test
+  void buildTableContext_includesDataModelWhenPresent() {
+    Table table =
+        new Table()
+            .withName("orders")
+            .withColumns(List.of())
+            .withDataModel(
+                new DataModel().withModelType(DataModel.ModelType.DBT).withSql("SELECT 1"));
+    TableDataModel dataModel = AIContextBuilder.buildTableContext(table).getDataModel();
+    assertEquals("DBT", dataModel.getModelType());
+    assertEquals("SELECT 1", dataModel.getSql());
   }
 
   @Test

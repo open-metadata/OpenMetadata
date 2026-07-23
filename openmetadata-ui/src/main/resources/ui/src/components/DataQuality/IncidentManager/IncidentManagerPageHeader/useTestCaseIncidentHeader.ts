@@ -241,12 +241,9 @@ export const useTestCaseIncidentHeader = ({
 
     if (status?.stateId === incidentStateId) {
       setTestCaseStatusData(status);
-      if (
-        status?.testCaseResolutionStatusType ===
-        TestCaseResolutionStatusTypes.Resolved
-      ) {
-        fetchTaskCount();
-      }
+      // Refresh the open-task count on any transition: resolving closes a task and
+      // reopening opens one, so gating on Resolved left the tab badge stale after reopen.
+      fetchTaskCount();
     }
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 

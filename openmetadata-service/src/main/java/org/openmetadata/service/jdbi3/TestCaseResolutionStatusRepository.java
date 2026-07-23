@@ -191,6 +191,19 @@ public class TestCaseResolutionStatusRepository
             .equals(TestCaseResolutionStatusTypes.Resolved);
   }
 
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
+  public UUID getOngoingIncidentStateId(String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    return Boolean.TRUE.equals(unresolvedIncident(latest)) ? latest.getStateId() : null;
+  }
+
+  private static boolean isReopeningStatus(TestCaseResolutionStatus recordEntity) {
+    TestCaseResolutionStatusTypes statusType = recordEntity.getTestCaseResolutionStatusType();
+    return statusType == TestCaseResolutionStatusTypes.Ack
+        || statusType == TestCaseResolutionStatusTypes.Assigned
+        || statusType == TestCaseResolutionStatusTypes.Resolved;
+  }
+
   @Override
   @Transaction
   public void storeInternal(
@@ -224,6 +237,14 @@ public class TestCaseResolutionStatusRepository
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
       // the old severity
+      recordEntity.setSeverity(
+          recordEntity.getSeverity() == null
+              ? lastIncident.getSeverity()
+              : recordEntity.getSeverity());
+    } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
+      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
+      recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
@@ -345,6 +366,23 @@ public class TestCaseResolutionStatusRepository
             taskRepository.getFields(
                 "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"));
 
+    if (TaskRepository.isTerminalStatus(task.getStatus())
+        && recordEntity.getTestCaseResolutionStatusType()
+            != TestCaseResolutionStatusTypes.Resolved) {
+      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
+      String reopeningUser =
+          recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
+      try {
+        task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
+      } catch (Exception e) {
+        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
+        if (e instanceof RuntimeException) {
+          throw (RuntimeException) e;
+        }
+        throw new RuntimeException(e);
+      }
+    }
+
     String transitionId = resolveLegacyTransitionId(task, recordEntity);
     if (transitionId == null) {
       LOG.debug(
@@ -386,8 +424,13 @@ public class TestCaseResolutionStatusRepository
     UUID stateId = recordEntity.getStateId();
     if (stateId != null) {
       try {
-        Task task = taskRepository.find(stateId, Include.ALL);
+        // `about` is relationship-backed and stripped from stored JSON — request it explicitly,
+        // or a bare find() leaves it null and the FQN guard below never matches.
+        Task task =
+            taskRepository.get(
+                null, stateId, taskRepository.getFields("about"), Include.ALL, false);
         if (task != null
+            && !Boolean.TRUE.equals(task.getDeleted())
             && task.getType() == TaskEntityType.TestCaseResolution
             && task.getAbout() != null
             && recordFQN.equals(task.getAbout().getFullyQualifiedName())) {

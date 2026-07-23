@@ -43,7 +43,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
-  private static final String TEST_CASE_INDEX_FIELDS =
+  public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
@@ -90,7 +90,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
 
   public Response addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
-    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
+    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "incidentId", Include.ALL);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
       autoResolveIncidentOnSuccess(testCase);
@@ -317,7 +317,6 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     }
     updated.setTestCaseStatus(
         testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
-    updated.setIncidentId(testCaseResult != null ? testCaseResult.getIncidentId() : null);
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
