@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -116,5 +117,39 @@ class GetUserContextToolTest {
 
     assertEquals("analyst", ref.get("name"));
     assertEquals("Data Analyst", ref.get("displayName"));
+  }
+
+  @Test
+  void boolParamFailsSafeOnNonBooleanInput() {
+    assertTrue(GetUserContextTool.boolParam(Map.of("k", "yes"), "k", true));
+    assertTrue(GetUserContextTool.boolParam(Map.of("k", 1), "k", true));
+    assertFalse(GetUserContextTool.boolParam(Map.of("k", "false"), "k", true));
+    assertTrue(GetUserContextTool.boolParam(Map.of("k", "true"), "k", false));
+    assertTrue(GetUserContextTool.boolParam(Map.of(), "k", true));
+  }
+
+  @Test
+  void resolveOwnedFilterWarnsOnUnrecognizedNonBlankValue() {
+    List<String> warnings = new ArrayList<>();
+    GetUserContextTool.OwnedFilter filter =
+        GetUserContextTool.resolveOwnedFilter(Map.of("ownedFilter", "MISSING_TIERS"), warnings);
+
+    assertEquals(GetUserContextTool.OwnedFilter.NONE, filter);
+    assertEquals(1, warnings.size());
+    assertTrue(warnings.getFirst().contains("MISSING_TIERS"));
+  }
+
+  @Test
+  void resolveOwnedFilterDoesNotWarnOnValidOrAbsentValue() {
+    List<String> warnings = new ArrayList<>();
+
+    assertEquals(
+        GetUserContextTool.OwnedFilter.ANY_GAP,
+        GetUserContextTool.resolveOwnedFilter(Map.of("ownedFilter", "any_gap"), warnings));
+    assertEquals(
+        GetUserContextTool.OwnedFilter.NONE,
+        GetUserContextTool.resolveOwnedFilter(Map.of(), warnings));
+
+    assertTrue(warnings.isEmpty());
   }
 }

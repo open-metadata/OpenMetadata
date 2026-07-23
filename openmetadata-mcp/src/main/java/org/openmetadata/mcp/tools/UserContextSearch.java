@@ -74,9 +74,13 @@ final class UserContextSearch {
       must.addAll(gapClauses(filter));
       Map<String, Object> raw = runSearch(query(must), ALL_INDEX, limit, subjectContext);
       List<Map<String, Object>> recent = parseHits(raw);
+      int total = parseTotal(raw);
       summary = new LinkedHashMap<>();
-      summary.put("totalCount", parseTotal(raw));
+      summary.put("totalCount", total);
       summary.put("byType", tallyByType(recent));
+      // byType is tallied over the returned page only; when the page is truncated it does not cover
+      // every owned entity. The flag lets the LLM avoid presenting a partial breakdown as complete.
+      summary.put("byTypeComplete", recent.size() == total);
       summary.put("recent", recent);
     }
     return summary;
@@ -133,7 +137,11 @@ final class UserContextSearch {
     } else {
       result = JsonUtils.convertValue(entity, Map.class);
     }
-    return result == null ? Map.of() : result;
+    if (result == null) {
+      LOG.warn("Search response body did not deserialize to a map; treating as empty result");
+      result = Map.of();
+    }
+    return result;
   }
 
   private static String query(List<ObjectNode> mustClauses) {
@@ -154,6 +162,10 @@ final class UserContextSearch {
     ObjectNode nested = mapper.createObjectNode();
     nested.put("path", path);
     nested.set("query", flatTerms(field, values));
+    // The `all` alias spans indices with no `owners` mapping (user, team, tag, ...); without
+    // ignore_unmapped the engine throws "failed to find nested object under path [owners]" (400).
+    // Matches the canonical OSS clause in SearchListFilter / QueryFilterBuilder.
+    nested.put("ignore_unmapped", true);
     ObjectNode wrapper = mapper.createObjectNode();
     wrapper.set("nested", nested);
     return wrapper;
@@ -253,6 +265,10 @@ final class UserContextSearch {
           summaries.add(summary);
         }
       }
+    } else if (!raw.isEmpty()) {
+      // A non-empty body without the expected hits structure means the response contract drifted,
+      // not that the user owns/follows nothing. Log so it is not silently reported as empty.
+      LOG.warn("Search response missing expected 'hits' structure; keys present: {}", raw.keySet());
     }
     return summaries;
   }
@@ -271,6 +287,8 @@ final class UserContextSearch {
         summary.put("name", string(source.getOrDefault("name", fqn)));
         putIfPresent(summary, "displayName", source.get("displayName"));
         putIfPresent(summary, UPDATED_AT, source.get(UPDATED_AT));
+      } else {
+        LOG.debug("Dropping search hit missing entityType/fullyQualifiedName: {}", source.keySet());
       }
     }
     return summary;

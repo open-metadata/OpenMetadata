@@ -66,14 +66,18 @@ public class GetUserContextTool implements McpTool {
       throws IOException {
     SubjectContext subject = getSubjectContext(securityContext);
     User user = subject.user();
+    List<String> warnings = new ArrayList<>();
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("user", identity(user));
     result.put("teams", namedRefs(user.getTeams()));
     result.put("roles", namedRefs(user.getRoles()));
-    result.put("inheritedRoles", namedRefs(SubjectContext.getRolesForTeams(user.getTeams())));
+    result.put("inheritedRoles", namedRefs(user.getInheritedRoles()));
     result.put("domains", domainRefs(user.getDomains()));
     putIfPresent(result, "persona", personaRef(subject.getActivePersona()));
-    attachSummaries(result, subject, user, params);
+    attachSummaries(result, subject, user, params, warnings);
+    if (!warnings.isEmpty()) {
+      result.put("warnings", warnings);
+    }
     return result;
   }
 
@@ -88,7 +92,11 @@ public class GetUserContextTool implements McpTool {
   }
 
   private void attachSummaries(
-      Map<String, Object> result, SubjectContext subject, User user, Map<String, Object> params)
+      Map<String, Object> result,
+      SubjectContext subject,
+      User user,
+      Map<String, Object> params,
+      List<String> warnings)
       throws IOException {
     if (boolParam(params, "includeOwnedSummary", true)) {
       result.put(
@@ -97,7 +105,7 @@ public class GetUserContextTool implements McpTool {
               subject,
               ownerIds(user),
               intParam(params, "ownedLimit"),
-              OwnedFilter.fromValue(stringParam(params, "ownedFilter"))));
+              resolveOwnedFilter(params, warnings)));
     }
     if (boolParam(params, "includeFollowedSummary", true)) {
       result.put(
@@ -105,6 +113,28 @@ public class GetUserContextTool implements McpTool {
           UserContextSearch.followedSummary(
               subject, user.getId().toString(), intParam(params, "followedLimit")));
     }
+  }
+
+  /**
+   * Parses {@code ownedFilter}, but unlike a silent default it records a warning when a non-blank
+   * value is unrecognized — otherwise "MISSING_TIERS" would quietly fall back to NONE and the tool
+   * would return every owned entity as if it were the gap subset, with no signal to the caller.
+   */
+  static OwnedFilter resolveOwnedFilter(Map<String, Object> params, List<String> warnings) {
+    String raw = stringParam(params, "ownedFilter");
+    OwnedFilter filter = OwnedFilter.fromValue(raw);
+    if (raw != null
+        && !raw.isBlank()
+        && filter == OwnedFilter.NONE
+        && !"NONE".equalsIgnoreCase(raw.trim())) {
+      warnings.add(
+          "Unrecognized ownedFilter '"
+              + raw
+              + "'; returned all owned entities without gap filtering. Valid values: NONE, "
+              + "MISSING_DESCRIPTION, MISSING_TIER, ANY_GAP.");
+      LOG.debug("Unrecognized ownedFilter '{}'; defaulting to NONE", raw);
+    }
+    return filter;
   }
 
   private static List<String> ownerIds(User user) {
@@ -172,13 +202,23 @@ public class GetUserContextTool implements McpTool {
     return value == null ? null : String.valueOf(value);
   }
 
-  private static boolean boolParam(Map<String, Object> params, String key, boolean defaultValue) {
+  /**
+   * Reads a boolean param, failing safe to {@code defaultValue} on any non-boolean input. Using
+   * {@link Boolean#parseBoolean} here would coerce truthy-looking strings ("yes", "1") to
+   * {@code false} and silently drop an entire summary section the caller asked for.
+   */
+  static boolean boolParam(Map<String, Object> params, String key, boolean defaultValue) {
     Object value = params.get(key);
     boolean parsed = defaultValue;
     if (value instanceof Boolean bool) {
       parsed = bool;
     } else if (value != null) {
-      parsed = Boolean.parseBoolean(String.valueOf(value));
+      String text = String.valueOf(value).trim();
+      if ("true".equalsIgnoreCase(text)) {
+        parsed = true;
+      } else if ("false".equalsIgnoreCase(text)) {
+        parsed = false;
+      }
     }
     return parsed;
   }
