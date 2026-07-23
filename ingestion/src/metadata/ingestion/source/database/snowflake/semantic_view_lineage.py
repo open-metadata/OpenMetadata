@@ -147,6 +147,11 @@ def resolve_base_columns(
     return results
 
 
+def _table_reference(entity: Table) -> EntityReference:
+    """Build a table EntityReference for a lineage edge endpoint."""
+    return EntityReference(id=entity.id, type="table")  # pyright: ignore[reportCallIssue]
+
+
 class SnowflakeSemanticViewLineage:
     """Builds lineage from Snowflake semantic views to their base tables.
 
@@ -276,12 +281,12 @@ class SnowflakeSemanticViewLineage:
         result = None
         if base_entity is not None:
             column_lineage = self._build_column_lineage(base_entity, view_entity, pairs)
-            result = Either(
+            result = Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=base_entity.id, type="table"),
-                        toEntity=EntityReference(id=view_entity.id, type="table"),
-                        lineageDetails=LineageDetails(
+                        fromEntity=_table_reference(base_entity),
+                        toEntity=_table_reference(view_entity),
+                        lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
                             source=LineageSource.ViewLineage,
                             columnsLineage=column_lineage or None,
                         ),
@@ -306,7 +311,10 @@ class SnowflakeSemanticViewLineage:
                 sources = grouped.setdefault(to_fqn, [])
                 if from_fqn not in sources:
                     sources.append(from_fqn)
-        return [ColumnLineage(fromColumns=sources, toColumn=to_fqn) for to_fqn, sources in grouped.items()]
+        return [
+            ColumnLineage(fromColumns=sources, toColumn=to_fqn)  # pyright: ignore[reportCallIssue]
+            for to_fqn, sources in grouped.items()
+        ]
 
     def _run(self, query: str) -> List[tuple]:  # noqa: UP006
         """Execute a query against the Snowflake engine and return all rows."""
