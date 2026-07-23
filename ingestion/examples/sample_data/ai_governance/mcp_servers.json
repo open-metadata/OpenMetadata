@@ -131,6 +131,15 @@
       "networkAccess": true,
       "databaseAccess": false
     },
+    "usageMetrics": {
+      "totalInvocations": 92,
+      "successRate": 0.91,
+      "averageLatencyMs": 980,
+      "p95LatencyMs": 2400,
+      "lastInvokedAt": 1775606400000,
+      "uniqueUsers": 7,
+      "dailyActiveUsers": 3
+    },
     "securityMetrics": {
       "authenticationRequired": false,
       "authorizationEnforced": false,
@@ -280,6 +289,15 @@
       "networkAccess": true,
       "databaseAccess": false
     },
+    "usageMetrics": {
+      "totalInvocations": 42100,
+      "successRate": 0.991,
+      "averageLatencyMs": 145,
+      "p95LatencyMs": 410,
+      "lastInvokedAt": 1775606400000,
+      "uniqueUsers": 132,
+      "dailyActiveUsers": 48
+    },
     "securityMetrics": {
       "authenticationRequired": true,
       "authorizationEnforced": true,
@@ -385,6 +403,15 @@
       "fileSystemAccess": false,
       "networkAccess": true,
       "databaseAccess": false
+    },
+    "usageMetrics": {
+      "totalInvocations": 7300,
+      "successRate": 0.986,
+      "averageLatencyMs": 210,
+      "p95LatencyMs": 590,
+      "lastInvokedAt": 1775606400000,
+      "uniqueUsers": 54,
+      "dailyActiveUsers": 18
     },
     "securityMetrics": {
       "authenticationRequired": true,
@@ -497,6 +524,15 @@
       "fileSystemAccess": false,
       "networkAccess": true,
       "databaseAccess": false
+    },
+    "usageMetrics": {
+      "totalInvocations": 1180,
+      "successRate": 0.996,
+      "averageLatencyMs": 180,
+      "p95LatencyMs": 480,
+      "lastInvokedAt": 1775606400000,
+      "uniqueUsers": 34,
+      "dailyActiveUsers": 12
     },
     "securityMetrics": {
       "authenticationRequired": true,
@@ -615,6 +651,15 @@
       "fileSystemAccess": false,
       "networkAccess": true,
       "databaseAccess": true
+    },
+    "usageMetrics": {
+      "totalInvocations": 1840,
+      "successRate": 0.973,
+      "averageLatencyMs": 620,
+      "p95LatencyMs": 1880,
+      "lastInvokedAt": 1775606400000,
+      "uniqueUsers": 21,
+      "dailyActiveUsers": 6
     },
     "securityMetrics": {
       "authenticationRequired": true,

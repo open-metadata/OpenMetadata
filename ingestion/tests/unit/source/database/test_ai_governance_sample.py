@@ -137,6 +137,26 @@ def test_registered_relationships_are_resolved_from_stable_fqns() -> None:
     ]
 
 
+def test_mcp_servers_keep_showcase_usage_metrics() -> None:
+    metadata = FakeMetadata()
+    requests = load_requests(
+        AIGovernanceSampleData(FIXTURE_FOLDER, metadata),
+        metadata,
+    )
+    mcp_servers = [
+        request for request in requests if isinstance(request, CreateMcpServerRequest)
+    ]
+
+    assert all(request.usageMetrics is not None for request in mcp_servers)
+    customer_profile_tools = next(
+        request
+        for request in mcp_servers
+        if request.name.root == "customer_profile_tools"
+    )
+    assert customer_profile_tools.usageMetrics.totalInvocations == 42_100
+    assert customer_profile_tools.usageMetrics.successRate == 0.991
+
+
 def test_shadow_records_do_not_invent_model_references() -> None:
     metadata = FakeMetadata()
     requests = load_requests(
