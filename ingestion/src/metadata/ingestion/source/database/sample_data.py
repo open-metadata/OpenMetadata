@@ -20,6 +20,7 @@ import time
 import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from pydantic import ValidationError
@@ -85,6 +86,9 @@ from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
     CreateTestCaseResolutionStatus,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -179,6 +183,9 @@ from metadata.ingestion.models.tests_data import (
 )
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.ai_governance_sample import (
+    AIGovernanceSampleData,
+)
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
@@ -233,6 +240,18 @@ def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityRefer
         data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
         if data_model:
             return EntityReference(id=data_model.id, type="dashboardDataModel")
+    if edge["type"] == "llmModel":
+        llm_model = metadata.get_by_name(entity=LLMModel, fqn=edge_fqn)
+        if llm_model:
+            return EntityReference(id=llm_model.id, type="llmModel")
+    if edge["type"] == "mcpServer":
+        mcp_server = metadata.get_by_name(entity=McpServer, fqn=edge_fqn)
+        if mcp_server:
+            return EntityReference(id=mcp_server.id, type="mcpServer")
+    if edge["type"] == "aiApplication":
+        application = metadata.get_by_name(entity=AIApplication, fqn=edge_fqn)
+        if application:
+            return EntityReference(id=application.id, type="aiApplication")
     return None
 
 
@@ -923,6 +942,11 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
+        self.ai_governance = AIGovernanceSampleData(
+            Path(sample_data_folder) / "ai_governance",
+            metadata,
+        )
+
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
@@ -975,6 +999,8 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
+        for request in self.ai_governance.iter_requests():
+            yield Either(right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""

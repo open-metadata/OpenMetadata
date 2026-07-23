@@ -1,0 +1,643 @@
+[
+  {
+    "name": "code_repo_assistant",
+    "displayName": "Code Repo Assistant",
+    "description": "Unauthorized development MCP server discovered in engineering workstations. It can read repositories and open pull requests without centralized review.",
+    "serverType": "Development",
+    "transportType": "Stdio",
+    "protocolVersion": "2025-03-26",
+    "developmentStage": "Unauthorized",
+    "sourceCode": "https://github.example.com/engineering/local-mcp-code-assistant",
+    "capabilities": {
+      "toolsSupported": true,
+      "resourcesSupported": true,
+      "promptsSupported": false,
+      "loggingSupported": false
+    },
+    "tools": [
+      {
+        "name": "create_pull_request",
+        "displayName": "Create Pull Request",
+        "description": "Creates pull requests against internal repositories.",
+        "toolCategory": "CodeOperation",
+        "riskLevel": "High",
+        "riskFactors": [
+          "Code modification",
+          "No central audit trail"
+        ],
+        "dataAccess": {
+          "readsData": true,
+          "writesData": true,
+          "deletesData": false,
+          "sensitivityLevel": "Confidential",
+          "piiAccess": false,
+          "dataTypes": [
+            "Source code",
+            "Repository metadata"
+          ]
+        },
+        "requiredPermissions": [
+          "repo.read",
+          "repo.write"
+        ],
+        "sideEffects": true,
+        "idempotent": false,
+        "reversible": true,
+        "usageCount": 92
+      }
+    ],
+    "resources": [
+      {
+        "name": "repository_tree",
+        "displayName": "Repository Tree",
+        "description": "Local checkout contents exposed to the AI assistant.",
+        "resourceType": "Directory",
+        "uri": "file://workspace",
+        "accessLevel": "ReadWrite",
+        "dataClassification": {
+          "sensitivityLevel": "Confidential",
+          "containsPII": false,
+          "dataCategories": [
+            "Source code",
+            "Secrets risk"
+          ],
+          "complianceRequirements": [
+            "Secure development lifecycle review"
+          ]
+        }
+      }
+    ],
+    "governanceMetadata": {
+      "registrationStatus": "Unregistered",
+      "riskAssessment": {
+        "riskLevel": "High",
+        "riskFactors": [
+          "Unregistered code-writing tool",
+          "No audit logging",
+          "Local filesystem access"
+        ],
+        "mitigations": [
+          "Disable local binary",
+          "Route through approved code assistant gateway"
+        ],
+        "assessedBy": "ai-governance@acme.example",
+        "assessedAt": 1775606400000
+      },
+      "dataClassification": {
+        "accessesPII": false,
+        "accessesSensitiveData": true,
+        "dataCategories": [
+          "Source code",
+          "Repository metadata"
+        ],
+        "dataRetentionPeriod": "Unknown"
+      },
+      "detection": {
+        "source": "ConnectorAudit",
+        "sourceDetails": "endpoint-inventory detected stdio process mcp-code-assistant",
+        "detectedAt": 1775606400000,
+        "suspectedUser": "engineering@acme.example",
+        "suspectedTeam": "Engineering",
+        "volume7d": "~320 tool calls / 7d",
+        "flags": [
+          "PrivilegedData",
+          "NoOwner"
+        ],
+        "severity": "High"
+      },
+      "remediationActions": [
+        {
+          "id": "22222222-2222-4222-8222-222222222304",
+          "label": "Replace local MCP code assistant with approved gateway",
+          "frameworkRef": "NIST_AI_RMF",
+          "dueDate": 1778198400000,
+          "priority": "High",
+          "status": "Open",
+          "createdAt": 1775606400000,
+          "createdBy": "ai-governance@acme.example"
+        }
+      ]
+    },
+    "dataAccessSummary": {
+      "accessPatterns": [
+        "Read",
+        "Write",
+        "Execute"
+      ],
+      "sensitivityLevel": "Confidential",
+      "piiAccess": false,
+      "externalApiAccess": true,
+      "fileSystemAccess": true,
+      "networkAccess": true,
+      "databaseAccess": false
+    },
+    "securityMetrics": {
+      "authenticationRequired": false,
+      "authorizationEnforced": false,
+      "auditLoggingEnabled": false,
+      "encryptionInTransit": false,
+      "sandboxed": false,
+      "secretsManagement": "None"
+    },
+    "tags": [
+      {
+        "tagFQN": "Tier.Tier2",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      }
+    ],
+    "service": "ai_governance_mcp"
+  },
+  {
+    "name": "customer_profile_tools",
+    "displayName": "Customer Profile Tools",
+    "description": "Approved MCP server exposing read-only customer profile lookup tools for claims and support copilots. PII access is logged and policy-gated.",
+    "serverType": "DataAccess",
+    "transportType": "StreamableHTTP",
+    "protocolVersion": "2025-03-26",
+    "developmentStage": "Production",
+    "deploymentUrl": "https://mcp.acme.example/customer-profile",
+    "documentation": "https://governance.example.com/mcp/customer-profile",
+    "capabilities": {
+      "toolsSupported": true,
+      "resourcesSupported": true,
+      "promptsSupported": false,
+      "loggingSupported": true
+    },
+    "tools": [
+      {
+        "name": "lookup_customer_profile",
+        "displayName": "Lookup Customer Profile",
+        "description": "Returns scoped customer profile attributes for a case or support ticket.",
+        "toolCategory": "DataOperation",
+        "riskLevel": "High",
+        "riskFactors": [
+          "PII access",
+          "Customer account data"
+        ],
+        "dataAccess": {
+          "readsData": true,
+          "writesData": false,
+          "deletesData": false,
+          "sensitivityLevel": "Restricted",
+          "piiAccess": true,
+          "dataTypes": [
+            "Customer profile",
+            "Contact data",
+            "Policy metadata"
+          ]
+        },
+        "requiredPermissions": [
+          "customer_profile.read"
+        ],
+        "sideEffects": false,
+        "idempotent": true,
+        "rateLimitPerMinute": 120,
+        "usageCount": 42100,
+        "lastUsedAt": 1775606400000
+      }
+    ],
+    "resources": [
+      {
+        "name": "customer_profile_schema",
+        "displayName": "Customer Profile Schema",
+        "description": "Schema contract for profile fields exposed to AI applications.",
+        "resourceType": "API",
+        "uri": "mcp://customer-profile/schema",
+        "mimeType": "application/json",
+        "accessLevel": "ReadOnly",
+        "dataClassification": {
+          "sensitivityLevel": "Restricted",
+          "containsPII": true,
+          "dataCategories": [
+            "Customer contact",
+            "Policy metadata"
+          ],
+          "complianceRequirements": [
+            "DPIA",
+            "Audit logging"
+          ]
+        }
+      }
+    ],
+    "governanceMetadata": {
+      "registrationStatus": "Approved",
+      "registeredBy": "ai-governance@acme.example",
+      "registeredAt": 1773100800000,
+      "approvedBy": "risk-council@acme.example",
+      "approvedAt": 1775001600000,
+      "riskAssessment": {
+        "riskLevel": "High",
+        "riskFactors": [
+          "PII access",
+          "Used by customer-facing copilots"
+        ],
+        "mitigations": [
+          "Field-level authorization",
+          "Prompt redaction",
+          "Full audit logging"
+        ],
+        "assessedBy": "security@acme.example",
+        "assessedAt": 1775001600000
+      },
+      "dataClassification": {
+        "accessesPII": true,
+        "accessesSensitiveData": true,
+        "dataCategories": [
+          "Customer profile",
+          "Contact data"
+        ],
+        "dataRetentionPeriod": "180 days"
+      },
+      "aiCompliance": {
+        "complianceRecords": [
+          {
+            "framework": "EU_AI_Act",
+            "assessedBy": "model-risk@acme.example",
+            "assessedAt": 1775001600000,
+            "nextReviewDate": 1784073600000,
+            "status": "PartiallyCompliant",
+            "euAIAct": {
+              "riskClassification": "High",
+              "riskRationale": "Tooling supports essential private-service decisions and exposes PII.",
+              "highRiskSystems": {
+                "essentialPrivateServices": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    "dataAccessSummary": {
+      "accessPatterns": [
+        "Read"
+      ],
+      "sensitivityLevel": "Restricted",
+      "piiAccess": true,
+      "externalApiAccess": false,
+      "fileSystemAccess": false,
+      "networkAccess": true,
+      "databaseAccess": false
+    },
+    "securityMetrics": {
+      "authenticationRequired": true,
+      "authorizationEnforced": true,
+      "auditLoggingEnabled": true,
+      "encryptionInTransit": true,
+      "sandboxed": true,
+      "secretsManagement": "Vault"
+    },
+    "tags": [
+      {
+        "tagFQN": "PII.Sensitive",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      }
+    ],
+    "service": "ai_governance_mcp"
+  },
+  {
+    "name": "security_ticket_triage",
+    "displayName": "Security Ticket Triage",
+    "description": "Approved security MCP server that classifies and enriches security tickets with SIEM and vulnerability context.",
+    "serverType": "Security",
+    "transportType": "StreamableHTTP",
+    "protocolVersion": "2025-03-26",
+    "developmentStage": "Production",
+    "deploymentUrl": "https://mcp.acme.example/security-ticket-triage",
+    "capabilities": {
+      "toolsSupported": true,
+      "resourcesSupported": true,
+      "promptsSupported": true,
+      "loggingSupported": true
+    },
+    "tools": [
+      {
+        "name": "enrich_security_ticket",
+        "displayName": "Enrich Security Ticket",
+        "description": "Adds asset criticality, known CVEs, and alert history to a security ticket.",
+        "toolCategory": "SecurityOperation",
+        "riskLevel": "Medium",
+        "riskFactors": [
+          "Security incident metadata",
+          "Internal asset inventory"
+        ],
+        "dataAccess": {
+          "readsData": true,
+          "writesData": true,
+          "deletesData": false,
+          "sensitivityLevel": "Confidential",
+          "piiAccess": false,
+          "dataTypes": [
+            "Security tickets",
+            "Asset inventory",
+            "Vulnerability findings"
+          ]
+        },
+        "requiredPermissions": [
+          "security.ticket.enrich"
+        ],
+        "sideEffects": true,
+        "idempotent": false,
+        "reversible": true,
+        "usageCount": 7300
+      }
+    ],
+    "governanceMetadata": {
+      "registrationStatus": "Approved",
+      "registeredBy": "security@acme.example",
+      "registeredAt": 1773100800000,
+      "approvedBy": "risk-council@acme.example",
+      "approvedAt": 1775001600000,
+      "riskAssessment": {
+        "riskLevel": "Medium",
+        "riskFactors": [
+          "Writes ticket annotations",
+          "Reads sensitive security context"
+        ],
+        "mitigations": [
+          "Service account scoped to triage queue",
+          "Audit logs retained one year"
+        ],
+        "assessedBy": "security@acme.example",
+        "assessedAt": 1775001600000
+      },
+      "dataClassification": {
+        "accessesPII": false,
+        "accessesSensitiveData": true,
+        "dataCategories": [
+          "Security findings",
+          "Asset inventory"
+        ],
+        "dataRetentionPeriod": "365 days"
+      }
+    },
+    "dataAccessSummary": {
+      "accessPatterns": [
+        "Read",
+        "Write"
+      ],
+      "sensitivityLevel": "Confidential",
+      "piiAccess": false,
+      "externalApiAccess": true,
+      "fileSystemAccess": false,
+      "networkAccess": true,
+      "databaseAccess": false
+    },
+    "securityMetrics": {
+      "authenticationRequired": true,
+      "authorizationEnforced": true,
+      "auditLoggingEnabled": true,
+      "encryptionInTransit": true,
+      "sandboxed": true,
+      "secretsManagement": "Secrets manager"
+    },
+    "service": "ai_governance_mcp"
+  },
+  {
+    "name": "slack_workflow_actions",
+    "displayName": "Slack Workflow Actions",
+    "description": "Registered communication MCP server that lets AI agents create Slack follow-up messages and approval reminders.",
+    "serverType": "Communication",
+    "transportType": "StreamableHTTP",
+    "protocolVersion": "2025-03-26",
+    "developmentStage": "Production",
+    "deploymentUrl": "https://mcp.acme.example/slack-actions",
+    "capabilities": {
+      "toolsSupported": true,
+      "resourcesSupported": false,
+      "promptsSupported": true,
+      "loggingSupported": true
+    },
+    "tools": [
+      {
+        "name": "send_governance_reminder",
+        "displayName": "Send Governance Reminder",
+        "description": "Sends review reminders to approved Slack channels.",
+        "toolCategory": "CommunicationOperation",
+        "riskLevel": "Medium",
+        "riskFactors": [
+          "External user notification",
+          "Channel metadata"
+        ],
+        "dataAccess": {
+          "readsData": true,
+          "writesData": true,
+          "deletesData": false,
+          "sensitivityLevel": "Internal",
+          "piiAccess": false,
+          "dataTypes": [
+            "Slack channel",
+            "Task metadata"
+          ]
+        },
+        "requiredPermissions": [
+          "slack.message.write"
+        ],
+        "sideEffects": true,
+        "idempotent": false,
+        "reversible": false,
+        "usageCount": 1180
+      }
+    ],
+    "prompts": [
+      {
+        "name": "approval_reminder_copy",
+        "displayName": "Approval Reminder Copy",
+        "description": "Generates concise reviewer reminder copy for pending AI governance approvals.",
+        "promptType": "Generation",
+        "outputClassification": {
+          "sensitivityLevel": "Internal",
+          "mayContainPII": false,
+          "outputCategories": [
+            "Notification copy"
+          ]
+        },
+        "usageCount": 1180
+      }
+    ],
+    "governanceMetadata": {
+      "registrationStatus": "Registered",
+      "registeredBy": "platform-ops@acme.example",
+      "registeredAt": 1775001600000,
+      "riskAssessment": {
+        "riskLevel": "Medium",
+        "riskFactors": [
+          "Writes messages into Slack",
+          "Can notify reviewers"
+        ],
+        "mitigations": [
+          "Channel allowlist",
+          "Message templates",
+          "Rate limits"
+        ],
+        "assessedBy": "ai-governance@acme.example",
+        "assessedAt": 1775606400000
+      },
+      "dataClassification": {
+        "accessesPII": false,
+        "accessesSensitiveData": false,
+        "dataCategories": [
+          "Task metadata",
+          "Reviewer reminders"
+        ],
+        "dataRetentionPeriod": "90 days"
+      }
+    },
+    "dataAccessSummary": {
+      "accessPatterns": [
+        "Read",
+        "Write"
+      ],
+      "sensitivityLevel": "Internal",
+      "piiAccess": false,
+      "externalApiAccess": true,
+      "fileSystemAccess": false,
+      "networkAccess": true,
+      "databaseAccess": false
+    },
+    "securityMetrics": {
+      "authenticationRequired": true,
+      "authorizationEnforced": true,
+      "auditLoggingEnabled": true,
+      "encryptionInTransit": true,
+      "sandboxed": true,
+      "secretsManagement": "Slack app token vault"
+    },
+    "service": "ai_governance_mcp"
+  },
+  {
+    "name": "warehouse_sql_query",
+    "displayName": "Warehouse SQL Query",
+    "description": "Pending-approval MCP server for natural-language SQL generation and read-only warehouse query execution.",
+    "serverType": "Database",
+    "transportType": "SSE",
+    "protocolVersion": "2025-03-26",
+    "developmentStage": "Staging",
+    "deploymentUrl": "https://mcp.acme.example/warehouse-sql",
+    "capabilities": {
+      "toolsSupported": true,
+      "resourcesSupported": true,
+      "promptsSupported": true,
+      "loggingSupported": true
+    },
+    "tools": [
+      {
+        "name": "run_readonly_sql",
+        "displayName": "Run Read-Only SQL",
+        "description": "Executes allowlisted read-only SQL against governed warehouse schemas.",
+        "toolCategory": "DatabaseOperation",
+        "riskLevel": "Critical",
+        "riskFactors": [
+          "Broad warehouse access",
+          "Potential PII joins"
+        ],
+        "dataAccess": {
+          "readsData": true,
+          "writesData": false,
+          "deletesData": false,
+          "sensitivityLevel": "Restricted",
+          "piiAccess": true,
+          "dataTypes": [
+            "Analytics warehouse",
+            "Finance marts",
+            "Customer dimensions"
+          ]
+        },
+        "requiredPermissions": [
+          "warehouse.query.read"
+        ],
+        "sideEffects": false,
+        "idempotent": true,
+        "rateLimitPerMinute": 30,
+        "usageCount": 1840
+      }
+    ],
+    "prompts": [
+      {
+        "name": "sql_safety_review",
+        "displayName": "SQL Safety Review",
+        "description": "Prompt template that checks generated SQL for destructive operations and restricted joins.",
+        "promptType": "Validation",
+        "dataAccessPatterns": [
+          "Read"
+        ],
+        "outputClassification": {
+          "sensitivityLevel": "Confidential",
+          "mayContainPII": true,
+          "outputCategories": [
+            "SQL query",
+            "Risk rationale"
+          ]
+        },
+        "usageCount": 1840
+      }
+    ],
+    "governanceMetadata": {
+      "registrationStatus": "PendingApproval",
+      "registeredBy": "analytics-platform@acme.example",
+      "registeredAt": 1775001600000,
+      "riskAssessment": {
+        "riskLevel": "Critical",
+        "riskFactors": [
+          "Broad SQL access",
+          "Potential data exfiltration"
+        ],
+        "mitigations": [
+          "Read-only role",
+          "Query allowlist",
+          "Result row cap"
+        ],
+        "assessedBy": "security@acme.example",
+        "assessedAt": 1775606400000
+      },
+      "dataClassification": {
+        "accessesPII": true,
+        "accessesSensitiveData": true,
+        "dataCategories": [
+          "Customer dimensions",
+          "Financial planning"
+        ],
+        "dataRetentionPeriod": "90 days"
+      },
+      "approvalComments": "Pending warehouse access review and data contract evidence."
+    },
+    "dataAccessSummary": {
+      "accessPatterns": [
+        "Read",
+        "Execute"
+      ],
+      "sensitivityLevel": "Restricted",
+      "piiAccess": true,
+      "externalApiAccess": false,
+      "fileSystemAccess": false,
+      "networkAccess": true,
+      "databaseAccess": true
+    },
+    "securityMetrics": {
+      "authenticationRequired": true,
+      "authorizationEnforced": true,
+      "auditLoggingEnabled": true,
+      "encryptionInTransit": true,
+      "sandboxed": true,
+      "secretsManagement": "Warehouse scoped OAuth"
+    },
+    "tags": [
+      {
+        "tagFQN": "Tier.Tier1",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      },
+      {
+        "tagFQN": "PII.Sensitive",
+        "source": "Classification",
+        "labelType": "Manual",
+        "state": "Confirmed"
+      }
+    ],
+    "service": "ai_governance_mcp"
+  }
+]
