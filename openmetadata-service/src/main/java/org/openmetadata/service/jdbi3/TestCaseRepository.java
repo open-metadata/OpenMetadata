@@ -418,27 +418,47 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       fqnHashToFqn.put(FullyQualifiedName.buildHash(fqn), fqn);
     }
 
-    List<CollectionDAO.LatestRecordWithFQNHash> records =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
-
     Map<String, TestCaseResult> fqnToResult = new HashMap<>();
-    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
-      String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
-      if (fqn != null && record.getJson() != null) {
-        TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
-        if (result != null) {
-          fqnToResult.put(fqn, result);
+    if (setResults) {
+      List<CollectionDAO.LatestRecordWithFQNHash> records =
+          daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
+          if (result != null) {
+            fqnToResult.put(fqn, result);
+          }
+        }
+      }
+    }
+
+    // Ongoing incident = latest unresolved resolution-status record, not the result's stamped id.
+    Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
+    if (setIncidents) {
+      List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
+          daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : incidentRecords) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResolutionStatus latest =
+              JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class);
+          if (latest != null
+              && latest.getStateId() != null
+              && !TestCaseResolutionStatusTypes.Resolved.equals(
+                  latest.getTestCaseResolutionStatusType())) {
+            fqnToOngoingIncident.put(fqn, latest.getStateId());
+          }
         }
       }
     }
 
     for (TestCase testCase : testCases) {
-      TestCaseResult result = fqnToResult.get(testCase.getFullyQualifiedName());
       if (setResults) {
-        testCase.setTestCaseResult(result);
+        testCase.setTestCaseResult(fqnToResult.get(testCase.getFullyQualifiedName()));
       }
       if (setIncidents) {
-        testCase.setIncidentId(result != null ? result.getIncidentId() : null);
+        testCase.setIncidentId(fqnToOngoingIncident.get(testCase.getFullyQualifiedName()));
       }
     }
   }
@@ -923,7 +943,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult");
+    return List.of("testSuite", "testSuites", "testDefinition", "testCaseResult", INCIDENTS_FIELD);
   }
 
   @Override
@@ -1089,21 +1109,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCaseResult;
   }
 
-  /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the
-   * incident
-   */
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
   private UUID getIncidentId(TestCase test) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
-
-    if (latest != null && latest.getStateId() != null) {
-      return latest.getStateId();
-    }
-
-    return null;
+    return tcrsRepo.getOngoingIncidentStateId(test.getFullyQualifiedName());
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
@@ -1684,9 +1695,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
-      compareAndUpdate(
-          INCIDENTS_FIELD,
-          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 
