@@ -121,6 +121,7 @@ describe('EntityAttachmentProvider', () => {
     (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
       {
         onImageUpload: mockOnImageUpload,
+        allowImageUpload: false,
       }
     );
   });
@@ -154,11 +155,34 @@ describe('EntityAttachmentProvider', () => {
       EntityType.DATABASE
     );
     expect(screen.getByTestId('entity-fqn')).toHaveTextContent('test.fqn');
-    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('true');
+    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('false');
     expect(screen.getByTestId('allow-file-upload')).toHaveTextContent('true');
   });
 
+  it('allows image upload for KNOWLEDGE_PAGE entity type', () => {
+    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
+      {
+        onImageUpload: mockOnImageUpload,
+        allowImageUpload: true,
+      }
+    );
+
+    render(
+      <EntityAttachmentProvider entityType={EntityType.KNOWLEDGE_PAGE}>
+        <TestComponent />
+      </EntityAttachmentProvider>
+    );
+
+    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('true');
+  });
+
   it('handles image file upload successfully', async () => {
+    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
+      {
+        onImageUpload: mockOnImageUpload,
+        allowImageUpload: true,
+      }
+    );
     const mockUrl = 'https://example.com/image.jpg';
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
     mockOnImageUpload.mockResolvedValue(mockUrl);
@@ -278,6 +302,12 @@ describe('EntityAttachmentProvider', () => {
   });
 
   it('handles upload error with string error', async () => {
+    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
+      {
+        onImageUpload: mockOnImageUpload,
+        allowImageUpload: true,
+      }
+    );
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
     const errorMessage = 'Upload failed';
     mockOnImageUpload.mockRejectedValue({
@@ -305,6 +335,12 @@ describe('EntityAttachmentProvider', () => {
   });
 
   it('handles upload error with AxiosError', async () => {
+    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
+      {
+        onImageUpload: mockOnImageUpload,
+        allowImageUpload: true,
+      }
+    );
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
     const mockError = new AxiosError('Network error');
     mockOnImageUpload.mockRejectedValue(mockError);
@@ -343,7 +379,13 @@ describe('EntityAttachmentProvider', () => {
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });
 
-  it('does not handle image upload when allowFileUpload is not set', async () => {
+  it('does not handle image upload when allowImageUpload is not set', async () => {
+    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
+      {
+        onImageUpload: mockOnImageUpload,
+        allowImageUpload: false,
+      }
+    );
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
 
     render(

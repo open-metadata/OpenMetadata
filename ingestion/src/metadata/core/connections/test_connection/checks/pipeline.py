@@ -9,33 +9,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Pipeline service step identity and shared check helpers.
+Pipeline service step identity.
 
 Pipeline connectors (dbt Cloud, Airflow, Fivetran) reach their orchestrator over
-a REST API with token auth, not a SQLAlchemy engine, so these helpers stay
-HTTP-generic: they call a connector-supplied callable and summarize what it
-returned, and on failure raise ``CheckError`` carrying the label of the call they
-attempted, so a failed step still reports its ``Evidence`` to the backend. The
-runner and the rest of the package stay engine- and protocol-agnostic; connectors
-reuse these helpers from their ``@check`` methods.
+a REST API with token auth, not a SQLAlchemy engine, so their check helpers are
+the protocol-generic ones in ``checks.rest``; only the step names are specific to
+the category.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.records import Diagnosis, Evidence
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Sized
-
-
-# A check only needs to prove the list endpoint is reachable and returns items,
-# not enumerate every one, so ``fetch_list`` counts at most this many and renders
-# ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
-# huge accounts.
-DEFAULT_LIST_CAP = 100
+from metadata.core.connections.test_connection.check import StepName
 
 
 class PipelineStep(StepName):
@@ -44,53 +28,6 @@ class PipelineStep(StepName):
     CheckAccess = "CheckAccess"
     GetJobs = "GetJobs"
     GetRuns = "GetRuns"
+    PipelineDetailsAccess = "PipelineDetailsAccess"
+    TaskDetailAccess = "TaskDetailAccess"
     GetPipelines = "GetPipelines"
-
-
-def _count(number: int, noun: str, cap: int | None = None) -> str:
-    """``3 jobs`` / ``1 job`` - pluralize the noun to match the count.
-
-    When ``cap`` is given and the count meets or exceeds it, the figure is
-    rendered ``<cap>+`` so a capped sample is not read as an exact total. The
-    caller caps ``number`` at ``cap`` first, so this only ever renders ``<cap>+``
-    at the boundary, never a larger bare number.
-    """
-    plural = noun if number == 1 else noun + "s"
-    shown = f"{cap}+" if cap is not None and number >= cap else str(number)
-    return f"{shown} {plural}"
-
-
-def verify_access(authenticate: Callable[[], object], command: str) -> Evidence:
-    """Prove the connector can authenticate against the REST API.
-
-    On failure, re-raise as ``CheckError`` carrying the attempted command, so the
-    gate step still reports what it tried.
-    """
-    try:
-        authenticate()
-    except Exception as cause:
-        raise CheckError(cause, Evidence(command=command)) from cause
-    return Evidence(summary="authenticated", command=command)
-
-
-def fetch_list(
-    fetch: Callable[[], Sized | None],
-    noun: str,
-    command: str,
-    cap: int = DEFAULT_LIST_CAP,
-    empty_caveat: Diagnosis | None = None,
-) -> Evidence:
-    """Call a REST list endpoint and report how many items it returned.
-
-    The count is capped at ``cap`` and rendered ``<cap>+`` at the boundary. When the
-    endpoint returns nothing and ``empty_caveat`` is given, the step passes but
-    carries the caveat as a non-blocking Warning. On failure, re-raise as
-    ``CheckError`` carrying the command, so the failed step still reports what it ran.
-    """
-    try:
-        items = fetch()
-    except Exception as cause:
-        raise CheckError(cause, Evidence(command=command)) from cause
-    count = min(len(items) if items else 0, cap)
-    caveat = empty_caveat if count == 0 else None
-    return Evidence(summary=f"{_count(count, noun, cap)} enumerated", command=command, caveat=caveat)

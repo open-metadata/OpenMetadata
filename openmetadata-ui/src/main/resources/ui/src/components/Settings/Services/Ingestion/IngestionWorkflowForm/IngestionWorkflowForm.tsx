@@ -43,6 +43,7 @@ import {
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import Loader from '../../../../common/Loader/Loader';
@@ -249,6 +250,26 @@ const IngestionWorkflowForm = forwardRef<
     return fields;
   }, [pipeLineType]);
 
+  // RJSF getWidget only accepts function/forwardRef/memo widgets; React.lazy
+  // widgets are objects and throw "Unsupported widget definition". Wrap each in a
+  // forwardRef Suspense boundary so they resolve while keeping code-splitting.
+  const widgets = useMemo(
+    () => ({
+      CheckboxWidget: withSuspenseFallback(CoreCheckboxWidget),
+      EmailWidget: CoreInputWidget,
+      PasswordWidget: withSuspenseFallback(CorePasswordWidget),
+      RadioWidget: withSuspenseFallback(CoreRadioWidget),
+      SelectWidget: CoreSelectWidget,
+      TextWidget: CoreInputWidget,
+      TextareaWidget: withSuspenseFallback(CoreTextAreaWidget),
+      URLWidget: CoreInputWidget,
+      UpDownWidget: CoreInputWidget,
+      code: withSuspenseFallback(CodeWidget),
+      manifestJson: withSuspenseFallback(ManifestJsonWidget),
+    }),
+    []
+  );
+
   // Exposes submit to the parent card footer, which triggers the form when hideFooter is true.
   useImperativeHandle(
     ref,
@@ -309,19 +330,7 @@ const IngestionWorkflowForm = forwardRef<
         transformErrors={transformErrors}
         uiSchema={uiSchema}
         validator={validator}
-        widgets={{
-          CheckboxWidget: CoreCheckboxWidget,
-          EmailWidget: CoreInputWidget,
-          PasswordWidget: CorePasswordWidget,
-          RadioWidget: CoreRadioWidget,
-          SelectWidget: CoreSelectWidget,
-          TextWidget: CoreInputWidget,
-          TextareaWidget: CoreTextAreaWidget,
-          URLWidget: CoreInputWidget,
-          UpDownWidget: CoreInputWidget,
-          code: CodeWidget,
-          manifestJson: ManifestJsonWidget,
-        }}
+        widgets={widgets}
         onChange={handleOnChange}
         onFocus={onFocus}
         onSubmit={handleSubmit}>

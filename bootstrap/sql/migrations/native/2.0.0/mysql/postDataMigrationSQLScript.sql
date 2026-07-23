@@ -239,3 +239,40 @@ SET json = JSON_REMOVE(json, '$.openMetadataServerConnection', '$.privateConfigu
 WHERE extension LIKE 'app.version.%'
   AND (JSON_EXTRACT(json, '$.openMetadataServerConnection') IS NOT NULL
        OR JSON_EXTRACT(json, '$.privateConfiguration') IS NOT NULL);
+
+-- Data Insights no longer runs a Data Quality workflow: testCaseResult and
+-- testCaseResolutionStatus are read straight from their live search indexes via the
+-- di-data-assets-* aliases, which search indexing now owns. moduleConfiguration is
+-- additionalProperties:false, so the retired dataQuality key must be stripped from every
+-- persisted config or DataInsightsApp fails to deserialize it on startup.
+UPDATE installed_apps
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE apps_marketplace
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');

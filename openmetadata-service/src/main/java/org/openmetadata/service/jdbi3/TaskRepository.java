@@ -78,6 +78,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -353,11 +354,15 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
+    // A reference is only required to carry id and type, so populate the rest before the updater
+    // diffs these lists — it sorts them by name.
+    task.setAssignees(EntityUtil.populateEntityReferences(task.getAssignees()));
+    task.setReviewers(EntityUtil.populateEntityReferences(task.getReviewers()));
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
     if (!update) {
-      TaskFieldValidator.validateDataAccessRequestDuration(task);
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
       validateNoDuplicateActiveDataAccessRequest(task);
     }
 
@@ -458,28 +463,40 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
-    List<EntityReference> result = new ArrayList<>();
+    List<EntityReference> expanded = new ArrayList<>();
     for (EntityReference ref : refs) {
-      if (!Entity.TEAM.equals(ref.getType())) {
-        result.add(ref);
-        continue;
-      }
-      try {
-        Team team = Entity.getEntity(Entity.TEAM, ref.getId(), "users", Include.NON_DELETED);
-        if (!nullOrEmpty(team.getUsers())) {
-          result.addAll(team.getUsers());
-        }
-        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
-        // (e.g. Data Access Requests) an empty assignee list triggers the node's
-        // emptyAssigneeStrategy
-        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
-        // being pinned to a member-less team.
-      } catch (Exception e) {
-        LOG.debug(
-            "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());
+      if (Entity.TEAM.equals(ref.getType())) {
+        appendTeamMembers(ref, expanded);
+      } else {
+        expanded.add(ref);
       }
     }
-    return result;
+    return dedupById(expanded);
+  }
+
+  private void appendTeamMembers(EntityReference teamRef, List<EntityReference> expanded) {
+    try {
+      Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "users", Include.NON_DELETED);
+      if (!nullOrEmpty(team.getUsers())) {
+        expanded.addAll(team.getUsers());
+      }
+      // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+      // (e.g. Data Access Requests) an empty assignee list triggers the node's
+      // emptyAssigneeStrategy (assignAdmins) in SetApprovalAssigneesImpl, so it routes to
+      // platform admins rather than being pinned to a member-less team.
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to expand team {} to users: {}", teamRef.getFullyQualifiedName(), e.getMessage());
+    }
+  }
+
+  // Dedup by id so a user who is both a direct owner and a member of an owning team — or a member
+  // of two owning teams — appears once in the task's assignees. LinkedHashMap preserves insertion
+  // order so the original owner-list order carries through.
+  static List<EntityReference> dedupById(List<EntityReference> refs) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
+    return new ArrayList<>(byId.values());
   }
 
   /**
@@ -1397,10 +1414,12 @@ public class TaskRepository extends EntityRepository<Task> {
       variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
       variables.put(
-          "taskFormSchemaId",
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           task.getTaskFormSchemaId() != null ? task.getTaskFormSchemaId().toString() : null);
-      variables.put("taskFormSchemaVersion", task.getTaskFormSchemaVersion());
-      variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
+      variables.put(
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
 
       WorkflowHandler.getInstance()
           .triggerByKey(

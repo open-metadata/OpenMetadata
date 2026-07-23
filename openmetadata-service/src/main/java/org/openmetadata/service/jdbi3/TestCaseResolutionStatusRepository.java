@@ -99,8 +99,9 @@ public class TestCaseResolutionStatusRepository
     for (String json : jsons) {
       TestCaseResolutionStatus testCaseResolutionStatus =
           JsonUtils.readValue(json, TestCaseResolutionStatus.class);
-      setInheritedFields(testCaseResolutionStatus);
-      testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      if (resolveTestCaseReference(testCaseResolutionStatus)) {
+        testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      }
     }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
@@ -269,6 +270,27 @@ public class TestCaseResolutionStatusRepository
         getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
+  /**
+   * Resolves the parent test case reference, returning false for orphaned rows whose parentOf
+   * relationship no longer exists. Such rows are skipped rather than failing the whole request; the
+   * DataRetention job removes them.
+   */
+  private boolean resolveTestCaseReference(TestCaseResolutionStatus recordEntity) {
+    boolean resolved = true;
+    try {
+      setInheritedFields(recordEntity);
+    } catch (RuntimeException exception) {
+      if (!shouldSkipSearchResultOnInheritedFieldError(exception, recordEntity)) {
+        throw exception;
+      }
+      LOG.warn(
+          "Skipping orphaned testCaseResolutionStatus {} with no parent test case relationship",
+          recordEntity.getId());
+      resolved = false;
+    }
+    return resolved;
+  }
+
   @Override
   protected boolean shouldSkipSearchResultOnInheritedFieldError(
       RuntimeException exception, TestCaseResolutionStatus entity) {
@@ -282,7 +304,14 @@ public class TestCaseResolutionStatusRepository
         && message.contains(Relationship.PARENT_OF.value());
   }
 
-  private boolean applyLegacyStatusToIncidentTask(
+  /**
+   * Bridge a legacy-style {@link TestCaseResolutionStatus} onto the task-first incident workflow,
+   * advancing the workflow task to match the recorded status. Used by {@link #storeInternal} on
+   * live Ack/Assigned/Resolved writes so existing TCRS clients keep working while Task remains the
+   * source of truth. Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when the
+   * task is already at the target stage.
+   */
+  public boolean applyLegacyStatusToIncidentTask(
       TestCaseResolutionStatus recordEntity, String recordFQN) {
     Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
     if (incidentTask == null) {

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { toString, uniqueId } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { toString } from 'lodash';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
@@ -27,9 +27,7 @@ import {
   getKnowledgePageVersionsList,
 } from '../../rest/knowledgeCenterAPI';
 
-import { Col, Row, Skeleton, Space } from 'antd';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
+import { Skeleton, Space } from 'antd';
 import contextCenterClassBase from '../../utils/ContextCenterClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../utils/KnowledgePagePureUtils';
@@ -98,25 +96,6 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     }
   }, [fqn]);
 
-  const breadcrumbs = useMemo(
-    () => [
-      {
-        name: t('label.home'),
-        url: ROUTES.HOME,
-      },
-      {
-        name: t('label.knowledge-center'),
-        url: ROUTES.KNOWLEDGE_CENTER,
-      },
-      {
-        name: getKnowledgePageName(knowledgePage, t),
-        url: '',
-        activeTitle: false,
-      },
-    ],
-    [knowledgePage?.displayName]
-  );
-
   const onVersionChange = (selectedVersion: string) => {
     navigate(
       contextCenterClassBase.getArticleVersionPath(fqn, selectedVersion)
@@ -145,34 +124,6 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     [version, versionList, onVersionChange, onBackHandler]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <div className="p-y-sm p-x-sm w-full border-bottom bg-white">
-        <Row>
-          {loading ? (
-            Array(3)
-              .fill(null)
-              .map(() => (
-                <Col key={uniqueId()}>
-                  <Skeleton
-                    active
-                    className="m-r-xs m-b-xss"
-                    paragraph={{ rows: 1, width: 100 }}
-                    title={false}
-                  />
-                </Col>
-              ))
-          ) : (
-            <Col className="d-flex items-center" span={16}>
-              <TitleBreadcrumb titleLinks={breadcrumbs} />
-            </Col>
-          )}
-        </Row>
-      </div>
-    ),
-    [breadcrumbs, loading]
-  );
-
   useEffect(() => {
     fetchKnowledgePage();
   }, [fqn, version]);
@@ -187,7 +138,6 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       rightPanel: getVersionTimeLineElement(),
       title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
-      header: getHeaderElement(),
     });
   }, [selectedData, loading, versionList, version, knowledgePage]);
 

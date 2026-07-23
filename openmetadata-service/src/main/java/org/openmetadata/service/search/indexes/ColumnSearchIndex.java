@@ -171,7 +171,7 @@ public class ColumnSearchIndex implements SearchIndex {
 
   public static List<Column> flattenColumns(List<Column> columns) {
     List<Column> result = new ArrayList<>();
-    flattenColumns(columns, result, 1, SearchFieldLimits.forEntity(Entity.TABLE));
+    flattenColumns(columns, result, 1, SearchFieldLimits.active());
     return result;
   }
 
