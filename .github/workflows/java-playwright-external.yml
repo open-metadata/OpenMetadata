@@ -125,6 +125,15 @@ permissions:
   contents: read
   checks: write
 
+# All jobs hit ONE shared external cluster, and every job's purge-it step hard-deletes each
+# test-namespace root by the generic __<32hex>__ signature (ClusterPurgeIT) — NOT scoped to this
+# run. Two overlapping runs therefore delete each other's live data mid-seed (observed: a
+# concurrent run's purge 404'd a scale seed's schema). Serialize to at most one external run at a
+# time; a new run queues behind the current one rather than cancelling a multi-hour scale run.
+concurrency:
+  group: java-it-external-cluster
+  cancel-in-progress: false
+
 jobs:
   ui-it-external:
     if: ${{ github.event.inputs.runUiIt != 'false' }}
@@ -301,10 +310,12 @@ jobs:
   search-it-external:
     # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
     # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
-    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
-    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    # serially or they collide with "Job is already running". `needs` enforces ordering;
+    # `!cancelled()` keeps each job's own toggle independent (so it still runs if ui-it was
+    # skipped/failed) while STILL honoring a manual cancel — plain `always()` forces the job to
+    # start even when you cancel the run, which is why cancelling never stopped search-it/scale-it.
     needs: [ui-it-external]
-    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -437,7 +448,7 @@ jobs:
     # cancelled every night without ever completing. Larger sizes can still be requested on demand
     # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:

@@ -18,12 +18,18 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -58,7 +64,6 @@ import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
-import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -102,6 +107,7 @@ import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
@@ -262,6 +268,138 @@ public class SystemResource {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/settings/glossaryTermRelationSettings/relationTypes")
+  @Operation(
+      operationId = "listGlossaryTermRelationTypes",
+      summary = "List glossary term relation types",
+      description = "Get a paginated list of configured glossary term relation types.")
+  public ResultList<GlossaryTermRelationType> listGlossaryTermRelationTypes(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Limit records. (1 to 100, default = 15)")
+          @DefaultValue("15")
+          @QueryParam("limit")
+          @Min(1)
+          @Max(100)
+          int limit,
+      @Parameter(description = "Offset records. (0 or greater, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          @Max(1000000)
+          int offset) {
+    authorizer.authorizeAdmin(securityContext);
+    List<GlossaryTermRelationType> relationTypes =
+        SettingsCache.getSetting(
+                GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class)
+            .getRelationTypes();
+    if (relationTypes == null) {
+      relationTypes = List.of();
+    }
+
+    int total = relationTypes.size();
+    int fromIndex = Math.min(offset, total);
+    int toIndex = Math.min(fromIndex + limit, total);
+    List<GlossaryTermRelationType> page =
+        new ArrayList<>(relationTypes.subList(fromIndex, toIndex));
+
+    return new ResultList<>(page, offset, limit, total);
+  }
+
+  @POST
+  @Path("/settings/glossaryTermRelationSettings/relationTypes")
+  @Operation(
+      operationId = "createGlossaryTermRelationType",
+      summary = "Create a glossary term relation type")
+  public Response createGlossaryTermRelationType(
+      @Context SecurityContext securityContext, @Valid GlossaryTermRelationType relationType) {
+    authorizer.authorizeAdmin(securityContext);
+    if (relationType == null || nullOrEmpty(relationType.getName())) {
+      throw new BadRequestException("The relation type name is required.");
+    }
+
+    relationType.setIsSystemDefined(false);
+    GlossaryTermRelationSettingsUtil.normalize(relationType);
+    JsonValue relationTypeJson = JsonUtils.readJson(JsonUtils.pojoToJson(relationType));
+    JsonPatch patch = Json.createPatchBuilder().add("/relationTypes/-", relationTypeJson).build();
+
+    systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
+    return Response.status(Response.Status.CREATED).entity(relationType).build();
+  }
+
+  @PUT
+  @Path("/settings/glossaryTermRelationSettings/relationTypes/{name}")
+  @Operation(
+      operationId = "updateGlossaryTermRelationType",
+      summary = "Update a glossary term relation type")
+  public Response updateGlossaryTermRelationType(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Valid GlossaryTermRelationType relationType) {
+    authorizer.authorizeAdmin(securityContext);
+    if (relationType == null || nullOrEmpty(relationType.getName())) {
+      throw new BadRequestException("The relation type name is required.");
+    }
+    GlossaryTermRelationSettings currentSettings = getGlossaryTermRelationSettings();
+    int relationTypeIndex = findRelationTypeIndex(currentSettings, name);
+    GlossaryTermRelationType existing = currentSettings.getRelationTypes().get(relationTypeIndex);
+    if (Boolean.TRUE.equals(existing.getIsSystemDefined())) {
+      throw new SystemSettingsException("System-defined relation types cannot be updated.");
+    }
+    if (!name.equals(relationType.getName())) {
+      throw new BadRequestException("The relation type name cannot be changed.");
+    }
+
+    relationType.setIsSystemDefined(false);
+    GlossaryTermRelationSettingsUtil.normalize(relationType);
+    String relationTypePath = "/relationTypes/" + relationTypeIndex;
+    JsonPatch patch =
+        Json.createPatchBuilder()
+            .test(relationTypePath + "/name", existing.getName())
+            .replace(relationTypePath, JsonUtils.readJson(JsonUtils.pojoToJson(relationType)))
+            .build();
+
+    systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
+    return Response.ok(relationType).build();
+  }
+
+  @DELETE
+  @Path("/settings/glossaryTermRelationSettings/relationTypes/{name}")
+  @Operation(
+      operationId = "deleteGlossaryTermRelationType",
+      summary = "Delete a glossary term relation type")
+  public Response deleteGlossaryTermRelationType(
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
+    authorizer.authorizeAdmin(securityContext);
+    GlossaryTermRelationSettings currentSettings = getGlossaryTermRelationSettings();
+    int relationTypeIndex = findRelationTypeIndex(currentSettings, name);
+    GlossaryTermRelationType existing = currentSettings.getRelationTypes().get(relationTypeIndex);
+    if (Boolean.TRUE.equals(existing.getIsSystemDefined())) {
+      throw new SystemSettingsException("System-defined relation types cannot be deleted.");
+    }
+
+    GlossaryTermRepository glossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    int usageCount =
+        glossaryTermRepository.getRelationTypeUsageCounts().getOrDefault(existing.getName(), 0);
+    if (usageCount > 0) {
+      throw new SystemSettingsException(
+          String.format(
+              "Cannot delete relation type %s (%d usage%s).",
+              existing.getName(), usageCount, usageCount == 1 ? "" : "s"));
+    }
+
+    String relationTypePath = "/relationTypes/" + relationTypeIndex;
+    JsonPatch patch =
+        Json.createPatchBuilder()
+            .test(relationTypePath + "/name", existing.getName())
+            .remove(relationTypePath)
+            .build();
+    systemRepository.patchSetting(GLOSSARY_TERM_RELATION_SETTINGS.value(), patch);
+
+    return Response.noContent().build();
   }
 
   @GET
@@ -481,7 +619,8 @@ public class SystemResource {
         .equalsIgnoreCase(settingName.getConfigType().toString())) {
       GlossaryTermRelationSettings relationSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), GlossaryTermRelationSettings.class);
-      normalizeGlossaryTermRelationSettings(relationSettings);
+      GlossaryTermRelationSettingsUtil.normalize(relationSettings);
+      GlossaryTermRelationSettingsUtil.validateUniqueNames(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
     }
@@ -1256,7 +1395,12 @@ public class SystemResource {
     GlossaryTermRelationSettings newConfig =
         JsonUtils.convertValue(newSettings.getConfigValue(), GlossaryTermRelationSettings.class);
 
-    if (currentConfig.getRelationTypes() == null || newConfig.getRelationTypes() == null) {
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+        currentConfig, newConfig);
+    if (currentConfig == null
+        || newConfig == null
+        || currentConfig.getRelationTypes() == null
+        || newConfig.getRelationTypes() == null) {
       return;
     }
 
@@ -1272,23 +1416,6 @@ public class SystemResource {
 
     if (removedRelationTypes.isEmpty()) {
       return;
-    }
-
-    // System-defined relation types are part of the seeded contract and must never be deleted,
-    // even when no glossary term currently references them. The "in-use" check below is not
-    // enough on its own — a settings update submitted before any term uses the type would
-    // otherwise silently strip it from the cached settings.
-    List<String> removedSystemDefinedTypes =
-        currentConfig.getRelationTypes().stream()
-            .filter(rt -> !newRelationTypeNames.contains(rt.getName()))
-            .filter(rt -> Boolean.TRUE.equals(rt.getIsSystemDefined()))
-            .map(GlossaryTermRelationType::getName)
-            .toList();
-
-    if (!removedSystemDefinedTypes.isEmpty()) {
-      throw new SystemSettingsException(
-          "Cannot delete system-defined relation types: "
-              + String.join(", ", removedSystemDefinedTypes));
     }
 
     GlossaryTermRepository glossaryTermRepository =
@@ -1312,63 +1439,26 @@ public class SystemResource {
     }
   }
 
-  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
-    if (settings == null || settings.getRelationTypes() == null) {
-      return;
+  private GlossaryTermRelationSettings getGlossaryTermRelationSettings() {
+    Settings settings = systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    if (settings == null || settings.getConfigValue() == null) {
+      throw new NotFoundException("Glossary term relation settings were not found.");
     }
 
-    for (GlossaryTermRelationType relationType : settings.getRelationTypes()) {
-      if (relationType == null) {
-        continue;
-      }
-
-      RelationCardinality cardinality = relationType.getCardinality();
-      if (cardinality == null) {
-        relationType.setCardinality(
-            deriveCardinality(relationType.getSourceMax(), relationType.getTargetMax()));
-        continue;
-      }
-
-      switch (cardinality) {
-        case ONE_TO_ONE -> {
-          relationType.setSourceMax(1);
-          relationType.setTargetMax(1);
-        }
-        case ONE_TO_MANY -> {
-          relationType.setSourceMax(1);
-          relationType.setTargetMax(null);
-        }
-        case MANY_TO_ONE -> {
-          relationType.setSourceMax(null);
-          relationType.setTargetMax(1);
-        }
-        case MANY_TO_MANY -> {
-          relationType.setSourceMax(null);
-          relationType.setTargetMax(null);
-        }
-        case CUSTOM -> {
-          // Keep explicit values as-is.
-        }
-        default -> {
-          // No-op for unknown values.
-        }
-      }
-    }
+    return JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
   }
 
-  private RelationCardinality deriveCardinality(Integer sourceMax, Integer targetMax) {
-    if (sourceMax == null && targetMax == null) {
-      return RelationCardinality.MANY_TO_MANY;
+  private int findRelationTypeIndex(GlossaryTermRelationSettings settings, String name) {
+    List<GlossaryTermRelationType> relationTypes = settings.getRelationTypes();
+    if (relationTypes != null) {
+      for (int index = 0; index < relationTypes.size(); index++) {
+        GlossaryTermRelationType relationType = relationTypes.get(index);
+        if (relationType != null && name.equals(relationType.getName())) {
+          return index;
+        }
+      }
     }
-    if (Integer.valueOf(1).equals(sourceMax) && Integer.valueOf(1).equals(targetMax)) {
-      return RelationCardinality.ONE_TO_ONE;
-    }
-    if (Integer.valueOf(1).equals(sourceMax) && targetMax == null) {
-      return RelationCardinality.ONE_TO_MANY;
-    }
-    if (sourceMax == null && Integer.valueOf(1).equals(targetMax)) {
-      return RelationCardinality.MANY_TO_ONE;
-    }
-    return RelationCardinality.CUSTOM;
+
+    throw new NotFoundException(String.format("Relation type '%s' was not found.", name));
   }
 }

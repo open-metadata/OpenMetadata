@@ -34,7 +34,7 @@ import {
   Edit03,
   Eye,
   EyeOff,
-  FileCheck02,
+  FileCheck03,
   Plus,
   SearchLg,
   Settings01,
@@ -736,7 +736,7 @@ const MetricListPage = () => {
         features={[
           {
             key: 'define',
-            icon: <FileCheck02 className="tw:text-fg-brand-primary" />,
+            icon: <FileCheck03 className="tw:text-fg-brand-primary" />,
             title: t('label.define-it'),
             description: t('message.metric-define-it-description'),
           },

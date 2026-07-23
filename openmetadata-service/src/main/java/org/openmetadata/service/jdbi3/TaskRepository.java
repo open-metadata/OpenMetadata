@@ -353,6 +353,10 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
+    // A reference is only required to carry id and type, so populate the rest before the updater
+    // diffs these lists — it sorts them by name.
+    task.setAssignees(EntityUtil.populateEntityReferences(task.getAssignees()));
+    task.setReviewers(EntityUtil.populateEntityReferences(task.getReviewers()));
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
