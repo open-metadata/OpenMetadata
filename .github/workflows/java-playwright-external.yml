@@ -125,6 +125,15 @@ permissions:
   contents: read
   checks: write
 
+# All jobs hit ONE shared external cluster, and every job's purge-it step hard-deletes each
+# test-namespace root by the generic __<32hex>__ signature (ClusterPurgeIT) — NOT scoped to this
+# run. Two overlapping runs therefore delete each other's live data mid-seed (observed: a
+# concurrent run's purge 404'd a scale seed's schema). Serialize to at most one external run at a
+# time; a new run queues behind the current one rather than cancelling a multi-hour scale run.
+concurrency:
+  group: java-it-external-cluster
+  cancel-in-progress: false
+
 jobs:
   ui-it-external:
     if: ${{ github.event.inputs.runUiIt != 'false' }}

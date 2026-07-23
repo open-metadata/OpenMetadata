@@ -200,7 +200,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             </div>
           </div>
           <Button
-            className="tw:font-semibold tw:ring-secondary"
+            className="tw:font-semibold tw:after:outline-secondary"
             color="secondary"
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
@@ -210,7 +210,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           </Button>
           {canRunAgent(agent, permissions) && (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="drawer-run-now-button"
               iconLeading={<PlayIcon height={14} width={14} />}
