@@ -14,12 +14,12 @@ SSO stays in its dedicated workflow, while knowledge graph and ontology share on
 `build_playwright_shards.py` discovers stable Playwright test IDs and assigns hook-inclusive p75 duration from the latest three successful full runs. It uses longest-processing-time-first balancing and computes the common shard count as:
 
 ```text
-ceil(total weighted worker time / (3 workers * 15 minutes * 0.85))
+ceil(total weighted worker time / (3 workers * 19 minutes * 0.85))
 ```
 
-The common matrix is bounded to 5–40 runners. Its runner count uses a 15-minute allocation budget so hosted-run variance and retries have six minutes of reserve before the hard 21-minute execution guard. The current 1,356-minute baseline therefore uses 36 runners; a 27-runner hosted validation completed only 4 common shards before the guard, while clean lanes showed the observed tail needs this reserve. Every generated shard still has a 20-minute validation ceiling, which keeps expensive internally parallel suites together instead of multiplying their shared setup across runners. Dedicated lanes use a 20-minute allocation budget. Serial/global behavior stays in one-worker lanes. Large suites listed in `AUDITED_PARALLEL_SUITES` are split at test granularity only after confirming that they are not serial and do not depend on earlier tests. The planner fails when any remaining atomic unit or bounded lane exceeds the 20-minute ceiling.
+The common matrix is bounded to 5–24 runners and uses a 19-minute allocation budget, retaining one minute of reserve before the planner's strict 20-minute validation ceiling. Dedicated lanes use a 20-minute allocation budget. The baseline comes from a coverage-complete hosted full run and includes retry time plus a conservative fallback for zero-duration native skips. This keeps expensive internally parallel suites together instead of multiplying their shared setup across runners. Serial/global behavior stays in one-worker lanes. Large suites listed in `AUDITED_PARALLEL_SUITES` are split at test granularity only after confirming that they are not serial and do not depend on earlier tests. The planner fails when any remaining atomic unit or bounded lane exceeds the 20-minute ceiling.
 
-The `Basic` and `chromium` projects share that common 40-runner cap and are balanced together; they are not separate pools of standard hosted runners.
+The `Basic` and `chromium` projects share that common 24-runner cap and are balanced together; they are not separate pools of standard hosted runners. Isolated ingestion, search, reindex, permission, and global-state lanes are additional because they cannot safely share mutable server state with the common matrix.
 
 Impact-mapped targeted CI runs the representative Table-source scenario from `DataAssetLineage.spec.ts`. A direct change to that spec, full CI, and local runs retain every source-entity scenario in the same file. This preserves stable IDs and lets the duration planner distribute the full matrix instead of concentrating it in an unsharded stress project. Custom Properties keeps the complete widget contract on Table and one String CRUD smoke per remaining entity.
 
