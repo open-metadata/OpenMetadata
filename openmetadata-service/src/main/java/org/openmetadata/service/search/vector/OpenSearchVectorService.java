@@ -661,13 +661,20 @@ public class OpenSearchVectorService implements VectorIndexService {
   private String resolveLiveChunkTarget(String base) {
     String target = null;
     try {
-      String response = executeGenericRequest("GET", "/_alias/" + base, null);
-      Iterator<String> names = MAPPER.readTree(response).fieldNames();
-      if (names.hasNext()) {
-        target = names.next();
+      // Quiet boolean probe first: on the pre-promotion physical-index layout no alias exists,
+      // and a direct GET /_alias/{base} would make executeGenericRequest log the expected 404 as
+      // an ERROR with a full stack trace — once per process, on every instance.
+      if (client.indices().existsAlias(a -> a.name(base)).value()) {
+        String response = executeGenericRequest("GET", "/_alias/" + base, null);
+        Iterator<String> names = MAPPER.readTree(response).fieldNames();
+        if (names.hasNext()) {
+          target = names.next();
+        }
+      } else {
+        LOG.debug("No alias named {} — checking for a legacy physical index", base);
       }
     } catch (Exception e) {
-      LOG.debug("No alias named {} — checking for a legacy physical index", base);
+      LOG.debug("Alias lookup for {} failed: {}", base, e.getMessage());
     }
     if (target == null) {
       try {
