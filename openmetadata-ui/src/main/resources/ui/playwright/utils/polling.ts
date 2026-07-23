@@ -37,6 +37,14 @@ export const waitForSearchIndexed = async (
   const start = Date.now();
   let intervalIdx = 0;
 
+  // Name parts containing a "." are themselves quoted per OpenMetadata's FQN
+  // convention (e.g. `"glossary"."PW.name%with.dots"`), so entityFqn can
+  // contain literal `"` characters. Backslash-escape them (and any literal
+  // backslash) before embedding in the outer quoted Lucene phrase below,
+  // otherwise the embedded quote terminates the phrase early and the query
+  // parser sees dangling tokens instead of one exact-match phrase.
+  const escapedFqn = entityFqn.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
   while (Date.now() - start < timeout) {
     // Scope the query to the fullyQualifiedName field as an exact quoted
     // phrase (the same pattern used elsewhere in this suite, e.g.
@@ -48,7 +56,7 @@ export const waitForSearchIndexed = async (
     // enough noise accumulates, so checking hits client-side can't fix it.
     const response = await apiContext.get(
       `/api/v1/search/query?q=fullyQualifiedName:%22${encodeURIComponent(
-        entityFqn
+        escapedFqn
       )}%22&index=${index}&from=0&size=5`
     );
 
