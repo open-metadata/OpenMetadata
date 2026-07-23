@@ -667,10 +667,7 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
 @reflection.cache
 def _get_schema_unique_constraints(self, connection, schema, **kw):
     result = connection.execute(
-        text(
-            f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ "
-            f"UNIQUE KEYS IN SCHEMA {schema}"
-        )
+        text(f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ UNIQUE KEYS IN SCHEMA {schema}")
     )
     unique_constraints = {}
     for row in result:
@@ -686,16 +683,14 @@ def _get_schema_unique_constraints(self, connection, schema, **kw):
                 "table_name": table_name,
             }
         else:
-            unique_constraints[constraint_key]["column_names"].append(
-                self.normalize_name(row._mapping["column_name"])
-            )
+            unique_constraints[constraint_key]["column_names"].append(self.normalize_name(row._mapping["column_name"]))
 
     ans = defaultdict(list)
     for constraint in unique_constraints.values():
         t_name = constraint.pop("table_name")
         ans[t_name].append(constraint)
 
-    return dict(ans)
+    return ans
 
 
 @reflection.cache
