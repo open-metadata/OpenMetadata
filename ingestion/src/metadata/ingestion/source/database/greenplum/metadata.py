@@ -12,6 +12,7 @@
 Greenplum source module
 """
 
+import re
 import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple  # noqa: UP035
@@ -19,6 +20,7 @@ from typing import Iterable, Optional, Tuple  # noqa: UP035
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -48,8 +50,11 @@ from metadata.ingestion.source.database.common_pg_mappings import (
 )
 from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_GET_DB_NAMES,
-    GREENPLUM_GET_TABLE_NAMES,
-    GREENPLUM_PARTITION_DETAILS,
+    GREENPLUM_GET_TABLE_NAMES_V6,
+    GREENPLUM_GET_TABLE_NAMES_V7,
+    GREENPLUM_GET_VERSION,
+    GREENPLUM_PARTITION_DETAILS_V6,
+    GREENPLUM_PARTITION_DETAILS_V7,
 )
 from metadata.ingestion.source.database.greenplum.utils import (
     get_column_info,
@@ -92,6 +97,10 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Greenplum Source
     """
 
+    def __init__(self, config, metadata):
+        super().__init__(config, metadata)
+        self._greenplum_version: int | None = None
+
     @classmethod
     def create(
         cls,
@@ -105,13 +114,44 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             raise InvalidSourceException(f"Expected GreenplumConnection, but got {connection}")
         return cls(config, metadata)
 
+    def _get_greenplum_major_version(self) -> int:
+        if self._greenplum_version is None:
+            try:
+                with self.engine.connect() as conn:
+                    result = conn.execute(text(GREENPLUM_GET_VERSION))
+                    version_string = result.scalar() or ""
+                match = re.search(r"Greenplum Database (\d+)", version_string)
+                if match:
+                    self._greenplum_version = int(match.group(1))
+                    logger.info("Detected Greenplum major version %d", self._greenplum_version)
+                else:
+                    logger.warning(
+                        "Could not parse Greenplum major version from SELECT version() output, "
+                        "defaulting to 7 to avoid querying removed GP6-specific catalog tables"
+                    )
+                    logger.debug("Full version() output: %s", version_string)
+                    self._greenplum_version = 7
+            except SQLAlchemyError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Could not determine Greenplum version (%s), "
+                    "defaulting to 7 to avoid querying removed GP6-specific catalog tables",
+                    exc,
+                )
+                self._greenplum_version = 7
+        return self._greenplum_version
+
+    def _is_v7_or_later(self) -> bool:
+        return self._get_greenplum_major_version() >= 7
+
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Overwrite the inspector implementation to handle partitioned
         and foreign types
         """
+        table_names_query = GREENPLUM_GET_TABLE_NAMES_V7 if self._is_v7_or_later() else GREENPLUM_GET_TABLE_NAMES_V6
         result = self.connection.execute(
-            sql.text(GREENPLUM_GET_TABLE_NAMES),
+            sql.text(table_names_query),
             {"schema": schema_name},
         )
 
@@ -158,25 +198,57 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+        if self._is_v7_or_later():
+            return self._get_table_partition_details_v7(table_name, schema_name)
+        return self._get_table_partition_details_v6(table_name, schema_name)
+
+    def _get_table_partition_details_v6(
+        self, table_name: str, schema_name: str
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         with self.engine.connect() as conn:
             result = conn.execute(
-                text(GREENPLUM_PARTITION_DETAILS.format(table_name=table_name, schema_name=schema_name))
+                text(GREENPLUM_PARTITION_DETAILS_V6),
+                {"table_name": table_name, "schema_name": schema_name},
             ).all()
 
-        if result:
-            partition_details = TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName=row.column_name,
-                        intervalType=INTERVAL_TYPE_MAP.get(
-                            result[0].partition_strategy,
-                            PartitionIntervalTypes.COLUMN_VALUE,
-                        ),
-                        interval=None,
-                    )
-                    for row in result
-                    if row.column_name
-                ]
+        return self._build_partition_result(result)
+
+    def _get_table_partition_details_v7(
+        self, table_name: str, schema_name: str
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text(GREENPLUM_PARTITION_DETAILS_V7),
+                {"table_name": table_name, "schema_name": schema_name},
+            ).all()
+
+        return self._build_partition_result(result)
+
+    @staticmethod
+    def _build_partition_result(
+        result,
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+        # When a partition key is an expression (not a plain column),
+        # pg_partitioned_table.partattrs / pg_partition.paratts contains 0, so the
+        # join to information_schema.columns yields NULL column_name and the row is
+        # filtered out below. The table is still partitioned; we just cannot surface
+        # the partition-column details yet. Return (True, None) so it is ingested as
+        # TableType.Partitioned rather than TableType.Regular.
+        if not result:
+            return False, None
+        columns = [
+            PartitionColumnDetails(
+                columnName=row.column_name,
+                intervalType=INTERVAL_TYPE_MAP.get(
+                    row.partition_strategy,
+                    PartitionIntervalTypes.COLUMN_VALUE,
+                ),
+                interval=None,
             )
-            return True, partition_details
-        return False, None
+            for row in result
+            if row.column_name
+        ]
+        if not columns:
+            # Partition exists but all keys are expression-based (column_name is NULL).
+            return True, None
+        return True, TablePartition(columns=columns)

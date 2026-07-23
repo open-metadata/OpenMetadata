@@ -16,7 +16,9 @@ import textwrap
 
 # https://www.postgresql.org/docs/current/catalog-pg-class.html
 # r = ordinary table, v = view, m = materialized view, c = composite type, f = foreign table, p = partitioned table,
-GREENPLUM_GET_TABLE_NAMES = """
+
+# Greenplum 6: uses pg_partition_rule to filter out child partitions
+GREENPLUM_GET_TABLE_NAMES_V6 = """
     select c.relname, c.relkind
     from pg_catalog.pg_class c
         left outer join pg_catalog.pg_partition_rule pr on c.oid = pr.parchildrelid
@@ -26,7 +28,15 @@ GREENPLUM_GET_TABLE_NAMES = """
         and n.nspname = :schema
 """
 
-GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
+# Greenplum 7+: uses PostgreSQL-style relispartition to filter out child partitions
+GREENPLUM_GET_TABLE_NAMES_V7 = """
+    SELECT c.relname, c.relkind FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = :schema AND c.relkind in ('r', 'p', 'f') AND c.relispartition = false
+"""
+
+# Greenplum 6: uses pg_partition catalog with parkind/paratts columns
+GREENPLUM_PARTITION_DETAILS_V6 = textwrap.dedent(
     """
     select
         ns.nspname as schema,
@@ -45,7 +55,7 @@ GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
          from
              pg_catalog.pg_partition) pt
     join
-        pg_class par
+        pg_catalog.pg_class par
     on
         par.oid = pt.parrelid
     left join
@@ -56,7 +66,42 @@ GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
         col.table_schema = ns.nspname
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
-    where par.relname='{table_name}' and  ns.nspname='{schema_name}'
+    where par.relname=:table_name and ns.nspname=:schema_name
+    """
+)
+
+# Greenplum 7+: uses PostgreSQL-standard pg_partitioned_table with partstrat/partattrs
+GREENPLUM_PARTITION_DETAILS_V7 = textwrap.dedent(
+    """
+    select
+        ns.nspname as schema,
+        par.relname as table_name,
+        partition_strategy,
+        col.column_name
+    from
+        (select
+             partrelid,
+             partnatts,
+             case partstrat
+                  when 'l' then 'list'
+                  when 'h' then 'hash'
+                  when 'r' then 'range' end as partition_strategy,
+             unnest(partattrs) column_index
+         from
+             pg_catalog.pg_partitioned_table) pt
+    join
+        pg_catalog.pg_class par
+    on
+        par.oid = pt.partrelid
+    join
+        pg_catalog.pg_namespace ns on ns.oid = par.relnamespace
+    left join
+        information_schema.columns col
+    on
+        col.table_schema = ns.nspname
+        and col.table_name = par.relname
+        and ordinal_position = pt.column_index
+     where par.relname=:table_name and ns.nspname=:schema_name
     """
 )
 
@@ -138,4 +183,8 @@ GREENPLUM_SQL_COLUMNS = """
 
 GREENPLUM_GET_SERVER_VERSION = """
 show server_version
+"""
+
+GREENPLUM_GET_VERSION = """
+SELECT version()
 """
