@@ -58,11 +58,11 @@ py_format:  ## Run ruff to lint-fix and format the Python codebase
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: generate_settings_docs
 generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
 	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
-	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
