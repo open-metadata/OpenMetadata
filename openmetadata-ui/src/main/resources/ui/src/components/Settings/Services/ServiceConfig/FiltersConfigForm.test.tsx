@@ -827,6 +827,45 @@ describe('FiltersConfigForm', () => {
     });
   });
 
+  it('turns the system excludes toggle on when the schema defaults are applied', async () => {
+    await renderForm();
+
+    const schemaSection = screen.getByTestId(
+      'filter-section-schemaFilterPattern'
+    );
+    const systemExcludesToggle = within(schemaSection).getByRole('switch', {
+      name: 'Exclude system schemas',
+    });
+
+    expect(systemExcludesToggle).toBeChecked();
+
+    fireEvent.click(systemExcludesToggle);
+
+    expect(systemExcludesToggle).not.toBeChecked();
+  });
+
+  it('keeps the system excludes toggle off for a service that removed them', async () => {
+    await renderForm({
+      data: buildServiceData({
+        hostPort: 'localhost:3306',
+        schemaFilterPattern: {
+          excludes: [],
+          includes: [],
+        },
+      }),
+    });
+
+    const schemaSection = screen.getByTestId(
+      'filter-section-schemaFilterPattern'
+    );
+
+    expect(
+      within(schemaSection).getByRole('switch', {
+        name: 'Exclude system schemas',
+      })
+    ).not.toBeChecked();
+  });
+
   it('adds schema system excludes when they are not already enabled', async () => {
     const onSave = jest.fn();
 
