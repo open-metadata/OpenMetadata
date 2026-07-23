@@ -27,9 +27,7 @@ from metadata.utils.class_helper import (
         ("metadata_elasticsearch", ServiceType.Metadata),
     ],
 )
-def test_get_service_type_from_source_type(
-    source_type: str, expected_service_type: ServiceType
-):
+def test_get_service_type_from_source_type(source_type: str, expected_service_type: ServiceType):
     actual_service_type = get_service_type_from_source_type(source_type)
     assert actual_service_type == expected_service_type
 
@@ -45,8 +43,6 @@ def test_get_service_type_from_source_type(
         (ServiceType.Pipeline, PipelineService),
     ],
 )
-def test_get_service_class_from_service_type(
-    service_type: ServiceType, expected_service_class: object
-):
+def test_get_service_class_from_service_type(service_type: ServiceType, expected_service_class: object):
     actual_service_class = get_service_class_from_service_type(service_type)
     assert actual_service_class == expected_service_class

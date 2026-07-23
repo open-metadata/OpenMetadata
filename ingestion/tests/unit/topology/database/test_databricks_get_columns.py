@@ -44,6 +44,7 @@ class TestDatabricksGetColumnsSectionBoundary:
     def setup_method(self):
         self.mock_self = Mock()
         self.mock_connection = Mock()
+        self.mock_connection.info = {}
 
     def _run(self):
         return get_columns(
@@ -117,9 +118,7 @@ class TestDatabricksGetColumnsSectionBoundary:
 
             result = self._run()
 
-            assert [col["name"] for col in result] == [
-                "id"
-            ], f"marker {marker!r} should break the loop"
+            assert [col["name"] for col in result] == ["id"], f"marker {marker!r} should break the loop"
 
     def test_detailed_info_metadata_rows_are_not_treated_as_columns(self, mock_rows):
         """Post-break, rows like ``Name``, ``Catalog``, ``Location`` inside
@@ -182,9 +181,7 @@ class TestDatabricksGetColumnsSectionBoundary:
             ("complex_col", "struct<a:int>", None),
             ("good2", "string", None),
         ]
-        self.mock_connection.execute.side_effect = RuntimeError(
-            "simulated subquery failure"
-        )
+        self.mock_connection.execute.side_effect = RuntimeError("simulated subquery failure")
 
         result = self._run()
 

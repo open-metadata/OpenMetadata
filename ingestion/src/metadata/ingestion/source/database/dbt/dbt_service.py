@@ -8,16 +8,19 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 """
 DBT service Topology.
 """
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List
+from typing import Iterable, List  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
@@ -67,9 +70,7 @@ class DbtServiceTopology(ServiceTopology):
     dbt files -> dbt tags -> data models -> descriptions -> lineage -> tests.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_dbt_files",
         stages=[
             NodeStage(
@@ -83,11 +84,10 @@ class DbtServiceTopology(ServiceTopology):
             "process_dbt_entities",
             "process_dbt_tests",
             "process_dbt_exposures",
+            "process_dbt_metrics",
         ],
     )
-    process_dbt_data_model: Annotated[
-        TopologyNode, Field(description="Process dbt data models")
-    ] = TopologyNode(
+    process_dbt_data_model: Annotated[TopologyNode, Field(description="Process dbt data models")] = TopologyNode(
         producer="get_dbt_objects",
         stages=[
             NodeStage(
@@ -105,9 +105,7 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
-    process_dbt_entities: Annotated[
-        TopologyNode, Field(description="Process dbt entities")
-    ] = TopologyNode(
+    process_dbt_entities: Annotated[TopologyNode, Field(description="Process dbt entities")] = TopologyNode(
         producer="get_data_model",
         stages=[
             NodeStage(
@@ -141,9 +139,7 @@ class DbtServiceTopology(ServiceTopology):
             ),
         ],
     )
-    process_dbt_tests: Annotated[
-        TopologyNode, Field(description="Process dbt tests")
-    ] = TopologyNode(
+    process_dbt_tests: Annotated[TopologyNode, Field(description="Process dbt tests")] = TopologyNode(
         producer="get_dbt_tests",
         stages=[
             NodeStage(
@@ -163,9 +159,7 @@ class DbtServiceTopology(ServiceTopology):
         ],
     )
 
-    process_dbt_exposures: Annotated[
-        TopologyNode, Field(description="Process dbt exposures")
-    ] = TopologyNode(
+    process_dbt_exposures: Annotated[TopologyNode, Field(description="Process dbt exposures")] = TopologyNode(
         producer="get_dbt_exposures",
         stages=[
             NodeStage(
@@ -175,6 +169,24 @@ class DbtServiceTopology(ServiceTopology):
                 nullable=True,
             ),
         ],
+    )
+    process_dbt_metrics: Annotated[TopologyNode, Field(description="Process dbt semantic layer metrics")] = (
+        TopologyNode(
+            producer="get_dbt_metrics",
+            stages=[
+                NodeStage(
+                    type_=CreateMetricRequest,
+                    processor="yield_dbt_metrics",
+                    consumer=["yield_data_models"],
+                    nullable=True,
+                ),
+                NodeStage(
+                    type_=AddLineageRequest,
+                    processor="create_dbt_metric_lineage",
+                    nullable=True,
+                ),
+            ],
+        )
     )
 
 
@@ -201,10 +213,10 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         # This step is necessary as the manifest file may not always adhere to the schema definition
         # and the presence of other nodes can hinder the ingestion process from progressing any further.
         # Therefore, we are only retaining the essential data for further processing.
-        required_manifest_keys = {"nodes", "sources", "metadata", "exposures"}
+        required_manifest_keys = {"nodes", "sources", "metadata", "exposures", "metrics", "semantic_models"}
         manifest_dict.update(
             {
-                key: {}
+                key: [] if isinstance(manifest_dict[key], list) else {}
                 for key in manifest_dict
                 if key.lower() not in required_manifest_keys
             }
@@ -212,37 +224,31 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
-            for node, value in manifest_dict.get(  # pylint: disable=unused-variable
+            for node, value in manifest_dict.get(  # pylint: disable=unused-variable  # noqa: B007, PERF102
                 field
             ).items():
-                keys_to_delete = [
-                    key for key in value if key.lower() not in REQUIRED_NODE_KEYS
-                ]
+                keys_to_delete = [key for key in value if key.lower() not in REQUIRED_NODE_KEYS]
                 for key in keys_to_delete:
                     del value[key]
                 if value.get("columns"):
-                    for _, value in value["columns"].items():
+                    for _, value in value["columns"].items():  # noqa: B020, PERF102, PLW2901
                         if value.get("constraints"):
                             for constraint in value["constraints"]:
                                 keys_to_delete = [
-                                    key
-                                    for key in constraint
-                                    if key.lower() not in REQUIRED_CONSTRAINT_KEYS
+                                    key for key in constraint if key.lower() not in REQUIRED_CONSTRAINT_KEYS
                                 ]
                                 for key in keys_to_delete:
                                     del constraint[key]
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):
+    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
         """
         Method to remove the non required keys from run results file
         """
         for run_result in run_results:
             for result in run_result.get("results"):
-                keys_to_delete = [
-                    key for key in result if key.lower() not in REQUIRED_RESULTS_KEYS
-                ]
+                keys_to_delete = [key for key in result if key.lower() not in REQUIRED_RESULTS_KEYS]
                 for key in keys_to_delete:
                     del result[key]
 
@@ -269,20 +275,16 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Prepare the DBT objects
         """
         # pylint: disable=import-outside-toplevel
-        from collate_dbt_artifacts_parser.parser import (
+        from collate_dbt_artifacts_parser.parser import (  # noqa: PLC0415
             parse_catalog,
             parse_manifest,
             parse_run_results,
             parse_sources,
         )
 
-        self.remove_manifest_non_required_keys(
-            manifest_dict=self.context.get().dbt_file.dbt_manifest
-        )
+        self.remove_manifest_non_required_keys(manifest_dict=self.context.get().dbt_file.dbt_manifest)
         if self.context.get().dbt_file.dbt_run_results:
-            self.remove_run_result_non_required_keys(
-                run_results=self.context.get().dbt_file.dbt_run_results
-            )
+            self.remove_run_result_non_required_keys(run_results=self.context.get().dbt_file.dbt_run_results)
 
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
@@ -293,8 +295,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             if self.context.get().dbt_file.dbt_sources
             else None,
             dbt_run_results=[
-                parse_run_results(run_result_file)
-                for run_result_file in self.context.get().dbt_file.dbt_run_results
+                parse_run_results(run_result_file) for run_result_file in self.context.get().dbt_file.dbt_run_results
             ]
             if self.context.get().dbt_file.dbt_run_results
             else None,
@@ -308,9 +309,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_dbt_tags(
-        self, dbt_objects: DbtObjects
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_dbt_tags(self, dbt_objects: DbtObjects) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         Create and yield tags from DBT
         """
@@ -340,9 +339,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def create_dbt_query_lineage(
-        self, data_model_link: DataModelLink
-    ) -> AddLineageRequest:
+    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> AddLineageRequest:
         """
         Method to process DBT lineage from queries
         """
@@ -363,20 +360,24 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT tests
         """
-        for _, dbt_test in self.context.get().dbt_tests.items():
+        for _, dbt_test in self.context.get().dbt_tests.items():  # noqa: PERF102
             yield dbt_test
 
     def get_dbt_exposures(self) -> Iterable[dict]:
         """
         Prepare the DBT exposures
         """
-        for _, exposure in self.context.get().exposures.items():
+        for _, exposure in self.context.get().exposures.items():  # noqa: PERF102
             yield exposure
 
+    def get_dbt_metrics(self) -> Iterable[dict]:
+        """
+        Prepare the DBT metrics
+        """
+        yield from self.context.get().dbt_metrics.values()
+
     @abstractmethod
-    def create_dbt_tests_definition(
-        self, dbt_test: dict
-    ) -> CreateTestDefinitionRequest:
+    def create_dbt_tests_definition(self, dbt_test: dict) -> CreateTestDefinitionRequest:
         """
         Method to add DBT test definitions
         """
@@ -405,9 +406,19 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to process DBT custom properties using patch APIs
         """
 
-    def is_filtered(
-        self, database_name: str, schema_name: str, table_name: str
-    ) -> DbtFilteredModel:
+    @abstractmethod
+    def yield_dbt_metrics(self, metric_entry: dict) -> Iterable[Either[CreateMetricRequest]]:
+        """
+        Yield CreateMetric requests from dbt metric definitions
+        """
+
+    @abstractmethod
+    def create_dbt_metric_lineage(self, metric_entry: dict) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Create lineage from source tables to dbt metrics
+        """
+
+    def is_filtered(self, database_name: str, schema_name: str, table_name: str) -> DbtFilteredModel:
         """
         Function used to identify the filtered models
         """
@@ -428,6 +439,4 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             is_filtered = True
         if is_filtered:
             message = f"Model Filtered due to {reason} filter pattern"
-        return DbtFilteredModel(
-            is_filtered=is_filtered, message=message, model_fqn=model_fqn
-        )
+        return DbtFilteredModel(is_filtered=is_filtered, message=message, model_fqn=model_fqn)

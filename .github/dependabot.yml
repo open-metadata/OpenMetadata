@@ -1,0 +1,67 @@
+version: 2
+
+# NOTE: This file controls Dependabot version-update PRs only.
+# It does NOT suppress Dependabot security alerts on the Security tab.
+# To auto-dismiss transitive (indirect) alerts, configure auto-triage rules at
+# Settings -> Code security -> Dependabot -> "Manage rules".
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/ingestion"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      python-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # urllib3 is pinned <2.0 transitively via tableauserverclient==0.25.
+      # See ingestion/setup.py comment on the tableau pin.
+      - dependency-name: "urllib3"
+        versions: [">=2.0.0"]
+
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "java"
+    groups:
+      maven-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "npm"
+    directory: "/openmetadata-ui/src/main/resources/ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"

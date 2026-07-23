@@ -11,8 +11,9 @@
 """
 Client to interact with Atlas apis
 """
+
 import base64
-from typing import List
+from typing import List  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
     AtlasConnection,
@@ -29,9 +30,7 @@ class AtlasClient:
 
     def __init__(self, config: AtlasConnection, raw_data: bool = False):
         self.config = config
-        self.auth_token = generate_http_basic_token(
-            config.username, config.password.get_secret_value()
-        )
+        self.auth_token = generate_http_basic_token(config.username, config.password.get_secret_value())
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(config.hostPort),
             auth_header="Authorization",
@@ -42,21 +41,21 @@ class AtlasClient:
         self.client = TrackedREST(client_config, source_name="atlas")
         self._use_raw_data = raw_data
 
-    def list_entities(self) -> List[str]:
+    def list_entities(self) -> List[str]:  # noqa: UP006
         response = self.client.get(f"/atlas/entities?type={self.config.entity_type}")
 
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
         entities = response["results"]
-        return entities
+        return entities  # noqa: RET504
 
     def get_entity(self, table):
         response = self.client.get(f"/atlas/v2/entity/bulk?guid={table}")
-        return response
+        return response  # noqa: RET504
 
     def get_lineage(self, source_guid):
         response = self.client.get(f"/atlas/v2/lineage/{source_guid}")
-        if "error" in response.keys():
+        if "error" in response.keys():  # noqa: SIM118
             raise APIError(response["error"])
 
         return response
@@ -70,5 +69,5 @@ def generate_http_basic_token(username, password):
     Generates a HTTP basic token from username and password
     Returns a token string (not a byte)
     """
-    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")
-    return token
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("utf-8")  # noqa: UP012
+    return token  # noqa: RET504

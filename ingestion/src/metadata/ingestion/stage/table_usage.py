@@ -13,12 +13,13 @@ Given query data about tables, store the results
 in a temporary file (i.e., the stage)
 to be further processed by the BulkSink.
 """
+
 import json
 import os
 import shutil
 import traceback
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -76,7 +77,7 @@ class TableUsageStage(Stage):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = TableStageConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -92,9 +93,7 @@ class TableUsageStage(Stage):
         logger.info(f"Creating the directory to store staging data in {location}")
         location.mkdir(parents=True, exist_ok=True)
 
-    def _get_user_entity(
-        self, username: str
-    ) -> Tuple[Optional[List[str]], Optional[List[str]]]:
+    def _get_user_entity(self, username: str) -> Tuple[Optional[List[str]], Optional[List[str]]]:  # noqa: UP006, UP045
         """
         From the user received in the query history call - who executed the query in the db -
         return if we find any users in OM that match, plus the user that we found in the db record.
@@ -138,9 +137,7 @@ class TableUsageStage(Stage):
                 )
             ]
 
-    def _handle_table_usage(
-        self, parsed_data: ParsedData, table: str
-    ) -> Iterable[Either[str]]:
+    def _handle_table_usage(self, parsed_data: ParsedData, table: str) -> Iterable[Either[str]]:
         table_joins = parsed_data.joins.get(table)
         try:
             self._add_sql_query(record=parsed_data, table=table)
@@ -180,13 +177,9 @@ class TableUsageStage(Stage):
         if (query_hash, parsed_data.date) in self.query_cost:
             self.query_cost[(query_hash, parsed_data.date)].update(
                 {
-                    "cost": self.query_cost[(query_hash, parsed_data.date)]["cost"]
-                    + (parsed_data.cost or 0),
-                    "count": self.query_cost[(query_hash, parsed_data.date)]["count"]
-                    + 1,
-                    "totalDuration": self.query_cost[(query_hash, parsed_data.date)][
-                        "totalDuration"
-                    ]
+                    "cost": self.query_cost[(query_hash, parsed_data.date)]["cost"] + (parsed_data.cost or 0),
+                    "count": self.query_cost[(query_hash, parsed_data.date)]["count"] + 1,
+                    "totalDuration": self.query_cost[(query_hash, parsed_data.date)]["totalDuration"]
                     + (parsed_data.duration or 0),
                 }
             )
@@ -211,9 +204,7 @@ class TableUsageStage(Stage):
             if parsed_data is None:
                 continue
             for table in parsed_data.tables:
-                yield from self._handle_table_usage(
-                    parsed_data=parsed_data, table=table
-                )
+                yield from self._handle_table_usage(parsed_data=parsed_data, table=table)
             self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
 
@@ -225,8 +216,8 @@ class TableUsageStage(Stage):
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
                 data = value.model_dump_json()
-                with open(
-                    os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
+                with open(  # noqa: PTH123
+                    os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),  # noqa: PTH118
                     "a+",
                     encoding=UTF_8,
                 ) as file:
@@ -244,10 +235,8 @@ class TableUsageStage(Stage):
                     "dialect": value["dialect"],
                     "totalDuration": value["totalDuration"],
                 }
-                with open(
-                    os.path.join(
-                        self.config.filename, f"{self.service_name}_{key[1]}_query"
-                    ),
+                with open(  # noqa: PTH123
+                    os.path.join(self.config.filename, f"{self.service_name}_{key[1]}_query"),  # noqa: PTH118
                     "a+",
                     encoding=UTF_8,
                 ) as file:

@@ -43,6 +43,8 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
+  private String defaultListService;
+
   {
     supportsLifeCycle = true;
     supportsListHistoryByTimestamp = true;
@@ -81,7 +83,11 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected Topic createEntity(CreateTopic createRequest) {
-    return SdkClients.adminClient().topics().create(createRequest);
+    Topic topic = SdkClients.adminClient().topics().create(createRequest);
+    if (defaultListService == null && topic.getService() != null) {
+      defaultListService = topic.getService().getFullyQualifiedName();
+    }
+    return topic;
   }
 
   @Override
@@ -137,6 +143,10 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
   @Override
   protected ListResponse<Topic> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().topics().list(params);
   }
 
@@ -158,17 +168,6 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().topics().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().topics().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().topics().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

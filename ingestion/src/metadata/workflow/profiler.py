@@ -12,6 +12,8 @@
 Workflow definition for the profiler
 """
 
+import traceback
+
 from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.profiler.processor.processor import ProfilerProcessor
@@ -20,7 +22,7 @@ from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
-from metadata.utils.ssl_manager import get_ssl_connection
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = profiler_logger()
@@ -54,20 +56,14 @@ class ProfilerWorkflow(IngestionWorkflow):
         # We are forcing the secret evaluation to "ignore" null secrets down the line
         # Remove this when the issue above is fixed and empty secrets migrated
         source_config_class = type(self.config.source.serviceConnection.root.config)
-        dumped_config = self.config.source.serviceConnection.root.config.model_dump(
-            exclude_unset=True
-        )
-        self.config.source.serviceConnection.root.config = (
-            source_config_class.model_validate(dumped_config)
-        )
+        dumped_config = self.config.source.serviceConnection.root.config.model_dump(exclude_unset=True)
+        self.config.source.serviceConnection.root.config = source_config_class.model_validate(dumped_config)
 
         # NOTE: Call test_connection to update host value before creating the source class
         self.test_connection()
 
         source_class = self._get_source_class()
-        self.source = source_class.create(
-            self.config.model_dump(exclude_unset=True), self.metadata
-        )
+        self.source = source_class.create(self.config.model_dump(exclude_unset=True), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
         sink = self._get_sink()
@@ -78,9 +74,16 @@ class ProfilerWorkflow(IngestionWorkflow):
         @retry_with_docker_host(config=self.config.source)
         def main(self):
             service_config = self.config.source.serviceConnection.root.config
-            conn = get_ssl_connection(service_config)
+            try:
+                # To be cleaned up as part of https://github.com/open-metadata/OpenMetadata/issues/15913
+                ssl_manager = check_ssl_and_init(service_config)
+                if isinstance(ssl_manager, SSLManager):
+                    service_config = ssl_manager.setup_ssl(service_config)
+            except Exception:
+                logger.debug("Failed to setup SSL for the connection")
+                logger.debug(traceback.format_exc())
 
-            test_connection_common(self.metadata, conn, service_config)
+            test_connection_common(self.metadata, None, service_config)
 
         return main(self)
 
@@ -94,6 +97,4 @@ class ProfilerWorkflow(IngestionWorkflow):
         return sink
 
     def _get_profiler_processor(self) -> Processor:
-        return ProfilerProcessor.create(
-            self.config.model_dump(exclude_unset=True), self.metadata
-        )
+        return ProfilerProcessor.create(self.config.model_dump(exclude_unset=True), self.metadata)

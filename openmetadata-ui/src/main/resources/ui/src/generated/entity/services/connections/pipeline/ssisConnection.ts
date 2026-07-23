@@ -15,9 +15,10 @@
  */
 export interface SsisConnection {
     /**
-     * Underlying database connection
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
-    databaseConnection: MssqlConnection;
+    databaseConnection?: MssqlConnection;
     /**
      * Underlying storage connection
      */
@@ -30,7 +31,8 @@ export interface SsisConnection {
 }
 
 /**
- * Underlying database connection
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  *
  * Mssql Database Connection Config
  */
@@ -283,6 +285,7 @@ export interface S3Connection {
      */
     containerFilterPattern?:     FilterPattern;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

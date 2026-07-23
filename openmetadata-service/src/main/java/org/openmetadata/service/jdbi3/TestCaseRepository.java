@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -13,6 +14,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_TEST_SUITES;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -31,7 +33,6 @@ import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +43,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -94,13 +96,19 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -109,13 +117,18 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TestCaseRepository extends EntityRepository<TestCase> {
-  private static final String TEST_SUITE_FIELD = "testSuite";
-  private static final String INCIDENTS_FIELD = "incidentId";
+  public static final String TEST_SUITE_FIELD = "testSuite";
+  public static final String TEST_DEFINITION_FIELD = "testDefinition";
+  public static final String INCIDENTS_FIELD = "incidentId";
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,dimensionColumns,topDimensions";
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
+  public static final String TEST_SUITES_REVISION_EXTENSION =
+      "internal.testCase.testSuitesRevision";
+  public static final String TEST_SUITES_REVISION_FIELD = "testSuitesRevision";
+  private static final String TEST_SUITES_REVISION_SCHEMA = "testSuitesRevision";
   private final ExecutorService asyncExecutor =
       Executors.newFixedThreadPool(
           1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
@@ -129,6 +142,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    TestCaseBodyTextContributor.INSTANCE.register();
     // Add the canonical name for test case results
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
@@ -141,7 +155,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(
         fields.contains(TEST_SUITE_FIELD)
-            ? getTestSuite(test.getId(), entityType, TEST_SUITE, Direction.FROM)
+            ? findExecutableTestSuiteForTestCase(test.getId())
             : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -151,7 +165,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
   }
 
-  private final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
+  private static final ThreadLocal<Map<String, Table>> linkedTablesCache = new ThreadLocal<>();
 
   @Override
   public void setFieldsInBulk(Fields fields, List<TestCase> testCases) {
@@ -311,6 +325,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestSuite> allSuites =
         testSuiteRepo.getDao().findEntitiesByIds(new ArrayList<>(uniqueSuiteIds), ALL);
 
+    Set<UUID> liveSuiteIds = allSuites.stream().map(TestSuite::getId).collect(Collectors.toSet());
+    cleanupOrphanTestSuiteRelationships(testSuiteRecords, liveSuiteIds);
+
     if (setAllSuites) {
       testSuiteRepo.setFieldsInBulk(
           new Fields(Set.of(FIELD_OWNERS, "domains"), "owners,domains"), allSuites);
@@ -358,6 +375,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       for (TestCase testCase : testCases) {
         List<TestSuite> suiteList = testCaseToTestSuites.get(testCase.getId());
         testCase.setTestSuites(suiteList != null ? suiteList : new ArrayList<>());
+      }
+    }
+  }
+
+  private void cleanupOrphanTestSuiteRelationships(
+      List<CollectionDAO.EntityRelationshipObject> records, Set<UUID> liveSuiteIds) {
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID suiteId = UUID.fromString(record.getFromId());
+      if (liveSuiteIds.contains(suiteId)) {
+        continue;
+      }
+      UUID testCaseId = UUID.fromString(record.getToId());
+      LOG.warn(
+          "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+          testCaseId,
+          suiteId);
+      try {
+        daoCollection
+            .relationshipDAO()
+            .delete(suiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+      } catch (Exception ex) {
+        LOG.debug(
+            "Failed to delete orphan relationship {}->{}: {}",
+            suiteId,
+            testCaseId,
+            ex.getMessage());
       }
     }
   }
@@ -712,23 +755,85 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             + "No executable test suite was found.");
   }
 
+  /**
+   * Resolve the executable test suite for a test case while tolerating relationships that point
+   * to a hard-deleted test suite. Returns null when no live executable suite is found; orphan
+   * relationships discovered along the way are deleted so the next read self-heals.
+   */
+  private EntityReference findExecutableTestSuiteForTestCase(UUID testCaseId) {
+    List<CollectionDAO.EntityRelationshipRecord> records =
+        findFromRecords(testCaseId, entityType, Relationship.CONTAINS, TEST_SUITE);
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      TestSuite testSuite = loadTestSuiteOrCleanup(testCaseId, record.getId());
+      if (testSuite != null && Boolean.TRUE.equals(testSuite.getBasic())) {
+        return testSuite.getEntityReference();
+      }
+    }
+    return null;
+  }
+
+  private TestSuite loadTestSuiteOrCleanup(UUID testCaseId, UUID testSuiteId) {
+    try {
+      return Entity.getEntity(TEST_SUITE, testSuiteId, "", Include.ALL);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+          testCaseId,
+          testSuiteId);
+      try {
+        daoCollection
+            .relationshipDAO()
+            .delete(
+                testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS.ordinal());
+      } catch (Exception cleanupEx) {
+        LOG.debug(
+            "Failed to delete orphan relationship {}->{}: {}",
+            testSuiteId,
+            testCaseId,
+            cleanupEx.getMessage());
+      }
+      return null;
+    }
+  }
+
   private List<TestSuite> getTestSuites(TestCase test) {
     // `testSuites` field returns all the `testSuite` (executable and logical) linked to that
     // testCase
     List<CollectionDAO.EntityRelationshipRecord> records =
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
-    return records.stream()
-        .map(
-            testSuiteId ->
-                Entity.<TestSuite>getEntity(
-                        TEST_SUITE,
-                        testSuiteId.getId(),
-                        "owners,domains,reviewers",
-                        Include.ALL,
-                        false)
-                    .withInherited(true)
-                    .withChangeDescription(null))
-        .toList();
+    List<TestSuite> suites = new ArrayList<>(records.size());
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      try {
+        TestSuite suite =
+            Entity.<TestSuite>getEntity(
+                    TEST_SUITE, record.getId(), "owners,domains,reviewers", Include.ALL, false)
+                .withInherited(true)
+                .withChangeDescription(null);
+        suites.add(suite);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "Cleaning up orphan relationship: test case {} -> missing test suite {}",
+            test.getId(),
+            record.getId());
+        try {
+          daoCollection
+              .relationshipDAO()
+              .delete(
+                  record.getId(),
+                  TEST_SUITE,
+                  test.getId(),
+                  TEST_CASE,
+                  Relationship.CONTAINS.ordinal());
+        } catch (Exception cleanupEx) {
+          LOG.debug(
+              "Failed to delete orphan relationship {}->{}: {}",
+              record.getId(),
+              test.getId(),
+              cleanupEx.getMessage());
+        }
+      }
+    }
+    return suites;
   }
 
   private EntityReference getTestDefinition(TestCase test) {
@@ -874,37 +979,66 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void updateTestSuite(TestCase testCase) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+    if (testCase.getTestSuite() != null) {
+      try {
+        var testSuiteRepository =
+            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+        TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+        var original = TestSuiteRepository.copyTestSuite(testSuite);
+        testSuiteRepository.postUpdate(original, testSuite);
+      } catch (EntityNotFoundException ignored) {
+        // TestSuite already deleted as part of the same cascade — nothing to update.
+      }
+    }
   }
 
-  private void updateLogicalTestSuite(UUID testSuiteId) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+  private void updateLogicalTestSuite(LogicalSuiteRelationshipChange relationshipChange) {
+    if (relationshipChange.isEmpty()) {
+      return;
+    }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      cachedReadBundle.invalidate(TEST_SUITE, relationshipChange.testSuiteId());
+    }
+    TestSuite testSuite = Entity.getEntity(TEST_SUITE, relationshipChange.testSuiteId(), "*", ALL);
+    FieldChange testsChange =
+        new FieldChange().withName("tests").withNewValue(listOrEmpty(testSuite.getTests()));
+    ChangeDescription changeDescription =
+        new ChangeDescription()
+            .withPreviousVersion(testSuite.getVersion())
+            .withFieldsUpdated(List.of(testsChange));
+    testSuite.setChangeDescription(changeDescription);
+    testSuite.setIncrementalChangeDescription(changeDescription);
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntitiesUpdated(
+            List.of(testSuite),
+            null,
+            null,
+            new EntityUpdateContext(
+                Map.of(testSuite.getId(), relationshipChange.relationshipRevision())));
+    RdfUpdater.updateEntity(testSuite);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
-      }
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+      AsyncService.getInstance()
+          .execute(
+              () -> {
+                for (CollectionDAO.EntityRelationshipRecord child : children) {
+                  try {
+                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
+                  }
+                }
+              });
     }
   }
 
@@ -991,142 +1125,110 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                addTestCasesToLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+  }
+
+  private LogicalSuiteRelationshipChange addTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
     List<EntityReference> originalTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    bulkAddToRelationship(
-        testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    bulkAddToRelationship(testSuiteId, testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
 
     List<EntityReference> updatedTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     Set<UUID> originalIds =
         originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    List<EntityReference> testCaseReferences =
+    List<EntityReference> addedTestCases =
         updatedTestCaseReferences.stream()
             .filter(ref -> !originalIds.contains(ref.getId()))
             .toList();
-
-    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
-    postUpdateMany(updatedTestCases);
-    updateLogicalTestSuite(testSuite.getId());
-    return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
-    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
-    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
-    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
-    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
-    return DeadlockRetry.execute(
-        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
-  }
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
 
-  @Transaction
-  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
-      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
-    List<EntityReference> originalTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-
-    String tableName = daoCollection.testCaseDAO().getTableName();
-    if (nullOrEmpty(excludedTestCaseIds)) {
-      executeWithDeadlockRetry(
-          () ->
-              daoCollection
-                  .relationshipDAO()
-                  .bulkInsertAllToRelationship(
-                      testSuite.getId(),
-                      TEST_SUITE,
-                      TEST_CASE,
-                      Relationship.CONTAINS.ordinal(),
-                      tableName));
-    } else {
-      executeWithDeadlockRetry(
-          () ->
-              daoCollection
-                  .relationshipDAO()
-                  .bulkInsertAllToRelationshipWithExclusions(
-                      excludedTestCaseIds.stream().map(UUID::toString).toList(),
-                      testSuite.getId(),
-                      TEST_SUITE,
-                      TEST_CASE,
-                      Relationship.CONTAINS.ordinal(),
-                      tableName));
+    for (List<EntityReference> batch :
+        Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
+      Map<UUID, Long> batchRevisions = new HashMap<>();
+      for (EntityReference testCase : batch) {
+        batchRevisions.put(
+            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+      }
+      postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
-
-    List<EntityReference> updatedTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-
-    Set<UUID> originalIds =
-        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    List<EntityReference> newTestCaseReferences =
-        updatedTestCaseReferences.stream()
-            .filter(ref -> !originalIds.contains(ref.getId()))
-            .toList();
-
-    int batchSize = 100;
-    for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
-      List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
-      postUpdateMany(updatedTestCases);
-    }
-    updateLogicalTestSuite(testSuite.getId());
-
+    updateLogicalTestSuite(relationshipChange.get());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  private void executeWithDeadlockRetry(Runnable operation) {
-    int maxAttempts = 3;
-    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        operation.run();
-        return;
-      } catch (RuntimeException ex) {
-        if (!isTransientDeadlock(ex) || attempt == maxAttempts) {
-          throw ex;
-        }
-        LOG.debug(
-            "Retrying logical test suite bulk insert after transient deadlock (attempt {}/{})",
-            attempt + 1,
-            maxAttempts);
-      }
+  private LogicalSuiteRelationshipChange addAllTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> excludedTestCaseIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    String tableName = daoCollection.testCaseDAO().getTableName();
+    if (nullOrEmpty(excludedTestCaseIds)) {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationship(
+              testSuiteId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationshipWithExclusions(
+              excludedTestCaseIds.stream().map(UUID::toString).toList(),
+              testSuiteId,
+              TEST_SUITE,
+              TEST_CASE,
+              Relationship.CONTAINS.ordinal(),
+              tableName);
     }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
-  private boolean isTransientDeadlock(Throwable throwable) {
-    for (Throwable current = throwable; current != null; current = current.getCause()) {
-      if (current instanceof SQLException sqlException) {
-        int errorCode = sqlException.getErrorCode();
-        String sqlState = sqlException.getSQLState();
-        if (errorCode == 1213
-            || errorCode == 1205
-            || "40001".equals(sqlState)
-            || "40P01".equals(sqlState)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  @Transaction
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
-    deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
-    TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
-    ChangeDescription change =
-        new ChangeDescription()
-            .withFieldsUpdated(
-                List.of(
-                    new FieldChange()
-                        .withName("testSuites")
-                        .withNewValue(updatedTestCase.getTestSuites())));
-    updatedTestCase.setChangeDescription(change);
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () -> {
+          deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+          relationshipChange.set(
+              prepareLogicalSuiteRelationshipChange(
+                  testSuiteId, List.of(testCase.getEntityReference())));
+        });
 
-    postUpdate(testCase, updatedTestCase);
-    updateLogicalTestSuite(testSuiteId);
+    TestCase updatedTestCase =
+        postLogicalSuiteRelationshipUpdate(relationshipChange.get()).getFirst();
+    updateLogicalTestSuite(relationshipChange.get());
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
@@ -1136,16 +1238,128 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
     testCases.forEach(
         tc -> {
-          ChangeDescription change =
+          FieldChange relationshipChange =
+              new FieldChange()
+                  .withName(FIELD_TEST_SUITES)
+                  .withNewValue(listOrEmpty(tc.getTestSuites()));
+          ChangeDescription changeDescription =
               new ChangeDescription()
-                  .withFieldsUpdated(
-                      List.of(
-                          new FieldChange()
-                              .withName("testSuites")
-                              .withNewValue(tc.getTestSuites())));
-          tc.setChangeDescription(change);
+                  .withPreviousVersion(tc.getVersion())
+                  .withFieldsUpdated(List.of(relationshipChange));
+          tc.setChangeDescription(changeDescription);
+          tc.setIncrementalChangeDescription(changeDescription);
         });
     return testCases;
+  }
+
+  private LogicalSuiteRelationshipChange prepareLogicalSuiteRelationshipChange(
+      UUID testSuiteId, List<EntityReference> testCaseReferences) {
+    if (nullOrEmpty(testCaseReferences)) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    List<UUID> testCaseIds =
+        testCaseReferences.stream().map(EntityReference::getId).distinct().sorted().toList();
+    daoCollection
+        .entityExtensionDAO()
+        .incrementRevisions(
+            testCaseIds, TEST_SUITES_REVISION_EXTENSION, TEST_SUITES_REVISION_SCHEMA);
+    daoCollection
+        .entityExtensionDAO()
+        .incrementRevisions(
+            List.of(testSuiteId),
+            TestSuiteRepository.TESTS_REVISION_EXTENSION,
+            TestSuiteRepository.getTestsRevisionSchema());
+    Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
+    if (testCaseRevisions.size() != testCaseIds.size()) {
+      throw new IllegalStateException("Failed to persist every test suite relationship revision");
+    }
+    Long relationshipRevision =
+        TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
+    if (relationshipRevision == null) {
+      throw new IllegalStateException("Failed to persist the test suite tests revision");
+    }
+
+    return new LogicalSuiteRelationshipChange(
+        testSuiteId, testCaseReferences, testCaseRevisions, relationshipRevision);
+  }
+
+  public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return Map.of();
+    }
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
+      return Map.of();
+    }
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record :
+        collectionDAO
+            .entityExtensionDAO()
+            .getExtensionBatch(
+                testCaseIds.stream().map(UUID::toString).toList(),
+                TEST_SUITES_REVISION_EXTENSION)) {
+      TestSuiteRelationshipRevision revision =
+          JsonUtils.readValue(record.extensionJson(), TestSuiteRelationshipRevision.class);
+      revisions.put(record.id(), revision.revision());
+    }
+    return revisions;
+  }
+
+  /**
+   * Publishes logical-suite relationship changes from committed database state. Relationship rows
+   * do not modify the stored {@link TestCase} JSON, so publication invalidates the hydrated read
+   * bundle and reloads the replacement snapshot after the transaction that advances durable
+   * revisions for every affected test case and the logical suite. Higher revisions therefore reload
+   * after every lower revision's relationship commit. Search applies snapshots whose revision is not
+   * older than the indexed one, while ordinary TestCase and logical TestSuite writes preserve these
+   * revision-owned fields, so publications may run concurrently across service nodes without
+   * allowing a late request to overwrite newer relationship state.
+   */
+  private List<TestCase> postLogicalSuiteRelationshipUpdate(
+      LogicalSuiteRelationshipChange relationshipChange) {
+    return postLogicalSuiteRelationshipUpdate(
+        relationshipChange.testCaseReferences(), relationshipChange.testCaseRevisions());
+  }
+
+  private List<TestCase> postLogicalSuiteRelationshipUpdate(
+      List<EntityReference> testCaseReferences, Map<UUID, Long> testCaseRevisions) {
+    if (testCaseReferences.isEmpty()) {
+      return List.of();
+    }
+
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      testCaseReferences.forEach(
+          reference -> cachedReadBundle.invalidate(entityType, reference.getId()));
+    }
+    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntitiesUpdated(
+            updatedTestCases, null, null, new EntityUpdateContext(testCaseRevisions));
+    updatedTestCases.forEach(RdfUpdater::updateEntity);
+    return updatedTestCases;
+  }
+
+  private record TestSuiteRelationshipRevision(long revision) {}
+
+  private record LogicalSuiteRelationshipChange(
+      UUID testSuiteId,
+      List<EntityReference> testCaseReferences,
+      Map<UUID, Long> testCaseRevisions,
+      long relationshipRevision) {
+    private LogicalSuiteRelationshipChange {
+      testCaseReferences = List.copyOf(testCaseReferences);
+      testCaseRevisions = Map.copyOf(testCaseRevisions);
+    }
+
+    private boolean isEmpty() {
+      return testSuiteId == null;
+    }
+
+    private static LogicalSuiteRelationshipChange empty() {
+      return new LogicalSuiteRelationshipChange(null, List.of(), Map.of(), 0L);
+    }
   }
 
   @Override
@@ -1470,6 +1684,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           () ->
               recordChange(
                   "testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult()));
+      compareAndUpdate(
+          INCIDENTS_FIELD,
+          () -> recordChange(INCIDENTS_FIELD, original.getIncidentId(), updated.getIncidentId()));
     }
   }
 
@@ -1586,6 +1803,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void postUpdate(TestCase original, TestCase updated) {
+    hydrateTestSuiteFieldsForSearch(updated);
     super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
@@ -1607,6 +1825,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
     }
+  }
+
+  private void hydrateTestSuiteFieldsForSearch(TestCase updated) {
+    setFieldsInternal(updated, getFields(TEST_SUITE_FIELD + "," + Entity.FIELD_TEST_SUITES));
   }
 
   private void closeApprovalTask(TestCase entity, String comment) {

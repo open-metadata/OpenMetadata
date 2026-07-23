@@ -1,25 +1,24 @@
 """Metrics entity SDK."""
+
 from __future__ import annotations
 
-from typing import Any, Sequence, Type, cast
+from typing import Any, Sequence, Type, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.sdk.entities.base import BaseEntity
-from metadata.sdk.types import UuidLike
+from metadata.sdk.types import UuidLike  # noqa: TC001
 
 
 class Metrics(BaseEntity[Metric, CreateMetricRequest]):
     """SDK facade for metric entities."""
 
     @classmethod
-    def entity_type(cls) -> Type[Metric]:
+    def entity_type(cls) -> Type[Metric]:  # noqa: UP006
         return Metric
 
     @classmethod
-    def add_related_metrics(
-        cls, metric_id: UuidLike, related_metric_ids: Sequence[UuidLike]
-    ) -> Metric:
+    def add_related_metrics(cls, metric_id: UuidLike, related_metric_ids: Sequence[UuidLike]) -> Metric:
         """Attach related metrics to the provided metric identifier."""
 
         if not related_metric_ids:
@@ -39,9 +38,9 @@ class Metrics(BaseEntity[Metric, CreateMetricRequest]):
         for related_id in related_metric_ids:
             payload = {"id": cls._stringify_identifier(related_id)}
             existing.append(payload)
-        setattr(working, "relatedMetrics", existing)
+        setattr(working, "relatedMetrics", existing)  # noqa: B010
 
-        updated = cast(Any, client).patch(
+        updated = cast(Any, client).patch(  # noqa: TC006
             entity=Metric,
             source=current,
             destination=working,

@@ -11,6 +11,7 @@
 """
 Hive source methods.
 """
+
 import re
 
 from pyhive.sqlalchemy_hive import _type_map
@@ -31,9 +32,7 @@ _type_map.update(
 )
 
 
-def get_columns(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument,too-many-locals
+def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument,too-many-locals
     """
     Method to handle table columns
     """
@@ -54,7 +53,7 @@ def get_columns(
 
         col_raw_type = col_type
         attype = re.sub(r"\(.*\)", "", col_type)
-        col_type = re.search(r"^\w+", col_type).group(0)
+        col_type = re.search(r"^\w+", col_type).group(0)  # noqa: PLW2901
         try:
             coltype = _type_map[col_type]
 
@@ -64,11 +63,14 @@ def get_columns(
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
             charlen = charlen.group(1)
-            if attype == "decimal":
+            if any(col_type.startswith(prefix) for prefix in complex_data_types):
+                # For complex types the regex above matches the parameters of a nested
+                # type instead, e.g. array<struct<a:decimal(16,4)>> yields "16,4".
+                # The nested fields are resolved later from `system_data_type`.
+                args = []
+            elif attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
-            elif attype.startswith("struct"):
-                args = []
             else:
                 args = (int(charlen),)
             coltype = coltype(*args)
@@ -88,9 +90,7 @@ def get_columns(
     return result
 
 
-def get_table_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names_older_versions(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -107,9 +107,7 @@ def get_table_names_older_versions(
     return tables
 
 
-def get_table_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW TABLES"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -129,9 +127,7 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_view_names(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     query = "SHOW VIEWS"
     if schema:
         query += " IN " + self.identifier_preparer.quote_identifier(schema)
@@ -148,9 +144,7 @@ def get_view_names(
     return views
 
 
-def get_view_names_older_versions(
-    self, connection, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_view_names_older_versions(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     # Hive does not provide functionality to query tableType for older version
     # This allows reflection to not crash at the cost of being inaccurate
     return []
@@ -163,9 +157,7 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table.
     """
-    cursor = connection.execute(
-        text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name))
-    )
+    cursor = connection.execute(text(HIVE_GET_COMMENTS.format(schema_name=schema_name, table_name=table_name)))
     try:
         for result in list(cursor):
             data = result.values()

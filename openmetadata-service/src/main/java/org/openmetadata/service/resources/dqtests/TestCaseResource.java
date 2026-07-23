@@ -453,7 +453,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Return list of tests by column names",
               schema = @Schema(type = "string", example = "{columnName}"))
           @QueryParam("columnName")
-          String columnName)
+          String columnName,
+      @Parameter(
+              description = "data product filter to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataProductFqn")
+          String dataProductFqn)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
@@ -479,7 +484,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             followedBy,
             startTimestamp,
             endTimestamp,
-            columnName);
+            columnName,
+            dataProductFqn);
 
     // Execute search
     return executeTestCaseSearch(
@@ -516,29 +522,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
+          UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
 
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    return super.listVersionsInternal(
-        securityContext, id, limit, offset, fieldChanged, operationContext, resourceContext);
+    return super.listVersionsInternal(securityContext, id, operationContext, resourceContext);
   }
 
   @GET
@@ -1490,7 +1481,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       String followedBy,
       Long startTimestamp,
       Long endTimestamp,
-      String columnName) {
+      String columnName,
+      String dataProductFqn) {
 
     SearchListFilter searchListFilter = new SearchListFilter(include);
 
@@ -1510,6 +1502,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("serviceName", serviceName);
     searchListFilter.addQueryParam("createdBy", createdBy);
     searchListFilter.addQueryParam("columnName", columnName);
+    searchListFilter.addQueryParam("dataProductFqn", dataProductFqn);
 
     // Handle owner and followedBy parameters
     if (!nullOrEmpty(owner)) {

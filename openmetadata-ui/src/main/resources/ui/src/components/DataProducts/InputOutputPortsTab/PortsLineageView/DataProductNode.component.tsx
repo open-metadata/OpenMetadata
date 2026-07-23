@@ -16,7 +16,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position } from 'reactflow';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import './PortsLineageView.style.less';
 import { DataProductNodeProps } from './PortsLineageView.types';
 

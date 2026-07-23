@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Mapping, Optional
+from typing import Mapping, Optional  # noqa: UP035
 
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
@@ -20,7 +20,7 @@ from metadata.pii.algorithms.presidio_patches import date_time_patcher, url_patc
 from metadata.pii.algorithms.tags import PIITag
 
 
-def get_top_pii_tag(extracted: Mapping[PIITag, float]) -> Optional[PIITag]:
+def get_top_pii_tag(extracted: Mapping[PIITag, float]) -> Optional[PIITag]:  # noqa: UP045
     return max(extracted, key=extracted.get, default=None)
 
 
@@ -140,9 +140,7 @@ def test_date_time_extraction_false_positive_regression(fake, analyzer):
     """
     not_dates = [60001, 60002, 60003, 60004, 60005]
     not_dates_str = [str(date) for date in not_dates]
-    extracted = extract_pii_tags(
-        analyzer, not_dates_str, recognizer_result_patcher=date_time_patcher
-    )
+    extracted = extract_pii_tags(analyzer, not_dates_str, recognizer_result_patcher=date_time_patcher)
     assert PIITag.DATE_TIME not in extracted
 
 
@@ -150,9 +148,7 @@ def test_date_time_extraction_with_patched_results(fake, analyzer):
     # Generate a list of dates and times
     samples = [str(fake.date_time_this_century()) for _ in range(100)]
     # Patch the results to avoid false positives
-    extracted = extract_pii_tags(
-        analyzer, samples, recognizer_result_patcher=date_time_patcher
-    )
+    extracted = extract_pii_tags(analyzer, samples, recognizer_result_patcher=date_time_patcher)
 
     assert PIITag.DATE_TIME in extracted
 
@@ -161,14 +157,10 @@ def test_date_time_extraction_with_patched_results(fake, analyzer):
 def test_email_address_extraction_does_not_extract_url(fake, analyzer):
     samples = [fake.email() for _ in range(100)]
     # Patch the URL to avoid false positives
-    extracted = extract_pii_tags(
-        analyzer, samples, recognizer_result_patcher=url_patcher
-    )
+    extracted = extract_pii_tags(analyzer, samples, recognizer_result_patcher=url_patcher)
     extracted_tags = set(extracted)
 
-    assert (
-        PIITag.EMAIL_ADDRESS in extracted_tags and PIITag.URL not in extracted_tags
-    ), (
+    assert PIITag.EMAIL_ADDRESS in extracted_tags and PIITag.URL not in extracted_tags, (
         PIITag.EMAIL_ADDRESS,
         samples,
         extracted,
@@ -356,9 +348,7 @@ def test_standard_uuid_not_driver_license(analyzer):
 
     # Test with GUID context
     guid_context = ["guid", "id", "uuid"]
-    extracted_with_context = extract_pii_tags(
-        analyzer, standard_uuids, context=guid_context
-    )
+    extracted_with_context = extract_pii_tags(analyzer, standard_uuids, context=guid_context)
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Standard UUIDs with GUID context should not be tagged as Driver License",
         standard_uuids,
@@ -396,9 +386,7 @@ def test_salesforce_15_char_id_not_driver_license(analyzer):
 
     # Test with Salesforce context
     salesforce_context = ["salesforce", "id", "account"]
-    extracted_with_context = extract_pii_tags(
-        analyzer, salesforce_15_char, context=salesforce_context
-    )
+    extracted_with_context = extract_pii_tags(analyzer, salesforce_15_char, context=salesforce_context)
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Salesforce 15-char IDs with context should not be tagged as Driver License",
         salesforce_15_char,
@@ -438,9 +426,7 @@ def test_salesforce_18_char_id_not_driver_license(analyzer):
 
     # Test with operational context
     operational_context = ["operational", "account", "guid"]
-    extracted_with_context = extract_pii_tags(
-        analyzer, salesforce_18_char, context=operational_context
-    )
+    extracted_with_context = extract_pii_tags(analyzer, salesforce_18_char, context=operational_context)
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Salesforce 18-char IDs with operational context should not be tagged as Driver License",
         salesforce_18_char,

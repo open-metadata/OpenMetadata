@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.open-metadata/openmetadata-mcp",
+  "title": "OpenMetadata",
+  "description": "Official OpenMetadata MCP: governed context and business semantics for AI assistants and agents.",
+  "version": "1.1.0",
+  "repository": {
+    "url": "https://github.com/open-metadata/OpenMetadata",
+    "source": "github",
+    "subfolder": "openmetadata-mcp"
+  },
+  "websiteUrl": "https://docs.open-metadata.org/how-to-guides/mcp",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://{openmetadata_host}/mcp",
+      "variables": {
+        "openmetadata_host": {
+          "description": "Hostname of your OpenMetadata deployment, including port if non-standard. Examples: 'metadata.example.com' (behind a reverse proxy on 443) or 'metadata.example.com:8585' (direct, default OpenMetadata port). The MCP endpoint is mounted at /mcp and authenticates via OAuth 2.0 with PKCE through your existing OpenMetadata SSO provider or Basic Auth.",
+          "isRequired": true
+        }
+      }
+    }
+  ]
+}

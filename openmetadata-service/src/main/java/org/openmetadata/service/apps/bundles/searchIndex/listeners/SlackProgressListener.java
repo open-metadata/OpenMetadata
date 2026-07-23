@@ -27,7 +27,8 @@ public class SlackProgressListener implements ReindexingProgressListener {
   private static final String PRODUCER_THREADS = "Producer threads";
   private static final String TOTAL_ENTITIES = "Total entities";
   private static final String QUEUE_SIZE = "Queue size";
-  private static final String RECREATING_INDICES = "Recreating indices";
+  private static final String INDEXING_MODE = "Indexing mode";
+  private static final String STAGED_PROMOTION = "Staged indexes with alias promotion";
   private static final String PAYLOAD_SIZE = "Payload size";
   private static final String CONCURRENT_REQUESTS = "Concurrent requests";
 
@@ -58,7 +59,8 @@ public class SlackProgressListener implements ReindexingProgressListener {
 
   @Override
   public void onIndexRecreationStarted(Set<String> entities) {
-    LOG.debug("Slack notification: Index recreation started for {} entities", entities.size());
+    LOG.debug(
+        "Slack notification: Staged index preparation started for {} entities", entities.size());
   }
 
   @Override
@@ -125,7 +127,7 @@ public class SlackProgressListener implements ReindexingProgressListener {
     details.put(PRODUCER_THREADS, String.valueOf(config.producerThreads()));
     details.put(QUEUE_SIZE, String.valueOf(config.queueSize()));
     details.put(TOTAL_ENTITIES, String.valueOf(totalEntities));
-    details.put(RECREATING_INDICES, config.recreateIndex() ? "Yes" : "No");
+    details.put(INDEXING_MODE, STAGED_PROMOTION);
     details.put(PAYLOAD_SIZE, (config.payloadSize() / (1024 * 1024)) + " MB");
     details.put(CONCURRENT_REQUESTS, String.valueOf(config.maxConcurrentRequests()));
     return details;

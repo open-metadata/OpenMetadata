@@ -50,7 +50,7 @@
 .glossary-manage-dropdown-list-container {
   .ant-dropdown-menu {
     padding: 8px 0px;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     border: 1px solid #dde3ea;
     box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
     border-radius: 4px;
@@ -80,7 +80,7 @@
 
 .custom-glossary-dropdown-menu {
   .ant-dropdown-menu {
-    background-color: @white;
+    background-color: var(--tw-color-bg-primary);
     border-color: @grey-4;
   }
 
@@ -90,7 +90,7 @@
   }
 
   .ant-dropdown-menu-item:hover {
-    background-color: @white;
+    background-color: var(--tw-color-bg-primary);
     color: inherit;
   }
 }
@@ -99,7 +99,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   border-color: @grey-3;
 }
 
@@ -115,7 +115,7 @@
 }
 
 .custom-status-dropdown-btn {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   outline: 1px solid @grey-2;
   color: @black;
 }
@@ -176,40 +176,76 @@
   color: #dc6803;
 }
 
-// Sticky table headers for glossary terms table
-.glossary-terms-scroll-container {
-  .glossary-terms-table {
-    .ant-table-thead {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: @white;
-
-      th {
-        background: @white !important;
-      }
-    }
-
-    // Ensure the table header shadow appears when scrolling
-    .ant-table-thead::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: @grey-3;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-    }
-  }
+.glossary-terms-empty-container {
+  height: calc(100vh - 480px);
+  min-height: 370px;
+  overflow: auto;
 }
 
 // Background color for nested glossary terms
-.ant-table-tbody > tr.glossary-nested-row {
-  background-color: @grey-50;
+.glossary-terms-table {
+  .glossary-term-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    line-height: 0;
+    color: inherit;
+    vertical-align: baseline;
+    background: transparent;
+    border: 0;
+  }
 
-  &:hover > td,
-  > td.ant-table-cell-row-hover {
+  .glossary-term-drag-handle-hidden {
+    display: none;
+  }
+
+  tbody > tr.glossary-term-draggable-row {
+    cursor: move;
+
+    .glossary-term-drag-handle,
+    .drag-icon {
+      cursor: move;
+    }
+
+    &[data-dragging='true'],
+    &:active {
+      cursor: move;
+
+      .glossary-term-drag-handle,
+      .drag-icon {
+        cursor: move;
+      }
+    }
+  }
+
+  tbody > tr.glossary-nested-row > td {
+    background-color: @grey-50;
+  }
+
+  tbody > tr.glossary-nested-row:hover > td {
     background-color: @grey-100;
+  }
+
+  table {
+    overflow-x: visible;
+  }
+}
+
+.glossary-terms-scroll-container.glossary-terms-scroll-container-drop-target {
+  .glossary-terms-table {
+    tbody {
+      border: 2px dashed
+        var(--tw-color-border-brand, var(--color-border-brand));
+      background: var(
+        --tw-color-bg-brand-primary,
+        var(--color-bg-brand-primary)
+      ) !important;
+
+      tr,
+      td,
+      th {
+        border: none !important;
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-from typing import Callable, List
+from typing import Callable, List  # noqa: UP035
 
 import pytest
 from pandas import DataFrame, Series
@@ -84,7 +84,7 @@ class AssumeLengthBetween(Assumption):
 
 
 class AssumeColumnValuesIn(Assumption):
-    def __init__(self, column: str, allowed_values: List[str]):
+    def __init__(self, column: str, allowed_values: List[str]):  # noqa: UP006
         super().__init__()
         self.column = column
         self.allowed_values = allowed_values
@@ -100,9 +100,7 @@ class AssumeArbitrary(Assumption):
         self.fn = fn
 
     def assume_positive(self, df: DataFrame):
-        assert self.fn(
-            df[self.column]
-        ).all(), f"failed test {self.__class__.__name__} for column {self.column}"
+        assert bool(self.fn(df[self.column]).all()), f"failed test {self.__class__.__name__} for column {self.column}"
 
 
 class Assumptions:

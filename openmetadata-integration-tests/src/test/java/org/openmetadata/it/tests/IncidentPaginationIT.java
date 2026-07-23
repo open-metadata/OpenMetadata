@@ -2,9 +2,12 @@ package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,6 +43,7 @@ import org.slf4j.LoggerFactory;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IncidentPaginationIT {
   private static final Logger LOG = LoggerFactory.getLogger(IncidentPaginationIT.class);
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private static final int TEST_DATA_SIZE = 11;
   private static final int PAGE_SIZE = 5;
@@ -299,6 +303,69 @@ public class IncidentPaginationIT {
         0,
         orphanedResponse.getData().size(),
         "Orphaned incident records should be skipped instead of failing the search listing");
+  }
+
+  @Test
+  public void testTestCasePatchDoesNotPropagateToIncidentSearchSource() throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    TestCase target = testCases.get(1);
+    ListParams params =
+        new ListParams()
+            .withLimit(1)
+            .withOffset(0)
+            .withLatest(true)
+            .addFilter("testCaseFQN", target.getFullyQualifiedName());
+    ListResponse<TestCaseResolutionStatus> initialResponse =
+        client.testCaseResolutionStatuses().searchList(params);
+    assertEquals(1, initialResponse.getData().size(), "Expected initial incident to be searchable");
+
+    TestCaseResolutionStatus incident =
+        JsonUtils.convertValue(initialResponse.getData().get(0), TestCaseResolutionStatus.class);
+    String displayName = "incident propagation " + System.currentTimeMillis();
+    TestCase fetched = client.testCases().get(target.getId().toString(), "owners,domains");
+    fetched.setOwners(List.of(shared.USER1_REF));
+    fetched.setDomains(List.of(shared.DOMAIN.getEntityReference()));
+    fetched.setDisplayName(displayName);
+    client.testCases().update(fetched.getId().toString(), fetched);
+
+    await("Incident search source should not receive parent propagation")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode testCaseSource =
+                  searchSource("test_case_search_index", target.getId().toString());
+              assertEquals(
+                  displayName,
+                  testCaseSource.path("displayName").asText(),
+                  "Test case search doc should receive its own displayName update");
+
+              JsonNode source = searchIncidentSource(incident.getId().toString());
+              assertFalse(
+                  displayName.equals(source.path("testCase").path("displayName").asText()),
+                  "Incident search source must not receive parent displayName propagation");
+              assertFalse(source.has("owners"), "Incident search source must not contain owners");
+              assertFalse(source.has("domains"), "Incident search source must not contain domains");
+
+              ListResponse<TestCaseResolutionStatus> response =
+                  client.testCaseResolutionStatuses().searchList(params);
+              assertEquals(1, response.getData().size(), "Incident latest search should not fail");
+            });
+  }
+
+  private JsonNode searchIncidentSource(String incidentId) throws Exception {
+    return searchSource("test_case_resolution_status_search_index", incidentId);
+  }
+
+  private JsonNode searchSource(String indexName, String id) throws Exception {
+    String searchResponse = client.search().query("id:" + id).index(indexName).size(1).execute();
+    JsonNode hits = MAPPER.readTree(searchResponse).path("hits").path("hits");
+    assertTrue(
+        hits.isArray() && !hits.isEmpty(),
+        "Document should be present in search index " + indexName);
+    return hits.get(0).path("_source");
   }
 
   private Table createTestTable() throws Exception {

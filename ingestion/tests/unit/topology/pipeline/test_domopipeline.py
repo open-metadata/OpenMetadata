@@ -27,10 +27,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.pipeline.domopipeline.metadata import DomopipelineSource
 
-mock_file_path = (
-    Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"
-)
-with open(mock_file_path, encoding="UTF-8") as file:
+mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_PIPELINE_SERVICE = PipelineService(
@@ -51,9 +49,7 @@ MOCK_PIPELINE = Pipeline(
             displayName="do_it_all_with_default_config",
         )
     ],
-    service=EntityReference(
-        id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
-    ),
+    service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
 )
 
 mock_domopipeline_config = {
@@ -70,9 +66,7 @@ mock_domopipeline_config = {
                 "instanceDomain": "https://domain.domo.com",
             }
         },
-        "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}},
     },
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
@@ -239,25 +233,19 @@ class DomoPipelineUnitTest(TestCase):
     Domo Pipeline Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
     @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:
+    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_domopipeline_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
         self.domopipeline = DomopipelineSource.create(
             mock_domopipeline_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.domopipeline.context.get().__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.domopipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_pipeline(self, get_runs):
@@ -266,8 +254,8 @@ class DomoPipelineUnitTest(TestCase):
         pipeline_list = []
         for result in results:
             if isinstance(result, CreatePipelineRequest):
-                pipeline_list.append(result)
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):
+                pipeline_list.append(result)  # noqa: PERF401
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
@@ -277,9 +265,7 @@ class DomoPipelineUnitTest(TestCase):
         results = self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS)
         for result in results:
             if isinstance(result.right, OMetaPipelineStatus):
-                pipeline_status_list.append(result.right)
+                pipeline_status_list.append(result.right)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)
-        ):
+        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):  # noqa: B905
             self.assertEqual(expected, original)

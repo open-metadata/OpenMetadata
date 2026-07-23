@@ -79,6 +79,8 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -201,6 +203,9 @@ public final class Entity {
   public static final String FILE = "file";
   public static final String SPREADSHEET = "spreadsheet";
   public static final String WORKSHEET = "worksheet";
+  public static final String FOLDER = "folder";
+  public static final String CONTEXT_FILE = "contextFile";
+  public static final String CONTEXT_FILE_CONTENT = "contextFileContent";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -216,6 +221,9 @@ public final class Entity {
   public static final String PROMPT_TEMPLATE = "promptTemplate";
   public static final String AGENT_EXECUTION = "agentExecution";
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+  public static final String AI_GOVERNANCE_FRAMEWORK = "aiGovernanceFramework";
+  public static final String AI_FRAMEWORK_CONTROL = "aiFrameworkControl";
+  public static final String AUDIT_REPORT = "auditReport";
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
@@ -262,6 +270,7 @@ public final class Entity {
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
+  public static final String INTAKE_FORM = "intakeForm";
 
   //
   // Other entities
@@ -305,6 +314,7 @@ public final class Entity {
 
   public static final String DOCUMENT = "document";
   public static final String LEARNING_RESOURCE = "learningResource";
+  public static final String CONTEXT_MEMORY = "contextMemory";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map
@@ -403,8 +413,17 @@ public final class Entity {
         }
       }
       registerDomainSyncHandler();
+      validateIndexMappingsAgainstCapabilities();
       initializedRepositories = true;
     }
+  }
+
+  private static void validateIndexMappingsAgainstCapabilities() {
+    if (searchRepository == null || searchRepository.getEntityIndexMap() == null) {
+      return;
+    }
+    org.openmetadata.service.search.validation.IndexMappingValidator.validate(
+        searchRepository.getEntityIndexMap());
   }
 
   private static void registerDomainSyncHandler() {
@@ -424,6 +443,7 @@ public final class Entity {
     searchRepository = null;
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
+    EntityIndexCapabilityRegistry.clear();
   }
 
   public static <T extends EntityInterface> void registerEntity(
@@ -432,6 +452,7 @@ public final class Entity {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
+    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forEntity(entity));
 
     LOG.debug("Registering entity {} {}", clazz, entity);
   }
@@ -443,6 +464,7 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
+    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forTimeSeries(entity));
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
@@ -561,6 +583,11 @@ public final class Entity {
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
+  }
+
+  public static Fields getOnlySupportedFields(String entityType, List<String> fields) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getOnlySupportedFields(String.join(",", fields));
   }
 
   public static <T> T getEntity(EntityReference ref, String fields, Include include) {
@@ -710,6 +737,21 @@ public final class Entity {
   public static boolean hasEntityRepository(@NonNull String entityType) {
     return ENTITY_REPOSITORY_MAP.containsKey(entityType)
         || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
+  }
+
+  /**
+   * Returns true when {@code entityTypeOrAlias} maps to an {@link EntityTimeSeriesInterface}
+   * (append-only, no top-level {@code deleted} field). Backed by
+   * {@link EntityIndexCapabilityRegistry}; the legacy {@code ENTITY_TS_REPOSITORY_MAP} fallback
+   * keeps the helper usable in tests that register repositories directly without going through
+   * the standard capability registration path.
+   */
+  public static boolean isTimeSeriesEntity(@NonNull String entityTypeOrAlias) {
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityTypeOrAlias);
+    if (capability != null) {
+      return capability.isTimeSeries();
+    }
+    return ENTITY_TS_REPOSITORY_MAP.containsKey(entityTypeOrAlias);
   }
 
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>

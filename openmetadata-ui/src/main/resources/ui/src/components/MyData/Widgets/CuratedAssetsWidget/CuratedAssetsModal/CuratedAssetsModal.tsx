@@ -18,10 +18,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusSquare } from '../../../../../assets/svg/plus-square.svg';
 import { VALIDATION_MESSAGES } from '../../../../../constants/constants';
+import { isValidElasticsearchQuery } from '../../../../../utils/CuratedAssetsPureUtils';
 import {
   CuratedAssetsFormSelectedAssetsInfo,
   getSelectedResourceCount,
-  isValidElasticsearchQuery,
 } from '../../../../../utils/CuratedAssetsUtils';
 import { AdvancedAssetsFilterField } from '../AdvancedAssetsFilterField/AdvancedAssetsFilterField.component';
 import { SelectAssetTypeField } from '../SelectAssetTypeField/SelectAssetTypeField.component';

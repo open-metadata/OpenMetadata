@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Test pydantic v2 models serialize data as pydantic v1"""
+
 from datetime import datetime
 
 from pydantic import AnyUrl

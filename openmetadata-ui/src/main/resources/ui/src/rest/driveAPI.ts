@@ -175,13 +175,12 @@ export const updateDriveAssetVotes = async <
 
 export const getDriveAssetsVersions = async (
   id: string,
-  entityType: DriveAssetEntityTypes,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
+  entityType: DriveAssetEntityTypes
 ) => {
   const API = APIByEntityType[entityType];
   const url = `${BASE_URL}${API}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };

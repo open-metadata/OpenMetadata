@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainDisplay } from './DomainDisplay.component';
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name || 'Unknown'),
@@ -84,10 +84,11 @@ describe('DomainDisplay Component', () => {
   });
 
   it('should render single domain with icon by default', () => {
-    renderDomainDisplay({ domains: [mockDomain1] });
+    const { container } = renderDomainDisplay({ domains: [mockDomain1] });
 
     expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
     expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(container.firstChild).toHaveClass('gap-1');
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
       '/domain/domain.one'

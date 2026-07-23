@@ -30,7 +30,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 // Mock utility functions
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn(
     () => 'sample_data.ecommerce_db.shopify.raw_product_catalog'
   ),

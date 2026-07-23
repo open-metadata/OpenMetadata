@@ -23,25 +23,29 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as IconDownload } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
-import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { withLoader } from '../../../hoc/withLoader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  deleteSampleDataByContainerId,
+  getSampleDataByContainerId,
+} from '../../../rest/storageAPI';
+import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TableComponent from '../../common/Table/Table';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { RowData } from './RowData';
 import './sample-data-table.less';
 import {
@@ -59,13 +63,15 @@ const SampleDataTable: FC<SampleDataProps> = ({
   tableId,
   owners,
   permissions,
+  entityType = EntityType.TABLE,
 }) => {
-  const { isTourPage } = useTourProvider();
+  const { isTourPage, tourMockDatasetData } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
   const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const [rowLimit, setRowLimit] = useState<number>(100);
 
@@ -109,8 +115,11 @@ const SampleDataTable: FC<SampleDataProps> = ({
     );
   }, [sampleData, rowLimit]);
 
-  const getSampleDataWithType = (table: Table) => {
-    const { sampleData, columns } = table;
+  const getSampleDataWithType = (entity: Table | Container) => {
+    const { sampleData } = entity;
+    const columns =
+      'columns' in entity ? entity.columns : entity.dataModel?.columns ?? [];
+
     const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
 
@@ -151,8 +160,11 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   const fetchSampleData = async () => {
     try {
-      const tableData = await getSampleDataByTableId(tableId);
-      setSampleData(getSampleDataWithType(tableData));
+      const entityData =
+        entityType === EntityType.CONTAINER
+          ? await getSampleDataByContainerId(tableId)
+          : await getSampleDataByTableId(tableId);
+      setSampleData(getSampleDataWithType(entityData));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -162,7 +174,12 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   const handleDeleteSampleData = async () => {
     try {
-      await deleteSampleDataByTableId(tableId);
+      setIsDeleting(true);
+      if (entityType === EntityType.CONTAINER) {
+        await deleteSampleDataByContainerId(tableId);
+      } else {
+        await deleteSampleDataByTableId(tableId);
+      }
       handleDeleteModal();
       fetchSampleData();
     } catch (error) {
@@ -172,6 +189,8 @@ const SampleDataTable: FC<SampleDataProps> = ({
           entity: t('label.sample-data'),
         })
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -229,14 +248,19 @@ const SampleDataTable: FC<SampleDataProps> = ({
       setIsLoading(false);
     }
     if (isTourPage) {
-      setSampleData(
-        getSampleDataWithType({
-          columns: mockDatasetData.tableDetails.columns,
-          sampleData: mockDatasetData.sampleData,
-        } as unknown as Table)
-      );
+      const mock = tourMockDatasetData as
+        | { tableDetails: { columns: unknown }; sampleData: unknown }
+        | undefined;
+      if (mock) {
+        setSampleData(
+          getSampleDataWithType({
+            columns: mock.tableDetails.columns,
+            sampleData: mock.sampleData,
+          } as unknown as Table)
+        );
+      }
     }
-  }, [tableId]);
+  }, [tableId, tourMockDatasetData]);
 
   if (isLoading) {
     return <Loader />;
@@ -328,13 +352,13 @@ const SampleDataTable: FC<SampleDataProps> = ({
       />
 
       {isDeleteModalOpen && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
-          entityName={t('label.sample-data')}
-          entityType={EntityType.SAMPLE_DATA}
-          visible={isDeleteModalOpen}
+        <DeleteModal
+          entityTitle={t('label.sample-data')}
+          isDeleting={isDeleting}
+          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
-          onConfirm={handleDeleteSampleData}
+          onDelete={handleDeleteSampleData}
         />
       )}
     </div>

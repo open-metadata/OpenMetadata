@@ -11,6 +11,7 @@
 """
 Test that we can properly parse source configs
 """
+
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection,
 )
@@ -242,9 +243,7 @@ def test_databricks():
                 },
                 "hostPort": "localhost:443",
                 "httpPath": "<http path of databricks cluster>",
-                "connectionArguments": {
-                    "http_path": "<http path of databricks cluster>"
-                },
+                "connectionArguments": {"http_path": "<http path of databricks cluster>"},
             }
         },
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
@@ -281,9 +280,7 @@ def test_deltalake():
         "serviceConnection": {
             "config": {
                 "configSource": {
-                    "connection": {
-                        "metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"
-                    },
+                    "connection": {"metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"},
                     "appName": "MyApp",
                 },
             }
@@ -416,9 +413,7 @@ def test_hive():
     source = {
         "type": "hive",
         "serviceName": "local_hive",
-        "serviceConnection": {
-            "config": {"type": "Hive", "hostPort": "localhost:10000"}
-        },
+        "serviceConnection": {"config": {"type": "Hive", "hostPort": "localhost:10000"}},
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
@@ -430,9 +425,7 @@ def test_impala():
     source = {
         "type": "impala",
         "serviceName": "local_impala",
-        "serviceConnection": {
-            "config": {"type": "Impala", "hostPort": "localhost:21050"}
-        },
+        "serviceConnection": {"config": {"type": "Impala", "hostPort": "localhost:21050"}},
         "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
     }
 
@@ -498,9 +491,7 @@ def test_metabase():
                 "hostPort": "http://hostPort",
             }
         },
-        "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
@@ -609,13 +600,7 @@ def test_powerbi():
                 "type": "PowerBI",
             }
         },
-        "sourceConfig": {
-            "config": {
-                "dashboardFilterPattern": {
-                    "includes": ["Supplier Quality Analysis Sample"]
-                }
-            }
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {"includes": ["Supplier Quality Analysis Sample"]}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
@@ -654,9 +639,7 @@ def test_redash():
                 "apiKey": "api_key",
             }
         },
-        "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
@@ -676,13 +659,7 @@ def test_redshift():
                 "type": "Redshift",
             }
         },
-        "sourceConfig": {
-            "config": {
-                "schemaFilterPattern": {
-                    "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
-                }
-            }
-        },
+        "sourceConfig": {"config": {"schemaFilterPattern": {"excludes": ["information_schema.*", "[\\w]*event_vw.*"]}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
@@ -814,9 +791,7 @@ def test_superset():
                 "type": "Superset",
             }
         },
-        "sourceConfig": {
-            "config": {"chartFilterPattern": {}, "dashboardFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"chartFilterPattern": {}, "dashboardFilterPattern": {}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
@@ -835,9 +810,7 @@ def test_tableau():
                 "siteName": "site_name",
             }
         },
-        "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
-        },
+        "sourceConfig": {"config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}},
     }
 
     config: WorkflowSource = WorkflowSource.model_validate(source)

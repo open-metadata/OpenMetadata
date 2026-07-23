@@ -192,6 +192,11 @@ public final class DashboardDataModels {
     public DashboardDataModelDeleter delete() {
       return new DashboardDataModelDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DashboardDataModel> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.dashboardDataModels(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -310,5 +315,15 @@ public final class DashboardDataModels {
     public DashboardDataModelDeleter delete() {
       return new DashboardDataModelDeleter(client, dashboardDataModel.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().dashboardDataModels().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().dashboardDataModels().getContextByName(fqn);
   }
 }

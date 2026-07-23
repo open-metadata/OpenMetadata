@@ -11,6 +11,7 @@
 """
 Test AWS Client region validation
 """
+
 import pytest
 
 from metadata.clients.aws_client import VALID_AWS_REGIONS, AWSClient

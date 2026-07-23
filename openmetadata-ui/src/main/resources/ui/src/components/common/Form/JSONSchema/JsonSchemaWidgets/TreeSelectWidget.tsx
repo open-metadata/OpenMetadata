@@ -32,11 +32,13 @@ const TreeSelectWidget: FC<WidgetProps> = ({
         title: 'All',
         value: ALL_VALUE,
         key: ALL_VALUE,
-        children: rest.options.enumOptions?.map((node) => ({
-          title: startCase(node.label),
-          value: node.value,
-          key: node.value,
-        })),
+        children: rest.options.enumOptions
+          ?.filter((node) => node.value !== ALL_VALUE)
+          .map((node) => ({
+            title: startCase(node.label),
+            value: node.value,
+            key: node.value,
+          })),
       },
     ],
     [rest.options.enumOptions]

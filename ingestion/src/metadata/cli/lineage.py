@@ -12,6 +12,7 @@
 """
 Lineage utility for the metadata CLI
 """
+
 import sys
 import traceback
 from pathlib import Path
@@ -37,13 +38,13 @@ logger = cli_logger()
 
 
 class LineageWorkflow(BaseModel):
-    filePath: Optional[str] = None
-    query: Optional[str] = None
-    checkPatch: Optional[bool] = True
-    serviceName: str
-    workflowConfig: WorkflowConfig
-    parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
-    parserType: Optional[QueryParserType] = QueryParserType.Auto
+    filePath: Optional[str] = None  # noqa: N815, UP045
+    query: Optional[str] = None  # noqa: UP045
+    checkPatch: Optional[bool] = True  # noqa: N815, UP045
+    serviceName: str  # noqa: N815
+    workflowConfig: WorkflowConfig  # noqa: N815
+    parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins  # noqa: N815, UP045
+    parserType: Optional[QueryParserType] = QueryParserType.Auto  # noqa: N815, UP045
 
 
 def run_lineage(config_path: Path) -> None:
@@ -61,21 +62,17 @@ def run_lineage(config_path: Path) -> None:
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        WorkflowInitErrorHandler.print_init_error(
-            exc, config_dict, PipelineType.lineage
-        )
+        WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.lineage)
         sys.exit(1)
 
     if workflow.filePath:
-        with open(workflow.filePath, encoding=UTF_8) as sql_file:
+        with open(workflow.filePath, encoding=UTF_8) as sql_file:  # noqa: PTH123
             sql = sql_file.read()
     else:
         sql = workflow.query
 
     metadata = OpenMetadata(config=workflow.workflowConfig.openMetadataServerConfig)
-    service: DatabaseService = metadata.get_by_name(
-        entity=DatabaseService, fqn=workflow.serviceName
-    )
+    service: DatabaseService = metadata.get_by_name(entity=DatabaseService, fqn=workflow.serviceName)
     if service:
         metadata.add_lineage_by_query(
             database_service=service,

@@ -14,7 +14,6 @@ MAX_LENGTH Metric definition
 """
 # pylint: disable=duplicate-code
 
-
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import column, func
@@ -62,9 +61,7 @@ class MaxLength(StaticMetric):
         if self._is_concatenable():
             return func.max(LenFn(column(self.col.name, self.col.type)))
 
-        logger.debug(
-            f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
-        )
+        logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")
         return None
 
     # pylint: disable=import-outside-toplevel
@@ -78,30 +75,24 @@ class MaxLength(StaticMetric):
         for df in dfs:
             try:
                 accumulator = computation.update_accumulator(accumulator, df)
-            except Exception as err:
-                logger.debug(
-                    f"Don't know how to process type {self.col.type} when computing MAX_LENGTH"
-                )
+            except Exception as err:  # noqa: F841
+                logger.debug(f"Don't know how to process type {self.col.type} when computing MAX_LENGTH")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[int], Optional[int]](
+        return PandasComputation[Optional[int], Optional[int]](  # noqa: UP045
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: MaxLength.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: MaxLength.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        current_max: Optional[int], df: "pd.DataFrame", column
-    ) -> Optional[int]:
+    def update_accumulator(current_max: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:  # noqa: UP045
         """Computes one DataFrame chunk and updates the running maximum"""
-        import pandas as pd
-        from numpy import vectorize
+        import pandas as pd  # noqa: PLC0415
+        from numpy import vectorize  # noqa: PLC0415
 
         length_vectorize_func = vectorize(len)
         chunk_max = None

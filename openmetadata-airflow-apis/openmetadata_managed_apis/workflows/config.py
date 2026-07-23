@@ -28,4 +28,4 @@ def load_config_file(config_file: Path) -> dict:
     expanded_config_file = os.path.expandvars(raw_config)
     config = json.loads(expanded_config_file)
 
-    return config
+    return config  # noqa: RET504

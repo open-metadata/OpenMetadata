@@ -64,9 +64,7 @@ class SQASet(types.ARRAY):
     Custom Set type definition
     """
 
-    def __init__(
-        self, item_type=None, as_tuple=False, dimensions=None, zero_indexes=False
-    ):
+    def __init__(self, item_type=None, as_tuple=False, dimensions=None, zero_indexes=False):
         self.item_type = item_type
         if not self.item_type:
             self.item_type = "string"

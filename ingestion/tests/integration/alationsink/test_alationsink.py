@@ -11,6 +11,7 @@
 """
 Test Alation Sink using the integration testing
 """
+
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -481,15 +482,11 @@ class AlationSinkTest(TestCase):
     Alation Sink Metadata Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.metadata.alationsink.metadata.AlationsinkSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.metadata.alationsink.metadata.AlationsinkSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            mock_alation_sink_config
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_alation_sink_config)
         self.alation_sink_source = AlationsinkSource.create(
             mock_alation_sink_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
@@ -505,21 +502,15 @@ class AlationSinkTest(TestCase):
         """
         Testing datasource API request creation model
         """
-        om_database = self.metadata.get_by_name(
-            entity=Database, fqn="sample_data.ecommerce_db"
-        )
-        returned_datasource_request = (
-            self.alation_sink_source.create_datasource_request(om_database)
-        )
+        om_database = self.metadata.get_by_name(entity=Database, fqn="sample_data.ecommerce_db")
+        returned_datasource_request = self.alation_sink_source.create_datasource_request(om_database)
         self.assertEqual(returned_datasource_request, EXPECTED_DATASOURCE_REQUEST)
 
     def test_schemas(self):
         """
         Testing schema API request creation
         """
-        om_schema = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn="sample_data.ecommerce_db.shopify"
-        )
+        om_schema = self.metadata.get_by_name(entity=DatabaseSchema, fqn="sample_data.ecommerce_db.shopify")
         returned_schema_request = self.alation_sink_source.create_schema_request(
             alation_datasource_id=MOCK_ALATION_DATASOURCE_ID, om_schema=om_schema
         )
@@ -536,7 +527,7 @@ class AlationSinkTest(TestCase):
         )
         returned_tables = []
         for om_table in om_tables:
-            returned_tables.append(
+            returned_tables.append(  # noqa: PERF401
                 self.alation_sink_source.create_table_request(
                     alation_datasource_id=MOCK_ALATION_DATASOURCE_ID,
                     schema_name="shopify",
@@ -551,12 +542,10 @@ class AlationSinkTest(TestCase):
         """
         Testing column API request creation
         """
-        om_table = self.metadata.get_by_name(
-            entity=Table, fqn="sample_data.ecommerce_db.shopify.dim_address"
-        )
+        om_table = self.metadata.get_by_name(entity=Table, fqn="sample_data.ecommerce_db.shopify.dim_address")
         returned_columns = []
         for om_column in om_table.columns:
-            returned_columns.append(
+            returned_columns.append(  # noqa: PERF401
                 self.alation_sink_source.create_column_request(
                     alation_datasource_id=MOCK_ALATION_DATASOURCE_ID,
                     schema_name="shopify",
@@ -565,7 +554,5 @@ class AlationSinkTest(TestCase):
                     table_constraints=om_table.tableConstraints,
                 )
             )
-        for _, (expected, original) in enumerate(
-            zip(EXPECTED_COLUMNS, returned_columns)
-        ):
+        for _, (expected, original) in enumerate(zip(EXPECTED_COLUMNS, returned_columns)):  # noqa: B905
             self.assertEqual(expected, original)

@@ -1,5 +1,11 @@
-FROM python:3.10-bookworm
+FROM python:3.10-slim-bookworm
 
+# The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
+# before configuring third-party apt repositories.
+RUN apt-get -qq update \
+    && apt-get -qq install -y --no-install-recommends \
+         curl ca-certificates gnupg \
+    && rm -rf /var/lib/apt/lists/*
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 
@@ -7,7 +13,6 @@ RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/ap
 RUN dpkg --configure -a \
     && apt-get -qq update \
     && apt-get -qq install -y \
-    alien \
     build-essential \
     default-libmysqlclient-dev \
     freetds-bin \
@@ -26,8 +31,12 @@ RUN dpkg --configure -a \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
-    default-jdk \
+    default-jre-headless \
     openssl \
+    # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
+    # mysql_config) and has no Linux wheels, so it always builds from source.
+    # The slim base omits pkg-config, unlike the python:3.10-bookworm base.
+    pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
     postgresql \
@@ -40,6 +49,16 @@ RUN dpkg --configure -a \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+    # Pull bookworm-security fixes for known-vulnerable packages
+    # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
+    # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
+    # wget -> tracked; upstream fix pending, no-op until Debian ships it).
+    # --only-upgrade is a no-op for packages not present in the base image.
+    && apt-get -qq install -y --only-upgrade \
+         libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
+         libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
@@ -63,12 +82,14 @@ RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess driver
-# The IBM repository approach is unreliable in CI environments, so we download the package directly
+# Mirrored on cdn.getcollate.io to decouple builds from IBM's CDN availability.
 # Use dpkg --force-depends because the package declares old Debian package names (libodbc1, odbcinst1debian2)
-# that don't exist in Debian 12, but the actual dependencies (unixodbc, odbcinst) are already installed
+# that don't exist in Debian 12, but the actual dependencies (unixodbc, odbcinst) are already installed.
+# SHA256 pinned to v1.1.0.29 — matches the version production ingestion-slim images run.
 RUN if [ $(uname -m) = "x86_64" ]; then \
-  wget -q https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/main/binary-amd64/ibm-iaccess-1.1.0.13-1.0.amd64.deb \
+  wget -q https://cdn.getcollate.io/deps/ingestion/ibm/ibm-iaccess-1.1.0.29-1.0.amd64.deb \
     -O /tmp/ibm-iaccess.deb && \
+  echo "e60e968d2cee96b2851964456f5b31ab990b1aa47d8f2399607809f7d4514f58  /tmp/ibm-iaccess.deb" | sha256sum -c - && \
   dpkg -i --force-depends /tmp/ibm-iaccess.deb && \
   apt-get install -f -y --no-install-recommends && \
   rm -f /tmp/ibm-iaccess.deb; \
@@ -105,7 +126,7 @@ RUN pip install --upgrade pip "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.12.0.0.dev0"
+ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 

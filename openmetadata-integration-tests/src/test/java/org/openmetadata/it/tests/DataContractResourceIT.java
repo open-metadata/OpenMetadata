@@ -12,12 +12,15 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.ContractSLA;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -31,6 +34,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContractExecutionStatus;
@@ -38,11 +42,15 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.data.DataContractResource;
 
 /**
@@ -230,17 +238,6 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().dataContracts().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().dataContracts().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  @Override
   protected DataContract getVersion(UUID id, Double version) {
     return SdkClients.adminClient().dataContracts().getVersion(id.toString(), version);
   }
@@ -304,6 +301,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(fetched);
     assertEquals(contract.getId(), fetched.getId());
+  }
+
+  @Test
+  void testGetDataContractByEntityId_containerEntity_slimEntityLoad(TestNamespace ns) {
+    // Pins the perf contract on `GET /v1/dataContracts/entity?entityType=container`.
+    //
+    // The handler used to call `Entity.getEntity(entityType, entityId, "*", ...)`
+    // which eagerly hydrates every relationship (owners, tags, followers, domains,
+    // dataProducts, extension) and deserialises the entity's full stored JSON. For
+    // a Container with a heavyweight `dataModel` — common in the Tahoe POC where
+    // a parquet-backed container carries multi-MB column-schema metadata — that
+    // single call routinely exceeded the 60-second request timeout in production
+    // and starved the connection pool, taking the API server with it.
+    //
+    // The handler now passes `"dataProducts"` (the only field the contract
+    // inheritance path actually consumes via `getEffectiveDataContract`) instead
+    // of `"*"`. This test exercises the Container path end-to-end so a future
+    // regression that puts `"*"` back in the resource layer fails here.
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    CreateContainer containerRequest =
+        new CreateContainer()
+            .withName(ns.prefix("dc_container"))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Container under data-contract perf-pinning IT");
+    Container container = SdkClients.adminClient().containers().create(containerRequest);
+
+    CreateDataContract contractRequest =
+        new CreateDataContract()
+            .withName(ns.prefix("test_get_by_container_entity"))
+            .withEntity(container.getEntityReference())
+            .withDescription("Pin slim entity load on getByEntityId");
+    DataContract created = createEntity(contractRequest);
+
+    DataContract fetched =
+        SdkClients.adminClient().dataContracts().getByEntityId(container.getId(), "container");
+
+    assertNotNull(fetched, "Container should have been resolved as a valid entity type");
+    assertEquals(
+        created.getId(),
+        fetched.getId(),
+        "getByEntityId must return the contract bound to the Container, proving the slim"
+            + " `dataProducts`-only entity load is sufficient for contract resolution");
   }
 
   @Test
@@ -618,6 +657,52 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         foundRejectedContract,
         "Expected to find the rejected contract with matching entity and status");
   }
+
+  @Test
+  void testSearchDataContracts(TestNamespace ns) {
+    String searchToken = ns.prefix("contract_search");
+    DataContract contractByName =
+        createEntity(
+            new CreateDataContract()
+                .withName(searchToken + "_name")
+                .withEntity(createTestTable(ns).getEntityReference()));
+    DataContract contractByDisplayName =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("different_name"))
+                .withDisplayName(searchToken + " Display")
+                .withEntity(createTestTable(ns).getEntityReference()));
+
+    ResultList<DataContract> matches = searchDataContracts(searchToken);
+
+    assertTrue(matches.getData().stream().anyMatch(c -> c.getId().equals(contractByName.getId())));
+    assertTrue(
+        matches.getData().stream().anyMatch(c -> c.getId().equals(contractByDisplayName.getId())));
+    assertEquals(
+        matches.getData().size(), searchDataContracts(searchToken.toUpperCase()).getData().size());
+    assertTrue(searchDataContracts(ns.prefix("no_match")).getData().isEmpty());
+  }
+
+  private ResultList<DataContract> searchDataContracts(String query) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", query)
+            .queryParam("limit", "50")
+            .queryParam("offset", "0")
+            .build();
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/search",
+            null,
+            DataContractResultList.class,
+            options);
+  }
+
+  private static class DataContractResultList extends ResultList<DataContract> {}
 
   @Test
   void testDataContractWithEntityStatus(TestNamespace ns) {

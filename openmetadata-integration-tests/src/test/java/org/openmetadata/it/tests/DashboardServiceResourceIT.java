@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -35,6 +36,22 @@ public class DashboardServiceResourceIT
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .dashboards()
+            .create(
+                new CreateDashboard()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName()));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of(new SearchDoc("dashboard_search_index", child.getId().toString())));
   }
 
   @Override
@@ -141,19 +158,6 @@ public class DashboardServiceResourceIT
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().dashboardServices().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().dashboardServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .dashboardServices()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

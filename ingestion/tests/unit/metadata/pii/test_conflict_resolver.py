@@ -32,15 +32,24 @@ from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
 
 
+def _scored_tag(name: str, score: float, column_name_matched: bool, priority: int) -> ScoredTag:
+    return ScoredTagFactory.create(
+        tag__tag_name=name,
+        tag__tag_classification__fqn="General",
+        tag__autoClassificationPriority=priority,
+        score=score,
+        reason=f"{name} match",
+        column_name_matched=column_name_matched,
+    )
+
+
 class TestConflictResolver:
     """Tests for ConflictResolver."""
 
     def test_resolve_conflicts_empty_list(self, pii_classification: Classification):
         """Test resolving conflicts with empty list."""
         resolver = ConflictResolver()
-        resolved = resolver.resolve_conflicts(
-            scored_tags=[], enabled_classifications=[pii_classification]
-        )
+        resolved = resolver.resolve_conflicts(scored_tags=[], enabled_classifications=[pii_classification])
 
         assert resolved == []
 
@@ -77,11 +86,9 @@ class TestConflictResolver:
         """Test conflict resolution with highest_priority strategy."""
 
         classification = pii_classification.model_copy()
-        classification.autoClassificationConfig = (
-            AutoClassificationConfigFactory.create(
-                conflictResolution=ConflictResolution.highest_priority,
-                minimumConfidence=0.7,
-            )
+        classification.autoClassificationConfig = AutoClassificationConfigFactory.create(
+            conflictResolution=ConflictResolution.highest_priority,
+            minimumConfidence=0.7,
         )
 
         # Email has lower score but higher priority
@@ -129,11 +136,9 @@ class TestConflictResolver:
         )
 
         classification = pii_classification.model_copy()
-        classification.autoClassificationConfig = (
-            AutoClassificationConfigFactory.create(
-                conflictResolution=ConflictResolution.most_specific,
-                minimumConfidence=0.7,
-            )
+        classification.autoClassificationConfig = AutoClassificationConfigFactory.create(
+            conflictResolution=ConflictResolution.most_specific,
+            minimumConfidence=0.7,
         )
 
         tag1 = ScoredTagFactory.create(
@@ -271,10 +276,38 @@ class TestConflictResolver:
         )
 
         resolver = ConflictResolver()
-        winner = resolver._select_winner(
-            [tag1, tag2], ConflictResolution.highest_confidence
-        )
+        winner = resolver._select_winner([tag1, tag2], ConflictResolution.highest_confidence)
 
         # With highest_confidence, should use priority as tie-breaker
         assert winner.tag.name.root == "Email"
         assert winner.priority == 80
+
+    def test_select_winner_column_name_match_breaks_score_tie(self):
+        """Siblings tie on score (shared content recognizer); the column-name match wins."""
+        datetime_tag = _scored_tag("DateTime", score=1.0, column_name_matched=True, priority=50)
+        birthdate_tag = _scored_tag("BirthDate", score=1.0, column_name_matched=False, priority=50)
+
+        resolver = ConflictResolver()
+        winner = resolver._select_winner([birthdate_tag, datetime_tag], ConflictResolution.highest_confidence)
+
+        assert winner.tag.name.root == "DateTime"
+
+    def test_select_winner_column_name_match_outranks_priority(self):
+        """A column-name match beats a higher static priority: per-column evidence wins over the prior."""
+        location_tag = _scored_tag("Location", score=0.85, column_name_matched=True, priority=50)
+        address_tag = _scored_tag("Address", score=0.85, column_name_matched=False, priority=80)
+
+        resolver = ConflictResolver()
+        winner = resolver._select_winner([address_tag, location_tag], ConflictResolution.highest_confidence)
+
+        assert winner.tag.name.root == "Location"
+
+    def test_select_winner_priority_breaks_tie_when_both_match(self):
+        """When both siblings match the column name, higher priority (more specific) wins."""
+        datetime_tag = _scored_tag("DateTime", score=1.0, column_name_matched=True, priority=50)
+        birthdate_tag = _scored_tag("BirthDate", score=1.0, column_name_matched=True, priority=60)
+
+        resolver = ConflictResolver()
+        winner = resolver._select_winner([datetime_tag, birthdate_tag], ConflictResolution.highest_confidence)
+
+        assert winner.tag.name.root == "BirthDate"

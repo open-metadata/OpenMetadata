@@ -346,6 +346,45 @@ public class WebsocketNotificationHandler {
     }
   }
 
+  public static void sendQueryRunnerCompleteNotification(
+      String jobId, UUID userId, String workflowId, Double duration, String executedQuery) {
+    QueryRunnerMessage message =
+        new QueryRunnerMessage(jobId, "COMPLETED", workflowId, null, null, duration, executedQuery);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendQueryRunnerFailedNotification(
+      String jobId, UUID userId, String errorMessage) {
+    QueryRunnerMessage message =
+        new QueryRunnerMessage(jobId, "FAILED", null, errorMessage, null, null, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
+  /**
+   * Intermediate progress message for a Query Runner job — e.g. "Executing query…",
+   * "Uploading results…". UI's WebSocket hook reads the {@code message} field and surfaces it
+   * as {@code executionStatusMessage}. {@code status} stays "RUNNING" so the UI doesn't treat
+   * this as a terminal event.
+   */
+  public static void sendQueryRunnerProgressNotification(
+      String jobId, UUID userId, String workflowId, String message) {
+    QueryRunnerMessage msg =
+        new QueryRunnerMessage(jobId, "RUNNING", workflowId, null, message, null, null);
+    String jsonMessage = JsonUtils.pojoToJson(msg);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.QUERY_RUNNER_CHANNEL, jsonMessage);
+    }
+  }
+
   public static void sendDeleteOperationCompleteNotification(
       String jobId, SecurityContext securityContext, EntityInterface entity) {
     DeleteEntityMessage message =
@@ -379,6 +418,48 @@ public class WebsocketNotificationHandler {
       WebSocketManager.getInstance()
           .sendToOne(userId, WebSocketManager.DELETE_ENTITY_CHANNEL, jsonMessage);
     }
+  }
+
+  public static void sendRestoreOperationCompleteNotification(
+      String jobId, UUID userId, EntityInterface entity) {
+    RestoreEntityMessage message =
+        new RestoreEntityMessage(jobId, "COMPLETED", entity.getName(), null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    LOG.info(
+        "[AsyncRestore] Restore operation completed - jobId: {}, userId: {}, entity: {}",
+        jobId,
+        userId,
+        entity.getName());
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  public static void sendRestoreOperationFailedNotification(
+      String jobId, UUID userId, String entityName, String error) {
+    RestoreEntityMessage message = new RestoreEntityMessage(jobId, "FAILED", entityName, error);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    LOG.error(
+        "[AsyncRestore] Restore operation failed - jobId: {}, userId: {}, entity: {}, error: {}",
+        jobId,
+        userId,
+        entityName,
+        error);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.RESTORE_ENTITY_CHANNEL, jsonMessage);
+    }
+  }
+
+  /**
+   * Resolve the WebSocket user id for the given security context. Call this on the
+   * request thread (i.e., before submitting an async task) so the lookup runs while the
+   * SecurityContext is still valid — JAX-RS may invalidate request-scoped state after the
+   * response returns.
+   */
+  public static UUID resolveUserId(SecurityContext securityContext) {
+    return getUserIdFromSecurityContext(securityContext);
   }
 
   public static void sendMoveOperationCompleteNotification(

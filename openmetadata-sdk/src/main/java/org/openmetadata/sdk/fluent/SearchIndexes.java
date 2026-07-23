@@ -180,6 +180,11 @@ public final class SearchIndexes {
     public SearchIndexDeleter delete() {
       return new SearchIndexDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<SearchIndex> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.searchIndexes(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -295,5 +300,15 @@ public final class SearchIndexes {
     public SearchIndexDeleter delete() {
       return new SearchIndexDeleter(client, searchIndex.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().searchIndexes().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().searchIndexes().getContextByName(fqn);
   }
 }

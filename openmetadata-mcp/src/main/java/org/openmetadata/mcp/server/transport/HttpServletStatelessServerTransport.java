@@ -49,6 +49,24 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
   public static final String FAILED_TO_SEND_ERROR_RESPONSE = "Failed to send error response: {}";
 
+  static final String HEADER_CACHE_CONTROL = "Cache-Control";
+
+  static final String HEADER_CONNECTION = "Connection";
+
+  static final String HEADER_X_ACCEL_BUFFERING = "X-Accel-Buffering";
+
+  static final String CACHE_CONTROL_NO_CACHE = "no-cache";
+
+  static final String CONNECTION_KEEP_ALIVE = "keep-alive";
+
+  static final String X_ACCEL_BUFFERING_NO = "no";
+
+  static final String SSE_DATA_PREFIX = "data: ";
+
+  static final String SSE_LINE_TERMINATOR = "\n";
+
+  static final String SSE_EVENT_TERMINATOR = "\n\n";
+
   private final ObjectMapper objectMapper;
 
   private final McpJsonMapper jsonMapper;
@@ -133,12 +151,14 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     McpTransportContext transportContext = this.contextExtractor.extract(request);
 
     String accept = request.getHeader(ACCEPT);
-    if (accept == null || !accept.contains(APPLICATION_JSON)) {
+    boolean acceptsJson = accept != null && accept.contains(APPLICATION_JSON);
+    boolean acceptsSse = accept != null && accept.contains(TEXT_EVENT_STREAM);
+    if (!acceptsJson && !acceptsSse) {
       this.responseError(
           response,
           HttpServletResponse.SC_BAD_REQUEST,
           McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
-              .message("application/json required in Accept header")
+              .message("Accept header must include application/json or text/event-stream")
               .build());
       return;
     }
@@ -162,14 +182,12 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .contextWrite(ctx -> ctx.put(McpTransportContext.KEY, transportContext))
                   .block();
 
-          response.setContentType(APPLICATION_JSON);
-          response.setCharacterEncoding(UTF_8);
-          response.setStatus(HttpServletResponse.SC_OK);
-
           String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          PrintWriter writer = response.getWriter();
-          writer.write(jsonResponseText);
-          writer.flush();
+          if (shouldEmitSse(acceptsJson, acceptsSse)) {
+            writeSseResponse(response, jsonResponseText);
+          } else {
+            writeJsonResponse(response, jsonResponseText);
+          }
         } catch (Exception e) {
           logger.error("Failed to handle request: {}", e.getMessage());
           this.responseError(
@@ -237,6 +255,56 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     String jsonError = jsonMapper.writeValueAsString(mcpError);
     PrintWriter writer = response.getWriter();
     writer.write(jsonError);
+    writer.flush();
+  }
+
+  /**
+   * Picks the response media type via Accept-header content negotiation. JSON is preferred whenever
+   * the client accepts it, because the MCP Streamable HTTP spec has clients send {@code Accept:
+   * application/json, text/event-stream} and most (e.g. the ai-sdk Python client) cannot parse an
+   * SSE {@code data: } framed body. SSE is emitted only for clients that accept event-stream but
+   * NOT JSON (e.g. the Databricks Supervisor Agent client).
+   */
+  static boolean shouldEmitSse(boolean acceptsJson, boolean acceptsSse) {
+    return acceptsSse && !acceptsJson;
+  }
+
+  static void writeJsonResponse(HttpServletResponse response, String jsonResponseText)
+      throws IOException {
+    response.setContentType(APPLICATION_JSON);
+    response.setCharacterEncoding(UTF_8);
+    response.setStatus(HttpServletResponse.SC_OK);
+    PrintWriter writer = response.getWriter();
+    writer.write(jsonResponseText);
+    writer.flush();
+  }
+
+  /**
+   * Writes a JSON-RPC response as a one-shot Server-Sent Events stream. Required for MCP
+   * Streamable HTTP clients (e.g. Databricks Supervisor Agent's "databricks" v1.0.0 client) that
+   * negotiate {@code text/event-stream} via the {@code Accept} header and refuse to parse plain
+   * {@code application/json} responses.
+   *
+   * <p>Per the W3C SSE spec, payloads containing line breaks must prefix every line with
+   * {@code data: }. The default {@code McpJsonMapper} produces compact JSON, but this method
+   * splits defensively so that any embedded newline (e.g., a literal {@code \n} inside an error
+   * message) cannot truncate the event for the client.
+   */
+  static void writeSseResponse(HttpServletResponse response, String jsonResponseText)
+      throws IOException {
+    response.setContentType(TEXT_EVENT_STREAM);
+    response.setCharacterEncoding(UTF_8);
+    response.setHeader(HEADER_CACHE_CONTROL, CACHE_CONTROL_NO_CACHE);
+    response.setHeader(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE);
+    response.setHeader(HEADER_X_ACCEL_BUFFERING, X_ACCEL_BUFFERING_NO);
+    response.setStatus(HttpServletResponse.SC_OK);
+    PrintWriter writer = response.getWriter();
+    for (String line : jsonResponseText.split("\\R", -1)) {
+      writer.write(SSE_DATA_PREFIX);
+      writer.write(line);
+      writer.write(SSE_LINE_TERMINATOR);
+    }
+    writer.write(SSE_LINE_TERMINATOR);
     writer.flush();
   }
 

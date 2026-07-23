@@ -39,10 +39,7 @@ def test_add_lineage_log_info() -> None:
         ),
     )
 
-    assert (
-        get_log_name(add_lineage)
-        == "table [name: random, id: 2aaa012e-099a-11ed-861d-0242ac120002]"
-    )
+    assert get_log_name(add_lineage) == "table [name: random, id: 2aaa012e-099a-11ed-861d-0242ac120002]"
 
     add_lineage = AddLineageRequest(
         edge=EntitiesEdge(
@@ -58,6 +55,4 @@ def test_add_lineage_log_info() -> None:
         ),
     )
 
-    assert (
-        get_log_name(add_lineage) == "table [id: 2aaa012e-099a-11ed-861d-0242ac120002]"
-    )
+    assert get_log_name(add_lineage) == "table [id: 2aaa012e-099a-11ed-861d-0242ac120002]"

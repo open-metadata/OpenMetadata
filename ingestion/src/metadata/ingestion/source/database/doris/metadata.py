@@ -9,9 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Doris source module"""
+
 import re
 import traceback
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from pydoris.sqlalchemy import datatype
 from pydoris.sqlalchemy.dialect import DorisDialect
@@ -80,7 +81,7 @@ def extract_number(data):
     # doris view column may be VARCHAR(*), check data length if not digit then return 1
     if result:
         result = [i.strip() if i.strip().isdigit() else 1 for i in result[0].split(",")]
-        return result
+        return result  # noqa: RET504
     return []
 
 
@@ -124,9 +125,7 @@ def _get_column(ordinal, field, _type, null, default, comment):
         children = []
         for key_, child in enumerate(extract_child(_type).split(",")):
             name_type = child.split(":")
-            children.append(
-                _get_column(key_, name_type[0], name_type[1], "YES", None, None)
-            )
+            children.append(_get_column(key_, name_type[0], name_type[1], "YES", None, None))
     return {
         "name": field,
         "default": default,
@@ -157,22 +156,16 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
-        connection = cast(DorisConnection, config.serviceConnection.root.config)
+        connection = cast(DorisConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, DorisConnection):
-            raise InvalidSourceException(
-                f"Expected DorisConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected DorisConnection, but got {connection}")
         return cls(config, metadata)
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
         name and type. By default, use the inspector method
@@ -182,29 +175,20 @@ class DorisSource(CommonDbSourceService):
         logic on how to handle table types, e.g., external, foreign,...
         """
         tables = [
-            TableNameAndType(
-                name=name, type_=RELKIND_MAP.get(engine, TableType.Regular)
-            )
-            for name, engine in self.connection.execute(
-                sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}
-            )
-            or []
+            TableNameAndType(name=name, type_=RELKIND_MAP.get(engine, TableType.Regular))
+            for name, engine in self.connection.execute(sql.text(DORIS_GET_TABLE_NAMES), {"schema": schema_name}) or []
         ]
-        return tables
+        return tables  # noqa: RET504
 
     @staticmethod
-    def get_table_description(
-        schema_name: str, table_name: str, inspector: Inspector
-    ) -> str:
+    def get_table_description(schema_name: str, table_name: str, inspector: Inspector) -> str:
         description = None
         try:
             table_info: dict = inspector.get_table_comment(table_name, schema_name)
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Table description error for table [{schema_name}.{table_name}]: {exc}"
-            )
+            logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         else:
             description = table_info.get("text")
 
@@ -218,11 +202,7 @@ class DorisSource(CommonDbSourceService):
         table_columns = []
         primary_columns = []
         # row schema: Field, Type, Collation, Null, Key, Default, Extra, Privileges, Comment
-        for i, row in enumerate(
-            self.connection.execute(
-                sql.text(DORIS_SHOW_FULL_COLUMNS.format(schema, table_name))
-            )
-        ):
+        for i, row in enumerate(self.connection.execute(sql.text(DORIS_SHOW_FULL_COLUMNS.format(schema, table_name)))):
             table_columns.append(_get_column(i, row[0], row[1], row[3], row[5], row[8]))
             if row[4] == "YES":
                 primary_columns.append(row[0])
@@ -235,10 +215,8 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         db_name: str,
         inspector: Inspector,
-        table_type: str = None,
-    ) -> Tuple[
-        Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
-    ]:
+        table_type: str = None,  # noqa: RUF013
+    ) -> Tuple[Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]]:  # noqa: UP006, UP045
         """
         :param schema_name:
         :param table_name:
@@ -259,9 +237,7 @@ class DorisSource(CommonDbSourceService):
                             description=child.get("comment"),
                             dataType=child["system_data_type"],
                             dataTypeDisplay=child["display_type"],
-                            dataLength=self._check_col_length(
-                                child["system_data_type"], child["data_type"]
-                            ),
+                            dataLength=self._check_col_length(child["system_data_type"], child["data_type"]),
                             constraint=None,
                             children=child["children"],
                             arrayDataType=child["arr_data_type"],
@@ -269,22 +245,14 @@ class DorisSource(CommonDbSourceService):
                         )
                         for child in column["children"]
                     ]
-                self.process_additional_table_constraints(
-                    column=column, table_constraints=table_constraints
-                )
+                self.process_additional_table_constraints(column=column, table_constraints=table_constraints)
 
-                col_constraint = self._get_column_constraints(
-                    column, primary_columns, []
-                )
-                col_data_length = self._check_col_length(
-                    column["system_data_type"], column["data_type"]
-                )
+                col_constraint = self._get_column_constraints(column, primary_columns, [])
+                col_data_length = self._check_col_length(column["system_data_type"], column["data_type"])
                 if col_data_length is None:
                     col_data_length = 1
                 if column["system_data_type"] is None:
-                    logger.warning(
-                        f"Unknown type {repr(column['type'])}: {column['name']}"
-                    )
+                    logger.warning(f"Unknown type {repr(column['type'])}: {column['name']}")  # noqa: RUF010
                 om_column = Column(
                     name=column["name"] if column["name"] else " ",
                     description=column.get("comment"),
@@ -300,14 +268,10 @@ class DorisSource(CommonDbSourceService):
                     om_column.precision = column["data_type"].precision
                     om_column.scale = column["data_type"].scale
 
-                om_column.tags = self.get_column_tag_labels(
-                    table_name=table_name, column=column
-                )
+                om_column.tags = self.get_column_tag_labels(table_name=table_name, column=column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Unexpected exception processing column [{column}]: {exc}"
-                )
+                logger.warning(f"Unexpected exception processing column [{column}]: {exc}")
                 continue
             table_columns.append(om_column)
         return table_columns, [], []
@@ -317,15 +281,13 @@ class DorisSource(CommonDbSourceService):
         table_name: str,
         schema_name: str,
         inspector: Inspector,
-    ) -> Tuple[bool, Optional[TablePartition]]:
+    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
         """
         check if the table is partitioned table and return the partition details
         """
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))
-                ).all()
+                result = conn.execute(sql.text(DORIS_PARTITION_DETAILS.format(schema_name, table_name))).all()
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(
@@ -340,6 +302,6 @@ class DorisSource(CommonDbSourceService):
                 )
 
                 return True, partition_details
-            return False, None
+            return False, None  # noqa: TRY300
         except Exception:
             return False, None

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -20,9 +21,6 @@ export type EntityVersionTimelineProps = {
   versionHandler: (v: string) => void;
   onBack: () => void;
   entityType?: EntityType;
-  onLoadMore?: () => void;
-  hasMore?: boolean;
-  isLoadingMore?: boolean;
 };
 
 export type EntityVersionButtonProps = {
@@ -37,4 +35,5 @@ export type EntityVersionButtonProps = {
   selected: boolean;
   isMajorVersion: boolean;
   className?: string;
+  summary?: ReactNode;
 };

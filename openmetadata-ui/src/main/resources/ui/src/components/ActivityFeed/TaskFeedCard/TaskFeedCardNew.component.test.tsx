@@ -80,14 +80,18 @@ jest.mock('../../../pages/TasksPage/shared/DescriptionTaskNew', () => {
   return jest.fn().mockImplementation(() => <p>DescriptionTaskNew</p>);
 });
 
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
-  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskActionUtils'),
   isTagsTask: jest.fn().mockReturnValue(true),
   isDescriptionTask: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
+  getTaskDetailPath: jest.fn().mockReturnValue('/tasks/1'),
+}));
+
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityFQNFromAbout: jest.fn().mockReturnValue('entityFQN'),
   getEntityTypeFromAbout: jest.fn().mockReturnValue('table'),
 }));
@@ -101,7 +105,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockReturnValue(1234567890),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('Sensitive'),
 }));
 
@@ -110,11 +114,13 @@ jest.mock('../../../utils/EntityLink', () => {
     __esModule: true,
     default: {
       getTableColumnName: jest.fn().mockReturnValue(null),
+      getEntityType: jest.fn().mockReturnValue('table'),
+      getEntityFqn: jest.fn().mockReturnValue('test.entity.fqn'),
     },
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 
@@ -179,7 +185,7 @@ describe('TaskFeedCardNew Component', () => {
     const {
       isTagsTask,
       isDescriptionTask,
-    } = require('../../../utils/TasksUtils');
+    } = require('../../../utils/TaskActionUtils');
     isTagsTask.mockReturnValue(false);
     isDescriptionTask.mockReturnValue(true);
 

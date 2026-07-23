@@ -13,6 +13,7 @@ Mixin class containing Server and client specific methods
 
 To be used by OpenMetadata class
 """
+
 from typing import Optional
 
 from metadata.__version__ import (
@@ -28,13 +29,13 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 
-class VersionMismatchException(Exception):
+class VersionMismatchException(Exception):  # noqa: N818
     """
     Used when server and client versions do not match
     """
 
 
-class VersionNotFoundException(Exception):
+class VersionNotFoundException(Exception):  # noqa: N818
     """
     Used when server doesn't return a version
     """
@@ -75,7 +76,7 @@ class OMetaServerMixin:
         try:
             raw_version = self.client.get("/system/version")["version"]
         except KeyError:
-            raise VersionNotFoundException(
+            raise VersionNotFoundException(  # noqa: B904
                 "Cannot Find Version at api/v1/system/version."
                 + " If running the server in DEV mode locally, make sure to `mvn clean install`."
             )
@@ -84,17 +85,21 @@ class OMetaServerMixin:
     def validate_versions(self) -> None:
         """
         Validate Server & Client versions. They should match.
-        Otherwise, raise VersionMismatchException
+        Otherwise, raise VersionMismatchException.
         """
-        logger.info(
-            f"OpenMetadata client running with Server version [{self.server_version}] and Client version [{self.client_version}]"
-        )
-
         if not match_versions(self.server_version, self.client_version):
             raise VersionMismatchException(
                 f"Server version is {self.server_version} vs. Client version {self.client_version}."
                 f" Major and minor versions should match."
             )
+
+    def log_server_version(self) -> None:
+        """Emit the server/client version line."""
+        logger.info(
+            "OpenMetadata client running with Server version [%s] and Client version [%s]",
+            self.server_version,
+            self.client_version,
+        )
 
     def create_or_update_settings(self, settings: Settings) -> Settings:
         """Create of update setting
@@ -109,20 +114,18 @@ class OMetaServerMixin:
         response = self.client.put(ROUTES.get(Settings.__name__), data)
         return Settings.model_validate(response)
 
-    def get_settings_by_name(self, setting_type: SettingType) -> Optional[Settings]:
+    def get_settings_by_name(self, setting_type: SettingType) -> Optional[Settings]:  # noqa: UP045
         """Get setting by name
 
         Returns:
             Settings
         """
-        response = self.client.get(
-            f"{ROUTES.get(Settings.__name__)}/{setting_type.value}"
-        )
+        response = self.client.get(f"{ROUTES.get(Settings.__name__)}/{setting_type.value}")
         if not response:
             return None
         return Settings.model_validate(response)
 
-    def get_profiler_config_settings(self) -> Optional[Settings]:
+    def get_profiler_config_settings(self) -> Optional[Settings]:  # noqa: UP045
         """Get profiler config setting
 
         Returns:

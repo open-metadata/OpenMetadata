@@ -1,10 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
@@ -15,7 +18,10 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AIFrameworkControl;
+import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpExecution;
 import org.openmetadata.schema.entity.ai.McpServer;
@@ -68,12 +74,17 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.search.indexes.APICollectionIndex;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.APIServiceIndex;
 import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
 import org.openmetadata.service.search.indexes.AiApplicationIndex;
+import org.openmetadata.service.search.indexes.AiFrameworkControlIndex;
+import org.openmetadata.service.search.indexes.AiGovernanceFrameworkIndex;
 import org.openmetadata.service.search.indexes.AiGovernancePolicyIndex;
+import org.openmetadata.service.search.indexes.AuditReportIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -161,6 +172,213 @@ class SearchIndexFactoryTest {
     org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains("unknownType"));
   }
 
+  @ParameterizedTest
+  @MethodSource("supportedIndexMappings")
+  void reindexFieldsProbeSucceedsForEveryEntityType(
+      String entityType, Supplier<Object> entitySupplier, Class<? extends SearchIndex> indexClass) {
+    // The factory probes each Index with a null entity to read its static field declarations.
+    // This asserts every Index constructor is null-safe and that a non-empty field set is returned.
+    Set<String> fields = factory.getReindexFieldsFor(entityType);
+    assertFalse(
+        fields.isEmpty(),
+        () -> "Reindex fields for " + entityType + " must not be empty; got " + fields);
+  }
+
+  @ParameterizedTest
+  @MethodSource("supportedIndexMappings")
+  void commonReindexFieldsPresentForEveryEntityType(
+      String entityType, Supplier<Object> entitySupplier, Class<? extends SearchIndex> indexClass) {
+    Set<String> fields = factory.getReindexFieldsFor(entityType);
+    for (String common : SearchIndex.COMMON_REINDEX_FIELDS) {
+      assertTrue(
+          fields.contains(common),
+          () -> entityType + " reindex fields missing common field '" + common + "': " + fields);
+    }
+  }
+
+  // --- per-index reindex-field contract guards ------------------------------------
+  // One test per Index class that overrides getRequiredReindexFields(). Each asserts the exact
+  // fields that Index declares via fields.add(...). These fan-out fields are fields-gated in their
+  // repositories (setFields/clearFields null them unless requested), so selective reindex drops
+  // them from the ES doc unless the Index lists them here. A dropped field silently breaks a UI
+  // feature after any reindex — these guards catch that at build time.
+
+  @Test
+  void tableReindexFieldsIncludeColumnsUsageAndTestSuite() {
+    // testSuite is fields-gated in TableRepository (setFields/clearFields). Lineage nodes read
+    // (node as Table).testSuite to render the data-observability / DQ summary; without it the
+    // getDataQualityLineage view loses its test information after a reindex.
+    assertReindexFields(Entity.TABLE, "columns", "usageSummary", "testSuite");
+  }
+
+  @Test
+  void apiEndpointReindexFieldsIncludeSchemas() {
+    assertReindexFields(Entity.API_ENDPOINT, "requestSchema", "responseSchema");
+  }
+
+  @Test
+  void containerReindexFieldsIncludeDataModel() {
+    assertReindexFields(Entity.CONTAINER, "dataModel");
+  }
+
+  @Test
+  void dashboardReindexFieldsIncludeCharts() {
+    assertReindexFields(Entity.DASHBOARD, "charts");
+  }
+
+  @Test
+  void databaseReindexFieldsIncludeUsageSummary() {
+    assertReindexFields(Entity.DATABASE, "usageSummary");
+  }
+
+  @Test
+  void storedProcedureReindexFieldsIncludeService() {
+    // service is stripped from storage JSON (StoredProcedureRepository
+    // .getFieldsStrippedFromStorageJson returns ["service"]) and re-derived from the parent schema
+    // by setFieldsInBulk only when requested. Without it in the reindex field set the
+    // ServiceBackedIndex mixin sees a null service and the stored_procedure_search_index doc loses
+    // its service, breaking service-scoped Explore filters and aggregations for stored procedures.
+    assertReindexFields(Entity.STORED_PROCEDURE, Entity.FIELD_SERVICE);
+  }
+
+  @Test
+  void glossaryTermReindexFieldsIncludeRelatedTerms() {
+    assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms");
+  }
+
+  @Test
+  void ingestionPipelineReindexFieldsIncludePipelineStatuses() {
+    assertReindexFields(Entity.INGESTION_PIPELINE, "pipelineStatuses");
+  }
+
+  @Test
+  void pageReindexFieldsIncludeHierarchyFields() {
+    assertReindexFields(Entity.PAGE, "parent", "children", "editors", "relatedEntities");
+  }
+
+  @Test
+  void pipelineReindexFieldsIncludeTasks() {
+    assertReindexFields(Entity.PIPELINE, "tasks");
+  }
+
+  @Test
+  void spreadsheetReindexFieldsIncludeWorksheets() {
+    assertReindexFields(Entity.SPREADSHEET, "worksheets");
+  }
+
+  @Test
+  void teamReindexFieldsIncludeParents() {
+    assertReindexFields(Entity.TEAM, "parents");
+  }
+
+  @Test
+  void topicReindexFieldsIncludeMessageSchema() {
+    assertReindexFields(Entity.TOPIC, "messageSchema");
+  }
+
+  @Test
+  void userReindexFieldsIncludeTeamsAndRoles() {
+    assertReindexFields(Entity.USER, "teams", "roles", "inheritedRoles");
+  }
+
+  @Test
+  void testCaseReindexFieldsIncludeSuiteDefinitionAndResult() {
+    // testCaseResult/incidentId are stripped from storage JSON and only fetched by setFieldsInBulk
+    // when requested. Reindex without them produces docs missing testCaseStatus, blanking statuses
+    // in the UI.
+    assertReindexFields(
+        Entity.TEST_CASE,
+        TestCaseRepository.TEST_SUITE_FIELD,
+        Entity.FIELD_TEST_SUITES,
+        TestCaseRepository.TEST_DEFINITION_FIELD,
+        Entity.TEST_CASE_RESULT,
+        TestCaseRepository.INCIDENTS_FIELD);
+  }
+
+  @Test
+  void testSuiteReindexFieldsIncludeSummaryAndTests() {
+    // TestSuiteRepository registers a fetcher for "summary" that populates testCaseResultSummary.
+    // The DQ TestSuites list page sorts by lastResultTimestamp (computed in TestSuiteIndex from
+    // that summary) and renders a success-% column. Without "summary" the fetcher never runs.
+    assertReindexFields(Entity.TEST_SUITE, TestSuiteRepository.SUMMARY_FIELD, "tests");
+  }
+
+  private void assertReindexFields(String entityType, String... expectedFields) {
+    Set<String> fields = factory.getReindexFieldsFor(entityType);
+    for (String expected : expectedFields) {
+      assertTrue(
+          fields.contains(expected),
+          () -> entityType + " reindex fields must include '" + expected + "'; got " + fields);
+    }
+  }
+
+  @Test
+  void queryReindexFieldsIncludeQueryUsedIn() {
+    // Regression: queryUsedIn is stripped from storage JSON (QueryRepository
+    // getFieldsStrippedFromStorageJson returns ["queryUsedIn", "users"]) and is only
+    // populated by setFieldsInBulk when explicitly requested. Without it in the reindex field
+    // set, QueryRepository.clearFields nulls queryUsedIn out and QueryIndex writes a doc with
+    // no queryUsedIn array. Reload of Table → Queries tab then shows the "Add new query" empty
+    // state even though the tab counter still says "1".
+    Set<String> queryFields = factory.getReindexFieldsFor(Entity.QUERY);
+    assertTrue(
+        queryFields.contains("queryUsedIn"),
+        () -> "Query reindex fields must include 'queryUsedIn'; got " + queryFields);
+  }
+
+  @Test
+  void worksheetReindexFieldsIncludeColumns() {
+    // Regression: WorksheetRepository.clearFields nulls columns when "columns" is not in the
+    // fields set. WorksheetIndex.buildSearchIndexDocInternal then sees null and skips writing
+    // columnNames / columnNamesFuzzy / columnDescriptionStatus / child tags. Column-name search
+    // in Explore → Worksheets returns "No result found" for any worksheet after a reindex.
+    Set<String> worksheetFields = factory.getReindexFieldsFor(Entity.WORKSHEET);
+    assertTrue(
+        worksheetFields.contains("columns"),
+        () -> "Worksheet reindex fields must include 'columns'; got " + worksheetFields);
+  }
+
+  @Test
+  void fileReindexFieldsIncludeColumns() {
+    // Regression: FileRepository.clearFields nulls columns when "columns" is not in the fields
+    // set, same pattern as Worksheet. File column-name search breaks after reindex.
+    Set<String> fileFields = factory.getReindexFieldsFor(Entity.FILE);
+    assertTrue(
+        fileFields.contains("columns"),
+        () -> "File reindex fields must include 'columns'; got " + fileFields);
+  }
+
+  @Test
+  void domainReindexFieldsIncludeParent() {
+    Set<String> domainFields = factory.getReindexFieldsFor(Entity.DOMAIN);
+    assertTrue(
+        domainFields.contains(Entity.FIELD_PARENT),
+        () -> "Domain reindex fields must include 'parent'; got " + domainFields);
+  }
+
+  @Test
+  void reindexFieldsOmitKnownFanOutFields() {
+    // These are the "blow up the heap" relationships we explicitly do NOT want fetched during
+    // reindex. They either live in the Index's getExcludedFields() (stripped post-hoc) or
+    // aren't read by buildSearchIndexDocInternal. Either way, asking setFields to load them
+    // would be wasted work and risks OOM on large parents.
+    assertFalse(factory.getReindexFieldsFor(Entity.DATABASE_SCHEMA).contains("tables"));
+    assertFalse(factory.getReindexFieldsFor(Entity.DATABASE).contains("databaseSchemas"));
+    assertFalse(factory.getReindexFieldsFor(Entity.TEAM).contains("users"));
+    assertFalse(factory.getReindexFieldsFor(Entity.CONTAINER).contains("children"));
+    assertFalse(factory.getReindexFieldsFor(Entity.API_COLLECTION).contains("apiEndpoints"));
+    assertFalse(factory.getReindexFieldsFor(Entity.DASHBOARD).contains("dataModels"));
+    assertFalse(factory.getReindexFieldsFor(Entity.GLOSSARY_TERM).contains("children"));
+  }
+
+  @Test
+  void reindexFieldsUnknownEntityTypeFallsBackToCommon() {
+    // Graceful degradation: if a new entity type is added and the factory can't probe it,
+    // the reindex path still works with the common set rather than throwing.
+    Set<String> fields = factory.getReindexFieldsFor("nonExistentEntityType");
+    org.junit.jupiter.api.Assertions.assertEquals(SearchIndex.COMMON_REINDEX_FIELDS, fields);
+  }
+
   private static Stream<Arguments> supportedIndexMappings() {
     return Stream.of(
         Arguments.of(Entity.TABLE, (Supplier<Object>) Table::new, TableIndex.class),
@@ -189,6 +407,16 @@ class SearchIndexFactoryTest {
             Entity.AI_GOVERNANCE_POLICY,
             (Supplier<Object>) AIGovernancePolicy::new,
             AiGovernancePolicyIndex.class),
+        Arguments.of(
+            Entity.AI_GOVERNANCE_FRAMEWORK,
+            (Supplier<Object>) AIGovernanceFramework::new,
+            AiGovernanceFrameworkIndex.class),
+        Arguments.of(
+            Entity.AI_FRAMEWORK_CONTROL,
+            (Supplier<Object>) AIFrameworkControl::new,
+            AiFrameworkControlIndex.class),
+        Arguments.of(
+            Entity.AUDIT_REPORT, (Supplier<Object>) AuditReport::new, AuditReportIndex.class),
         Arguments.of(Entity.TAG, (Supplier<Object>) Tag::new, TagIndex.class),
         Arguments.of(
             Entity.CLASSIFICATION,

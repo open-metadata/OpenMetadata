@@ -262,6 +262,20 @@ export interface StepStats {
      */
     failedRecords?: number;
     /**
+     * Per-entity Process (doc-build) cumulative time in ms.
+     */
+    processTimeMs?: number;
+    /**
+     * Per-entity Reader (DB) cumulative time in ms. Populated only on per-entity StepStats
+     * inside Stats.entityStats so the UI can show Reader latency per entity. Job-level Reader
+     * time uses Stats.readerStats.totalTimeMs.
+     */
+    readerTimeMs?: number;
+    /**
+     * Per-entity Sink (OpenSearch / Elasticsearch bulk) cumulative time in ms.
+     */
+    sinkTimeMs?: number;
+    /**
      * Count of Total Successfully Records
      */
     successRecords?: number;
@@ -270,6 +284,11 @@ export interface StepStats {
      */
     totalRecords?: number;
     /**
+     * Cumulative time (ms) spent in this stage. UI computes avg latency = totalTimeMs /
+     * successRecords and throughput = successRecords / (totalTimeMs / 1000).
+     */
+    totalTimeMs?: number;
+    /**
      * Count of records with failed vector embeddings
      */
     vectorFailedRecords?: number;
@@ -277,6 +296,10 @@ export interface StepStats {
      * Count of records with successful vector embeddings
      */
     vectorSuccessRecords?: number;
+    /**
+     * Per-entity Vector (embedding API) cumulative time in ms.
+     */
+    vectorTimeMs?: number;
     /**
      * Count of Records with Warnings (e.g., stale references that were skipped)
      */

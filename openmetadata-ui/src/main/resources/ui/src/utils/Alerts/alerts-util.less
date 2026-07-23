@@ -31,7 +31,7 @@
 }
 
 .webhook-config-collapse.ant-collapse {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   .ant-collapse-content-box {
     padding: 6px 16px;
   }
@@ -45,4 +45,15 @@
   .ant-form-item-label {
     padding: 0;
   }
+}
+
+.entity-id-option {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.entity-id-option-fqn {
+  color: @grey-3;
+  font-size: @size-sm;
 }

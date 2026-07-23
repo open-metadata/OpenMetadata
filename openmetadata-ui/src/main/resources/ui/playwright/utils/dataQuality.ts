@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Response } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
@@ -29,12 +29,78 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
 /**
+ * Selects a test type from the "Select Test Type" field. The field is a
+ * searchable autocomplete, so we type the label to filter the list before
+ * picking the option — relying on the option being present in the full
+ * (scrollable, height-capped) list is brittle and regresses whenever the
+ * field's rendering changes. `label` is the test type's display name, which is
+ * also what the option is matched by.
+ */
+export const selectTestType = async (page: Page, label: string) => {
+  await page.click('[id="root\\/testType"]');
+  await page.fill('[id="root\\/testType"]', label);
+  await page.getByRole('option').filter({ hasText: label }).first().click();
+};
+
+/**
+ * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
+ * heading. This is a deterministic outside-click that closes the react-aria
+ * combobox popover without the ambiguity of a page-level Escape — which, when
+ * the menu happens to already be closed, would bubble up and dismiss the whole
+ * drawer.
+ */
+export const dismissTagSuggestions = async (page: Page) => {
+  await page.getByTestId('form-heading').click();
+  await expect(page.locator('[role="listbox"]')).toBeHidden();
+};
+
+/**
+ * Matches the batched `dataQualityReport` POST the dashboard now fires instead
+ * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
+ * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert
+ * a specific filter reached the API.
+ */
+export function isDashboardReportBatchResponse(
+  res: Response,
+  bodyToken?: string
+): boolean {
+  const request = res.request();
+  const isBatch =
+    request.url().includes('/dataQuality/testSuites/dataQualityReport/batch') &&
+    request.method() === 'POST';
+  let matches = isBatch && !bodyToken;
+
+  if (isBatch && bodyToken) {
+    const body = request.postData() ?? '';
+    matches = body.includes(bodyToken);
+    if (!matches) {
+      // Dotted FQNs are quoted (e.g. `"x.y"`); their quotes are JSON-escaped in
+      // the raw body, so fall back to matching parsed request field values.
+      try {
+        const parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; domain?: string }>;
+        };
+        matches = (parsed.requests ?? []).some(
+          (item) =>
+            (item.q ?? '').includes(bodyToken) ||
+            (item.domain ?? '').includes(bodyToken)
+        );
+      } catch {
+        matches = false;
+      }
+    }
+  }
+
+  return matches;
+}
+
+/**
  * Navigate to the Data Quality dashboard (Dashboard sub-tab under Data Quality).
  */
 export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await redirectToHomePage(page);
-  const dataQualityReportResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+  const dataQualityReportResponse = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res)
   );
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
   await page.getByTestId('dashboard').click();
@@ -69,7 +135,7 @@ export const clickUpdateButton = async (page: Page) => {
       response.url().includes('/api/v1/dataQuality/testCases') &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId('create-btn').click();
   const response = await updateTestCaseResponse;
 
   expect(response.status()).toBe(200);
@@ -190,7 +256,7 @@ export const removeFirstNTestCasesFromLogicalTestSuite = async (
   count: number
 ) => {
   const rowActionDropdown = page
-    .locator('.ant-table-tbody')
+    .locator('[data-testid="test-case-table"] tbody')
     .locator(`[data-testid^="${ACTION_DROPDOWN_PREFIX}"]`);
 
   for (let i = 0; i < count; i++) {
@@ -219,9 +285,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.url().includes('fields=owners') &&
       res.status() === 200
   );
-  const addPlaceholderButton = page.getByTestId('add-placeholder-button');
+  const emptyStateAddButton = page
+    .getByTestId('empty-placeholder')
+    .getByRole('button', { name: /add pipeline/i });
   const addPipelineButton = page.getByTestId('add-pipeline-button');
-  const addButton = addPlaceholderButton.or(addPipelineButton);
+  const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
   await testSuiteByNameResponse;
@@ -271,12 +339,14 @@ export const selectTestCasesByCheckbox = async (
   page: Page,
   count: number = 1
 ) => {
-  const rows = page.locator('tr[data-row-key]');
+  const rows = page.locator(
+    '[data-testid="test-case-table"] tbody tr[data-key]'
+  );
   await expect(rows.first()).toBeVisible();
 
   for (let i = 0; i < count; i++) {
-    const checkbox = rows.nth(i).locator('input[type="checkbox"]');
-    await checkbox.check();
+    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
+    await checkboxLabel.click();
   }
 };
 
@@ -295,14 +365,14 @@ export const openCreateNewBundleSuiteForm = async (page: Page) => {
   );
   await page.getByTestId('create-new-bundle-suite').click();
   await listResponse;
-  await page.locator('form.bundle-suite-form').waitFor();
+  await page.locator('.bundle-suite-form').waitFor();
 };
 
 export const fillAndSubmitBundleSuiteForm = async (
   page: Page,
   name: string
 ) => {
-  await page.getByTestId('test-suite-name').fill(name);
+  await page.getByTestId('test-suite-name').locator('input').fill(name);
   const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
   await page.getByTestId('submit-button').click();
   await createResponse;
@@ -331,6 +401,10 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
+  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
+  // react-aria stack), so scope to the visible antd dropdown and its option
+  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
+  // (e.g. the header asset search) and resolves ambiguously.
   const dropdown = page.locator('.ant-select-dropdown:visible');
   const option = dropdown.locator('.ant-select-item-option', {
     hasText: suiteName,
@@ -372,7 +446,7 @@ export const verifyBundleSuitePageLoaded = async (
         await listTestCasesResponse;
 
         const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-row-key]')
+          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
           .count();
 
         return rows;
@@ -384,3 +458,239 @@ export const verifyBundleSuitePageLoaded = async (
     )
     .toBe(expectedTestCaseCount);
 };
+
+/** A `dataQualityReport` call captured for assertion in tests. */
+export type CapturedReport = { url: string; q: string; index: string };
+
+/**
+ * Subscribes to every `/dataQualityReport` request fired by the page and
+ * returns a live array of (url, q, index). Useful for asserting which
+ * indices were queried and what filter the dashboard sent.
+ */
+export function captureReports(page: Page): CapturedReport[] {
+  const captured: CapturedReport[] = [];
+  page.on('request', (req) => {
+    const url = req.url();
+    if (!url.includes('/dataQualityReport')) {
+      return;
+    }
+
+    // The dashboard batches every aggregation into one POST body; flatten each
+    // item back into a CapturedReport so callers keep asserting on q/index.
+    if (url.includes('/dataQualityReport/batch')) {
+      const body = req.postData();
+      if (!body) {
+        return;
+      }
+      let parsed: { requests?: Array<{ q?: string; index?: string }> };
+      try {
+        parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; index?: string }>;
+        };
+      } catch {
+        return;
+      }
+      for (const item of parsed.requests ?? []) {
+        captured.push({ url, q: item.q ?? '', index: item.index ?? '' });
+      }
+
+      return;
+    }
+
+    const u = new URL(url);
+    captured.push({
+      url,
+      q: u.searchParams.get('q') ?? '',
+      index: u.searchParams.get('index') ?? '',
+    });
+  });
+
+  return captured;
+}
+
+async function applyDashboardTagBasedFilter(
+  page: Page,
+  options: {
+    buttonName: 'Tier' | 'Tag' | 'Certification';
+    searchText: string;
+    optionFqn: string;
+  }
+): Promise<void> {
+  const { buttonName, searchText, optionFqn } = options;
+
+  await page.getByRole('button', { name: buttonName }).click();
+  await page.getByTestId('search-input').click();
+
+  const searchRes = page.waitForResponse((res) => {
+    if (!res.url().includes('/api/v1/search/query')) {
+      return false;
+    }
+    const parsed = new URL(res.url());
+    return (
+      parsed.searchParams.get('index') === 'tag' &&
+      (parsed.searchParams.get('q') ?? '').includes(`*${searchText}*`)
+    );
+  });
+  await page.getByTestId('search-input').fill(searchText);
+  await searchRes;
+
+  await page.getByTestId(optionFqn).click();
+
+  const reportRes = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, optionFqn)
+  );
+  await page.getByTestId('update-btn').click();
+  await reportRes;
+}
+
+export async function applyDashboardTierFilter(
+  page: Page,
+  tierFqn: string
+): Promise<void> {
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Tier',
+    searchText: tierFqn,
+    optionFqn: tierFqn,
+  });
+}
+
+export async function applyDashboardTagFilter(
+  page: Page,
+  tagName: string,
+  tagFqn: string
+): Promise<void> {
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Tag',
+    searchText: tagName,
+    optionFqn: tagFqn,
+  });
+}
+
+export async function applyDashboardCertificationFilter(
+  page: Page,
+  certName: string,
+  certFqn: string
+): Promise<void> {
+  await applyDashboardTagBasedFilter(page, {
+    buttonName: 'Certification',
+    searchText: certName,
+    optionFqn: certFqn,
+  });
+}
+
+/**
+ * Polls the incident status API until an incident for `testCaseFqn` appears
+ * within the [failTs-60s, failTs+120s] window.
+ * Call this immediately after `addTestCaseResult` to guarantee the incident
+ * document is indexed before any UI assertions.
+ * Pass `expectedStatus` to also wait until the incident reaches that resolution
+ * status (e.g. "Resolved") — useful after posting a status transition.
+ */
+export async function waitForIncidentToBeIndexed(
+  apiContext: APIRequestContext,
+  testCaseFqn: string,
+  failTs: number,
+  expectedStatus?: string
+): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const res = await apiContext.get(
+          `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
+            `&startTs=${failTs - 60_000}` +
+            `&endTs=${failTs + 120_000}`
+        );
+        const body = await res.json();
+
+        return (body.data ?? []).some(
+          (i: {
+            testCaseReference?: { fullyQualifiedName?: string };
+            testCaseResolutionStatusType?: string;
+          }) => {
+            if (i.testCaseReference?.fullyQualifiedName !== testCaseFqn) {
+              return false;
+            }
+
+            return expectedStatus
+              ? i.testCaseResolutionStatusType === expectedStatus
+              : true;
+          }
+        );
+      },
+      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+}
+
+/**
+ * Asserts that a dimension card (StatusCardWidget) on the Data Quality dashboard
+ * shows the expected total, success, failed, and aborted counts.
+ * Uses a generous timeout on total-value to accommodate ES indexing lag; the
+ * subsequent count assertions run immediately once data is loaded.
+ */
+export async function assertDimensionCard(
+  page: Page,
+  dimension: string,
+  expected: {
+    total: string;
+    success: string;
+    failed: string;
+    aborted: string;
+  }
+): Promise<void> {
+  const card = page.locator('[data-testid="status-data-widget"]').filter({
+    has: page
+      .locator('[data-testid="status-title"]')
+      .filter({ hasText: dimension }),
+  });
+  await expect(card.getByTestId('total-value')).toHaveText(expected.total);
+  await expect(card.getByTestId('success-count')).toHaveText(expected.success);
+  await expect(card.getByTestId('failed-count')).toHaveText(expected.failed);
+  await expect(card.getByTestId('aborted-count')).toHaveText(expected.aborted);
+}
+
+/**
+ * Asserts the legend counts inside a pie chart widget.
+ * `legendCounts` maps the legend item name (lowercase) to the expected count
+ * string, e.g. `{ success: '4', failed: '4', aborted: '4' }`.
+ * Uses the `data-testid="legend-count-{name}"` attribute added to
+ * CustomPieChart legend items.
+ */
+export async function assertPieChartLegendCounts(
+  page: Page,
+  widgetTestId: string,
+  legendCounts: Record<string, string>
+): Promise<void> {
+  const widget = page.locator(`[data-testid="${widgetTestId}"]`);
+  for (const [name, count] of Object.entries(legendCounts)) {
+    await expect(
+      widget.getByTestId(`legend-count-${name.toLowerCase()}`)
+    ).toHaveText(count);
+  }
+}
+
+/**
+ * Asserts that captured dataQualityReport requests referencing `filterFqn`
+ * contain `expectedField` in the ES query JSON.
+ * Pass `notExpectedPattern` to guard against a field that must NOT appear
+ * (e.g. a regression check for an old wrong field path).
+ */
+export function assertEsFieldInReports(
+  reports: CapturedReport[],
+  filterFqn: string,
+  expectedField: string,
+  notExpectedPattern?: string
+): void {
+  const matching = reports.filter((r) => r.q.includes(filterFqn));
+
+  expect(matching.length).toBeGreaterThan(0);
+
+  for (const report of matching) {
+    const queryStr = JSON.stringify(JSON.parse(report.q));
+
+    expect(queryStr).toContain(expectedField);
+    if (notExpectedPattern) {
+      expect(queryStr).not.toContain(notExpectedPattern);
+    }
+  }
+}

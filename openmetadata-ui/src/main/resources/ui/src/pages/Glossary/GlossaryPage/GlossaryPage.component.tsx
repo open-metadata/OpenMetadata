@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -30,14 +36,13 @@ import {
 } from '../../../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -52,13 +57,18 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getGlossariesList,
-  getGlossaryTermByFQN,
   patchGlossaries,
   patchGlossaryTerm,
   updateGlossaryTermVotes,
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  glossaryTermQueryFn,
+  glossaryTermQueryKey,
+  GLOSSARY_TERM_DEFAULT_FIELDS,
+} from '../../../rest/queries/glossaryTermQuery';
+import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -71,6 +81,7 @@ const GlossaryPage = () => {
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const { action } = useRequiredParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
@@ -85,7 +96,6 @@ const GlossaryPage = () => {
   });
   const { paging, pageSize, handlePagingChange } = usePaging();
 
-  const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
@@ -103,8 +113,6 @@ const GlossaryPage = () => {
   );
 
   const isGlossaryActive = useMemo(() => {
-    setIsRightPanelLoading(true);
-
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
     }
@@ -232,54 +240,93 @@ const GlossaryPage = () => {
     }
   }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
 
-  const fetchGlossaryTermDetails = useCallback(async () => {
-    setIsRightPanelLoading(true);
-    try {
-      const response = await getGlossaryTermByFQN(glossaryFqn, {
-        fields: [
-          TabSpecificField.RELATED_TERMS,
-          TabSpecificField.REVIEWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.OWNERS,
-          TabSpecificField.CHILDREN,
-          TabSpecificField.VOTES,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.EXTENSION,
-          TabSpecificField.CHILDREN_COUNT,
-        ],
-      });
-      setActiveGlossary(response as ModifiedGlossary);
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsRightPanelLoading(false);
-    }
-  }, [glossaryFqn]);
+  const glossaryTermCacheKey = useMemo(
+    () => glossaryTermQueryKey(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
+    [glossaryFqn]
+  );
+
+  const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
+
+  const {
+    data: glossaryTermDetails,
+    isFetching: glossaryTermFetching,
+    error: glossaryTermError,
+  } = useQuery({
+    queryKey: glossaryTermCacheKey,
+    queryFn: glossaryTermQueryFn(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
+    enabled: isTermView,
+  });
+
+  const setGlossaryTermDetails = useCallback(
+    (
+      updater:
+        | GlossaryTerm
+        | undefined
+        | ((prev: GlossaryTerm | undefined) => GlossaryTerm | undefined)
+    ) => {
+      queryClient.setQueryData<GlossaryTerm | undefined>(
+        glossaryTermCacheKey,
+        updater
+      );
+    },
+    [queryClient, glossaryTermCacheKey]
+  );
+
+  const refetchActiveGlossaryTerm = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: glossaryTermCacheKey }),
+    [queryClient, glossaryTermCacheKey]
+  );
 
   useEffect(() => {
-    setIsRightPanelLoading(true);
-    if (glossaries.length) {
-      if (!isGlossaryActive) {
-        fetchGlossaryTermDetails();
-      } else {
-        setActiveGlossary(
-          glossaries.find(
-            (glossary) => glossary.fullyQualifiedName === glossaryFqn
-          ) || glossaries[0]
-        );
+    const status = (glossaryTermError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [glossaryTermError, navigate]);
 
-        if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
-          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
-            replace: true,
-          });
-        }
+  // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
+  // store is also written to by the glossary-list code path below, so the two writers
+  // share a single sink rather than the component branching on isGlossaryActive twice.
+  useEffect(() => {
+    if (isTermView && glossaryTermDetails) {
+      setActiveGlossary(glossaryTermDetails as ModifiedGlossary);
+    }
+  }, [isTermView, glossaryTermDetails, setActiveGlossary]);
 
-        setIsRightPanelLoading(false);
+  useEffect(() => {
+    if (glossaries.length && isGlossaryActive) {
+      setActiveGlossary(
+        glossaries.find(
+          (glossary) => glossary.fullyQualifiedName === glossaryFqn
+        ) || glossaries[0]
+      );
+
+      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+        navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
+          replace: true,
+        });
       }
     }
   }, [isGlossaryActive, glossaryFqn, glossaries]);
+
+  const isRightPanelLoading = useMemo(() => {
+    if (!glossaries.length) {
+      return true;
+    }
+    if (isTermView) {
+      return glossaryTermFetching;
+    }
+
+    return false;
+  }, [glossaries.length, isTermView, glossaryTermFetching]);
+
+  const isTermNotFound = useMemo(
+    () =>
+      isTermView &&
+      (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
+    [isTermView, glossaryTermError]
+  );
 
   const updateGlossary = useCallback(
     async (updatedData: Glossary) => {
@@ -374,12 +421,13 @@ const GlossaryPage = () => {
         const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
+          setGlossaryTermDetails(response);
           if (activeGlossary?.name !== updatedData.name) {
             navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
           if (shouldRefreshTerms) {
-            fetchGlossaryTermDetails();
+            refetchActiveGlossaryTerm();
           }
         } else {
           throw t('server.entity-updating-error', {
@@ -390,7 +438,7 @@ const GlossaryPage = () => {
         showErrorToast(error as AxiosError);
       }
     },
-    [activeGlossary]
+    [activeGlossary, setGlossaryTermDetails, refetchActiveGlossaryTerm]
   );
 
   const handleGlossaryTermDelete = useCallback(
@@ -454,50 +502,75 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="full-height">
-        <ErrorPlaceHolder
-          buttonId="add-glossary"
-          className="mt-0-important border-none"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
-          permission={createGlossaryPermission}
-          permissionValue={
-            createGlossaryPermission
-              ? t('label.create-entity', {
-                  entity: t('label.glossary'),
-                })
-              : ''
+      <div className="tw:relative full-height tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary">
+        <EmptyPlaceholder
+          description={t('message.glossary-empty-description')}
+          features={[
+            {
+              key: 'create-glossary',
+              icon: <BookOpen01 className="tw:text-fg-brand-primary" />,
+              title: t('label.create-a-glossary'),
+              description: t('message.create-a-glossary-description'),
+            },
+            {
+              key: 'add-terms',
+              icon: <File02 className="tw:text-fg-warning-primary" />,
+              title: t('label.add-terms'),
+              description: t('message.add-terms-description'),
+            },
+            {
+              key: 'link-to-data',
+              icon: <Data className="tw:text-fg-success-primary" />,
+              title: t('label.link-them-to-data'),
+              description: t('message.link-them-to-data-description'),
+            },
+          ]}
+          footer={
+            createGlossaryPermission ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-glossary"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add-entity', { entity: t('label.glossary') })}
+              </CoreButton>
+            ) : undefined
           }
-          size={SIZE.X_LARGE}
-          type={
-            createGlossaryPermission
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
-          }
-          onClick={handleAddGlossaryClick}
+          title={t('message.build-your-business-dictionary')}
+          variant="features"
         />
       </div>
     );
   }
 
-  const glossaryElement = isRightPanelLoading ? (
-    <Loader />
-  ) : (
-    <GlossaryV1
-      isGlossaryActive={isGlossaryActive}
-      isSummaryPanelOpen={Boolean(previewAsset)}
-      isVersionsView={false}
-      refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-      refreshGlossaryList={fetchGlossaryList}
-      selectedData={activeGlossary as Glossary}
-      updateGlossary={updateGlossary}
-      updateVote={updateVote}
-      onAssetClick={handleAssetClick}
-      onGlossaryDelete={handleGlossaryDelete}
-      onGlossaryTermDelete={handleGlossaryTermDelete}
-      onGlossaryTermUpdate={handleGlossaryTermUpdate}
-    />
-  );
+  let glossaryElement;
+  if (isRightPanelLoading) {
+    glossaryElement = <Loader />;
+  } else if (isTermNotFound) {
+    glossaryElement = (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(t('label.glossary-term'), glossaryFqn)}
+      </ErrorPlaceHolder>
+    );
+  } else {
+    glossaryElement = (
+      <GlossaryV1
+        isGlossaryActive={isGlossaryActive}
+        isSummaryPanelOpen={Boolean(previewAsset)}
+        isVersionsView={false}
+        refreshActiveGlossaryTerm={refetchActiveGlossaryTerm}
+        refreshGlossaryList={fetchGlossaryList}
+        selectedData={activeGlossary as Glossary}
+        updateGlossary={updateGlossary}
+        updateVote={updateVote}
+        onAssetClick={handleAssetClick}
+        onGlossaryDelete={handleGlossaryDelete}
+        onGlossaryTermDelete={handleGlossaryTermDelete}
+        onGlossaryTermUpdate={handleGlossaryTermUpdate}
+      />
+    );
+  }
 
   const resizableLayout = isGlossaryActive ? (
     <ResizableLeftPanels

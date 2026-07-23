@@ -12,15 +12,18 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  formatContent,
+  formatClientContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorUtils';
-import BlockEditor from '../../BlockEditor/BlockEditor';
+} from '../../../utils/BlockEditorPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+const BlockEditor = withSuspenseFallback(
+  lazy(() => import('../../BlockEditor/BlockEditor'))
+);
 
 const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   markdown = '',
@@ -42,9 +45,6 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       readMore
         ? undefined
         : {
-            display: '-webkit-box',
-            WebkitBoxOrient: 'vertical',
-            WebkitLineClamp: Number(maxLineLength),
             overflow: 'hidden',
             maxHeight: `${Number(maxLineLength) * 2}em`,
             transition: 'max-height 0.3s ease',
@@ -55,7 +55,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
-    setContent(formatContent(markdown, 'client'));
+    setContent(formatClientContent(markdown));
     setIsContentLoaded(false);
     setIsOverflowing(false);
   }, [markdown]);
@@ -73,27 +73,17 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       if (contentRef.current) {
         const el = contentRef.current;
 
-        // Save original styles
-        const originalDisplay = el.style.display;
-        const originalBoxOrient = el.style.webkitBoxOrient;
+        const originalMaxHeight = el.style.maxHeight;
         const originalOverflow = el.style.overflow;
-        const originalLineClamp = el.style.webkitLineClamp;
 
-        // Temporarily apply line-clamp to measure overflow
-        el.style.display = '-webkit-box';
-        el.style.webkitBoxOrient = 'vertical';
+        el.style.maxHeight = `${Number(maxLineLength) * 2}em`;
         el.style.overflow = 'hidden';
-        el.style.webkitLineClamp = maxLineLength;
 
-        // Check if content overflows
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
 
-        // Restore original styles
-        el.style.display = originalDisplay;
-        el.style.webkitBoxOrient = originalBoxOrient;
+        el.style.maxHeight = originalMaxHeight;
         el.style.overflow = originalOverflow;
-        el.style.webkitLineClamp = originalLineClamp;
 
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
@@ -125,7 +115,9 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       data-testid="viewer-container"
       dir={i18n.dir()}>
       <div
-        className={classNames('markdown-parser', textVariant)}
+        className={classNames('markdown-parser', textVariant, {
+          'is-clamped': !readMore && isOverflowing && enableSeeMoreVariant,
+        })}
         data-testid="markdown-parser"
         ref={contentRef}
         style={clampStyle}>

@@ -10,10 +10,11 @@
 #  limitations under the License.
 
 """Orchestration engine for DataFrame validation execution."""
+
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 
 from pandas import DataFrame
 
@@ -34,8 +35,8 @@ logger = logging.getLogger(__name__)
 class DataFrameValidationEngine:
     """Orchestrates execution of multiple validators on a DataFrame."""
 
-    def __init__(self, test_cases: List[TestCase]):
-        self.test_cases: List[TestCase] = test_cases
+    def __init__(self, test_cases: List[TestCase]):  # noqa: UP006
+        self.test_cases: List[TestCase] = test_cases  # noqa: UP006
 
     def execute(
         self,
@@ -51,7 +52,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with outcomes for all tests
         """
-        results: List[Tuple[TestCase, TestCaseResult]] = []
+        results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
         start_time = time.time()
 
         for test_case in self.test_cases:
@@ -67,9 +68,7 @@ class DataFrameValidationEngine:
         execution_time = (time.time() - start_time) * 1000
         return self._build_validation_result(results, execution_time)
 
-    def _execute_single_test(
-        self, df: DataFrame, test_case: TestCase
-    ) -> TestCaseResult:
+    def _execute_single_test(self, df: DataFrame, test_case: TestCase) -> TestCaseResult:
         """Execute validation and return structured result.
 
         Returns:
@@ -85,11 +84,9 @@ class DataFrameValidationEngine:
 
         try:
             result = validator.run_validation()
-            return result
+            return result  # noqa: RET504, TRY300
         except Exception as err:
-            message = (
-                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
-            )
+            message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
             return validator.get_test_case_result_object(
                 validator.execution_date,
@@ -100,7 +97,8 @@ class DataFrameValidationEngine:
 
     @staticmethod
     def _build_validation_result(
-        test_results: List[Tuple[TestCase, TestCaseResult]], execution_time_ms: float
+        test_results: list[tuple[TestCase, TestCaseResult]],
+        execution_time_ms: float,
     ) -> ValidationResult:
         """Build aggregated validation result.
 
@@ -111,9 +109,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with aggregated outcomes
         """
-        passed = sum(
-            1 for _, r in test_results if r.testCaseStatus == TestCaseStatus.Success
-        )
+        passed = sum(1 for _, r in test_results if r.testCaseStatus == TestCaseStatus.Success)
         failed = len(test_results) - passed
         success = failed == 0
 
@@ -127,7 +123,7 @@ class DataFrameValidationEngine:
         )
 
     @staticmethod
-    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:
+    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:  # noqa: UP006
         """Resolve validator class from test definition name.
 
         Returns:
@@ -140,8 +136,6 @@ class DataFrameValidationEngine:
             test_case.testDefinition.fullyQualifiedName  # pyright: ignore[reportArgumentType]
         )
         if not validator_class:
-            raise ValueError(
-                f"Unknown test definition: {test_case.testDefinition.fullyQualifiedName}"
-            )
+            raise ValueError(f"Unknown test definition: {test_case.testDefinition.fullyQualifiedName}")
 
         return validator_class

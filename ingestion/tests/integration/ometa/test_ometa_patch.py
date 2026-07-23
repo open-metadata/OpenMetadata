@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Table test
 """
+
 import logging
 import time
 from datetime import datetime
@@ -53,7 +54,7 @@ from metadata.ingestion.models.patch_request import (
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.utils.helpers import find_column_in_table
 
-from ..integration_base import (
+from ..integration_base import (  # noqa: TID252
     generate_name,
     get_create_entity,
     get_create_service,
@@ -63,7 +64,7 @@ from ..integration_base import (
     get_create_test_suite,
     get_create_user_entity,
 )
-from .conftest import _safe_delete
+from .conftest import _safe_delete  # noqa: TID252
 
 
 def patch_with_retry(metadata, retries=3, delay=1, **kwargs):
@@ -134,18 +135,14 @@ def patch_service(metadata):
 @pytest.fixture(scope="module")
 def patch_database(metadata, patch_service):
     """Module-scoped database for patch tests."""
-    create_db = get_create_entity(
-        entity=Database, reference=patch_service.fullyQualifiedName
-    )
+    create_db = get_create_entity(entity=Database, reference=patch_service.fullyQualifiedName)
     return metadata.create_or_update(data=create_db)
 
 
 @pytest.fixture(scope="module")
 def patch_schema(metadata, patch_database):
     """Module-scoped database schema for patch tests."""
-    create_schema = get_create_entity(
-        entity=DatabaseSchema, reference=patch_database.fullyQualifiedName
-    )
+    create_schema = get_create_entity(entity=DatabaseSchema, reference=patch_database.fullyQualifiedName)
     return metadata.create_or_update(data=create_schema)
 
 
@@ -174,9 +171,7 @@ def patch_test_case(metadata, patch_table):
     )
 
     metadata.create_or_update_executable_test_suite(
-        get_create_test_suite(
-            executable_entity_reference=patch_table.fullyQualifiedName.root
-        )
+        get_create_test_suite(executable_entity_reference=patch_table.fullyQualifiedName.root)
     )
 
     return metadata.create_or_update(
@@ -207,9 +202,7 @@ def patch_user_2(metadata):
 @pytest.fixture(scope="module")
 def patch_team_1(metadata, patch_user_1, patch_user_2):
     """Module-scoped first team for patch owner tests."""
-    team = metadata.create_or_update(
-        data=get_create_team_entity(users=[patch_user_1.id, patch_user_2.id])
-    )
+    team = metadata.create_or_update(data=get_create_team_entity(users=[patch_user_1.id, patch_user_2.id]))
     yield team
     _safe_delete(metadata, entity=Team, entity_id=team.id, hard_delete=True)
 
@@ -217,9 +210,7 @@ def patch_team_1(metadata, patch_user_1, patch_user_2):
 @pytest.fixture(scope="module")
 def patch_team_2(metadata, patch_user_2):
     """Module-scoped second team for patch owner tests."""
-    team = metadata.create_or_update(
-        data=get_create_team_entity(users=[patch_user_2.id])
-    )
+    team = metadata.create_or_update(data=get_create_team_entity(users=[patch_user_2.id]))
     yield team
     _safe_delete(metadata, entity=Team, entity_id=team.id, hard_delete=True)
 
@@ -284,9 +275,7 @@ class TestOMetaPatch:
             Column(name=ColumnName("new_column"), dataType=DataType.BIGINT),
         )
         new_patched_table.description = Markdown("This should get patched")
-        new_patched_table.columns[0].description = Markdown(
-            root="This column description should get patched"
-        )
+        new_patched_table.columns[0].description = Markdown(root="This column description should get patched")
 
         new_patched_table.tags = [PII_TAG_LABEL]
         new_patched_table.columns[0].tags = [PII_TAG_LABEL]
@@ -303,10 +292,7 @@ class TestOMetaPatch:
         )
 
         assert patched_table.description.root == "This should get patched"
-        assert (
-            patched_table.columns[0].description.root
-            == "This column description should get patched"
-        )
+        assert patched_table.columns[0].description.root == "This column description should get patched"
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.owners.root[0].id == owner_user_1.root[0].id
@@ -314,9 +300,7 @@ class TestOMetaPatch:
         new_patched_table = patched_table.model_copy(deep=True)
 
         new_patched_table.description = Markdown("This should NOT get patched")
-        new_patched_table.columns[0].description = Markdown(
-            root="This column description should NOT get patched"
-        )
+        new_patched_table.columns[0].description = Markdown(root="This column description should NOT get patched")
 
         new_patched_table.tags = [PII_TAG_LABEL, TIER_TAG_LABEL]
         new_patched_table.columns[0].tags = None
@@ -333,10 +317,7 @@ class TestOMetaPatch:
         )
 
         assert patched_table.description.root != "This should NOT get patched"
-        assert (
-            patched_table.columns[0].description.root
-            != "This column description should NOT get patched"
-        )
+        assert patched_table.columns[0].description.root != "This column description should NOT get patched"
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.tags[1].tagFQN == TIER_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
@@ -344,15 +325,11 @@ class TestOMetaPatch:
 
     def test_patch_description(self, metadata, patch_table):
         """Update description and force"""
-        updated: Table = metadata.patch_description(
-            entity=Table, source=patch_table, description="New description"
-        )
+        updated: Table = metadata.patch_description(entity=Table, source=patch_table, description="New description")
 
         assert updated.description.root == "New description"
 
-        not_updated = metadata.patch_description(
-            entity=Table, source=patch_table, description="Not passing force"
-        )
+        not_updated = metadata.patch_description(entity=Table, source=patch_table, description="Not passing force")
 
         assert not not_updated
 
@@ -365,7 +342,7 @@ class TestOMetaPatch:
 
         assert force_updated.description.root == "Forced new"
 
-    def test_patch_description_TestCase(self, metadata, patch_test_case):
+    def test_patch_description_TestCase(self, metadata, patch_test_case):  # noqa: N802
         """Update description and force"""
         new_description = "Description " + str(datetime.now())
         updated: TestCaseEntity = metadata.patch_description(
@@ -436,7 +413,7 @@ class TestOMetaPatch:
     def test_patch_column_tags(self, metadata, patch_table):
         """Update column tags"""
         updated: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -449,7 +426,7 @@ class TestOMetaPatch:
         assert updated_col.tags[0].tagFQN.root == "PII.Sensitive"
 
         updated_again: Table = metadata.patch_column_tags(
-            table=patch_table,
+            entity=patch_table,
             column_tags=[
                 ColumnTag(
                     column_fqn=patch_table.fullyQualifiedName.root + ".id",
@@ -461,6 +438,61 @@ class TestOMetaPatch:
 
         assert updated_again_col.tags[0].tagFQN.root == "PII.Sensitive"
         assert updated_again_col.tags[1].tagFQN.root == "Tier.Tier2"
+
+    def test_patch_column_tags_retries_on_concurrent_modification(self, metadata, patch_table):
+        """A concurrent modification between the SDK's read and its If-Match write must be
+        retried (refetch + reapply), not silently lost. This exercises the optimistic-
+        concurrency path on column-tag patching that guards a tag from landing on the wrong
+        column when columns are changed by another writer between read and write."""
+        column_fqn = patch_table.fullyQualifiedName.root + ".another"
+        table_path = f"/tables/{patch_table.id.root}"
+        original_patch = metadata.patch
+        state = {"injected": False}
+
+        def patch_with_concurrent_writer(*args, **kwargs):
+            # On the first attempt, another writer bumps the entity so the staged
+            # If-Match goes stale and the server returns 412, triggering a retry.
+            if not state["injected"]:
+                state["injected"] = True
+                metadata.client.patch(
+                    path=table_path,
+                    data='[{"op": "add", "path": "/description", "value": "concurrent writer"}]',
+                )
+            return original_patch(*args, **kwargs)
+
+        with mock.patch.object(metadata, "patch", side_effect=patch_with_concurrent_writer):
+            updated: Table = metadata.patch_column_tags(
+                entity=patch_table,
+                column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=PII_TAG_LABEL)],
+            )
+
+        assert state["injected"], "the concurrent writer should have run"
+        assert updated is not None, "patch must converge after retrying the stale write"
+        updated_col = find_column_in_table(column_name="another", table=updated)
+        assert any(tag.tagFQN.root == "PII.Sensitive" for tag in (updated_col.tags or [])), (
+            "column tag must persist after the optimistic-lock retry"
+        )
+
+    def test_patch_column_falls_back_when_etag_unusable(self, metadata, patch_table):
+        """If the client-derived If-Match can never match the server (e.g. a future
+        client/server ETag-format drift), the column patch must fall back to a
+        non-conditional last-write-wins write rather than silently dropping the change
+        after exhausting retries. We force the mismatch by stubbing the ETag helper to a
+        value the server will always reject."""
+        with mock.patch(
+            "metadata.ingestion.ometa.mixins.patch_mixin._entity_etag",
+            return_value='"unusable-etag"',
+        ):
+            updated = metadata.patch_column_description(
+                table=patch_table,
+                description="fallback-persisted description",
+                column_fqn=patch_table.fullyQualifiedName.root + ".another",
+                force=True,
+            )
+
+        assert updated is not None, "patch must persist via the last-write-wins fallback"
+        updated_col = find_column_in_table(column_name="another", table=updated)
+        assert updated_col.description.root == "fallback-persisted description"
 
     def test_patch_owner(
         self,
@@ -624,13 +656,11 @@ class TestOMetaPatch:
 
     def test_patch_nested_col(self, metadata, patch_schema):
         """Create a table with nested cols and run patch on it"""
-        create = get_create_entity(
-            entity=Table, reference=patch_schema.fullyQualifiedName
-        )
+        create = get_create_entity(entity=Table, reference=patch_schema.fullyQualifiedName)
         created: Table = metadata.create_or_update(create)
 
         with_tags: Table = metadata.patch_column_tags(
-            table=created,
+            entity=created,
             column_tags=[
                 ColumnTag(
                     column_fqn=created.fullyQualifiedName.root + ".struct.id",
@@ -639,10 +669,7 @@ class TestOMetaPatch:
             ],
         )
 
-        assert (
-            with_tags.columns[2].children[0].tags[0].tagFQN.root
-            == TIER_TAG_LABEL.tagFQN.root
-        )
+        assert with_tags.columns[2].children[0].tags[0].tagFQN.root == TIER_TAG_LABEL.tagFQN.root
 
         with_description: Table = metadata.patch_column_description(
             table=created,
@@ -650,26 +677,18 @@ class TestOMetaPatch:
             description="I am so nested",
         )
 
-        assert (
-            with_description.columns[2].children[1].description.root == "I am so nested"
-        )
+        assert with_description.columns[2].children[1].description.root == "I am so nested"
 
     def test_patch_when_inherited_owner(self, metadata, patch_database, owner_team_1):
         """PATCHing anything when owner is inherited, does not add the owner to the entity"""
-        create_schema = get_create_entity(
-            entity=DatabaseSchema, reference=patch_database.fullyQualifiedName
-        )
+        create_schema = get_create_entity(entity=DatabaseSchema, reference=patch_database.fullyQualifiedName)
         create_schema.owners = owner_team_1
         db_schema_entity = metadata.create_or_update(data=create_schema)
 
-        create_table = get_create_entity(
-            entity=Table, reference=db_schema_entity.fullyQualifiedName
-        )
+        create_table = get_create_entity(entity=Table, reference=db_schema_entity.fullyQualifiedName)
         _table = metadata.create_or_update(data=create_table)
 
-        table: Table = metadata.get_by_name(
-            entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"]
-        )
+        table: Table = metadata.get_by_name(entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"])
         assert table.owners.root
         assert table.owners.root[0].inherited
 
@@ -682,9 +701,7 @@ class TestOMetaPatch:
             destination=dest,
         )
 
-        patched_table = metadata.get_by_name(
-            entity=Table, fqn=table.fullyQualifiedName, fields=["owners"]
-        )
+        patched_table = metadata.get_by_name(entity=Table, fqn=table.fullyQualifiedName, fields=["owners"])
 
         assert patched_table.description.root == "potato"
         assert patched_table.owners.root
@@ -736,9 +753,7 @@ class TestOMetaPatch:
         with mock.patch.object(metadata.client, "patch") as mock_patch_client:
             mock_patch_client.side_effect = Exception("API error")
 
-            result = metadata.patch(
-                entity=Table, source=patch_table, destination=corrupted_destination
-            )
+            result = metadata.patch(entity=Table, source=patch_table, destination=corrupted_destination)
 
             assert result is None
             mock_patch_client.assert_called_once()

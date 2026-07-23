@@ -11,6 +11,7 @@
 """
 Profiler Processor Step
 """
+
 import json
 import traceback
 from datetime import datetime
@@ -31,7 +32,7 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
-class PathPatternException(Exception):
+class PathPatternException(Exception):  # noqa: N818
     """
     Exception class need to validate the file path pattern
     """
@@ -53,9 +54,7 @@ def validate_path_pattern(file_path_format: str) -> None:
         )
 
 
-def _get_object_key(
-    table: Table, prefix: str, overwrite_data: bool, file_path_format: str
-) -> str:
+def _get_object_key(table: Table, prefix: str, overwrite_data: bool, file_path_format: str) -> str:
     validate_path_pattern(file_path_format)
     file_name = file_path_format.format(
         service_name=table.service.name,
@@ -64,9 +63,7 @@ def _get_object_key(
         table_name=table.name.root,
     )
     if not overwrite_data:
-        file_name = file_name.replace(
-            ".parquet", f"_{datetime.now().strftime('%Y_%m_%d')}.parquet"
-        )
+        file_name = file_name.replace(".parquet", f"_{datetime.now().strftime('%Y_%m_%d')}.parquet")
     if prefix:
         return f"{clean_uri(prefix)}/{file_name}"
     return file_name
@@ -75,12 +72,12 @@ def _get_object_key(
 def upload_sample_data(
     data: TableData,
     entity: Table,
-    sample_storage_config: Optional[DataStorageConfig] = None,
+    sample_storage_config: Optional[DataStorageConfig] = None,  # noqa: UP045
 ) -> None:
     """
     Upload Sample data to storage config
     """
-    import pandas as pd  # pylint: disable=import-outside-toplevel
+    import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
     try:
         if not sample_storage_config:

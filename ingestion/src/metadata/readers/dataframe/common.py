@@ -12,10 +12,11 @@
 """
 DF Reader common methods
 """
+
 from metadata.utils.constants import CHUNKSIZE
 
 
-def dataframe_to_chunks(df: "DataFrame"):
+def dataframe_to_chunks(df: "DataFrame"):  # noqa: F821
     """
     Reads the Dataframe and returns an iterator of dataframes broken down in chunks
     """

@@ -67,10 +67,13 @@ public interface SearchManagementClient {
    * @param fieldValue the value to match (supports wildcards)
    * @param index the index to search in
    * @param deleted whether to include deleted entities
+   * @param from starting position for pagination
+   * @param size maximum number of results to return
    * @return response containing matching entities
    * @throws IOException if search execution fails
    */
-  Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException;
 
   /**
@@ -213,5 +216,10 @@ public interface SearchManagementClient {
    * @throws IOException if search execution fails
    */
   Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException;
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException;
 }

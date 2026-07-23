@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.api.services.CreateSearchService.SearchServiceType;
 import org.openmetadata.schema.entity.services.SearchService;
@@ -23,6 +24,8 @@ import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.SearchConnection;
+import org.openmetadata.schema.type.SearchIndexDataType;
+import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -31,6 +34,27 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .searchIndexes()
+            .create(
+                new CreateSearchIndex()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName())
+                    .withFields(
+                        java.util.List.of(
+                            new SearchIndexField()
+                                .withName("id")
+                                .withDataType(SearchIndexDataType.TEXT))));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of());
   }
 
   @Override
@@ -132,19 +156,6 @@ public class SearchServiceResourceIT extends BaseServiceIT<SearchService, Create
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().searchServices().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().searchServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient()
-        .searchServices()
-        .getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

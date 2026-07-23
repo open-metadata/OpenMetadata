@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { normalizeSelectedTestProp } from './AddTestCaseListForm.utils';
+import { EntityReference } from '../../../generated/tests/testCase';
+import {
+  normalizeSelectedTestProp,
+  seedSelectedFromExistingTest,
+} from './AddTestCaseListForm.utils';
 
 describe('normalizeSelectedTestProp', () => {
   it('returns [] for nullish', () => {
@@ -42,5 +46,35 @@ describe('normalizeSelectedTestProp', () => {
         testCases: [],
       })
     ).toEqual([]);
+  });
+});
+
+describe('seedSelectedFromExistingTest', () => {
+  it('returns an empty Map for undefined / empty input', () => {
+    expect(seedSelectedFromExistingTest(undefined).size).toBe(0);
+    expect(seedSelectedFromExistingTest([]).size).toBe(0);
+  });
+
+  it('keys entries by id and preserves the name from the reference', () => {
+    const refs: EntityReference[] = [
+      { id: 'id-1', name: 'tc_one', type: 'testCase' },
+      { id: 'id-2', name: 'tc_two', type: 'testCase' },
+    ];
+    const seed = seedSelectedFromExistingTest(refs);
+
+    expect(seed.size).toBe(2);
+    expect(seed.get('id-1')?.name).toBe('tc_one');
+    expect(seed.get('id-2')?.name).toBe('tc_two');
+  });
+
+  it('skips references without an id', () => {
+    const refs = [
+      { id: 'id-1', name: 'tc_one', type: 'testCase' },
+      { name: 'tc_no_id', type: 'testCase' } as EntityReference,
+    ];
+    const seed = seedSelectedFromExistingTest(refs);
+
+    expect(seed.size).toBe(1);
+    expect(seed.has('id-1')).toBe(true);
   });
 });

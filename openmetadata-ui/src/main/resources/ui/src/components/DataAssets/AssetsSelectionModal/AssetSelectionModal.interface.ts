@@ -47,6 +47,7 @@ import { SecurityService } from '../../../generated/entity/services/securityServ
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { Team } from '../../../generated/entity/teams/team';
 import { User } from '../../../generated/entity/teams/user';
+import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
@@ -127,4 +128,5 @@ export type MapPatchAPIResponse = {
   [EntityType.FILE]: File;
   [EntityType.SPREADSHEET]: Spreadsheet;
   [EntityType.WORKSHEET]: Worksheet;
+  [EntityType.KNOWLEDGE_PAGE]: KnowledgePage;
 };

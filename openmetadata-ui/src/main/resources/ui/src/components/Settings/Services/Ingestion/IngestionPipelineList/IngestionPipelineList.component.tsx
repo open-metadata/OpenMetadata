@@ -33,7 +33,7 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
+import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServicePureUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
   showErrorToast,
@@ -145,7 +145,10 @@ export const IngestionPipelineList = ({
       setLoading(true);
       try {
         const { data, paging: pagingRes } = await getIngestionPipelines({
-          arrQueryFields: [TabSpecificField.OWNERS],
+          arrQueryFields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PIPELINE_STATUSES,
+          ],
           serviceType:
             serviceName === 'testSuites'
               ? EntityType.TEST_SUITE

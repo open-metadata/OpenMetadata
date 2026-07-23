@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.type.ApiConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating ApiService entities in integration tests.
@@ -41,7 +42,7 @@ public class APIServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test REST API service");
 
-    return SdkClients.adminClient().apiServices().create(request);
+    return ns.trackRoot(Entity.API_SERVICE, SdkClients.adminClient().apiServices().create(request));
   }
 
   /** Get API service by ID. */

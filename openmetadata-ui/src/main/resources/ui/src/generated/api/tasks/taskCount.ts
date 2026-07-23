@@ -15,9 +15,21 @@
  */
 export interface TaskCount {
     /**
+     * Total count of all tasks currently in the Approved status (across all task types). For
+     * Data Access Requests this is the 'awaiting grant' bucket; for workflows where Approved is
+     * terminal (e.g. Glossary, DescriptionUpdate) it reflects resolved tasks.
+     */
+    approved?: number;
+    /**
      * Total count of all completed/closed tasks.
      */
     completed?: number;
+    /**
+     * Total count of all tasks currently in the Granted status. Today this status is only
+     * emitted by the Data Access Request workflow to indicate access has been provisioned and
+     * is active.
+     */
+    granted?: number;
     /**
      * Total count of all in-progress tasks.
      */

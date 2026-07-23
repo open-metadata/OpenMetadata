@@ -269,6 +269,8 @@ authenticationConfiguration:
   # Enable this when running behind a proxy/load balancer that handles SSL termination.
   # Default: false (secure flag only set when HTTPS is detected)
   forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
+  sessionExpiry: ${AUTHENTICATION_SESSION_EXPIRY:-"604800"} # 7 days; applies to all auth providers
+  maxActiveSessionsPerUser: ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.
@@ -397,10 +399,10 @@ elasticsearch:
     bedrock:
       awsConfig:
         enabled: ${BEDROCK_AWS_IAM_AUTH_ENABLED:-false}
-        region: ${AWS_BEDROCK_REGION:-""}
-        accessKeyId: ${AWS_BEDROCK_ACCESS_KEY:-""}
-        secretAccessKey: ${AWS_BEDROCK_SECRET_KEY:-""}
-        sessionToken: ${AWS_BEDROCK_SESSION_TOKEN:-""}
+        region: ${AWS_DEFAULT_REGION:-""}
+        accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
+        secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
+        sessionToken: ${AWS_SESSION_TOKEN:-""}
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       embeddingModelId: ${AWS_BEDROCK_EMBED_MODEL_ID:-""}
       embeddingDimension: ${AWS_BEDROCK_EMBEDDING_DIMENSION:-""}

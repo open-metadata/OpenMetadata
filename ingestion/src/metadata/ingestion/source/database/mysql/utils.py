@@ -13,7 +13,6 @@
 MySQL SQLAlchemy Helper Methods
 """
 
-
 # pylint: disable=protected-access,too-many-branches,too-many-statements,too-many-locals
 from sqlalchemy import util
 from sqlalchemy.dialects.mysql.enumerated import ENUM, SET
@@ -37,7 +36,7 @@ col_type_map = {
 }
 
 
-def parse_column(self, line, state):
+def parse_column(self, line, state):  # noqa: C901
     """
     Overriding the dialect method to include raw_data_type in response
 
@@ -83,7 +82,7 @@ def parse_column(self, line, state):
     # Column type keyword options
     type_kw = {}
 
-    if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):
+    if issubclass(col_type, (DATETIME, TIME, TIMESTAMP)):  # noqa: SIM102
         if type_args:
             type_kw["fsp"] = type_args.pop(0)
 
@@ -138,9 +137,7 @@ def parse_column(self, line, state):
     raw_type = get_display_datatype(
         col_type=type_,
         char_len=type_instance.length if hasattr(type_instance, "length") else None,
-        precision=(
-            type_instance.precision if hasattr(type_instance, "precision") else None
-        ),
+        precision=(type_instance.precision if hasattr(type_instance, "precision") else None),
         scale=type_instance.scale if hasattr(type_instance, "scale") else None,
     )
 

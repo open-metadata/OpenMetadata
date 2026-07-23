@@ -37,15 +37,11 @@ def test_sanitize_url_credentials():
         == "https://****@dev.azure.com/org/repo"
     )
     assert (
-        sanitize_url_credentials(
-            "https://x-oauth-basic:token123@github.com/owner/repo.git"
-        )
+        sanitize_url_credentials("https://x-oauth-basic:token123@github.com/owner/repo.git")
         == "https://****@github.com/owner/repo.git"
     )
     assert (
-        sanitize_url_credentials(
-            "https://x-token-auth:secret@gitlab.com/owner/repo.git"
-        )
+        sanitize_url_credentials("https://x-token-auth:secret@gitlab.com/owner/repo.git")
         == "https://****@gitlab.com/owner/repo.git"
     )
     assert sanitize_url_credentials("no url here") == "no url here"

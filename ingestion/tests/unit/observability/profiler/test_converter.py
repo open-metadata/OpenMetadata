@@ -52,9 +52,7 @@ from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
         ),
     ],
 )
-def test_snowflake_case_sensitive_orm(
-    mock_schema, mock_database, column_definition, table_name
-):
+def test_snowflake_case_sensitive_orm(mock_schema, mock_database, column_definition, table_name):
     """Test that snowflake case sensitive orm table
     are enforced correctly
     """
@@ -76,9 +74,7 @@ def test_snowflake_case_sensitive_orm(
     orm_table = ometa_to_sqa_orm(table, None)
 
     assert orm_table.__table_args__.get("quote")
-    assert [
-        name.lower() for name, _ in column_definition
-    ] == orm_table.__table__.columns.keys()
+    assert [name.lower() for name, _ in column_definition] == orm_table.__table__.columns.keys()
     assert orm_table.__tablename__ == table_name
     assert orm_table.__table_args__["schema"] == "schema"
     for name, _ in column_definition:
@@ -118,9 +114,7 @@ def test_metadata_column(mock_schema, mock_database):
     orm_table = ometa_to_sqa_orm(table, None)
 
     assert not orm_table.__table_args__.get("quote")
-    assert [
-        name.lower() for name, _ in column_definition
-    ] == orm_table.__table__.columns.keys()
+    assert [name.lower() for name, _ in column_definition] == orm_table.__table__.columns.keys()
     assert orm_table.__tablename__ == table_name
     assert orm_table.__table_args__["schema"] == "schema"
     for name, _ in column_definition:

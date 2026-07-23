@@ -20,4 +20,6 @@ export interface RolesComponentProps {
   updateUserDetails: (data: Partial<User>) => Promise<void>;
   selectedRoles: Array<string>;
   setSelectedRoles: (selectedRoles: string[]) => void;
+  searchRolesOptions: (query?: string) => Promise<void>;
+  isRolesLoading: boolean;
 }

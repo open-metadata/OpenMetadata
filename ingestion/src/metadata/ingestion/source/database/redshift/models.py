@@ -11,9 +11,10 @@
 """
 Redshift models
 """
+
 import re
 from enum import Enum
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -32,7 +33,7 @@ class RedshiftStoredProcedure(BaseModel):
     """Redshift stored procedure list query results"""
 
     name: str
-    owner: Optional[str] = None
+    owner: Optional[str] = None  # noqa: UP045
     definition: str
 
 
@@ -53,7 +54,7 @@ class RedshiftTable(BaseModel):
 class RedshiftTableMap(BaseModel):
     """Redshift TableMap Model. Used for Incremental Extraction"""
 
-    table_map: Dict[SchemaName, Dict[TableName, RedshiftTable]]
+    table_map: Dict[SchemaName, Dict[TableName, RedshiftTable]]  # noqa: UP006
 
     @classmethod
     def default(cls) -> "RedshiftTableMap":
@@ -68,19 +69,15 @@ class RedshiftTableMap(BaseModel):
         """
         if schema not in self.table_map:
             self.table_map[schema] = {table.name: table}
-        else:
+        else:  # noqa: PLR5501
             if table.name not in self.table_map[schema]:
                 self.table_map[schema][table.name] = table
 
-    def get_deleted(
-        self, schema_name: Optional[SchemaName] = None
-    ) -> List[Tuple[SchemaName, TableName]]:
+    def get_deleted(self, schema_name: Optional[SchemaName] = None) -> List[Tuple[SchemaName, TableName]]:  # noqa: UP006, UP045
         """Returns all deleted table names for a given schema."""
         if schema_name:
             return [
-                (schema_name, table.name)
-                for table in self.table_map.get(schema_name, {}).values()
-                if table.deleted
+                (schema_name, table.name) for table in self.table_map.get(schema_name, {}).values() if table.deleted
             ]
 
         # Single-pass flat generator avoids building per-schema intermediate lists.
@@ -91,14 +88,10 @@ class RedshiftTableMap(BaseModel):
             if table.deleted
         ]
 
-    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:
+    def get_not_deleted(self, schema_name: SchemaName) -> FrozenSet[TableName]:  # noqa: UP006
         """Returns all not-deleted table names for a given schema as a frozenset.
 
         Returns a frozenset so callers can use `name in result` with O(1) average
         cost instead of the O(n) cost of a list membership check.
         """
-        return frozenset(
-            table.name
-            for table in self.table_map.get(schema_name, {}).values()
-            if not table.deleted
-        )
+        return frozenset(table.name for table in self.table_map.get(schema_name, {}).values() if not table.deleted)

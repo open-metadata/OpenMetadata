@@ -13,7 +13,7 @@
 Pandas validator for column value to be at expected location test case
 """
 
-from typing import List, cast
+from typing import List, cast  # noqa: UP035
 
 from metadata.data_quality.validations.column.base.columnValuesToBeAtExpectedLocation import (
     BaseColumnValuesToBeAtExpectedLocationValidator,
@@ -31,10 +31,10 @@ class ColumnValuesToBeAtExpectedLocationValidator(
 ):
     """Validator for column value to be at expected location test case"""
 
-    def _fetch_data(self, columns: List[str]):
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
+    def _fetch_data(self, columns: List[str]):  # noqa: UP006
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
-        self.runner = cast(List[DataFrame], self.runner)
+        self.runner = cast(List[DataFrame], self.runner)  # noqa: TC006, UP006
         for df in self.runner:
             for idx in df.index:
                 yield df.loc[idx, columns]

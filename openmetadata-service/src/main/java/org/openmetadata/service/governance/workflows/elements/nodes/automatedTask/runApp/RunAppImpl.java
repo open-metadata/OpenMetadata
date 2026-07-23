@@ -20,10 +20,10 @@ import org.openmetadata.schema.entity.applications.configuration.internal.Backfi
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
-import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.ServiceFilter;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -82,7 +82,7 @@ public class RunAppImpl {
       updatedApp.setAppConfiguration(config);
       wasSuccessful =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
-      deployIngestionPipeline(pipelineServiceClient, app);
+      deployIngestionPipeline(app);
     }
 
     if (!wasSuccessful) {
@@ -133,7 +133,6 @@ public class RunAppImpl {
                 .getModuleConfiguration()
                 .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
                 .withCostAnalysis(new CostAnalysisConfig().withEnabled(false))
-                .withDataQuality(new DataQualityConfig().withEnabled(false))
                 .withDataAssets(
                     new DataAssetsConfig()
                         .withRetention(
@@ -236,8 +235,7 @@ public class RunAppImpl {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
-  private IngestionPipeline deployIngestionPipeline(
-      PipelineServiceClientInterface pipelineServiceClient, App app) {
+  private IngestionPipeline deployIngestionPipeline(App app) {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -254,9 +252,18 @@ public class RunAppImpl {
     ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
-    pipelineServiceClient.deployPipeline(
-        ingestionPipeline,
-        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
+    PipelineServiceClientResponse status =
+        repository.deployIngestionPipeline(
+            ingestionPipeline,
+            Entity.getEntity(
+                ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED));
+    if (status.getCode() == 200) {
+      // Persist only the runner-derived flag; the deploy-time appConfig injected above
+      // must not leak into the stored pipeline, so re-read the clean entity first.
+      IngestionPipeline stored = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+      stored.setEnableStreamableLogs(ingestionPipeline.getEnableStreamableLogs());
+      repository.createOrUpdate(null, stored, stored.getUpdatedBy());
+    }
 
     return ingestionPipeline;
   }
@@ -288,7 +295,7 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    IngestionPipeline ingestionPipeline = deployIngestionPipeline(pipelineServiceClient, app);
+    IngestionPipeline ingestionPipeline = deployIngestionPipeline(app);
     return runIngestionPipeline(
         pipelineServiceClient, ingestionPipeline, waitForCompletion, startTime, timeoutMillis);
   }

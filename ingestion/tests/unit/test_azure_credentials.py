@@ -16,9 +16,7 @@ class TestAzureClient(unittest.TestCase):
         mock_client_secret_credential,
     ):
         # Test with ClientSecretCredential
-        credentials = AzureCredentials(
-            clientId="clientId", clientSecret="clientSecret", tenantId="tenantId"
-        )
+        credentials = AzureCredentials(clientId="clientId", clientSecret="clientSecret", tenantId="tenantId")
         instance = AzureClient(credentials)
         instance.create_client()
 
@@ -36,9 +34,7 @@ class TestAzureClient(unittest.TestCase):
 
     @patch("azure.storage.blob.BlobServiceClient")
     def test_create_blob_client(self, mock_blob_service_client):
-        credentials = AzureCredentials(
-            clientId="clientId", clientSecret="clientSecret", tenantId="tenantId"
-        )
+        credentials = AzureCredentials(clientId="clientId", clientSecret="clientSecret", tenantId="tenantId")
         with self.assertRaises(ValueError):
             AzureClient(credentials=credentials).create_blob_client()
 
@@ -48,9 +44,7 @@ class TestAzureClient(unittest.TestCase):
 
     @patch("azure.keyvault.secrets.SecretClient")
     def test_create_secret_client(self, mock_secret_client):
-        credentials = AzureCredentials(
-            clientId="clientId", clientSecret="clientSecret", tenantId="tenantId"
-        )
+        credentials = AzureCredentials(clientId="clientId", clientSecret="clientSecret", tenantId="tenantId")
         with self.assertRaises(ValueError):
             AzureClient(credentials=credentials).create_secret_client()
 

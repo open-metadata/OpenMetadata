@@ -12,7 +12,7 @@
 """Athena utils module"""
 
 from copy import deepcopy
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from pyathena.sqlalchemy.util import _HashableDict
 from sqlalchemy import text, types
@@ -24,6 +24,7 @@ from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
 
 logger = utils_logger()
+
 
 # pylint: disable=protected-access
 @reflection.cache
@@ -69,12 +70,10 @@ def _get_column_type(self, type_):
     if name in ["decimal", "char", "varchar"]:
         col_type = col_map[name]
         if length:
-            args = [int(l) for l in length.split(",")]
+            args = [int(l) for l in length.split(",")]  # noqa: E741
     elif type_.startswith("array"):
-        parsed_type = (
-            ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                type_
-            )
+        parsed_type = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+            type_
         )
         col_type = col_map["array"]
         if parsed_type["arrayDataType"].lower().startswith("array"):
@@ -93,9 +92,7 @@ def _get_column_type(self, type_):
 
 
 # pylint: disable=unused-argument
-def _get_projection_details(
-    columns: List[Dict], projection_parameters: Dict
-) -> List[Dict]:
+def _get_projection_details(columns: List[Dict], projection_parameters: Dict) -> List[Dict]:  # noqa: UP006
     """Get the projection details for the columns
 
     Args:
@@ -107,13 +104,34 @@ def _get_projection_details(
 
     columns = deepcopy(columns)
     for col in columns:
-        projection_details = next(
-            ({k: v} for k, v in projection_parameters.items() if k == col["name"]), None
-        )
+        projection_details = next(({k: v} for k, v in projection_parameters.items() if k == col["name"]), None)
         if projection_details:
             col["projection_type"] = projection_details[col["name"]]
 
     return columns
+
+
+def _deduplicate_columns(columns: List[Dict], table_name: str) -> List[Dict]:  # noqa: UP006
+    """Return columns once by exact name, preserving the first occurrence."""
+    deduplicated_columns = []
+    seen_column_names = set()
+
+    for column in columns:
+        dedupe_key = column.get("name")
+
+        if dedupe_key in seen_column_names:
+            logger.warning(
+                "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
+                table_name,
+                dedupe_key,
+                column.get("system_data_type"),
+            )
+            continue
+
+        seen_column_names.add(dedupe_key)
+        deduplicated_columns.append(column)
+
+    return deduplicated_columns
 
 
 # pylint: disable=too-many-locals
@@ -137,7 +155,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         for c in metadata.partition_keys
     ]
-
     if kw.get("only_partition_columns"):
         # Return projected partition information to set partition type in `get_table_partition_details`
         # projected partition fields are stored in the form of `projection.<field_name>.type` as a table parameter
@@ -146,8 +163,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             for key_, value_ in metadata.parameters.items()
             if key_.startswith("projection") and key_.endswith("type")
         }
-        columns = _get_projection_details(columns, projection_parameters)
-        return columns
+        return _get_projection_details(columns, projection_parameters)
 
     # Check if this is an Iceberg table
     if metadata.parameters.get("table_type") == "ICEBERG":
@@ -198,7 +214,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
 
             columns += current_columns
-            return columns
+            return _deduplicate_columns(columns, table_name)
 
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
@@ -227,7 +243,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         for c in metadata.columns
     ]
 
-    return columns
+    return _deduplicate_columns(columns, table_name)
 
 
 @reflection.cache
@@ -243,7 +259,11 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
 
 
 def get_table_options(
-    self, connection: "Connection", table_name: str, schema: Optional[str] = None, **kw
+    self,
+    connection: "Connection",  # noqa: F821
+    table_name: str,
+    schema: Optional[str] = None,  # noqa: UP045
+    **kw,  # noqa: F821, RUF100
 ):
     metadata = self._get_table(connection, table_name, schema=schema, **kw)
     return {

@@ -26,6 +26,7 @@
 name: SSO Playwright E2E Tests
 
 on:
+  merge_group:
   pull_request_target:
     types:
       - labeled
@@ -46,6 +47,8 @@ on:
       - "docker/development/mock-oidc-provider/**"
       - "docker/development/docker-compose.yml"
       - "docker/development/.env.sso-test"
+      - ".github/actions/setup-openmetadata-test-environment/**"
+      - ".github/scripts/classify_playwright_outcome.py"
       - ".github/workflows/playwright-sso-tests.yml"
   workflow_dispatch:
     inputs:
@@ -69,12 +72,13 @@ permissions:
 
 concurrency:
   group: sso-playwright-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   sso-auth-tests:
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'sso-auth-tests (ignored label)' || 'sso-auth-tests' }}
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
 
     strategy:
@@ -95,7 +99,7 @@ jobs:
           docker-images: false
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -115,8 +119,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v4
@@ -133,15 +138,21 @@ jobs:
           docker compose --profile sso-test build mock-oidc-provider
           docker compose --profile sso-test up -d mock-oidc-provider
           echo "Waiting for mock OIDC provider to be healthy..."
+          provider_ready=false
           for i in $(seq 1 30); do
             if curl -sf http://localhost:9090/health > /dev/null 2>&1; then
               echo "Mock OIDC provider is ready"
+              provider_ready=true
               break
             fi
             echo "Waiting... ($i/30)"
             sleep 2
           done
-          curl -sf http://localhost:9090/.well-known/openid-configuration || echo "WARNING: Discovery endpoint not ready"
+          if [ "$provider_ready" != "true" ]; then
+            echo "Mock OIDC provider did not become healthy within 60 seconds."
+            exit 1
+          fi
+          curl -fsS http://localhost:9090/.well-known/openid-configuration
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -156,6 +167,7 @@ jobs:
           AUTHENTICATION_AUTHORITY: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090' || 'https://accounts.google.com' }}
           AUTHENTICATION_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           AUTHENTICATION_CALLBACK_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || '' }}
+          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING: ${{ matrix.provider == 'mock-oidc' && '[username:sub,email:email]' || '' }}
           OIDC_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           OIDC_TYPE: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || '' }}
           OIDC_CLIENT_SECRET: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test-secret' || '' }}
@@ -174,7 +186,8 @@ jobs:
         run: yarn --ignore-scripts --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright@1.51.1 install chromium webkit --with-deps
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn playwright install chromium webkit --with-deps
 
       - name: Run Mock OIDC Authentication Tests
         if: ${{ matrix.provider == 'mock-oidc' }}
@@ -192,8 +205,8 @@ jobs:
         run: npx playwright test --config=playwright.sso.config.ts --workers=1
         env:
           SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', upper(matrix.provider))] }}
-          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', upper(matrix.provider))] }}
+          SSO_USERNAME: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_USERNAME || matrix.provider == 'okta' && secrets.OKTA_SSO_USERNAME || matrix.provider == 'azure' && secrets.AZURE_SSO_USERNAME || matrix.provider == 'auth0' && secrets.AUTH0_SSO_USERNAME || matrix.provider == 'saml' && secrets.SAML_SSO_USERNAME || matrix.provider == 'cognito' && secrets.COGNITO_SSO_USERNAME || '' }}
+          SSO_PASSWORD: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_PASSWORD || matrix.provider == 'okta' && secrets.OKTA_SSO_PASSWORD || matrix.provider == 'azure' && secrets.AZURE_SSO_PASSWORD || matrix.provider == 'auth0' && secrets.AUTH0_SSO_PASSWORD || matrix.provider == 'saml' && secrets.SAML_SSO_PASSWORD || matrix.provider == 'cognito' && secrets.COGNITO_SSO_PASSWORD || '' }}
           PLAYWRIGHT_IS_OSS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 60
@@ -201,48 +214,121 @@ jobs:
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: sso-auth-test-results-${{ matrix.provider }}
+          overwrite: true
           path: |
             openmetadata-ui/src/main/resources/ui/playwright/output/sso-playwright-report
             openmetadata-ui/src/main/resources/ui/playwright/output/sso-test-results
           retention-days: 5
+          if-no-files-found: ignore
 
       - name: Upload results JSON for summary
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: always()
         with:
           name: sso-results-json-${{ matrix.provider }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/sso-results.json
           retention-days: 1
           if-no-files-found: ignore
 
+      - name: Collect failure diagnostics
+        if: failure() || cancelled()
+        continue-on-error: true
+        run: |
+          DIAGNOSTICS_DIR="${RUNNER_TEMP}/sso-playwright-ci-diagnostics"
+          mkdir -p "$DIAGNOSTICS_DIR"
+          df -h > "$DIAGNOSTICS_DIR/disk-usage.txt" 2>&1 || true
+          docker system df > "$DIAGNOSTICS_DIR/docker-disk-usage.txt" 2>&1 || true
+          if [ -f docker/development/docker-compose.yml ]; then
+            docker compose -f docker/development/docker-compose.yml --profile sso-test ps --all \
+              > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
+            docker compose -f docker/development/docker-compose.yml --profile sso-test logs --no-color --tail 5000 \
+              > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
+          fi
+
+      - name: Upload failure diagnostics
+        uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        continue-on-error: true
+        with:
+          name: sso-playwright-ci-diagnostics-${{ matrix.provider }}
+          path: ${{ runner.temp }}/sso-playwright-ci-diagnostics
+          retention-days: 5
+          if-no-files-found: ignore
+
       - name: Clean Up
+        if: always()
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose --profile sso-test down --remove-orphans 2>/dev/null || true
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
   sso-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'sso-summary (ignored label)' || 'sso-summary' }}
+    if: ${{ always() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: sso-auth-tests
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout trusted CI classifier
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
       - name: Download results JSON
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: sso-results-json-*
           path: results
 
+      - name: Evaluate zero-retry gate in shadow mode
+        if: always()
+        continue-on-error: true
+        env:
+          MATRIX_OUTCOME: ${{ needs.sso-auth-tests.result }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+        run: |
+          python3 .github/scripts/classify_playwright_outcome.py \
+            --report-glob 'results/sso-results-json-*/sso-results.json' \
+            --matrix-outcome "$MATRIX_OUTCOME" \
+            --expected-shard mock-oidc \
+            --profile sso-pr \
+            --source-sha "$SOURCE_SHA" \
+            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
+
+      - name: Upload SSO Playwright shadow-gate ledger
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-shadow-gate-sso-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Post SSO test summary as PR comment
+        if: always()
         uses: actions/github-script@v7
+        env:
+          SSO_TEST_RESULT: ${{ needs.sso-auth-tests.result }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
             const path = require('path');
 
+            if (context.payload.pull_request?.draft === true) {
+              console.log('SSO Playwright tests are not required while the PR is a draft.');
+              return;
+            }
+
+            const upstreamResult = process.env.SSO_TEST_RESULT;
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
             const prNumber = context.payload.pull_request?.number;
@@ -250,15 +336,33 @@ jobs:
 
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
             const commentMarker = '<!-- sso-playwright-summary -->';
+            const infrastructureIssues = [];
+            const addInfrastructureIssue = issue => {
+              if (!infrastructureIssues.includes(issue)) infrastructureIssues.push(issue);
+            };
+
+            if (upstreamResult === 'cancelled') {
+              addInfrastructureIssue('The SSO Playwright job was cancelled.');
+            } else if (upstreamResult === 'skipped') {
+              addInfrastructureIssue('The SSO Playwright job was unexpectedly skipped.');
+            }
 
             const allTests = [];
             const resultsDir = 'results';
+            let resultArtifactCount = 0;
             if (fs.existsSync(resultsDir)) {
               for (const dir of fs.readdirSync(resultsDir).sort()) {
                 const jsonPath = path.join(resultsDir, dir, 'sso-results.json');
                 if (!fs.existsSync(jsonPath)) continue;
 
-                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                resultArtifactCount += 1;
+                let report;
+                try {
+                  report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                } catch (error) {
+                  addInfrastructureIssue(`The SSO results artifact was invalid: ${error.message}`);
+                  continue;
+                }
 
                 function collectTests(suite, filePath) {
                   const file = suite.file || filePath || '';
@@ -287,20 +391,31 @@ jobs:
               }
             }
 
+            if (resultArtifactCount !== 1) {
+              addInfrastructureIssue(`Expected one SSO results artifact, found ${resultArtifactCount}.`);
+            }
             if (allTests.length === 0) {
-              console.log('No SSO test results found');
-              return;
+              addInfrastructureIssue('The SSO job reported zero tests.');
             }
 
             const passed = allTests.filter(t => t.status === 'expected');
             const failed = allTests.filter(t => t.status === 'unexpected');
             const flaky = allTests.filter(t => t.status === 'flaky');
             const skipped = allTests.filter(t => t.status === 'skipped');
+            const knownTestCount = passed.length + failed.length + flaky.length + skipped.length;
+            if (knownTestCount !== allTests.length) {
+              addInfrastructureIssue(`${allTests.length - knownTestCount} SSO test(s) reported an unknown status.`);
+            }
+            if (upstreamResult === 'failure' && failed.length === 0) {
+              addInfrastructureIssue('The SSO job failed during setup or outside a reported test failure.');
+            }
 
             const lines = [commentMarker];
 
-            if (failed.length > 0) {
-              lines.push(`## 🔴 SSO Playwright Results — ${failed.length} failure(s)${flaky.length > 0 ? `, ${flaky.length} flaky` : ''}`);
+            if (failed.length > 0 || infrastructureIssues.length > 0) {
+              const testFailureText = failed.length > 0 ? `${failed.length} test failure(s)` : '';
+              const infrastructureText = infrastructureIssues.length > 0 ? `${infrastructureIssues.length} pipeline/setup failure(s)` : '';
+              lines.push(`## 🔴 SSO Playwright Results — ${[testFailureText, infrastructureText].filter(Boolean).join(', ')}`);
             } else if (flaky.length > 0) {
               lines.push(`## 🟡 SSO Playwright Results — all passed (${flaky.length} flaky)`);
             } else {
@@ -309,6 +424,13 @@ jobs:
             lines.push('');
             lines.push(`✅ ${passed.length} passed · ❌ ${failed.length} failed · 🟡 ${flaky.length} flaky · ⏭️ ${skipped.length} skipped`);
             lines.push('');
+
+            if (infrastructureIssues.length > 0) {
+              lines.push('### Pipeline and setup failures');
+              lines.push('');
+              for (const issue of infrastructureIssues) lines.push(`- ${issue}`);
+              lines.push('');
+            }
 
             if (failed.length > 0) {
               lines.push('### Failures');
@@ -339,18 +461,34 @@ jobs:
 
             const body = lines.join('\n');
 
-            let existingComment = null;
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              const found = response.data.find(c =>
-                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-              );
-              if (found) { existingComment = found; break; }
+            try {
+              await core.summary.addRaw(body).write();
+            } catch (error) {
+              core.warning(`Could not write the SSO Playwright job summary: ${error.message}`);
             }
 
-            if (existingComment) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-            } else {
-              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            try {
+              let existingComment = null;
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                const found = response.data.find(c =>
+                  c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+                );
+                if (found) { existingComment = found; break; }
+              }
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+              } else {
+                await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+              }
+            } catch (error) {
+              core.warning(`Could not publish the SSO Playwright PR comment: ${error.message}`);
+            }
+
+            if (failed.length > 0 || infrastructureIssues.length > 0) {
+              core.setFailed(
+                `${failed.length} SSO Playwright test failure(s); ${infrastructureIssues.length} pipeline/setup failure(s).`
+              );
             }

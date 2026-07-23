@@ -45,6 +45,7 @@ import {
   deleteNode,
   editLineage,
   editLineageClick,
+  fitToScreen,
   getEntityColumns,
   performZoomOut,
   rearrangeNodes,
@@ -106,6 +107,10 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 test.describe('Data asset lineage', () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
@@ -140,23 +145,26 @@ test.describe('Data asset lineage', () => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      // 7 minute timeout
-      test.setTimeout(7 * 60 * 1000);
+      // 5 minute timeout
+      test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
-        const { apiContext } = await getApiContext(page);
-
-        await lineageEntity.create(apiContext);
-        await lineageEntity.visitEntityPage(page);
-        await visitLineageTab(page);
-        await editLineageClick(page);
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await lineageEntity.create(apiContext);
+          await lineageEntity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await editLineageClick(page);
+        } finally {
+          await afterAction();
+        }
       });
 
       await test.step('should create lineage with normal edge', async () => {
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, lineageEntity, entity);
           await rearrangeNodes(page);
-          await performZoomOut(page);
+          await fitToScreen(page);
         }
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
@@ -173,14 +181,14 @@ test.describe('Data asset lineage', () => {
           )
           .waitFor();
         await rearrangeNodes(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
 
         // Check the Entity Drawer
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           const toNodeFqn = get(
@@ -233,7 +241,7 @@ test.describe('Data asset lineage', () => {
       await test.step('Verify Lineage Export CSV', async () => {
         await editLineageClick(page);
         await waitForAllLoadersToDisappear(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
         await verifyExportLineageCSV(page, lineageEntity, entities, pipeline);
       });
 
@@ -247,7 +255,7 @@ test.describe('Data asset lineage', () => {
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await waitForAllLoadersToDisappear(page);
 
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await deleteEdge(page, lineageEntity, entity);
@@ -291,6 +299,7 @@ test.describe('Column Level Lineage', () => {
 
     entityKeys.forEach((targetKey) => {
       test(`Column lineage for ${key} -> ${targetKey}`, async ({ page }) => {
+        test.slow();
         const targetEntity = entities.get(targetKey) as EntityClassUnion;
         const { apiContext, afterAction } = await getApiContext(page);
 
@@ -369,7 +378,7 @@ test.describe('Column Level Lineage', () => {
       await test.step('Verify column layer is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
@@ -379,7 +388,7 @@ test.describe('Column Level Lineage', () => {
 
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
@@ -443,6 +452,52 @@ test.describe('Column Level Lineage', () => {
     } finally {
       await table.delete(apiContext);
       await afterAction();
+    }
+  });
+});
+
+test.describe('Temp lineage table nodes', () => {
+  const RAW_ORDER_FQN = 'sample_data.ecommerce_db.shopify.raw_order';
+  const TEMP_TABLE_NAMES = ['tmp_order_staging', 'tmp_order_enriched'];
+
+  test.beforeAll('verify sample data entity exists', async ({ browser }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+
+    try {
+      const response = await apiContext.get(
+        `/api/v1/tables/name/${encodeURIComponent(RAW_ORDER_FQN)}`
+      );
+
+      if (!response.ok()) {
+        throw new Error(
+          `Sample entity '${RAW_ORDER_FQN}' not found. Ensure sample data is loaded before running temp lineage tests.`
+        );
+      }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('should render temp lineage table nodes on canvas', async ({ page }) => {
+    await page.goto(`/table/${encodeURIComponent(RAW_ORDER_FQN)}`);
+    await waitForAllLoadersToDisappear(page);
+
+    await visitLineageTab(page);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('fit-screen').click();
+    await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+
+    for (const tempTableName of TEMP_TABLE_NAMES) {
+      await expect(
+        page.getByTestId(`lineage-node-${tempTableName}`)
+      ).toBeVisible();
     }
   });
 });

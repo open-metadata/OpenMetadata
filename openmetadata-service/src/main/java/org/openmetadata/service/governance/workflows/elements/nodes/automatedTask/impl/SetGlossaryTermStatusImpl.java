@@ -41,7 +41,7 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "*", Include.ALL);
+      GlossaryTerm glossaryTerm = Entity.getEntity(entityLink, "", Include.ALL);
 
       String status = (String) statusExpr.getValue(execution);
       String user =

@@ -11,6 +11,7 @@
 """
 Utils module to define overrided sqlalchamy methods
 """
+
 # pylint: disable=protected-access,unused-argument
 import re
 
@@ -50,7 +51,7 @@ def get_table_comment(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -69,7 +70,7 @@ def get_view_definition(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -97,9 +98,7 @@ def get_all_view_definitions(self, connection, query):
             if not view_definition and hasattr(view, "view_ddl"):
                 view_definition = view.view_ddl
             else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-                )
+                view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
             self.all_view_definitions[(view.view_name, view.schema)] = view_definition
 
         elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
@@ -107,15 +106,11 @@ def get_all_view_definitions(self, connection, query):
             if not view_definition and hasattr(view, "VIEW_DDL"):
                 view_definition = view.VIEW_DDL
             else:
-                view_definition = (
-                    f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-                )
+                view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
             self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
 
 
-def _get_col_type(
-    self, coltype, precision, scale, length, colname
-):  # pylint: disable=too-many-branches
+def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches
     raw_type = coltype
     if coltype == "NUMBER":
         if precision is None and scale == 0:
@@ -151,7 +146,7 @@ def _get_col_type(
 
 # pylint: disable=too-many-locals
 @reflection.cache
-def get_columns(self, connection, table_name, schema=None, **kw):
+def get_columns(self, connection, table_name, schema=None, **kw):  # noqa: C901
     """
 
     Dialect method overridden to add raw data type
@@ -169,11 +164,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     if resolve_synonyms:
         try:
-            rows = list(
-                self._get_synonyms(
-                    connection, schema, [table_name], dblink, info_cache=info_cache
-                )
-            )
+            rows = list(self._get_synonyms(connection, schema, [table_name], dblink, info_cache=info_cache))
         except Exception:
             rows = []
 
@@ -205,9 +196,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     identity_cols = "NULL as default_on_null, NULL as identity_options"
     if self.server_version_info >= (12,):
-        identity_cols = ORACLE_IDENTITY_TYPE.format(
-            dblink=dblink, prefix=_get_table_prefix(self)
-        )
+        identity_cols = ORACLE_IDENTITY_TYPE.format(dblink=dblink, prefix=_get_table_prefix(self))
 
     params = {"table_name": table_name}
 
@@ -238,9 +227,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         default_on_nul = row[9]
         identity_options = row[10]
 
-        coltype, raw_coltype = self._get_col_type(
-            coltype, precision, scale, length, colname
-        )
+        coltype, raw_coltype = self._get_col_type(coltype, precision, scale, length, colname)
 
         computed = None
         if generated == "YES":
@@ -287,13 +274,8 @@ def get_table_names(self, connection, schema=None, **kw):
 
     if self.exclude_tablespaces:
         exclude_tablespace = ", ".join([f"'{ts}'" for ts in self.exclude_tablespaces])
-        tablespace = (
-            "nvl(tablespace_name, 'no tablespace') "
-            f"NOT IN ({exclude_tablespace}) AND "
-        )
-    sql_str = ORACLE_GET_TABLE_NAMES.format(
-        tablespace=tablespace, prefix=_get_table_prefix(self)
-    )
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(self))
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
     return [row[0] for row in cursor]
 
@@ -333,9 +315,7 @@ def get_mview_names(self, schema=None):
 @reflection.cache
 def get_mview_names_dialect(self, connection, schema=None, **kw):
     schema = self.denormalize_name(schema or self.default_schema_name)
-    sql_query = sql.text(
-        GET_MATERIALIZED_VIEW_NAMES.format(prefix=_get_table_prefix(self))
-    )
+    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES.format(prefix=_get_table_prefix(self)))
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
 
@@ -348,7 +328,7 @@ def _get_constraint_data(self, connection, table_name, schema=None, dblink="", *
 
     rp = connection.execute(sql.text(text), params)
     constraint_data = rp.fetchall()
-    return constraint_data
+    return constraint_data  # noqa: RET504
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +362,7 @@ def get_table_comment_preserve_case(
     self,
     connection,
     table_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -396,9 +376,7 @@ def get_table_comment_preserve_case(
         connection,
         table_name=table_name,
         schema=schema,
-        query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(
-            prefix=_get_table_prefix(self)
-        ),
+        query=ORACLE_TABLE_COMMENTS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
@@ -407,7 +385,7 @@ def get_view_definition_preserve_case(
     self,
     connection,
     view_name: str,
-    schema: str = None,
+    schema: str = None,  # noqa: RUF013
     resolve_synonyms=False,
     dblink="",
     **kw,
@@ -421,14 +399,12 @@ def get_view_definition_preserve_case(
         connection,
         table_name=view_name,
         schema=schema,
-        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(
-            prefix=_get_table_prefix(self)
-        ),
+        query=ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE.format(prefix=_get_table_prefix(self)),
     )
 
 
 @reflection.cache
-def get_indexes_preserve_case(
+def get_indexes_preserve_case(  # noqa: C901
     self,
     connection,
     table_name,
@@ -517,8 +493,8 @@ def get_indexes_preserve_case(
         info_cache=kw.get("info_cache"),
     )
 
-    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)
-    enabled = dict(DISABLED=False, ENABLED=True)
+    uniqueness = dict(NONUNIQUE=False, UNIQUE=True)  # noqa: C408
+    enabled = dict(DISABLED=False, ENABLED=True)  # noqa: C408
     oracle_sys_col = re.compile(r"SYS_NC\d+\$", re.IGNORECASE)
 
     index = None
@@ -531,7 +507,7 @@ def get_indexes_preserve_case(
             continue
 
         if raw_index_name != last_index_name:
-            index = dict(
+            index = dict(  # noqa: C408
                 name=index_name_normalized,
                 column_names=[],
                 dialect_options={},

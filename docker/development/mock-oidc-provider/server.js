@@ -19,12 +19,17 @@ const PORT = parseInt(process.env.PORT || '9090', 10);
 const ISSUER = process.env.ISSUER || `http://localhost:${PORT}`;
 
 // Mutable test state — controlled via /test/* endpoints
+const DEFAULT_LOGIN_ACCOUNT = 'admin';
+
 const testState = {
   accessTokenTTL: 3600,
   idTokenTTL: 3600,
   forceInteractionRequired: false,
   refreshTokenEnabled: true,
   tokenEndpointError: null, // { errorCode: 'invalid_grant', httpStatus: 400 }
+  // Account auto-approved on the next interactive login. Lets a test exercise a
+  // specific identity (e.g. one whose sub differs from the email local-part).
+  defaultLoginAccount: DEFAULT_LOGIN_ACCOUNT,
 };
 
 const resetTestState = () => {
@@ -33,6 +38,7 @@ const resetTestState = () => {
   testState.forceInteractionRequired = false;
   testState.refreshTokenEnabled = true;
   testState.tokenEndpointError = null;
+  testState.defaultLoginAccount = DEFAULT_LOGIN_ACCOUNT;
 };
 
 // Request metrics — reset via /test/metrics/reset
@@ -58,6 +64,19 @@ const TEST_ACCOUNTS = new Map([
       name: 'Test User 1',
       sub: 'user1',
       preferred_username: 'user1',
+    },
+  ],
+  // Identity whose sub ('claim-user') deliberately differs from the email
+  // local-part ('claim.user.mapped'). Used to verify OIDC self-signup persists
+  // the mapped email claim instead of deriving <sub>@<domain>. See issue #29189.
+  [
+    'claim-user',
+    {
+      email: 'claim.user.mapped@open-metadata.org',
+      email_verified: true,
+      name: 'Claim Mapped User',
+      sub: 'claim-user',
+      preferred_username: 'claim-user',
     },
   ],
 ]);
@@ -214,6 +233,7 @@ async function init() {
           const loginUser =
             ctx.query.login_hint ||
             interactionDetails.params.login_hint ||
+            testState.defaultLoginAccount ||
             'admin';
           const result = {
             login: { accountId: loginUser },
@@ -322,6 +342,7 @@ async function init() {
       refreshTokenEnabled,
       forceInteractionRequired,
       tokenEndpointError,
+      defaultLoginAccount,
     } = req.body;
     if (accessTokenTTL !== undefined)
       testState.accessTokenTTL = accessTokenTTL;
@@ -332,6 +353,8 @@ async function init() {
       testState.forceInteractionRequired = forceInteractionRequired;
     if (tokenEndpointError !== undefined)
       testState.tokenEndpointError = tokenEndpointError;
+    if (defaultLoginAccount !== undefined)
+      testState.defaultLoginAccount = defaultLoginAccount;
 
     res.json({ ok: true, state: { ...testState } });
   });

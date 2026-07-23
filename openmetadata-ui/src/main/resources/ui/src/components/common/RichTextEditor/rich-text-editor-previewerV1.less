@@ -44,13 +44,31 @@
     }
   }
 
+  .markdown-parser.is-clamped {
+    position: relative;
+    &::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1.5em;
+      background: linear-gradient(
+        to bottom,
+        transparent,
+        var(--markdown-clamp-fade-color, var(--color-bg-primary))
+      );
+      pointer-events: none;
+    }
+  }
+
   .markdown-parser.white {
     .block-editor-wrapper .tiptap.ProseMirror.om-block-editor {
       p {
-        color: @white;
+        color: var(--tw-color-text-white);
       }
       ul li::before {
-        background-color: @white;
+        background-color: var(--tw-color-bg-primary);
       }
     }
   }

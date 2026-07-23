@@ -25,10 +25,19 @@ import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
+// Context for dropdown and sort state in mocks
 const DropdownContext = React.createContext<{
   isOpen: boolean;
   onOpenChange?: (isOpen: boolean) => void;
 }>({ isOpen: false });
+
+const SortContext = React.createContext<{
+  sortDescriptor?: { column?: string; direction?: string };
+  onSortChange?: (desc: {
+    column?: string;
+    direction?: 'ascending' | 'descending';
+  }) => void;
+}>({});
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const DropdownRoot = ({
@@ -98,9 +107,135 @@ jest.mock('@openmetadata/ui-core-components', () => {
     );
   };
 
+  const MockTableHead = ({
+    label,
+    id,
+    allowsSorting,
+  }: {
+    label?: string;
+    id?: string;
+    allowsSorting?: boolean;
+  }) => {
+    const { onSortChange, sortDescriptor } = React.useContext(SortContext);
+    const handleClick = () => {
+      if (!allowsSorting || !onSortChange) {
+        return;
+      }
+      const currentDir =
+        sortDescriptor?.column === id ? sortDescriptor?.direction : undefined;
+      const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
+      onSortChange({ column: id, direction: newDir });
+    };
+
+    return (
+      <th id={id} onClick={handleClick}>
+        {label}
+      </th>
+    );
+  };
+
+  const MockTable = ({
+    children,
+    'data-testid': testId,
+    onSortChange,
+    sortDescriptor,
+  }: React.PropsWithChildren<{
+    'data-testid'?: string;
+    onSortChange?: (desc: {
+      column?: string;
+      direction?: 'ascending' | 'descending';
+    }) => void;
+    sortDescriptor?: { column?: string; direction?: string };
+    [key: string]: unknown;
+  }>) => (
+    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
+      <table data-testid={testId}>{children}</table>
+    </SortContext.Provider>
+  );
+
+  MockTable.Header = ({
+    columns,
+    children,
+  }: {
+    columns: unknown[];
+    children: (col: unknown) => React.ReactNode;
+  }) => (
+    <thead>
+      <tr>{(columns || []).map((col) => children(col))}</tr>
+    </thead>
+  );
+
+  MockTable.Head = MockTableHead;
+
+  MockTable.Body = ({
+    items,
+    children,
+    renderEmptyState,
+  }: {
+    items?: unknown[];
+    children: (item: unknown) => React.ReactNode;
+    renderEmptyState?: () => React.ReactNode;
+    dependencies?: unknown[];
+  }) => (
+    <tbody>
+      {items && items.length > 0
+        ? items.map((item) => children(item))
+        : renderEmptyState?.()}
+    </tbody>
+  );
+
+  MockTable.Row = ({
+    children,
+    id,
+  }: React.PropsWithChildren<{ id?: string }>) => <tr id={id}>{children}</tr>;
+
+  MockTable.Cell = ({
+    children,
+    className,
+  }: React.PropsWithChildren<{ className?: string }>) => (
+    <td className={className}>{children}</td>
+  );
+
+  const MockBox = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
+  );
+
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
+    Box: MockBox,
     Button: MockButton,
-    Skeleton: () => <span>Loading...</span>,
+    EmptyPlaceholder: MockEmptyPlaceholder,
+    Skeleton: () => <span data-testid="skeleton">Loading...</span>,
+    Table: MockTable,
     Tooltip: ({
       children,
       title,
@@ -126,16 +261,65 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({ data: [] }),
+}));
+
+jest.mock('../../../../rest/testAPI', () => ({
+  removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../common/NextPrevious/NextPrevious', () =>
+  jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
+);
+
+jest.mock(
+  '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(() => <div data-testid="incident-manager-status" />)
+);
+
+jest.mock(
+  '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ open }) =>
+        open ? <div data-testid="add-to-bundle-suite-modal" /> : null
+      )
+);
+
+jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () =>
+  jest.fn().mockImplementation(({ onClose, open }) => (
+    <div data-testid="bundle-suite-form-drawer">
+      <div>open: {open ? 'true' : 'false'}</div>
+      <button data-testid="bundle-suite-drawer-close-btn" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ))
+);
+
+jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ dataTestId, label }) => (
+      <span data-testid={dataTestId}>{label}</span>
+    ))
+);
+
+jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
+  jest.fn().mockImplementation(() => <span data-testid="date-time-display" />)
+);
+
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
 };
 const mockPermissionsData = MOCK_PERMISSIONS;
-const mockAuthData = {
-  isAdminUser: true,
-  isAuthDisabled: false,
-};
 const mockNavigateDataQualityTab = jest.fn();
 
 jest.mock('react-router-dom', () => {
@@ -152,13 +336,13 @@ jest.mock('react-router-dom', () => {
     useNavigate: () => mockNavigateDataQualityTab,
   };
 });
+
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => {
-    return {
-      isAdminUser: mockAuthData.isAdminUser,
-    };
-  },
+  useAuth: () => ({
+    isAdminUser: true,
+  }),
 }));
+
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({
     getEntityPermissionByFqn: jest
@@ -166,60 +350,63 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
       .mockImplementation(() => mockPermissionsData),
   }),
 }));
-jest.mock('../../../common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => {
-    return <span>Loader</span>;
-  });
-});
-jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () => {
-  return jest.fn().mockImplementation(({ visible, onCancel }) => {
-    return (
-      visible && (
-        <div>
-          <p>DeleteWidgetModal</p>
-          <button onClick={onCancel}>cancel</button>
-        </div>
-      )
-    );
-  });
-});
-jest.mock('../../../DataQuality/AddDataQualityTest/EditTestCaseModal', () => {
-  return jest.fn().mockImplementation(({ visible, onCancel, onUpdate }) => {
-    return (
-      visible && (
-        <div>
+
+jest.mock('../../../common/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <span>Loader</span>)
+);
+
+jest.mock('../../../common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(({ open, onCancel, onDelete }) =>
+    open ? (
+      <div>
+        <p>DeleteModal</p>
+        <button data-testid="confirm-button" onClick={onDelete}>
+          delete
+        </button>
+        <button onClick={onCancel}>cancel</button>
+      </div>
+    ) : null
+  )
+);
+
+jest.mock(
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
+  () =>
+    jest.fn().mockImplementation(({ open, variant, onClose, onUpdate }) =>
+      open ? (
+        <div data-testid="test-case-form-v1" data-variant={variant}>
           <p>EditTestCaseModal</p>
-          <button onClick={onCancel}>cancel</button>
+          <button onClick={onClose}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
-      )
-    );
-  });
-});
-jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ visible, onCancel, onConfirm, isLoading }) => {
-      return (
-        visible && (
-          <div>
-            <p>ConfirmationModal</p>
-            <button onClick={onCancel}>cancel</button>
-            <button onClick={onConfirm}>
-              {isLoading ? (
-                <span data-testid="submit-btn-loading">Loading</span>
-              ) : (
-                ''
-              )}
-              submit
-            </button>
-          </div>
-        )
-      );
-    });
-});
+      ) : null
+    )
+);
+
+jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
+  jest.fn().mockImplementation(({ visible, onCancel, onConfirm, isLoading }) =>
+    visible ? (
+      <div>
+        <p>ConfirmationModal</p>
+        <button onClick={onCancel}>cancel</button>
+        <button onClick={onConfirm}>
+          {isLoading ? (
+            <span data-testid="submit-btn-loading">Loading</span>
+          ) : (
+            ''
+          )}
+          submit
+        </button>
+      </div>
+    ) : null
+  )
+);
 
 describe('DataQualityTab test', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Component should render', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
@@ -248,7 +435,18 @@ describe('DataQualityTab test', () => {
     expect(await findByText(header, 'label.incident')).toBeInTheDocument();
   });
 
-  it('Should send API request with sort params on click of last-run', async () => {
+  it('Should not render table column header when showTableColumn is false', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} showTableColumn={false} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const header = tableRows[0];
+
+    expect(await findByText(header, 'label.name')).toBeInTheDocument();
+    expect(screen.queryByText('label.table')).not.toBeInTheDocument();
+  });
+
+  it('Should send API request with sort params on click of last-run (ascending then descending)', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
@@ -275,26 +473,20 @@ describe('DataQualityTab test', () => {
       sortField: 'testCaseResult.timestamp',
       sortType: 'desc',
     });
-
-    await act(async () => {
-      fireEvent.click(lastRunHeader);
-    });
-
-    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
   });
 
-  it('Should send API request with sort params on click of name', async () => {
+  it('Should send API request with sort params on click of name (ascending then descending)', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
     const tableRows = await screen.findAllByRole('row');
     const header = tableRows[0];
-    const lastRunHeader = await findByText(header, 'label.name');
+    const nameHeader = await findByText(header, 'label.name');
 
-    expect(lastRunHeader).toBeInTheDocument();
+    expect(nameHeader).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(lastRunHeader);
+      fireEvent.click(nameHeader);
     });
 
     expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
@@ -303,19 +495,13 @@ describe('DataQualityTab test', () => {
     });
 
     await act(async () => {
-      fireEvent.click(lastRunHeader);
+      fireEvent.click(nameHeader);
     });
 
     expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
       sortField: 'name.keyword',
       sortType: 'desc',
     });
-
-    await act(async () => {
-      fireEvent.click(lastRunHeader);
-    });
-
-    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
   });
 
   it('Table data should be render as per data props', async () => {
@@ -353,6 +539,154 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();
+  });
+
+  it('Should show loading skeletons when isLoading is true', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} isLoading />);
+    });
+
+    const skeletons = await screen.findAllByTestId('skeleton');
+
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('should render the empty placeholder when there are no test cases', () => {
+    render(<DataQualityTab {...mockProps} isLoading={false} testCases={[]} />);
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-test-cases-yet')).toBeInTheDocument();
+  });
+
+  it('should render the filtered empty copy when filters are active', () => {
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    expect(
+      screen.getByText('message.no-matching-test-cases')
+    ).toBeInTheDocument();
+  });
+
+  it('should render the empty-state CTA when emptyStateAction is provided and no active filters', async () => {
+    const mockOnPress = jest.fn();
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: mockOnPress,
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    const actionButton = screen.getByTestId(
+      'empty-placeholder-action-new-test-case'
+    );
+
+    expect(actionButton).toBeInTheDocument();
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    await act(async () => {
+      fireEvent.click(actionButton);
+    });
+
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
+    const emptyStateAction = {
+      key: 'new-test-case',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        emptyStateAction={emptyStateAction}
+        isLoading={false}
+        testCases={[]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-test-case')
+    ).not.toBeInTheDocument();
+  });
+
+  it('Should show NextPrevious when pagingData and showPagination are provided', async () => {
+    const pagingData = {
+      paging: { total: 50 },
+      currentPage: 1,
+      pageSize: 10,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          showPagination
+          pagingData={pagingData as never}
+        />
+      );
+    });
+
+    expect(await screen.findByTestId('next-previous')).toBeInTheDocument();
+  });
+
+  it('Should not show NextPrevious when showPagination is false', async () => {
+    const pagingData = {
+      paging: { total: 50 },
+      currentPage: 1,
+      pageSize: 10,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          pagingData={pagingData as never}
+          showPagination={false}
+        />
+      );
+    });
+
+    expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
+  });
+
+  it('Should stop click propagation from interactive cell wrappers', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+
+    const documentClick = jest.fn();
+    document.body.addEventListener('click', documentClick);
+
+    // A click inside the name cell wrapper must not bubble up to the row.
+    fireEvent.click(screen.getByTestId('column_values_to_match_regex'));
+
+    expect(documentClick).not.toHaveBeenCalled();
+
+    // Sanity check: a cell without the wrapper lets the click bubble.
+    fireEvent.click(
+      screen.getByTestId('status-badge-column_values_to_match_regex')
+    );
+
+    expect(documentClick).toHaveBeenCalled();
+
+    document.body.removeEventListener('click', documentClick);
   });
 
   it('Remove functionality', async () => {
@@ -423,6 +757,59 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(editButton).not.toBeDisabled();
+  });
+
+  it('Should render TestCaseFormDrawer in drawer variant by default when editing', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toBeInTheDocument();
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'drawer');
+  });
+
+  it('Should forward editVariant="modal" as TestCaseFormDrawer variant', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} editVariant="modal" />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'modal');
   });
 
   it('Delete functionality - menu item is accessible', async () => {
@@ -760,5 +1147,29 @@ describe('DataQualityTab test', () => {
 
     expect(queuedReason).toBeInTheDocument();
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
+  });
+
+  describe('BundleSuiteFormDrawer integration', () => {
+    it('should render BundleSuiteFormDrawer unconditionally with open=false by default', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} enableBulkActions />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
+
+    it('should render BundleSuiteFormDrawer unconditionally even without enableBulkActions', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
   });
 });

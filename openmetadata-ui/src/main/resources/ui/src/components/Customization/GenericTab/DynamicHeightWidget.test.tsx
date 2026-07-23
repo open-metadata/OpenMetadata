@@ -103,7 +103,7 @@ describe('DynamicHeightWidget', () => {
 
       const resizeCallback = (global.ResizeObserver as jest.Mock).mock
         .calls[0][0];
-      resizeCallback([{ contentRect: { height: 600 } }]); // 6 grid units
+      resizeCallback([{ contentRect: { height: 680 } }]); // 6 grid units: 6 * 116 - 16
 
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 6);
     });
@@ -119,7 +119,7 @@ describe('DynamicHeightWidget', () => {
 
       const resizeCallback = (global.ResizeObserver as jest.Mock).mock
         .calls[0][0];
-      resizeCallback([{ contentRect: { height: 200 } }]); // 2 grid units
+      resizeCallback([{ contentRect: { height: 216 } }]); // 2 grid units: 2 * 116 - 16
 
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 2);
     });
@@ -135,7 +135,7 @@ describe('DynamicHeightWidget', () => {
 
       const resizeCallback = (global.ResizeObserver as jest.Mock).mock
         .calls[0][0];
-      resizeCallback([{ contentRect: { height: 400 } }]); // 4 grid units (same as initial)
+      resizeCallback([{ contentRect: { height: 448 } }]); // 4 grid units: 4 * 116 - 16 (same as initial)
 
       expect(mockOnHeightChange).not.toHaveBeenCalled();
     });
@@ -153,19 +153,19 @@ describe('DynamicHeightWidget', () => {
         .calls[0][0];
 
       // First resize
-      resizeCallback([{ contentRect: { height: 300 } }]);
+      resizeCallback([{ contentRect: { height: 332 } }]); // 3 grid units: 3 * 116 - 16
 
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 3);
 
       await act(async () => {
         // Second resize
-        resizeCallback([{ contentRect: { height: 500 } }]);
+        resizeCallback([{ contentRect: { height: 564 } }]); // 5 grid units: 5 * 116 - 16
       });
 
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 5);
 
       // Third resize (same height)
-      resizeCallback([{ contentRect: { height: 500 } }]);
+      resizeCallback([{ contentRect: { height: 564 } }]);
 
       expect(mockOnHeightChange).toHaveBeenCalledTimes(3); // Should not increase call count
     });
@@ -185,7 +185,11 @@ describe('DynamicHeightWidget', () => {
         .calls[0][0];
       resizeCallback([{ contentRect: { height: 0 } }]);
 
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 0);
+      // (0 + GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN) = 16/116
+      expect(mockOnHeightChange).toHaveBeenCalledWith(
+        'test-widget',
+        16 / 116
+      );
     });
 
     it('handles very large height values', () => {
@@ -199,7 +203,7 @@ describe('DynamicHeightWidget', () => {
 
       const resizeCallback = (global.ResizeObserver as jest.Mock).mock
         .calls[0][0];
-      resizeCallback([{ contentRect: { height: 10000 } }]);
+      resizeCallback([{ contentRect: { height: 11584 } }]); // 100 grid units: 100 * 116 - 16
 
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 100);
     });

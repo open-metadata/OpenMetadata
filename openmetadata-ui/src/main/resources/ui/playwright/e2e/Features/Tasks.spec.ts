@@ -192,8 +192,7 @@ test.describe('Task Workflow Tests', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -262,8 +261,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -349,8 +347,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [restrictedUser.responseData.name],
@@ -391,7 +388,7 @@ test.describe('Task Workflow Tests', () => {
       await waitForPageLoaded(page);
 
       // Navigate to Tasks tab
-      const tasksTab = page.getByRole('button', { name: /tasks/i });
+      const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
       if (await tasksTab.isVisible()) {
         await tasksTab.click();
         await waitForPageLoaded(page);
@@ -446,8 +443,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -464,7 +460,7 @@ test.describe('Task Workflow Tests', () => {
         await waitForPageLoaded(page);
 
         // Navigate to Tasks tab
-        const tasksTab = page.getByRole('button', { name: /tasks/i });
+        const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
         if (await tasksTab.isVisible()) {
           await tasksTab.click();
           await waitForPageLoaded(page);
@@ -497,8 +493,7 @@ test.describe('Task Workflow Tests', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableWithOwner.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableWithOwner.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [regularUser.responseData.name],
@@ -554,7 +549,7 @@ test.describe('Task Workflow Tests', () => {
               {
                 op: 'add',
                 path: '/domain',
-                value: { id: domain.id, type: 'domain' },
+                value: { id: domain?.id, type: 'domain' },
               },
             ],
             headers: { 'Content-Type': 'application/json-patch+json' },
@@ -565,8 +560,7 @@ test.describe('Task Workflow Tests', () => {
         const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}`,
-            about: tableInDomain.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${tableInDomain.entityResponseData?.fullyQualifiedName}>`,
             type: 'DescriptionUpdate',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],

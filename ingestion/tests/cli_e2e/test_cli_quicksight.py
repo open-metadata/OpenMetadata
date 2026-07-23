@@ -12,13 +12,14 @@
 """
 Test Quicksight connector with CLI
 """
-from typing import List
+
+from typing import List  # noqa: UP035
 
 import pytest
 
 from metadata.ingestion.api.status import Status
 
-from .common.test_cli_dashboard import CliCommonDashboard
+from .common.test_cli_dashboard import CliCommonDashboard  # noqa: TID252
 
 
 class QuicksightCliTest(CliCommonDashboard.TestSuite):
@@ -26,16 +27,16 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def get_connector_name() -> str:
         return "quicksight"
 
-    def get_includes_dashboards(self) -> List[str]:
+    def get_includes_dashboards(self) -> List[str]:  # noqa: UP006
         return ["^test$"]
 
-    def get_excludes_dashboards(self) -> List[str]:
+    def get_excludes_dashboards(self) -> List[str]:  # noqa: UP006
         return ["test_redshift_lineage"]
 
-    def get_includes_charts(self) -> List[str]:
+    def get_includes_charts(self) -> List[str]:  # noqa: UP006
         return [".*Sheet 1.*", ".*"]
 
-    def get_excludes_charts(self) -> List[str]:
+    def get_excludes_charts(self) -> List[str]:  # noqa: UP006
         return []
 
     def expected_dashboards_and_charts(self) -> int:
@@ -61,11 +62,11 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     # Quicksight do not ingest datamodels
-    def get_excludes_datamodels(self) -> List[str]:
+    def get_excludes_datamodels(self) -> List[str]:  # noqa: UP006
         return []
 
     # Quicksight do not ingest datamodels
-    def get_includes_datamodels(self) -> List[str]:
+    def get_includes_datamodels(self) -> List[str]:  # noqa: UP006
         return []
 
     def expected_datamodel_lineage(self) -> int:
@@ -81,9 +82,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         """
         We are overriding this method because of diff.
         of 1 in source and sink records

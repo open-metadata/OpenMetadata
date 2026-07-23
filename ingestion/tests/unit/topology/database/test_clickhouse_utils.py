@@ -88,9 +88,7 @@ class TestClickhouseGeoTypes:
             "LineString",
             "MultiLineString",
         ):
-            assert (
-                geo_type in ch_ischema_names
-            ), f"{geo_type} not found in ischema_names"
+            assert geo_type in ch_ischema_names, f"{geo_type} not found in ischema_names"
 
     # --- Resolution via _get_column_type ---
 

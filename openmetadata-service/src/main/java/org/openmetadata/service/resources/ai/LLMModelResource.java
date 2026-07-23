@@ -60,7 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepository> {
   public static final String COLLECTION_PATH = "/v1/llmModels/";
   private final LLMModelMapper mapper = new LLMModelMapper();
-  static final String FIELDS = "owners,followers,tags,extension,domains";
+  static final String FIELDS = "owners,followers,tags,extension,domains,reviewers";
 
   @Override
   public LLMModel addHref(UriInfo uriInfo, LLMModel llmModel) {
@@ -418,24 +418,8 @@ public class LLMModelResource extends EntityResource<LLMModel, LLMModelRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the LLM Model", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET

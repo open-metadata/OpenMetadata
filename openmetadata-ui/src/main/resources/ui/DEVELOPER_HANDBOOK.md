@@ -136,26 +136,19 @@ components/
   - ✅ Good: Store the key `message: 'label.name'`, then translate in component using `t('label.name')`
   - This prevents initialization order issues and keeps non-component code pure
 
-## 14. UI Library (MUI) and Icons (@untitledui/icons)
+## 14. UI Library (@openmetadata/ui-core-components) and Icons (@untitledui/icons)
 
-- Primary UI library: Material UI (MUI v5).
+- Primary UI library: `@openmetadata/ui-core-components`, built on Untitled UI patterns with `react-aria-components` as the accessibility foundation.
 - Icon source: @untitledui/icons.
 
-Recommended project layout for MUI and icons:
-- Theme and providers:
-  - @src/styles/theme.ts         -> createTheme, overrides, palette, typography
-  - @src/styles/mui-overrides.less -> LESS file for any global CSS overrides (kept minimal)
-  - App.tsx should wrap the app with MUI ThemeProvider and CssBaseline:
-    - Place providers at top-level (App.tsx or @src/context/Providers.tsx).
+Usage guidance:
 - Component-level usage:
-  - Prefer MUI components for common primitives (Button, TextField, Menu, Dialog).
-  - Create small app-specific wrappers in @src/components/ui/ for commonly used variants:
-    - e.g., @src/components/ui/Button/ (wrap MUI Button to apply project defaults)
-- Styling with LESS styles and MUI:
-  - Prefer MUI theming and the `sx` prop for dynamic styling (colors, spacing).
-  - Use `.style.less` for component-specific static styles and layout that are easier in LESS.
-  - Avoid conflicting global CSS rules; favour scoped className+style.less together with `sx` for theme-aware overrides.
-  - For global MUI component overrides, use the theme `components` key in createTheme (not global CSS).
+  - Prefer components from `openmetadata-ui-core-components` (Button, Input, Select, Modal, Table, Tabs, etc.) over raw elements or other UI libraries.
+  - Do not use Ant Design for new UI work; see the top-level [CLAUDE.md](../../../../../CLAUDE.md) styling section for the full component/token reference.
+- Styling:
+  - Use Tailwind utility classes with the `tw:` prefix (e.g., `tw:flex`, `tw:text-sm`) to avoid conflicts with legacy Ant Design/LESS styles.
+  - Use CSS custom properties (design tokens) defined in `openmetadata-ui-core-components` for colors instead of hardcoded values.
+  - Use `.style.less` only for component-specific static styles/layout that predate the Tailwind migration.
 - Icons:
   - Import icons directly to keep bundle size small. Example:
     - import { IconName } from '@untitledui/icons';
@@ -165,14 +158,10 @@ Recommended project layout for MUI and icons:
   - Wrap icons in an Icon component if you need consistent sizing, color, or additional behavior:
     - @src/components/ui/Icon/Icon.tsx
 - Accessibility and ARIA:
-  - Use MUI's accessible primitives (IconButton with aria-label, role, etc.).
+  - Rely on `react-aria-components`' accessible primitives (already wired into `openmetadata-ui-core-components`).
   - Ensure icons used as interactive elements have accessible names or aria-hidden when decorative.
-- Testing with MUI:
-  - Provide a test render helper that wraps components with ThemeProvider and any required context:
-    - @src/test/utils/renderWithProviders.tsx
-  - Mock or configure MUI components where needed in Jest for stable snapshots.
 - Performance & bundle:
-  - Prefer named imports to maintain tree-shaking for MUI and icon packages.
+  - Prefer named imports to maintain tree-shaking icon packages.
   - Keep the icon re-export file limited to used icons; avoid exporting entire icon packs.
 
 ## 15. General Rules
@@ -183,6 +172,12 @@ Recommended project layout for MUI and icons:
 - Write clear, descriptive comments and JSDoc where needed
 - Use absolute imports from `@src/` (configure `tsconfig.json` paths)
 - Keep third-party code and wrappers in a separate folder if needed
+
+## 16. Forms
+
+- New forms use the `react-hook-form` + `react-aria` stack from `@openmetadata/ui-core-components` (`getField`/`FieldProp`/`FieldTypes`/`HookForm`/`FormFields`): a form is `FieldProp[]` config objects + RHF state + a pure values→payload transform.
+- Full reference: [docs/formutils.md](./docs/formutils.md) — field types, validation, composition, escape hatches, and the drawer caller pattern.
+- Do not use the legacy Ant Design `getField`/`generateFormFields` from `@utils/formUtils` for new forms.
 
 ---
 

@@ -16,7 +16,7 @@ SQARowSamplerMixin: SQLAlchemy-based row sampling (builds query, captures compil
 PandasFailedRowSamplerMixin: DataFrame-based row sampling (filters chunks via df.query())
 """
 
-from typing import Any, List, Tuple, cast
+from typing import Any, List, Tuple, cast  # noqa: UP035
 
 from sqlalchemy import inspect
 
@@ -28,7 +28,7 @@ FAILED_ROW_SAMPLE_SIZE = 50
 class PandasFailedRowSamplerMixin:
     """Mixin to fetch failed row samples from Pandas DataFrames"""
 
-    def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:
+    def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
         cols = None
         rows = []
         for chunk in self.runner():
@@ -66,9 +66,9 @@ class PandasFailedRowSamplerMixin:
 class SQARowSamplerMixin:
     """Mixin to fetch failed row samples from SQLAlchemy queries"""
 
-    def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:
+    def _get_failed_rows_sample(self) -> Tuple[List[str], List[List[Any]]]:  # noqa: UP006
         # pylint: disable=protected-access
-        self.runner = cast(QueryRunner, self.runner)
+        self.runner = cast(QueryRunner, self.runner)  # noqa: TC006
         cols = list(inspect(self.runner.dataset).c)
         _filter = self.filter()
         if isinstance(_filter, dict):
@@ -77,9 +77,7 @@ class SQARowSamplerMixin:
             query = self.runner._select_from_sample(*cols)
             query = query.filter(_filter)
 
-        self._inspection_query = str(
-            query.statement.compile(compile_kwargs={"literal_binds": True})
-        )
+        self._inspection_query = str(query.statement.compile(compile_kwargs={"literal_binds": True}))
 
         rows = query.limit(FAILED_ROW_SAMPLE_SIZE).all()
         return [col.name for col in cols], [list(row) for row in rows]

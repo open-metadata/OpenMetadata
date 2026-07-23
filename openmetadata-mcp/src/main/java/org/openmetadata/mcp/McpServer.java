@@ -12,12 +12,14 @@ import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.usage.McpUsageRecorder;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -27,8 +29,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
-  private static final String MCP_APP_NAME = "McpApplication";
-  private static final String DEFAULT_MCP_BOT_NAME = MCP_APP_NAME + "Bot";
+  private static final String DEFAULT_MCP_BOT_NAME = McpAppConstants.MCP_APP_NAME + "Bot";
 
   protected JwtFilter jwtFilter;
   protected Authorizer authorizer;
@@ -188,6 +189,15 @@ public class McpServer implements McpServerProvider {
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
 
+      // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
+      // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
+      // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
+      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
+          (req, resp, username, email, relayState) ->
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+      LOG.info("Registered MCP SAML callback handler for SAML SSO support");
+
       // Register MCP callback servlet unconditionally — SSO availability is checked at
       // request time, not startup time. This follows the same pattern as the regular auth
       // servlets (AuthCallbackServlet, AuthLoginServlet) which are always registered and
@@ -221,7 +231,7 @@ public class McpServer implements McpServerProvider {
     if (mcpBotName == null) {
       try {
         AbstractNativeApplication mcpApp =
-            ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
+            ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
         if (mcpApp != null && mcpApp.getApp().getBot() != null) {
           mcpBotName = mcpApp.getApp().getBot().getName();
         }
@@ -237,12 +247,26 @@ public class McpServer implements McpServerProvider {
     return new McpStatelessServerFeatures.SyncToolSpecification(
         tool,
         (context, req) -> {
+          CatalogSecurityContext securityContext =
+              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
+          String userName = securityContext.getUserPrincipal().getName();
+          String clientName =
+              (String)
+                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
           try {
-            CatalogSecurityContext securityContext =
-                jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
             ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
+            outcome =
+                toolContext.callToolWithMetadata(
+                    authorizer, limits, tool.name(), securityContext, req);
+            return outcome.result();
           } finally {
+            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
+                outcome != null ? outcome.errorCategory() : null;
+            McpUsageRecorder.record(
+                tool.name(), userName, success, latencyMs, category, clientName);
             ImpersonationContext.clear();
           }
         });

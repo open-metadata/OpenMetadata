@@ -15,13 +15,11 @@
  */
 export interface CreateTask {
     /**
-     * FQN of the entity this task is about.
+     * Entity link of the asset this task is about. Format: `<#E::{entityType}::{fqn}>`. The
+     * link is parsed and validated server-side; the target entity must exist and not be
+     * soft-deleted.
      */
     about?: string;
-    /**
-     * Type of the entity this task is about.
-     */
-    aboutType?: string;
     /**
      * FQNs of users or teams to assign this task to.
      */
@@ -356,6 +354,7 @@ export enum TaskType {
     IncidentResolution = "IncidentResolution",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
+    RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
     RequestApproval = "RequestApproval",
     Suggestion = "Suggestion",
     TagUpdate = "TagUpdate",

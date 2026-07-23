@@ -52,7 +52,7 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "actor": {
-      "description": "User or bot who performed the action.",
+      "description": "User or bot who performed the action. May be absent for system events or hard-deleted users.",
       "$ref": "../../type/entityReference.json"
     },
     "timestamp": {
@@ -88,6 +88,6 @@
       "$ref": "../../type/reaction.json#/definitions/reactionList"
     }
   },
-  "required": ["id", "eventType", "entity", "actor", "timestamp"],
+  "required": ["id", "eventType", "entity", "timestamp"],
   "additionalProperties": false
 }

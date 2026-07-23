@@ -11,6 +11,15 @@
  *  limitations under the License.
  */
 
+export const ADMONITION_TYPES = [
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+] as const;
+
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
@@ -19,6 +28,17 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
 export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+
+/**
+ * Custom property name validation:
+ * - Must start with an alphanumeric character
+ * - Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }
+ * - Disallowed: " * & < > : ^ $ \ / ~
+ *   ( / and ~ are reserved by JSON Pointer / RFC 6901 — interpolating them
+ *   into JSON Patch paths corrupts the path. )
+ */
+export const CUSTOM_PROPERTY_NAME_REGEX =
+  /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
  * Matches any string that does NOT contain the following:
@@ -43,6 +63,9 @@ export const MARKDOWN_MATCH_ID = /\$\(id="(.*?)"\)/;
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+
+export const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
 
@@ -69,9 +92,15 @@ export const INTEGER_ZERO_TO_HUNDRED_REGEX = /^(100|[1-9]?\d)$/;
 // Format: two lowercase letters optionally followed by hyphen and two uppercase letters
 export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 
-// Matches URLs (http/https with content, absolute paths with content, data URIs) OR filenames with image extensions
-// Filenames restricted to alphanumeric, hyphens, underscores, and dots for security
+// Matches URLs (http/https with content, absolute paths with content, data URIs),
+// relative paths with image extensions, or bare filenames with image extensions.
+// Filenames restricted to alphanumeric, hyphens, underscores, dots, and slashes.
 export const IMAGE_URL_PATTERN =
-  /^(https?:\/\/.+|\/[^\s]+|data:image\/.+)|^[\w\-.]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+  /^(https?:\/\/.+|\/(?!.*\.\.)[^\s]+|data:image\/.+)|^(?!.*\.\.)[\w\-./]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
 
 export const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
+
+export const ADMONITION_BLOCK_REGEX = new RegExp(
+  `^\\$\\$(${ADMONITION_TYPES.join('|')})\\n([\\s\\S]*?)\\n\\$\\$`,
+  'gm'
+);

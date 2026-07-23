@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Node } from 'reactflow';
+import type { Node } from 'reactflow';
 import {
   CONNECTION_MODAL_RULES,
   NODE_TYPE_MAPPINGS,

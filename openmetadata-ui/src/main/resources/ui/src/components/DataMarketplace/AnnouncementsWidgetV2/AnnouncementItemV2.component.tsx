@@ -13,10 +13,9 @@
 
 import { useMemo } from 'react';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import AnnouncementCardV1Content from '../../MyData/Widgets/AnnouncementsWidgetV1/AnnouncementCardV1/AnnouncementCardV1Content.component';
-
 interface AnnouncementItemV2Props {
   announcement: AnnouncementEntity;
   onClick: () => void;
@@ -72,8 +71,10 @@ const AnnouncementItemV2 = ({
         }
       }}>
       <AnnouncementCardV1Content
+        backgroundColor="var(--tw-color-utility-blue-dark-50)"
+        borderColor="var(--tw-color-utility-blue-dark-500)"
         columnName={columnName}
-        currentBackgroundColor="var(--color-utility-blue-100)"
+        currentBackgroundColor="var(--tw-color-utility-blue-dark-600)"
         description={description}
         entityFQN={entityFQN}
         entityIcon={entityIcon}

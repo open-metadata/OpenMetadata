@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 import ssl
 from pathlib import Path
 from typing import Optional
@@ -38,12 +39,13 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearch.
     BasicAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.search.elasticSearchConnection import (
-    ElasticsearchConnection,
+    ElasticsearchConnection as ElasticsearchConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN, UTF_8
@@ -59,7 +61,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -76,9 +78,7 @@ def _handle_ssl_context_by_value(ssl_config: SslConfig):
     init_staging_dir(ssl_config.certificates.stagingDir)
     if ssl_config.certificates.caCertValue:
         ca_cert = Path(ssl_config.certificates.stagingDir, CA_CERT_FILE_NAME)
-        write_data_to_file(
-            ca_cert, ssl_config.certificates.caCertValue.get_secret_value()
-        )
+        write_data_to_file(ca_cert, ssl_config.certificates.caCertValue.get_secret_value())
     if ssl_config.certificates.clientCertValue:
         client_cert = Path(ssl_config.certificates.stagingDir, CLIENT_CERT_FILE_NAME)
         write_data_to_file(
@@ -116,13 +116,9 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
         return None
 
     if isinstance(ssl_config.certificates, SslCertificatesByValues):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-            ssl_config=ssl_config
-        )
+        ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=ssl_config)
     elif isinstance(ssl_config.certificates, SslCertificatesByPath):
-        ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-            ssl_config=ssl_config
-        )
+        ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=ssl_config)
 
     if client_cert and private_key:
         cert_chain = (client_cert, private_key)
@@ -136,88 +132,80 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
             cert=cert_chain,
             verify=ca_cert,
         )
-        return ssl_context
+        return ssl_context  # noqa: RET504
 
     return ssl._create_unverified_context()  # pylint: disable=protected-access
 
 
-def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
-    """
-    Create connection
-    """
-    basic_auth = None
-    api_key = None
-    ssl_context = None
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
-        basic_auth = (
-            connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elasticsearch]):
+    def _get_client(self) -> Elasticsearch:
+        connection = self.service_connection
+        basic_auth = None
+        api_key = None
+        ssl_context = None
+        if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
+            basic_auth = (
+                connection.authType.username,
+                connection.authType.password.get_secret_value() if connection.authType.password else None,
+            )
+
+        if isinstance(connection.authType, ApiKeyAuthentication):
+            if connection.authType.apiKeyId and connection.authType.apiKey:
+                api_key = (
+                    connection.authType.apiKeyId,
+                    connection.authType.apiKey.get_secret_value(),
+                )
+            elif connection.authType.apiKey:
+                api_key = connection.authType.apiKey.get_secret_value()
+
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        if connection.sslConfig:
+            ssl_context = get_ssl_context(connection.sslConfig)
+
+        return Elasticsearch(
+            str(connection.hostPort),
+            basic_auth=basic_auth,
+            api_key=api_key,
+            ssl_context=ssl_context,
+            **connection.connectionArguments.root,  # pyright: ignore[reportCallIssue]
         )
 
-    if isinstance(connection.authType, ApiKeyAuthentication):
-        if connection.authType.apiKeyId and connection.authType.apiKey:
-            api_key = (
-                connection.authType.apiKeyId,
-                connection.authType.apiKey.get_secret_value(),
-            )
-        elif connection.authType.apiKey:
-            api_key = connection.authType.apiKey.get_secret_value()
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    if not connection.connectionArguments:
-        connection.connectionArguments = init_empty_connection_arguments()
-
-    if connection.sslConfig:
-        ssl_context = get_ssl_context(connection.sslConfig)
-
-    return Elasticsearch(
-        str(connection.hostPort),
-        basic_auth=basic_auth,
-        api_key=api_key,
-        ssl_context=ssl_context,
-        **connection.connectionArguments.root,
-    )
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    client: Elasticsearch,
-    service_connection: ElasticsearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-
-    def test_get_search_indexes():
-        try:
-            result = client.indices.get_alias(expand_wildcards="open")
-            if result is None:
+        def test_get_search_indexes():
+            try:
+                result = client.indices.get_alias(expand_wildcards="open")
+                if result is None:
+                    raise ConnectionError("Failed to retrieve search indexes from Elasticsearch")  # noqa: TRY301
+                return result  # noqa: TRY300
+            except Exception as exc:
                 raise ConnectionError(
-                    "Failed to retrieve search indexes from Elasticsearch"
-                )
-            return result
-        except Exception as exc:
-            raise ConnectionError(
-                f"Unable to connect to Elasticsearch or retrieve indexes: {exc}. "
-                "Please check your Elasticsearch connection configuration and cluster health."
-            ) from exc
+                    f"Unable to connect to Elasticsearch or retrieve indexes: {exc}. "
+                    "Please check your Elasticsearch connection configuration and cluster health."
+                ) from exc
 
-    test_fn = {
-        "CheckAccess": client.info,
-        "GetSearchIndexes": test_get_search_indexes,
-    }
+        test_fn = {
+            "CheckAccess": client.info,
+            "GetSearchIndexes": test_get_search_indexes,
+        }
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

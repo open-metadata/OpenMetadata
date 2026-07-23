@@ -229,9 +229,13 @@ class TaskWorkflowLifecycleResolverTest {
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
             TaskEntityType.IncidentResolution));
     assertEquals(
-        "RecognizerFeedbackReviewWorkflow",
+        "DataQualityReviewTaskWorkflow",
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
             TaskEntityType.DataQualityReview));
+    assertEquals(
+        "RecognizerFeedbackReviewWorkflow",
+        TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
+            TaskEntityType.RecognizerFeedbackApproval));
     assertEquals(
         "CustomTaskWorkflow",
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(TaskEntityType.CustomTask));
@@ -255,6 +259,18 @@ class TaskWorkflowLifecycleResolverTest {
         TaskCategory.Approval,
         TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
             "GlossaryApprovalTaskWorkflow"));
+    assertEquals(
+        TaskEntityType.RecognizerFeedbackApproval,
+        TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+            "RecognizerFeedbackReviewWorkflow"));
+    assertEquals(
+        TaskEntityType.DataQualityReview,
+        TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+            "DataQualityReviewTaskWorkflow"));
+    assertEquals(
+        TaskCategory.Review,
+        TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
+            "RecognizerFeedbackReviewWorkflow"));
     assertEquals(
         TaskEntityType.CustomTask,
         TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef("UnknownWorkflow"));
@@ -316,6 +332,33 @@ class TaskWorkflowLifecycleResolverTest {
           assertInstanceOf(Map.class, ((List<?>) currentDomain.get("oneOf")).getFirst())
               .get("type"));
       assertEquals("object", newDomain.get("type"));
+    }
+  }
+
+  @Test
+  void builtInDataAccessRequestSchemaAcceptsNumericExpirationDate() {
+    TaskFormSchemaRepository repository = mock(TaskFormSchemaRepository.class);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(repository);
+      when(repository.resolve(
+              TaskEntityType.DataAccessRequest.value(), TaskCategory.DataAccess.value(), null))
+          .thenReturn(Optional.empty());
+
+      TaskFormSchema schema =
+          TaskWorkflowLifecycleResolver.resolveSchema(
+                  TaskEntityType.DataAccessRequest, TaskCategory.DataAccess, null)
+              .orElseThrow();
+
+      Map<?, ?> properties =
+          assertInstanceOf(
+              Map.class, schema.getFormSchema().getAdditionalProperties().get("properties"));
+      Map<?, ?> expirationDate = assertInstanceOf(Map.class, properties.get("expirationDate"));
+
+      assertEquals("number", expirationDate.get("type"));
+      assertFalse(properties.containsKey("duration"));
     }
   }
 

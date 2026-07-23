@@ -40,12 +40,14 @@ import org.openmetadata.service.migration.context.MigrationOps;
  * Even for pure Java migrations, the directory structure MUST exist - SQL files can be empty but the
  * directory structure is mandatory.
  *
- * <p>Java migrations must follow this naming convention:
+ * <p>Native OpenMetadata Java migrations must follow this naming convention:
  * {@code org.openmetadata.service.migration.[dbPackageName].[versionPackage].Migration}
  * Example: {@code org.openmetadata.service.migration.postgres.v120.Migration}
  *
- * In collate:
- * {@code io.collate.service.migration.[dbPackageName].[versionPackage].Migration}
+ * <p>Migrations that ship outside of OpenMetadata (extension migration directories) are resolved
+ * by implementations of {@link MigrationProcessExtensionProvider} registered via
+ * {@code java.util.ServiceLoader}. When no provider handles a given extension version, the
+ * workflow falls back to {@link MigrationProcessImpl} (SQL changes only, no Java data migration).
  *
  * <p>Java migrations should extend {@code MigrationProcessImpl} and override required methods,
  * particularly {@code runDataMigration()} and {@code getMigrationOps()}.

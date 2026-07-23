@@ -11,9 +11,10 @@
 """
 SSRS source module
 """
+
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -100,10 +101,10 @@ DATA_PROVIDER_DIALECT = {
 
 @dataclass(frozen=True)
 class _LineageContext:
-    db_service_name: Optional[str]
-    db_service_entity: Optional[DatabaseService]
-    prefix_database: Optional[str]
-    prefix_schema: Optional[str]
+    db_service_name: Optional[str]  # noqa: UP045
+    db_service_entity: Optional[DatabaseService]  # noqa: UP045
+    prefix_database: Optional[str]  # noqa: UP045
+    prefix_schema: Optional[str]  # noqa: UP045
     dialect: Dialect
 
 
@@ -116,14 +117,12 @@ class SsrsSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ) -> "SsrsSource":
         config = WorkflowSource.model_validate(config_dict)
         connection: SsrsConnection = config.serviceConnection.root.config
         if not isinstance(connection, SsrsConnection):
-            raise InvalidSourceException(
-                f"Expected SsrsConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected SsrsConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(
@@ -132,13 +131,11 @@ class SsrsSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.folder_path_map: Dict[str, str] = {}
-        self._current_rdl: Optional[Tuple[str, SsrsReportDefinition]] = None
+        self.folder_path_map: Dict[str, str] = {}  # noqa: UP006
+        self._current_rdl: Optional[Tuple[str, SsrsReportDefinition]] = None  # noqa: UP006, UP045
 
     def prepare(self):
-        self.folder_path_map = {
-            folder.path: folder.name for folder in self.client.get_folders()
-        }
+        self.folder_path_map = {folder.path: folder.name for folder in self.client.get_folders()}
         return super().prepare()
 
     def get_dashboards_list(self) -> Iterable[SsrsReport]:
@@ -151,12 +148,10 @@ class SsrsSource(DashboardServiceSource):
     def get_dashboard_name(self, dashboard: SsrsReport) -> str:
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: SsrsReport) -> Optional[SsrsReport]:
+    def get_dashboard_details(self, dashboard: SsrsReport) -> Optional[SsrsReport]:  # noqa: UP045
         return dashboard
 
-    def _get_report_definition(
-        self, dashboard: SsrsReport
-    ) -> Optional[SsrsReportDefinition]:
+    def _get_report_definition(self, dashboard: SsrsReport) -> Optional[SsrsReportDefinition]:  # noqa: UP045
         """Fetch and cache the RDL for the dashboard currently being processed.
 
         Uses a single-entry cache keyed by report id so memory is bounded at
@@ -178,14 +173,12 @@ class SsrsSource(DashboardServiceSource):
             parsed = parse_rdl(rdl_bytes)
         except ValueError as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                "Could not parse RDL for report [%s]: %s", dashboard.name, exc
-            )
+            logger.warning("Could not parse RDL for report [%s]: %s", dashboard.name, exc)
             return None
         self._current_rdl = (dashboard.id, parsed)
         return parsed
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
         try:
             if isinstance(dashboard_details, SsrsReport) and dashboard_details.path:
                 parts = dashboard_details.path.rsplit("/", 1)
@@ -196,9 +189,7 @@ class SsrsSource(DashboardServiceSource):
             logger.warning("Error fetching project name: %s", exc)
         return None
 
-    def get_owner_ref(
-        self, dashboard_details: SsrsReport
-    ) -> Optional[EntityReferenceList]:
+    def get_owner_ref(self, dashboard_details: SsrsReport) -> Optional[EntityReferenceList]:  # noqa: UP045
         """Resolve the report's ``CreatedBy`` (``DOMAIN\\user``) to an OpenMetadata user.
 
         Defensive: missing owner, unknown user, or lookup failure are all logged and
@@ -209,52 +200,39 @@ class SsrsSource(DashboardServiceSource):
             owner_name = self._normalize_owner(dashboard_details.created_by)
             if not owner_name:
                 return None
-            owner_ref = self.metadata.get_reference_by_name(
-                name=owner_name, is_owner=True
-            )
+            owner_ref = self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
             if owner_ref is None:
                 logger.debug(
-                    "Owner [%s] for report [%s] not found in OpenMetadata; "
-                    "continuing without ownership",
+                    "Owner [%s] for report [%s] not found in OpenMetadata; continuing without ownership",
                     owner_name,
                     dashboard_details.name,
                 )
-            return owner_ref
+            return owner_ref  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                "Could not resolve owner for report [%s]: %s; "
-                "continuing without ownership",
+                "Could not resolve owner for report [%s]: %s; continuing without ownership",
                 dashboard_details.name,
                 exc,
             )
         return None
 
     @staticmethod
-    def _normalize_owner(raw: Optional[str]) -> Optional[str]:
+    def _normalize_owner(raw: Optional[str]) -> Optional[str]:  # noqa: UP045
         if not raw:
             return None
         _, sep, user = raw.rpartition("\\")
         candidate = user if sep else raw
         return candidate.strip() or None
 
-    def yield_dashboard(
-        self, dashboard_details: SsrsReport
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: SsrsReport) -> Iterable[Either[CreateDashboardRequest]]:
         try:
-            dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}"
-                f"/report{dashboard_details.path}"
-            )
+            dashboard_url = f"{clean_uri(self.service_connection.hostPort)}/report{dashboard_details.path}"
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -281,26 +259,17 @@ class SsrsSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(
-        self, dashboard_details: SsrsReport
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: SsrsReport) -> Iterable[Either[CreateChartRequest]]:
         try:
             chart_name = dashboard_details.name
             if filter_by_chart(self.source_config.chartFilterPattern, chart_name):
                 self.status.filter(chart_name, "Chart Pattern not allowed")
                 return
-            chart_url = (
-                f"{clean_uri(self.service_connection.hostPort)}"
-                f"/report{dashboard_details.path}"
-            )
+            chart_url = f"{clean_uri(self.service_connection.hostPort)}/report{dashboard_details.path}"
             chart_request = CreateChartRequest(
                 name=EntityName(f"{dashboard_details.id}_chart"),
                 displayName=chart_name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 chartType=ChartType.Other.value,
                 sourceUrl=SourceUrl(chart_url),
                 service=self.context.get().dashboard_service,
@@ -316,9 +285,7 @@ class SsrsSource(DashboardServiceSource):
                 )
             )
 
-    def yield_datamodel(
-        self, dashboard_details: SsrsReport
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+    def yield_datamodel(self, dashboard_details: SsrsReport) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if not self.source_config.includeDataModels:
             return
         rdl = self._get_report_definition(dashboard_details)
@@ -326,9 +293,7 @@ class SsrsSource(DashboardServiceSource):
             return
         for dataset in rdl.data_sets:
             try:
-                datamodel_request = self._build_datamodel_request(
-                    dashboard_details, dataset
-                )
+                datamodel_request = self._build_datamodel_request(dashboard_details, dataset)
                 if datamodel_request is None:
                     continue
                 yield Either(right=datamodel_request)
@@ -338,8 +303,7 @@ class SsrsSource(DashboardServiceSource):
                     left=StackTraceError(
                         name=f"{dashboard_details.name}.{dataset.name}",
                         error=(
-                            f"Error yielding DataModel [{dataset.name}] for report "
-                            f"[{dashboard_details.name}]: {exc}"
+                            f"Error yielding DataModel [{dataset.name}] for report [{dashboard_details.name}]: {exc}"
                         ),
                         stackTrace=traceback.format_exc(),
                     )
@@ -347,13 +311,9 @@ class SsrsSource(DashboardServiceSource):
 
     def _build_datamodel_request(
         self, dashboard_details: SsrsReport, dataset: SsrsDataSet
-    ) -> Optional[CreateDashboardDataModelRequest]:
+    ) -> Optional[CreateDashboardDataModelRequest]:  # noqa: UP045
         datamodel_name = self._datamodel_name(dashboard_details.id, dataset.name)
-        sql = (
-            dataset.command_text
-            if dataset.command_text and dataset.command_type not in SKIP_COMMAND_TYPES
-            else None
-        )
+        sql = dataset.command_text if dataset.command_text and dataset.command_type not in SKIP_COMMAND_TYPES else None
         return CreateDashboardDataModelRequest(
             name=EntityName(datamodel_name),
             displayName=dataset.name,
@@ -369,8 +329,8 @@ class SsrsSource(DashboardServiceSource):
         return f"{report_id}.{dataset_name}"
 
     @staticmethod
-    def _build_datamodel_columns(dataset: SsrsDataSet) -> List[Column]:
-        columns: List[Column] = []
+    def _build_datamodel_columns(dataset: SsrsDataSet) -> List[Column]:  # noqa: UP006
+        columns: List[Column] = []  # noqa: UP006
         for field_info in dataset.fields:
             try:
                 columns.append(
@@ -393,7 +353,7 @@ class SsrsSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: SsrsReport,
-        db_service_prefix: Optional[str] = None,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         rdl = self._get_report_definition(dashboard_details)
         if not rdl:
@@ -419,9 +379,7 @@ class SsrsSource(DashboardServiceSource):
                 dialect=self._resolve_dialect(db_service_entity, datasource),
             )
             try:
-                yield from self._yield_dataset_lineage(
-                    dashboard_details, dataset, datasource, context
-                )
+                yield from self._yield_dataset_lineage(dashboard_details, dataset, datasource, context)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -438,7 +396,7 @@ class SsrsSource(DashboardServiceSource):
         self,
         dashboard_details: SsrsReport,
         dataset: SsrsDataSet,
-        datasource: Optional[SsrsDataSource],
+        datasource: Optional[SsrsDataSource],  # noqa: UP045
         context: _LineageContext,
     ) -> Iterable[Either[AddLineageRequest]]:
         if not self._is_dataset_lineage_eligible(dataset, datasource):
@@ -469,13 +427,9 @@ class SsrsSource(DashboardServiceSource):
             )
 
     @staticmethod
-    def _is_dataset_lineage_eligible(
-        dataset: SsrsDataSet, datasource: Optional[SsrsDataSource]
-    ) -> bool:
+    def _is_dataset_lineage_eligible(dataset: SsrsDataSet, datasource: Optional[SsrsDataSource]) -> bool:  # noqa: UP045
         if not dataset.command_text:
-            logger.debug(
-                "Skipping lineage for dataset [%s]: empty CommandText", dataset.name
-            )
+            logger.debug("Skipping lineage for dataset [%s]: empty CommandText", dataset.name)
             return False
         if dataset.command_type in SKIP_COMMAND_TYPES:
             logger.debug(
@@ -502,19 +456,15 @@ class SsrsSource(DashboardServiceSource):
 
     def _resolve_lineage_target(
         self, dashboard_details: SsrsReport, dataset: SsrsDataSet
-    ) -> Optional[Union[DashboardDataModel, Dashboard]]:
+    ) -> Optional[Union[DashboardDataModel, Dashboard]]:  # noqa: UP007, UP045
         if self.source_config.includeDataModels:
             datamodel_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=DashboardDataModel,
                 service_name=self.context.get().dashboard_service,
-                data_model_name=self._datamodel_name(
-                    dashboard_details.id, dataset.name
-                ),
+                data_model_name=self._datamodel_name(dashboard_details.id, dataset.name),
             )
-            return self.metadata.get_by_name(
-                entity=DashboardDataModel, fqn=datamodel_fqn
-            )
+            return self.metadata.get_by_name(entity=DashboardDataModel, fqn=datamodel_fqn)
         dashboard_fqn = fqn.build(
             self.metadata,
             entity_type=Dashboard,
@@ -523,32 +473,24 @@ class SsrsSource(DashboardServiceSource):
         )
         return self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
 
-    def _resolve_db_service(
-        self, db_service_name: Optional[str]
-    ) -> Optional[DatabaseService]:
+    def _resolve_db_service(self, db_service_name: Optional[str]) -> Optional[DatabaseService]:  # noqa: UP045
         if not db_service_name:
             return None
         try:
-            return self.metadata.get_by_name(
-                entity=DatabaseService, fqn=db_service_name
-            )
+            return self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
         except Exception as exc:
             logger.debug("Could not resolve DB service [%s]: %s", db_service_name, exc)
             return None
 
     @staticmethod
     def _resolve_dialect(
-        db_service_entity: Optional[DatabaseService],
-        datasource: Optional[SsrsDataSource] = None,
+        db_service_entity: Optional[DatabaseService],  # noqa: UP045
+        datasource: Optional[SsrsDataSource] = None,  # noqa: UP045
     ) -> Dialect:
         if db_service_entity and db_service_entity.serviceType:
-            return ConnectionTypeDialectMapper.dialect_of(
-                db_service_entity.serviceType.value
-            )
+            return ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
         if datasource and datasource.data_provider:
-            provider_dialect = DATA_PROVIDER_DIALECT.get(
-                datasource.data_provider.upper()
-            )
+            provider_dialect = DATA_PROVIDER_DIALECT.get(datasource.data_provider.upper())
             if provider_dialect is not None:
                 return provider_dialect
         return Dialect.TSQL
@@ -556,37 +498,29 @@ class SsrsSource(DashboardServiceSource):
     def _yield_table_to_target_lineage(
         self,
         source_table: str,
-        to_entity: Union[DashboardDataModel, Dashboard],
+        to_entity: Union[DashboardDataModel, Dashboard],  # noqa: UP007
         command_text: str,
         context: _LineageContext,
-        default_database: Optional[str],
+        default_database: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         split = fqn.split_table_name(source_table)
         table_name = split.get("table")
         if not table_name:
             return
-        database_name = (
-            context.prefix_database or split.get("database") or default_database
-        )
+        database_name = context.prefix_database or split.get("database") or default_database
         schema_name = context.prefix_schema or split.get("database_schema")
         if context.db_service_entity and database_name:
-            database_name = get_database_name_for_lineage(
-                context.db_service_entity, database_name
-            )
+            database_name = get_database_name_for_lineage(context.db_service_entity, database_name)
         fqn_search_string = build_es_fqn_search_string(
             service_name=context.db_service_name or "*",
             database_name=database_name,
             schema_name=schema_name,
             table_name=table_name,
         )
-        table_entity = self.metadata.search_in_any_service(
-            entity_type=Table, fqn_search_string=fqn_search_string
-        )
+        table_entity = self.metadata.search_in_any_service(entity_type=Table, fqn_search_string=fqn_search_string)
         if not table_entity:
             return
-        lineage = self._get_add_lineage_request(
-            to_entity=to_entity, from_entity=table_entity, sql=command_text
-        )
+        lineage = self._get_add_lineage_request(to_entity=to_entity, from_entity=table_entity, sql=command_text)
         if lineage is not None:
             yield lineage
 

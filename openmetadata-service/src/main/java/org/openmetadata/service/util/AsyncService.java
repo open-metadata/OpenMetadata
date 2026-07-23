@@ -1,68 +1,42 @@
 package org.openmetadata.service.util;
 
-import java.util.List;
-import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 
+/**
+ * Single virtual-thread executor for all server-side async dispatch (CSV export/import,
+ * bulk asset ops, async delete/restore).
+ *
+ * <p>Back-pressure is intentionally <em>not</em> enforced here. The old semaphore-based
+ * bounded wrapper was fighting Project Loom — virtual threads scale to millions and are
+ * basically free, while the real bottleneck under load is the JDBI connection pool. Letting
+ * tasks queue on connection acquisition (with the pool's own timeout) is both simpler and
+ * more accurate than guessing at "how many concurrent tasks ≈ connection pool capacity".
+ *
+ * <p>If a future use case genuinely needs admission control, it should live at the caller
+ * boundary (e.g., a token bucket per user, or a per-operation queue with rejection) rather
+ * than at this shared executor.
+ */
 @Slf4j
 public class AsyncService {
   private static AsyncService instance;
   private final ExecutorService executorService;
-  private final Semaphore concurrencyLimiter;
-  @Getter private final int maxConcurrency;
 
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final long DEFAULT_INITIAL_RETRY_DELAY_MS = 1000;
   private static final long DEFAULT_OPERATION_TIMEOUT_SECONDS = 60;
-
   private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
 
   private AsyncService() {
-    maxConcurrency = resolveMaxConcurrency();
-    concurrencyLimiter = new Semaphore(maxConcurrency);
     executorService =
-        new BoundedExecutorService(
-            Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory()),
-            concurrencyLimiter);
-    LOG.info("AsyncService initialized with max concurrency: {}", maxConcurrency);
-  }
-
-  private static int resolveMaxConcurrency() {
-    String env = System.getenv("ASYNC_SERVICE_MAX_CONCURRENCY");
-    if (env != null) {
-      try {
-        int value = Integer.parseInt(env.trim());
-        if (value > 0) {
-          return value;
-        }
-      } catch (NumberFormatException ignored) {
-      }
-    }
-    int cpuBudget = Runtime.getRuntime().availableProcessors() * 2;
-    try {
-      if (OpenMetadataApplicationConfigHolder.isInitialized()) {
-        int poolSize =
-            OpenMetadataApplicationConfigHolder.getInstance().getDataSourceFactory().getMaxSize();
-        if (poolSize > 0) {
-          return Math.max(4, Math.min(cpuBudget, poolSize / 3));
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn(
-          "Could not determine database pool size, using CPU-based concurrency budget: {}",
-          e.getMessage());
-    }
-    return Math.max(4, cpuBudget);
+        Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory());
+    LOG.info("AsyncService initialized (virtual-thread-per-task executor)");
   }
 
   public static synchronized AsyncService getInstance() {
@@ -95,7 +69,7 @@ public class AsyncService {
   }
 
   public void shutdown() {
-    LOG.info("Shutting down AsyncService executor (max concurrency: {})", maxConcurrency);
+    LOG.info("Shutting down AsyncService executor");
     executorService.shutdown();
     try {
       if (!executorService.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -232,64 +206,5 @@ public class AsyncService {
 
     throw new RuntimeException(
         String.format("Failed to %s %s", operationName.toLowerCase(), context), lastException);
-  }
-
-  /**
-   * ExecutorService wrapper that enforces concurrency limits via a semaphore. Every task submitted
-   * through any method (execute, submit, invokeAll, invokeAny) acquires a permit before running and
-   * releases it on completion. This ensures ALL callers — including those using getExecutorService()
-   * directly — are bounded.
-   */
-  private static class BoundedExecutorService extends AbstractExecutorService {
-    private final ExecutorService delegate;
-    private final Semaphore semaphore;
-
-    BoundedExecutorService(ExecutorService delegate, Semaphore semaphore) {
-      this.delegate = delegate;
-      this.semaphore = semaphore;
-    }
-
-    @Override
-    public void execute(Runnable command) {
-      delegate.execute(
-          () -> {
-            try {
-              semaphore.acquire();
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-              throw new RuntimeException("Interrupted waiting for concurrency permit", e);
-            }
-            try {
-              command.run();
-            } finally {
-              semaphore.release();
-            }
-          });
-    }
-
-    @Override
-    public void shutdown() {
-      delegate.shutdown();
-    }
-
-    @Override
-    public List<Runnable> shutdownNow() {
-      return delegate.shutdownNow();
-    }
-
-    @Override
-    public boolean isShutdown() {
-      return delegate.isShutdown();
-    }
-
-    @Override
-    public boolean isTerminated() {
-      return delegate.isTerminated();
-    }
-
-    @Override
-    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-      return delegate.awaitTermination(timeout, unit);
-    }
   }
 }

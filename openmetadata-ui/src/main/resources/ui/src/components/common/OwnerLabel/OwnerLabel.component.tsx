@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerTeamList } from '../OwnerTeamList/OwnerTeamList.component';
@@ -23,6 +24,7 @@ import OwnerUserList from '../OwnerUserList/OwnerUserList.component';
 import OwnerUserTeamList from '../OwnerUserTeamList/OwnerUserTeamList.component';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './owner-label.less';
+import { OwnerAvatarStack } from './OwnerAvatarStack.component';
 import { OwnerLabelProps } from './OwnerLabel.interface';
 
 export const OwnerLabel = ({
@@ -73,10 +75,9 @@ export const OwnerLabel = ({
             {showLabel && (
               <Typography
                 as="span"
-                className={classNames(
-                  className,
-                  'tw:mb-0 tw:font-medium tw:text-brand-700'
-                )}>
+                className={classNames(className, 'tw:mb-0 tw:text-brand-700')}
+                size="text-sm"
+                weight="medium">
                 {placeHolder ?? t('label.owner-plural')}
               </Typography>
             )}
@@ -134,38 +135,65 @@ export const OwnerLabel = ({
       data-testid="owner-label">
       {ownerElementsNonCompactView}
       <div className="tw:flex tw:items-center tw:justify-center tw:max-w-full">
-        {isMultipleUserAndTeam && (
-          <OwnerUserTeamList
-            avatarSize={avatarSize}
-            className={className}
-            hasPermission={hasPermission}
-            isAssignee={isAssignee}
-            isCompactView={isCompactView}
-            ownerDisplayName={ownerDisplayName}
-            owners={owners}
-            placement={placement}
-            onEditClick={onEditClick}
-          />
-        )}
+        {!isCompactView ? (
+          <>
+            <OwnerAvatarStack
+              avatarSize={avatarSize}
+              className={className}
+              maxVisibleOwners={maxVisibleOwners}
+              ownerDisplayName={ownerDisplayName}
+              owners={owners}
+              placement={placement}
+            />
+            {hasPermission && isAssignee && onEditClick && (
+              <button
+                aria-label={t('label.edit-entity', {
+                  entity: t('label.assignee-plural'),
+                })}
+                className="owner-avatar-stack-edit"
+                data-testid="edit-assignees"
+                type="button"
+                onClick={onEditClick}>
+                <EditIcon height={14} width={14} />
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {isMultipleUserAndTeam && (
+              <OwnerUserTeamList
+                avatarSize={avatarSize}
+                className={className}
+                hasPermission={hasPermission}
+                isAssignee={isAssignee}
+                isCompactView={isCompactView}
+                ownerDisplayName={ownerDisplayName}
+                owners={owners}
+                placement={placement}
+                onEditClick={onEditClick}
+              />
+            )}
 
-        {isMultipleTeam && (
-          <OwnerTeamList
-            avatarSize={avatarSize}
-            ownerDisplayName={ownerDisplayName}
-            owners={owners}
-          />
-        )}
+            {isMultipleTeam && (
+              <OwnerTeamList
+                avatarSize={avatarSize}
+                ownerDisplayName={ownerDisplayName}
+                owners={owners}
+              />
+            )}
 
-        {isMultipleUser && (
-          <OwnerUserList
-            avatarSize={avatarSize}
-            className={className}
-            isCompactView={isCompactView}
-            maxVisibleOwners={maxVisibleOwners}
-            ownerDisplayName={ownerDisplayName}
-            ownerLabelClassName={ownerLabelClassName}
-            owners={owners}
-          />
+            {isMultipleUser && (
+              <OwnerUserList
+                avatarSize={avatarSize}
+                className={className}
+                isCompactView={isCompactView}
+                maxVisibleOwners={maxVisibleOwners}
+                ownerDisplayName={ownerDisplayName}
+                ownerLabelClassName={ownerLabelClassName}
+                owners={owners}
+              />
+            )}
+          </>
         )}
       </div>
       {isCompactView && onUpdate && (

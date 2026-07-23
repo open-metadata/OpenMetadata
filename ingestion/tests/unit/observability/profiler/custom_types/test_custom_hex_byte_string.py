@@ -73,15 +73,11 @@ class TestMemoryviewHandling:
         assert isinstance(result, str)
 
     def test_process_result_value_preserves_memoryview_content(self, hex_byte_string):
-        result = hex_byte_string.process_result_value(
-            memoryview(b"hello world"), dialect=None
-        )
+        result = hex_byte_string.process_result_value(memoryview(b"hello world"), dialect=None)
         assert "hello world" in result
 
     def test_process_result_value_memoryview_null_byte_stripped(self, hex_byte_string):
-        result = hex_byte_string.process_result_value(
-            memoryview(b"hel\x00lo"), dialect=None
-        )
+        result = hex_byte_string.process_result_value(memoryview(b"hel\x00lo"), dialect=None)
         assert "\x00" not in result
 
 

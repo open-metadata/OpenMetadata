@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
@@ -21,14 +21,18 @@ import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
-export const getMetrics = async (params: ListParams) => {
+export const getMetrics = async (
+  params: ListParams,
+  config?: Pick<AxiosRequestConfig, 'signal'>
+) => {
   const response = await APIClient.get<PagingResponse<Metric[]>>(`/metrics`, {
     params: {
       ...params,
     },
+    signal: config?.signal,
   });
 
   return response.data;
@@ -68,13 +72,9 @@ export const restoreMetric = async (id: string) => {
   return response.data;
 };
 
-export const getMetricVersions = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getMetricVersions = async (id: string) => {
   const response = await APIClient.get<EntityHistory>(
-    `/metrics/${id}/versions`,
-    { params }
+    `/metrics/${id}/versions`
   );
 
   return response.data;
@@ -124,6 +124,31 @@ export const createMetric = async (data: CreateMetric) => {
     '/metrics',
     data
   );
+
+  return response.data;
+};
+
+export const exportMetricDetailsInCSV = async (fqn: string) => {
+  const response = await APIClient.get(
+    `/metrics/name/${getEncodedFqn(fqn)}/exportAsync`
+  );
+
+  return response.data;
+};
+
+// Synchronous export used only to LOAD rows into the Bulk Edit grid. Unlike the
+// async export it does NOT create a background job (so it never appears in the
+// Jobs tray) and returns the CSV string directly for the wizard to parse.
+export const exportMetricDetailsInCSVSync = async (fqn: string) => {
+  const response = await APIClient.get<string>(
+    `/metrics/name/${getEncodedFqn(fqn)}/export`
+  );
+
+  return response.data;
+};
+
+export const deleteMetricAsync = async (id: string) => {
+  const response = await APIClient.delete(`/metrics/async/${id}`);
 
   return response.data;
 };

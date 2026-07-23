@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/policyAgentPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PolicyAgentPipeline",
+  "description": "Policy Agent Pipeline Configuration. Applies access grants against the source system.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.metadataIngestion.PolicyAgentPipeline",
+  "definitions": {
+    "policyAgentConfigType": {
+      "description": "Policy Agent Pipeline type",
+      "type": "string",
+      "enum": ["PolicyAgent"],
+      "default": "PolicyAgent"
+    },
+    "policy": {
+      "description": "A single access grant entry. The per-service shape lives under `config`.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.policyagent.Policy",
+      "properties": {
+        "id": {
+          "description": "Unique id of the policy entry.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "config": {
+          "description": "Per-service-type policy configuration.",
+          "oneOf": [
+            {
+              "$ref": "policyagentconfig/databasePolicyConfig.json"
+            }
+          ]
+        }
+      },
+      "required": ["id", "config"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/policyAgentConfigType",
+      "default": "PolicyAgent"
+    },
+    "policies": {
+      "description": "List of access grants to apply on the source.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/policy"
+      }
+    }
+  },
+  "required": ["type", "policies"],
+  "additionalProperties": false
+}

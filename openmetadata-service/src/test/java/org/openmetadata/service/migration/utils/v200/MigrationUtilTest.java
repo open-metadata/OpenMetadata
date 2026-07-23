@@ -17,24 +17,34 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 class MigrationUtilTest {
@@ -46,13 +56,231 @@ class MigrationUtilTest {
   }
 
   @Test
-  void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissing() {
-    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).one())
+  void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissing() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+    when(handle
+            .createQuery("SELECT 1 FROM thread_entity_legacy LIMIT 1")
+            .mapTo(Integer.class)
+            .findFirst())
         .thenThrow(new RuntimeException("missing table"));
 
-    assertDoesNotThrow(() -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle));
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
 
     verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateThreadTasksToTaskEntitySkipsWhenThreadTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+    when(handle
+            .createQuery("SELECT 1 FROM thread_entity_legacy LIMIT 1")
+            .mapTo(Integer.class)
+            .findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateSuggestionsToTaskEntitySkipsWhenSuggestionsTableIsMissing() {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateSuggestionsToTaskEntitySkipsWhenSuggestionsTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateSuggestionsToTaskEntity(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissing() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(
+        () -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, MYSQL));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void migrateLegacyActivityThreadsToActivityStreamSkipsWhenThreadTableIsMissingPostgres() {
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenThrow(new RuntimeException("missing table"));
+
+    assertDoesNotThrow(
+        () -> MigrationUtil.migrateLegacyActivityThreadsToActivityStream(handle, POSTGRES));
+
+    verify(handle, never()).createUpdate(anyString());
+  }
+
+  @Test
+  void insertTaskUsesJsonbCastForPostgres() throws Exception {
+    invokePrivateStatic(
+        "insertTask",
+        new Class[] {Handle.class, String.class, String.class, String.class, ConnectionType.class},
+        handle,
+        "test-id",
+        "{}",
+        "test-hash",
+        POSTGRES);
+
+    verify(handle).createUpdate(contains("::jsonb"));
+  }
+
+  @Test
+  void insertTaskDoesNotUseJsonbCastForMysql() throws Exception {
+    invokePrivateStatic(
+        "insertTask",
+        new Class[] {Handle.class, String.class, String.class, String.class, ConnectionType.class},
+        handle,
+        "test-id",
+        "{}",
+        "test-hash",
+        MYSQL);
+
+    verify(handle, never()).createUpdate(contains("::jsonb"));
+  }
+
+  @Test
+  void migrateThreadTaskInsertsEntityRelationshipRowsForAssigneesAndAbout() {
+    String assigneeId = "aaaa-bbbb-cccc-dddd";
+    String entityRefId = "5555-6666-7777-8888";
+
+    when(handle.createQuery("SELECT 1 FROM thread_entity LIMIT 1").mapTo(Integer.class).findFirst())
+        .thenReturn(java.util.Optional.of(1));
+
+    String threadJson =
+        """
+        {
+          "id": "dead-beef-0000-0001",
+          "type": "Task",
+          "about": "<#E::glossaryTerm::MyGlossary.MyTerm>",
+          "message": "Approval required",
+          "threadTs": 1700000000000,
+          "updatedAt": 1700000000000,
+          "createdBy": "system",
+          "updatedBy": "system",
+          "entityRef": { "id": "%s", "type": "glossaryTerm" },
+          "task": {
+            "id": 1,
+            "type": "RequestApproval",
+            "status": "Open",
+            "assignees": [{ "id": "%s", "type": "user" }]
+          }
+        }
+        """
+            .formatted(entityRefId, assigneeId);
+
+    Map<String, Object> row = Map.of("json", threadJson);
+    when(handle
+            .createQuery(
+                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(row));
+
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM task_entity WHERE id = :id")
+            .bind("id", "dead-beef-0000-0001")
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
+        .thenReturn(java.util.Optional.of(0L));
+
+    when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
+        .thenReturn(Collections.emptyList());
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateThreadTasksToTaskEntity(handle, MYSQL));
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle, atLeastOnce()).createUpdate(sqlCaptor.capture());
+
+    List<String> allSql = sqlCaptor.getAllValues();
+    long entityRelationshipInserts =
+        allSql.stream().filter(s -> s.contains("entity_relationship")).count();
+    assertTrue(
+        entityRelationshipInserts >= 2,
+        "Expected at least 2 entity_relationship inserts (ASSIGNED_TO + MENTIONED_IN), got "
+            + entityRelationshipInserts);
+  }
+
+  @Test
+  void migrateSuggestionInsertsEntityRelationshipRowsForCreatedBy() {
+    String createdById = "cccc-dddd-eeee-ffff";
+    String entityId = "9999-8888-7777-6666";
+
+    // suggestions table exists
+    when(handle.createQuery("SELECT 1 FROM suggestions LIMIT 1").mapToMap().list())
+        .thenReturn(List.of(Map.of("1", 1)));
+
+    String suggestionJson =
+        """
+        {
+          "id": "dead-beef-0000-0002",
+          "type": "SuggestDescription",
+          "status": "Open",
+          "entityLink": "<#E::table::sample.shop.orders>",
+          "entityId": "%s",
+          "description": "A good table",
+          "createdBy": { "id": "%s", "type": "user" },
+          "createdAt": 1700000000000,
+          "updatedAt": 1700000000000,
+          "updatedBy": "system"
+        }
+        """
+            .formatted(entityId, createdById);
+
+    Map<String, Object> row = Map.of("json", suggestionJson);
+    when(handle
+            .createQuery("SELECT json FROM suggestions ORDER BY updatedAt ASC")
+            .mapToMap()
+            .list())
+        .thenReturn(List.of(row));
+
+    // taskExists returns false
+    when(handle
+            .createQuery("SELECT COUNT(*) FROM task_entity WHERE id = :id")
+            .bind("id", "dead-beef-0000-0002")
+            .mapTo(Long.class)
+            .one())
+        .thenReturn(0L);
+
+    // sequence
+    when(handle.createQuery(anyString()).mapTo(Long.class).findOne())
+        .thenReturn(java.util.Optional.of(0L));
+
+    // resolveDomainsForTaskAbout — empty
+    when(handle.createQuery(contains("entity_relationship")).mapToMap().list())
+        .thenReturn(Collections.emptyList());
+
+    assertDoesNotThrow(() -> MigrationUtil.migrateSuggestionsToTaskEntity(handle, MYSQL));
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle, atLeastOnce()).createUpdate(sqlCaptor.capture());
+
+    List<String> allSql = sqlCaptor.getAllValues();
+    long entityRelationshipInserts =
+        allSql.stream().filter(s -> s.contains("entity_relationship")).count();
+    assertTrue(
+        entityRelationshipInserts >= 2,
+        "Expected at least 2 entity_relationship inserts (CREATED + MENTIONED_IN), got "
+            + entityRelationshipInserts);
   }
 
   @Test

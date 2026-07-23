@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { ReactNode, useMemo } from 'react';
+import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FieldOperation } from '../../../../../generated/entity/feed/thread';
@@ -20,12 +20,20 @@ import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
 const PRIMARY_COLOR = 'var(--ant-primary-color)';
 
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(
+    () => import('../../../../common/RichTextEditor/RichTextEditorPreviewerV1')
+  )
+);
+
 interface AnnouncementCardV1ContentProps {
+  backgroundColor?: string;
+  borderColor?: string;
   className?: string;
   columnName: string;
   currentBackgroundColor?: string;
@@ -44,13 +52,15 @@ interface AnnouncementCardV1ContentProps {
 const VARIANT_CONFIG = {
   default: {
     header: 'tw:h-11 tw:text-[16px] tw:rounded-lg',
+    titleSection: '',
     entityName: 'tw:!text-base tw:!font-medium',
     iconSize: 'tw:size-4',
     title: 'tw:text-sm tw:font-medium tw:!mb-1',
     description: 'tw:text-sm tw:mt-2',
   },
   compact: {
-    header: 'tw:h-[30px] tw:text-xs tw:rounded-l-md',
+    header: 'tw:h-[30px] tw:flex-none tw:text-xs tw:rounded-[4px]',
+    titleSection: 'tw:px-[10px] tw:py-[6px] tw:pl-1',
     entityName: 'tw:!text-[11px] tw:!font-normal',
     iconSize: 'tw:size-[9px]',
     title: 'tw:text-xs tw:font-medium tw:!mb-0',
@@ -59,6 +69,8 @@ const VARIANT_CONFIG = {
 };
 
 const AnnouncementCardV1Content = ({
+  backgroundColor,
+  borderColor,
   className,
   columnName,
   currentBackgroundColor,
@@ -77,6 +89,8 @@ const AnnouncementCardV1Content = ({
   const { t } = useTranslation();
 
   const color = currentBackgroundColor ?? PRIMARY_COLOR;
+  const bgColor = backgroundColor ?? color;
+  const accentBorderColor = borderColor ?? color;
 
   const {
     announcementTitleSectionStyle,
@@ -86,11 +100,11 @@ const AnnouncementCardV1Content = ({
   } = useMemo(() => {
     return {
       announcementTitleSectionStyle: {
-        background: `linear-gradient(270deg, #ffffff -12.07%, ${color} 500.72%)`,
+        background: bgColor,
+        borderLeft: `3px solid ${accentBorderColor}`,
         color: `${color} !important`,
       },
       announcementTitleStyle: {
-        borderLeft: `3px solid ${color}`,
         color: `${color} !important`,
       },
       userNameStyle: {
@@ -100,7 +114,7 @@ const AnnouncementCardV1Content = ({
         color,
       },
     };
-  }, [color]);
+  }, [color, bgColor, accentBorderColor]);
 
   const handleEntityClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -116,30 +130,35 @@ const AnnouncementCardV1Content = ({
         <div
           className={classNames(
             'announcement-title-section',
-            variantConfig.header
+            variantConfig.header,
+            variantConfig.titleSection
           )}
           style={announcementTitleSectionStyle}>
-          {fieldOperation && fieldOperation !== FieldOperation.None ? (
+          {userName || entityName ? (
             <div
               className={classNames(
                 'announcement-header',
                 variantConfig.header
               )}
               style={announcementTitleStyle}>
-              <Link
-                className="user-name"
-                data-testid="user-link"
-                style={userNameStyle}
-                to={getUserPath(userName)}
-                onClick={handleUserClick}>
-                {userName}
-              </Link>
-              <Typography.Text
-                className="field-operation-text"
-                style={{ color }}>
-                {' '}
-                {getFieldOperationText(fieldOperation)}
-              </Typography.Text>
+              {userName && (
+                <Link
+                  className="user-name"
+                  data-testid="user-link"
+                  style={userNameStyle}
+                  to={getUserPath(userName)}
+                  onClick={handleUserClick}>
+                  {userName}
+                </Link>
+              )}
+              {fieldOperation && fieldOperation !== FieldOperation.None && (
+                <Typography.Text
+                  className="field-operation-text"
+                  style={{ color }}>
+                  {' '}
+                  {getFieldOperationText(fieldOperation)}
+                </Typography.Text>
+              )}
               <span
                 className={classNames(
                   'announcement-card-entity-icon tw:flex tw:items-center',
@@ -204,7 +223,7 @@ const AnnouncementCardV1Content = ({
         </div>
       </div>
 
-      {fieldOperation && fieldOperation !== FieldOperation.None && (
+      {(userName || entityName) && title && (
         <Typography.Paragraph
           className={classNames('announcement-title', variantConfig.title)}
           ellipsis={{ tooltip: true, rows: 2 }}>

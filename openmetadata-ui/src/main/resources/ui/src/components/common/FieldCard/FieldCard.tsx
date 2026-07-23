@@ -10,24 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography, useTheme } from '@mui/material';
-import { Typography as AntTypography } from 'antd';
+import {
+  BadgeWithIcon,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { TagSource } from '../../../generated/tests/testCase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getDataTypeString,
-  prepareConstraintIcon,
-} from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getDataTypeString } from '../../../utils/TablePureUtils';
+import { prepareConstraintIcon } from '../../../utils/TableUtils';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { FieldCardProps } from './FieldCard.interface';
-import './FieldCard.less';
-
-const { Text } = AntTypography;
 
 const FieldCard: React.FC<FieldCardProps> = ({
   fieldName,
@@ -39,7 +38,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
   isHighlighted = false,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
@@ -288,48 +286,52 @@ const FieldCard: React.FC<FieldCardProps> = ({
 
   return (
     <div
-      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
+      className={classNames(
+        'field-card tw:border-b-[0.6px] tw:border-solid tw:border-secondary',
+        'tw:px-4 tw:pt-4 tw:pb-2 tw:max-md:p-3 tw:max-md:mb-2',
+        { 'field-card-highlighted': isHighlighted }
+      )}
       data-testid={`field-card-${fieldName}`}>
       <div className="field-card-header" data-testid="field-card-header">
-        <div className="field-name-container">
+        <div className="field-card-name tw:flex tw:flex-1 tw:items-center tw:max-md:w-full">
           {constraintIcon && (
-            <span className="constraint-icon">{constraintIcon}</span>
+            <span className="tw:mr-2 tw:flex tw:items-center">
+              {constraintIcon}
+            </span>
           )}
           <Typography
-            color={theme.palette.grey[900]}
-            data-testid={`field-name-${fieldName}`}
-            fontSize="13px"
-            fontWeight="600"
-            marginBottom="4px"
-            sx={{
-              wordBreak: 'break-word',
-            }}>
+            as="div"
+            className="not-prose tw:mb-1 tw:break-words tw:text-[13px] tw:font-semibold tw:text-primary"
+            data-testid={`field-name-${fieldName}`}>
             {fieldName}
           </Typography>
         </div>
         <Typography
-          alignContent="center"
-          color={theme.palette.grey[700]}
-          data-testid={`data-type-text-${dataType}`}
-          fontSize="12px"
-          fontWeight="400"
-          lineHeight="19px"
-          marginBottom="8px">
+          as="div"
+          className="not-prose tw:mb-2 tw:text-xs tw:font-normal tw:leading-[19px] tw:text-secondary"
+          data-testid={`data-type-text-${dataType}`}>
           {startCase(dataTypeDisplay)}
         </Typography>
       </div>
 
-      <div className="field-card-content" data-testid="field-card-content">
+      <div
+        className="field-card-content tw:flex tw:flex-col"
+        data-testid="field-card-content">
         <Typography
-          className="field-description"
-          data-testid={`field-description-${fieldName}`}
-          variant="body1">
+          as="div"
+          className={classNames(
+            'not-prose tw:text-[13px] tw:font-normal tw:text-secondary',
+            'tw:[&_.block-editor-wrapper_.tiptap.ProseMirror]:text-[13px]!'
+          )}
+          data-testid={`field-description-${fieldName}`}>
           {description ? (
-            <div className="description-display">
+            <div>
               <div
-                className={`description-text ${
-                  isExpanded ? 'expanded' : 'collapsed'
-                }`}
+                className={classNames(
+                  isExpanded
+                    ? 'tw:block tw:leading-[1.4]'
+                    : 'tw:[&_.markdown-parser]:line-clamp-3 tw:[&_.markdown-parser]:break-words tw:[&_.markdown-parser]:text-[13px] tw:[&_.markdown-parser]:leading-[18px]'
+                )}
                 ref={containerRef}>
                 <RichTextEditorPreviewerV1
                   enableSeeMoreVariant={false}
@@ -338,56 +340,71 @@ const FieldCard: React.FC<FieldCardProps> = ({
                 />
               </div>
               {(shouldShowButton || isExpanded) && (
-                <button
-                  className="show-more-button"
-                  type="button"
+                <Button
+                  className="tw:mt-1"
+                  color="link-color"
+                  size="xs"
                   onClick={toggleExpanded}>
                   {isExpanded ? t('label.show-less') : t('label.show-more')}
-                </button>
+                </Button>
               )}
             </div>
           ) : (
-            <Text className="no-description-text">
+            <Typography as="span" className="tw:text-secondary">
               {t('label.no-entity', { entity: t('label.description') })}
-            </Text>
+            </Typography>
           )}
         </Typography>
 
-        <div className="field-metadata">
+        <div className="tw:mt-3 tw:mb-2 tw:flex tw:flex-col tw:gap-2">
           {nonGlossaryTags.length > 0 && (
             <div
-              className={`metadata-section ${showAllTags ? 'expanded' : ''}`}>
-              <Text className="metadata-label">
+              className={classNames(
+                'metadata-section tw:flex tw:items-start tw:gap-2',
+                showAllTags ? 'tw:flex-col' : 'tw:flex-row'
+              )}>
+              <Typography
+                as="span"
+                className="tw:text-xs tw:font-medium tw:leading-5 tw:whitespace-nowrap tw:text-secondary">
                 {t('label.-with-colon', { text: t('label.tag-plural') })}
-              </Text>
-              <div className="tags-display">
-                <div className="tags-list" ref={tagsContainerRef}>
+              </Typography>
+              <div className="tw:min-w-0 tw:flex-1">
+                <div
+                  className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+                  ref={tagsContainerRef}>
                   {visibleTags.map((tag) => (
-                    <div
+                    <span
                       className="tag-item"
                       data-testid={`tag-${tag.tagFQN}`}
                       key={tag.tagFQN}>
-                      <ClassificationIcon className="tag-icon" />
-                      <span className="tag-name">{getEntityName(tag)}</span>
-                    </div>
+                      <BadgeWithIcon
+                        color="gray"
+                        iconLeading={ClassificationIcon}
+                        size="xs"
+                        type="color">
+                        {getEntityName(tag)}
+                      </BadgeWithIcon>
+                    </span>
                   ))}
                   {visibleTagsCount !== null &&
                     nonGlossaryTags.length > visibleTagsCount &&
                     !showAllTags && (
-                      <button
-                        className="show-more-tags-button"
-                        type="button"
+                      <Button
+                        className="show-more-tags-button tw:whitespace-nowrap"
+                        color="link-color"
+                        size="xs"
                         onClick={handleShowAllTags}>
                         {tagsMoreLabel}
-                      </button>
+                      </Button>
                     )}
                   {showAllTags && nonGlossaryTags.length > 1 && (
-                    <button
-                      className="show-more-tags-button"
-                      type="button"
+                    <Button
+                      className="show-more-tags-button tw:whitespace-nowrap"
+                      color="link-color"
+                      size="xs"
                       onClick={handleHideAllTags}>
                       {t('label.less')}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
@@ -395,42 +412,54 @@ const FieldCard: React.FC<FieldCardProps> = ({
           )}
           {glossaryTerms.length > 0 && (
             <div
-              className={`metadata-section ${showAllTerms ? 'expanded' : ''}`}>
-              <Text className="metadata-label">
+              className={classNames(
+                'metadata-section tw:flex tw:items-start tw:gap-2',
+                showAllTerms ? 'tw:flex-col' : 'tw:flex-row'
+              )}>
+              <Typography
+                as="span"
+                className="tw:text-xs tw:font-medium tw:leading-5 tw:whitespace-nowrap tw:text-secondary">
                 {t('label.-with-colon', {
                   text: t('label.glossary-term-plural'),
                 })}
-              </Text>
-              <div className="glossary-terms-display">
-                <div className="glossary-terms-list" ref={termsContainerRef}>
+              </Typography>
+              <div className="tw:min-w-0 tw:flex-1">
+                <div
+                  className="tw:flex tw:flex-wrap tw:items-center tw:gap-1.5"
+                  ref={termsContainerRef}>
                   {visibleTerms.map((glossaryTerm) => (
-                    <div
+                    <span
                       className="glossary-term-item"
                       data-testid={`term-${glossaryTerm.tagFQN}`}
                       key={glossaryTerm.tagFQN}>
-                      <GlossaryIcon className="glossary-term-icon" />
-                      <span className="glossary-term-name">
+                      <BadgeWithIcon
+                        color="gray"
+                        iconLeading={GlossaryIcon}
+                        size="xs"
+                        type="color">
                         {getEntityName(glossaryTerm)}
-                      </span>
-                    </div>
+                      </BadgeWithIcon>
+                    </span>
                   ))}
                   {visibleTermsCount !== null &&
                     glossaryTerms.length > visibleTermsCount &&
                     !showAllTerms && (
-                      <button
-                        className="show-more-terms-button"
-                        type="button"
+                      <Button
+                        className="show-more-terms-button tw:whitespace-nowrap"
+                        color="link-color"
+                        size="xs"
                         onClick={handleShowAllTerms}>
                         {termsMoreLabel}
-                      </button>
+                      </Button>
                     )}
                   {showAllTerms && glossaryTerms.length > 1 && (
-                    <button
-                      className="show-more-terms-button"
-                      type="button"
+                    <Button
+                      className="show-more-terms-button tw:whitespace-nowrap"
+                      color="link-color"
+                      size="xs"
                       onClick={handleHideAllTerms}>
                       {t('label.less')}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>

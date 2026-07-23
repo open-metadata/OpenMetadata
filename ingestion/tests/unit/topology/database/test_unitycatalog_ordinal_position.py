@@ -43,9 +43,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             )
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertEqual(columns[0].name.root, "id")
@@ -77,9 +75,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 3)
         self.assertEqual(columns[0].name.root, "id")
@@ -115,9 +111,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 3)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -185,9 +179,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 8)
         for idx, column in enumerate(columns):
@@ -219,9 +211,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 3)
         self.assertEqual(columns[0].ordinalPosition, 5)
@@ -247,9 +237,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 2)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -261,9 +249,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
         """Test handling of empty column list"""
         column_data = []
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 0)
 
@@ -279,9 +265,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -299,9 +283,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -320,9 +302,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -340,9 +320,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertTrue(hasattr(columns[0], "ordinalPosition"))
@@ -362,9 +340,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 1)
         self.assertEqual(columns[0].ordinalPosition, 0)
@@ -395,9 +371,7 @@ class UnityCatalogOrdinalPositionTest(TestCase):
             ),
         ]
 
-        columns = list(
-            UnitycatalogSource.get_columns(self.source, "test_table", column_data)
-        )
+        columns = list(UnitycatalogSource.get_columns(self.source, "test_table", column_data))
 
         self.assertEqual(len(columns), 3)
         self.assertEqual(columns[0].name.root, "z_col")

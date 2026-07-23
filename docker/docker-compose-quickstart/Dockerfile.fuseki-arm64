@@ -14,7 +14,7 @@ RUN apt-get update || true && \
     rm -rf /var/lib/apt/lists/*
 
 # Set Fuseki version
-ENV FUSEKI_VERSION=5.0.0
+ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki
 
 # Download and install Fuseki

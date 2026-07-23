@@ -16,7 +16,7 @@ import { get } from 'lodash';
 import { FC, useMemo } from 'react';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../../utils/TableUtils';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';

@@ -16,7 +16,7 @@
                     "type": "string"
                 },
                 "function": {
-                    "$ref": "dataInsightCustomChart.json#/definitions/function"
+                    "$ref": "chartFunctions.json#/definitions/function"
                 },
                 "field": {
                     "description": "Filter field for the data insight chart.",

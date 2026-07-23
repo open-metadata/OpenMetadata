@@ -19,9 +19,6 @@ from metadata.ingestion.source.database.unitycatalog.query_parser import (
     UnityCatalogQueryParserSource,
 )
 from metadata.ingestion.source.database.usage_source import UsageSource
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
 class UnitycatalogUsageSource(UnityCatalogQueryParserSource, UsageSource):
@@ -52,5 +49,5 @@ class UnitycatalogUsageSource(UnityCatalogQueryParserSource, UsageSource):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
