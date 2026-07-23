@@ -99,7 +99,7 @@ class GCSSampler(StorageSampler):
             )
             return None
 
-        prefix = self.entity.prefix
+        prefix = self.entity.prefix  # pyright: ignore[reportAttributeAccessIssue]
         if not prefix:
             logger.warning(f"Container {self.entity.fullyQualifiedName.root} has no prefix")
             return None
