@@ -13,6 +13,7 @@
 Source connection handler
 """
 
+import shutil
 import ssl
 from pathlib import Path
 from typing import Optional
@@ -137,6 +138,12 @@ def get_ssl_context(ssl_config: SslConfig) -> ssl.SSLContext:
     return ssl._create_unverified_context()  # pylint: disable=protected-access
 
 
+def _cleanup_staging_dir(staging_dir: str | None) -> None:
+    """Remove the staging dir holding the cert/key files written by value."""
+    if staging_dir and Path(staging_dir).exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
+
+
 class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elasticsearch]):
     def _get_client(self) -> Elasticsearch:
         connection = self.service_connection
@@ -163,6 +170,10 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
 
         if connection.sslConfig:
             ssl_context = get_ssl_context(connection.sslConfig)
+            certificates = connection.sslConfig.certificates
+            if isinstance(certificates, SslCertificatesByValues):
+                staging_dir = certificates.stagingDir
+                self._on_close(lambda: _cleanup_staging_dir(staging_dir))
 
         return Elasticsearch(
             str(connection.hostPort),
