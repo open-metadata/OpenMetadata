@@ -6,6 +6,7 @@
     "playwright/e2e/Http2/**",
     "playwright/e2e/Pages/DataInsight*.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
+    "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
     "playwright/e2e/Features/OntologyImportRdf.spec.ts"
   ],
   "smoke": [
@@ -150,7 +151,11 @@
       "projects": ["Ingestion"],
       "specs": [
         "playwright/e2e/Features/AutoPilot.spec.ts",
-        "playwright/e2e/Features/DataQuality/**/*.spec.ts",
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/ServiceAgentsLiveProgress.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",

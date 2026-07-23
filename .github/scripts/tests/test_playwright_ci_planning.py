@@ -1239,6 +1239,50 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
     assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
 
 
+def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry for entry in impact_map["mappings"] if "ingestion/**" in entry["sources"]
+    )
+
+    data_quality_specs = {
+        spec for spec in mapping["specs"] if "/Features/DataQuality/" in spec
+    }
+    assert mapping["projects"] == ["Ingestion"]
+    assert data_quality_specs == {
+        "playwright/e2e/Features/DataQuality/AddTestCaseNewFlow.spec.ts",
+        "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
+        "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
+    }
+    for spec in data_quality_specs:
+        source = (
+            SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui" / spec
+        ).read_text()
+        assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in source or "tag: '@ingestion'" in source
+
+
+def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+
+    assert (
+        "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
+    )
+    assert (
+        "playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
+        in impact_map["delegatedSpecs"]
+    )
+    assert (
+        "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+        in impact_map["delegatedSpecs"]
+    )
+
+
 def test_summary_reconciles_results_and_evaluates_performance_independently():
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
