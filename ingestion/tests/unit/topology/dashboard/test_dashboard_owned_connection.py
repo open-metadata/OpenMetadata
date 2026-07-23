@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Dashboard sources dispose their BaseConnection owner on close()."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.looker.metadata import LookerSource
@@ -56,3 +56,28 @@ def test_microstrategy_inherits_base_close():
     source = _source_with_mocked_owner(MicrostrategySource)
     source.close()
     source._connection.close.assert_called_once()
+
+
+MICROSTRATEGY_CONFIG = {
+    "type": "microstrategy",
+    "serviceName": "test-microstrategy",
+    "serviceConnection": {
+        "config": {
+            "type": "MicroStrategy",
+            "hostPort": "https://demo.microstrategy.com",
+            "username": "username",
+            "password": "password",
+        }
+    },
+    "sourceConfig": {"config": {"type": "DashboardMetadata"}},
+}
+
+
+def test_dashboard_source_sets_connection_obj_to_client():
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection") as mock_create_connection,
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+    ):
+        source = MicrostrategySource.create(MICROSTRATEGY_CONFIG, MagicMock())
+        assert source.connection_obj is source.client
+        assert source.connection_obj is mock_create_connection.return_value.client
