@@ -129,19 +129,20 @@ class ServiceBaseClass {
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
 
-      // Using data-key which relies on `name` which is more reliable data in AUTs
-      // instead of data-testid which depends on the `displayName` which can change
-      const runnerOption = page.locator(
-        `[data-key="${this.ingestionRunner.name}"]`
-      );
+      // The runner control is now a react-aria Select whose options render as
+      // role="listbox" entries (no more antd `data-key`). Match the option by
+      // its visible label; the substring match tolerates a display-name suffix.
+      const runnerLabel =
+        this.ingestionRunner.displayName ?? this.ingestionRunner.name;
+      const runnerOption = page
+        .getByRole('option', { name: runnerLabel })
+        .first();
       await runnerOption.waitFor({ state: 'visible' });
       await runnerOption.click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText(
-        this.ingestionRunner.displayName ?? this.ingestionRunner.name
-      );
+      ).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
