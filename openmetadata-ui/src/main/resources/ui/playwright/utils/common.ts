@@ -79,6 +79,11 @@ const etagStripInstalled = new WeakSet<Page>();
  * the header here forces the server to always return the current body, and it
  * works regardless of the deployed bundle (unlike the localStorage opt-out,
  * which depends on the bundle carrying the interceptor guard).
+ *
+ * Uses `route.fallback` (not `route.continue`) so this catch-all strips the
+ * header and then defers to any spec-specific `route.fulfill` mocks registered
+ * earlier on the same page. `route.continue` would terminate the chain and send
+ * the request straight to the network, shadowing those mocks.
  */
 export const stripEtagConditionalReads = async (page: Page) => {
   if (etagStripInstalled.has(page)) {
@@ -88,7 +93,7 @@ export const stripEtagConditionalReads = async (page: Page) => {
   await page.route('**/api/v1/**', async (route) => {
     const headers = route.request().headers();
     delete headers['if-none-match'];
-    await route.continue({ headers });
+    await route.fallback({ headers });
   });
 };
 
