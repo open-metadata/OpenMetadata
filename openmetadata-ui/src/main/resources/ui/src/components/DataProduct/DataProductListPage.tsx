@@ -39,6 +39,10 @@ import {
   getGlossaryTags,
 } from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import {
+  COMPACT_CELL_WRAP_CLASS,
+  NAME_CELL_WRAP_CLASS,
+} from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
@@ -185,9 +189,13 @@ const DataProductListPage = ({
             entity.displayName !== entity.name;
 
           return (
-            <Box align="center" direction="row" gap={3}>
+            <Box
+              align="start"
+              className={NAME_CELL_WRAP_CLASS}
+              direction="row"
+              gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box direction="col">
+              <Box className="tw:min-w-0" direction="col">
                 <Typography size="text-sm" weight="medium">
                   {entityName}
                 </Typography>
@@ -217,7 +225,11 @@ const DataProductListPage = ({
           const domain = domains[0];
 
           return (
-            <Box align="center" direction="row" gap={1}>
+            <Box
+              align="start"
+              className={COMPACT_CELL_WRAP_CLASS}
+              direction="row"
+              gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
               <Typography size="text-sm">
                 {domain.displayName || domain.name}
