@@ -24,10 +24,8 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
-import { EntityReference } from '../../../generated/type/entityReference';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -63,7 +61,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './metric.less';
-import { MetricAiHeader } from './MetricAiHeader.component';
 import { MetricDetailsProps } from './MetricDetails.interface';
 const MetricDetails: React.FC<MetricDetailsProps> = ({
   metricDetails,
@@ -79,7 +76,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 }: MetricDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const isAiMode = useIsAiMode();
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab: EntityTabs;
   }>();
@@ -179,21 +175,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       await onMetricUpdate(updatedMetricDetails, 'owners');
     },
     [owners]
-  );
-
-  const handleAiDescriptionUpdate = useCallback(
-    async (description: string) => {
-      await onMetricUpdate({ ...metricDetails, description }, 'description');
-    },
-    [metricDetails, onMetricUpdate]
-  );
-
-  const handleAiDomainUpdate = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      const domains = Array.isArray(domain) ? domain : [domain];
-      await onMetricUpdate({ ...metricDetails, domains }, 'domains');
-    },
-    [metricDetails, onMetricUpdate]
   );
 
   const onTierUpdate = (newTier?: Tag) => {
@@ -324,39 +305,30 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(metricDetails)}>
+    <PageLayoutV1
+      className="metric-details-page"
+      pageTitle={getEntityName(metricDetails)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
-          {isAiMode ? (
-            <MetricAiHeader
-              metric={metricDetails}
-              permissions={metricPermissions}
-              onDescriptionUpdate={handleAiDescriptionUpdate}
-              onDisplayNameUpdate={handleUpdateDisplayName}
-              onDomainUpdate={handleAiDomainUpdate}
-              onOwnerUpdate={onOwnerUpdate}
-            />
-          ) : (
-            <DataAssetsHeader
-              isDqAlertSupported
-              isRecursiveDelete
-              afterDeleteAction={afterDeleteAction}
-              afterDomainUpdateAction={onUpdateMetricDetails}
-              dataAsset={metricDetails}
-              entityType={EntityType.METRIC}
-              openTaskCount={feedCount.openTaskCount}
-              permissions={metricPermissions}
-              onCertificationUpdate={onCertificationUpdate}
-              onDisplayNameUpdate={handleUpdateDisplayName}
-              onFollowClick={followMetric}
-              onMetricUpdate={onMetricUpdate}
-              onOwnerUpdate={onOwnerUpdate}
-              onRestoreDataAsset={handleRestoreMetric}
-              onTierUpdate={onTierUpdate}
-              onUpdateVote={onUpdateVote}
-              onVersionClick={onVersionChange}
-            />
-          )}
+          <DataAssetsHeader
+            isDqAlertSupported
+            isRecursiveDelete
+            afterDeleteAction={afterDeleteAction}
+            afterDomainUpdateAction={onUpdateMetricDetails}
+            dataAsset={metricDetails}
+            entityType={EntityType.METRIC}
+            openTaskCount={feedCount.openTaskCount}
+            permissions={metricPermissions}
+            onCertificationUpdate={onCertificationUpdate}
+            onDisplayNameUpdate={handleUpdateDisplayName}
+            onFollowClick={followMetric}
+            onMetricUpdate={onMetricUpdate}
+            onOwnerUpdate={onOwnerUpdate}
+            onRestoreDataAsset={handleRestoreMetric}
+            onTierUpdate={onTierUpdate}
+            onUpdateVote={onUpdateVote}
+            onVersionClick={onVersionChange}
+          />
         </Col>
         <GenericProvider<Metric>
           customizedPage={customizedPage}
