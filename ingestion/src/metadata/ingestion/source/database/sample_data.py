@@ -2391,7 +2391,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         for owner_name in test_case.get("owners", []):
             user: User | None = self.metadata.get_by_name(User, fqn=owner_name)
             if user:
-                owners.append(EntityReference(id=user.id.root, type="user"))
+                owners.append(EntityReference(id=user.id.root, type="user"))  # pyright: ignore[reportCallIssue]
         return EntityReferenceList(owners) if owners else None
 
     def ingest_test_case(self) -> Iterable[Either[OMetaTestCaseSample]]:
@@ -2486,10 +2486,10 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                         ],
                         minBound=result.get("minBound"),
                         maxBound=result.get("maxBound"),
-                    ),
+                    ),  # pyright: ignore[reportCallIssue]
                     test_case_name=case.fullyQualifiedName.root,
                 )
-                yield Either(right=test_case_result_req)
+                yield Either(right=test_case_result_req, left=None)
             if test_case_results.get("failedRowsSample"):
                 self.metadata.ingest_failed_rows_sample(
                     case,
