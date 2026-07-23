@@ -154,8 +154,13 @@ class SupersetAPISource(SupersetSourceMixin):
         self, datasource_json: SupersetDatasource, db_service_name: str | None
     ) -> str | None:
         database = datasource_json.result.database if datasource_json.result else None
-        database_json = self.client.fetch_database(database.id if database else None)
-        default_database_name = database_json.result.parameters.database if database_json.result.parameters else None
+        database_id = database.id if database else None
+        default_database_name = None
+        if database_id is not None:
+            database_json = self.client.fetch_database(database_id)
+            default_database_name = (
+                database_json.result.parameters.database if database_json.result.parameters else None
+            )
         db_service_entity = (
             self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name) if db_service_name else None
         )
