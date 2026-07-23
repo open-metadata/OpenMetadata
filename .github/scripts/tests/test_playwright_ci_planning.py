@@ -367,6 +367,112 @@ def test_audited_parallel_suite_is_split_into_individual_tests():
     assert [unit.test_ids for unit in units] == [{"first"}, {"second"}]
 
 
+def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
+    planner = load_script("build_playwright_shards")
+    report = {
+        "suites": [
+            {
+                "file": "Pages/ExplorePageRightPanel.spec.ts",
+                "suites": [
+                    {
+                        "title": "Right Panel Test Suite",
+                        "suites": [
+                            {
+                                "title": "Explore page right panel tests",
+                                "suites": [
+                                    {
+                                        "title": (
+                                            "Overview panel - Deleted entity "
+                                            "verification"
+                                        ),
+                                        "specs": [
+                                            {
+                                                "id": "deleted-user",
+                                                "title": "deleted user",
+                                                "tests": [{"projectName": "chromium"}],
+                                            },
+                                            {
+                                                "id": "deleted-tag",
+                                                "title": "deleted tag",
+                                                "tests": [{"projectName": "chromium"}],
+                                            },
+                                        ],
+                                    },
+                                    {
+                                        "title": "Standalone behavior",
+                                        "specs": [
+                                            {
+                                                "id": "standalone-one",
+                                                "title": "standalone test one",
+                                                "tests": [{"projectName": "chromium"}],
+                                            },
+                                            {
+                                                "id": "standalone-two",
+                                                "title": "standalone test two",
+                                                "tests": [{"projectName": "chromium"}],
+                                            },
+                                        ],
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+    units = planner.discover_units(report)
+    planner.apply_history_weights(
+        units,
+        {
+            "deleted-user": 100,
+            "deleted-tag": 200,
+            "standalone-one": 300,
+            "standalone-two": 400,
+        },
+        {},
+    )
+
+    assert [unit.test_ids for unit in units] == [
+        {"deleted-tag", "deleted-user"},
+        {"standalone-one"},
+        {"standalone-two"},
+    ]
+    assert units[0].title.endswith("Overview panel - Deleted entity verification")
+    assert units[0].weight_ms == 120_300
+    assert [test_id for unit in units for test_id in sorted(unit.test_ids)] == [
+        "deleted-tag",
+        "deleted-user",
+        "standalone-one",
+        "standalone-two",
+    ]
+
+
+def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
+    planner = load_script("build_playwright_shards")
+    within_budget = planner.Unit(
+        "chromium",
+        "within.spec.ts",
+        "within",
+        grep_titles={("chromium", "within.spec.ts", "within")},
+        test_ids={"within"},
+        weight_ms=19 * 60 * 1000,
+    )
+    above_budget = planner.Unit(
+        "chromium",
+        "above.spec.ts",
+        "above",
+        grep_titles={("chromium", "above.spec.ts", "above")},
+        test_ids={"above"},
+        weight_ms=19 * 60 * 1000 + 1,
+    )
+
+    planner.write_plan(tmp_path, "chromium", 0, [within_budget])
+    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
+        planner.write_plan(tmp_path, "chromium", 1, [above_budget])
+
+
 def test_data_asset_rule_dependencies_are_added_to_targeted_plans():
     planner = load_script("build_playwright_shards")
     enabled = planner.Unit("DataAssetRulesEnabled", "enabled.spec.ts", "enabled")
@@ -776,9 +882,7 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     ]
     assert payload["apiEndpointCounts"] == {"GET /api/v1/search/query": 1}
     assert payload["staticResourceTypes"] == {"javascript": 1}
-    assert payload["staticEndpointCounts"] == {
-        "GET /assets/app-entry-Ab_12.js": 1
-    }
+    assert payload["staticEndpointCounts"] == {"GET /assets/app-entry-Ab_12.js": 1}
     assert payload["topStaticEndpoints"] == [
         {"endpoint": "GET /assets/app-entry-Ab_12.js", "requests": 1}
     ]
@@ -913,13 +1017,8 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
     assert "atMostOneAppBootPerAttempt" not in performance["targets"]
     assert performance["blockingTargetsMet"] is False
     assert performance["convergenceTargetsMet"] is True
-    assert (
-        "appBootMeasurementIntegrity" in performance["blockingTargets"]
-    )
-    assert (
-        "atMostOneAppBootPerUIScenario"
-        in performance["convergenceTargets"]
-    )
+    assert "appBootMeasurementIntegrity" in performance["blockingTargets"]
+    assert "atMostOneAppBootPerUIScenario" in performance["convergenceTargets"]
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
     assert metrics["lifecycleFlakyRatePercent"] == 100
@@ -1014,9 +1113,7 @@ def test_performance_enforcement_reports_convergence_without_failing(
     }
 
 
-def test_performance_enforcement_still_fails_blocking_targets(
-    tmp_path, monkeypatch
-):
+def test_performance_enforcement_still_fails_blocking_targets(tmp_path, monkeypatch):
     evaluator = load_script("evaluate_playwright_performance")
     timing_file = tmp_path / "timing.json"
     request_file = tmp_path / "requests.json"
@@ -1301,9 +1398,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
     assert "if: ${{ always() && !cancelled() }}" in summary_job
-    assert (
-        "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
-    )
+    assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
     summary_script = summary_job.split("          script: |\n", 1)[1].split(
         "\n      - name:", 1
@@ -1411,9 +1506,7 @@ const core = {{
             "FIXTURE_RESTORE_RESULT": "success",
             "FIXTURE_RESULT": "success",
             "PLAYWRIGHT_RESULT": "success",
-            "EXPECTED_MATRIX": json.dumps(
-                {"include": [{"shardId": "chromium-01"}]}
-            ),
+            "EXPECTED_MATRIX": json.dumps({"include": [{"shardId": "chromium-01"}]}),
             "RUNNER_TEMP": str(tmp_path),
             "COMMENT_PAYLOAD_PATH": str(payload_path),
             "GITHUB_RUN_ID": "12345",
@@ -1447,8 +1540,7 @@ def test_normal_vite_build_keeps_hashed_entry_assets():
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"
     ).read_text()
     app_entry = (
-        SCRIPTS.parents[1]
-        / "openmetadata-ui/src/main/resources/ui/src/index.tsx"
+        SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/src/index.tsx"
     ).read_text()
 
     assert "? 'assets/app-entry-[hash].js'" in vite_config

@@ -66,6 +66,14 @@ AUDITED_PARALLEL_SUITES = {
     ("Pages/Lineage/DataAssetLineage.spec.ts", "Column Level Lineage"),
     ("Pages/Lineage/DataAssetLineage.spec.ts", "Data asset lineage"),
 }
+ATOMIC_PARALLEL_SCOPES = {
+    (
+        "Pages/ExplorePageRightPanel.spec.ts",
+        "Right Panel Test Suite",
+        "Explore page right panel tests",
+        "Overview panel - Deleted entity verification",
+    ): 120_000,
+}
 
 
 @dataclass
@@ -77,6 +85,7 @@ class Unit:
     test_ids: set[str] = field(default_factory=set)
     test_names: dict[str, str] = field(default_factory=dict)
     weight_ms: int = 0
+    weight_reserve_ms: int = 0
 
     @property
     def key(self) -> str:
@@ -134,6 +143,7 @@ def add_specs_to_units(
     file: str,
     title: str,
     specs_with_titles: Iterable[tuple[dict[str, Any], tuple[str, ...]]],
+    weight_reserve_ms: int = 0,
 ) -> None:
     specs_with_titles = list(specs_with_titles)
     specs = [spec for spec, _ in specs_with_titles]
@@ -141,7 +151,12 @@ def add_specs_to_units(
         set().union(*(projects_for_spec(spec) for spec in specs)) if specs else set()
     )
     for project in projects:
-        unit = Unit(project=project, file=file, title=title)
+        unit = Unit(
+            project=project,
+            file=file,
+            title=title,
+            weight_reserve_ms=weight_reserve_ms,
+        )
         for spec, titles in specs_with_titles:
             if project in projects_for_spec(spec) and spec.get("id"):
                 unit.test_ids.add(spec["id"])
@@ -167,6 +182,41 @@ def add_specs_as_parallel_units(
         )
 
 
+def add_specs_as_audited_units(
+    units: dict[str, Unit],
+    file: str,
+    specs_with_titles: Iterable[tuple[dict[str, Any], tuple[str, ...]]],
+) -> None:
+    atomic_groups: dict[
+        tuple[str, ...], list[tuple[dict[str, Any], tuple[str, ...]]]
+    ] = defaultdict(list)
+    parallel_specs: list[tuple[dict[str, Any], tuple[str, ...]]] = []
+    for spec, titles in specs_with_titles:
+        scope = next(
+            (
+                candidate
+                for candidate in ATOMIC_PARALLEL_SCOPES
+                if candidate[0] == file
+                and titles[: len(candidate) - 1] == candidate[1:]
+            ),
+            None,
+        )
+        if scope is None:
+            parallel_specs.append((spec, titles))
+            continue
+        atomic_groups[scope].append((spec, titles))
+
+    add_specs_as_parallel_units(units, file, parallel_specs)
+    for scope, grouped_specs in sorted(atomic_groups.items()):
+        add_specs_to_units(
+            units,
+            file,
+            " › ".join(scope[1:]),
+            grouped_specs,
+            ATOMIC_PARALLEL_SCOPES[scope],
+        )
+
+
 def discover_units(report: dict[str, Any]) -> list[Unit]:
     units: dict[str, Unit] = {}
     for file_suite in report.get("suites", []):
@@ -176,7 +226,11 @@ def discover_units(report: dict[str, Any]) -> list[Unit]:
         for child in file_suite.get("suites", []):
             specs_with_titles = iter_specs_with_titles(child, (child.get("title", ""),))
             if (file, child.get("title", "")) in AUDITED_PARALLEL_SUITES:
-                add_specs_as_parallel_units(units, file, specs_with_titles)
+                add_specs_as_audited_units(
+                    units,
+                    file,
+                    specs_with_titles,
+                )
             else:
                 add_specs_to_units(
                     units,
@@ -239,7 +293,7 @@ def apply_history_weights(
     identity_weights: dict[tuple[str, str], int],
 ) -> None:
     for unit in units:
-        unit.weight_ms = sum(
+        unit.weight_ms = unit.weight_reserve_ms + sum(
             test_weights.get(
                 test_id,
                 identity_weights.get(
@@ -341,9 +395,10 @@ def assign_lane_within_budget(
     count = shard_count(units, lane, mode)
     _, maximum = lane_bounds(lane, mode)
     workers = LANE_WORKERS.get(lane, 3)
+    budget_ms = shard_budget_ms_for_lane(lane)
     while True:
         shards = [shard for shard in assign_lpt(units, count) if shard]
-        if all(predicted_execution_ms(shard, workers) <= TARGET_MS for shard in shards):
+        if all(predicted_execution_ms(shard, workers) <= budget_ms for shard in shards):
             return shards
         if count >= maximum:
             heaviest_ms = max(
@@ -351,7 +406,8 @@ def assign_lane_within_budget(
             )
             raise SystemExit(
                 f"Lane {lane} needs more than {maximum} shards to stay within the "
-                f"20-minute plan budget; the heaviest shard is predicted at "
+                f"{budget_ms / 60_000:.0f}-minute plan budget; the heaviest "
+                f"shard is predicted at "
                 f"{heaviest_ms / 60_000:.1f}m"
             )
         count += 1
@@ -364,10 +420,12 @@ def write_plan(
     workers = LANE_WORKERS.get(lane, 3)
     total_weight_ms = sum(unit.weight_ms for unit in units)
     predicted_ms = predicted_execution_ms(units, workers)
-    if predicted_ms > TARGET_MS:
+    budget_ms = shard_budget_ms_for_lane(lane)
+    if predicted_ms > budget_ms:
         raise SystemExit(
             f"Shard {shard_id} is predicted to take "
-            f"{predicted_ms / 60_000:.1f}m, above the 20-minute plan budget"
+            f"{predicted_ms / 60_000:.1f}m, above the "
+            f"{budget_ms / 60_000:.0f}-minute plan budget"
         )
     plan = {
         "version": 1,
@@ -380,6 +438,7 @@ def write_plan(
         "grep": "(?:" + "|".join(unit.pattern for unit in units) + ")",
         "predictedWorkerMs": total_weight_ms,
         "predictedExecutionMs": predicted_ms,
+        "planningReserveMs": sum(unit.weight_reserve_ms for unit in units),
         "testCount": sum(len(unit.test_ids) for unit in units),
         "testIds": sorted(test_id for unit in units for test_id in unit.test_ids),
         "units": [unit.key for unit in units],

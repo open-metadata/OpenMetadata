@@ -1002,6 +1002,8 @@ test.describe('Right Panel Test Suite', () => {
     }); // end: Entity validation with shared read-only entities
 
     test.describe('Overview panel - Deleted entity verification', () => {
+      test.describe.configure({ mode: 'default' });
+
       const deletedEntityVerificationEntityMap = {
         table: new TableClass(),
         dashboard: new DashboardClass(),
