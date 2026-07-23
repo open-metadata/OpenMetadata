@@ -18,7 +18,7 @@ that domain's own module so they load lazily; register each class with ``@om_set
 
 import importlib
 from pathlib import Path
-from typing import Type  # noqa: UP035
+from typing import Type, TypeVar  # noqa: UP035
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,7 +32,10 @@ class OMSettings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", frozen=True, case_sensitive=False)
 
 
-def om_settings(cls: Type["OMSettings"]) -> Type["OMSettings"]:  # noqa: UP006
+_OMSettingsT = TypeVar("_OMSettingsT", bound=OMSettings)
+
+
+def om_settings(cls: type[_OMSettingsT]) -> type[_OMSettingsT]:
     """Register an OMSettings subclass for documentation and prefix enforcement."""
     _REGISTRY[f"{cls.__module__}.{cls.__qualname__}"] = cls
     return cls
