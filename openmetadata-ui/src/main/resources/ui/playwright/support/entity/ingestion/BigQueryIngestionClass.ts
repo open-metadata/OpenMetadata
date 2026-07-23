@@ -116,6 +116,8 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
     await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
       .getByTestId('filter-section-schemaFilterPattern')

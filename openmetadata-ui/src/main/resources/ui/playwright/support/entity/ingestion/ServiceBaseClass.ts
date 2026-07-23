@@ -457,10 +457,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toHaveText(
       'At 5 minutes past the hour'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toHaveText(
       'Every hour, every day'
     );
 
@@ -482,12 +482,8 @@ class ServiceBaseClass {
 
     await getIngestionPipelines;
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'At 04:04 AM'
-    );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every day'
-    );
+    await expect(page.getByTestId('agent-schedule')).toHaveText('At 04:04 AM');
+    await expect(page.getByTestId('agent-schedule')).toHaveText('Every day');
 
     // click and edit pipeline schedule for Week
     await page.getByTestId('more-actions').first().click();
@@ -501,10 +497,8 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'At 05:05 AM'
-    );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toHaveText('At 05:05 AM');
+    await expect(page.getByTestId('agent-schedule')).toHaveText(
       'Only on wednesday'
     );
 
@@ -520,12 +514,20 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'Every hour'
-    );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toHaveText('Every hour');
+    await expect(page.getByTestId('agent-schedule')).toHaveText(
       'Only on saturday, only in february'
     );
+  }
+
+  async openIngestionFilterSection(page: Page) {
+    await waitForAllLoadersToDisappear(page);
+    const ingestionFilterSection = page.getByTestId(
+      'ingestion-section-filters'
+    );
+    if (await ingestionFilterSection.isVisible()) {
+      ingestionFilterSection.click();
+    }
   }
 
   async updateDescriptionForIngestedTables(
