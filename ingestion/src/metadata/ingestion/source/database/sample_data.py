@@ -86,9 +86,6 @@ from metadata.generated.schema.api.tests.createTestCaseResolutionStatus import (
     CreateTestCaseResolutionStatus,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.ai.aiApplication import AIApplication
-from metadata.generated.schema.entity.ai.llmModel import LLMModel
-from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -240,18 +237,6 @@ def get_lineage_entity_ref(edge, metadata: OpenMetadata) -> Optional[EntityRefer
         data_model = metadata.get_by_name(entity=DashboardDataModel, fqn=edge_fqn)
         if data_model:
             return EntityReference(id=data_model.id, type="dashboardDataModel")
-    if edge["type"] == "llmModel":
-        llm_model = metadata.get_by_name(entity=LLMModel, fqn=edge_fqn)
-        if llm_model:
-            return EntityReference(id=llm_model.id, type="llmModel")
-    if edge["type"] == "mcpServer":
-        mcp_server = metadata.get_by_name(entity=McpServer, fqn=edge_fqn)
-        if mcp_server:
-            return EntityReference(id=mcp_server.id, type="mcpServer")
-    if edge["type"] == "aiApplication":
-        application = metadata.get_by_name(entity=AIApplication, fqn=edge_fqn)
-        if application:
-            return EntityReference(id=application.id, type="aiApplication")
     return None
 
 
