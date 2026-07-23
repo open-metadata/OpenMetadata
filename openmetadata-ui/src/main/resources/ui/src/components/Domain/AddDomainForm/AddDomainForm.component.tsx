@@ -450,10 +450,32 @@ const AddDomainForm = ({
     name: 'color',
   });
 
-  const coverImageField = useMemo(
-    () => domainClassBase.getCoverImageField(),
-    []
-  );
+  const coverImageField = useMemo(() => {
+    const field = domainClassBase.getCoverImageField();
+    if (!field) {
+      return null;
+    }
+
+    return {
+      ...field,
+      props: {
+        ...field.props,
+        onValidationError: (message: string) =>
+          form.setError('coverImage', { type: 'validate', message }),
+      },
+    };
+  }, [form]);
+
+  const coverImageValue = useWatch({
+    control: form.control,
+    name: 'coverImage',
+  });
+
+  useEffect(() => {
+    if (coverImageValue) {
+      form.clearErrors('coverImage');
+    }
+  }, [coverImageValue, form]);
 
   const createPermission = useMemo(() => {
     const resourceEntity =
