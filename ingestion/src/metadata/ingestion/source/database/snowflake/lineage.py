@@ -249,7 +249,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         """
         yield from super()._iter(*args, **kwargs)
         if self._is_semantic_view_lineage_enabled():
-            yield from self.yield_semantic_view_lineage()
+            yield from self.yield_semantic_view_lineage()  # pyright: ignore[reportReturnType]
 
     def _is_semantic_view_lineage_enabled(self) -> bool:
         """Semantic view lineage requires both view lineage processing and the
@@ -262,7 +262,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         """Build lineage from Snowflake semantic views to their base tables."""
         logger.info("Processing Semantic View Lineage")
         extractor = SnowflakeSemanticViewLineage(
-            service_name=self.config.serviceName,
+            service_name=self.config.serviceName,  # pyright: ignore[reportArgumentType]
             engine=self.engine,
             database_filter_pattern=self.source_config.databaseFilterPattern,
             resolve_table_by_fqn=self._get_table_by_fqn,

@@ -179,7 +179,7 @@ SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_stage_names = get_stage_names
-SnowflakeDialect.get_semantic_view_names = get_semantic_view_names
+SnowflakeDialect.get_semantic_view_names = get_semantic_view_names  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
@@ -191,7 +191,7 @@ Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
 Inspector.get_stage_names = get_stage_names_reflection
-Inspector.get_semantic_view_names = get_semantic_view_names_reflection
+Inspector.get_semantic_view_names = get_semantic_view_names_reflection  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
@@ -199,7 +199,7 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
-Inspector.get_semantic_view_definition = get_semantic_view_definition
+Inspector.get_semantic_view_definition = get_semantic_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
@@ -919,7 +919,7 @@ class SnowflakeSource(
         """Fetch semantic views from the schema"""
         table_type = TableType.SemanticView
 
-        snowflake_semantic_views = self.inspector.get_semantic_view_names(schema=schema_name)
+        snowflake_semantic_views = self.inspector.get_semantic_view_names(schema=schema_name)  # pyright: ignore[reportAttributeAccessIssue]
 
         return [
             TableNameAndType(name=semantic_view.name, type_=table_type)
@@ -1200,7 +1200,7 @@ class SnowflakeSource(
                 _merge_semantic_view_column(merged, kind, row)
         return [_build_semantic_view_column(entry) for entry in merged.values()]
 
-    def _get_columns_internal(
+    def _get_columns_internal(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         schema_name: str,
         table_name: str,
@@ -1298,7 +1298,7 @@ class SnowflakeSource(
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
             elif table_type == TableType.SemanticView:
-                schema_definition = inspector.get_semantic_view_definition(self.connection, table_name, schema_name)
+                schema_definition = inspector.get_semantic_view_definition(self.connection, table_name, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
             elif table_type == TableType.Stage:
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type
