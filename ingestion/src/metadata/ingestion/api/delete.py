@@ -12,10 +12,10 @@
 Delete methods
 """
 
-import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Set, Type  # noqa: UP035
 
+from metadata.config.settings import ingestion_settings
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -27,15 +27,9 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# Env var that opts every connector into the server-side async delete cascade. When set,
-# mark-deletion calls fire DELETE /<entity>/async/{id}?recursive=true and return 202 + a
-# jobId immediately, so ingestion does not block on the server-side cascade (issue #4003).
-# Explicit dispatch_async= passed to the generators overrides this default.
-DELETE_DISPATCH_ASYNC_ENV = "OM_INGESTION_DELETE_ASYNC"
-
 
 def _default_dispatch_async() -> bool:
-    return os.getenv(DELETE_DISPATCH_ASYNC_ENV, "").lower() in {"true", "1", "yes", "on"}
+    return ingestion_settings.delete_async
 
 
 def delete_entity_from_source(
