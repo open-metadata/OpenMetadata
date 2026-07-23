@@ -12,9 +12,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.external.CollateAIAppConfig;
-import org.openmetadata.schema.entity.app.internal.CollateAIQualityAgentAppConfig;
-import org.openmetadata.schema.entity.app.internal.CollateAITierAgentAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
@@ -44,6 +41,8 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 public class RunAppImpl {
+  private static final String DATA_INSIGHTS_APPLICATION = "DataInsightsApplication";
+
   public boolean execute(
       PipelineServiceClientInterface pipelineServiceClient,
       String appName,
@@ -63,7 +62,7 @@ public class RunAppImpl {
       return wasSuccessful;
     }
 
-    if (!validateAppShouldRun(app, service)) {
+    if (!validateAppShouldRun(app)) {
       return wasSuccessful;
     }
 
@@ -92,40 +91,15 @@ public class RunAppImpl {
     return wasSuccessful;
   }
 
-  private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {
-    // We only want to run the CollateAIApplication and CollateAIQualityAgentApplication for
-    // Databases
-    if (Entity.getEntityTypeFromObject(service).equals(Entity.DATABASE_SERVICE)
-        && List.of("CollateAIApplication", "CollateAIQualityAgentApplication")
-            .contains(app.getName())) {
-      return true;
-    } else
-      return List.of("DataInsightsApplication", "CollateAITierAgentApplication")
-          .contains(app.getName());
-  }
-
-  private String getTableServiceFilter(String serviceName) {
-    return String.format(
-        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-        serviceName);
+  private boolean validateAppShouldRun(App app) {
+    return DATA_INSIGHTS_APPLICATION.equals(app.getName());
   }
 
   private Map<String, Object> getConfig(App app, ServiceEntityInterface service) {
     Object config = JsonUtils.deepCopy(app.getAppConfiguration(), Object.class);
 
     switch (app.getName()) {
-      case "CollateAIApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAIAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()))
-              .withPatchIfEmpty(true);
-      case "CollateAIQualityAgentApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()));
-      case "CollateAITierAgentApplication" -> config =
-          (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
-              .withFilter(getTableServiceFilter(service.getName()))
-              .withPatchIfEmpty(true);
-      case "DataInsightsApplication" -> {
+      case DATA_INSIGHTS_APPLICATION -> {
         DataInsightsAppConfig updatedAppConfig =
             (JsonUtils.convertValue(config, DataInsightsAppConfig.class));
         ModuleConfiguration updatedModuleConfig =

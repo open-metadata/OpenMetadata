@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { Key, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
 import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
@@ -57,6 +57,13 @@ export interface ScheduleIntervalV1Props {
   includePeriodOptions?: string[];
   defaultSchedule?: string;
   entity?: string;
+  /**
+   * Notifies the owner of the submit action whether the scheduler currently
+   * holds a usable value. A custom cron that is empty or malformed is reported
+   * as invalid so the form can block submission - an empty schedule is only
+   * valid through the On Demand card.
+   */
+  onValidityChange?: (isValid: boolean) => void;
 }
 
 const PERIOD_CUSTOM = 'custom';
@@ -101,7 +108,7 @@ const FREQUENCY_LABEL_KEYS: Record<string, string> = {
 };
 
 const SELECTED_FREQUENCY_CLASS =
-  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:ring-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
+  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:after:outline-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
 
 const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   value,
@@ -110,6 +117,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   includePeriodOptions,
   defaultSchedule,
   entity,
+  onValidityChange,
 }) => {
   const { t } = useTranslation();
   // Schedule options for SelectionCardGroup
@@ -153,6 +161,22 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 
+  // Holds the cron this component last emitted, so the sync effect below can
+  // tell an external value change from an echo of its own onChange. Without it,
+  // a partially typed custom cron (not emitted while invalid) or a typed cron
+  // matching a known period would re-derive the state and pull the user out of
+  // the custom field. Normalized because consumers store a cleared cron as an
+  // empty string but hand it back as undefined.
+  const lastEmittedValueRef = useRef(value || undefined);
+
+  const emitChange = useCallback(
+    (cron?: string) => {
+      lastEmittedValueRef.current = cron || undefined;
+      onChange?.(cron);
+    },
+    [onChange]
+  );
+
   const {
     showTimePicker,
     showMinuteOnly,
@@ -175,13 +199,16 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     };
   }, [selectedPeriod]);
 
+  const [customCronError, setCustomCronError] = useState<string>('');
+
   const handleSelectedSchedular = useCallback(
     (schedularValue: SchedularOptions) => {
       setSelectedSchedular(schedularValue);
+      setCustomCronError('');
 
       if (schedularValue === SchedularOptions.ON_DEMAND) {
         setState((prev) => ({ ...prev, cron: undefined }));
-        onChange?.(undefined);
+        emitChange(undefined);
       } else {
         // When switching to schedule, use default schedule
         const nonEmptyScheduleValue = getDefaultScheduleValue({
@@ -190,10 +217,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
         });
         const newState = getStateValue(nonEmptyScheduleValue);
         setState(newState);
-        onChange?.(newState.cron);
+        emitChange(newState.cron);
       }
     },
-    [includePeriodOptions, defaultSchedule, onChange]
+    [includePeriodOptions, defaultSchedule, emitChange]
   );
 
   const handleStateChange = useCallback(
@@ -205,26 +232,47 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
       const cronExp = getCron(newState);
       const updatedState = { ...newState, cron: cronExp };
       setState(updatedState);
-      onChange?.(cronExp);
+      // A stale error from a previous custom expression must not survive a
+      // frequency switch - the new frequency always produces a valid cron.
+      setCustomCronError('');
+      emitChange(cronExp);
     },
-    [state, onChange]
+    [state, emitChange]
   );
-
-  const [customCronError, setCustomCronError] = useState<string>('');
 
   const handleCustomCronChange = useCallback(
     (cronValue: string) => {
       setState((prev) => ({ ...prev, cron: cronValue }));
-      const errorKey = cronValue
-        ? validateCronExpression(cronValue)
-        : undefined;
+
+      // An empty custom expression is not a schedule. Clearing the field is a
+      // validation error rather than a silent fallback to on demand, which is
+      // reachable only through the On Demand card.
+      if (!cronValue) {
+        setCustomCronError(
+          t('label.field-required', { field: t('label.cron') })
+        );
+        emitChange('');
+
+        return;
+      }
+
+      const errorKey = validateCronExpression(cronValue);
       setCustomCronError(errorKey ? t(errorKey) : '');
+
       if (!errorKey) {
-        onChange?.(cronValue);
+        emitChange(cronValue);
       }
     },
-    [onChange, t]
+    [emitChange, t]
   );
+
+  // Only the custom expression can be left in an unusable state; every other
+  // frequency derives a valid cron on its own.
+  const isCustomCronInvalid = showCustomInput && Boolean(customCronError);
+
+  useEffect(() => {
+    onValidityChange?.(!isCustomCronInvalid);
+  }, [isCustomCronInvalid, onValidityChange]);
 
   const frequencyOptions = useMemo(() => {
     const options = includePeriodOptions
@@ -321,19 +369,26 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     );
   }, [cronString, cronHumanText, entity, t]);
 
-  // Update internal state when external value changes
+  // Update internal state when the value changes outside of this component.
+  // Comparing against the last emitted cron rather than the current state keeps
+  // the user's in-progress edits (typed custom crons above all) intact.
   useEffect(() => {
-    if (value !== cronString) {
-      if (isEmpty(value)) {
-        setSelectedSchedular(SchedularOptions.ON_DEMAND);
-        setState((prev) => ({ ...prev, cron: undefined }));
-      } else {
-        setSelectedSchedular(SchedularOptions.SCHEDULE);
-        const newState = getStateValue(value, initialDefaultSchedule);
-        setState(newState);
-      }
+    const normalizedValue = value || undefined;
+
+    if (normalizedValue === lastEmittedValueRef.current) {
+      return;
     }
-  }, [value, cronString, initialDefaultSchedule]);
+
+    lastEmittedValueRef.current = normalizedValue;
+
+    if (isEmpty(value)) {
+      setSelectedSchedular(SchedularOptions.ON_DEMAND);
+      setState((prev) => ({ ...prev, cron: undefined }));
+    } else {
+      setSelectedSchedular(SchedularOptions.SCHEDULE);
+      setState(getStateValue(value, initialDefaultSchedule));
+    }
+  }, [value, initialDefaultSchedule]);
 
   return (
     <div className="schedule-interval-v1">
