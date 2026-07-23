@@ -326,8 +326,10 @@ public class AppRepository extends EntityRepository<App> {
    * bulk, so one unparseable row fails the entire scan instead of being skipped — a single write
    * from a newer build can make an app's whole history unreadable until the row is deleted by hand.
    * Ignoring unknown fields keeps adding a field backward compatible for readers.
+   *
+   * <p>Package-private for unit testing.
    */
-  private static <T> T readExtension(String json, Class<T> clazz) {
+  static <T> T readExtension(String json, Class<T> clazz) {
     return JsonUtils.readValueLenient(json, clazz);
   }
 
