@@ -126,34 +126,39 @@ class SupersetAPISource(SupersetSourceMixin):
                 )
             )
 
-    def _get_datasource_fqn_for_lineage(self, chart_json, db_service_prefix: str | None):
+    def _get_datasource_fqn_for_lineage(self, chart_json: FetchChart | ChartResult, db_service_prefix: str | None):
         # A SQL-parsed source table carries a table_name; a raw chart carries only a datasource_id.
         if getattr(chart_json, "table_name", None):
-            return self._get_source_table_fqn(chart_json, db_service_prefix)
+            return self._get_source_table_fqn(chart_json, db_service_prefix)  # pyright: ignore[reportArgumentType]
         return (
             self._get_datasource_fqn(chart_json.datasource_id, db_service_prefix) if chart_json.datasource_id else None
         )
 
-    def _get_input_tables(self, chart: ChartResult):
+    def _get_input_tables(self, chart: FetchChart | ChartResult):
         # Virtual (SQL) datasets: parse the dataset SQL to reach real source tables.
         datasource_id = getattr(chart, "datasource_id", None)
         datasource = self.client.fetch_datasource(datasource_id) if datasource_id else None
-        dataset_sql = datasource.result.sql if datasource and datasource.result else None
-        if dataset_sql:
+        result = datasource.result if datasource else None
+        if result and result.sql:
             enriched = FetchChart(
-                sql=dataset_sql,
-                schema=datasource.result.table_schema,
+                sql=result.sql,
+                schema=result.table_schema,
                 datasource_id=datasource_id,
             )
-            result = self._parse_lineage_from_dataset_sql(enriched)
+            input_tables = self._parse_lineage_from_dataset_sql(enriched)
         else:
-            result = super()._get_input_tables(chart)
-        return result
+            input_tables = super()._get_input_tables(chart)  # pyright: ignore[reportArgumentType]
+        return input_tables
 
-    def _resolve_lineage_database_name(self, datasource_json: SupersetDatasource, db_service_name: str) -> str | None:
-        database_json = self.client.fetch_database(datasource_json.result.database.id)
+    def _resolve_lineage_database_name(
+        self, datasource_json: SupersetDatasource, db_service_name: str | None
+    ) -> str | None:
+        database = datasource_json.result.database if datasource_json.result else None
+        database_json = self.client.fetch_database(database.id if database else None)
         default_database_name = database_json.result.parameters.database if database_json.result.parameters else None
-        db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+        db_service_entity = (
+            self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name) if db_service_name else None
+        )
         if db_service_entity is None:
             return default_database_name
         return get_database_name_for_lineage(db_service_entity, default_database_name)
@@ -171,7 +176,7 @@ class SupersetAPISource(SupersetSourceMixin):
                 datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
                 database_name = self._resolve_lineage_database_name(datasource_json, db_service_name)
             return build_es_fqn_search_string(
-                database_name=prefix_database_name or database_name,
+                database_name=prefix_database_name or database_name or "*",
                 schema_name=prefix_schema_name or chart_json.table_schema,
                 service_name=db_service_name or "*",
                 table_name=prefix_table_name or chart_json.table_name,
