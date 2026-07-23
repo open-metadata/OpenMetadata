@@ -14,7 +14,13 @@ from metadata.generated.schema.entity.services.llmService import LLMService
 from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.ingestion.ometa.utils import model_str
 
-SAMPLE_FOLDER = Path(__file__).parent.parent / "ingestion" / "examples" / "sample_data" / "ai_governance"
+SAMPLE_FOLDER = (
+    Path(__file__).parent.parent
+    / "ingestion"
+    / "examples"
+    / "sample_data"
+    / "ai_governance"
+)
 ENTITY_TYPES = {
     "llmModel": LLMModel,
     "mcpServer": McpServer,
@@ -80,7 +86,9 @@ def require_single_lineage_edge(
     )
     to_id = model_str(to_entity.id)
     matching_edges = [
-        edge for edge in (lineage_graph or {}).get("downstreamEdges", []) if edge.get("toEntity") == to_id
+        edge
+        for edge in (lineage_graph or {}).get("downstreamEdges", [])
+        if edge.get("toEntity") == to_id
     ]
     if len(matching_edges) != 1:
         raise ValueError(
@@ -90,7 +98,9 @@ def require_single_lineage_edge(
 
 def require_usage_metrics(server: McpServer, expected_metrics: dict[str, Any]) -> None:
     if server.usageMetrics is None:
-        raise ValueError(f"MCP server lost usage metrics: {model_str(server.fullyQualifiedName)}")
+        raise ValueError(
+            f"MCP server lost usage metrics: {model_str(server.fullyQualifiedName)}"
+        )
     actual_metrics = server.usageMetrics.model_dump(by_alias=True, exclude_none=True)
     if actual_metrics != expected_metrics:
         raise ValueError(
@@ -149,11 +159,22 @@ for edge in lineage:
 claims_copilot = require_entity(AIApplication, "claims-triage-copilot")
 if (
     claims_copilot.primaryModel is None
-    or claims_copilot.primaryModel.fullyQualifiedName != "ai_governance_llm.gpt_4o_claims_prod"
+    or model_str(claims_copilot.primaryModel.fullyQualifiedName)
+    != "ai_governance_llm.gpt_4o_claims_prod"
 ):
     raise ValueError("Claims copilot primary model was not resolved")
-if not claims_copilot.mcpServers:
-    raise ValueError("Claims copilot MCP server was not resolved")
+expected_mcp_server = "ai_governance_mcp.customer_profile_tools"
+actual_mcp_servers = [
+    reference["fullyQualifiedName"]
+    for reference in (
+        claims_copilot.mcpServers.model_dump() if claims_copilot.mcpServers else []
+    )
+]
+if actual_mcp_servers != [expected_mcp_server]:
+    raise ValueError(
+        f"Claims copilot MCP server changed: expected {expected_mcp_server}, "
+        f"found {actual_mcp_servers}"
+    )
 
 shadow_model = require_entity(
     LLMModel,
@@ -170,7 +191,9 @@ for shadow_application in applications["shadow"]:
         entity.developmentStage.value != "Unauthorized"
         or entity.governanceMetadata.registrationStatus.value != "Unregistered"
     ):
-        raise ValueError(f"Shadow application is not unauthorized and unregistered: {model_str(entity.name)}")
+        raise ValueError(
+            f"Shadow application is not unauthorized and unregistered: {model_str(entity.name)}"
+        )
 
 if args.id_snapshot:
     verify_id_snapshot(args.id_snapshot)

@@ -33,6 +33,7 @@ from metadata.generated.schema.api.services.createMcpService import (
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import Source
 from metadata.ingestion.api.step import WorkflowFatalError
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.ai_governance_sample import (
     AIGovernanceSampleData,
     AIGovernanceSampleDataError,
@@ -53,11 +54,11 @@ class FakeMetadata:
     def record_created(self, request: Any) -> None:
         fqn: str | None = None
         if isinstance(request, CreateLLMModelRequest):
-            fqn = f"{request.service.root}.{request.name.root}"
+            fqn = f"{model_str(request.service)}.{model_str(request.name)}"
         elif isinstance(request, CreateMcpServerRequest):
-            fqn = f"{request.service.root}.{request.name.root}"
+            fqn = f"{model_str(request.service)}.{model_str(request.name)}"
         elif isinstance(request, CreateAIApplicationRequest):
-            fqn = request.name.root
+            fqn = model_str(request.name)
 
         if fqn is not None:
             self.entities[fqn] = SimpleNamespace(
@@ -94,7 +95,7 @@ def test_fixture_bundle_emits_complete_showcase_in_dependency_order() -> None:
         *([AddLineageRequest] * 11),
     ]
 
-    models = {request.name.root for request in requests if isinstance(request, CreateLLMModelRequest)}
+    models = {model_str(request.name) for request in requests if isinstance(request, CreateLLMModelRequest)}
     assert models == {
         "claude_3_hr_screening",
         "external_shadow_research_llm",
@@ -105,7 +106,7 @@ def test_fixture_bundle_emits_complete_showcase_in_dependency_order() -> None:
     }
 
     applications = [request for request in requests if isinstance(request, CreateAIApplicationRequest)]
-    assert {application.name.root for application in applications} == {
+    assert {model_str(application.name) for application in applications} == {
         "claims-triage-copilot",
         "finance-forecast-agent",
         "hr-screening-assistant",
@@ -126,12 +127,15 @@ def test_registered_relationships_are_resolved_from_stable_fqns() -> None:
     claims_copilot = next(
         request
         for request in requests
-        if isinstance(request, CreateAIApplicationRequest) and request.name.root == "claims-triage-copilot"
+        if isinstance(request, CreateAIApplicationRequest) and model_str(request.name) == "claims-triage-copilot"
     )
 
-    assert claims_copilot.primaryModel.root == "ai_governance_llm.gpt_4o_claims_prod"
-    assert claims_copilot.modelConfigurations[0].model.fullyQualifiedName == "ai_governance_llm.gpt_4o_claims_prod"
-    assert [reference.fullyQualifiedName for reference in claims_copilot.mcpServers.root] == [
+    assert model_str(claims_copilot.primaryModel) == "ai_governance_llm.gpt_4o_claims_prod"
+    assert (
+        model_str(claims_copilot.modelConfigurations[0].model.fullyQualifiedName)
+        == "ai_governance_llm.gpt_4o_claims_prod"
+    )
+    assert [reference["fullyQualifiedName"] for reference in claims_copilot.mcpServers.model_dump()] == [
         "ai_governance_mcp.customer_profile_tools"
     ]
 
@@ -142,15 +146,11 @@ def test_mcp_servers_keep_showcase_usage_metrics() -> None:
         AIGovernanceSampleData(FIXTURE_FOLDER, metadata),
         metadata,
     )
-    mcp_servers = [
-        request for request in requests if isinstance(request, CreateMcpServerRequest)
-    ]
+    mcp_servers = [request for request in requests if isinstance(request, CreateMcpServerRequest)]
 
     assert all(request.usageMetrics is not None for request in mcp_servers)
     customer_profile_tools = next(
-        request
-        for request in mcp_servers
-        if request.name.root == "customer_profile_tools"
+        request for request in mcp_servers if model_str(request.name) == "customer_profile_tools"
     )
     assert customer_profile_tools.usageMetrics.totalInvocations == 42_100
     assert customer_profile_tools.usageMetrics.successRate == 0.991
@@ -171,7 +171,7 @@ def test_shadow_records_do_not_invent_model_references() -> None:
     shadow_requests = [
         request
         for request in requests
-        if isinstance(request, CreateAIApplicationRequest) and request.name.root in shadow_names
+        if isinstance(request, CreateAIApplicationRequest) and model_str(request.name) in shadow_names
     ]
 
     assert all(request.modelConfigurations is None for request in shadow_requests)

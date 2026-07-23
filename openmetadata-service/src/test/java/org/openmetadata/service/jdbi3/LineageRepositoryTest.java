@@ -180,38 +180,45 @@ class LineageRepositoryTest {
 
   @Test
   void testValidateLineageDetails_EntityOnlyAI_lineageDoesNotLogColumnErrors() {
-    LineageRepository repository = new LineageRepository();
-    EntityReference llmModel =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType("llmModel")
-            .withFullyQualifiedName("service.model");
-    EntityReference aiApplication =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType("aiApplication")
-            .withFullyQualifiedName("application");
-    LineageDetails details =
+    final LineageRepository repository = new LineageRepository();
+    final EntityReference llmModel = entityReference("llmModel", "service.model");
+    final EntityReference aiApplication = entityReference("aiApplication", "application");
+    final LineageDetails details =
         new LineageDetails()
             .withDescription("Uses the model")
             .withSource(LineageDetails.Source.MANUAL);
-    Logger logger = (Logger) LoggerFactory.getLogger(LineageRepository.class);
-    ListAppender<ILoggingEvent> appender = new ListAppender<>();
-    appender.start();
-    logger.addAppender(appender);
+    final Logger logger = (Logger) LoggerFactory.getLogger(LineageRepository.class);
+    final ListAppender<ILoggingEvent> appender = attachListAppender(logger);
 
     try {
-      String result = repository.validateLineageDetails(llmModel, aiApplication, details);
-
+      final String result = repository.validateLineageDetails(llmModel, aiApplication, details);
       assertNotNull(result);
-      assertTrue(
-          appender.list.stream()
-              .filter(event -> event.getLevel() == Level.ERROR)
-              .noneMatch(event -> event.getFormattedMessage().contains("for column lineage")));
+      assertNoColumnLineageErrors(appender);
     } finally {
       logger.detachAppender(appender);
       appender.stop();
     }
+  }
+
+  private static EntityReference entityReference(final String type, final String fqn) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(type)
+        .withFullyQualifiedName(fqn);
+  }
+
+  private static ListAppender<ILoggingEvent> attachListAppender(final Logger logger) {
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    appender.start();
+    logger.addAppender(appender);
+    return appender;
+  }
+
+  private static void assertNoColumnLineageErrors(final ListAppender<ILoggingEvent> appender) {
+    assertTrue(
+        appender.list.stream()
+            .filter(event -> event.getLevel() == Level.ERROR)
+            .noneMatch(event -> event.getFormattedMessage().contains("for column lineage")));
   }
 
   @Test

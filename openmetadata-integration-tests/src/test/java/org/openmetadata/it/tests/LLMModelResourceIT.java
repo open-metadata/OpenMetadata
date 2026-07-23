@@ -208,19 +208,19 @@ public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
             .withLabel("Complete the vendor risk review")
             .withStatus(RemediationStatus.Open);
     final CreateLLMModel request = showcaseModelRequest(ns, service, remediation);
-    final LLMModel created =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(HttpMethod.PUT, "/v1/llmModels", request, LLMModel.class);
+    final LLMModel created = putModel(request);
     request.setProviderModelId(UPDATED_PROVIDER_MODEL_ID);
-    final LLMModel updated =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(HttpMethod.PUT, "/v1/llmModels", request, LLMModel.class);
+    final LLMModel updated = putModel(request);
     final LLMModel fetched = getEntity(created.getId().toString());
 
     assertEquals(created.getId(), updated.getId());
     assertShowcaseFields(fetched, remediation);
+  }
+
+  private static LLMModel putModel(final CreateLLMModel request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/llmModels", request, LLMModel.class);
   }
 
   private static CreateLLMModel showcaseModelRequest(
