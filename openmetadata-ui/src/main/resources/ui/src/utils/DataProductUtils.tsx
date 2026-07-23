@@ -151,7 +151,9 @@ export const getDataProductIconByUrl = (iconURL?: string) => {
     return iconElement;
   }
 
-  return <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />;
+  return (
+    <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
+  );
 };
 
 export const getDataProductWidgetsFromKey = (widgetConfig: WidgetConfig) => {
