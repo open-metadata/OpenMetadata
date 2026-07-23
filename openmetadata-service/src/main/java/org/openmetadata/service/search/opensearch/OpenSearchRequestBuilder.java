@@ -33,6 +33,7 @@ public class OpenSearchRequestBuilder {
   private Boolean explain;
   private List<FieldValue> searchAfter;
   private SearchType searchType;
+  private String preference;
 
   public OpenSearchRequestBuilder() {}
 
@@ -218,6 +219,15 @@ public class OpenSearchRequestBuilder {
     return this.searchType;
   }
 
+  public OpenSearchRequestBuilder preference(String preference) {
+    this.preference = preference;
+    return this;
+  }
+
+  public String preference() {
+    return this.preference;
+  }
+
   public SearchRequest build(String... indices) {
     return SearchRequest.of(
         s -> {
@@ -275,6 +285,10 @@ public class OpenSearchRequestBuilder {
 
           if (searchType != null) {
             s.searchType(searchType);
+          }
+
+          if (preference != null && !preference.isEmpty()) {
+            s.preference(preference);
           }
 
           return s;

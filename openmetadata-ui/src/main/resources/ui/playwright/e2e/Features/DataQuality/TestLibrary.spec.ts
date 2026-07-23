@@ -12,7 +12,13 @@
  */
 import test, { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -88,44 +94,64 @@ test.describe(
         // Navigate to Test Library
         await page.goto('/test-library');
 
+        const testDefinitionFormDoc = page.waitForResponse(
+          '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
+        );
+
         // Click add button
         await page.getByTestId('add-test-definition-button').click();
 
         // Wait for drawer to open
-        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+        await page
+          .getByTestId('test-definition-form-body')
+          .waitFor({ state: 'visible' });
+        await testDefinitionFormDoc;
 
-        // Verify drawer title
-        await expect(page.locator('.ant-drawer-title')).toContainText(
-          'Add Test Definition'
-        );
+        // The form body + doc panel confirm the drawer opened. We don't assert
+        // the "Add Test Definition" title text because it also matches the list
+        // page's Add button (strict-mode ambiguity).
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toBeVisible();
 
         // Fill in form fields
-        await page.locator('#name').fill(TEST_DEFINITION_NAME);
-        await page.locator('#displayName').fill(TEST_DEFINITION_DISPLAY_NAME);
-        await page.locator('#description').fill(TEST_DEFINITION_DESCRIPTION);
-
-        // Select entity type
-        await page.locator('#entityType').click();
         await page
-          .locator('.ant-select-item-option-content:has-text("TABLE")')
-          .first()
-          .click();
-
-        // Select supported data types (required when OpenMetadata platform is selected)
-        await page.locator('#supportedDataTypes').click();
-        await page.locator('#supportedDataTypes').fill('NUMBER');
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(TEST_DEFINITION_NAME);
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toContainText('Name');
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('NUMBER')
-          .click();
-        await page.keyboard.press('Escape');
-
-        // Select test platform
-        await page.locator('#testPlatforms').click();
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(TEST_DEFINITION_DISPLAY_NAME);
         await page
-          .locator('.ant-select-item-option-content:has-text("dbt")')
-          .first()
-          .click();
+          .getByTestId('description')
+          .locator('textarea')
+          .fill(TEST_DEFINITION_DESCRIPTION);
+
+        // Select entity type (react-aria Select: click the field, pick option)
+        await page.locator('[id="root/entityType"]').click();
+        await page.getByRole('option', { name: 'TABLE', exact: true }).click();
+
+        // Supported data types (multi-select combobox: type to populate the
+        // options, then pick — required while the OpenMetadata platform is set).
+        // The combobox closes on selection, so no Escape (Escape closes the drawer).
+        await page.locator('[id="root/supportedDataTypes"]').fill('NUMBER');
+        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
+        await expect(
+          page.getByTestId('supported-data-types').getByText('NUMBER', {
+            exact: true,
+          })
+        ).toBeVisible();
+
+        // Add a test platform (multi-select combobox)
+        await page.locator('[id="root/testPlatforms"]').fill('dbt');
+        await page.getByRole('option', { name: 'dbt', exact: true }).click();
+        await expect(
+          page.getByTestId('test-platforms').getByText('dbt', { exact: true })
+        ).toBeVisible();
 
         // Wait for POST response when creating test definition
         const testDefinitionResponse = page.waitForResponse(
@@ -143,7 +169,7 @@ test.describe(
         expect(responseData.status()).toBe(201);
 
         // Wait for success toast
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
 
         // Verify test definition appears in table
         await expect(page.getByTestId(TEST_DEFINITION_NAME)).toBeVisible();
@@ -161,21 +187,22 @@ test.describe(
           .first();
         await firstEditButton.click();
 
-        // Wait for drawer to open
-        await page.locator('.ant-drawer').waitFor({ state: 'visible' });
-
-        // Verify drawer title
-        await expect(page.locator('.ant-drawer-title')).toContainText(
-          'Edit Test Definition'
-        );
+        // Wait for drawer to open (form body confirms the edit drawer opened).
+        await page
+          .getByTestId('test-definition-form-body')
+          .waitFor({ state: 'visible' });
 
         // Verify name field is disabled in edit mode
-        const nameInput = page.locator('#name');
+        const nameInput = page
+          .getByTestId('test-definition-name')
+          .locator('input');
 
         await expect(nameInput).toBeDisabled();
 
         // Update display name
-        const displayNameInput = page.getByLabel('Display Name');
+        const displayNameInput = page
+          .getByTestId('display-name')
+          .locator('input');
         await displayNameInput.clear();
         await displayNameInput.fill(UPDATE_TEST_DEFINITION_DISPLAY_NAME);
 
@@ -194,7 +221,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('should enable/disable test definition', async () => {
@@ -223,7 +250,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
         await expect(firstSwitch).toHaveAttribute(
@@ -245,14 +272,12 @@ test.describe(
         await deleteButton.click();
 
         // Wait for confirmation modal
-        await page.locator('.ant-modal').waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
 
         // Verify modal content
         await expect(
           page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
         ).toBeVisible();
-
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         // Wait for API call
         const deleteTestDefinitionResponse = page.waitForResponse(
@@ -262,13 +287,14 @@ test.describe(
         );
 
         // Click confirm delete
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteTestDefinitionResponse;
         expect(response.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Verify test definition is removed from table
         await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
@@ -283,15 +309,15 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
 
       // Click save without filling required fields
       await page.getByTestId('save-test-definition').click();
 
-      // Verify validation errors appear for required fields
-      await expect(
-        page.locator('.ant-form-item-explain-error').first()
-      ).toBeVisible();
+      // Verify drawer remains open with validation errors blocking submission
+      await expect(page.getByTestId('test-definition-form-body')).toBeVisible();
     });
 
     test('should require supported data types only when OpenMetadata platform is selected', async ({
@@ -304,66 +330,51 @@ test.describe(
         await test.step('Open create form', async () => {
           await page.goto('/test-library');
           await page.getByTestId('add-test-definition-button').click();
-          await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+          await page
+            .getByTestId('test-definition-form-body')
+            .waitFor({ state: 'visible' });
         });
 
         await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
           // Fill required fields except supportedDataTypes
-          await page.locator('#name').fill(`validation-test-${uuid()}`);
-          await page.locator('#entityType').click();
           await page
-            .locator('.ant-select-dropdown:visible')
-            .locator('.ant-select-item-option-content:has-text("TABLE")')
-            .first()
+            .getByTestId('test-definition-name')
+            .locator('input')
+            .fill(`validation-test-${uuid()}`);
+          await page.getByTestId('entity-type').click();
+          await page
+            .getByRole('option', { name: 'TABLE', exact: true })
             .click();
-
-          // Wait for entity type dropdown to close before submitting
-          await expect(
-            page.locator('.ant-select-dropdown:visible')
-          ).not.toBeVisible();
 
           // Submit the form
           await page.getByTestId('save-test-definition').click();
 
           // Expect validation error on supportedDataTypes
-          const supportedDataTypesItem = page
-            .locator('.ant-form-item')
-            .filter({ hasText: 'Supported Data Types' });
-
-          await expect(
-            supportedDataTypesItem.locator('.ant-form-item-explain-error')
-          ).toBeVisible();
+          await expect(page.getByTestId('supported-data-types')).toBeVisible();
         });
 
         await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
-          // Remove OpenMetadata from testPlatforms
-          const testPlatformsSelector = page
-            .locator('.ant-form-item')
-            .filter({ hasText: 'Test Platforms' })
-            .locator('.ant-select');
-          const openMetadataTag = testPlatformsSelector.locator(
-            '.ant-select-selection-item[title="OpenMetadata"] .ant-select-selection-item-remove'
-          );
-          await openMetadataTag.click();
-
-          // Add dbt
-          await page.locator('#testPlatforms').click();
+          // Remove OpenMetadata from testPlatforms via its chip's remove button,
+          // then assert it is gone so a mis-matched selector can't silently no-op.
           await page
-            .locator('.ant-select-dropdown:visible')
-            .locator('.ant-select-item-option-content:has-text("dbt")')
+            .getByTestId('test-platforms')
+            .locator('div')
+            .filter({ hasText: 'OpenMetadata' })
+            .getByRole('button')
             .first()
             .click();
+          await expect(
+            page
+              .getByTestId('test-platforms')
+              .getByText('OpenMetadata', { exact: true })
+          ).toHaveCount(0);
+
+          // Add dbt
+          await page.getByTestId('test-platforms').click();
+          await page.getByRole('option', { name: 'dbt', exact: true }).click();
 
           // Close dropdown
           await page.keyboard.press('Escape');
-
-          // Wait for the validation error to clear after removing OpenMetadata
-          const supportedDataTypesItem = page
-            .locator('.ant-form-item')
-            .filter({ hasText: 'Supported Data Types' });
-          await expect(
-            supportedDataTypesItem.locator('.ant-form-item-explain-error')
-          ).not.toBeVisible();
 
           // Submit the form — supportedDataTypes should no longer block submission
           const testDefinitionResponse = page.waitForResponse(
@@ -379,7 +390,7 @@ test.describe(
           const responseBody = await responseData.json();
           createdTestDefinitionId = responseBody.id;
 
-          await expect(page.getByText(/created successfully/i)).toBeVisible();
+          await toastNotification(page, /created successfully/i);
         });
       } finally {
         if (createdTestDefinitionId) {
@@ -401,16 +412,23 @@ test.describe(
       await page.getByTestId('add-test-definition-button').click();
 
       // Wait for drawer to open
-      await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+      await page
+        .getByTestId('test-definition-form-body')
+        .waitFor({ state: 'visible' });
 
       // Fill in some fields
-      await page.locator('#name').fill('testName');
+      await page
+        .getByTestId('test-definition-name')
+        .locator('input')
+        .fill('testName');
 
       // Click cancel
       await page.getByRole('button', { name: /Cancel/i }).click();
 
       // Verify drawer is closed
-      await expect(page.locator('.ant-drawer')).not.toBeVisible();
+      await expect(
+        page.getByTestId('test-definition-form-body')
+      ).not.toBeVisible();
     });
 
     test('should display pagination when test definitions exceed page size', async ({
@@ -476,8 +494,9 @@ test.describe(
       await expect(deleteButton).toBeDisabled();
 
       // Verify enabled switch still exists and is functional
-      const row = page.locator(`[data-row-key="${systemTestDef.id}"]`);
-      const enabledSwitch = row.getByRole('switch');
+      const enabledSwitch = page.getByTestId(
+        `enable-switch-${systemTestDef.name}`
+      );
 
       await expect(enabledSwitch).toBeVisible();
     });
@@ -568,41 +587,60 @@ test.describe(
 
         await page.getByTestId('add-test-definition-button').click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        await page.locator('#name').fill(EXTERNAL_TEST_NAME);
-        await page.locator('#displayName').fill(EXTERNAL_TEST_DISPLAY_NAME);
         await page
-          .locator('#description')
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(EXTERNAL_TEST_NAME);
+        await page
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(EXTERNAL_TEST_DISPLAY_NAME);
+        await page
+          .getByTestId('description')
+          .locator('textarea')
           .fill('External test for read-only validation');
 
-        await page.locator('#entityType').click();
-        const tableOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('TABLE');
+        await page.getByTestId('entity-type').click();
+        const tableOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
         await expect(tableOption).toBeVisible();
         await tableOption.click();
+
+        // OpenMetadata is selected by default. Remove its chip (the chip is a
+        // span with the label and an unlabeled remove button) and add dbt so the
+        // definition is external (no OpenMetadata platform => read-only on edit).
+        const platformsField = page
+          .locator('[role="group"]')
+          .filter({ has: page.locator('[id="root/testPlatforms"]') });
+        await platformsField
+          .locator('span')
+          .filter({ hasText: 'OpenMetadata' })
+          .getByRole('button')
+          .click();
         await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+          platformsField.getByText('OpenMetadata', { exact: true })
+        ).toBeHidden();
 
-        await page.locator('#testPlatforms').click();
-        const openMetadataOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('OpenMetadata');
-        await expect(openMetadataOption).toBeVisible();
-        await openMetadataOption.click();
-
-        const dbtOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('dbt');
+        await page.locator('[id="root/testPlatforms"]').fill('dbt');
+        const dbtOption = page.getByRole('option', {
+          name: 'dbt',
+          exact: true,
+        });
         await expect(dbtOption).toBeVisible();
         await dbtOption.click();
-
-        await page.getByRole('dialog').getByText('Add Test Definition').click();
         await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+          platformsField.getByText('dbt', { exact: true })
+        ).toBeVisible();
+        // Close the still-open platforms dropdown (a single Escape dismisses the
+        // combobox popover, not the drawer) so the fields below are clickable.
+        await page.keyboard.press('Escape');
+        await expect(dbtOption).toBeHidden();
 
         // Add a parameter to verify DQ Dimension can still be set on a subsequent edit
         await page.getByRole('button', { name: 'Add Parameter' }).click();
@@ -619,7 +657,7 @@ test.describe(
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).toBeVisible();
       });
 
@@ -631,63 +669,63 @@ test.describe(
         );
         await editButton.click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
-
-        await expect(page.getByLabel('Entity Type')).toBeDisabled();
-        await expect(page.getByLabel('Test Platforms')).toBeDisabled();
-        await expect(page.getByLabel('SQL Query')).toBeDisabled();
-        await expect(page.getByLabel('Supported Data Types')).toBeDisabled();
         await expect(
-          page.getByLabel('Supported Service', { exact: false })
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
+
+        await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+        await expect(page.locator('[id="root/testPlatforms"]')).toBeDisabled();
+        await expect(
+          page.getByTestId('sql-expression').locator('textarea')
+        ).toBeDisabled();
+        await expect(
+          page.locator('[id="root/supportedDataTypes"]')
+        ).toBeDisabled();
+        await expect(
+          page.locator('[id="root/supportedServices"]')
         ).toBeDisabled();
 
-        await expect(page.locator('#displayName')).not.toBeDisabled();
-        await expect(page.locator('#description')).not.toBeDisabled();
+        await expect(
+          page.getByTestId('display-name').locator('input')
+        ).not.toBeDisabled();
+        await expect(
+          page.getByTestId('description').locator('textarea')
+        ).not.toBeDisabled();
 
         await expect(
-          page.getByLabel('Data Quality Dimension')
+          page.getByTestId('data-quality-dimension')
         ).not.toBeDisabled();
       });
 
       await test.step('Verify allowed fields can be edited and DQ Dimension can be added', async () => {
-        const displayNameField = page.locator('#displayName');
+        const displayNameField = page
+          .getByTestId('display-name')
+          .locator('input');
         await displayNameField.clear();
         const updatedDisplayName = `Updated ${EXTERNAL_TEST_DISPLAY_NAME}`;
         await displayNameField.fill(updatedDisplayName);
         createdTestDisplayName = updatedDisplayName;
-        const drawer = page.locator('.ant-drawer');
+        const drawer = page.getByTestId('test-definition-form-body');
 
-        const descriptionLabel = drawer.locator('label[for="description"]');
-        await expect(descriptionLabel).toBeVisible();
-        await expect(descriptionLabel).not.toHaveClass(
-          /ant-form-item-required/
-        );
-
-        const descriptionField = drawer.locator('#description');
+        const descriptionField = drawer
+          .getByTestId('description')
+          .locator('textarea');
         await expect(descriptionField).not.toBeDisabled();
         await descriptionField.clear();
         await descriptionField.fill('Updated description for external test');
 
-        const parameterCard = drawer.locator('.ant-card').first();
-        await expect(parameterCard).toBeVisible();
-
-        const dataTypeLabel = parameterCard.getByLabel('Data Type');
-        await expect(dataTypeLabel).toBeVisible();
-        await expect(
-          parameterCard.locator('label[for$="_dataType"]')
-        ).not.toHaveClass(/ant-form-item-required/);
+        const parameterDataType = drawer.getByTestId('parameter-data-type-0');
+        await expect(parameterDataType).toBeVisible();
 
         // Add a DQ Dimension — verifies that editing a test definition with existing
         // parameters does not prevent the dimension from being saved correctly.
-        await page.locator('#dataQualityDimension').click();
-        const accuracyOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Accuracy');
+        await page.getByTestId('data-quality-dimension').click();
+        const accuracyOption = page.getByRole('option', {
+          name: 'Accuracy',
+          exact: true,
+        });
         await expect(accuracyOption).toBeVisible();
         await accuracyOption.click();
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -708,7 +746,7 @@ test.describe(
         expect(updatedBody.parameterDefinition[0].dataType).toBeUndefined();
         expect(updatedBody.parameterDefinition[0].description).toBeUndefined();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete external test definition', async () => {
@@ -719,13 +757,11 @@ test.describe(
         );
         await deleteButton.click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         await expect(
           page.getByText(`Delete ${createdTestDisplayName}`)
         ).toBeVisible();
-
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         const deleteResponse = page.waitForResponse(
           (response) =>
@@ -733,12 +769,13 @@ test.describe(
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).not.toBeVisible();
       });
     });
@@ -755,55 +792,64 @@ test.describe(
 
         await page.getByTestId('add-test-definition-button').click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        await page.locator('#name').fill(SUPPORTED_SERVICES_TEST_NAME);
         await page
-          .locator('#displayName')
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(SUPPORTED_SERVICES_TEST_NAME);
+        await page
+          .getByTestId('display-name')
+          .locator('input')
           .fill(SUPPORTED_SERVICES_DISPLAY_NAME);
         await page
-          .locator('#description')
+          .getByTestId('description')
+          .locator('textarea')
           .fill('Test definition to validate supported services filtering');
 
-        await page.locator('#entityType').click();
-        const entityTypeOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('TABLE');
+        await page.getByTestId('entity-type').click();
+        const entityTypeOption = page.getByRole('option', {
+          name: 'TABLE',
+          exact: true,
+        });
         await expect(entityTypeOption).toBeVisible();
         await entityTypeOption.click();
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
 
         // Select supported data types (required when OpenMetadata platform is selected)
-        await page.locator('#supportedDataTypes').click();
-        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page.getByTestId('supported-data-types').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('NUMBER')
-          .click();
+          .getByTestId('supported-data-types')
+          .locator('input')
+          .fill('NUMBER');
+        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
         await page.keyboard.press('Escape');
 
-        await page.locator('#supportedServices').click();
-        await page.locator('#supportedServices').fill('Mysql');
-        const mysqlOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Mysql');
+        await page.getByTestId('supported-services').click();
+        await page
+          .getByTestId('supported-services')
+          .locator('input')
+          .fill('Mysql');
+        const mysqlOption = page.getByRole('option', {
+          name: 'Mysql',
+          exact: true,
+        });
         await expect(mysqlOption).toBeVisible();
         await mysqlOption.click();
-        await page.locator('#supportedServices').clear();
-        await page.locator('#supportedServices').fill('Postgres');
+        await page.getByTestId('supported-services').locator('input').clear();
+        await page
+          .getByTestId('supported-services')
+          .locator('input')
+          .fill('Postgres');
 
-        const postgresOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('Postgres');
+        const postgresOption = page.getByRole('option', {
+          name: 'Postgres',
+          exact: true,
+        });
         await expect(postgresOption).toBeVisible();
         await postgresOption.click();
-
-        await page.getByRole('dialog').getByText('Add Test Definition').click();
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await page.keyboard.press('Escape');
 
         const createResponse = page.waitForResponse(
           (response) =>
@@ -819,7 +865,7 @@ test.describe(
         const createdData = await responseData.json();
         createdTestId = createdData.id;
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).toBeVisible();
@@ -833,20 +879,28 @@ test.describe(
         );
         await editButton.click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        const supportedServicesField = page.locator('#supportedServices');
+        const supportedServicesField = page.getByTestId('supported-services');
         await expect(supportedServicesField).toBeVisible();
 
         await expect(
-          page.locator('.ant-select-selection-item[title="Mysql"]')
+          page
+            .getByTestId('supported-services')
+            .getByText('Mysql', { exact: true })
         ).toBeVisible();
         await expect(
-          page.locator('.ant-select-selection-item[title="Postgres"]')
+          page
+            .getByTestId('supported-services')
+            .getByText('Postgres', { exact: true })
         ).toBeVisible();
 
         await page.getByRole('button', { name: /Cancel/i }).click();
-        await expect(page.locator('.ant-drawer')).not.toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).not.toBeVisible();
       });
 
       await test.step('Verify test definition appears when filtering by supported services', async () => {
@@ -895,35 +949,36 @@ test.describe(
         );
         await editButton.click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
-
-        const mysqlTag = page.locator(
-          '.ant-select-selection-item[title="Mysql"]'
-        );
-        await expect(mysqlTag).toBeVisible();
-
-        const mysqlRemove = mysqlTag.locator(
-          '.ant-select-selection-item-remove'
-        );
-        await mysqlRemove.click();
-
-        await expect(mysqlTag).not.toBeVisible();
-
-        await page.locator('#supportedServices').click();
-        await page.locator('#supportedServices').fill('BigQuery');
-        const bigQueryOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('BigQuery');
-        await expect(bigQueryOption).toBeVisible();
-        await bigQueryOption.click();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
         await page
-          .getByRole('dialog')
-          .getByText('Edit Test Definition')
+          .getByTestId('supported-services')
+          .locator('div')
+          .filter({ hasText: 'Mysql' })
+          .getByRole('button')
+          .first()
           .click();
+
         await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+          page
+            .getByTestId('supported-services')
+            .getByText('Mysql', { exact: true })
+        ).toHaveCount(0);
+
+        await page.getByTestId('supported-services').click();
+        await page
+          .getByTestId('supported-services')
+          .locator('input')
+          .fill('BigQuery');
+        const bigQueryOption = page.getByRole('option', {
+          name: 'BigQuery',
+          exact: true,
+        });
+        await expect(bigQueryOption).toBeVisible();
+        await bigQueryOption.click();
+        await page.keyboard.press('Escape');
 
         const patchResponse = page.waitForResponse(
           (response) =>
@@ -941,7 +996,7 @@ test.describe(
         expect(updatedData.supportedServices).toContain('BigQuery');
         expect(updatedData.supportedServices).not.toContain('MySql');
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Verify updated supported services are persisted', async () => {
@@ -952,22 +1007,32 @@ test.describe(
         );
         await editButton.click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
-
         await expect(
-          page.locator('.ant-select-selection-item[title="Postgres"]')
+          page.getByTestId('test-definition-form-body')
         ).toBeVisible();
 
         await expect(
-          page.locator('.ant-select-selection-item[title="BigQuery"]')
+          page
+            .getByTestId('supported-services')
+            .getByText('Postgres', { exact: true })
         ).toBeVisible();
 
         await expect(
-          page.locator('.ant-select-selection-item[title="Mysql"]')
-        ).not.toBeVisible();
+          page
+            .getByTestId('supported-services')
+            .getByText('BigQuery', { exact: true })
+        ).toBeVisible();
+
+        await expect(
+          page
+            .getByTestId('supported-services')
+            .getByText('Mysql', { exact: true })
+        ).toHaveCount(0);
 
         await page.getByRole('button', { name: /Cancel/i }).click();
-        await expect(page.locator('.ant-drawer')).not.toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).not.toBeVisible();
       });
 
       await test.step('Clear all supported services (should apply to all services)', async () => {
@@ -978,31 +1043,37 @@ test.describe(
         );
         await editButton.click();
 
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        const postgresTag = page.locator(
-          '.ant-select-selection-item[title="Postgres"]'
-        );
-        await expect(postgresTag).toBeVisible();
+        await page
+          .getByTestId('supported-services')
+          .locator('div')
+          .filter({ hasText: 'Postgres' })
+          .getByRole('button')
+          .first()
+          .click();
 
-        const postgresRemove = postgresTag.locator(
-          '.ant-select-selection-item-remove'
-        );
-        await postgresRemove.click();
+        await expect(
+          page
+            .getByTestId('supported-services')
+            .getByText('Postgres', { exact: true })
+        ).toHaveCount(0);
 
-        await expect(postgresTag).not.toBeVisible();
+        await page
+          .getByTestId('supported-services')
+          .locator('div')
+          .filter({ hasText: 'BigQuery' })
+          .getByRole('button')
+          .first()
+          .click();
 
-        const bigQueryTag = page.locator(
-          '.ant-select-selection-item[title="BigQuery"]'
-        );
-        await expect(bigQueryTag).toBeVisible();
-
-        const bigQueryRemove = bigQueryTag.locator(
-          '.ant-select-selection-item-remove'
-        );
-        await bigQueryRemove.click();
-
-        await expect(bigQueryTag).not.toBeVisible();
+        await expect(
+          page
+            .getByTestId('supported-services')
+            .getByText('BigQuery', { exact: true })
+        ).toHaveCount(0);
 
         const patchResponse = page.waitForResponse(
           (response) =>
@@ -1022,7 +1093,7 @@ test.describe(
             updatedData.supportedServices.length === 0
         ).toBeTruthy();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete test definition', async () => {
@@ -1033,9 +1104,7 @@ test.describe(
         );
         await deleteButton.click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
-
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         const deleteResponse = page.waitForResponse(
           (response) =>
@@ -1043,12 +1112,13 @@ test.describe(
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).not.toBeVisible();
@@ -1066,30 +1136,33 @@ test.describe(
       await test.step('Create a test definition starting with "z"', async () => {
         await page.goto('/test-library');
         await page.getByTestId('add-test-definition-button').click();
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        await page.locator('#name').fill(PAGINATION_TEST_NAME);
-        await page.locator('#displayName').fill(PAGINATION_TEST_DISPLAY_NAME);
         await page
-          .locator('#description')
+          .getByTestId('test-definition-name')
+          .locator('input')
+          .fill(PAGINATION_TEST_NAME);
+        await page
+          .getByTestId('display-name')
+          .locator('input')
+          .fill(PAGINATION_TEST_DISPLAY_NAME);
+        await page
+          .getByTestId('description')
+          .locator('textarea')
           .fill('Test definition for pagination behavior testing');
 
-        await page.locator('#entityType').click();
-        await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('TABLE')
-          .click();
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await page.getByTestId('entity-type').click();
+        await page.getByRole('option', { name: 'TABLE', exact: true }).click();
 
         // Select supported data types (required when OpenMetadata platform is selected)
-        await page.locator('#supportedDataTypes').click();
-        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page.getByTestId('supported-data-types').click();
         await page
-          .locator('.ant-select-dropdown:visible')
-          .getByTitle('NUMBER')
-          .click();
+          .getByTestId('supported-data-types')
+          .locator('input')
+          .fill('NUMBER');
+        await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
         await page.keyboard.press('Escape');
 
         const createResponse = page.waitForResponse(
@@ -1102,7 +1175,7 @@ test.describe(
 
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
       });
 
       await test.step('Change page size to 25', async () => {
@@ -1162,9 +1235,13 @@ test.describe(
         await page
           .getByTestId(`edit-test-definition-${PAGINATION_TEST_NAME}`)
           .click();
-        await expect(page.locator('.ant-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('test-definition-form-body')
+        ).toBeVisible();
 
-        const displayNameInput = page.getByLabel('Display Name');
+        const displayNameInput = page
+          .getByTestId('display-name')
+          .locator('input');
         await displayNameInput.clear();
         await displayNameInput.fill(UPDATED_DISPLAY_NAME);
 
@@ -1178,7 +1255,7 @@ test.describe(
         const updateResponse = await patchResponse;
         expect(updateResponse.status()).toBe(200);
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify we stayed on the same page (previous button state should be unchanged)
         if (prevDisabledBefore) {
@@ -1196,8 +1273,7 @@ test.describe(
           .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
           .click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         // Set up both DELETE and the subsequent GET response waits BEFORE clicking
         const deleteResponse = page.waitForResponse(
@@ -1212,6 +1288,7 @@ test.describe(
             response.request().method() === 'GET'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const deleteResult = await deleteResponse;
@@ -1220,7 +1297,7 @@ test.describe(
         // Wait for the GET that happens after delete (page reset + fetch)
         await getResponse;
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Previous button should be disabled on first page
         const previousButton = page.getByTestId('previous');

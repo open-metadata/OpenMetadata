@@ -43,6 +43,10 @@ class Step(ABC, Closeable):
     """All Workflow steps must inherit this base class."""
 
     status: Status
+    # Opt out of the 10-failure display cap in Summary.from_step: set True on a subclass when
+    # downstream logic needs the complete failure list (e.g. the Policy Agent coordinator, which
+    # decides per-policy grant vs manual from exactly which policy ids failed).
+    report_all_failures: bool = False
 
     def __init__(self):
         self.status = Status()
@@ -111,6 +115,14 @@ class Summary(StepSummary):
         # Stage time = time spent processing entities
         stage_time_ms = workflow_timing.get("stage", {}).get("total_ms", 0)
 
+        # Failures are capped to 10 for display payload size. A step may opt out
+        # (report_all_failures=True) when downstream logic needs the COMPLETE list — e.g. the Policy
+        # Agent, whose coordinator decides per-policy grant vs manual from exactly which policy ids
+        # failed; a truncated list would silently (and unsafely) grant the rest.
+        display_failures = step.status.failures or None
+        if display_failures and not step.report_all_failures:
+            display_failures = display_failures[0:10]
+
         return Summary(
             name=step.name,
             records=step.status.record_count if step.status.record_count > 0 else len(step.status.records),
@@ -118,7 +130,9 @@ class Summary(StepSummary):
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
-            failures=step.status.failures[0:10] if step.status.failures else None,
+            # Status stores TruncatedStackTraceError; StepSummary.failures is typed as
+            # StackTraceError (pre-existing invariance) — safe, the truncated form is a display drop-in.
+            failures=display_failures,  # pyright: ignore[reportArgumentType]
             progress=progress_tracker.get_progress_as_dict() or None,
             operationMetrics=operation_metrics.get_summary() or None,
             sourceTimeMs=source_time_ms if source_time_ms else None,

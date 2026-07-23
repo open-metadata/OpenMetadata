@@ -12,7 +12,9 @@
  */
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { ServicesType } from '../interface/service.interface';
+import { ServiceType } from '../generated/entity/services/serviceType';
+import { ConfigData, ServicesType } from '../interface/service.interface';
+import { getTestConnectionName } from './ServicePureUtils';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
@@ -67,7 +69,7 @@ jest.mock('./SearchServiceUtils', () => ({
 jest.mock('./SecurityServiceUtils', () => ({
   getSecurityConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
-jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
+jest.mock('./ServicePureUtils', () => ({ getTestConnectionName: jest.fn() }));
 jest.mock('./StorageServiceUtils', () => ({
   getStorageConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
@@ -115,6 +117,130 @@ describe('ServiceUtilClassBase', () => {
 
     expect(result).toEqual(ExplorePageTabs.TABLES);
   });
+
+  it('should prefer service style icon over service type logo', () => {
+    const iconURL = 'https://example.com/custom-database.svg';
+
+    expect(
+      serviceUtilClassBase.getServiceTypeLogo({
+        serviceType: 'CustomDatabase',
+        style: {
+          iconURL,
+        },
+      })
+    ).toBe(iconURL);
+  });
+
+  it('should use denormalized child service style icon', () => {
+    const iconURL = 'https://example.com/custom-service.svg';
+
+    expect(
+      serviceUtilClassBase.getServiceTypeLogo({
+        entityType: 'table',
+        service: {
+          style: {
+            iconURL,
+          },
+        },
+        serviceType: 'CustomDatabase',
+      })
+    ).toBe(iconURL);
+  });
+
+  it('should use the default service logo when source is unavailable', () => {
+    const getServiceLogoSpy = jest
+      .spyOn(serviceUtilClassBase, 'getServiceLogo')
+      .mockReturnValue('default-service-logo');
+
+    expect(serviceUtilClassBase.getServiceTypeLogo()).toBe(
+      'default-service-logo'
+    );
+    expect(getServiceLogoSpy).toHaveBeenCalledWith('');
+
+    getServiceLogoSpy.mockRestore();
+  });
+
+  it.each([
+    {
+      connectionType: 'Snowflake',
+      serviceType: ServiceType.Database,
+      serviceName: 'snowflake_prod',
+      configData: {
+        type: 'Snowflake',
+        account: 'org-account',
+        username: 'openmetadata',
+        password: 'secret',
+      },
+    },
+    {
+      connectionType: 'Snowflake',
+      serviceType: ServiceType.Database,
+      serviceName: 'snowflake_keypair',
+      configData: {
+        type: 'Snowflake',
+        account: 'org-account',
+        username: 'openmetadata',
+        privateKey: 'pem',
+        snowflakePrivatekeyPassphrase: 'phrase',
+      },
+    },
+    {
+      connectionType: 'Mysql',
+      serviceType: ServiceType.Database,
+      serviceName: 'mysql_iam',
+      configData: {
+        type: 'Mysql',
+        hostPort: 'localhost:3306',
+        authType: {
+          awsConfig: {
+            awsAccessKeyId: 'access-key',
+            awsSecretAccessKey: 'secret-key',
+            awsRegion: 'us-east-1',
+          },
+        },
+      },
+    },
+    {
+      connectionType: 'Kinesis',
+      serviceType: ServiceType.Messaging,
+      serviceName: 'kinesis_prod',
+      configData: {
+        type: 'Kinesis',
+        awsConfig: {
+          awsAccessKeyId: 'access-key',
+          awsSecretAccessKey: 'secret-key',
+          awsRegion: 'us-east-1',
+        },
+      },
+    },
+  ])(
+    'builds backend test connection workflow payload for $connectionType $serviceName',
+    ({ connectionType, serviceType, serviceName, configData }) => {
+      (getTestConnectionName as jest.Mock).mockReturnValueOnce(
+        `${serviceName}_test_connection`
+      );
+
+      expect(
+        serviceUtilClassBase.getAddWorkflowData(
+          connectionType,
+          serviceType,
+          serviceName,
+          configData as unknown as ConfigData
+        )
+      ).toEqual({
+        name: `${serviceName}_test_connection`,
+        workflowType: 'TEST_CONNECTION',
+        request: {
+          connection: {
+            config: configData,
+          },
+          serviceType,
+          connectionType,
+          serviceName,
+        },
+      });
+    }
+  );
 
   describe('getExtraIngestionMenuItems', () => {
     it('returns empty array when called with only serviceCategory', () => {

@@ -1104,6 +1104,34 @@ public final class EntityUtil {
     }
   }
 
+  /**
+   * Restricts a Domain listing to the user's own domains and their sub-domains when the user is
+   * domain-restricted (holds {@code DomainOnlyAccessRole}). Domains are not themselves tagged with a
+   * domain, so the generic {@link #addDomainQueryParam} filter does not apply to them — this adds a
+   * self-referential filter on the Domain entity's id and fully-qualified-name hierarchy. Inert for
+   * admins, bots, and users without the role.
+   */
+  public static void applyDomainSelfRestriction(
+      SecurityContext securityContext, ListFilter filter) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      List<EntityReference> userDomains = subjectContext.getUserDomains();
+      filter.addQueryParam("restrictToDomainIds", getCommaSeparatedIdsFromRefs(userDomains));
+      filter.addQueryParam(
+          "restrictToDomainFqnHashes", getCommaSeparatedDomainFqnHashes(userDomains));
+    }
+  }
+
+  private static String getCommaSeparatedDomainFqnHashes(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .filter(fqn -> !nullOrEmpty(fqn))
+        .map(FullyQualifiedName::buildHash)
+        .collect(Collectors.joining(","));
+  }
+
   public static String encodeEntityFqn(String fqn) {
     return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
   }

@@ -77,6 +77,11 @@ export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
    * `onAction` for a plain link.
    */
   onAction?: (id: Key) => void;
+  /**
+   * Maximum width in pixels for each crumb's label text. Labels longer than
+   * this truncate with an ellipsis. Omit to never truncate.
+   */
+  maxItemWidth?: number;
 }
 
 const ELLIPSIS_ID = '__breadcrumbs_ellipsis__';
@@ -99,7 +104,7 @@ const styles = sortCx({
   'button-white': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary',
     current:
-      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
   },
   'button-gray': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-secondary tw:hover:text-secondary',
@@ -177,20 +182,22 @@ const Divider = ({
 const CrumbLabel = ({
   item,
   size,
+  maxItemWidth,
 }: {
   item: BreadcrumbItemType;
   size: BreadcrumbsSize;
+  maxItemWidth?: number;
 }) => {
   const Icon = item.icon;
 
   return (
-    <span
-      className={cx(
-        'tw:flex tw:items-center tw:whitespace-nowrap',
-        sizes[size].gap
-      )}>
+    <span className={cx('tw:flex tw:min-w-0 tw:items-center', sizes[size].gap)}>
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
-      {item.label}
+      <span
+        className="tw:truncate"
+        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}>
+        {item.label}
+      </span>
     </span>
   );
 };
@@ -236,11 +243,12 @@ export const Breadcrumbs = ({
   items,
   type = 'text',
   divider = 'chevron',
-  size = 'sm',
+  size = 'xs',
   maxItems,
   autoCollapse = false,
   className,
   onAction,
+  maxItemWidth,
   'aria-label': ariaLabel = 'Breadcrumb',
   ...props
 }: BreadcrumbsProps) => {
@@ -327,17 +335,25 @@ export const Breadcrumbs = ({
                   className={cx(linkClassName, styles[type].link, padding)}
                   href={onAction ? undefined : item.href}
                   onPress={() => onAction?.(item.id)}>
-                  <CrumbLabel item={item} size={size} />
+                  <CrumbLabel
+                    item={item}
+                    maxItemWidth={maxItemWidth}
+                    size={size}
+                  />
                 </AriaLink>
               ) : (
                 <span
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cx(
-                    'tw:flex tw:items-center',
+                    'tw:flex tw:min-w-0 tw:items-center',
                     padding,
                     isCurrent ? styles[type].current : 'tw:text-quaternary'
                   )}>
-                  <CrumbLabel item={item} size={size} />
+                  <CrumbLabel
+                    item={item}
+                    maxItemWidth={maxItemWidth}
+                    size={size}
+                  />
                 </span>
               )}
               {!isCurrent && <Divider divider={divider} size={size} />}

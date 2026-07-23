@@ -18,11 +18,14 @@ import { getApiContext } from '../../utils/common';
 import { findTaskInList } from '../../utils/taskAPI';
 
 test.describe('Task Entity API Tests', () => {
+  const DAR_EXPIRATION_MS = 14 * 24 * 60 * 60 * 1000;
   const user1 = new UserClass();
   const user2 = new UserClass();
   let task1: TaskClass;
   let task2: TaskClass;
   let task3: TaskClass;
+
+  const futureDarExpirationDate = () => Date.now() + DAR_EXPIRATION_MS;
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -160,6 +163,7 @@ test.describe('Task Entity API Tests', () => {
       payload: {
         accessType: 'FullAccess',
         reason: 'Playwright test access request',
+        expirationDate: futureDarExpirationDate(),
       },
     });
 
@@ -276,6 +280,7 @@ test.describe('Task Entity API Tests', () => {
         payload: {
           accessType: 'FullAccess',
           reason: 'Playwright test access request',
+          expirationDate: futureDarExpirationDate(),
         },
       },
       { category: 'MetadataUpdate', type: 'DescriptionUpdate' },

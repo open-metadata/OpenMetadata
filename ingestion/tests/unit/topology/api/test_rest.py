@@ -16,6 +16,7 @@ import json
 from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -427,15 +428,17 @@ MOCK_OPENAPI_SCHEMA = {
 class TestRest:
     @pytest.fixture(autouse=True)
     def _rest_source(self):
-        # Return the canned schema (as a dict) from get_connection so the source
-        # never reaches out to the live petstore URL. test_connection is patched
-        # because ApiServiceSource.__init__ invokes it during construction. The
-        # context managers stay open across `yield`, covering sources built in
-        # the test bodies too.
+        # Return the canned schema (as a dict) from the owned connection so the
+        # source never reaches out to the live petstore URL. test_connection is
+        # patched because ApiServiceSource.__init__ invokes it during
+        # construction. The context managers stay open across `yield`, covering
+        # sources built in the test bodies too.
         with (
             patch(
-                "metadata.ingestion.source.api.api_service.get_connection",
-                side_effect=lambda *args, **kwargs: deepcopy(MOCK_OPENAPI_SCHEMA),
+                "metadata.ingestion.source.api.api_service.create_connection",
+                side_effect=lambda *args, **kwargs: SimpleNamespace(
+                    client=deepcopy(MOCK_OPENAPI_SCHEMA), close=lambda: None
+                ),
             ),
             patch(
                 "metadata.ingestion.source.api.api_service.ApiServiceSource.test_connection",
@@ -1361,7 +1364,9 @@ class TestGetConnectionS3:
         from metadata.generated.schema.entity.services.connections.api.restConnection import (
             RestConnection,
         )
-        from metadata.ingestion.source.api.rest.connection import get_connection
+        from metadata.ingestion.source.api.rest.connection import (
+            RestConnection as RestConnectionHandler,
+        )
 
         mock_parse_s3.return_value = MOCK_OPENAPI_JSON
 
@@ -1372,7 +1377,7 @@ class TestGetConnectionS3:
             )
         )
 
-        result = get_connection(connection)
+        result = RestConnectionHandler(connection)._get_client()
 
         assert isinstance(result, dict)
         assert result["openapi"] == "3.0.0"
@@ -1393,3 +1398,18 @@ class TestGetConnectionS3:
             == "https://my-bucket.s3.us-east-1.amazonaws.com/schemas/openapi.json"
         )
         assert connection.openAPISchemaConnection.awsCredentials.awsRegion == "us-east-1"
+
+
+def test_owned_connection_closed_when_test_connection_fails():
+    with patch("metadata.ingestion.source.api.api_service.create_connection") as mock_create_connection:
+        owned_connection = mock_create_connection.return_value
+        with (
+            patch(
+                "metadata.ingestion.source.api.api_service.run_test_connection",
+                side_effect=RuntimeError("cannot connect"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            RestSource.create(mock_rest_config["source"], MagicMock())
+
+        owned_connection.close.assert_called_once()

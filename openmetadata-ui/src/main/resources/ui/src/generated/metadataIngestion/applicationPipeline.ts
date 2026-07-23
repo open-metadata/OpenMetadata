@@ -49,10 +49,6 @@ export interface ApplicationPipeline {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
- *
- * Configuration for the MCP Chat Application. The LLM provider and credentials are
- * configured at the platform level via `llmConfiguration`; this app only governs chat
- * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -257,10 +253,6 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
-    /**
-     * The system prompt that guides the assistant behavior.
-     */
-    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -1118,10 +1110,6 @@ export interface ModuleConfiguration {
      * Data Assets Insights Module configuration
      */
     dataAssets: DataAssetsConfig;
-    /**
-     * Data Quality Insights Module configuration
-     */
-    dataQuality: DataQualityConfig;
 }
 
 /**
@@ -1167,16 +1155,6 @@ export interface DataAssetsConfig {
 export interface ServiceFilter {
     serviceName?: string;
     serviceType?: string;
-}
-
-/**
- * Data Quality Insights Module configuration
- */
-export interface DataQualityConfig {
-    /**
-     * If Enabled, Data Quality insights will be populated when the App runs.
-     */
-    enabled: boolean;
 }
 
 /**

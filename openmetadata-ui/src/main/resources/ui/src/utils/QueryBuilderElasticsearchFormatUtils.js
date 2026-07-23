@@ -609,30 +609,23 @@ function buildExtensionQuery(
       operator
     );
   } else if (isRangeOperator(operator)) {
-    // Range query: query longValue, doubleValue, and stringValue with OR
-    // since we don't know which field the value is stored in
-    // (dates are stored as strings, numbers as long/double)
-    const longValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'longValue',
-      value,
-      operator
-    );
-    const doubleValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'doubleValue',
-      value,
-      operator
-    );
-    const stringValueQuery = buildNestedTypedQuery(
-      basePropertyName,
-      'stringValue',
-      value,
-      operator
-    );
+    // Range query: OR across the typed value fields since we don't know which
+    // one holds the value. Date/time custom properties are stored only as
+    // formatted strings in stringValue — sending those strings into a numeric
+    // longValue/doubleValue range raises an ES number_format_exception that
+    // fails the whole search, so route date types to stringValue only.
+    const isDateOmType =
+      omPropertyType === 'date-cp' ||
+      omPropertyType === 'dateTime-cp' ||
+      omPropertyType === 'time-cp';
+    const rangeFields = isDateOmType
+      ? ['stringValue']
+      : ['longValue', 'doubleValue', 'stringValue'];
     mainQuery = {
       bool: {
-        should: [longValueQuery, doubleValueQuery, stringValueQuery],
+        should: rangeFields.map((field) =>
+          buildNestedTypedQuery(basePropertyName, field, value, operator)
+        ),
         minimum_should_match: 1,
       },
     };
@@ -833,17 +826,23 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     );
 
     // For range operators (between / not_between) the value is a two-element
-    // array [from, to]. Pass the full array so buildExtensionQuery can build
-    // a proper gte/lte range query. This is scoped to numeric types where ES
-    // range queries work correctly. Non-numeric types (e.g. dateTime-cp)
-    // store values as formatted strings where ES range comparison is unreliable.
+    // array [from, to]. Pass the full array so buildExtensionQuery can build a
+    // proper gte/lte range query. Numeric types (integer/number/timestamp) query
+    // longValue/doubleValue. Date types (date-cp/dateTime-cp/time-cp) are stored
+    // as formatted strings in stringValue; a keyword range is a lexicographic
+    // comparison, which is chronologically correct for the default big-endian,
+    // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
+    // value[0] since only a single bound is meaningful.
     const isBetweenOp = op === 'between';
-    const isNumericOmType =
+    const isRangeableOmType =
       omPropertyType === 'integer' ||
       omPropertyType === 'number' ||
-      omPropertyType === 'timestamp';
+      omPropertyType === 'timestamp' ||
+      omPropertyType === 'date-cp' ||
+      omPropertyType === 'dateTime-cp' ||
+      omPropertyType === 'time-cp';
     const extensionValue = hasValue
-      ? isBetweenOp && isNumericOmType
+      ? isBetweenOp && isRangeableOmType
         ? value
         : value[0]
       : null;

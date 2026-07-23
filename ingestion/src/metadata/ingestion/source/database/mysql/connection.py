@@ -31,6 +31,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
 )
@@ -63,6 +64,7 @@ from metadata.ingestion.source.database.mysql.queries import (
 from metadata.utils.credentials import get_azure_access_token, set_google_credentials
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
 
@@ -123,35 +125,35 @@ MYSQL_ERRORS = ErrorPack(
 class MySQLChecks:
     """Test-connection checks for MySQL."""
 
-    errors = MYSQL_ERRORS
+    errors = MYSQL_ERRORS.including(NETWORK_ERRORS)
 
     # MySQL 8 system databases - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "mysql", "sys"})
 
-    def __init__(self, client: Engine, schema: str | None, queries_statement: str) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], schema: str | None, queries_statement: str) -> None:
+        self._db = db
         self.schema = schema
         self.queries_statement = queries_statement
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self.client, self.schema, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, self.schema, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self.client, self.schema, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, self.schema, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        return run_sql(self.client, self.queries_statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, self.queries_statement, lambda _: "query history accessible")
 
 
 def _basic_engine(connection: MySQLConnectionConfig) -> Engine:
@@ -327,7 +329,7 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return MySQLChecks(
-            client=self.client,
+            db=self.borrow(),
             schema=self.service_connection.databaseSchema,
             queries_statement=self._test_queries_statement(),
         )

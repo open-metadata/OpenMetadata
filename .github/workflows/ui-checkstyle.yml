@@ -13,6 +13,10 @@ name: UI Checkstyle
 
 on:
   merge_group:
+  # Note: paths filter removed — the workflow always triggers so that the
+  # required status check (report) always completes. Path filtering is handled
+  # inside the workflow via dorny/paths-filter so PRs without UI changes skip
+  # the expensive jobs while still reporting a passing status.
   pull_request_target:
     types:
       - opened
@@ -20,13 +24,6 @@ on:
       - reopened
       - ready_for_review
       - labeled
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - ".github/workflows/ui-checkstyle.yml"
-      - openmetadata-ui/src/main/resources/ui/playwright/**
-      - openmetadata-ui/src/main/resources/ui/eslint.config.mjs
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
 
 permissions:
   contents: read
@@ -40,11 +37,35 @@ env:
   CORE_COMPONENTS_WORKING_DIRECTORY: openmetadata-ui-core-components/src/main/resources/ui
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/ui-checkstyle.yml'
+              - 'openmetadata-ui-core-components/src/main/resources/ui/**'
+
   authorize:
+    needs: check-changes
     if: |
-      github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request_target' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      needs.check-changes.outputs.ui-changed == 'true' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
@@ -89,7 +110,8 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
@@ -275,9 +297,9 @@ jobs:
             exit 1
           fi
 
-  report:
+  ui-checkstyle:
     needs: [authorize, checkstyle]
-    if: ${{ always() && needs.authorize.result == 'success' }}
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -286,6 +308,7 @@ jobs:
         uses: peter-evans/find-comment@v3
         id: fc
         if: ${{ github.event_name == 'pull_request_target' }}
+        continue-on-error: true
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: github-actions[bot]
@@ -293,7 +316,8 @@ jobs:
 
       - name: Post or update summary comment
         uses: actions/github-script@v7
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
+        continue-on-error: true
         with:
           script: |
             const checks = [
@@ -388,8 +412,12 @@ jobs:
       - name: Check final results
         if: always()
         run: |
-          if [ "${{ needs.checkstyle.result }}" != 'success' ] || \
-             [ "${{ needs.checkstyle.outputs.lint_src_result }}" = 'failure' ] || \
+          checkstyle_result="${{ needs.checkstyle.result }}"
+          if [[ "$checkstyle_result" != "success" && "$checkstyle_result" != "skipped" ]]; then
+            echo "Checkstyle job ended with status: $checkstyle_result"
+            exit 1
+          fi
+          if [ "${{ needs.checkstyle.outputs.lint_src_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.license_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.i18n_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.app_docs_result }}" = 'failure' ] || \
@@ -398,3 +426,4 @@ jobs:
             echo "One or more checks failed."
             exit 1
           fi
+          echo "All checks passed or were not required for this PR."

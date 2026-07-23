@@ -135,9 +135,7 @@ export const deleteBot = async (page: Page) => {
   // Click on delete button
   await page.getByTestId(`bot-delete-${botName}`).click();
 
-  await page.getByTestId('hard-delete-option').click();
-
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  await page.getByTestId('hard-delete').click();
 
   const deleteResponse = page.waitForResponse(`/api/v1/bots/*`);
 

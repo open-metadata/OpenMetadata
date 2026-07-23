@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -24,6 +25,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
+
+  private static final String TASK_STATUS_GROUP_OPEN = "open";
+  private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String TASK_STATUS_GROUP_CLOSED = "closed";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -54,6 +59,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getDomainSelfCondition(tableName));
     conditions.add(getOwnerCondition(tableName));
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
@@ -65,6 +71,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -83,12 +90,13 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskApproverCondition());
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
-    conditions.add(getSourceFileCondition());
-    conditions.add(getSourceEntityCondition());
+    conditions.add(getPrimaryEntityCondition());
+    conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -128,37 +136,39 @@ public class ListFilter extends Filter<ListFilter> {
     return null;
   }
 
-  /** Filters context memories down to the knowledge pills extracted from a given context file. */
-  private String getSourceFileCondition() {
-    String sourceFileId = queryParams.get("sourceFileId");
+  /**
+   * Filters context memories down to the knowledge pills whose primaryEntity is the given asset.
+   * Edge direction: primaryEntity --APPLIED_TO--> contextMemory, so the memory is the {@code toId}.
+   */
+  private String getPrimaryEntityCondition() {
+    String primaryEntityId = queryParams.get("primaryEntityId");
     String result = "";
-    if (!nullOrEmpty(sourceFileId)) {
-      queryParams.put("sourceFileIdParam", sourceFileId);
+    if (!nullOrEmpty(primaryEntityId)) {
+      queryParams.put("primaryEntityIdParam", primaryEntityId);
       result =
           String.format(
               "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
-                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
-                  + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "WHERE entity_relationship.fromId = :primaryEntityIdParam "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
                   + "AND entity_relationship.relation = %d))",
-              Relationship.MENTIONED_IN.ordinal());
+              Relationship.APPLIED_TO.ordinal());
     }
     return result;
   }
 
-  /** Filters context memories down to the knowledge pills extracted from any source entity. */
-  private String getSourceEntityCondition() {
-    String sourceEntityId = queryParams.get("sourceEntityId");
-    String result = "";
-    if (!nullOrEmpty(sourceEntityId)) {
-      queryParams.put("sourceEntityIdParam", sourceEntityId);
-      result =
-          String.format(
-              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
-                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
-                  + "AND entity_relationship.relation = %d))",
-              Relationship.MENTIONED_IN.ordinal());
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
     }
-    return result;
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
   }
 
   private String getAssignee() {
@@ -191,7 +201,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(assigneeFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
@@ -209,6 +219,19 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -263,7 +286,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(createdBy.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
@@ -273,6 +296,23 @@ public class ListFilter extends Filter<ListFilter> {
             + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
         inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -532,6 +572,35 @@ public class ListFilter extends Filter<ListFilter> {
         entityIdColumn, domainInClause);
   }
 
+  private String getDomainSelfCondition(String tableName) {
+    String domainIds = getQueryParam("restrictToDomainIds");
+    String result = "";
+    if (domainIds != null) {
+      String idColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+      String idInClause = buildIndexedBindParams("restrictDomainId", domainIds.replace("'", ""));
+      List<String> clauses = new ArrayList<>();
+      clauses.add(String.format("%s IN (%s)", idColumn, idInClause));
+      clauses.addAll(buildDomainFqnPrefixClauses(tableName));
+      result = "(" + String.join(" OR ", clauses) + ")";
+    }
+    return result;
+  }
+
+  private List<String> buildDomainFqnPrefixClauses(String tableName) {
+    List<String> clauses = new ArrayList<>();
+    String fqnHashes = getQueryParam("restrictToDomainFqnHashes");
+    if (!nullOrEmpty(fqnHashes)) {
+      String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+      int index = 0;
+      for (String fqnHash : fqnHashes.split(",")) {
+        String key = "restrictDomainFqn_" + index++;
+        queryParams.put(key, fqnHash.trim() + Entity.SEPARATOR + "%");
+        clauses.add(String.format("%s LIKE :%s", fqnHashColumn, key));
+      }
+    }
+    return clauses;
+  }
+
   private String getOwnerCondition(String tableName) {
     String ownerId = getQueryParam("ownerId");
     if (ownerId == null) {
@@ -683,10 +752,9 @@ public class ListFilter extends Filter<ListFilter> {
       }
     } else {
       if (disabled) {
-        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+        disabledCondition = "(json->>'disabled')::boolean = TRUE";
       } else {
-        disabledCondition =
-            "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+        disabledCondition = "(json->>'disabled' IS NULL OR (json->>'disabled')::boolean = FALSE)";
       }
     }
     return disabledCondition;
@@ -1058,35 +1126,70 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTaskStatusCondition(String tableName) {
     String statusGroup = queryParams.get("taskStatusGroup");
-    if (statusGroup != null) {
-      String column = tableName == null ? "status" : tableName + ".status";
-      if ("open".equalsIgnoreCase(statusGroup)) {
-        return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
-      } else if ("active".equalsIgnoreCase(statusGroup)) {
-        return String.format(
-            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
-      } else if ("closed".equalsIgnoreCase(statusGroup)) {
-        // 'Approved' is intentionally a member of both 'active' and 'closed' because the
-        // same status maps to different lifecycle meanings depending on the task type:
-        //   - Glossary/DescriptionUpdate/etc.: 'Approved' is the terminal state and must
-        //     surface in the existing Closed tab.
-        //   - DataAccessRequest: 'Approved' means "awaiting grant" — non-terminal — and
-        //     callers reach those tasks via the 'active' group instead.
-        // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
-        // A future refactor could make status group resolution task-type aware.
-        return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
-            column);
-      }
-    }
-
-    String taskStatus = queryParams.get("taskStatus");
-    if (nullOrEmpty(taskStatus)) {
-      return "";
-    }
     String column = tableName == null ? "status" : tableName + ".status";
-    String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
-    return String.format("%s IN (%s)", column, inCondition);
+    String typeCol = tableName == null ? "type" : tableName + ".type";
+    String condition = null;
+    if (statusGroup != null) {
+      condition = buildTaskStatusGroupCondition(statusGroup, column, typeCol);
+    }
+    if (condition == null) {
+      condition = buildExplicitTaskStatusCondition(column);
+    }
+    return condition;
+  }
+
+  /**
+   * Row-aware bucket predicates driven by {@link TaskBucketSql}. See that class for the bucket
+   * definitions and drift-guard test. Every {@code (type, status)} combination lands in exactly
+   * one of {@code open}/{@code closed} so {@code All = Open + Closed} reconciles for the mixed
+   * inbox. Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary}.
+   */
+  private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
+    return switch (statusGroup.toLowerCase(Locale.ROOT)) {
+      case TASK_STATUS_GROUP_OPEN -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_OPEN_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      case TASK_STATUS_GROUP_ACTIVE -> String.format(
+          "%s IN (%s)", column, TaskBucketSql.ACTIVE_STATUSES);
+      case TASK_STATUS_GROUP_CLOSED -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s <> '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_TERMINAL_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      default -> null;
+    };
+  }
+
+  private String buildExplicitTaskStatusCondition(String column) {
+    String taskStatus = queryParams.get("taskStatus");
+    String result = "";
+    if (!nullOrEmpty(taskStatus)) {
+      String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
+  }
+
+  // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the
+  // validated Long values so the bigint comparison works on MySQL and PostgreSQL.
+  private String getTaskCreatedAtRangeCondition(String tableName) {
+    String column = tableName == null ? "createdAt" : tableName + ".createdAt";
+    String start = queryParams.get("taskStartTs");
+    String end = queryParams.get("taskEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
   }
 
   private String getTaskApproverCondition() {
@@ -1104,7 +1207,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(approverFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
     return String.format(

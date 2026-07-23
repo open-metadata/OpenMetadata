@@ -13,7 +13,6 @@
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -58,7 +57,6 @@ const MarketplaceDataProductsWidget = ({
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
@@ -119,15 +117,13 @@ const MarketplaceDataProductsWidget = ({
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsFormLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =
@@ -227,7 +223,9 @@ const MarketplaceDataProductsWidget = ({
             weight="semibold">
             {t('label.new')} {t('label.data-product-plural')}
           </Typography>
-          <Typography as="span" className="tw:text-xs tw:text-text-tertiary">
+          <Typography
+            as="span"
+            className="tw:text-sm tw:font-medium tw:text-text-primary">
             {t('label.recently-created-entity', {
               entity: t('label.data-product-plural'),
             })}

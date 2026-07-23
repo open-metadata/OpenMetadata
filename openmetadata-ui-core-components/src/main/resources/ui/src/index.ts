@@ -14,9 +14,6 @@
 // Main entry point for OpenMetadata UI Core Components
 // Re-export everything from organized modules
 
-// Theme system
-export * from './theme';
-
 // Color system
 export * from './colors';
 

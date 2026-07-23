@@ -76,6 +76,10 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
       await createButton.click();
       await page.waitForURL('**/my-data', { timeout: 60_000 });
     }
+
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible({
+      timeout: 60_000,
+    });
   };
 
   test.beforeAll(

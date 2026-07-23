@@ -19,7 +19,9 @@ import {
   ReactComponent as DefaultDataProductIcon,
 } from '../assets/svg/ic-data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -29,6 +31,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DataProductDomainWidget } from '../components/DataProducts/DataProductDomainWidget/DataProductDomainWidget';
+import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -105,7 +108,8 @@ const InputOutputPortsTab = withSuspenseFallback(
     import('../components/DataProducts/InputOutputPortsTab').then((module) => ({
       default: module.InputOutputPortsTab,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const ResizablePanels = withSuspenseFallback(
@@ -346,6 +350,32 @@ export const getDataProductDetailTabs = ({
             ),
             key: EntityTabs.CONTRACT,
             children: <ContractTab />,
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.DATA_OBSERVABILITY}
+                isActive={activeTab === EntityTabs.DATA_OBSERVABILITY}
+                name={
+                  labelMap?.[EntityTabs.DATA_OBSERVABILITY] ??
+                  t('label.data-observability')
+                }
+              />
+            ),
+            key: EntityTabs.DATA_OBSERVABILITY,
+            children: (
+              <DataQualityDashboard
+                isGovernanceView
+                hiddenFilters={['dataProducts']}
+                initialFilters={
+                  dataProduct.fullyQualifiedName
+                    ? {
+                        dataProductFqns: [dataProduct.fullyQualifiedName],
+                      }
+                    : undefined
+                }
+              />
+            ),
           },
         ]),
     {

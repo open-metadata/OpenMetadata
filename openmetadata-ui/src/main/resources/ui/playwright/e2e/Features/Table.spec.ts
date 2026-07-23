@@ -58,17 +58,29 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
     await waitForAllLoadersToDisappear(page);
 
+    // Capture the paginated list responses so we wait for the *new* data
+    // before counting rows. Without this, the loader can finish for the
+    // current page while the page-2 fetch is still in flight, and the
+    // row count assertion runs against an empty table mid-transition.
+    const sortedResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByText('Name', { exact: true }).click();
+    await sortedResponse;
 
+    const nextPageResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByTestId('next').click();
+    await nextPageResponse;
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(
-      await page
-        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-        .count()
-    ).toBe(15);
+    // Use toHaveCount instead of .count() === 15 so Playwright auto-retries
+    // the assertion until the table re-renders with the page-2 rows.
+    await expect(
+      page.locator('[data-testid="test-case-table"] tbody tr[data-key]')
+    ).toHaveCount(15);
   });
 
   test('Table search with sorting should work', async ({
@@ -89,13 +101,15 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .waitFor({ state: 'detached' });
 
     await page.getByText('Name', { exact: true }).click();
-    await page.getByTestId('searchbar').click();
+    await page.locator('[data-testid="searchbar-component"] input').click();
 
     const testSearchResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
     );
 
-    await page.getByTestId('searchbar').fill('temp-test-case');
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill('temp-test-case');
 
     await testSearchResponse;
     await page
@@ -104,7 +118,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table filter with sorting should work', async ({
@@ -141,7 +155,28 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    // Migration static data seeds test cases across every status (including
+    // Queued), so the status filter alone no longer yields an empty list.
+    // Combine it with a search term that matches nothing to deterministically
+    // land on the empty-state placeholder.
+    const noMatchSearch = `no-match-${uuid()}`;
+    const emptySearchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+        response.url().includes(noMatchSearch)
+    );
+    await page.locator('[data-testid="searchbar-component"] input').click();
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(noMatchSearch);
+    await emptySearchResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table page should show schema tab with count', async ({
@@ -210,17 +245,16 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    await page
-      .getByTestId('page-size-selection-dropdown')
-      .scrollIntoViewIfNeeded();
-    await page.getByTestId('page-size-selection-dropdown').click();
-    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.scrollIntoViewIfNeeded();
+    await expect(pageSizeDropdown).toBeVisible();
+    await pageSizeDropdown.hover();
 
-    await expect(
-      page.getByRole('menuitem', { name: '15 / Page' })
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    const pageSizeOption = page
+      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
+      .getByRole('menuitem', { name: '15 / Page' });
+    await expect(pageSizeOption).toBeVisible();
+    await pageSizeOption.click();
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);

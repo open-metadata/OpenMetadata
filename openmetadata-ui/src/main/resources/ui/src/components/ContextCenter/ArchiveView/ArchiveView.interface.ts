@@ -19,11 +19,16 @@ export interface ArchiveItem {
   type: ArchiveItemType;
   updatedBy?: string;
   updatedAt?: number;
+  fileExtension?: string;
 }
 
 export interface ArchiveViewProps {
   data: ArchiveItem[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
+  canRestore?: boolean;
+  canDelete?: boolean;
   onRestore: (item: ArchiveItem) => void;
   onDelete: (item: ArchiveItem) => void;
+  onScrollEnd?: () => void;
 }

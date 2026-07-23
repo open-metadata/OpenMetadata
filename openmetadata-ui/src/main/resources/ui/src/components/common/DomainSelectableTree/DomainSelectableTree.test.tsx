@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, ThemeProvider } from '@mui/material';
 import { render, screen, waitFor } from '@testing-library/react';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import * as domainAPI from '../../../rest/domainAPI';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
 const mockDomains: Domain[] = [
@@ -124,18 +124,6 @@ jest.mock('../Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 
-const mockTheme = createTheme({
-  palette: {
-    primary: {
-      main: '#1890ff',
-      dark: '#096dd9',
-    },
-  },
-  typography: {
-    fontWeightMedium: 500,
-  },
-});
-
 const renderComponent = (props = {}) => {
   const defaultProps = {
     value: [],
@@ -147,11 +135,7 @@ const renderComponent = (props = {}) => {
     ...props,
   };
 
-  return render(
-    <ThemeProvider theme={mockTheme}>
-      <DomainSelectableTree {...defaultProps} />
-    </ThemeProvider>
-  );
+  return render(<DomainSelectableTree {...defaultProps} />);
 };
 
 describe('DomainSelectableTree', () => {
@@ -372,27 +356,23 @@ describe('DomainSelectableTree', () => {
 
   it('should handle visible prop change', async () => {
     const { rerender } = render(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          isMultiple={false}
-          value={[]}
-          visible={false}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        isMultiple={false}
+        value={[]}
+        visible={false}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     rerender(
-      <ThemeProvider theme={mockTheme}>
-        <DomainSelectableTree
-          visible
-          isMultiple={false}
-          value={[]}
-          onCancel={mockOnCancel}
-          onSubmit={mockOnSubmit}
-        />
-      </ThemeProvider>
+      <DomainSelectableTree
+        visible
+        isMultiple={false}
+        value={[]}
+        onCancel={mockOnCancel}
+        onSubmit={mockOnSubmit}
+      />
     );
 
     await waitFor(() => {
@@ -410,6 +390,47 @@ describe('DomainSelectableTree', () => {
 
     await waitFor(() => {
       expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+  });
+
+  it('should only render allowed domains when restrictedDomains is provided', async () => {
+    const allowedDomain: EntityReference = {
+      id: '1',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [allowedDomain] });
+
+    await waitFor(() => {
+      expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      const lastCall = (convertDomainsToTreeOptions as jest.Mock).mock.calls.at(
+        -1
+      );
+      const renderedDomains = lastCall?.[0] as Domain[];
+
+      expect(
+        renderedDomains.map((domain) => domain.fullyQualifiedName)
+      ).toEqual(['Engineering']);
+    });
+  });
+
+  it('should render empty state when restrictedDomains filters out everything', async () => {
+    const foreignDomain: EntityReference = {
+      id: '99',
+      name: 'Finance',
+      fullyQualifiedName: 'Finance',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [foreignDomain] });
+
+    await waitFor(() => {
+      expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
     });
   });
 });

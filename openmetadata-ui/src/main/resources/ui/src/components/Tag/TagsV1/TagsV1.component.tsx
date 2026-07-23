@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, useTheme } from '@mui/material';
-import { Tag, Typography } from 'antd';
+import { Badge, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Tag } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
+import { Focusable } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../assets/svg/automated-tag.svg';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
@@ -34,7 +35,6 @@ import {
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
-import TagChip from '../../common/atoms/TagChip/TagChip';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
@@ -54,10 +54,9 @@ const TagsV1 = ({
   newLook,
   entityFqn,
 }: TagsV1Props) => {
-  const theme = useTheme();
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
-    [tag]
+    [isVersionPage, tag]
   );
 
   const isGlossaryTag = useMemo(
@@ -69,7 +68,7 @@ const TagsV1 = ({
     if (newLook && !isGlossaryTag) {
       return (
         <IconTagNew
-          className="flex-shrink m-r-xss"
+          className="tw:shrink-0 m-r-xss"
           data-testid="tags-icon"
           height={12}
           name="tag-icon"
@@ -80,25 +79,25 @@ const TagsV1 = ({
     if (isGlossaryTag) {
       return (
         <IconTerm
-          className="flex-shrink m-r-xss"
+          className="tw:shrink-0 m-r-xss"
           data-testid="glossary-icon"
           height={12}
           name="glossary-icon"
           width={12}
         />
       );
-    } else {
-      return (
-        <IconTag
-          className="flex-shrink m-r-xss"
-          data-testid="tags-icon"
-          height={12}
-          name="tag-icon"
-          width={12}
-        />
-      );
     }
-  }, [isGlossaryTag]);
+
+    return (
+      <IconTag
+        className="tw:shrink-0 m-r-xss"
+        data-testid="tags-icon"
+        height={12}
+        name="tag-icon"
+        width={12}
+      />
+    );
+  }, [isGlossaryTag, newLook]);
 
   const tagName = useMemo(
     () =>
@@ -166,17 +165,17 @@ const TagsV1 = ({
             tagChipStyleClass
           )}>
           {renderTagIcon}
-          <Typography.Text
-            className="m-0 tags-label text-truncate truncate w-max-full"
+          <Typography
+            ellipsis
+            className="tags-label"
             data-testid={`tag-${tag.tagFQN}`}
-            ellipsis={{ tooltip: false }}
             style={{ color: tag.style?.color }}>
             {tagName}
-          </Typography.Text>
+          </Typography>
         </div>
       </div>
     ),
-    [renderTagIcon, tagName, tag, tagColorBar]
+    [renderTagIcon, tagName, tag, tagColorBar, tagChipStyleClass]
   );
 
   const automatedTagChip = useMemo(
@@ -185,31 +184,26 @@ const TagsV1 = ({
         className="no-underline"
         data-testid="tag-redirect-link"
         to={redirectLink}>
-        <TagChip
-          icon={
+        <Badge
+          className="tw:cursor-pointer tw:text-utility-brand-700 tw:outline-utility-brand-100 tw:bg-utility-brand-50 hover:tw:bg-utility-brand-50"
+          color="brand"
+          size="sm"
+          type="color">
+          <span className="tw:flex tw:items-center tw:gap-1">
             <AutomatedTag
-              color={theme.palette.allShades.brand[900]}
+              className="tw:text-utility-brand-900 tw:shrink-0"
               width={16}
             />
-          }
-          label={tagName || ''}
-          labelDataTestId={`tag-${tag.tagFQN}`}
-          sx={{
-            pl: 1.5,
-            color: theme.palette.allShades.brand[900],
-            borderColor: theme.palette.allShades.brand[100],
-            backgroundColor: theme.palette.allShades.brand[50],
-            '&::before': {
-              display: 'none',
-            },
-            '&:hover': {
-              backgroundColor: theme.palette.allShades.brand[50],
-            },
-          }}
-        />
+            <span
+              className="tw:text-utility-brand-900"
+              data-testid={`tag-${tag.tagFQN}`}>
+              {tagName}
+            </span>
+          </span>
+        </Badge>
       </Link>
     ),
-    [tagName, tag, redirectLink, theme]
+    [tagName, tag.tagFQN, redirectLink]
   );
 
   const tagChip = useMemo(
@@ -236,15 +230,26 @@ const TagsV1 = ({
         }
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}
-        <Link
-          className="no-underline h-full w-max-stretch"
-          data-testid="tag-redirect-link"
-          to={redirectLink}>
-          {tagContent}
-        </Link>
+        <Focusable>
+          <Link
+            className="no-underline h-full w-max-stretch"
+            data-testid="tag-redirect-link"
+            to={redirectLink}>
+            {tagContent}
+          </Link>
+        </Focusable>
       </Tag>
     ),
-    [color, tagContent, redirectLink]
+    [
+      className,
+      color,
+      size,
+      tag,
+      tagChipStyleClass,
+      tagContent,
+      tagProps,
+      redirectLink,
+    ]
   );
 
   const addTagChip = useMemo(
@@ -252,12 +257,14 @@ const TagsV1 = ({
       <Tag
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
-        <Typography.Text
-          className="m-0 text-xs font-medium text-primary text-truncate truncate w-max-full"
+        <Typography
+          ellipsis
+          className="m-0"
           data-testid="add-tag"
-          ellipsis={{ tooltip: false }}>
+          size="text-xs"
+          weight="medium">
           {getTagDisplay(tagName)}
-        </Typography.Text>
+        </Typography>
       </Tag>
     ),
     [tagName]
@@ -292,34 +299,22 @@ const TagsV1 = ({
     return (
       <Tooltip
         arrow
-        enterDelay={500}
         placement="top"
-        slotProps={{
-          tooltip: { className: 'tags-tooltip' },
-        }}
         title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-        {automatedTagChip}
+        <Focusable>{automatedTagChip}</Focusable>
       </Tooltip>
     );
   }
 
-  return (
-    <>
-      {isEditTags ? (
-        tagChip
-      ) : (
-        <Tooltip
-          arrow
-          enterDelay={500}
-          placement="top"
-          slotProps={{
-            tooltip: { className: 'tags-tooltip' },
-          }}
-          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-          {tagChip}
-        </Tooltip>
-      )}
-    </>
+  return isEditTags ? (
+    tagChip
+  ) : (
+    <Tooltip
+      arrow
+      placement="top"
+      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
+      {tagChip}
+    </Tooltip>
   );
 };
 

@@ -73,7 +73,7 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.18.7</jackson.version>
+    <jackson.version>2.18.9</jackson.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.41.30</awssdk.version>
@@ -100,7 +100,7 @@
     <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
     <gson.version>2.13.1</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.11</postgres.connector.version>
+    <postgres.connector.version>42.7.12</postgres.connector.version>
     <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
@@ -111,7 +111,7 @@
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.2.19</spring.version>
-    <log4j.version>2.25.4</log4j.version>
+    <log4j.version>2.25.5</log4j.version>
     <org.junit.jupiter.version>5.11.4</org.junit.jupiter.version>
     <org.junit.platform.version>1.11.4</org.junit.platform.version>
     <dropwizard-health.version>5.0.0</dropwizard-health.version>
@@ -157,8 +157,8 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.5.25</logback-core.version>
-    <logback-classic.version>1.5.25</logback-classic.version>
+    <logback-core.version>1.5.36</logback-core.version>
+    <logback-classic.version>1.5.36</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
@@ -629,11 +629,6 @@
         <version>${jackson.version}</version>
       </dependency>
       <dependency>
-        <groupId>com.lmax</groupId>
-        <artifactId>disruptor</artifactId>
-        <version>3.4.4</version>
-      </dependency>
-      <dependency>
         <groupId>io.github.resilience4j</groupId>
         <artifactId>resilience4j-retry</artifactId>
         <version>2.3.0</version>
@@ -761,7 +756,7 @@
       <dependency>
         <groupId>org.apache.httpcomponents.core5</groupId>
         <artifactId>httpcore5-h2</artifactId>
-        <version>5.3.5</version>
+        <version>5.4.3</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -783,19 +778,15 @@
         <artifactId>bcutil-jdk18on</artifactId>
         <version>1.84</version>
       </dependency>
-      <!-- Jackson 3.x BOM — jsonschema2pojo-core 1.3.1 (provided scope, used by the
-           jsonschema2pojo-maven-plugin) pulls tools.jackson 3.0.2 transitively
-           (SNYK-JAVA-TOOLSJACKSONCORE-15365915 / -15371178 / -15907550). The provided
-           scope keeps it out of the runtime dist, but Snyk's Maven scanner still walks
-           the provided tree, so it reports 3.0.2. Force the patched line (>= 3.1.0). -->
+      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively). -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.1.3</version>
+        <version>3.1.4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <!-- AWS SDK v2 BOM at root so every module resolves the patched line.
+<!-- AWS SDK v2 BOM at root so every module resolves the patched line.
            openmetadata-dist / -mcp / -k8s-operator are siblings that depend on
            -service (not children of it), so -service's BOM alone does not reach
            them. Clears cloudfront (SNYK-JAVA-SOFTWAREAMAZONAWSSDK-15810116). -->

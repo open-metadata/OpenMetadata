@@ -72,8 +72,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       }
 
       CacheKeys keys = new CacheKeys(cacheConfig.redis.keyspace);
-      cachedEntityDao =
-          new CachedEntityDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedEntityDao = new CachedEntityDao(cacheProvider, keys, cacheConfig);
       cachedRelationshipDao =
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
@@ -225,10 +224,9 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
    * pub-sub handler above when a remote pod publishes a write, and from the admin
    * {@code POST /system/cache/invalidate} endpoint.
    *
-   * <p>Note: not every entity mutation hook calls this — {@code postUpdate} / {@code postDelete}
-   * / {@code restoreEntity} currently rely on the write-through cache + L1 eviction rather
-   * than the {@link Invalidatable} registry. If you wire a new Invalidatable that needs to
-   * react to those events, you'll need to add the call there as well.
+   * <p>Entity creates call this directly, while update, delete, and restore paths reach it through
+   * the repository's mutation cache invalidation. New mutation paths must do the same so registered
+   * layers such as the negative cache cannot outlive a successful write.
    *
    * <p>No-op if no layers are registered (cache disabled or none registered yet).
    */

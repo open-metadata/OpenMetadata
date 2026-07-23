@@ -155,18 +155,19 @@ export const getAddServiceEntityBreadcrumb = (
 ) => {
   return [
     {
-      name: startCase(serviceCategory),
-      url: getSettingPath(
+      label: startCase(serviceCategory),
+      href: getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        getServiceRouteFromServiceType(serviceCategory)
       ),
+      id: 'category',
     },
     {
-      name: t('label.add-new-entity', {
+      label: t('label.add-new-entity', {
         entity: t('label.service'),
       }),
-      url: '',
-      activeTitle: true,
+      href: '',
+      id: 'add-service',
     },
   ];
 };

@@ -24,6 +24,8 @@
 }
 
 .explore-page {
+  margin-bottom: 20px;
+
   .content-height-with-resizable-panel {
     height: calc(
       100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
@@ -39,8 +41,10 @@
   }
 
   .explore-page-right-panel {
-    // fixed width to right panel
-    flex: 0 0 400px;
+    flex: 0 0 clamp(360px, 26vw, 440px);
+    max-width: 440px;
+    min-width: 360px;
+    overflow: auto;
   }
 
   .explore-icon {
@@ -56,18 +60,15 @@
   }
 
   .explore-main-card {
-    // body should occupy 100% height
+    .ant-card {
+      border-bottom: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
     .ant-card-body {
       height: 100%;
       overflow-y: auto;
-    }
-
-    // pagination sticky
-    .ant-pagination {
-      bottom: -20px;
-      background: var(--tw-color-bg-primary);
-      margin: -10px;
-      border-radius: 12px;
     }
   }
 

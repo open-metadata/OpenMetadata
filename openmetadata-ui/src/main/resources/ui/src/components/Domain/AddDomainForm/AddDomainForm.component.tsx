@@ -27,11 +27,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce, omit } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RegisterOptions, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
   DATA_PRODUCT_TYPE_LABEL_KEYS,
@@ -77,20 +75,20 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
+import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import {
   AVAILABLE_ICONS,
   DEFAULT_DATA_PRODUCT_ICON,
   DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker';
-import MUIGlossaryTagSuggestion from '../../common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
@@ -99,12 +97,6 @@ import {
   DomainFormSelectItem,
   DomainFormValues,
 } from './AddDomainForm.interface';
-const COVER_IMAGE_ACCEPTED_TYPES = [
-  'image/svg+xml',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-];
 
 export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   name: '',
@@ -297,7 +289,6 @@ const AddDomainForm = ({
   parentDomain,
 }: AddDomainFormProps) => {
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
   const [tagOptions, setTagOptions] = useState<DomainFormSelectItem[]>([]);
   const [domainOptions, setDomainOptions] = useState<DomainFormSelectItem[]>(
@@ -459,9 +450,32 @@ const AddDomainForm = ({
     name: 'color',
   });
 
-  const { onImageUpload } =
-    imageClassBase.getBlockEditorAttachmentProps() ?? {};
-  const isCoverImageUploadAvailable = !!onImageUpload;
+  const coverImageField = useMemo(() => {
+    const field = domainClassBase.getCoverImageField();
+    if (!field) {
+      return null;
+    }
+
+    return {
+      ...field,
+      props: {
+        ...field.props,
+        onValidationError: (message: string) =>
+          form.setError('coverImage', { type: 'validate', message }),
+      },
+    };
+  }, [form]);
+
+  const coverImageValue = useWatch({
+    control: form.control,
+    name: 'coverImage',
+  });
+
+  useEffect(() => {
+    if (coverImageValue) {
+      form.clearErrors('coverImage');
+    }
+  }, [coverImageValue, form]);
 
   const createPermission = useMemo(() => {
     const resourceEntity =
@@ -752,58 +766,6 @@ const AddDomainForm = ({
     props: { 'data-testid': 'display-name' },
     type: FieldTypes.TEXT,
   });
-
-  const handleCoverImageValidationError = useCallback(
-    (message: string) => {
-      showNotistackError(
-        enqueueSnackbar,
-        message,
-        undefined,
-        { vertical: 'top', horizontal: 'center' },
-        closeSnackbar
-      );
-    },
-    [enqueueSnackbar, closeSnackbar]
-  );
-
-  const coverImageField: FieldProp = {
-    id: 'root/coverImage',
-    label: t('label.cover-image'),
-    name: 'coverImage',
-    placeholder: t('label.upload-cover-image'),
-    props: {
-      acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
-      maxSizeMB: 5,
-      maxDimensions: { width: 800, height: 400 },
-      onValidationError: handleCoverImageValidationError,
-      coverImageLabels: {
-        clickToUpload: t('label.click-to-upload'),
-        orDragAndDrop: t('label.or-drag-and-drop'),
-        formatHint: (formats: string, maxSizeMB?: number) =>
-          t('message.cover-image-format-dimensions', {
-            formats,
-            width: 800,
-            height: 400,
-          }) + (maxSizeMB ? ` · ${maxSizeMB}MB` : ''),
-        replace: t('label.upload'),
-        remove: t('label.remove'),
-        reposition: t('label.reposition'),
-        savePosition: t('label.save-position'),
-        cancel: t('label.cancel'),
-        resetPosition: t('label.reset-position'),
-        dragHint: t('message.drag-to-adjust-position'),
-        imageTooSmallToReposition: t('message.image-too-small-to-reposition'),
-      },
-      validationMessages: {
-        sizeExceeded: (maxSizeMB: number) =>
-          t('message.file-size-exceeded', { size: `${maxSizeMB}MB` }),
-        dimensionsExceeded: (maxWidth: number, maxHeight: number) =>
-          t('message.image-dimensions-exceeded', { maxWidth, maxHeight }),
-        failedToLoad: t('message.failed-to-load-image'),
-      },
-    },
-    type: FieldTypes.COVER_IMAGE_UPLOAD,
-  };
 
   const iconField: FieldProp = {
     id: 'root/iconURL',
@@ -1158,7 +1120,7 @@ const AddDomainForm = ({
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
-      {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
+      {coverImageField && <div>{getField(coverImageField)}</div>}
 
       <Box align="start" gap={4}>
         <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
@@ -1206,7 +1168,7 @@ const AddDomainForm = ({
         name="glossaryTerms"
         rules={glossaryTermsRequiredRule}>
         {({ field }) => (
-          <MUIGlossaryTagSuggestion
+          <GlossaryTermTreeSelect
             data-testid="glossary-terms"
             label={t('label.glossary-term-plural')}
             placeholder={t('label.select-field', {

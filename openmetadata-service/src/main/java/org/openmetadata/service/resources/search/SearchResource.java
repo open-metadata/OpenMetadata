@@ -67,6 +67,9 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -81,6 +84,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
@@ -419,24 +423,77 @@ public class SearchResource {
       String postFilter,
       String sortFieldParam,
       String sortOrder) {
-    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+    return SearchResultCsvExporter.buildExportSearchRequest(
+        subjectContext, query, index, deleted, queryFilter, postFilter, sortFieldParam, sortOrder);
+  }
 
-    List<EntityReference> domains = new ArrayList<>();
-    if (!subjectContext.isAdmin()) {
-      domains = subjectContext.getUserDomains();
-    }
-
-    return new SearchRequest()
-        .withQuery(resolvedQuery)
-        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-        .withQueryFilter(queryFilter)
-        .withPostFilter(postFilter)
-        .withDeleted(deleted)
-        .withSortFieldParam(sortFieldParam)
-        .withSortOrder(sortOrder)
-        .withDomains(domains)
-        .withApplyDomainFilter(
-            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+  @GET
+  @Path("/export/async")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportSearchResultsAsync",
+      summary = "Export search results as a background CSV job",
+      description =
+          "Queues a background job that exports the matching search results to CSV. "
+              + "Track it via /v1/csvAsyncJobs and download the file from "
+              + "/v1/csvAsyncJobs/{jobId}/result once completed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export job accepted",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportSearchResultsAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(description = "Elasticsearch query appended to the query string generator")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(description = "Sort order asc or desc, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(description = "Maximum number of rows to export") @QueryParam("size") Integer size,
+      @Parameter(description = "Starting offset for the export")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    CsvAsyncJobArgs.SearchExportArgs searchExport =
+        new CsvAsyncJobArgs.SearchExportArgs()
+            .setQuery(query)
+            .setIndex(index)
+            .setDeleted(deleted)
+            .setQueryFilter(queryFilter)
+            .setPostFilter(postFilter)
+            .setSortField(sortFieldParam)
+            .setSortOrder(sortOrder)
+            .setSize(size)
+            .setFrom(from);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createSearchExportJob(index, subjectContext.user().getName(), searchExport);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   @POST

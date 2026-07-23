@@ -45,12 +45,18 @@ export interface InputBaseProps extends TextFieldProps {
   wrapperClassName?: string;
   /** Class name for the tooltip. */
   tooltipClassName?: string;
+  /** Class name for the hint text. */
+  hintClassName?: string;
   /** Keyboard shortcut to display. */
   shortcut?: string | boolean;
   ref?: Ref<HTMLInputElement>;
   groupRef?: Ref<HTMLDivElement>;
   /** Icon component to display on the left side of the input. */
   icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  /** Optional slot rendered inside the input group, after the input and before trailing icons. */
+  trailingSlot?: ReactNode;
+  /** Passes `data-testid` directly to the inner `<input>` element (not the wrapper). */
+  inputDataTestId?: string;
 }
 
 const TextFieldContext = createContext<TextFieldProps>({});
@@ -60,8 +66,10 @@ export const InputBase = ({
   tooltip,
   shortcut,
   groupRef,
+  trailingSlot,
+  inputDataTestId,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   isInvalid,
   isDisabled,
   icon: Icon,
@@ -111,23 +119,29 @@ export const InputBase = ({
       {...{ isDisabled, isInvalid }}
       className={({ isFocusWithin, isDisabled, isInvalid }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:flex-row tw:place-content-center tw:place-items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:transition-shadow tw:duration-100 tw:ease-linear tw:ring-inset',
+          // Border is drawn with outline, not a ring: WebKit does not pixel-snap
+          // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
+          'tw:relative tw:flex tw:w-full tw:flex-row tw:place-content-center tw:place-items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
 
-          isFocusWithin && !isDisabled && 'tw:ring-2 tw:ring-brand',
+          isFocusWithin &&
+            !isDisabled &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
 
           // Disabled state styles
           isDisabled &&
-            'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
-          'tw:group-disabled:cursor-not-allowed tw:group-disabled:bg-disabled_subtle tw:group-disabled:ring-disabled',
+            'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled',
+          'tw:group-disabled:cursor-not-allowed tw:group-disabled:bg-disabled_subtle tw:group-disabled:outline-disabled',
 
           // Invalid state styles
-          isInvalid && 'tw:ring-error_subtle',
-          'tw:group-invalid:ring-error_subtle',
+          isInvalid && 'tw:outline-error_subtle',
+          'tw:group-invalid:outline-error_subtle',
 
           // Invalid state with focus-within styles
-          isInvalid && isFocusWithin && 'tw:ring-2 tw:ring-error',
+          isInvalid &&
+            isFocusWithin &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
           isFocusWithin &&
-            'tw:group-invalid:ring-2 tw:group-invalid:ring-error',
+            'tw:group-invalid:outline-2 tw:group-invalid:-outline-offset-2 tw:group-invalid:outline-error',
 
           context?.wrapperClassName,
           wrapperClassName
@@ -152,7 +166,7 @@ export const InputBase = ({
         {...(inputProps as AriaInputProps)}
         className={cx(
           cx(
-            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
+            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-tertiary tw:autofill:rounded-lg tw:autofill:text-primary',
             fontSizeClass[fontSize]
           ),
           isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
@@ -160,9 +174,13 @@ export const InputBase = ({
           context?.inputClassName,
           inputClassName
         )}
+        data-testid={inputDataTestId}
         placeholder={placeholder}
         ref={ref}
       />
+
+      {/* Custom trailing slot (e.g. password reveal button) */}
+      {trailingSlot}
 
       {/* Tooltip and help icon */}
       {tooltip && !isInvalid && (
@@ -201,7 +219,7 @@ export const InputBase = ({
           <span
             aria-hidden="true"
             className={cx(
-              'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:ring-1 tw:ring-secondary tw:select-none tw:ring-inset',
+              'tw:pointer-events-none tw:rounded tw:px-1 tw:py-px tw:text-xs tw:font-medium tw:text-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:select-none',
               isDisabled && 'tw:bg-transparent tw:text-disabled'
             )}>
             {typeof shortcut === 'string' ? shortcut : '⌘K'}
@@ -261,12 +279,14 @@ interface InputProps extends InputBaseProps, BaseProps {
 
 export const Input = ({
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   placeholder,
   icon: Icon,
   label,
   hint,
   shortcut,
+  trailingSlot,
+  inputDataTestId,
   hideRequiredIndicator,
   className,
   ref,
@@ -276,6 +296,7 @@ export const Input = ({
   inputClassName,
   wrapperClassName,
   tooltipClassName,
+  hintClassName,
   ...props
 }: InputProps) => {
   return (
@@ -303,6 +324,8 @@ export const Input = ({
               placeholder,
               icon: Icon,
               shortcut,
+              trailingSlot,
+              inputDataTestId,
               iconClassName,
               inputClassName,
               wrapperClassName,
@@ -311,7 +334,11 @@ export const Input = ({
             }}
           />
 
-          {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+          {hint && (
+            <HintText className={hintClassName} isInvalid={isInvalid}>
+              {hint}
+            </HintText>
+          )}
         </>
       )}
     </TextField>

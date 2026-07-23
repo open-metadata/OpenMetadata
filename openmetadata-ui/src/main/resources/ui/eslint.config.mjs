@@ -190,6 +190,28 @@ export default [
       // i18next rules - temporarily disabled due to ESLint 9 compatibility issues
       // TODO: Re-enable when eslint-plugin-i18next fully supports ESLint 9 flat config
       'i18next/no-literal-string': 'off',
+
+      // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
+      // does not pixel-snap box-shadows, so a ring used as a border thins out and can
+      // vanish entirely in Safari at non-100% zoom. Use `border-*`, or `outline-*` where
+      // the edge must be layout-neutral. See docs/colors.md §2.3.1.
+      //
+      // Requires start-of-string, whitespace, `:` or `!` before `ring-`, so it catches
+      // every form — `tw:ring-1`, `tw:focus-visible:ring-2`, `tw:[&_button]:ring-0`,
+      // `tw:!ring-0` — while ignoring CSS custom properties (`--tw-ring-color-*`).
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'Literal[value=/(^|[\\s:!])ring-/]',
+          message:
+            'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
+        },
+        {
+          selector: 'TemplateElement[value.raw=/(^|[\\s:!])ring-/]',
+          message:
+            'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
+        },
+      ],
     },
   },
 
@@ -267,6 +289,36 @@ export default [
       'playwright/prefer-web-first-assertions': 'warn',
       'playwright/no-useless-await': 'warn',
       'playwright/no-wait-for-selector': 'warn',
+    },
+  },
+
+  // E2E spec files: warn on bare browser.newPage() (no storageState arg).
+  //
+  // There are two valid reasons to keep a warning here rather than an error:
+  //   • ANTI-PATTERN (warn is appropriate): a test that only needs an admin
+  //     page calls browser.newPage() + adminUser.login(page) per test instead
+  //     of using test.use({ storageState: 'playwright/.auth/admin.json' }).
+  //     That leaks the page on assertion failure and re-runs a full auth flow.
+  //   • LEGITIMATE (warning, not error, avoids false positives): multi-user
+  //     tests that need a second page as a *different* user (reviewer, data
+  //     consumer, team member) genuinely need browser.newPage() because the
+  //     `page` fixture only provides one pre-authenticated admin page.
+  //
+  // When you see this warning, ask: "do all assertions in this test need only
+  // one (admin) perspective?" If yes, switch to the fixture. If no (you need
+  // a second user), the warning is expected — leave it as-is.
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector:
+            "CallExpression[callee.object.name='browser'][callee.property.name='newPage'][arguments.length=0]",
+          message:
+            'Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.',
+        },
+      ],
     },
   },
 

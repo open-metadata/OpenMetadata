@@ -2,7 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 
 import java.util.ArrayList;
@@ -38,6 +37,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the database service / database / schema delete cascade (search by service.id,
+    // field_relationship / tag_usage by the root cleanup() FQN prefix) — see
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -146,39 +149,33 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
       return;
     }
 
-    // For stored procedures, we need to handle the service field specially
-    // because it comes through DatabaseSchema
-    if (fields.contains(FIELD_SERVICE)
-        || fields.contains("databaseSchema")
-        || fields.contains("database")
-        || fields.contains("service")) {
+    // databaseSchema, database and service are default container fields for a stored procedure
+    // (service is derived from the parent schema) and must always be populated regardless of the
+    // requested fields - mirrors DatabaseSchemaRepository.fetchAndSetDefaultFields.
+    Map<UUID, EntityReference> schemaRefs =
+        batchFetchContainers(storedProcedures, DATABASE_SCHEMA, Include.ALL);
+    if (!schemaRefs.isEmpty()) {
+      List<UUID> schemaIds =
+          schemaRefs.values().stream().map(EntityReference::getId).distinct().toList();
+      var schemaRepository = (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+      List<DatabaseSchema> schemas =
+          schemaRepository.getDao().findEntitiesByIds(new ArrayList<>(schemaIds), Include.ALL);
+      schemaRepository.setFieldsInBulk(EntityUtil.Fields.EMPTY_FIELDS, schemas);
+      Map<UUID, DatabaseSchema> schemaById = new HashMap<>();
+      for (DatabaseSchema schema : schemas) {
+        schemaById.put(schema.getId(), schema);
+      }
 
-      Map<UUID, EntityReference> schemaRefs =
-          batchFetchContainers(storedProcedures, DATABASE_SCHEMA, Include.ALL);
-      if (!schemaRefs.isEmpty()) {
-        List<UUID> schemaIds =
-            schemaRefs.values().stream().map(EntityReference::getId).distinct().toList();
-        var schemaRepository =
-            (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
-        List<DatabaseSchema> schemas =
-            schemaRepository.getDao().findEntitiesByIds(new ArrayList<>(schemaIds), Include.ALL);
-        schemaRepository.setFieldsInBulk(EntityUtil.Fields.EMPTY_FIELDS, schemas);
-        Map<UUID, DatabaseSchema> schemaById = new HashMap<>();
-        for (DatabaseSchema schema : schemas) {
-          schemaById.put(schema.getId(), schema);
+      for (StoredProcedure sp : storedProcedures) {
+        EntityReference schemaRef = schemaRefs.get(sp.getId());
+        if (schemaRef == null) {
+          continue;
         }
-
-        for (StoredProcedure sp : storedProcedures) {
-          EntityReference schemaRef = schemaRefs.get(sp.getId());
-          if (schemaRef == null) {
-            continue;
-          }
-          DatabaseSchema schema = schemaById.get(schemaRef.getId());
-          if (schema != null) {
-            sp.withDatabaseSchema(schemaRef)
-                .withDatabase(schema.getDatabase())
-                .withService(schema.getService());
-          }
+        DatabaseSchema schema = schemaById.get(schemaRef.getId());
+        if (schema != null) {
+          sp.withDatabaseSchema(schemaRef)
+              .withDatabase(schema.getDatabase())
+              .withService(schema.getService());
         }
       }
     }
