@@ -489,13 +489,31 @@ public class EntityFieldUtils {
   }
 
   /**
+   * Parses an {@link EntityStatus} from a string in a case-insensitive way so that
+   * CSV imports and other user inputs accept values like {@code draft} / {@code DRAFT}
+   * in addition to the canonical {@code Draft}. Multi-word values such as
+   * {@code "In Review"} are matched ignoring case as well.
+   *
+   * @throws IllegalArgumentException when the value does not match any enum constant
+   */
+  public static EntityStatus parseEntityStatus(String value) {
+    String normalized = value == null ? "" : value.trim();
+    for (EntityStatus status : EntityStatus.values()) {
+      if (status.value().equalsIgnoreCase(normalized)) {
+        return status;
+      }
+    }
+    throw new IllegalArgumentException("Unknown EntityStatus value: " + value);
+  }
+
+  /**
    * Sets the status field on various entity types using appropriate enum values.
    * Handles both legacy 'status' field and new 'entityStatus' field.
    */
   public static void setEntityStatus(EntityInterface entity, String statusValue) {
     try {
       try {
-        EntityStatus status = EntityStatus.fromValue(statusValue);
+        EntityStatus status = parseEntityStatus(statusValue);
         entity.setEntityStatus(status);
         LOG.debug(
             "Successfully set entityStatus to '{}' on entity type: {}",

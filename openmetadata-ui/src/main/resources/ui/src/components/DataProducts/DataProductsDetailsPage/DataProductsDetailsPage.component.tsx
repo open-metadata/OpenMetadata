@@ -78,7 +78,6 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -91,7 +90,6 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -105,6 +103,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -122,7 +121,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { DataProductMetadataModal } from '../DataProductMetadataModal';
@@ -228,7 +226,7 @@ const DataProductsDetailsPage = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -377,7 +375,7 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
@@ -395,7 +393,7 @@ const DataProductsDetailsPage = ({
       );
       setDataProductPermission(response);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   }, [dataProduct]);
 
@@ -413,7 +411,7 @@ const DataProductsDetailsPage = ({
       setInputPortsCount(data.inputPorts.paging.total);
       setOutputPortsCount(data.outputPorts.paging.total);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   }, [dataProduct.fullyQualifiedName]);
 
@@ -811,7 +809,7 @@ const DataProductsDetailsPage = ({
           }
         />
         <GenericProvider<DataProduct>
-          muiTags
+          newTagsUI
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}
@@ -820,17 +818,19 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <div className="tw:flex tw:mx-5 tw:items-end">
-            <div className="tw:flex-1">
+          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
+            <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 badge={statusBadge}
                 breadcrumb={[]}
+                displayNameClassName="entity-header-title-wrap"
                 entityData={{ ...dataProduct, displayName, name }}
                 entityType={EntityType.DATA_PRODUCT}
                 handleFollowingClick={handleFollowingClick}
                 icon={iconData}
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
+                nameClassName="entity-header-title-wrap"
                 serviceName=""
                 suffix={
                   <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
@@ -838,8 +838,8 @@ const DataProductsDetailsPage = ({
                 titleColor={dataProduct.style?.color}
               />
             </div>
-            <div>
-              <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+            <div className="tw:shrink-0 tw:max-w-full">
+              <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
                 {dataProductClassBase.getRequestDataAccessButton()}
 
                 {!isVersionsView && dataProductPermission.Create && (
@@ -969,13 +969,14 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(dataProduct.name, '')}
-        entityName={dataProduct.name}
-        entityType="Glossary"
-        visible={isDelete}
+      <DeleteModal
+        entityTitle={dataProduct.name}
+        message={t('message.delete-entity-message', {
+          entity: dataProduct.name,
+        })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={onDelete}
+        onDelete={onDelete}
       />
 
       <AssetSelectionDrawer

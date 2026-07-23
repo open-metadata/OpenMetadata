@@ -52,8 +52,8 @@ jest.mock('../Ingestion/IngestionStepper/IngestionStepper.component', () => {
   return jest.fn().mockImplementation(() => <div>IngestionStepper</div>);
 });
 
-jest.mock('./Steps/ScheduleInterval', () => {
-  return jest.fn().mockImplementation(() => <div>ScheduleInterval</div>);
+jest.mock('./Steps/ScheduleIntervalStep', () => {
+  return jest.fn().mockImplementation(() => <div>ScheduleIntervalStep</div>);
 });
 
 jest.mock('../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm', () => {

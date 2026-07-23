@@ -12,6 +12,7 @@
  */
 import { ArrowUpRight, BookOpen01, Key01, Lock01 } from '@untitledui/icons';
 import { Col, Row } from 'antd';
+import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
 import {
   FC,
@@ -28,11 +29,13 @@ import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
 } from '../../../constants/regex.constants';
+import { OPTIONAL_SCOPE_PROPERTIES } from '../../../constants/ServiceType.constant';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { languageMap } from '../../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import { ConnectionFieldSection } from '../../../utils/ServiceConnectionUtils';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
 import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -50,6 +53,11 @@ interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
+  activeFieldMeta?: {
+    title?: string;
+    description?: string;
+    section?: ConnectionFieldSection;
+  };
   focusedMode?: boolean;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
@@ -78,11 +86,99 @@ const NESTED_FOCUS_FIELDS = new Set([
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
 
+const SECTION_EYEBROW_LABELS: Record<ConnectionFieldSection, string> = {
+  connection: 'label.connection',
+  authentication: 'label.authentication',
+  scope: 'label.scope-and-option-plural',
+  advanced: 'label.advanced-config',
+};
+
+type FocusedSection = ConnectionFieldSection | 'identity';
+
+const SECTION_DOC_COPY: Record<
+  FocusedSection,
+  { eyebrow: string; title: string; description: string }
+> = {
+  identity: {
+    eyebrow: 'label.service-name',
+    title: 'message.identity-doc-title',
+    description: 'message.identity-doc-description',
+  },
+  connection: {
+    eyebrow: 'label.connection',
+    title: 'message.connection-doc-title',
+    description: 'message.connection-doc-description',
+  },
+  authentication: {
+    eyebrow: 'label.authentication',
+    title: 'message.authentication-doc-title',
+    description: 'message.authentication-doc-description',
+  },
+  scope: {
+    eyebrow: 'label.scope-and-option-plural',
+    title: 'message.scope-doc-title',
+    description: 'message.scope-doc-description',
+  },
+  advanced: {
+    eyebrow: 'label.advanced-config',
+    title: 'message.advanced-doc-title',
+    description: 'message.advanced-doc-description',
+  },
+};
+
+const IDENTITY_FIELD_NAMES = new Set(['serviceName', 'serviceDescription']);
+
+const resolveFocusedSection = (
+  fieldName?: string,
+  metaSection?: ConnectionFieldSection,
+  isWorkflow?: boolean
+): FocusedSection | undefined => {
+  let section: FocusedSection | undefined;
+  if (fieldName && !isWorkflow) {
+    if (IDENTITY_FIELD_NAMES.has(fieldName)) {
+      section = 'identity';
+    } else if (metaSection) {
+      section = metaSection;
+    } else if (AUTH_FIELD_NAMES.has(fieldName)) {
+      section = 'authentication';
+    } else if (LINEAGE_FIELDS.has(fieldName)) {
+      section = 'advanced';
+    } else if (OPTIONAL_SCOPE_PROPERTIES.has(fieldName)) {
+      section = 'scope';
+    } else {
+      section = 'connection';
+    }
+  }
+
+  return section;
+};
+
+const getSectionEyebrow = (
+  fieldName: string | undefined,
+  isWorkflow: boolean | undefined,
+  t: TFunction,
+  resolvedSection?: ConnectionFieldSection
+): string => {
+  let eyebrow = t('label.connection');
+  if (resolvedSection) {
+    eyebrow = t(SECTION_EYEBROW_LABELS[resolvedSection]);
+  } else if (fieldName && LINEAGE_FIELDS.has(fieldName)) {
+    eyebrow = t('label.advanced-config');
+  } else if (fieldName && OPTIONAL_SCOPE_PROPERTIES.has(fieldName)) {
+    eyebrow = t('label.scope-and-option-plural');
+  } else if (isWorkflow) {
+    eyebrow = t('label.configuration');
+  }
+
+  return eyebrow;
+};
+
 interface FocusedDocDetails {
   eyebrow: string;
   title: string;
   description: string;
   markdown: string;
+  showRequirements: boolean;
   beforeRequirements?: ReactNode;
 }
 
@@ -92,6 +188,58 @@ interface RequirementLabels {
   metadata: string;
   profiler: string;
 }
+
+const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
+  let parent = node?.parentElement ?? null;
+  while (parent) {
+    const { overflowY } = window.getComputedStyle(parent);
+    if (
+      /(auto|scroll|overlay)/.test(overflowY) &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+
+  return null;
+};
+
+/**
+ * Scrolls the doc panel's own scroll container to reveal the active field's
+ * documentation. We deliberately avoid `Element.scrollIntoView`, which scrolls
+ * *every* scrollable ancestor: on this layout that includes the flex container
+ * shared with the form, and scrolling a container that holds an open field
+ * popover makes react-aria dismiss it (overlays close when a trigger ancestor
+ * scrolls). Scrolling only the nearest scroll parent keeps the popover open.
+ */
+const scrollDocElementIntoView = (
+  element: HTMLElement,
+  alignToStart: boolean
+): void => {
+  const scrollParent = getScrollParent(element);
+  if (!scrollParent) {
+    element.scrollIntoView({
+      block: alignToStart ? 'start' : 'center',
+      behavior: 'smooth',
+      inline: 'nearest',
+    });
+
+    return;
+  }
+
+  const containerRect = scrollParent.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  const relativeTop = elementRect.top - containerRect.top;
+  const delta = alignToStart
+    ? relativeTop
+    : relativeTop - scrollParent.clientHeight / 2 + elementRect.height / 2;
+
+  scrollParent.scrollTo({
+    top: scrollParent.scrollTop + delta,
+    behavior: 'smooth',
+  });
+};
 
 const getSupportedLanguage = (language: string): SupportedLocales => {
   if (supportedLocales.includes(language)) {
@@ -210,19 +358,21 @@ const getFocusedFieldNames = (fieldName?: string): string[] => {
     return [];
   }
 
-  return AUTH_FIELD_NAMES.has(fieldName)
-    ? [
-        'password',
-        'privateKey',
-        'snowflakePrivatekeyPassphrase',
-        'token',
-        'apiKey',
-        'secretKey',
-        'clientSecret',
-        'consumerSecret',
-        'securityToken',
-      ]
-    : [fieldName];
+  if (fieldName === 'authType') {
+    return [
+      'password',
+      'privateKey',
+      'snowflakePrivatekeyPassphrase',
+      'token',
+      'apiKey',
+      'secretKey',
+      'clientSecret',
+      'consumerSecret',
+      'securityToken',
+    ];
+  }
+
+  return [fieldName];
 };
 
 const getFieldMarkdown = (
@@ -338,6 +488,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
   activeField,
+  activeFieldMeta,
   focusedMode = false,
   isWorkflow,
   workflowType,
@@ -471,11 +622,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           `[data-id="${CSS.escape(activeFieldName)}"]`
         );
         if (element) {
-          element.scrollIntoView({
-            block: activeFieldName === 'selected-entity' ? 'start' : 'center',
-            behavior: 'smooth',
-            inline: 'center',
-          });
+          scrollDocElementIntoView(
+            element as HTMLElement,
+            activeFieldName === 'selected-entity'
+          );
           (element as HTMLElement).dataset.highlighted = 'true';
         }
       });
@@ -500,65 +650,74 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     [activeFieldName, markdownContent]
   );
 
+  // The password/key-pair guidance cards only make sense for connectors that
+  // actually offer that choice — detected from the connector markdown.
+  const hasAuthMethodGuidance = useMemo(
+    () =>
+      Boolean(
+        extractSectionById(markdownContent, 'password') &&
+          extractSectionById(markdownContent, 'privateKey')
+      ),
+    [markdownContent]
+  );
+
   const focusedDocDetails = useMemo<FocusedDocDetails>(() => {
+    const section = resolveFocusedSection(
+      activeFieldName,
+      activeFieldMeta?.section,
+      isWorkflow
+    );
+
+    if (section) {
+      const sectionCopy = SECTION_DOC_COPY[section];
+
+      return {
+        eyebrow: t(sectionCopy.eyebrow),
+        title: t(sectionCopy.title),
+        description: t(sectionCopy.description, {
+          brandName: process.env.BRAND_NAME ?? 'OpenMetadata',
+        }),
+        markdown: section === 'identity' ? '' : activeFieldMarkdown,
+        showRequirements: section === 'connection',
+        beforeRequirements:
+          section === 'authentication' && hasAuthMethodGuidance ? (
+            <AuthGuidance
+              keyPairDescription={t('message.key-pair-auth-doc-description')}
+              keyPairLabel={t('label.key-pair')}
+              passwordDescription={t('message.password-auth-doc-description')}
+              passwordLabel={t('label.password')}
+            />
+          ) : undefined,
+      };
+    }
+
     const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
     const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
 
-    if (activeFieldName === 'serviceName') {
-      return {
-        eyebrow: t('label.connection'),
-        title: t('label.name-this-service'),
-        description: t('message.service-name-doc-description', {
-          serviceName,
-        }),
-        markdown: [
-          `### ${t('label.service-name')}`,
-          t('message.service-name-rule'),
-        ].join('\n\n'),
-      };
-    }
-
-    if (activeFieldName === 'serviceDescription') {
-      return {
-        eyebrow: t('label.connection'),
-        title: t('label.description'),
-        description: t('message.service-description-doc-description'),
-        markdown: '',
-      };
-    }
-
-    if (activeFieldName && AUTH_FIELD_NAMES.has(activeFieldName)) {
-      return {
-        eyebrow: t('label.authentication'),
-        title: t('message.authentication-doc-title'),
-        description: t('message.authentication-doc-description'),
-        markdown: fieldBody,
-        beforeRequirements: (
-          <AuthGuidance
-            keyPairDescription={t('message.key-pair-auth-doc-description')}
-            keyPairLabel={t('label.key-pair')}
-            passwordDescription={t('message.password-auth-doc-description')}
-            passwordLabel={t('label.password')}
-          />
-        ),
-      };
-    }
-
     if (activeFieldName && !activeFieldMarkdown) {
       return {
-        eyebrow: t('label.connection'),
-        title: t('label.setup-guide'),
-        description: t('message.openmetadata-docs-description'),
+        eyebrow: getSectionEyebrow(
+          activeFieldName,
+          isWorkflow,
+          t,
+          activeFieldMeta?.section
+        ),
+        title: activeFieldMeta?.title ?? startCase(activeFieldName),
+        description:
+          activeFieldMeta?.description ??
+          t('message.openmetadata-docs-description'),
         markdown: '',
+        showRequirements: false,
       };
     }
 
     return {
-      eyebrow: LINEAGE_FIELDS.has(activeFieldName ?? '')
-        ? t('label.advanced-config')
-        : isWorkflow
-        ? t('label.configuration')
-        : t('label.connection'),
+      eyebrow: getSectionEyebrow(
+        activeFieldName,
+        isWorkflow,
+        t,
+        activeFieldMeta?.section
+      ),
       title:
         fieldTitle ??
         (activeFieldName ? startCase(activeFieldName) : t('label.setup-guide')),
@@ -567,13 +726,18 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           ? t('message.focused-docs-fallback-description')
           : t('message.openmetadata-docs-description'),
       markdown: fieldBody,
+      showRequirements: !activeFieldName,
     };
-  }, [activeFieldMarkdown, activeFieldName, isWorkflow, serviceName, t]);
+  }, [
+    activeFieldMarkdown,
+    activeFieldMeta,
+    activeFieldName,
+    hasAuthMethodGuidance,
+    isWorkflow,
+    t,
+  ]);
 
-  const showFocusedRequirements =
-    !activeFieldName ||
-    activeFieldName === 'serviceName' ||
-    !activeFieldMarkdown;
+  const showFocusedRequirements = focusedDocDetails.showRequirements;
 
   const focusedRequirementsMarkdown = useMemo(
     () =>
@@ -618,13 +782,6 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           </div>
 
           {focusedDocDetails.beforeRequirements}
-          {focusedDocDetails.markdown && (
-            <MarkdownBlock
-              className="focused-service-docs-field-markdown"
-              markdown={focusedDocDetails.markdown}
-            />
-          )}
-
           {focusedRequirementsMarkdown && (
             <div className="focused-service-docs-section">
               <h1>{t('label.requirement-plural')}</h1>
@@ -633,6 +790,13 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
                 markdown={focusedRequirementsMarkdown}
               />
             </div>
+          )}
+
+          {focusedDocDetails.markdown && (
+            <MarkdownBlock
+              className="focused-service-docs-field-markdown"
+              markdown={focusedDocDetails.markdown}
+            />
           )}
 
           <div className="focused-service-docs-link-section">

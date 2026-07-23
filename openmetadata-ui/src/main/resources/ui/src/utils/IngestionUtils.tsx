@@ -11,8 +11,18 @@
  *  limitations under the License.
  */
 
+import {
+  EmptyPlaceholder,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Code01 } from '@untitledui/icons';
 import { Typography } from 'antd';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { startCase } from 'lodash';
+import {
+  LogViewerModalProps,
+  LogViewerStatusTone,
+} from '../components/common/LogViewerModal/LogViewerModal.interface';
+import { AgentStatus } from '../components/ServiceAgents/AgentsPage.interface';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -20,7 +30,6 @@ import {
   WORKFLOWS_METADATA_DOCS,
 } from '../constants/docs.constants';
 import { PIPELINE_TYPE_LOCALIZATION } from '../constants/Ingestions.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -37,7 +46,9 @@ const getPipelineExtraInfo = (
     case PipelineType.DataInsight:
       return (
         <>
-          <Typography.Paragraph className="w-max-500">
+          <CoreTypography
+            className="w-max-500 tw:text-secondary"
+            size="text-xs">
             <Transi18next
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
@@ -52,13 +63,15 @@ const getPipelineExtraInfo = (
                 link: t('label.data-insight-ingestion'),
               }}
             />
-          </Typography.Paragraph>
+          </CoreTypography>
         </>
       );
     case PipelineType.ElasticSearchReindex:
       return (
         <>
-          <Typography.Paragraph className="w-max-500">
+          <CoreTypography
+            className="w-max-500 tw:text-secondary"
+            size="text-xs">
             <Transi18next
               i18nKey="message.elastic-search-re-index-pipeline-description"
               renderElement={
@@ -73,12 +86,12 @@ const getPipelineExtraInfo = (
                 link: t('label.search-index-ingestion'),
               }}
             />
-          </Typography.Paragraph>
+          </CoreTypography>
         </>
       );
     default:
       return (
-        <Typography.Paragraph className="w-max-500">
+        <CoreTypography className="w-max-500 tw:text-secondary" size="text-xs">
           <Transi18next
             i18nKey={
               isPlatFormDisabled
@@ -93,7 +106,7 @@ const getPipelineExtraInfo = (
                     : WORKFLOWS_METADATA_DOCS
                 }
                 rel="noreferrer"
-                style={{ color: theme.primaryColor }}
+                style={{ color: theme.primaryColor, fontSize: 'inherit' }}
                 target="_blank"
               />
             }
@@ -102,12 +115,12 @@ const getPipelineExtraInfo = (
                 `label.${
                   isPlatFormDisabled
                     ? 'documentation-lowercase'
-                    : 'metadata-ingestion'
+                    : 'metadata-agent-plural'
                 }`
               ),
             }}
           />
-        </Typography.Paragraph>
+        </CoreTypography>
       );
   }
 };
@@ -120,11 +133,17 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder
-        className="p-y-lg border-none"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
-      </ErrorPlaceHolder>
+      <EmptyPlaceholder
+        className="tw:bg-primary tw:border tw:border-secondary tw:rounded-xl"
+        description={getPipelineExtraInfo(
+          isPlatFormDisabled,
+          theme,
+          pipelineType
+        )}
+        icon={<Code01 className="tw:text-fg-brand-primary" />}
+        title={t('message.no-agents-set-up-yet') as string}
+        variant="blank"
+      />
     );
   }
 
@@ -174,4 +193,27 @@ export const getSuccessMessage = (
       </Typography.Text>
     </Typography.Text>
   );
+};
+
+const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
+  running: 'muted',
+  failed: 'error',
+  success: 'success',
+  queued: 'muted',
+  none: 'muted',
+};
+
+export const getLogViewerStatusFromAgentStatus = (
+  agentStatus?: AgentStatus
+): LogViewerModalProps['status'] | undefined => {
+  if (!agentStatus) {
+    return;
+  }
+
+  const status: LogViewerModalProps['status'] = {
+    label: startCase(agentStatus),
+    tone: agentStatus ? agentStatusToneMap[agentStatus] : 'muted',
+  };
+
+  return status;
 };

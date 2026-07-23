@@ -180,6 +180,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -1084,6 +1087,13 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiContext": {
+        "type": "object",
+        "enabled": false
+      },
+      "aiContextForeignKeyTargets": {
+        "type": "keyword"
       }
     }
   }

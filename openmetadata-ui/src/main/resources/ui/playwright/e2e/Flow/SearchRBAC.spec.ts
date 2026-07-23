@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { APIRequestContext } from '@playwright/test';
+import test, { APIRequestContext, Browser } from '@playwright/test';
 import { searchRBACEntities } from '../../constant/searchRBAC';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -18,7 +18,8 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { uuid } from '../../utils/common';
+import { stripEtagConditionalReads, uuid } from '../../utils/common';
+import { waitForSearchIndexed } from '../../utils/polling';
 import {
   enableDisableSearchRBAC,
   exploreShouldShowEntity,
@@ -26,6 +27,13 @@ import {
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
+
+const newStrippedPage = async (browser: Browser) => {
+  const page = await browser.newPage();
+  await stripEtagConditionalReads(page);
+
+  return page;
+};
 
 for (const entity of searchRBACEntities) {
   const entityObj = new entity.class();
@@ -41,6 +49,11 @@ for (const entity of searchRBACEntities) {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entityObj.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        entityObj.entityResponseData?.fullyQualifiedName,
+        'all'
+      );
 
       await enableDisableSearchRBAC(apiContext, true);
 
@@ -116,25 +129,29 @@ for (const entity of searchRBACEntities) {
     });
 
     test(`User with permission`, async ({ browser }) => {
-      const userWithPermissionPage = await browser.newPage();
+      const userWithPermissionPage = await newStrippedPage(browser);
 
       await user1.login(userWithPermissionPage);
 
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
-        entityObj.entityResponseData?.displayName ?? '',
+        entityObj.entityResponseData?.displayName ??
+          entityObj.entityResponseData?.name ??
+          '',
         userWithPermissionPage
       );
     });
 
     test(`User without permission`, async ({ browser }) => {
-      const userWithoutPermissionPage = await browser.newPage();
+      const userWithoutPermissionPage = await newStrippedPage(browser);
 
       await user2.login(userWithoutPermissionPage);
 
       await searchForEntityShouldWorkShowNoResult(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
-        entityObj.entityResponseData?.displayName ?? '',
+        entityObj.entityResponseData?.displayName ??
+          entityObj.entityResponseData?.name ??
+          '',
         userWithoutPermissionPage
       );
     });
@@ -219,7 +236,7 @@ test.describe.skip(`Table Column`, () => {
   });
 
   test(`User with permission`, async ({ browser }) => {
-    const userWithPermissionPage = await browser.newPage();
+    const userWithPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
     await user1.login(userWithPermissionPage);
@@ -232,7 +249,7 @@ test.describe.skip(`Table Column`, () => {
   });
 
   test(`User without permission`, async ({ browser }) => {
-    const userWithoutPermissionPage = await browser.newPage();
+    const userWithoutPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
     await user2.login(userWithoutPermissionPage);
@@ -356,7 +373,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     browser,
   }) => {
     test.slow();
-    const page = await browser.newPage();
+    const page = await newStrippedPage(browser);
     await userAll.login(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
@@ -369,7 +386,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     browser,
   }) => {
     test.slow();
-    const page = await browser.newPage();
+    const page = await newStrippedPage(browser);
     await userTableOnly.login(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
@@ -382,7 +399,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     browser,
   }) => {
     test.slow();
-    const page = await browser.newPage();
+    const page = await newStrippedPage(browser);
     await userDashboardOnly.login(page);
 
     await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), true);
@@ -395,7 +412,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     browser,
   }) => {
     test.slow();
-    const page = await browser.newPage();
+    const page = await newStrippedPage(browser);
     await userDenied.login(page);
 
     await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
@@ -411,7 +428,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
 
     // A table-scoped user's tree has Databases but never Dashboards — the
     // Dashboards count is RBAC-filtered to zero, so the category drops out.
-    const tablePage = await browser.newPage();
+    const tablePage = await newStrippedPage(browser);
     await userTableOnly.login(tablePage);
     await exploreTreeCategories(tablePage, {
       visible: ['Databases'],
@@ -420,7 +437,7 @@ test.describe('Explore browse respects search RBAC across users', () => {
     await tablePage.close();
 
     // A dashboard-scoped user sees the mirror image — no Databases category.
-    const dashboardPage = await browser.newPage();
+    const dashboardPage = await newStrippedPage(browser);
     await userDashboardOnly.login(dashboardPage);
     await exploreTreeCategories(dashboardPage, {
       visible: ['Dashboards'],

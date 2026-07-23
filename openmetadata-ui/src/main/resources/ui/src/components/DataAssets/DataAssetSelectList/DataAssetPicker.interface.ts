@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
+import { Placement } from 'react-aria-components';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   DataAssetAsyncSelectListProps,
@@ -50,30 +51,19 @@ export interface DataAssetPickerShellProps {
   allOptionLabel?: string;
   onSelectAll?: () => void;
   popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  popoverPlacement?: 'top' | 'bottom';
+  popoverPlacement?: Placement;
   placeholder?: string;
-}
-
-export interface DataAssetFilterPopoverProps {
-  options: DataAssetPickerOption[];
-  selectedId: string;
-  onChange: (id: string) => void;
-  allowAllOption?: boolean;
-  allOptionLabel?: string;
-  popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  placeholder?: string;
-  renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
 }
 
 export interface DataAssetSelectListProps
-  extends Omit<DataAssetAsyncSelectListProps, 'value'> {
+  extends Omit<DataAssetAsyncSelectListProps, 'value' | 'onChange'> {
+  allowAllOption?: boolean;
   value?: DataAssetOption | DataAssetOption[];
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  popoverPlacement?: 'top' | 'bottom';
+  selectionMode?: 'single' | 'multiple';
+  popoverPlacement?: Placement;
+  onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
 }
 
 export interface DataAssetPickerRowProps {

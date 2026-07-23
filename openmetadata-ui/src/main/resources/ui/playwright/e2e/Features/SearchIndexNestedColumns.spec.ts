@@ -127,9 +127,12 @@ test.describe('Search index - deeply nested oversized columns', () => {
 
     // Indexing: the table indexed despite the >32 KB nested leaf, so it is found by name.
     await searchInput.click();
-    const byNameResponse = page.waitForResponse('/api/v1/search/query?*');
+
     await searchInput.fill(table.entity.name);
-    await byNameResponse;
+
+    await page
+      .getByTestId(table.service.name + '-' + table.entity.name)
+      .waitFor({ timeout: 15000 });
 
     await expect(suggestions).toBeVisible();
     await expect(suggestions).toContainText(table.entity.name);

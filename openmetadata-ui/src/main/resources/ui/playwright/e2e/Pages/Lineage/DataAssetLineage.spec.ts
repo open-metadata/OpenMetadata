@@ -12,7 +12,6 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -46,6 +45,7 @@ import {
   deleteNode,
   editLineage,
   editLineageClick,
+  fitToScreen,
   getEntityColumns,
   performZoomOut,
   rearrangeNodes,
@@ -107,7 +107,11 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
-test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
+test.describe('Data asset lineage', () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 
@@ -145,19 +149,22 @@ test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
-        const { apiContext } = await getApiContext(page);
-
-        await lineageEntity.create(apiContext);
-        await lineageEntity.visitEntityPage(page);
-        await visitLineageTab(page);
-        await editLineageClick(page);
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await lineageEntity.create(apiContext);
+          await lineageEntity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await editLineageClick(page);
+        } finally {
+          await afterAction();
+        }
       });
 
       await test.step('should create lineage with normal edge', async () => {
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, lineageEntity, entity);
           await rearrangeNodes(page);
-          await performZoomOut(page);
+          await fitToScreen(page);
         }
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
@@ -174,14 +181,14 @@ test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           )
           .waitFor();
         await rearrangeNodes(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
 
         // Check the Entity Drawer
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           const toNodeFqn = get(
@@ -234,7 +241,7 @@ test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await test.step('Verify Lineage Export CSV', async () => {
         await editLineageClick(page);
         await waitForAllLoadersToDisappear(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
         await verifyExportLineageCSV(page, lineageEntity, entities, pipeline);
       });
 
@@ -248,7 +255,7 @@ test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await waitForAllLoadersToDisappear(page);
 
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await deleteEdge(page, lineageEntity, entity);
@@ -371,7 +378,7 @@ test.describe('Column Level Lineage', () => {
       await test.step('Verify column layer is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
@@ -381,7 +388,7 @@ test.describe('Column Level Lineage', () => {
 
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });

@@ -439,7 +439,34 @@ class SecurityUtilTest {
                     "example.com",
                     Set.of(),
                     true));
-    assertTrue(invalidDomainException.getMessage().contains("principal domain example.com"));
+    assertTrue(invalidDomainException.getMessage().contains("principal domain"));
+    assertTrue(invalidDomainException.getMessage().contains("other.com"));
+    assertTrue(invalidDomainException.getMessage().contains("example.com"));
+  }
+
+  @Test
+  void testValidateDomainEnforcementIsCaseInsensitive() {
+    Map<String, String> mapping = Map.of("username", "preferred_username", "email", "email_claim");
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.OnMicrosoft.com")),
+                "BCPCorp.net",
+                Set.of("bcpcorp.net", "bcpcorp.onmicrosoft.com"),
+                true));
+
+    assertDoesNotThrow(
+        () ->
+            SecurityUtil.validateDomainEnforcement(
+                mapping,
+                List.of("email_claim"),
+                Map.of("email_claim", stringClaim("alice@BCPCorp.net")),
+                "bcpcorp.net",
+                Set.of(),
+                true));
   }
 
   @Test

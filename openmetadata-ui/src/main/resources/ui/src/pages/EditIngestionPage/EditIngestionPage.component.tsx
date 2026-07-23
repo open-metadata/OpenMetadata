@@ -271,7 +271,7 @@ const EditIngestionPage = () => {
   };
 
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
         <div className="tw:mt-4">
@@ -307,6 +307,7 @@ const EditIngestionPage = () => {
         <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
           <Button
             color="secondary"
+            data-testid="previous-button"
             size="sm"
             type="button"
             onPress={handleFooterBack}>
@@ -314,6 +315,7 @@ const EditIngestionPage = () => {
           </Button>
           <Button
             color="primary"
+            data-testid="next-button"
             size="sm"
             type="button"
             onPress={handleFooterNext}>
@@ -350,7 +352,7 @@ const EditIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel tw:bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

@@ -168,7 +168,7 @@ test.describe(
         );
 
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-        await adminPage.getByText('Navigation').click();
+        await adminPage.getByTestId('navigation').click();
 
         // Ontology Explorer was not in the saved nav (shipped after persona
         // was created) — its toggle must be OFF, not ON.

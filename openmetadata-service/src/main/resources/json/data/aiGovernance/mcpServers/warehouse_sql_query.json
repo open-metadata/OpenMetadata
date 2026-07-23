@@ -1,0 +1,116 @@
+{
+  "id": "22222222-2222-4222-8222-222222222202",
+  "name": "warehouse_sql_query",
+  "displayName": "Warehouse SQL Query",
+  "description": "Pending-approval MCP server for natural-language SQL generation and read-only warehouse query execution.",
+  "serverType": "Database",
+  "transportType": "SSE",
+  "protocolVersion": "2025-03-26",
+  "developmentStage": "Staging",
+  "deploymentUrl": "https://mcp.acme.example/warehouse-sql",
+  "capabilities": {
+    "toolsSupported": true,
+    "resourcesSupported": true,
+    "promptsSupported": true,
+    "loggingSupported": true
+  },
+  "tools": [
+    {
+      "name": "run_readonly_sql",
+      "displayName": "Run Read-Only SQL",
+      "description": "Executes allowlisted read-only SQL against governed warehouse schemas.",
+      "toolCategory": "DatabaseOperation",
+      "riskLevel": "Critical",
+      "riskFactors": ["Broad warehouse access", "Potential PII joins"],
+      "dataAccess": {
+        "readsData": true,
+        "writesData": false,
+        "deletesData": false,
+        "sensitivityLevel": "Restricted",
+        "piiAccess": true,
+        "dataTypes": ["Analytics warehouse", "Finance marts", "Customer dimensions"]
+      },
+      "requiredPermissions": ["warehouse.query.read"],
+      "sideEffects": false,
+      "idempotent": true,
+      "rateLimitPerMinute": 30,
+      "usageCount": 1840
+    }
+  ],
+  "prompts": [
+    {
+      "name": "sql_safety_review",
+      "displayName": "SQL Safety Review",
+      "description": "Prompt template that checks generated SQL for destructive operations and restricted joins.",
+      "promptType": "Validation",
+      "dataAccessPatterns": ["Read"],
+      "outputClassification": {
+        "sensitivityLevel": "Confidential",
+        "mayContainPII": true,
+        "outputCategories": ["SQL query", "Risk rationale"]
+      },
+      "usageCount": 1840
+    }
+  ],
+  "governanceMetadata": {
+    "registrationStatus": "PendingApproval",
+    "registeredBy": "analytics-platform@acme.example",
+    "registeredAt": 1775001600000,
+    "riskAssessment": {
+      "riskLevel": "Critical",
+      "riskFactors": ["Broad SQL access", "Potential data exfiltration"],
+      "mitigations": ["Read-only role", "Query allowlist", "Result row cap"],
+      "assessedBy": "security@acme.example",
+      "assessedAt": 1775606400000
+    },
+    "dataClassification": {
+      "accessesPII": true,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Customer dimensions", "Financial planning"],
+      "dataRetentionPeriod": "90 days"
+    },
+    "approvalComments": "Pending warehouse access review and data contract evidence."
+  },
+  "dataAccessSummary": {
+    "accessPatterns": ["Read", "Execute"],
+    "sensitivityLevel": "Restricted",
+    "piiAccess": true,
+    "externalApiAccess": false,
+    "fileSystemAccess": false,
+    "networkAccess": true,
+    "databaseAccess": true
+  },
+  "usageMetrics": {
+    "totalInvocations": 1840,
+    "successRate": 0.973,
+    "averageLatencyMs": 620,
+    "p95LatencyMs": 1880,
+    "lastInvokedAt": 1775606400000,
+    "uniqueUsers": 21,
+    "dailyActiveUsers": 6
+  },
+  "securityMetrics": {
+    "authenticationRequired": true,
+    "authorizationEnforced": true,
+    "auditLoggingEnabled": true,
+    "encryptionInTransit": true,
+    "sandboxed": true,
+    "secretsManagement": "Warehouse scoped OAuth"
+  },
+  "tags": [
+    {
+      "tagFQN": "Tier.Tier1",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    },
+    {
+      "tagFQN": "PII.Sensitive",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

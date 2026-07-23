@@ -13,11 +13,13 @@
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Dialog,
   Modal,
   ModalOverlay,
   ProgressBar,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
@@ -47,7 +49,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
-import { CsvJobsTray } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import {
@@ -90,6 +92,7 @@ import {
 } from '../../../utils/CSV/CSV.utils';
 import {
   COLUMNS_WIDTH,
+  getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
@@ -119,6 +122,7 @@ import { DataQualityPageTabs } from '../../DataQuality/DataQualityPage.interface
 import './bulk-entity-import-page.less';
 import {
   BulkEntityImportLocationState,
+  CSVImportAsyncResponse,
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
 } from './BulkEntityImportPage.interface';
@@ -160,6 +164,11 @@ const BulkEntityImportPage = () => {
   const [activeAsyncImportJob, setActiveAsyncImportJob] =
     useState<CSVImportJobType>();
   const activeAsyncImportJobRef = useRef<CSVImportJobType>();
+  const pendingImportWebsocketResponsesRef = useRef(
+    new Map<string, CSVImportAsyncWebsocketResponse>()
+  );
+  const handleImportWebsocketResponseRef =
+    useRef<(response: CSVImportAsyncWebsocketResponse) => void>();
   // This ref is used to track the bulk action processing for the Current/Active Page or Tab
   const isBulkActionProcessingRef = useRef<{
     isProcessing: boolean;
@@ -231,7 +240,18 @@ const BulkEntityImportPage = () => {
   const [csvJobs, setCsvJobs] = useState<CsvAsyncJob[]>([]);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [selectedCsvFile, setSelectedCsvFile] = useState<SelectedCsvFile>();
+  const [editingRowHeight, setEditingRowHeight] = useState<{
+    rowIdx: number;
+    height: number;
+  } | null>(null);
   const [activeImportLogLines, setActiveImportLogLines] = useState<string[]>(
+    []
+  );
+
+  const handleEditCellHeightChange = useCallback(
+    (rowIdx: number, height: number | null) => {
+      setEditingRowHeight(height === null ? null : { rowIdx, height });
+    },
     []
   );
   const [bulkEditLoadState, setBulkEditLoadState] = useState({
@@ -512,6 +532,11 @@ const BulkEntityImportPage = () => {
   const handleResetImportJob = useCallback(() => {
     setActiveAsyncImportJob(undefined);
     activeAsyncImportJobRef.current = undefined;
+    pendingImportWebsocketResponsesRef.current.clear();
+    isBulkActionProcessingRef.current = {
+      isProcessing: false,
+      entityType: undefined,
+    };
   }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
 
   const appendActiveImportLogLine = useCallback((message?: string) => {
@@ -529,6 +554,29 @@ const BulkEntityImportPage = () => {
       return [trimmedMessage, ...logs].slice(0, 200);
     });
   }, []);
+
+  const activateRequestedImportJob = useCallback(
+    (jobData: CSVImportJobType, response: CSVImportAsyncResponse) => {
+      const activeJob = { ...jobData, ...response };
+
+      setActiveAsyncImportJob(activeJob);
+      activeAsyncImportJobRef.current = activeJob;
+      isBulkActionProcessingRef.current = {
+        isProcessing: false,
+        entityType: undefined,
+      };
+      appendActiveImportLogLine(response.message);
+
+      const pendingResponse = pendingImportWebsocketResponsesRef.current.get(
+        response.jobId
+      );
+      pendingImportWebsocketResponsesRef.current.clear();
+      if (pendingResponse) {
+        handleImportWebsocketResponseRef.current?.(pendingResponse);
+      }
+    },
+    [appendActiveImportLogLine]
+  );
 
   const fetchCsvJobs = useCallback(async () => {
     try {
@@ -670,7 +718,8 @@ const BulkEntityImportPage = () => {
         },
         cellEditable,
         isBulkEdit,
-        shouldUseRichEditorGrid
+        shouldUseRichEditorGrid,
+        handleEditCellHeightChange
       );
 
       const filteredDataSource =
@@ -689,6 +738,7 @@ const BulkEntityImportPage = () => {
     [
       entityType,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       importedEntityType,
       isBulkEdit,
       entityRules,
@@ -738,14 +788,18 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(initialLoadJobData);
       activeAsyncImportJobRef.current = initialLoadJobData;
+      // Activate the lazily mounted background-jobs tray so import progress
+      // surfaces there even if the user navigates away from this page.
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
 
-      await validateCsvString(
+      const response = await validateCsvString(
         selectedCsvFile.content,
         entityType,
         fqn,
         isBulkEdit,
         effectiveSourceEntityType
       );
+      activateRequestedImportJob(initialLoadJobData, response);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
@@ -753,6 +807,7 @@ const BulkEntityImportPage = () => {
     }
   }, [
     effectiveSourceEntityType,
+    activateRequestedImportJob,
     entityType,
     fqn,
     handleResetImportJob,
@@ -806,7 +861,7 @@ const BulkEntityImportPage = () => {
         handleActiveStepChange(VALIDATION_STEP.UPDATE);
       }
 
-      await api({
+      const response = await api({
         entityType,
         name: fqn,
         data: csvData,
@@ -815,9 +870,11 @@ const BulkEntityImportPage = () => {
         recursive: !isBulkEdit,
         targetEntityType: effectiveSourceEntityType,
       });
+      activateRequestedImportJob(validateLoadData, response);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsValidating(false);
+      handleResetImportJob();
       if (isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
         handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
       }
@@ -953,43 +1010,18 @@ const BulkEntityImportPage = () => {
         return;
       }
 
-      // If the job is started, then save the job data and message to the active job.
-      // This will help in case of restAPI response, didn't come in time.
-      if (
-        websocketResponse.status === 'STARTED' &&
-        isBulkActionProcessingRef.current.isProcessing &&
-        isBulkActionProcessingRef.current.entityType === entityType
-      ) {
-        const processedStartedResponse = {
-          ...websocketResponse,
-          message: t('message.import-data-in-progress'),
-        };
-
-        setActiveAsyncImportJob((job) => {
-          if (!job) {
-            return;
-          }
-
-          return {
-            ...job,
-            ...processedStartedResponse,
-          };
-        });
-
-        activeAsyncImportJobRef.current = {
-          ...(activeAsyncImportJobRef.current as CSVImportJobType),
-          ...processedStartedResponse,
-        };
-        appendActiveImportLogLine(processedStartedResponse.message);
-
-        isBulkActionProcessingRef.current = {
-          isProcessing: false,
-          entityType: undefined,
-        };
+      const activeImportJob = activeAsyncImportJobRef.current;
+      if (!activeImportJob?.jobId) {
+        if (isBulkActionProcessingRef.current.isProcessing) {
+          pendingImportWebsocketResponsesRef.current.set(
+            websocketResponse.jobId,
+            websocketResponse
+          );
+        }
 
         return;
       }
-      const activeImportJob = activeAsyncImportJobRef.current;
+
       if (websocketResponse.jobId === activeImportJob?.jobId) {
         appendActiveImportLogLine(websocketResponse.message);
         setActiveAsyncImportJob((job) => {
@@ -1074,6 +1106,7 @@ const BulkEntityImportPage = () => {
       t,
     ]
   );
+  handleImportWebsocketResponseRef.current = handleImportWebsocketResponse;
 
   useEffect(() => {
     fetchEntityData();
@@ -1156,6 +1189,45 @@ const BulkEntityImportPage = () => {
     return dataSource;
   }, [dataSource, rowFilter]);
 
+  const editableRowIndexMap = useMemo(
+    () => new Map(editableDataSource.map((row, index) => [row, index])),
+    [editableDataSource]
+  );
+
+  // Content-based height per row, precomputed once per data/column change.
+  // react-data-grid invokes the `rowHeight` function for every row (not just
+  // visible ones) whenever its identity changes, and the identity changes on
+  // every ResizeObserver tick while a multi-select cell is being edited. Keeping
+  // the base heights in a map makes each of those ticks an O(1) lookup per row
+  // instead of re-scanning every column/chip of every row.
+  const contentRowHeights = useMemo(
+    () =>
+      new Map(
+        editableDataSource.map((row) => [
+          row,
+          getCsvGridRowHeight(row, filterColumns),
+        ])
+      ),
+    [editableDataSource, filterColumns]
+  );
+
+  const getEditableRowHeight = useCallback(
+    (row: Record<string, string>) => {
+      const baseHeight =
+        contentRowHeights.get(row) ?? getCsvGridRowHeight(row, filterColumns);
+
+      if (
+        editingRowHeight &&
+        editableRowIndexMap.get(row) === editingRowHeight.rowIdx
+      ) {
+        return Math.max(baseHeight, editingRowHeight.height);
+      }
+
+      return baseHeight;
+    },
+    [contentRowHeights, editableRowIndexMap, editingRowHeight, filterColumns]
+  );
+
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
@@ -1167,6 +1239,7 @@ const BulkEntityImportPage = () => {
               unknown
             >[]
           }
+          rowHeight={getEditableRowHeight}
           rows={editableDataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -1177,6 +1250,7 @@ const BulkEntityImportPage = () => {
   }, [
     columns,
     editableDataSource,
+    getEditableRowHeight,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
@@ -1374,13 +1448,24 @@ const BulkEntityImportPage = () => {
         </div>
         <div className="csv-import-copy text-center">
           <h2>{t('message.import-csv-processing-title')}</h2>
-          <p>
-            <File06 size={14} />
-            <span className="csv-import-processing-file-name">
-              {selectedCsvFile?.name ?? t('label.csv')}
+          <Box
+            align="center"
+            className="tw:text-tertiary tw:text-sm tw:leading-5"
+            gap={2}
+            justify="center">
+            <File06 className="tw:shrink-0" size={14} />
+            <Box className="tw:min-w-0">
+              <Typography
+                as="span"
+                className="csv-import-processing-file-name"
+                ellipsis={{ tooltip: selectedCsvFile?.name }}>
+                {selectedCsvFile?.name ?? t('label.csv')}
+              </Typography>
+            </Box>
+            <span className="tw:shrink-0">
+              {getCsvRowCountLabel(selectedCsvFile?.rowCount ?? 0)}
             </span>
-            <span>{getCsvRowCountLabel(selectedCsvFile?.rowCount ?? 0)}</span>
-          </p>
+          </Box>
         </div>
         <ProgressBar value={previewProcessingProgress} />
         <div className="csv-processing-stage-list">
@@ -1468,7 +1553,7 @@ const BulkEntityImportPage = () => {
         {renderSelectedCsvFile()}
 
         <Alert title={t('label.tip')} variant="brand">
-          {t('message.import-metrics-csv-tip')}
+          {t('message.import-entity-csv-tip', { entity: entityDisplayName })}
         </Alert>
       </div>
     </div>
@@ -1790,6 +1875,9 @@ const BulkEntityImportPage = () => {
                                 className="rdg-light"
                                 columns={importResultColumns}
                                 rowClass={getImportOperationRowClass}
+                                rowHeight={(row: Record<string, string>) =>
+                                  getCsvGridRowHeight(row, importResultColumns)
+                                }
                                 rows={validateCSVData.dataSource}
                               />
                             </div>
@@ -1874,7 +1962,6 @@ const BulkEntityImportPage = () => {
           </>
         )}
       </div>
-      <CsvJobsTray />
     </PageLayoutV1>
   );
 };

@@ -121,28 +121,6 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.pipelineStatuses')
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.pipelineStatuses');
 
--- MCP Server and MCP Chat are no longer internal Applications; their enablement now lives in
--- platform settings (mcpConfiguration). The MCP Chat app was never shipped to customers, so
--- aiSettings.mcpChat keeps its seeded default shape (no config carry-over).
-
--- MCP Server: keep it disabled if the server app was not installed (mcpConfiguration defaults
--- to enabled=true, which would otherwise turn it on).
-UPDATE openmetadata_settings
-SET json = JSON_SET(json, '$.enabled', false)
-WHERE configType = 'mcpConfiguration'
-  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
-
--- Retire the MCP apps (their Java classes and marketplace seeds are removed). Keep the bot users
--- so the MCP server keeps its principal.
-DELETE er FROM entity_relationship er
-  JOIN installed_apps ia ON er.fromId = ia.id OR er.toId = ia.id
-  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE er FROM entity_relationship er
-  JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id
-  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
-DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');
-
 -- Post data migration script for Task workflow cutover - OpenMetadata 2.0.0 (moved from 2.0.1)
 
 -- RdfIndexApp: switch to weekly Saturday cron and full-rebuild every run.
@@ -249,3 +227,52 @@ UPDATE dbservice_entity
 SET json = JSON_REMOVE(json, '$.connection.config.policyAgentConfig')
 WHERE serviceType = 'Postgres'
   AND JSON_EXTRACT(json, '$.connection.config.policyAgentConfig') IS NOT NULL;
+
+-- Remove runtime-only fields (openMetadataServerConnection, privateConfiguration) from stored application data.
+UPDATE installed_apps
+SET json = JSON_REMOVE(json, '$.openMetadataServerConnection', '$.privateConfiguration')
+WHERE JSON_EXTRACT(json, '$.openMetadataServerConnection') IS NOT NULL
+   OR JSON_EXTRACT(json, '$.privateConfiguration') IS NOT NULL;
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(json, '$.openMetadataServerConnection', '$.privateConfiguration')
+WHERE extension LIKE 'app.version.%'
+  AND (JSON_EXTRACT(json, '$.openMetadataServerConnection') IS NOT NULL
+       OR JSON_EXTRACT(json, '$.privateConfiguration') IS NOT NULL);
+
+-- Data Insights no longer runs a Data Quality workflow: testCaseResult and
+-- testCaseResolutionStatus are read straight from their live search indexes via the
+-- di-data-assets-* aliases, which search indexing now owns. moduleConfiguration is
+-- additionalProperties:false, so the retired dataQuality key must be stripped from every
+-- persisted config or DataInsightsApp fails to deserialize it on startup.
+UPDATE installed_apps
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE apps_marketplace
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+UPDATE entity_extension
+SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
+WHERE extension LIKE 'app.version.%'
+  AND json->>'$.name' = 'DataInsightsApplication'
+  AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');

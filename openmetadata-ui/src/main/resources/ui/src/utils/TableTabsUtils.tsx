@@ -15,12 +15,13 @@ import { Divider, Space, Typography } from 'antd';
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import Loader from '../components/common/Loader/Loader';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -42,13 +43,15 @@ const ActivityFeedTab = withSuspenseFallback(
     import(
       '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
     ).then((module) => ({ default: module.ActivityFeedTab }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const ErrorPlaceHolder = withSuspenseFallback(
   lazy(
     () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const GenericTab = withSuspenseFallback(
@@ -56,7 +59,8 @@ const GenericTab = withSuspenseFallback(
     import('../components/Customization/GenericTab/GenericTab').then(
       (module) => ({ default: module.GenericTab })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const CommonWidgets = withSuspenseFallback(
@@ -64,7 +68,8 @@ const CommonWidgets = withSuspenseFallback(
     import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
       (module) => ({ default: module.CommonWidgets })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -72,13 +77,17 @@ const CustomPropertyTable = withSuspenseFallback(
     import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
       (module) => ({ default: module.CustomPropertyTable })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 ) as <T extends ExtentionEntitiesKeys>(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
 const SchemaTable = withSuspenseFallback(
-  lazy(() => import('../components/Database/SchemaTable/SchemaTable.component'))
+  lazy(
+    () => import('../components/Database/SchemaTable/SchemaTable.component')
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const AssetHealthWidget = withSuspenseFallback(
@@ -94,11 +103,13 @@ const SampleDataTableComponent = withSuspenseFallback(
   lazy(
     () =>
       import('../components/Database/SampleDataTable/SampleDataTable.component')
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const TableQueries = withSuspenseFallback(
-  lazy(() => import('../components/Database/TableQueries/TableQueries'))
+  lazy(() => import('../components/Database/TableQueries/TableQueries')),
+  TAB_CONTENT_FALLBACK
 );
 
 const ContractTab = withSuspenseFallback(
@@ -106,7 +117,8 @@ const ContractTab = withSuspenseFallback(
     import('../components/DataContract/ContractTab/ContractTab').then(
       (module) => ({ default: module.ContractTab })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const DataObservabilityTab = withSuspenseFallback(
@@ -115,7 +127,8 @@ const DataObservabilityTab = withSuspenseFallback(
       import(
         '../components/Database/Profiler/DataObservability/DataObservabilityTab'
       )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const EntityLineageTab = withSuspenseFallback(
@@ -123,22 +136,26 @@ const EntityLineageTab = withSuspenseFallback(
     import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
       (module) => ({ default: module.EntityLineageTab })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
       import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D'))
+  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')),
+  TAB_CONTENT_FALLBACK
 );
 
 const QueryViewer = withSuspenseFallback(
-  lazy(() => import('../components/common/QueryViewer/QueryViewer.component'))
+  lazy(() => import('../components/common/QueryViewer/QueryViewer.component')),
+  TAB_CONTENT_FALLBACK
 );
 
 const FrequentlyJoinedTables = withSuspenseFallback(
@@ -146,7 +163,8 @@ const FrequentlyJoinedTables = withSuspenseFallback(
     import(
       '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
     ).then((module) => ({ default: module.FrequentlyJoinedTables }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const PartitionedKeys = withSuspenseFallback(
@@ -154,7 +172,8 @@ const PartitionedKeys = withSuspenseFallback(
     import(
       '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component'
     ).then((module) => ({ default: module.PartitionedKeys }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 export const getTableDetailPageBaseTabs = ({
@@ -302,7 +321,7 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={tableDetails as SourceType}
@@ -326,7 +345,7 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <KnowledgeGraph
             depth={1}
             entity={

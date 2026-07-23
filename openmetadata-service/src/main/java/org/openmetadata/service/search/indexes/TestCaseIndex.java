@@ -44,6 +44,19 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    Long revision = ctx.relationshipRevision();
+    if (revision == null) {
+      revision =
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(testCase.getId()))
+              .getOrDefault(testCase.getId(), 0L);
+    }
+    doc.put(TestCaseRepository.TEST_SUITES_REVISION_FIELD, revision);
+    return doc;
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     TaggableIndex.super.removeNonIndexableFields(esDoc);
     List<Map<String, Object>> testSuites =
@@ -59,18 +72,20 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
-    try {
-      TestDefinition testDefinition =
-          Entity.getEntity(
-              Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-      doc.put("testPlatforms", testDefinition.getTestPlatforms());
-      doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
-      doc.put("testCaseType", testDefinition.getEntityType());
-    } catch (EntityNotFoundException ex) {
-      LOG.warn(
-          "TestDefinition not found for TestCase [{}]: {}",
-          testCase.getFullyQualifiedName(),
-          ex.getMessage());
+    if (testCase.getTestDefinition() != null) {
+      try {
+        TestDefinition testDefinition =
+            Entity.getEntity(
+                Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+        doc.put("testPlatforms", testDefinition.getTestPlatforms());
+        doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+        doc.put("testCaseType", testDefinition.getEntityType());
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "TestDefinition not found for TestCase [{}]: {}",
+            testCase.getFullyQualifiedName(),
+            ex.getMessage());
+      }
     }
     setParentRelationships(doc, testCase);
     return doc;

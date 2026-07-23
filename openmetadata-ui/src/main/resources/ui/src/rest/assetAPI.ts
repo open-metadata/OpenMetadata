@@ -12,6 +12,7 @@
  */
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
+import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
@@ -88,12 +89,15 @@ export const createFolder = async (
   return response.data;
 };
 
-export const listFolders = async (): Promise<Folder[]> => {
-  const response = await APIClient.get<{ data: Folder[] }>(
-    '/contextCenter/drive/folders'
+export const listFolders = async (
+  params: ListParams = {}
+): Promise<PagingResponse<Folder[]>> => {
+  const response = await APIClient.get<PagingResponse<Folder[]>>(
+    '/contextCenter/drive/folders',
+    { params: { fields: 'childrenCount', limit: FOLDER_PAGE_SIZE, ...params } }
   );
 
-  return response.data.data ?? [];
+  return response.data;
 };
 
 export const deleteFolder = async (
@@ -105,7 +109,9 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (params: ListParams = {}) => {
+type ListContextFilesParams = ListParams & { folderId?: string };
+
+export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
     {
@@ -116,6 +122,15 @@ export const listContextFiles = async (params: ListParams = {}) => {
         ...params,
       },
     }
+  );
+
+  return response.data;
+};
+
+export const getContextFileById = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.get<ContextFile>(
+    `/contextCenter/drive/files/${id}`,
+    { params: { fields: 'folder,memoryCount' } }
   );
 
   return response.data;
@@ -191,7 +206,7 @@ export const listAssetsByFqn = async (
   assetType: AssetType = AssetType.External,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<PagingResponse<Asset[]>>(
+  const response = await APIClient.get<Asset[]>(
     `/attachments/fqn/${encodeURIComponent(fqn)}/${assetType}`,
     { params }
   );
@@ -220,13 +235,19 @@ export const bulkDeleteDriveFiles = async (
   return response.data;
 };
 
-export const listArchivedContextFiles = async (): Promise<ContextFile[]> => {
-  const response = await APIClient.get<{ data: ContextFile[] }>(
+export type ListArchivedContextFilesParams = ListParams & {
+  updatedBy?: string;
+};
+
+export const listArchivedContextFiles = async (
+  params: ListArchivedContextFilesParams = {}
+): Promise<PagingResponse<ContextFile[]>> => {
+  const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { include: 'deleted', limit: 1000 } }
+    { params: { include: 'deleted', orderBy: 'DESC', ...params } }
   );
 
-  return response.data.data ?? [];
+  return response.data;
 };
 
 export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
@@ -241,7 +262,7 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
   const response = await APIClient.get<Blob>(
     `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true, expiry: 300 }, responseType: 'blob' }
+    { params: { redirect: true }, responseType: 'blob' }
   );
 
   return response.data;

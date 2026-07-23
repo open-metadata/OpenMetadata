@@ -174,8 +174,8 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
             ],
             edges: [
               { from: 'Start', to: 'ApprovalTask' },
-              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'true' },
-              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'false' },
+              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'approve' },
+              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'reject' },
             ],
           },
         }
@@ -587,12 +587,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                   {
                     from: 'ApprovalTask',
                     to: 'ApprovedEnd',
-                    condition: 'true',
+                    condition: 'approve',
                   },
                   {
                     from: 'ApprovalTask',
                     to: 'RejectedEnd',
-                    condition: 'false',
+                    condition: 'reject',
                   },
                 ],
               },

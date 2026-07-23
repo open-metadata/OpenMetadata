@@ -47,6 +47,7 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
@@ -55,7 +56,7 @@ import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
@@ -103,7 +104,8 @@ function EditConnectionFormPage() {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<BreadcrumbItem[]>(
     []
   );
-  const [activeField, setActiveField] = useState<string>('');
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
 
@@ -218,15 +220,6 @@ function EditConnectionFormPage() {
     handleFiltersInputBackClick();
   };
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
-
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
       if (id === 'service-category') {
@@ -237,7 +230,12 @@ function EditConnectionFormPage() {
           )
         );
       } else if (id === 'service-name') {
-        navigate(getPathByServiceFQN(serviceCategory, serviceFQN));
+        navigate(
+          connectionsRouterClassBase.getPathByServiceFQN(
+            serviceCategory,
+            serviceFQN
+          )
+        );
       }
     },
     [navigate, serviceCategory, serviceFQN]
@@ -287,7 +285,7 @@ function EditConnectionFormPage() {
   // flex-col layout bounds the scroll area so the footer stays anchored at the card bottom,
   // keeping the card's rounded corners visible at all times during scroll.
   const firstPanelChildren = (
-    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+    <div className="tw:max-w-screen-lg m-x-auto tw:px-px tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
       <div className="tw:flex-1">
         <Breadcrumbs
           items={slashedBreadcrumb}
@@ -388,7 +386,7 @@ function EditConnectionFormPage() {
       )}>
       <>
         <ResizablePanels
-          className="edit-connection-page content-height-with-resizable-panel"
+          className="edit-connection-page content-height-with-resizable-panel tw:bg-transparent"
           firstPanel={{
             children: firstPanelChildren,
             minWidth: 700,
@@ -401,10 +399,11 @@ function EditConnectionFormPage() {
           pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceDetails?.serviceType ?? ''}
                   serviceType={getServiceType(serviceCategory)}
                 />
