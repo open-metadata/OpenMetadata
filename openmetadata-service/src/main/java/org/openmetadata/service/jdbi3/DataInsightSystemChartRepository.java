@@ -37,7 +37,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.datainsight.system.DataInsightSystemChartResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.socket.messages.ChartDataStreamMessage;
@@ -167,15 +166,18 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * deployment holds no such relationships, so this returns empty there. Each automation owns its
    * ingestion pipeline the same way, and the pipeline's latest status is its latest run.
    *
-   * @param entityLink the streamed service link, e.g. {@code <#E::databaseService::mysql_prod>}
-   * @param serviceName the session's service name, used when the link is absent
+   * <p>The session carries both the service type and name. A name is unique only within a type, so
+   * the type is what pins the lookup to one service.
+   *
+   * @param serviceType the streamed service's entity type, e.g. {@code databaseService}
+   * @param serviceName the streamed service's name
    */
-  private List<Map> getAutomationStatus(String entityLink, String serviceName) {
+  private List<Map> getAutomationStatus(String serviceType, String serviceName) {
     List<Map> automationStatus = new ArrayList<>();
     try {
       IngestionPipelineRepository pipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(INGESTION_PIPELINE);
-      for (EntityReference automation : listServiceAutomations(entityLink, serviceName)) {
+      for (EntityReference automation : listServiceAutomations(serviceType, serviceName)) {
         Map<String, Object> status = buildAutomationStatus(automation, pipelineRepository);
         if (status != null) {
           automationStatus.add(status);
@@ -183,75 +185,25 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       }
     } catch (EntityNotFoundException e) {
       // The service the session streams was deleted, so it has no automations to report.
-      LOG.debug("AI Automations not available for {}: {}", entityLink, e.getMessage());
+      LOG.debug(
+          "AI Automations not available for {} '{}': {}", serviceType, serviceName, e.getMessage());
     } catch (Exception e) {
-      LOG.error("Error fetching AI Automation status for {}", entityLink, e);
+      LOG.error("Error fetching AI Automation status for {} '{}'", serviceType, serviceName, e);
     }
     return automationStatus;
   }
 
-  /**
-   * The service owns its automations through a CONTAINS relationship.
-   *
-   * <p>The link pins the service type, so it is the unambiguous path. A session opened before the
-   * service finished loading carries no link, in which case probing by name still reports the
-   * automations rather than leaving the panel with nothing to show.
-   */
-  private List<EntityReference> listServiceAutomations(String entityLink, String serviceName) {
-    EntityLink serviceLink = parseServiceLink(entityLink);
-    return serviceLink == null
-        ? automationsByName(serviceName)
-        : automationsOf(serviceLink.getEntityType(), serviceLink.getEntityFQN());
-  }
-
-  private List<EntityReference> automationsOf(String serviceType, String serviceFqn) {
+  /** The service owns its automations through a CONTAINS relationship. */
+  private List<EntityReference> listServiceAutomations(String serviceType, String serviceName) {
+    if (nullOrEmpty(serviceType)
+        || nullOrEmpty(serviceName)
+        || !SERVICE_TYPES_WITH_AUTOMATIONS.contains(serviceType)) {
+      return List.of();
+    }
     EntityInterface service =
-        (EntityInterface) Entity.getEntityByName(serviceType, serviceFqn, "", Include.NON_DELETED);
+        (EntityInterface) Entity.getEntityByName(serviceType, serviceName, "", Include.NON_DELETED);
     return Entity.getEntityRepository(serviceType)
         .findTo(service.getId(), serviceType, Relationship.CONTAINS, AI_AUTOMATION);
-  }
-
-  /** Names are unique only within a service type, so the first type holding automations wins. */
-  private List<EntityReference> automationsByName(String serviceName) {
-    List<EntityReference> automations = List.of();
-    if (!nullOrEmpty(serviceName)) {
-      automations =
-          SERVICE_TYPES_WITH_AUTOMATIONS.stream()
-              .map(serviceType -> automationsOrEmpty(serviceType, serviceName))
-              .filter(found -> !found.isEmpty())
-              .findFirst()
-              .orElseGet(List::of);
-    }
-    return automations;
-  }
-
-  private List<EntityReference> automationsOrEmpty(String serviceType, String serviceName) {
-    List<EntityReference> automations = List.of();
-    try {
-      automations = automationsOf(serviceType, serviceName);
-    } catch (EntityNotFoundException e) {
-      // The name belongs to a different service type, if any.
-    }
-    return automations;
-  }
-
-  /**
-   * The link identifies the service the session streams. Service names are unique only within a
-   * service type, so the link's type is what pins the lookup to one service.
-   */
-  private EntityLink parseServiceLink(String entityLink) {
-    EntityLink serviceLink = null;
-    if (entityLink != null && !entityLink.trim().isEmpty()) {
-      try {
-        EntityLink parsed = EntityLink.parse(entityLink);
-        if (SERVICE_TYPES_WITH_AUTOMATIONS.contains(parsed.getEntityType())) {
-          serviceLink = parsed;
-        }
-      } catch (IllegalArgumentException e) {
-        LOG.debug("Skipping automation status for unparseable entity link {}", entityLink);
-      }
-    }
-    return serviceLink;
   }
 
   private Map<String, Object> buildAutomationStatus(
@@ -638,6 +590,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public Map<String, Object> startChartDataStreaming(
       String chartNames,
       String serviceName,
+      String serviceType,
       String filter,
       String entityLink,
       UUID userId,
@@ -676,7 +629,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           existingSession.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(serviceName),
-          getAutomationStatus(existingSession.getEntityLink(), serviceName),
+          getAutomationStatus(existingSession.getServiceType(), serviceName),
           getWorkflowInstances(
               existingSession.getEntityLink(),
               existingSession.getDataStartTime(),
@@ -720,7 +673,8 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
     try {
       String sessionId =
-          startStreaming(chartNames, serviceName, filter, entityLink, userId, startTime, endTime);
+          startStreaming(
+              chartNames, serviceName, serviceType, filter, entityLink, userId, startTime, endTime);
 
       Map<String, Object> response = new HashMap<>();
       response.put("sessionId", sessionId);
@@ -751,6 +705,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public String startStreaming(
       String chartNames,
       String serviceName,
+      String serviceType,
       String filter,
       String entityLink,
       UUID userId,
@@ -769,7 +724,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
     StreamingSession session =
         new StreamingSession(
-            sessionId, chartNames, serviceName, filter, entityLink, userId, startTime, endTime);
+            sessionId,
+            chartNames,
+            serviceName,
+            serviceType,
+            filter,
+            entityLink,
+            userId,
+            startTime,
+            endTime);
     activeSessions.put(sessionId, session);
 
     // Send initial status message to all users in the session
@@ -781,7 +744,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         STREAM_DURATION_MS,
         UPDATE_INTERVAL_MS,
         getIngestionPipelineStatus(serviceName),
-        getAutomationStatus(entityLink, serviceName),
+        getAutomationStatus(serviceType, serviceName),
         getWorkflowInstances(entityLink, startTime, endTime));
 
     // Schedule the streaming task
@@ -873,7 +836,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           session.getRemainingTime(),
           UPDATE_INTERVAL_MS,
           getIngestionPipelineStatus(session.getServiceName()),
-          getAutomationStatus(session.getEntityLink(), session.getServiceName()),
+          getAutomationStatus(session.getServiceType(), session.getServiceName()),
           getWorkflowInstances(
               session.getEntityLink(), session.getDataStartTime(), session.getDataEndTime()));
 
@@ -929,7 +892,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
           remainingTime,
           UPDATE_INTERVAL_MS,
           ingestionPipelineStatus,
-          getAutomationStatus(session.getEntityLink(), session.getServiceName()),
+          getAutomationStatus(session.getServiceType(), session.getServiceName()),
           workflowInstances);
 
     } catch (IOException e) {
@@ -1052,6 +1015,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     private final String sessionId;
     private final String chartNames;
     private final String serviceName;
+    private final String serviceType;
     private final String filter;
     private final String entityLink;
     private final Set<UUID> userIds; // Multiple users can share the same session
@@ -1064,6 +1028,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         String sessionId,
         String chartNames,
         String serviceName,
+        String serviceType,
         String filter,
         String entityLink,
         UUID userId,
@@ -1072,6 +1037,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       this.sessionId = sessionId;
       this.chartNames = chartNames;
       this.serviceName = serviceName;
+      this.serviceType = serviceType;
       this.filter = filter;
       this.entityLink = entityLink;
       this.userIds = ConcurrentHashMap.newKeySet(); // Thread-safe set
@@ -1106,6 +1072,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
     public String getServiceName() {
       return serviceName;
+    }
+
+    public String getServiceType() {
+      return serviceType;
     }
 
     public String getFilter() {

@@ -206,6 +206,7 @@ const ServiceInsightsTab = ({
       const { sessionId } = await setChartDataStreamConnection({
         chartNames: LIVE_CHARTS_LIST,
         serviceName,
+        serviceType: entityType,
         startTime: getCurrentDayStartGMTinMillis(),
         endTime: getCurrentDayStartGMTinMillis() + 360000000,
         entityLink: getEntityFeedLink(
