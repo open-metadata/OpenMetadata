@@ -941,6 +941,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     workflow = (
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
     ).read_text()
+    summary_job = workflow.split("  playwright-summary:", 1)[1]
     coverage_step = workflow.split(
         "      - name: Verify Playwright timing coverage", 1
     )[1].split("      - name: Evaluate Playwright performance", 1)[0]
@@ -952,6 +953,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "playwright-results-json-*/results.json" in coverage_step
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
+    assert "if: ${{ always() && !cancelled() }}" in summary_job
     assert "zero-attempt; reason unknown" in workflow
     assert "CI/reporting failure(s)" in workflow
     assert "### CI and reporting failures" in workflow

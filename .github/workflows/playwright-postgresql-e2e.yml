@@ -1164,7 +1164,7 @@ jobs:
 
   playwright-summary:
     name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
-    if: always()
+    if: ${{ always() && !cancelled() }}
     needs:
       [
         check-changes,
