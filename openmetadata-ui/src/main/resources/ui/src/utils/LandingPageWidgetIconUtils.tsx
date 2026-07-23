@@ -21,8 +21,8 @@ import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './TableUtils';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
-  className?: string,
-  size: EntityIconSize = EntityIconSize.Size32
+  size: EntityIconSize = EntityIconSize.Size32,
+  className?: string
 ) => {
   const iconClassName = classNames(className, ENTITY_ICON_SIZE_CLASS_MAP[size]);
   const entityType = item.entityType ?? item.type ?? '';

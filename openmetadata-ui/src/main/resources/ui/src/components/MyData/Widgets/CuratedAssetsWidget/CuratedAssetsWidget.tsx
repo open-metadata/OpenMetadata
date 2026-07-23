@@ -363,11 +363,7 @@ const CuratedAssetsWidgetContent = ({
           <div
             className="curated-assets-list-item flex items-center w-full gap-2"
             data-testid={`Curated Assets-${title}`}>
-            {getEntityIcon(
-              item as SearchSourceAlias,
-              undefined,
-              EntityIconSize.Size24
-            )}
+            {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text

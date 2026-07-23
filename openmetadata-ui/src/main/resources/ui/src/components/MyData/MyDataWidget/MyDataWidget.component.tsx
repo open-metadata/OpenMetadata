@@ -207,11 +207,7 @@ const MyDataWidgetInternal = ({
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
                         <div className="d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(
-                            item,
-                            undefined,
-                            EntityIconSize.Size24
-                          )}
+                          {getEntityIcon(item, EntityIconSize.Size24)}
                         </div>
                       }
                       type="text">
