@@ -46,6 +46,7 @@ import {
   updateDescription,
   updateDisplayNameForEntity,
   updateOwner,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
