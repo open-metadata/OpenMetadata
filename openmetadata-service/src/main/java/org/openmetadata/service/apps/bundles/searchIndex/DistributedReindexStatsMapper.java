@@ -43,10 +43,11 @@ class DistributedReindexStatsMapper {
     StatsSource source = resolveStatsSource(distributedJob, aggregatedStats, actualSinkStats);
 
     LOG.debug(
-        "Stats source: {}, success={}, failed={}",
+        "Stats source: {}, success={}, failed={}, warnings={}",
         source.name(),
         source.successRecords(),
-        source.failedRecords());
+        source.failedRecords(),
+        source.warningRecords());
 
     updateJobStats(stats, source);
     updateReaderStats(stats, distributedJob, aggregatedStats);
@@ -81,14 +82,21 @@ class DistributedReindexStatsMapper {
           aggregatedStats.sinkSuccess(),
           aggregatedStats.readerFailed()
               + aggregatedStats.sinkFailed()
-              + aggregatedStats.processFailed());
+              + aggregatedStats.processFailed(),
+          warningRecords(distributedJob));
     }
     if (actualSinkStats != null) {
       return new StatsSource(
-          "localSink", actualSinkStats.getSuccessRecords(), actualSinkStats.getFailedRecords());
+          "localSink",
+          actualSinkStats.getSuccessRecords(),
+          actualSinkStats.getFailedRecords(),
+          actualSinkStats.getWarningRecords());
     }
     return new StatsSource(
-        "partition-based", distributedJob.getSuccessRecords(), distributedJob.getFailedRecords());
+        "partition-based",
+        distributedJob.getSuccessRecords(),
+        distributedJob.getFailedRecords(),
+        warningRecords(distributedJob));
   }
 
   private boolean hasAggregatedStageRecords(
@@ -110,6 +118,7 @@ class DistributedReindexStatsMapper {
     if (jobStats != null) {
       jobStats.setSuccessRecords(saturatedToInt(source.successRecords()));
       jobStats.setFailedRecords(saturatedToInt(source.failedRecords()));
+      jobStats.setWarningRecords(saturatedToInt(source.warningRecords()));
     }
   }
 
@@ -165,9 +174,12 @@ class DistributedReindexStatsMapper {
     if (aggregatedStats != null) {
       long sinkSuccess = aggregatedStats.sinkSuccess();
       long sinkFailed = aggregatedStats.sinkFailed();
-      sinkStats.setTotalRecords(saturatedToInt(sinkSuccess + sinkFailed));
+      long processTotal = aggregatedStats.processSuccess() + aggregatedStats.processFailed();
+      long sinkWarnings = Math.max(0, processTotal - sinkSuccess - sinkFailed);
+      sinkStats.setTotalRecords(saturatedToInt(sinkSuccess + sinkFailed + sinkWarnings));
       sinkStats.setSuccessRecords(saturatedToInt(sinkSuccess));
       sinkStats.setFailedRecords(saturatedToInt(sinkFailed));
+      sinkStats.setWarningRecords(saturatedToInt(sinkWarnings));
       sinkStats.setTotalTimeMs(aggregatedStats.sinkTimeMs());
       return;
     }
@@ -175,6 +187,7 @@ class DistributedReindexStatsMapper {
     sinkStats.setTotalRecords(saturatedToInt(distributedJob.getTotalRecords()));
     sinkStats.setSuccessRecords(saturatedToInt(source.successRecords()));
     sinkStats.setFailedRecords(saturatedToInt(source.failedRecords()));
+    sinkStats.setWarningRecords(saturatedToInt(source.warningRecords()));
   }
 
   private void updateVectorStats(
@@ -202,14 +215,22 @@ class DistributedReindexStatsMapper {
       StepStats entityStats = stats.getEntityStats().getAdditionalProperties().get(entry.getKey());
       if (entityStats != null) {
         SearchIndexJob.EntityTypeStats distributedEntityStats = entry.getValue();
-        // totalRecords from the partition plan, not the up-front getEntityTotal() pre-count.
-        // The two counts can drift (different ListFilter, queried moments apart on a churny
-        // time-series table) — the partition plan defines what is actually processed, so the
-        // total must match it or the job shows a phantom "total > success" gap.
-        entityStats.setTotalRecords(saturatedToInt(distributedEntityStats.getTotalRecords()));
-        entityStats.setSuccessRecords(saturatedToInt(distributedEntityStats.getSuccessRecords()));
-        entityStats.setFailedRecords(saturatedToInt(distributedEntityStats.getFailedRecords()));
-        entityStats.setWarningRecords(saturatedToInt(distributedEntityStats.getWarningRecords()));
+        long success = distributedEntityStats.getSuccessRecords();
+        long failed = distributedEntityStats.getFailedRecords();
+        long warnings = distributedEntityStats.getWarningRecords();
+        long total = distributedEntityStats.getTotalRecords();
+        // Rows the planner counted but the reader never produced (deletes between plan and
+        // read, ListFilter snapshot drift) — absorb into warnings so total balances against
+        // success + failed + warnings. Without this, totalRecords stays at the planner count
+        // while the stage counters reflect only what the reader saw, leaving a phantom gap.
+        long gap = total - (success + failed + warnings);
+        if (gap > 0) {
+          warnings += gap;
+        }
+        entityStats.setTotalRecords(saturatedToInt(total));
+        entityStats.setSuccessRecords(saturatedToInt(success));
+        entityStats.setFailedRecords(saturatedToInt(failed));
+        entityStats.setWarningRecords(saturatedToInt(warnings));
         entityStats.setReaderTimeMs(distributedEntityStats.getReaderTimeMs());
         entityStats.setProcessTimeMs(distributedEntityStats.getProcessTimeMs());
         entityStats.setSinkTimeMs(distributedEntityStats.getSinkTimeMs());
@@ -229,6 +250,7 @@ class DistributedReindexStatsMapper {
       existingColumnStats.setTotalRecords(columnStats.getTotalRecords());
       existingColumnStats.setSuccessRecords(columnStats.getSuccessRecords());
       existingColumnStats.setFailedRecords(columnStats.getFailedRecords());
+      existingColumnStats.setWarningRecords(columnStats.getWarningRecords());
     }
   }
 
@@ -236,5 +258,14 @@ class DistributedReindexStatsMapper {
     return (int) Math.min(value, Integer.MAX_VALUE);
   }
 
-  private record StatsSource(String name, long successRecords, long failedRecords) {}
+  private long warningRecords(SearchIndexJob distributedJob) {
+    return Math.max(
+        0,
+        distributedJob.getProcessedRecords()
+            - distributedJob.getSuccessRecords()
+            - distributedJob.getFailedRecords());
+  }
+
+  private record StatsSource(
+      String name, long successRecords, long failedRecords, long warningRecords) {}
 }

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { styled } from '@mui/material/styles';
 import { Col, Row } from 'antd';
 import classNames from 'classnames';
 import {
@@ -20,14 +19,10 @@ import {
   Fragment,
   HTMLAttributes,
   ReactNode,
-  useEffect,
   useMemo,
-  useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { useAlertStore } from '../../hooks/useAlertStore';
-import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -51,31 +46,47 @@ export const pageContainerStyles: CSSProperties = {
   overflow: 'hidden',
 };
 
-const FullHeightWrapper = styled('div')<{ $wrapperClassName?: string }>(
-  ({ $wrapperClassName }) => ({
-    [`& .page-layout-v1-vertical-scroll.${$wrapperClassName}`]: {
-      overflow: 'hidden',
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} > .ant-row`]: {
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col`]: {
-      flex: 'none',
-    },
-    [`& .${$wrapperClassName} .ant-row .ant-col:last-child`]: {
-      minHeight: 0,
-      flex: 1,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-  })
-);
+const FullHeightWrapper: FC<{
+  $wrapperClassName?: string;
+  children: ReactNode;
+}> = ({ $wrapperClassName, children }) => {
+  const scopedStyles = useMemo(() => {
+    if (!$wrapperClassName) {
+      return '';
+    }
+
+    return `
+      .full-height-wrapper .page-layout-v1-vertical-scroll.${$wrapperClassName} {
+        overflow: hidden;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .full-height-wrapper .${$wrapperClassName} > .ant-row {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col {
+        flex: none;
+      }
+      .full-height-wrapper .${$wrapperClassName} .ant-row .ant-col:last-child {
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+    `;
+  }, [$wrapperClassName]);
+
+  return (
+    <div className="full-height-wrapper">
+      {scopedStyles && <style>{scopedStyles}</style>}
+      {children}
+    </div>
+  );
+};
 
 const PageLayoutV1: FC<PageLayoutProp> = ({
   leftPanel,
@@ -90,9 +101,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageContainerStyle = {},
   fullHeight = false,
 }: PageLayoutProp) => {
-  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
-  const [prevPath, setPrevPath] = useState<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -118,25 +127,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     return pageContainerStyle;
   }, [fullHeight, pageContainerStyle]);
 
-  useEffect(() => {
-    if (prevPath !== location.pathname) {
-      if (isErrorTimeOut) {
-        resetAlert();
-      }
-    }
-  }, [location.pathname, resetAlert, isErrorTimeOut]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      setPrevPath(location.pathname);
-    }, 3000);
-  }, [location.pathname]);
 
   const content = (
     <Fragment>
@@ -167,11 +162,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           <Row>
-            {alert && (
-              <Col id="page-alert" span={24}>
-                <AlertBar message={alert.message} type={alert.type} />
-              </Col>
-            )}
             <Col span={24}>{children}</Col>
           </Row>
         </Col>

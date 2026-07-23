@@ -311,6 +311,8 @@ export interface ServiceConnection {
  *
  * QuestDB Connection Config
  *
+ * SAP BW/4HANA Database Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -382,6 +384,8 @@ export interface ServiceConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  *
  * MlFlow Connection Config
  *
@@ -470,8 +474,6 @@ export interface ConfigObject {
      * Hex API token for authentication. Can be personal or workspace token.
      *
      * To Connect to Dagster Cloud
-     *
-     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -678,6 +680,8 @@ export interface ConfigObject {
      *
      * Host and port of the QuestDB service (default PostgreSQL wire protocol port is 8812).
      *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -803,6 +807,8 @@ export interface ConfigObject {
      * Password to connect to Informix.
      *
      * Password to connect to IOMETE.
+     *
+     * Password for the HANA database user.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -935,6 +941,8 @@ export interface ConfigObject {
      * Username to connect to IOMETE.
      *
      * Username to connect to QuestDB.
+     *
+     * HANA database username with access to BW metadata tables.
      *
      * username to connect to the Amundsen Neo4j Connection.
      *
@@ -1239,6 +1247,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
+     *
+     * Regex to only include/exclude InfoAreas that match the pattern.
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -1272,6 +1282,9 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+     * pattern.
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -1326,17 +1339,18 @@ export interface ConfigObject {
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      *
-     * Database of the data source.
-     *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      *
      * Optional: Restrict metadata ingestion to a specific namespace (source/space). When left
      * blank, all namespaces will be ingested.
@@ -1441,6 +1455,10 @@ export interface ConfigObject {
      * Databricks compute resources URL.
      */
     httpPath?: string;
+    /**
+     * Policy agent configuration for access control extraction.
+     */
+    policyAgentConfig?: PolicyAgentConfig;
     /**
      * Table name to fetch the query history.
      *
@@ -1579,6 +1597,21 @@ export interface ConfigObject {
      */
     verify?: string;
     /**
+     * Redshift cluster identifier. Leave empty for standard Redshift hostnames
+     * (*.redshift.amazonaws.com) - it is derived automatically. Set this ONLY when using IAM
+     * authentication through a PrivateLink/VPC endpoint (vpce-...) or a custom DNS name. Find
+     * it in AWS Console -> Amazon Redshift -> Clusters ('Cluster identifier' column).
+     */
+    clusterIdentifier?: string;
+    /**
+     * Redshift Serverless workgroup name. Leave empty for standard Redshift Serverless
+     * hostnames (*.redshift-serverless.amazonaws.com) - it is derived automatically. Set this
+     * ONLY when using IAM authentication through a PrivateLink/VPC endpoint (vpce-...) or a
+     * custom DNS name. Find it in AWS Console -> Amazon Redshift -> Redshift Serverless ->
+     * Workgroups.
+     */
+    workgroupName?: string;
+    /**
      * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
      * your Salesforce Connected App configuration. Required along with Consumer Secret for
      * OAuth authentication.
@@ -1637,6 +1670,13 @@ export interface ConfigObject {
      */
     tokenUrl?: string;
     /**
+     * Number of days of ACCESS_HISTORY scanned per query when 'Use Access History for Lineage'
+     * is enabled. The lineage time window is split into chunks of this many days to keep each
+     * Snowflake query bounded and avoid client/server timeouts over long windows. Lower this
+     * value if queries still time out on very busy accounts.
+     */
+    accessHistoryChunkSize?: number;
+    /**
      * If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the
      * account is xyz1234.us-east-1.gcp
      *
@@ -1650,8 +1690,7 @@ export interface ConfigObject {
      */
     accountUsageSchema?: string;
     /**
-     * Optional configuration for ingestion to keep the client session active in case the
-     * ingestion process runs for longer durations.
+     * Keep the session alive for long-running scans.
      */
     clientSessionKeepAlive?: boolean;
     /**
@@ -1659,17 +1698,15 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
-     * Optional configuration for ingestion of Snowflake stages (internal and external). By
-     * default, stages are not ingested.
+     * Ingest external and internal stages.
      */
     includeStages?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     * Ingest Snowflake streams as data assets.
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
-     * TRANSIENT tables.
+     * Ingest transient tables alongside permanent ones.
      */
     includeTransientTables?: boolean;
     /**
@@ -1689,6 +1726,13 @@ export interface ConfigObject {
      * Snowflake source host for the Snowflake account.
      */
     snowflakeSourceHost?: string;
+    /**
+     * Use Snowflake's ACCOUNT_USAGE.ACCESS_HISTORY view as the source of query lineage.
+     * ACCESS_HISTORY provides Snowflake-computed table- and column-level lineage, including for
+     * queries OpenMetadata cannot parse. Enabled by default; if the configured role cannot read
+     * ACCESS_HISTORY, ingestion automatically falls back to the legacy query-log parser.
+     */
+    useAccessHistory?: boolean;
     /**
      * Snowflake warehouse.
      */
@@ -1822,6 +1866,11 @@ export interface ConfigObject {
      * IOMETE data plane name.
      */
     dataPlane?: string;
+    /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2113,10 +2162,15 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -2451,6 +2505,11 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
+ * Regex to only include/exclude InfoAreas that match the pattern.
+ *
+ * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
+ * pattern.
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -2462,6 +2521,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -3680,11 +3741,15 @@ export interface ConfigConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
+     *
+     * Database of the data source.
+     *
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
-     *
-     * Database of the data source.
      */
     database?: string;
     /**
@@ -4193,14 +4258,17 @@ export interface PurpleGCPCredentials {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**
@@ -4421,9 +4489,9 @@ export interface HiveMetastoreConnectionDetails {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Database of the data source. This is optional parameter, if you would like to restrict
-     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
-     * attempts to scan all the databases.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database?: string;
     /**
@@ -4706,6 +4774,28 @@ export interface BucketDetails {
      * Path of the folder where the .pbit files are stored
      */
     objectPrefix?: string;
+}
+
+/**
+ * Policy agent configuration for access control extraction.
+ */
+export interface PolicyAgentConfig {
+    /**
+     * Enable policy agent extraction.
+     */
+    enabled?: boolean;
+    /**
+     * Supports column-level access policy extraction.
+     */
+    supportsColumnAccess?: boolean;
+    /**
+     * Supports full access policy extraction.
+     */
+    supportsFullAccess?: boolean;
+    /**
+     * Supports masked access policy extraction.
+     */
+    supportsMaskedAccess?: boolean;
 }
 
 /**
@@ -5045,6 +5135,8 @@ export enum TokenType {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Custom Ml model service type
  *
  * S3 service type
@@ -5181,6 +5273,8 @@ export enum ConfigType {
     SQLite = "SQLite",
     SageMaker = "SageMaker",
     Salesforce = "Salesforce",
+    SapBw4Hana = "SapBw4Hana",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     SapERP = "SapErp",
     SapHana = "SapHana",
     SapS4Hana = "SapS4Hana",

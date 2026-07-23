@@ -20,7 +20,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { getSettingsPathWithFqn } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 
 /** Primary list URL (main nav + in-app navigation). */
 export const getWorkflowDefinitionsListPath = () => ROUTES.WORKFLOWS;

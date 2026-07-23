@@ -16,22 +16,23 @@ import {
   Button,
   ButtonUtility,
   Card,
+  Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { SearchLg, XClose } from '@untitledui/icons';
 import { Modal, Progress } from 'antd';
 import { AxiosError } from 'axios';
 import dayjs from 'dayjs';
+import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import { AuditLogFilters, AuditLogList } from '../../components/AuditLog';
 import '../../components/common/atoms/filters/FilterSelection.less';
-import { useBreadcrumbs } from '../../components/common/atoms/navigation/useBreadcrumbs';
-import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import Banner from '../../components/common/Banner/Banner';
 import DatePicker from '../../components/common/DatePicker/DatePicker';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { CSVExportWebsocketResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
@@ -56,6 +57,7 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
@@ -174,22 +176,30 @@ const AuditLogsPage = () => {
     [fetchAuditLogs]
   );
 
-  const { search: searchComponent, clearSearch } = useSearch({
-    searchPlaceholder: t('label.search-audit-logs'),
-    onSearchChange: handleSearchChange,
-    testId: 'audit-log-search',
-  });
+  const [searchInputValue, setSearchInputValue] = useState('');
+
+  const debouncedSearch = useMemo(
+    () => debounce(handleSearchChange, 300),
+    [handleSearchChange]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleClearFilters = useCallback(() => {
+    debouncedSearch.cancel();
     setActiveFilters([]);
     setFilterParams({});
     filterParamsRef.current = {};
     setSearchTerm('');
     searchTermRef.current = '';
     setCurrentPage(1);
-    clearSearch();
+    setSearchInputValue('');
     fetchAuditLogs({ after: undefined, before: undefined }, {});
-  }, [fetchAuditLogs, clearSearch]);
+  }, [debouncedSearch, fetchAuditLogs]);
 
   const handleRemoveFilter = useCallback(
     (category: string) => {
@@ -301,18 +311,6 @@ const AuditLogsPage = () => {
     }
   }, [exportDateRange, searchTerm, filterParams]);
 
-  const { breadcrumbs } = useBreadcrumbs({
-    home: { show: false },
-    items: [
-      { name: t('label.setting-plural'), url: getSettingPath() },
-      {
-        name: t('label.access-control'),
-        url: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
-      },
-      { name: t('label.audit-log-plural'), isActive: true },
-    ],
-  });
-
   const handleExportModalClose = useCallback(() => {
     if (!isExporting) {
       setIsExportModalOpen(false);
@@ -333,7 +331,19 @@ const AuditLogsPage = () => {
       <div
         className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden"
         data-testid="audit-logs-page">
-        <div className="tw:shrink-0 tw:mb-2">{breadcrumbs}</div>
+        <div className="tw:shrink-0">
+          <HeaderBreadcrumb
+            items={[
+              { label: t('label.setting-plural'), href: getSettingPath() },
+              {
+                label: t('label.access-control'),
+                href: getSettingPath(GlobalSettingsMenuCategory.ACCESS),
+              },
+              { label: t('label.audit-log-plural') },
+            ]}
+            showHome={false}
+          />
+        </div>
         {/* Header */}
         <Card
           className="tw:flex tw:justify-between tw:items-center tw:mt-1 tw:mb-2 tw:px-6 tw:py-4"
@@ -362,7 +372,17 @@ const AuditLogsPage = () => {
               <div
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
-                {searchComponent}
+                <Input
+                  className="tw:max-w-86"
+                  icon={SearchLg}
+                  inputDataTestId="audit-log-search"
+                  placeholder={t('label.search-audit-logs')}
+                  value={searchInputValue}
+                  onChange={(value) => {
+                    setSearchInputValue(value);
+                    debouncedSearch(value);
+                  }}
+                />
               </div>
               <AuditLogFilters
                 activeFilters={activeFilters}
@@ -377,7 +397,7 @@ const AuditLogsPage = () => {
                 <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
                     <Badge
-                      className="tw:ring-0 tw:gap-1"
+                      className="tw:outline-0 tw:gap-1"
                       color="brand"
                       key={filter.category}
                       size="lg"
@@ -386,7 +406,7 @@ const AuditLogsPage = () => {
                         className="tw:flex tw:items-center tw:gap-1"
                         data-testid={`filter-chip-${filter.category}`}>
                         <Typography
-                          className="tw:text-gray-600"
+                          className="tw:text-tertiary"
                           weight="medium">
                           {filter.categoryLabel}:{' '}
                         </Typography>
@@ -398,7 +418,7 @@ const AuditLogsPage = () => {
                             title={filter.value.label}
                             weight="medium">
                             {filter.category === 'time' &&
-                            filter.value.key === 'customRange'
+                            filter.value.key === CUSTOM_DATE_RANGE_KEY
                               ? t('label.custom-range')
                               : filter.value.label}
                           </Typography>

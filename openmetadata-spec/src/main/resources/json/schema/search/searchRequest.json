@@ -85,7 +85,11 @@
       }
     },
     "searchAfter": {
-      "description": "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...",
+      "description": "Pagination cursor. Send one search_after query parameter per sort value (?search_after=v1&search_after=v2). Each value is its own parameter so values containing ',' (e.g. a glossary term FQN) are safe.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "existingJavaType": "java.util.List<java.lang.Object>"
     },
     "domains": {

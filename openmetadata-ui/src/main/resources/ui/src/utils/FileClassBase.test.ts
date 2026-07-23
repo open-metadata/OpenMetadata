@@ -41,20 +41,6 @@ jest.mock('../constants/File.constant', () => ({
   } as File,
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn((tabId: EntityTabs) => {
-    const labelMap: Partial<Record<EntityTabs, string>> = {
-      [EntityTabs.OVERVIEW]: 'Overview',
-      [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
-      [EntityTabs.LINEAGE]: 'Lineage',
-      [EntityTabs.CONTRACT]: 'Contract',
-      [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
-    };
-
-    return labelMap[tabId] || tabId;
-  }),
-}));
-
 jest.mock('./FileDetailsUtils', () => ({
   getFileDetailsPageTabs: jest.fn((): TabProps[] => [
     {
@@ -160,42 +146,42 @@ describe('FileClassBase', () => {
       expect(result[0]).toEqual({
         id: EntityTabs.OVERVIEW,
         name: EntityTabs.OVERVIEW,
-        displayName: 'Overview',
+        displayName: 'label.overview',
         layout: expect.any(Array),
         editable: true,
       });
       expect(result[1]).toEqual({
         id: EntityTabs.SCHEMA,
         name: EntityTabs.SCHEMA,
-        displayName: 'schema',
+        displayName: 'label.schema',
         layout: [],
         editable: false,
       });
       expect(result[2]).toEqual({
         id: EntityTabs.ACTIVITY_FEED,
         name: EntityTabs.ACTIVITY_FEED,
-        displayName: 'Activity Feed',
+        displayName: 'label.activity-feed-and-task-plural',
         layout: [],
         editable: false,
       });
       expect(result[3]).toEqual({
         id: EntityTabs.LINEAGE,
         name: EntityTabs.LINEAGE,
-        displayName: 'Lineage',
+        displayName: 'label.lineage',
         layout: [],
         editable: false,
       });
       expect(result[4]).toEqual({
         id: EntityTabs.CONTRACT,
         name: EntityTabs.CONTRACT,
-        displayName: 'Contract',
+        displayName: 'label.contract',
         layout: [],
         editable: false,
       });
       expect(result[5]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
-        displayName: 'Custom Properties',
+        displayName: 'label.custom-property-plural',
         layout: [],
         editable: false,
       });

@@ -1066,10 +1066,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getReviewers());
     assertEquals(1, updated.getReviewers().size());
 
-    // Add another reviewer
-    updated.setReviewers(
+    // Add another reviewer — re-fetch first so the patch diff contains only the
+    // reviewer change. Adding the first reviewer triggers the async approval
+    // workflow which flips entityStatus to IN_REVIEW; patching the stale
+    // `updated` object (still APPROVED) would otherwise produce an IN_REVIEW ->
+    // APPROVED status diff that checkUpdatedByReviewer rejects because admin is
+    // not a reviewer.
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
@@ -1302,6 +1308,47 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         Integer.valueOf(0),
         afterDelete.getUsageCount(),
         "Glossary term usageCount should drop to 0 after the tagged table is hard-deleted");
+  }
+
+  @Test
+  void test_longFqnGlossaryTermAppliesAsTagWithoutOverflow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    // entityName permits up to 256 chars; combined with the glossary prefix the resulting term FQN
+    // exceeds the legacy tag_usage.tagFQN VARCHAR(256) limit (but stays within the widened 512).
+    // Before the widening this applyTag INSERT failed with
+    // "value too long for type character varying(256)".
+    String longName = ("longterm_" + "x".repeat(256)).substring(0, 256);
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(longName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Long-named term exercising the widened tag_usage.tagFQN column");
+    GlossaryTerm term = createEntity(termRequest);
+    assertTrue(
+        term.getFullyQualifiedName().length() > 256,
+        "Term FQN must exceed the legacy 256-char tag_usage limit to exercise the fix: "
+            + term.getFullyQualifiedName().length());
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("long_fqn_tag_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    tableRequest.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(term.getFullyQualifiedName(), table.getTags().get(0).getTagFQN());
   }
 
   @Test
@@ -3754,5 +3801,137 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     return client
         .getHttpClient()
         .executeForString(HttpMethod.GET, "/v1/glossaryTerms/byIds", null, opts.build());
+  }
+
+  // -------------------------------------------------------------------------
+  // Issue #28696: renaming a glossary term so the new name keeps the original
+  // name as a PREFIX (e.g. "Customer Lifetime Value" -> "Customer Lifetime
+  // Value Renamed") corrupted the glossary tagFQN on every linked asset in the
+  // search index. The term's asset page then showed 0 assets even though the
+  // database relationship stayed intact.
+  //
+  // Root cause: a non-idempotent prefix replace runs twice on the same asset
+  // doc. updateAssetIndexes (in-transaction) rewrites the tag old -> new, then
+  // propagateToRelatedEntities (post-commit, gated on the simultaneous
+  // displayName change a UI rename sends) re-runs replace(oldFqn, newFqn) on
+  // the already-renamed tag, producing "<newFqn> Renamed" because the new FQN
+  // still startsWith the old FQN.
+  // -------------------------------------------------------------------------
+  @Test
+  void test_renameGlossaryTermPrefixExtension_keepsAssetGlossaryTagInSearch(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    // Short, dot-free names: the FQN must stay unquoted so the new FQN literally
+    // startsWith the old one, and stay well under the tag_usage.tagFQN(256) limit.
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("clv_g"))
+                    .withDescription("Glossary for rename-prefix search regression (#28696)"));
+    GlossaryTerm term =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("clv"))
+                .withDisplayName("Customer Lifetime Value")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Term for rename-prefix search regression (#28696)"));
+    String oldFqn = term.getFullyQualifiedName();
+
+    Table table = createTableTaggedWithTerm(ns, term, "clv_asset");
+    String tableId = table.getId().toString();
+
+    awaitTableGlossaryTag(client, mapper, tableId, oldFqn);
+
+    // UI rename shape: the new name extends the old name as a prefix AND the
+    // displayName changes in the same PATCH (EntityNameModal submits both).
+    GlossaryTerm toRename = client.glossaryTerms().get(term.getId().toString(), "tags");
+    toRename.setName(term.getName() + " Renamed");
+    toRename.setDisplayName("Customer Lifetime Value Renamed");
+    GlossaryTerm renamed = patchEntity(term.getId().toString(), toRename);
+
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(
+        newFqn.startsWith(oldFqn),
+        "Reproduction requires the new FQN to extend the old FQN as a prefix: " + newFqn);
+
+    // The asset's glossary tag in search must equal the NEW FQN exactly. The
+    // regression produced "<newFqn> Renamed", dropping the asset from the term.
+    awaitTableGlossaryTag(client, mapper, tableId, newFqn);
+
+    // ...and the term's asset listing (search backed) must still surface the table.
+    awaitGlossaryTagAssetSearchable(client, mapper, newFqn, tableId);
+  }
+
+  private void awaitTableGlossaryTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedGlossaryFqn) {
+    Awaitility.await("table search doc carries glossary tag " + expectedGlossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> glossaryFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                if ("Glossary".equals(tag.path("source").asText())) {
+                  glossaryFqns.add(tag.path("tagFQN").asText());
+                }
+              }
+              assertTrue(
+                  glossaryFqns.contains(expectedGlossaryFqn),
+                  "Expected glossary tagFQN '"
+                      + expectedGlossaryFqn
+                      + "' on table search doc but found "
+                      + glossaryFqns);
+            });
+  }
+
+  private void awaitGlossaryTagAssetSearchable(
+      OpenMetadataClient client, ObjectMapper mapper, String glossaryFqn, String tableId) {
+    String queryFilter =
+        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"tags.tagFQN\":\"" + glossaryFqn + "\"}}]}}}";
+    Awaitility.await("asset is searchable by glossary tag " + glossaryFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("*")
+                      .index("table_search_index")
+                      .queryFilter(queryFilter)
+                      .size(50)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              boolean found = false;
+              for (JsonNode hit : hits) {
+                if (tableId.equals(hit.path("_id").asText())
+                    || tableId.equals(hit.path("_source").path("id").asText())) {
+                  found = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  found,
+                  "Glossary term assets page (search by tags.tagFQN="
+                      + glossaryFqn
+                      + ") must still include the linked table");
+            });
   }
 }

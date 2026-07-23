@@ -1,3 +1,7 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
+import { borderAfter } from '@/utils/tailwindClasses';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -12,15 +16,16 @@ import type {
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
-import { Tooltip } from '@/components/base/tooltip/tooltip';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 
 export const styles = {
-  secondary:
-    'tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+  secondary: [
+    'tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic',
+    'tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:shadow-xs',
+    borderAfter,
+    'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',
+  ].join(' '),
   tertiary:
-    'tw:text-fg-quaternary tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover',
+    'tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-tertiary',
 };
 
 /**

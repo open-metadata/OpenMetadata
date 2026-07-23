@@ -15,7 +15,7 @@ import { useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
-import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { GenericTab } from './GenericTab';
 
 jest.mock('react-router-dom', () => ({
@@ -28,7 +28,7 @@ jest.mock('../../../hooks/useGridLayoutDirection', () => ({
 
 jest.mock('../../../hooks/useCustomPages');
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageDispatchUtils', () => ({
   getWidgetsFromKey: jest.fn(),
 }));
 

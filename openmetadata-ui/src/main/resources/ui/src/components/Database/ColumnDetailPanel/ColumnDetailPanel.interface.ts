@@ -46,7 +46,6 @@ export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];
   entityType: EntityType;
-  onColumnsUpdate?: (columns: Column[]) => void;
 }
 
 export interface TestCaseStatusCounts {

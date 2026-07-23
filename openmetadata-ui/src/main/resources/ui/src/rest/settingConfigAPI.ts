@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
@@ -21,12 +22,7 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { Settings, SettingType } from '../generated/settings/settings';
 
 export type RelationCategory = 'hierarchical' | 'associative' | 'equivalence';
-export type RelationCardinality =
-  | 'ONE_TO_ONE'
-  | 'ONE_TO_MANY'
-  | 'MANY_TO_ONE'
-  | 'MANY_TO_MANY'
-  | 'CUSTOM';
+export { RelationCardinality };
 
 export interface GlossaryTermRelationType {
   name: string;

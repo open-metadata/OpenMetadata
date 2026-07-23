@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TableDataCardV2 from '../../../common/TableDataCardV2/TableDataCardV2';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';

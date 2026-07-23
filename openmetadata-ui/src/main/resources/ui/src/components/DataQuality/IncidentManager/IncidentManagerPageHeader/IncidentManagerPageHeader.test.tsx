@@ -26,7 +26,6 @@ import {
   getListTestCaseIncidentByStateId,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import IncidentManagerPageHeader from './IncidentManagerPageHeader.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
@@ -101,18 +100,21 @@ jest.mock('.../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
 }));
 
@@ -120,7 +122,7 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDisplayId: jest.fn().mockReturnValue(9),
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));

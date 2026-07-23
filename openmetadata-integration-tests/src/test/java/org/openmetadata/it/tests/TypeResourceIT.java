@@ -22,7 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateType;
@@ -835,6 +838,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToTableColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -856,6 +862,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToDashboardDataModelColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -879,6 +888,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_columnCustomPropertiesAreIsolated(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -928,6 +940,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_getAllCustomPropertiesIncludesColumnTypes(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 

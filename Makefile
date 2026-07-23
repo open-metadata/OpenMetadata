@@ -60,14 +60,109 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) install
 
 .PHONY: install_antlr_cli
+ANTLR_VERSION := 4.9.2
+# Dots escaped so the banner match below is a real version match, not a
+# regex wildcard, and so 4.9.20 cannot satisfy a 4.9.2 check.
+ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
+# install_antlr_cli resolves the CLI in three steps, cheapest first:
+#
+#   1. Already on PATH at the pinned version -> nothing to do.
+#   2. Distro package, when apt offers exactly $(ANTLR_VERSION). Ubuntu noble and
+#      later ship 4.9.2, matching the pinned antlr4-python3-runtime and the JS
+#      antlr4 runtimes, so CI never touches a public artifact host - those
+#      rate-limit our shared CI egress IP and have broken the build repeatedly.
+#   3. Pinned, checksum-verified download (macOS, non-Debian images, or a distro
+#      carrying a different ANTLR such as jammy's 4.7.2).
+#
+# The version match in step 2 is exact. A distro shipping a different ANTLR falls
+# through to the download rather than silently generating parsers that the pinned
+# runtimes will reject.
+#
+# For step 3, override ANTLR_MAVEN_BASE to pull from an internal Maven mirror
+# instead of Central. The fallback base is tried if the primary is unreachable,
+# so the default (both = Central) stays correct everywhere else.
+ANTLR_MAVEN_BASE ?= https://repo1.maven.org/maven2
+ANTLR_MAVEN_FALLBACK_BASE ?= https://repo1.maven.org/maven2
+ANTLR_COMPLETE_JAR_PATH := org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
+ANTLR_COMPLETE_JAR_URL := $(ANTLR_MAVEN_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
+ANTLR_COMPLETE_JAR_FALLBACK_URL := $(ANTLR_MAVEN_FALLBACK_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
+ANTLR_COMPLETE_JAR_SHA256 := bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd
+ANTLR_INSTALL_DIR ?= /usr/local/bin
+
 install_antlr_cli:  ## Install antlr CLI locally
-	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
-	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
-	chmod 755 /usr/local/bin/antlr4
+	@set -eu; \
+	if command -v antlr4 > /dev/null 2>&1 \
+		&& antlr4 2>&1 | grep -Eq 'Version $(ANTLR_VERSION_RE)([^0-9]|$$)'; then \
+		echo "ANTLR $(ANTLR_VERSION) already available at $$(command -v antlr4); nothing to do."; \
+		exit 0; \
+	fi; \
+	if command -v apt-get > /dev/null 2>&1; then \
+		candidate=$$(apt-cache policy antlr4 2>/dev/null | awk '/Candidate:/ {print $$2}'); \
+		if [ -z "$$candidate" ] || [ "$$candidate" = "(none)" ]; then \
+			apt-get update -qq > /dev/null 2>&1 || true; \
+			candidate=$$(apt-cache policy antlr4 2>/dev/null | awk '/Candidate:/ {print $$2}'); \
+		fi; \
+		case "$$candidate" in \
+			$(ANTLR_VERSION)|$(ANTLR_VERSION)[-+~]*) \
+				if apt-get install -y -qq antlr4 > /dev/null 2>&1; then \
+					if command -v antlr4 > /dev/null 2>&1 \
+						&& antlr4 2>&1 | grep -Eq 'Version $(ANTLR_VERSION_RE)([^0-9]|$$)'; then \
+						echo "Installed ANTLR $$candidate from the distro archive."; \
+						exit 0; \
+					fi; \
+					echo "Distro package installed, but antlr4 on PATH resolves to $$(command -v antlr4 2>/dev/null || echo none) which is not $(ANTLR_VERSION); falling back to pinned download." >&2; \
+				else \
+					echo "apt-get install antlr4 failed; falling back to pinned download." >&2; \
+				fi; \
+				;; \
+			*) \
+				echo "Distro ANTLR candidate '$$candidate' is not $(ANTLR_VERSION); using pinned download." >&2; \
+				;; \
+		esac; \
+	fi; \
+	jar_file=$$(mktemp); \
+	cli_file=$$(mktemp "$(ANTLR_INSTALL_DIR)/.antlr4.XXXXXX"); \
+	trap 'rm -f "$$jar_file" "$$cli_file"' EXIT; \
+	if command -v shasum > /dev/null 2>&1; then \
+		sha_check="shasum -a 256 --check"; \
+	elif command -v sha256sum > /dev/null 2>&1; then \
+		sha_check="sha256sum --check"; \
+	else \
+		echo "Neither shasum nor sha256sum is available; cannot verify the ANTLR download." >&2; \
+		exit 1; \
+	fi; \
+	urls=$$(printf '%s\n%s\n' "$(ANTLR_COMPLETE_JAR_URL)" "$(ANTLR_COMPLETE_JAR_FALLBACK_URL)" | awk 'NF && !seen[$$0]++'); \
+	attempt=1; \
+	while :; do \
+		for url in $$urls; do \
+			if curl --fail --location --silent --show-error \
+				--retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+				--connect-timeout 15 --max-time 60 \
+				--output "$$jar_file" "$$url" \
+				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | $$sha_check \
+				&& jar tf "$$jar_file" > /dev/null; then \
+				break 2; \
+			fi; \
+			echo "ANTLR $(ANTLR_VERSION) download failed from $$url (attempt $$attempt)" >&2; \
+		done; \
+		if [ "$$attempt" -ge 3 ]; then \
+			echo "Failed to download a valid ANTLR $(ANTLR_VERSION) CLI after $$attempt attempts" >&2; \
+			exit 1; \
+		fi; \
+		attempt=$$((attempt + 1)); \
+		sleep 2; \
+	done; \
+	printf '%s\n' '#!/usr/bin/java -jar' > "$$cli_file"; \
+	cat "$$jar_file" >> "$$cli_file"; \
+	chmod 755 "$$cli_file"; \
+	mv "$$cli_file" "$(ANTLR_INSTALL_DIR)/antlr4"
 
 ## SNYK
 SNYK_ARGS := --severity-threshold=high
 
+# Drop pip's build/lib tree before scanning so `snyk code test` does not
+# double-report findings (once under src/, once under build/lib/). Same
+# applies to snyk-airflow-apis-report below.
 .PHONY: snyk-ingestion-report
 snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and container. Don't stop the execution
 	@echo "Validating Ingestion container..."
@@ -76,6 +171,7 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 	@echo "Validating ALL ingestion dependencies. Make sure the venv is activated."
 	cd ingestion; \
 		pip freeze > scan-requirements.txt; \
+		rm -rf build; \
 		snyk test --file=scan-requirements.txt --package-manager=pip --command=python3 $(SNYK_ARGS) --json > ../security-report/ingestion-dep-scan.json | true; \
 		snyk code test $(SNYK_ARGS) --json > ../security-report/ingestion-code-scan.json | true;
 
@@ -83,7 +179,8 @@ snyk-ingestion-report:  ## Uses Snyk CLI to validate the ingestion code and cont
 snyk-airflow-apis-report:  ## Uses Snyk CLI to validate the airflow apis code. Don't stop the execution
 	@echo "Validating airflow dependencies. Make sure the venv is activated."
 	cd openmetadata-airflow-apis; \
-    	snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
+		rm -rf build; \
+		snyk code test $(SNYK_ARGS) --json > ../security-report/airflow-apis-code-scan.json | true;
 
 .PHONY: snyk-catalog-report
 snyk-server-report:  ## Uses Snyk CLI to validate the catalog code and container. Don't stop the execution

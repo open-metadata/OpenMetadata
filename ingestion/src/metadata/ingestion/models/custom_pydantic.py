@@ -175,24 +175,34 @@ class _CustomSecretStr(SecretStr):
 
         Since the SecretsManagerFactory is a singleton, getting it here
         will pick up the object with all the necessary info already in it.
+
+        A secret stored as ``null`` in the secrets manager resolves to ``None``.
+        We log it and fall back to an empty string so downstream callers that
+        expect a string (e.g. URL building with ``quote_plus``) do not crash.
         """
         # Importing inside function to avoid circular import error
         from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import  # noqa: PLC0415
             SecretsManagerFactory,
         )
 
+        secret_value = self._secret_value
         if (
             not skip_secret_manager
+            and self._secret_value
             and self._secret_value.startswith(SECRET)
             and SecretsManagerFactory().get_secrets_manager()
         ):
             secret_id = self._secret_value.replace(SECRET, "")
             logger.info(f"Getting secret value for {secret_id}")
             try:
-                return SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
+                secret_value = SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
             except Exception as exc:
                 logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
-        return self._secret_value
+
+        if secret_value is None:
+            logger.warning("Resolved a null secret value; treating it as an empty string")
+            secret_value = ""
+        return secret_value
 
 
 def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
@@ -200,10 +210,25 @@ def handle_secret(value: Any, handler, info: SerializationInfo) -> str:
     Handle the secret value in the model.
     """
     if not (info.context is not None and info.context.get("mask_secrets", False)):
+        # Serialization must preserve the raw stored value. For external secret
+        # references (`secret:<id>`) this keeps the reference intact instead of
+        # resolving it, so the payload sent to the server keeps the reference and
+        # is not silently turned into a plain secret. Resolution against the
+        # secrets manager happens at use-time through a direct get_secret_value()
+        # call (e.g. when building a connection).
+        #
+        # A CustomSecretStr field can still hold a plain pydantic SecretStr when
+        # code assigns one directly (e.g. connection builders setting an empty
+        # password). Only _CustomSecretStr accepts skip_secret_manager, so guard
+        # the call to avoid a TypeError on plain SecretStr values.
+        raw_value = (
+            value.get_secret_value(skip_secret_manager=True)
+            if isinstance(value, _CustomSecretStr)
+            else value.get_secret_value()
+        )
         if info.mode == "json":
-            # short circuit the json serialization and return the actual value
-            return value.get_secret_value()
-        return handler(value.get_secret_value())
+            return raw_value
+        return handler(raw_value)
     return str(value)  # use pydantic's logic to mask the secret
 
 

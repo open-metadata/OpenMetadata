@@ -17,7 +17,6 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import '../../../../../test/unit/mocks/mui.mock';
 import TableProfilerChart from './TableProfilerChart';
 
 const MOCK_START_TS = 1640995200000;
@@ -115,7 +114,8 @@ jest.mock('../../../../../utils/DocumentationLinksClassBase', () => {
     })),
   };
 });
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../../utils/i18next/LocalUtil'),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),

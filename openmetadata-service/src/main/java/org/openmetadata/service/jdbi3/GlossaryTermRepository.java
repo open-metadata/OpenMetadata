@@ -126,6 +126,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -141,13 +142,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
+    this(true);
+  }
+
+  protected GlossaryTermRepository(boolean registerEntity) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
         Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        Set.of(),
+        registerEntity);
     supportsSearch = true;
     renameAllowed = true;
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
@@ -498,6 +505,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!update) {
       checkDuplicateTerms(entity);
     }
+
+    IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
   }
 
   /**
@@ -1703,9 +1712,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository
-        .getSearchClient()
-        .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+        "updateGlossaryTermByFqnPrefix",
+        null,
+        newFqn,
+        Entity.GLOSSARY_TERM);
   }
 
   private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
@@ -1721,6 +1736,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
       feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
+
+    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
+    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
+    // rewrites for the moved term and every nested descendant.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
+    taskFqnHashUpdates.put(
+        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
+    for (GlossaryTerm descendant : getNestedTerms(updated)) {
+      String descendantNewFqn = descendant.getFullyQualifiedName();
+      if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
+        continue;
+      }
+      String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
+      taskFqnHashUpdates.put(
+          FullyQualifiedName.buildHash(descendantOldFqn),
+          FullyQualifiedName.buildHash(descendantNewFqn));
+    }
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
+
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
@@ -2022,6 +2057,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       super(original, updated, operation);
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -2040,14 +2080,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     /**
      * Move a glossary term to a new parent or glossary. Only parent or glossary can be changed.
+     *
+     * <p>The FQN cascade rewrite and the entity-row store run inside a single JDBI transaction
+     * (mirroring the standard update flush) so a mid-move failure — e.g. a tag rename that hits a DB
+     * constraint — rolls back completely instead of leaving the term half-moved (FQN rewritten but
+     * relationships/tag usages not). ES + cache writes are deferred and {@code postUpdate} runs
+     * post-commit.
      */
-    @Transaction
     public void moveAndStore() {
-      changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
-      // Now updated from previous/original to updated one
       validateParent();
-      updateParent(original, updated); // Only update parent/glossary and FQN/relationships
-      storeUpdate();
+      flushInOneTransaction(
+          () -> {
+            changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
+            updateParent(original, updated); // Only update parent/glossary and FQN/relationships
+            storeUpdate();
+          });
       postUpdate(original, updated);
     }
 
@@ -2759,7 +2806,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     Fields fields =
-        getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
+        getFields(
+            "owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent,domains");
     GlossaryTerm glossaryTerm = getByName(null, name, fields);
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);

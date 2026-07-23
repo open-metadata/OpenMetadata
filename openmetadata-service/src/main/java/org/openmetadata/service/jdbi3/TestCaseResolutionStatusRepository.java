@@ -43,6 +43,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -61,9 +62,31 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
+  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
+  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
+  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+  }
+
+  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
+  // feeds the raw ES hit straight into strict deserialization, so the full set of non-schema
+  // search fields must be pushed into the {@code _source.exclude} of the query itself — matching
+  // exactly what the {@code latest=true} path strips client-side. Excluding only {@code testSuites}
+  // leaves {@code @timestamp}, {@code domains}, {@code testCase}, and {@code testSuite} in the
+  // source, each of which 400s strict Jackson in turn.
+  @Override
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
+    String existingExcludeFields = searchListFilter.getQueryParam("excludeFields");
+    String scrubFields = String.join(",", getExcludeSearchFields());
+    String mergedExcludeFields =
+        nullOrEmpty(existingExcludeFields)
+            ? scrubFields
+            : existingExcludeFields + "," + scrubFields;
+    searchListFilter.addQueryParam("excludeFields", mergedExcludeFields);
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
@@ -76,8 +99,9 @@ public class TestCaseResolutionStatusRepository
     for (String json : jsons) {
       TestCaseResolutionStatus testCaseResolutionStatus =
           JsonUtils.readValue(json, TestCaseResolutionStatus.class);
-      setInheritedFields(testCaseResolutionStatus);
-      testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      if (resolveTestCaseReference(testCaseResolutionStatus)) {
+        testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      }
     }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
@@ -152,6 +176,19 @@ public class TestCaseResolutionStatusRepository
             .equals(TestCaseResolutionStatusTypes.Resolved);
   }
 
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
+  public UUID getOngoingIncidentStateId(String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    return Boolean.TRUE.equals(unresolvedIncident(latest)) ? latest.getStateId() : null;
+  }
+
+  private static boolean isReopeningStatus(TestCaseResolutionStatus recordEntity) {
+    TestCaseResolutionStatusTypes statusType = recordEntity.getTestCaseResolutionStatusType();
+    return statusType == TestCaseResolutionStatusTypes.Ack
+        || statusType == TestCaseResolutionStatusTypes.Assigned
+        || statusType == TestCaseResolutionStatusTypes.Resolved;
+  }
+
   @Override
   @Transaction
   public void storeInternal(
@@ -185,6 +222,14 @@ public class TestCaseResolutionStatusRepository
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
       // the old severity
+      recordEntity.setSeverity(
+          recordEntity.getSeverity() == null
+              ? lastIncident.getSeverity()
+              : recordEntity.getSeverity());
+    } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
+      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
+      recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
@@ -246,6 +291,27 @@ public class TestCaseResolutionStatusRepository
         getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
+  /**
+   * Resolves the parent test case reference, returning false for orphaned rows whose parentOf
+   * relationship no longer exists. Such rows are skipped rather than failing the whole request; the
+   * DataRetention job removes them.
+   */
+  private boolean resolveTestCaseReference(TestCaseResolutionStatus recordEntity) {
+    boolean resolved = true;
+    try {
+      setInheritedFields(recordEntity);
+    } catch (RuntimeException exception) {
+      if (!shouldSkipSearchResultOnInheritedFieldError(exception, recordEntity)) {
+        throw exception;
+      }
+      LOG.warn(
+          "Skipping orphaned testCaseResolutionStatus {} with no parent test case relationship",
+          recordEntity.getId());
+      resolved = false;
+    }
+    return resolved;
+  }
+
   @Override
   protected boolean shouldSkipSearchResultOnInheritedFieldError(
       RuntimeException exception, TestCaseResolutionStatus entity) {
@@ -259,7 +325,14 @@ public class TestCaseResolutionStatusRepository
         && message.contains(Relationship.PARENT_OF.value());
   }
 
-  private boolean applyLegacyStatusToIncidentTask(
+  /**
+   * Bridge a legacy-style {@link TestCaseResolutionStatus} onto the task-first incident workflow,
+   * advancing the workflow task to match the recorded status. Used by {@link #storeInternal} on
+   * live Ack/Assigned/Resolved writes so existing TCRS clients keep working while Task remains the
+   * source of truth. Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when the
+   * task is already at the target stage.
+   */
+  public boolean applyLegacyStatusToIncidentTask(
       TestCaseResolutionStatus recordEntity, String recordFQN) {
     Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
     if (incidentTask == null) {
@@ -277,6 +350,23 @@ public class TestCaseResolutionStatusRepository
             incidentTask.getId(),
             taskRepository.getFields(
                 "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"));
+
+    if (TaskRepository.isTerminalStatus(task.getStatus())
+        && recordEntity.getTestCaseResolutionStatusType()
+            != TestCaseResolutionStatusTypes.Resolved) {
+      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
+      String reopeningUser =
+          recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
+      try {
+        task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
+      } catch (Exception e) {
+        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
+        if (e instanceof RuntimeException) {
+          throw (RuntimeException) e;
+        }
+        throw new RuntimeException(e);
+      }
+    }
 
     String transitionId = resolveLegacyTransitionId(task, recordEntity);
     if (transitionId == null) {
@@ -319,8 +409,13 @@ public class TestCaseResolutionStatusRepository
     UUID stateId = recordEntity.getStateId();
     if (stateId != null) {
       try {
-        Task task = taskRepository.find(stateId, Include.ALL);
+        // `about` is relationship-backed and stripped from stored JSON — request it explicitly,
+        // or a bare find() leaves it null and the FQN guard below never matches.
+        Task task =
+            taskRepository.get(
+                null, stateId, taskRepository.getFields("about"), Include.ALL, false);
         if (task != null
+            && !Boolean.TRUE.equals(task.getDeleted())
             && task.getType() == TaskEntityType.TestCaseResolution
             && task.getAbout() != null
             && recordFQN.equals(task.getAbout().getFullyQualifiedName())) {

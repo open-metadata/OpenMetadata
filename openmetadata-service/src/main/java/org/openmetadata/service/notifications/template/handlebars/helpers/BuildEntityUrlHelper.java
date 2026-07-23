@@ -52,7 +52,6 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   private static final String KEY_SERVICE = "service";
   private static final String KEY_PIPELINE_TYPE = "pipelineType";
   private static final String KEY_ENTITY = "entity";
-  private static final String KEY_QUERY_USED_IN = "queryUsedIn";
   private static final String KEY_ID = "id";
 
   @Override
@@ -83,9 +82,13 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           }
 
           String fqn = fqnOpt.get();
+          String view =
+              (options.params != null && options.params.length > 1)
+                  ? str(options.params[1]).trim()
+                  : null;
 
           try {
-            return buildEntityUrl(parsed.entityType, fqn, parsed.entityMap);
+            return buildEntityUrl(parsed.entityType, fqn, parsed.entityMap, view);
           } catch (Exception e) {
             LOG.error("Error building entity URL for type={}, fqn={}", parsed.entityType, fqn, e);
             return null;
@@ -134,10 +137,24 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Handles special cases for different entity types.
    */
   private String buildEntityUrl(String entityType, String fqn, Map<String, Object> entityMap) {
+    return buildEntityUrl(entityType, fqn, entityMap, null);
+  }
+
+  /**
+   * Builds the entity URL. When {@code view} is set ("tasks" or "all"), returns the deep link to
+   * that entity's task / conversation feed. Test cases are special: incidents live on the flat
+   * "issues" tab and the route has no activity_feed sub-route, so a generic feed suffix would 404.
+   */
+  private String buildEntityUrl(
+      String entityType, String fqn, Map<String, Object> entityMap, String view) {
     String baseUrl = getBaseUrl();
     if (nullOrEmpty(baseUrl)) {
       LOG.warn("Base URL is null or empty, cannot build entity URL");
       return null;
+    }
+
+    if (!nullOrEmpty(view) && Entity.TEST_CASE.equals(entityType)) {
+      return buildUrl(baseUrl, "test-case", fqn, "issues");
     }
 
     String url =
@@ -163,7 +180,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           // DATA_CONTRACT: Redirects to the table's contract tab
           buildDataContractUrl(baseUrl, entityMap);
           case Entity.QUERY ->
-          // QUERY: Redirects to the table's queries tab with query parameters
+          // QUERY: /query-view/{queryFqn}/{queryId} (standalone Query page)
           buildQueryUrl(baseUrl, entityMap);
           case Entity.USER ->
           // USER: /users/{fqn}
@@ -172,8 +189,8 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           // TEAM: /settings/members/teams/{fqn}
           buildUrl(baseUrl, "settings/members/teams", fqn, "");
           case Entity.EVENT_SUBSCRIPTION ->
-          // EVENT_SUBSCRIPTION: /settings/notifications/alert/{name}/configuration
-          buildUrl(baseUrl, "settings/notifications/alert", fqn, "configuration");
+          // EVENT_SUBSCRIPTION: /settings/notifications/alerts/{name}/configuration
+          buildUrl(baseUrl, "settings/notifications/alerts", fqn, "configuration");
           case Entity.KPI ->
           // KPI: /data-insights/kpi/edit-kpi/{name}
           buildUrl(baseUrl, "data-insights/kpi/edit-kpi", fqn, "");
@@ -200,6 +217,11 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           // DEFAULT: /{entityType}/{fqn}
           buildUrl(baseUrl, entityType, fqn, "");
         };
+
+    if (!nullOrEmpty(view) && !nullOrEmpty(url)) {
+      String feed = "tasks".equals(view) ? "tasks" : "all";
+      url = String.format("%s/activity_feed/%s", url, feed);
+    }
 
     LOG.debug("Built entity URL for type={}, fqn={}: {}", entityType, fqn, url);
     return url;
@@ -300,45 +322,20 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   }
 
   /**
-   * Builds URL for query entities
-   * Redirects to the table's queries tab with query parameters
-   * Format: /table/{tableFqn}/table_queries?tableId={tableId}&query={queryId}&queryFrom=1
+   * Builds URL for query entities. Always routes to the standalone Query page
+   * (QUERY_FULL_SCREEN_VIEW = /query-view/{fqn}/{queryId}), which loads the query by id and
+   * already resolves its own parent-table context from the loaded entity's queryUsedIn field.
+   * Using a single shape avoids the previous bug where missing queryUsedIn produced a null URL
+   * and the email template rendered {@code <a href="">…</a>}.
    */
-  @SuppressWarnings("unchecked")
   private String buildQueryUrl(String baseUrl, Map<String, Object> entityMap) {
     try {
+      String queryFqn = getTrimmed(entityMap, KEY_FQN).orElse("");
       String queryId = getTrimmed(entityMap, KEY_ID).orElse("");
-      if (queryId.isEmpty()) {
+      if (queryId.isEmpty() || queryFqn.isEmpty()) {
         return null;
       }
-
-      Object queryUsedInObj = entityMap.get(KEY_QUERY_USED_IN);
-      if (!(queryUsedInObj instanceof List<?> queryUsedInList)) {
-        return null;
-      }
-
-      if (queryUsedInList.isEmpty()) {
-        return null;
-      }
-
-      Object firstTableObj = queryUsedInList.getFirst();
-      if (!(firstTableObj instanceof Map)) {
-        return null;
-      }
-
-      Map<String, Object> tableRefMap = (Map<String, Object>) firstTableObj;
-      String tableFqn = getTrimmed(tableRefMap, KEY_FQN).orElse("");
-      String tableId = getTrimmed(tableRefMap, KEY_ID).orElse("");
-
-      if (tableFqn.isEmpty() || tableId.isEmpty()) {
-        return null;
-      }
-
-      // Build URL: /table/{tableFqn}/table_queries?tableId={tableId}&query={queryId}&queryFrom=1
-      String encodedTableFqn = encodeEntityFqnSafe(tableFqn);
-      return String.format(
-          "%s/table/%s/table_queries?tableId=%s&query=%s&queryFrom=1",
-          baseUrl, encodedTableFqn, tableId, queryId);
+      return String.format("%s/query-view/%s/%s", baseUrl, encodeEntityFqnSafe(queryFqn), queryId);
     } catch (Exception e) {
       LOG.error("Error building query URL", e);
       return null;

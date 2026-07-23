@@ -24,7 +24,13 @@ on:
         options:
           - okta
           - keycloak-azure-saml
+          - keycloak-azure-saml-crosssite
           - all
+      send_slack_notification:
+        description: "Send Slack notification with test results"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -53,10 +59,12 @@ jobs:
       matrix:
         provider:
           ${{ (github.event_name == 'schedule' || github.event.inputs.sso_provider == 'all')
-          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+          && fromJSON('[{"name":"okta","env_prefix":"OKTA"},{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"},{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
           || (github.event.inputs.sso_provider == 'keycloak-azure-saml'
               && fromJSON('[{"name":"keycloak-azure-saml","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
-              || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]')) }}
+              || (github.event.inputs.sso_provider == 'keycloak-azure-saml-crosssite'
+                  && fromJSON('[{"name":"keycloak-azure-saml-crosssite","env_prefix":"KEYCLOAK_AZURE_SAML"}]')
+                  || fromJSON('[{"name":"okta","env_prefix":"OKTA"}]'))) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -86,6 +94,7 @@ jobs:
           python-version: '3.10'
           args: '-d postgresql -i false'
           ingestion_dependency: 'all'
+          install-test-dependencies: 'false'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -111,7 +120,12 @@ jobs:
           SSO_PROVIDER_TYPE: ${{ matrix.provider.name }}
           SSO_USERNAME: ${{ vars[format('{0}_SSO_USERNAME', matrix.provider.env_prefix)] }}
           SSO_PASSWORD: ${{ vars[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] || secrets[format('{0}_SSO_PASSWORD', matrix.provider.env_prefix)] }}
-          KEYCLOAK_SAML_BASE_URL: http://localhost:8080
+          # The '-crosssite' variant fronts the IdP on 127.0.0.1 while OM stays on localhost. The two
+          # are a same registrable-domain pair but a *different site* (SameSite ignores port; 127.0.0.1
+          # and localhost are distinct sites), so the SAML callback POST is cross-site and the browser
+          # drops the SameSite=Lax OM_SESSION cookie. This reproduces the production "No pending session"
+          # failure that the localhost-only job cannot, guarding the SAML RelayState fix.
+          KEYCLOAK_SAML_BASE_URL: ${{ matrix.provider.name == 'keycloak-azure-saml-crosssite' && 'http://127.0.0.1:8080' || 'http://localhost:8080' }}
           PLAYWRIGHT_IS_OSS: true
         run: npx playwright test --project=sso-auth --workers=1
 
@@ -124,7 +138,7 @@ jobs:
           retention-days: 5
 
       - name: Send Slack Notification
-        if: always()
+        if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           RUN_TITLE: "SSO Login Nightly: ${{ matrix.provider.name }} (${{ github.ref_name }})"

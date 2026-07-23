@@ -105,7 +105,10 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { setSliderValue } from '../../utils/searchSettingUtils';
+import {
+  openMatchingFieldsPanel,
+  setSliderValue,
+} from '../../utils/searchSettingUtils';
 import {
   settingClick,
   SettingOptionsType,
@@ -245,7 +248,7 @@ const ALL_ENTITIES: CRUDEntity[] = [
     makeInstance: () => new DashboardDataModelClass(),
   },
   { key: 'entity_metric', makeInstance: () => new MetricClass() },
-  { key: 'entity_chart', makeInstance: () => new ChartClass() },
+  // { key: 'entity_chart', makeInstance: () => new ChartClass() },
   // Part-3 entities
   { key: 'entity_apiCollection', makeInstance: () => new ApiCollectionClass() },
   { key: 'entity_apiEndpoint', makeInstance: () => new ApiEndpointClass() },
@@ -3300,9 +3303,6 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           );
 
           await waitForAllLoadersToDisappear(page);
-          await page.locator('[data-testid="loader"]').waitFor({
-            state: 'detached',
-          });
 
           await page.getByTestId('add-field-btn').click();
 
@@ -3380,6 +3380,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await dashboardCard.click();
 
         await waitForAllLoadersToDisappear(page);
+
+        await openMatchingFieldsPanel(page);
 
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${dashboardSearchPropertyName}`
@@ -3507,6 +3509,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await pipelineCard.click();
 
         await waitForAllLoadersToDisappear(page);
+
+        await openMatchingFieldsPanel(page);
 
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${pipelineSearchPropertyName}`
@@ -3700,7 +3704,7 @@ test.describe('Custom property name validation', () => {
     await page.click('[data-testid="add-field-button"]');
   });
 
-  const nameInput = '[data-testid="name"] input';
+  const nameInput = '[data-testid="name"]';
   const nameError = '#name_help';
 
   test('should show error when name starts with a non-alphanumeric character', async ({

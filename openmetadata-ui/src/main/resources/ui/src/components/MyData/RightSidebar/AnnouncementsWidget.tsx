@@ -12,7 +12,7 @@
  */
 import { Alert, Col, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
@@ -20,11 +20,15 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './announcements-widget.less';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;

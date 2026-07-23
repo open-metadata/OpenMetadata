@@ -21,9 +21,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -48,9 +51,11 @@ public class GlossaryTermRelationSettingsIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-  private static final Object SETTINGS_LOCK = new Object();
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ)
   void test_glossaryTermRelationSettingsExist() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -110,6 +115,9 @@ public class GlossaryTermRelationSettingsIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ)
   void test_relationTypesHaveColors() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -169,304 +177,348 @@ public class GlossaryTermRelationSettingsIT {
   }
 
   @Test
-  void test_deleteRelationTypeProtection(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customTypeName = "testCustomType" + System.currentTimeMillis();
-
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
-
-      ObjectNode newType = MAPPER.createObjectNode();
-      newType.put("name", customTypeName);
-      newType.put("displayName", "Test Custom Type");
-      newType.put("description", "A test custom relation type for delete protection testing");
-      newType.put("isSymmetric", true);
-      newType.put("isTransitive", false);
-      newType.put("isCrossGlossaryAllowed", true);
-      newType.put("category", "associative");
-      newType.put("isSystemDefined", false);
-      newType.put("color", "#ff5733");
-      relationTypes.add(newType);
-
-      ObjectNode newSettings = MAPPER.createObjectNode();
-      newSettings.set("relationTypes", relationTypes);
-      updateSettings(newSettings);
-      LOG.info("Created custom relation type: {}", customTypeName);
-
-      Glossary glossary = GlossaryTestFactory.createSimple(ns);
-      GlossaryTerm term1 = GlossaryTermTestFactory.createWithName(ns, glossary, "termA");
-      GlossaryTerm term2 = GlossaryTermTestFactory.createWithName(ns, glossary, "termB");
-
-      GlossaryTerm updatedTerm =
-          addTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
-      assertNotNull(updatedTerm, "Should successfully add relation with custom type");
-      LOG.info(
-          "Created relation between {} and {} with type {}",
-          term1.getName(),
-          term2.getName(),
-          customTypeName);
-
-      JsonNode settingsWithRelationInUse = getSettings();
-      ArrayNode typesWithRelationInUse =
-          (ArrayNode) settingsWithRelationInUse.get("config_value").get("relationTypes");
-
-      ArrayNode typesWithoutCustom = MAPPER.createArrayNode();
-      for (JsonNode type : typesWithRelationInUse) {
-        if (!customTypeName.equals(type.get("name").asText())) {
-          typesWithoutCustom.add(type);
-        }
-      }
-
-      ObjectNode settingsWithoutCustomType = MAPPER.createObjectNode();
-      settingsWithoutCustomType.set("relationTypes", typesWithoutCustom);
-
-      int deleteStatusCode = updateSettingsAndGetStatus(settingsWithoutCustomType);
-      LOG.info("Delete attempt status code: {}", deleteStatusCode);
-
-      assertTrue(
-          deleteStatusCode >= 400,
-          "Delete should fail when relation type is in use. Got status: " + deleteStatusCode);
-
-      removeTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
-      removeTermRelation(term2.getId().toString(), term1.getId().toString(), customTypeName);
-      LOG.info(
-          "Removed relation between {} and {} (both directions)", term1.getName(), term2.getName());
-
-      int deleteAfterRemovalStatusCode = updateSettingsAndGetStatus(settingsWithoutCustomType);
-      LOG.info("Delete after removal status code: {}", deleteAfterRemovalStatusCode);
-
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_paginatedRelationTypeApiRejectsDuplicateNames() throws Exception {
+    String relationTypeName = "paginatedType" + System.currentTimeMillis();
+    try {
       assertEquals(
-          200, deleteAfterRemovalStatusCode, "Delete should succeed after relations are removed");
+          201,
+          createRelationTypeAndGetStatus(relationTypeName),
+          "Creating a relation type should return 201");
+      assertEquals(
+          409,
+          createRelationTypeAndGetStatus(relationTypeName.toUpperCase()),
+          "Relation type names should be unique regardless of case");
 
-      JsonNode finalSettings = getSettings();
-      ArrayNode finalTypes = (ArrayNode) finalSettings.get("config_value").get("relationTypes");
-      boolean customTypeExists = false;
-      for (JsonNode type : finalTypes) {
-        if (customTypeName.equals(type.get("name").asText())) {
-          customTypeExists = true;
-          break;
-        }
-      }
-      assertFalse(customTypeExists, "Custom type should be deleted from settings");
-      LOG.info("Successfully verified delete protection for relation type: {}", customTypeName);
+      HttpResponse<String> listResponse =
+          sendAdminRequest(
+              HttpRequest.newBuilder()
+                  .uri(
+                      URI.create(
+                          SdkClients.getServerUrl()
+                              + "/v1/system/settings/glossaryTermRelationSettings/relationTypes?limit=1&offset=0"))
+                  .GET());
+      assertEquals(200, listResponse.statusCode());
+      JsonNode result = MAPPER.readTree(listResponse.body());
+      assertEquals(1, result.get("data").size());
+      assertEquals(1, result.get("paging").get("limit").asInt());
+      assertEquals(0, result.get("paging").get("offset").asInt());
+      assertTrue(result.get("paging").get("total").asInt() > 1);
+    } finally {
+      deleteRelationTypeAndGetStatus(relationTypeName);
+      deleteRelationTypeAndGetStatus(relationTypeName.toUpperCase());
     }
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_deleteRelationTypeProtection(TestNamespace ns) throws Exception {
+    String customTypeName = "testCustomType" + System.currentTimeMillis();
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ObjectNode newType = MAPPER.createObjectNode();
+    newType.put("name", customTypeName);
+    newType.put("displayName", "Test Custom Type");
+    newType.put("description", "A test custom relation type for delete protection testing");
+    newType.put("isSymmetric", true);
+    newType.put("isTransitive", false);
+    newType.put("isCrossGlossaryAllowed", true);
+    newType.put("category", "associative");
+    newType.put("isSystemDefined", false);
+    newType.put("color", "#ff5733");
+    relationTypes.add(newType);
+
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    updateSettings(newSettings);
+    LOG.info("Created custom relation type: {}", customTypeName);
+
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm term1 = GlossaryTermTestFactory.createWithName(ns, glossary, "termA");
+    GlossaryTerm term2 = GlossaryTermTestFactory.createWithName(ns, glossary, "termB");
+
+    GlossaryTerm updatedTerm =
+        addTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
+    assertNotNull(updatedTerm, "Should successfully add relation with custom type");
+    LOG.info(
+        "Created relation between {} and {} with type {}",
+        term1.getName(),
+        term2.getName(),
+        customTypeName);
+
+    JsonNode settingsWithRelationInUse = getSettings();
+    ArrayNode typesWithRelationInUse =
+        (ArrayNode) settingsWithRelationInUse.get("config_value").get("relationTypes");
+
+    ArrayNode typesWithoutCustom = MAPPER.createArrayNode();
+    for (JsonNode type : typesWithRelationInUse) {
+      if (!customTypeName.equals(type.get("name").asText())) {
+        typesWithoutCustom.add(type);
+      }
+    }
+
+    ObjectNode settingsWithoutCustomType = MAPPER.createObjectNode();
+    settingsWithoutCustomType.set("relationTypes", typesWithoutCustom);
+
+    int deleteStatusCode = updateSettingsAndGetStatus(settingsWithoutCustomType);
+    LOG.info("Delete attempt status code: {}", deleteStatusCode);
+
+    assertTrue(
+        deleteStatusCode >= 400,
+        "Delete should fail when relation type is in use. Got status: " + deleteStatusCode);
+
+    removeTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
+    removeTermRelation(term2.getId().toString(), term1.getId().toString(), customTypeName);
+    LOG.info(
+        "Removed relation between {} and {} (both directions)", term1.getName(), term2.getName());
+
+    int deleteAfterRemovalStatusCode = updateSettingsAndGetStatus(settingsWithoutCustomType);
+    LOG.info("Delete after removal status code: {}", deleteAfterRemovalStatusCode);
+
+    assertEquals(
+        200, deleteAfterRemovalStatusCode, "Delete should succeed after relations are removed");
+
+    JsonNode finalSettings = getSettings();
+    ArrayNode finalTypes = (ArrayNode) finalSettings.get("config_value").get("relationTypes");
+    boolean customTypeExists = false;
+    for (JsonNode type : finalTypes) {
+      if (customTypeName.equals(type.get("name").asText())) {
+        customTypeExists = true;
+        break;
+      }
+    }
+    assertFalse(customTypeExists, "Custom type should be deleted from settings");
+    LOG.info("Successfully verified delete protection for relation type: {}", customTypeName);
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_oneToManyCardinalityConstraints(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customTypeName = "oneToMany" + System.currentTimeMillis();
+    String customTypeName = "oneToMany" + System.currentTimeMillis();
 
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
 
-      ObjectNode newType = MAPPER.createObjectNode();
-      newType.put("name", customTypeName);
-      newType.put("displayName", "One To Many Type");
-      newType.put("description", "Source can relate to many targets, each target only one source");
-      newType.put("isSymmetric", false);
-      newType.put("isTransitive", false);
-      newType.put("isCrossGlossaryAllowed", true);
-      newType.put("category", "associative");
-      newType.put("isSystemDefined", false);
-      newType.put("color", "#22c55e");
-      newType.put("cardinality", "ONE_TO_MANY");
-      relationTypes.add(newType);
+    ObjectNode newType = MAPPER.createObjectNode();
+    newType.put("name", customTypeName);
+    newType.put("displayName", "One To Many Type");
+    newType.put("description", "Source can relate to many targets, each target only one source");
+    newType.put("isSymmetric", false);
+    newType.put("isTransitive", false);
+    newType.put("isCrossGlossaryAllowed", true);
+    newType.put("category", "associative");
+    newType.put("isSystemDefined", false);
+    newType.put("color", "#22c55e");
+    newType.put("cardinality", "ONE_TO_MANY");
+    relationTypes.add(newType);
 
-      ObjectNode newSettings = MAPPER.createObjectNode();
-      newSettings.set("relationTypes", relationTypes);
-      updateSettings(newSettings);
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    updateSettings(newSettings);
 
-      try {
-        Glossary glossary = GlossaryTestFactory.createSimple(ns);
-        GlossaryTerm source = GlossaryTermTestFactory.createWithName(ns, glossary, "source");
-        GlossaryTerm targetA = GlossaryTermTestFactory.createWithName(ns, glossary, "targetA");
-        GlossaryTerm targetB = GlossaryTermTestFactory.createWithName(ns, glossary, "targetB");
-        GlossaryTerm source2 = GlossaryTermTestFactory.createWithName(ns, glossary, "source2");
+    try {
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm source = GlossaryTermTestFactory.createWithName(ns, glossary, "source");
+      GlossaryTerm targetA = GlossaryTermTestFactory.createWithName(ns, glossary, "targetA");
+      GlossaryTerm targetB = GlossaryTermTestFactory.createWithName(ns, glossary, "targetB");
+      GlossaryTerm source2 = GlossaryTermTestFactory.createWithName(ns, glossary, "source2");
 
-        int status1 =
-            addTermRelationAndGetStatus(
-                source.getId().toString(), targetA.getId().toString(), customTypeName);
-        assertEquals(200, status1, "Source to targetA should succeed");
+      int status1 =
+          addTermRelationAndGetStatus(
+              source.getId().toString(), targetA.getId().toString(), customTypeName);
+      assertEquals(200, status1, "Source to targetA should succeed");
 
-        int status2 =
-            addTermRelationAndGetStatus(
-                source.getId().toString(), targetB.getId().toString(), customTypeName);
-        assertEquals(
-            200, status2, "Source to targetB should succeed (ONE_TO_MANY allows multiple targets)");
+      int status2 =
+          addTermRelationAndGetStatus(
+              source.getId().toString(), targetB.getId().toString(), customTypeName);
+      assertEquals(
+          200, status2, "Source to targetB should succeed (ONE_TO_MANY allows multiple targets)");
 
-        int status3 =
-            addTermRelationAndGetStatus(
-                source2.getId().toString(), targetA.getId().toString(), customTypeName);
-        assertTrue(
-            status3 >= 400,
-            "Second source to same target should be rejected (target max=1). Got: " + status3);
-
-        removeTermRelation(source.getId().toString(), targetA.getId().toString(), customTypeName);
-        removeTermRelation(source.getId().toString(), targetB.getId().toString(), customTypeName);
-      } finally {
-        cleanupCustomType(customTypeName);
-      }
-    }
-  }
-
-  @Test
-  void test_manyToOneCardinalityConstraints(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customTypeName = "manyToOne" + System.currentTimeMillis();
-
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
-
-      ObjectNode newType = MAPPER.createObjectNode();
-      newType.put("name", customTypeName);
-      newType.put("displayName", "Many To One Type");
-      newType.put("description", "Many sources can relate to one target, source limited to one");
-      newType.put("isSymmetric", false);
-      newType.put("isTransitive", false);
-      newType.put("isCrossGlossaryAllowed", true);
-      newType.put("category", "associative");
-      newType.put("isSystemDefined", false);
-      newType.put("color", "#f59e0b");
-      newType.put("cardinality", "MANY_TO_ONE");
-      relationTypes.add(newType);
-
-      ObjectNode newSettings = MAPPER.createObjectNode();
-      newSettings.set("relationTypes", relationTypes);
-      updateSettings(newSettings);
-
-      try {
-        Glossary glossary = GlossaryTestFactory.createSimple(ns);
-        GlossaryTerm sourceA = GlossaryTermTestFactory.createWithName(ns, glossary, "srcA");
-        GlossaryTerm sourceB = GlossaryTermTestFactory.createWithName(ns, glossary, "srcB");
-        GlossaryTerm target = GlossaryTermTestFactory.createWithName(ns, glossary, "target");
-        GlossaryTerm target2 = GlossaryTermTestFactory.createWithName(ns, glossary, "target2");
-
-        int status1 =
-            addTermRelationAndGetStatus(
-                sourceA.getId().toString(), target.getId().toString(), customTypeName);
-        assertEquals(200, status1, "sourceA to target should succeed");
-
-        int status2 =
-            addTermRelationAndGetStatus(
-                sourceB.getId().toString(), target.getId().toString(), customTypeName);
-        assertEquals(
-            200,
-            status2,
-            "sourceB to same target should succeed (MANY_TO_ONE allows multiple sources)");
-
-        int status3 =
-            addTermRelationAndGetStatus(
-                sourceA.getId().toString(), target2.getId().toString(), customTypeName);
-        assertTrue(
-            status3 >= 400,
-            "sourceA to second target should be rejected (source max=1). Got: " + status3);
-
-        removeTermRelation(sourceA.getId().toString(), target.getId().toString(), customTypeName);
-        removeTermRelation(sourceB.getId().toString(), target.getId().toString(), customTypeName);
-      } finally {
-        cleanupCustomType(customTypeName);
-      }
-    }
-  }
-
-  @Test
-  void test_customCardinalityConstraints(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customTypeName = "customCard" + System.currentTimeMillis();
-
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
-
-      ObjectNode newType = MAPPER.createObjectNode();
-      newType.put("name", customTypeName);
-      newType.put("displayName", "Custom Cardinality Type");
-      newType.put("description", "Custom cardinality with sourceMax=2, targetMax=2");
-      newType.put("isSymmetric", false);
-      newType.put("isTransitive", false);
-      newType.put("isCrossGlossaryAllowed", true);
-      newType.put("category", "associative");
-      newType.put("isSystemDefined", false);
-      newType.put("color", "#8b5cf6");
-      newType.put("cardinality", "CUSTOM");
-      newType.put("sourceMax", 2);
-      newType.put("targetMax", 2);
-      relationTypes.add(newType);
-
-      ObjectNode newSettings = MAPPER.createObjectNode();
-      newSettings.set("relationTypes", relationTypes);
-      updateSettings(newSettings);
-
-      try {
-        Glossary glossary = GlossaryTestFactory.createSimple(ns);
-        GlossaryTerm src = GlossaryTermTestFactory.createWithName(ns, glossary, "src");
-        GlossaryTerm tgtA = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtA");
-        GlossaryTerm tgtB = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtB");
-        GlossaryTerm tgtC = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtC");
-
-        int s1 =
-            addTermRelationAndGetStatus(
-                src.getId().toString(), tgtA.getId().toString(), customTypeName);
-        assertEquals(200, s1, "First relation should succeed (within sourceMax=2)");
-
-        int s2 =
-            addTermRelationAndGetStatus(
-                src.getId().toString(), tgtB.getId().toString(), customTypeName);
-        assertEquals(200, s2, "Second relation should succeed (at sourceMax=2)");
-
-        int s3 =
-            addTermRelationAndGetStatus(
-                src.getId().toString(), tgtC.getId().toString(), customTypeName);
-        assertTrue(
-            s3 >= 400, "Third relation should be rejected (exceeds sourceMax=2). Got: " + s3);
-
-        removeTermRelation(src.getId().toString(), tgtA.getId().toString(), customTypeName);
-        removeTermRelation(src.getId().toString(), tgtB.getId().toString(), customTypeName);
-      } finally {
-        cleanupCustomType(customTypeName);
-      }
-    }
-  }
-
-  @Test
-  void test_systemDefinedRelationTypeCannotBeDeleted() throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
-
-      ArrayNode withoutRelatedTo = MAPPER.createArrayNode();
-      boolean foundRelatedTo = false;
-      for (JsonNode type : relationTypes) {
-        if ("relatedTo".equals(type.get("name").asText())) {
-          foundRelatedTo = true;
-          JsonNode isSystemDefined = type.get("isSystemDefined");
-          assertTrue(
-              isSystemDefined != null && isSystemDefined.asBoolean(),
-              "'relatedTo' should be system-defined");
-        } else {
-          withoutRelatedTo.add(type);
-        }
-      }
-      assertTrue(foundRelatedTo, "relatedTo should exist in default settings");
-
-      ObjectNode settingsWithoutRelatedTo = MAPPER.createObjectNode();
-      settingsWithoutRelatedTo.set("relationTypes", withoutRelatedTo);
-
-      int status = updateSettingsAndGetStatus(settingsWithoutRelatedTo);
-      LOG.info("Attempt to delete system-defined 'relatedTo' status: {}", status);
-
+      int status3 =
+          addTermRelationAndGetStatus(
+              source2.getId().toString(), targetA.getId().toString(), customTypeName);
       assertTrue(
-          status >= 400,
-          "Should not be able to remove system-defined relation type 'relatedTo'. Got: " + status);
+          status3 >= 400,
+          "Second source to same target should be rejected (target max=1). Got: " + status3);
+
+      removeTermRelation(source.getId().toString(), targetA.getId().toString(), customTypeName);
+      removeTermRelation(source.getId().toString(), targetB.getId().toString(), customTypeName);
+    } finally {
+      cleanupCustomType(customTypeName);
     }
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_manyToOneCardinalityConstraints(TestNamespace ns) throws Exception {
+    String customTypeName = "manyToOne" + System.currentTimeMillis();
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ObjectNode newType = MAPPER.createObjectNode();
+    newType.put("name", customTypeName);
+    newType.put("displayName", "Many To One Type");
+    newType.put("description", "Many sources can relate to one target, source limited to one");
+    newType.put("isSymmetric", false);
+    newType.put("isTransitive", false);
+    newType.put("isCrossGlossaryAllowed", true);
+    newType.put("category", "associative");
+    newType.put("isSystemDefined", false);
+    newType.put("color", "#f59e0b");
+    newType.put("cardinality", "MANY_TO_ONE");
+    relationTypes.add(newType);
+
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    updateSettings(newSettings);
+
+    try {
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm sourceA = GlossaryTermTestFactory.createWithName(ns, glossary, "srcA");
+      GlossaryTerm sourceB = GlossaryTermTestFactory.createWithName(ns, glossary, "srcB");
+      GlossaryTerm target = GlossaryTermTestFactory.createWithName(ns, glossary, "target");
+      GlossaryTerm target2 = GlossaryTermTestFactory.createWithName(ns, glossary, "target2");
+
+      int status1 =
+          addTermRelationAndGetStatus(
+              sourceA.getId().toString(), target.getId().toString(), customTypeName);
+      assertEquals(200, status1, "sourceA to target should succeed");
+
+      int status2 =
+          addTermRelationAndGetStatus(
+              sourceB.getId().toString(), target.getId().toString(), customTypeName);
+      assertEquals(
+          200,
+          status2,
+          "sourceB to same target should succeed (MANY_TO_ONE allows multiple sources)");
+
+      int status3 =
+          addTermRelationAndGetStatus(
+              sourceA.getId().toString(), target2.getId().toString(), customTypeName);
+      assertTrue(
+          status3 >= 400,
+          "sourceA to second target should be rejected (source max=1). Got: " + status3);
+
+      removeTermRelation(sourceA.getId().toString(), target.getId().toString(), customTypeName);
+      removeTermRelation(sourceB.getId().toString(), target.getId().toString(), customTypeName);
+    } finally {
+      cleanupCustomType(customTypeName);
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_customCardinalityConstraints(TestNamespace ns) throws Exception {
+    String customTypeName = "customCard" + System.currentTimeMillis();
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ObjectNode newType = MAPPER.createObjectNode();
+    newType.put("name", customTypeName);
+    newType.put("displayName", "Custom Cardinality Type");
+    newType.put("description", "Custom cardinality with sourceMax=2, targetMax=2");
+    newType.put("isSymmetric", false);
+    newType.put("isTransitive", false);
+    newType.put("isCrossGlossaryAllowed", true);
+    newType.put("category", "associative");
+    newType.put("isSystemDefined", false);
+    newType.put("color", "#8b5cf6");
+    newType.put("cardinality", "CUSTOM");
+    newType.put("sourceMax", 2);
+    newType.put("targetMax", 2);
+    relationTypes.add(newType);
+
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    updateSettings(newSettings);
+
+    try {
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm src = GlossaryTermTestFactory.createWithName(ns, glossary, "src");
+      GlossaryTerm tgtA = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtA");
+      GlossaryTerm tgtB = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtB");
+      GlossaryTerm tgtC = GlossaryTermTestFactory.createWithName(ns, glossary, "tgtC");
+
+      int s1 =
+          addTermRelationAndGetStatus(
+              src.getId().toString(), tgtA.getId().toString(), customTypeName);
+      assertEquals(200, s1, "First relation should succeed (within sourceMax=2)");
+
+      int s2 =
+          addTermRelationAndGetStatus(
+              src.getId().toString(), tgtB.getId().toString(), customTypeName);
+      assertEquals(200, s2, "Second relation should succeed (at sourceMax=2)");
+
+      int s3 =
+          addTermRelationAndGetStatus(
+              src.getId().toString(), tgtC.getId().toString(), customTypeName);
+      assertTrue(s3 >= 400, "Third relation should be rejected (exceeds sourceMax=2). Got: " + s3);
+
+      removeTermRelation(src.getId().toString(), tgtA.getId().toString(), customTypeName);
+      removeTermRelation(src.getId().toString(), tgtB.getId().toString(), customTypeName);
+    } finally {
+      cleanupCustomType(customTypeName);
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_systemDefinedRelationTypeCannotBeDeleted() throws Exception {
+    int deleteStatus = deleteRelationTypeAndGetStatus("relatedTo");
+    assertTrue(
+        deleteStatus >= 400,
+        "The relation-type DELETE endpoint must reject system-defined relation types. Got: "
+            + deleteStatus);
+
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+
+    ArrayNode withoutRelatedTo = MAPPER.createArrayNode();
+    boolean foundRelatedTo = false;
+    for (JsonNode type : relationTypes) {
+      if ("relatedTo".equals(type.get("name").asText())) {
+        foundRelatedTo = true;
+        JsonNode isSystemDefined = type.get("isSystemDefined");
+        assertTrue(
+            isSystemDefined != null && isSystemDefined.asBoolean(),
+            "'relatedTo' should be system-defined");
+      } else {
+        withoutRelatedTo.add(type);
+      }
+    }
+    assertTrue(foundRelatedTo, "relatedTo should exist in default settings");
+
+    ObjectNode settingsWithoutRelatedTo = MAPPER.createObjectNode();
+    settingsWithoutRelatedTo.set("relationTypes", withoutRelatedTo);
+
+    int status = updateSettingsAndGetStatus(settingsWithoutRelatedTo);
+    LOG.info("Attempt to delete system-defined 'relatedTo' status: {}", status);
+
+    assertTrue(
+        status >= 400,
+        "Should not be able to remove system-defined relation type 'relatedTo'. Got: " + status);
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ)
   void test_systemDefinedRelationTypesHaveCorrectDesignSystemColors() throws Exception {
     JsonNode settings = getSettings();
     JsonNode relationTypes = settings.get("config_value").get("relationTypes");
@@ -515,6 +567,9 @@ public class GlossaryTermRelationSettingsIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ)
   void test_defaultRelationTypesHaveExpectedProperties() throws Exception {
     JsonNode settings = getSettings();
     JsonNode relationTypes = settings.get("config_value").get("relationTypes");
@@ -547,73 +602,73 @@ public class GlossaryTermRelationSettingsIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_cardinalityConstraints(TestNamespace ns) throws Exception {
-    synchronized (SETTINGS_LOCK) {
-      String customTypeName = "cardinalityType" + System.currentTimeMillis();
+    String customTypeName = "cardinalityType" + System.currentTimeMillis();
 
-      JsonNode currentSettings = getSettings();
-      ArrayNode relationTypes =
-          (ArrayNode) currentSettings.get("config_value").get("relationTypes");
+    JsonNode currentSettings = getSettings();
+    ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
 
-      ObjectNode newType = MAPPER.createObjectNode();
-      newType.put("name", customTypeName);
-      newType.put("displayName", "Cardinality Type");
-      newType.put("description", "Relation type with cardinality constraints");
-      newType.put("isSymmetric", false);
-      newType.put("isTransitive", false);
-      newType.put("isCrossGlossaryAllowed", true);
-      newType.put("category", "associative");
-      newType.put("isSystemDefined", false);
-      newType.put("color", "#4f46e5");
-      newType.put("cardinality", "ONE_TO_ONE");
-      relationTypes.add(newType);
+    ObjectNode newType = MAPPER.createObjectNode();
+    newType.put("name", customTypeName);
+    newType.put("displayName", "Cardinality Type");
+    newType.put("description", "Relation type with cardinality constraints");
+    newType.put("isSymmetric", false);
+    newType.put("isTransitive", false);
+    newType.put("isCrossGlossaryAllowed", true);
+    newType.put("category", "associative");
+    newType.put("isSystemDefined", false);
+    newType.put("color", "#4f46e5");
+    newType.put("cardinality", "ONE_TO_ONE");
+    relationTypes.add(newType);
 
-      ObjectNode newSettings = MAPPER.createObjectNode();
-      newSettings.set("relationTypes", relationTypes);
-      updateSettings(newSettings);
+    ObjectNode newSettings = MAPPER.createObjectNode();
+    newSettings.set("relationTypes", relationTypes);
+    updateSettings(newSettings);
 
-      Glossary glossary = GlossaryTestFactory.createSimple(ns);
-      GlossaryTerm term1 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardA");
-      GlossaryTerm term2 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardB");
-      GlossaryTerm term3 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardC");
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm term1 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardA");
+    GlossaryTerm term2 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardB");
+    GlossaryTerm term3 = GlossaryTermTestFactory.createWithName(ns, glossary, "cardC");
 
-      int status1 =
-          addTermRelationAndGetStatus(
-              term1.getId().toString(), term2.getId().toString(), customTypeName);
-      assertEquals(200, status1, "First relation should succeed");
+    int status1 =
+        addTermRelationAndGetStatus(
+            term1.getId().toString(), term2.getId().toString(), customTypeName);
+    assertEquals(200, status1, "First relation should succeed");
 
-      int status2 =
-          addTermRelationAndGetStatus(
-              term1.getId().toString(), term3.getId().toString(), customTypeName);
-      assertTrue(status2 >= 400, "Should reject source cardinality violation");
+    int status2 =
+        addTermRelationAndGetStatus(
+            term1.getId().toString(), term3.getId().toString(), customTypeName);
+    assertTrue(status2 >= 400, "Should reject source cardinality violation");
 
-      int status3 =
-          addTermRelationAndGetStatus(
-              term3.getId().toString(), term2.getId().toString(), customTypeName);
-      assertTrue(status3 >= 400, "Should reject target cardinality violation");
+    int status3 =
+        addTermRelationAndGetStatus(
+            term3.getId().toString(), term2.getId().toString(), customTypeName);
+    assertTrue(status3 >= 400, "Should reject target cardinality violation");
 
-      removeTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
+    removeTermRelation(term1.getId().toString(), term2.getId().toString(), customTypeName);
 
-      int status4 =
-          addTermRelationAndGetStatus(
-              term3.getId().toString(), term2.getId().toString(), customTypeName);
-      assertEquals(200, status4, "Should allow relation after previous one is removed");
+    int status4 =
+        addTermRelationAndGetStatus(
+            term3.getId().toString(), term2.getId().toString(), customTypeName);
+    assertEquals(200, status4, "Should allow relation after previous one is removed");
 
-      removeTermRelation(term3.getId().toString(), term2.getId().toString(), customTypeName);
+    removeTermRelation(term3.getId().toString(), term2.getId().toString(), customTypeName);
 
-      JsonNode settingsAfter = getSettings();
-      ArrayNode typesAfter = (ArrayNode) settingsAfter.get("config_value").get("relationTypes");
-      ArrayNode typesWithoutCustom = MAPPER.createArrayNode();
-      for (JsonNode type : typesAfter) {
-        if (!customTypeName.equals(type.get("name").asText())) {
-          typesWithoutCustom.add(type);
-        }
+    JsonNode settingsAfter = getSettings();
+    ArrayNode typesAfter = (ArrayNode) settingsAfter.get("config_value").get("relationTypes");
+    ArrayNode typesWithoutCustom = MAPPER.createArrayNode();
+    for (JsonNode type : typesAfter) {
+      if (!customTypeName.equals(type.get("name").asText())) {
+        typesWithoutCustom.add(type);
       }
-
-      ObjectNode settingsWithoutCustomType = MAPPER.createObjectNode();
-      settingsWithoutCustomType.set("relationTypes", typesWithoutCustom);
-      updateSettings(settingsWithoutCustomType);
     }
+
+    ObjectNode settingsWithoutCustomType = MAPPER.createObjectNode();
+    settingsWithoutCustomType.set("relationTypes", typesWithoutCustom);
+    updateSettings(settingsWithoutCustomType);
   }
 
   private JsonNode getSettings() throws Exception {
@@ -675,6 +730,49 @@ public class GlossaryTermRelationSettingsIT {
 
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     return response.statusCode();
+  }
+
+  private int createRelationTypeAndGetStatus(String name) throws Exception {
+    ObjectNode relationType = MAPPER.createObjectNode();
+    relationType.put("name", name);
+    relationType.put("displayName", "Paginated Type");
+    relationType.put("category", "associative");
+
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes"))
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(relationType))));
+    return response.statusCode();
+  }
+
+  private int deleteRelationTypeAndGetStatus(String name) throws Exception {
+    HttpResponse<String> response =
+        sendAdminRequest(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/system/settings/glossaryTermRelationSettings/relationTypes/"
+                            + name))
+                .DELETE());
+    return response.statusCode();
+  }
+
+  private HttpResponse<String> sendAdminRequest(HttpRequest.Builder requestBuilder)
+      throws Exception {
+    HttpRequest request =
+        requestBuilder
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType)

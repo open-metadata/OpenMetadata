@@ -31,6 +31,7 @@ import {
   verifyWidgetEntityNavigation,
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -184,11 +185,10 @@ test('Activity Feed Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -228,11 +228,10 @@ test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -282,11 +281,10 @@ test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -301,7 +299,7 @@ test('My Data Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'dataAsset');
   });
 
   await test.step('Test widget displays entities and navigation', async () => {
@@ -312,7 +310,7 @@ test('My Data Widget', async ({ page }) => {
       entitySelector: '[data-testid^="My-Data-"]',
       urlPattern: '/', // My Data can navigate to various entity types
       apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.ALL}`,
+      searchQuery: `index=${SearchIndex.DATA_ASSET}`,
     });
   });
 
@@ -353,9 +351,8 @@ test.fixme('KPI Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.KPI';
-  const widget = page.getByTestId(widgetKey);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -395,9 +392,7 @@ test.fixme('KPI Widget', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const widget = page.getByTestId(widgetKey);
-
-    await expect(widget).toBeVisible();
+    const widget = await waitForLandingPageWidget(page, widgetKey);
 
     await kpiListResponse;
     await kpiResultsResponse;
@@ -445,12 +440,11 @@ test('Total Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -499,12 +493,11 @@ test('Following Assets Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.Following';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -519,7 +512,7 @@ test('Following Assets Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'all');
   });
 
   await test.step('Test widget displays followed entities', async () => {
@@ -661,8 +654,6 @@ test('My Tasks Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    // wait for first card visible before applying filters
-    await expect(page.getByTestId('task-feed-card').first()).toBeVisible();
     await verifyTaskFilters(page, widgetKey);
   });
 

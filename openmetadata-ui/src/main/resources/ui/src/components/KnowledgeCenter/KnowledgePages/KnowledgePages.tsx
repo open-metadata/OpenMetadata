@@ -20,7 +20,7 @@ import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.s
 import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
 import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Loader from '../../../components/common/Loader/Loader';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -31,7 +31,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();

@@ -1,0 +1,153 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/llmConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLMConfiguration",
+  "description": "Platform-wide configuration for LLM chat/completion providers. Generic - usable by any feature that needs structured LLM completions.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.LLMConfiguration",
+  "definitions": {
+    "llmProvider": {
+      "javaType": "org.openmetadata.schema.configuration.LLMProvider",
+      "description": "Supported LLM completion providers.",
+      "type": "string",
+      "enum": ["bedrock", "openai", "azureOpenAI", "google", "anthropic", "noop"],
+      "javaEnums": [
+        { "name": "BEDROCK" },
+        { "name": "OPENAI" },
+        { "name": "AZURE_OPENAI" },
+        { "name": "GOOGLE" },
+        { "name": "ANTHROPIC" },
+        { "name": "NOOP" }
+      ],
+      "default": "noop"
+    }
+  },
+  "properties": {
+    "enabled": {
+      "description": "Whether LLM completion features are enabled.",
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "$ref": "#/definitions/llmProvider"
+    },
+    "maxConcurrentRequests": {
+      "description": "Maximum number of concurrent LLM completion requests.",
+      "type": "integer",
+      "default": 5,
+      "minimum": 1
+    },
+    "bedrock": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMBedrockConfig",
+      "properties": {
+        "awsConfig": {
+          "description": "AWS credentials configuration for Bedrock service.",
+          "$ref": "../security/credentials/awsBaseConfig.json"
+        },
+        "modelId": { "type": "string", "default": "anthropic.claude-3-5-sonnet-20240620-v1:0" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "openai": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMOpenAIConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "gpt-4o-mini" },
+        "endpoint": { "type": "string" },
+        "deploymentName": { "type": "string" },
+        "apiVersion": { "type": "string", "default": "2024-02-01" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "google": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMGoogleConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "gemini-2.5-flash" },
+        "endpoint": { "type": "string" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "anthropic": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMAnthropicConfig",
+      "properties": {
+        "apiKey": { "type": "string", "mask": true },
+        "modelId": { "type": "string", "default": "claude-3-5-sonnet-20240620" },
+        "baseUrl": { "type": "string", "default": "https://api.anthropic.com" },
+        "temperature": { "type": "number", "default": 0.0 },
+        "maxTokens": { "type": "integer", "default": 4096 },
+        "timeoutSeconds": { "type": "integer", "default": 60 }
+      },
+      "additionalProperties": false
+    },
+    "embeddings": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.configuration.LLMEmbeddingsConfig",
+      "description": "Vector embedding configuration for semantic search. Credentials are reused from the sibling provider blocks (bedrock.awsConfig, openai.apiKey/endpoint, google.apiKey/endpoint); this section selects the embedding provider and per-provider embedding model. The embedding provider may differ from the chat completion provider.",
+      "properties": {
+        "provider": {
+          "description": "Embedding provider to use for semantic search vectors.",
+          "type": "string",
+          "enum": ["bedrock", "openai", "google", "djl"],
+          "default": "bedrock"
+        },
+        "maxConcurrentRequests": {
+          "description": "Maximum number of concurrent embedding requests.",
+          "type": "integer",
+          "default": 10,
+          "minimum": 1
+        },
+        "bedrock": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "amazon.titan-embed-text-v2:0" },
+            "embeddingDimension": { "type": "integer", "default": 512 }
+          },
+          "additionalProperties": false
+        },
+        "openai": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "text-embedding-3-small" },
+            "embeddingDimension": { "type": "integer", "default": 1536 }
+          },
+          "additionalProperties": false
+        },
+        "google": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig",
+          "properties": {
+            "embeddingModelId": { "type": "string", "default": "gemini-embedding-001" },
+            "embeddingDimension": { "type": "integer", "default": 768 }
+          },
+          "additionalProperties": false
+        },
+        "djl": {
+          "type": "object",
+          "javaType": "org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig",
+          "properties": {
+            "embeddingModel": { "type": "string", "default": "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

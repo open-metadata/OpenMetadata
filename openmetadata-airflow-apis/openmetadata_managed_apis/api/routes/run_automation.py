@@ -15,7 +15,8 @@ Test the connection against a source system
 import traceback
 from typing import Callable  # noqa: UP035
 
-from flask import Blueprint, Response, escape, request
+from flask import Blueprint, Response, request
+from markupsafe import escape
 from pydantic import ValidationError
 
 from metadata.automations.execute_runner import execute

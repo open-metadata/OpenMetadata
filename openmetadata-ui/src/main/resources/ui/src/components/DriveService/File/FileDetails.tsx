@@ -37,28 +37,30 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import fileClassBase from '../../../utils/FileClassBase';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -72,7 +74,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { FileDetailsProps } from './FileDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -245,6 +246,22 @@ function FileDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.FILE, decodedFileFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityTaskCountsInto(decodedFileFQN, setFeedCount);
+    }
+  }, [decodedFileFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedFileFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.FILE,
+        decodedFileFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedFileFQN]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
@@ -293,7 +310,8 @@ function FileDetails({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [filePermissions, decodedFileFQN]);
 
   const tabs = useMemo(() => {

@@ -14,14 +14,14 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import validators
-from cached_property import cached_property
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
     ProjectItem,
+    RequestOptions,
     Server,
     TableauAuth,
     ViewItem,
@@ -96,9 +96,8 @@ class TableauClient:
         self.all_projects: List[ProjectItem] = []  # noqa: UP006
         self.ssl_manager = ssl_manager
 
-    @cached_property
-    def server_info(self) -> Callable:
-        return self.tableau_server.server_info.get
+    def server_info(self):
+        return self.tableau_server.server_info.get()
 
     def server_api_version(self) -> str:
         return self.tableau_server.version
@@ -107,16 +106,16 @@ class TableauClient:
     def site_id(self) -> str:
         return self.tableau_server.site_id
 
-    def get_tableau_owner(self, owner_id: str, include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
+    def get_tableau_owner(self, owner_id: Optional[str], include_owners: bool = True) -> Optional[TableauOwner]:  # noqa: UP045
         """
         Get tableau owner with optional include_owners flag
         """
         try:
-            if not include_owners:
+            if not include_owners or not owner_id:
                 return None
             if owner_id in self.owner_cache:
                 return self.owner_cache[owner_id]
-            owner = self.tableau_server.users.get_by_id(owner_id) if owner_id else None
+            owner = self.tableau_server.users.get_by_id(owner_id)
             if owner:
                 owner_obj = TableauOwner(id=str(owner.id), name=owner.name, email=owner.email)
                 self.owner_cache[owner_id] = owner_obj
@@ -199,6 +198,13 @@ class TableauClient:
         except Exception as e:
             logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
         return None
+
+    def get_workbook_count(self) -> int:
+        """Total workbooks available server-side via the pagination summary — a
+        single page-size-1 request, no full workbook materialization. This is the
+        pre-filter denominator for Dashboard progress."""
+        _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
+        return pagination_item.total_available
 
     def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
         """

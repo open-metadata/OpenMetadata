@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Edge, MarkerType, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { MarkerType } from 'reactflow';
 import { ConditionValue } from '../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
@@ -175,6 +176,9 @@ const convertBackendEdgeToReactFlow = (
   const isConditional = condition && condition.trim() !== '';
   const isTrue = condition === 'true';
   const isFalse = condition === 'false';
+  const isApprove = condition === 'approve';
+  const isReject = condition === 'reject';
+  const isPositive = isTrue || isApprove;
 
   let edgeStyle = {};
   let labelStyle = {};
@@ -186,6 +190,10 @@ const convertBackendEdgeToReactFlow = (
       label = ConditionValue.TRUE;
     } else if (isFalse) {
       label = ConditionValue.FALSE;
+    } else if (isApprove) {
+      label = ConditionValue.APPROVE;
+    } else if (isReject) {
+      label = ConditionValue.REJECT;
     } else {
       label = condition;
     }
@@ -194,8 +202,30 @@ const convertBackendEdgeToReactFlow = (
       strokeWidth: 2,
     };
 
+    let color: string;
+    if (isPositive) {
+      color = '#039855';
+    } else if (isReject) {
+      color = '#D92D20';
+    } else if (isFalse) {
+      color = '#EAB308';
+    } else {
+      color = '#2563EB';
+    }
+
+    let fill: string;
+    if (isPositive) {
+      fill = '#D1FADF';
+    } else if (isReject) {
+      fill = '#FEE4E2';
+    } else if (isFalse) {
+      fill = '#FEF0C7';
+    } else {
+      fill = '#EFF6FF';
+    }
+
     labelStyle = {
-      color: isTrue ? '#039855' : isFalse ? '#EAB308' : '#2563EB', // Different color for quality bands
+      color,
       fontSize: '14px',
       fontWeight: 600,
       letterSpacing: '1px',
@@ -203,7 +233,7 @@ const convertBackendEdgeToReactFlow = (
     };
 
     labelBgStyle = {
-      fill: isTrue ? '#D1FADF' : isFalse ? '#FEF0C7' : '#EFF6FF', // Different background for quality bands
+      fill,
       fillOpacity: 1,
       stroke: '#FFF',
       strokeWidth: 2,

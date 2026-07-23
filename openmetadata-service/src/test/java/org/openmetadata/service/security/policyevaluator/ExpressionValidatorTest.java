@@ -49,6 +49,99 @@ public class ExpressionValidatorTest {
     }
   }
 
+  /**
+   * Bare references to no-arg boolean functions (e.g. {@code !isOwner}) parse as SpEL {@link
+   * org.springframework.expression.spel.ast.PropertyOrFieldReference} nodes, not method calls.
+   * SpEL resolves them to the matching {@code @Function} getter, so they are functionally
+   * identical to the parenthesised form and are documented as valid in {@code RuleEvaluator}'s
+   * {@code @Function} examples. The AST validator must accept them when the referenced name is
+   * an approved function. Customer-reported regression (Orsted): policies using {@code !isOwner}
+   * failed to save with "disallowed SpEL construct: PropertyOrFieldReference ('isOwner')".
+   */
+  @Test
+  void bareReferencesToApprovedFunctionsAreAllowed() {
+    String[] bareExpressions = {
+      "isOwner",
+      "!isOwner",
+      "noOwner",
+      "!noOwner",
+      "isReviewer",
+      "!isReviewer",
+      "matchTeam",
+      "hasDomain",
+      "noOwner() || isOwner",
+      "!noOwner && isOwner",
+      "!noOwner() && !isOwner"
+    };
+
+    for (String expression : bareExpressions) {
+      assertDoesNotThrow(
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Bare reference to an approved function '" + expression + "' should be allowed");
+    }
+  }
+
+  /**
+   * A bare reference is only safe because the name is gated on {@link
+   * ExpressionValidator#getAllowedFunctions()}. Standalone references to names that are not
+   * approved functions must still be rejected so the relaxation cannot be used to read
+   * arbitrary properties.
+   */
+  @Test
+  void bareReferencesToUnknownNamesAreRejected() {
+    String[] disallowedBareReferences = {"System", "entity", "someObject", "Runtime"};
+
+    for (String expression : disallowedBareReferences) {
+      Exception exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> ExpressionValidator.validateExpressionSafety(expression),
+              "Bare reference to non-function '" + expression + "' must be rejected");
+      assertTrue(
+          exception.getMessage().contains("is not allowed in policy expressions"),
+          "Exception should mention that the reference is not an allowed function");
+    }
+  }
+
+  /**
+   * Bare references are only meaningful for no-arg boolean functions. An arg-taking function such
+   * as {@code matchAnyTag} used bare would pass the node check but fail at SpEL evaluation (no
+   * such property/getter), so it is rejected up front - even though its parenthesised form is a
+   * valid allowed function.
+   */
+  @Test
+  void bareReferencesToArgTakingFunctionsAreRejected() {
+    String[] argTakingBareReferences = {"matchAnyTag", "matchAllTags", "inAnyTeam", "hasAnyRole"};
+
+    for (String expression : argTakingBareReferences) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Bare reference to arg-taking function '" + expression + "' must be rejected");
+    }
+
+    assertDoesNotThrow(
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyTag('PII.Sensitive')"),
+        "The parenthesised call form of the same function must still be allowed");
+  }
+
+  @Test
+  void combinedBooleanWrappedConditionIsSafe() {
+    // Boolean wrappers (()/&&/||/!) only add safe nodes, so combining safe fragments stays safe.
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(matchAnyTag('Tier.Tier1')) && (!noOwner()) || (isOwner())"),
+        "Boolean-wrapped combination of safe fragments should stay safe");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(isOwner()) && (T(java.lang.Runtime).getRuntime())"),
+        "Unsafe fragment in a combined condition must still be blocked");
+  }
+
   // T( - SpEL Type Reference
   @Test
   void testTypeReference_Positive() {

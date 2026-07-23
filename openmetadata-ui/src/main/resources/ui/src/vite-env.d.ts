@@ -18,6 +18,7 @@ interface ImportMetaEnv {
   readonly BASE_URL: string;
   readonly PROD: boolean;
   readonly DEV: boolean;
+  readonly VITE_OPENMETADATA_DOCS_BASE_URL?: string;
   // Add other env variables as needed
 }
 

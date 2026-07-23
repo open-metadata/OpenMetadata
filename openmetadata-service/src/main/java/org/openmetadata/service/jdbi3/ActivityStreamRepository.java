@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import io.micrometer.core.instrument.Metrics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -26,11 +27,13 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Reaction;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -42,6 +45,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class ActivityStreamRepository {
   private static final int MAX_STORED_SUMMARY_LENGTH = 500;
+  private static final String UNRESOLVED_ACTOR_METRIC = "activity_stream.unresolved_actor";
 
   private final CollectionDAO.ActivityStreamDAO activityStreamDAO;
 
@@ -92,7 +96,6 @@ public class ActivityStreamRepository {
       // No field-level changes, create a single event
       ActivityEvent event = convertChangeEventToActivityEvent(changeEvent, entity);
       if (event != null) {
-        insert(event);
         events.add(event);
       }
       return events;
@@ -113,9 +116,7 @@ public class ActivityStreamRepository {
     for (FieldChange fieldChange : allChanges) {
       ActivityEventType eventType = mapFieldToEventType(fieldChange.getName());
       if (eventType != null) {
-        ActivityEvent event = buildActivityEvent(changeEvent, entity, eventType, fieldChange);
-        insert(event);
-        events.add(event);
+        events.add(buildActivityEvent(changeEvent, entity, eventType, fieldChange));
       }
     }
 
@@ -123,7 +124,6 @@ public class ActivityStreamRepository {
     if (events.isEmpty()) {
       ActivityEvent event = convertChangeEventToActivityEvent(changeEvent, entity);
       if (event != null) {
-        insert(event);
         events.add(event);
       }
     }
@@ -131,43 +131,67 @@ public class ActivityStreamRepository {
     return events;
   }
 
-  /** Insert an ActivityEvent into the database. */
+  /** Insert a single ActivityEvent into the database. */
   public void insert(ActivityEvent event) {
     if (event == null) {
       return;
     }
+    insertBatch(List.of(event));
+  }
 
-    String domainsJson = null;
-    if (event.getDomains() != null && !event.getDomains().isEmpty()) {
-      List<String> domainIds =
-          event.getDomains().stream().map(ref -> ref.getId().toString()).toList();
-      domainsJson = JsonUtils.pojoToJson(domainIds);
+  /** Batch-insert ActivityEvents in a single round-trip instead of one per row. */
+  public void insertBatch(List<ActivityEvent> events) {
+    if (nullOrEmpty(events)) {
+      return;
     }
-
-    String aboutFqnHash = null;
-    if (event.getAbout() != null) {
-      aboutFqnHash = FullyQualifiedName.buildHash(event.getAbout());
+    List<CollectionDAO.ActivityStreamRow> rows =
+        events.stream().filter(event -> event != null).map(this::toRow).toList();
+    if (!rows.isEmpty()) {
+      activityStreamDAO.insertBatch(rows);
     }
+  }
 
-    activityStreamDAO.insert(
-        event.getId().toString(),
-        event.getEventType().value(),
-        event.getEntity().getType(),
-        event.getEntity().getId().toString(),
-        event.getEntity().getFullyQualifiedName() != null
-            ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
-            : null,
-        event.getAbout(),
-        aboutFqnHash,
-        event.getActor().getId().toString(),
-        event.getActor().getName(),
-        event.getTimestamp(),
-        truncateSummaryForStorage(event.getSummary()),
-        event.getFieldName(),
-        event.getOldValue(),
-        event.getNewValue(),
-        domainsJson,
-        JsonUtils.pojoToJson(event));
+  private CollectionDAO.ActivityStreamRow toRow(ActivityEvent event) {
+    return CollectionDAO.ActivityStreamRow.builder()
+        .id(event.getId().toString())
+        .eventType(event.getEventType().value())
+        .entityType(event.getEntity().getType())
+        .entityId(event.getEntity().getId().toString())
+        .entityFqnHash(
+            event.getEntity().getFullyQualifiedName() != null
+                ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
+                : null)
+        .about(event.getAbout())
+        .aboutFqnHash(buildAboutFqnHash(event.getAbout()))
+        .actorId(
+            event.getActor() != null && event.getActor().getId() != null
+                ? event.getActor().getId().toString()
+                : null)
+        .actorName(event.getActor() != null ? event.getActor().getName() : null)
+        .timestamp(event.getTimestamp())
+        .summary(truncateSummaryForStorage(event.getSummary()))
+        .fieldName(event.getFieldName())
+        .oldValue(event.getOldValue())
+        .newValue(event.getNewValue())
+        .domains(buildDomainsJson(event))
+        .json(JsonUtils.pojoToJson(event))
+        .build();
+  }
+
+  private static String buildDomainsJson(ActivityEvent event) {
+    if (event.getDomains() == null || event.getDomains().isEmpty()) {
+      return null;
+    }
+    List<String> domainIds =
+        event.getDomains().stream().map(ref -> ref.getId().toString()).toList();
+    return JsonUtils.pojoToJson(domainIds);
+  }
+
+  // about is an EntityLink, not an FQN — parse first, then hash the FQN portion.
+  private static String buildAboutFqnHash(String about) {
+    return nullOrEmpty(about)
+        ? null
+        : FullyQualifiedName.buildHash(MessageParser.EntityLink.parse(about).getEntityFQN());
   }
 
   /** List recent activity events. */
@@ -296,7 +320,11 @@ public class ActivityStreamRepository {
 
   /** List activity events by EntityLink (about field). */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> jsonList = activityStreamDAO.listByAbout(aboutFqnHash, afterTimestamp, limit);
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
@@ -308,7 +336,11 @@ public class ActivityStreamRepository {
       return listByAbout(entityLink, afterTimestamp, limit);
     }
 
-    String aboutFqnHash = FullyQualifiedName.buildHash(entityLink);
+    String aboutFqnHash =
+        nullOrEmpty(entityLink)
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(entityLink).getEntityFQN());
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
     String domainJson = JsonUtils.pojoToJson(domainIdStrings);
     List<String> jsonList =
@@ -331,6 +363,24 @@ public class ActivityStreamRepository {
     List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
     String domainJson = JsonUtils.pojoToJson(domainIdStrings);
     return activityStreamDAO.countByDomains(domainJson, domainIdStrings, afterTimestamp);
+  }
+
+  /** Get count of activity events for a specific entity. */
+  public int countByEntity(String entityType, UUID entityId, long afterTimestamp) {
+    return activityStreamDAO.countByEntity(entityType, entityId.toString(), afterTimestamp);
+  }
+
+  /** Get count of activity events for a specific entity scoped to specific domains. */
+  public int countByEntity(
+      String entityType, UUID entityId, List<UUID> domainIds, long afterTimestamp) {
+    if (nullOrEmpty(domainIds)) {
+      return countByEntity(entityType, entityId, afterTimestamp);
+    }
+
+    List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
+    String domainJson = JsonUtils.pojoToJson(domainIdStrings);
+    return activityStreamDAO.countByEntityAndDomains(
+        entityType, entityId.toString(), domainJson, domainIdStrings, afterTimestamp);
   }
 
   /** Delete events older than the cutoff timestamp. */
@@ -440,15 +490,20 @@ public class ActivityStreamRepository {
   }
 
   private EntityReference buildActorReference(String userName) {
+    EntityReference result = null;
     if (nullOrEmpty(userName)) {
-      return new EntityReference().withType(Entity.USER).withName("system");
+      Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "system_event").increment();
+    } else {
+      try {
+        // Include.ALL keeps soft-deleted users resolvable with their real id.
+        result = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (EntityNotFoundException ignored) {
+        // Hard-deleted: keep the name for display, actorId stays null (no FK target).
+        Metrics.counter(UNRESOLVED_ACTOR_METRIC, "kind", "hard_deleted").increment();
+        result = new EntityReference().withType(Entity.USER).withName(userName);
+      }
     }
-    try {
-      return Entity.getEntityReferenceByName(Entity.USER, userName, null);
-    } catch (Exception e) {
-      // User might not exist (e.g., system operations)
-      return new EntityReference().withType(Entity.USER).withName(userName);
-    }
+    return result;
   }
 
   private String buildSummary(

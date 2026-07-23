@@ -73,7 +73,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPath: jest.fn(),
 }));
 
@@ -89,8 +89,12 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/HistoryUtils', () => ({
+  ...jest.requireActual('../../../../utils/HistoryUtils'),
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 

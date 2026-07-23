@@ -36,32 +36,36 @@ import {
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchUtils';
+import { getTermQuery } from '../SearchPureUtils';
 import {
-  getAlertActionTypeDisplayName,
-  getAlertEventsFilterLabels,
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
+  getConnectionTimeoutField,
+  getDestinationConfigField,
+  getFieldByArgumentType,
+  getFqnSearchIndexes,
+  searchEntity,
+} from './AlertsUtil';
+import {
+  getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getDisplayNameForEntities,
-  getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
   normalizeDestinationConfig,
-  searchEntity,
-} from './AlertsUtil';
+} from './AlertsUtilPure';
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
@@ -80,6 +84,10 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../rest/contractAPI', () => ({
+  searchContracts: jest.fn(),
 }));
 
 jest.mock('../ToastUtils', () => ({
@@ -332,7 +340,11 @@ describe('AlertsUtil tests', () => {
 
 describe('getFieldByArgumentType tests', () => {
   it('should return correct fields for argumentType fqnList', async () => {
-    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
+    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table', [
+      'databaseService',
+      'database',
+      'databaseSchema',
+    ]);
 
     render(field);
 
@@ -345,8 +357,41 @@ describe('getFieldByArgumentType tests', () => {
       pageNumber: 1,
       pageSize: 50,
       queryFilter: undefined,
-      searchIndex: SearchIndex.TABLE,
+      searchIndex: [
+        SearchIndex.TABLE,
+        SearchIndex.DATABASE_SERVICE,
+        SearchIndex.DATABASE,
+        SearchIndex.DATABASE_SCHEMA,
+      ],
     });
+  });
+
+  it('should use the Data Contract API for a dataContract fqnList', async () => {
+    const { AsyncSelect: MockedAsyncSelect } = jest.requireMock(
+      '../../components/common/AsyncSelect/AsyncSelect'
+    );
+    MockedAsyncSelect.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (searchContracts as jest.Mock).mockResolvedValue([
+      {
+        fullyQualifiedName: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+
+    render(getFieldByArgumentType(0, 'fqnList', 0, 'dataContract'));
+
+    const api = MockedAsyncSelect.mock.calls[0][0].api as (
+      query: string
+    ) => Promise<unknown>;
+
+    await expect(api('test')).resolves.toEqual([
+      {
+        label: 'service.database.schema.table.dataContract_test',
+        value: 'service.database.schema.table.dataContract_test',
+      },
+    ]);
+    expect(searchContracts).toHaveBeenCalledWith('test', 50);
+    expect(searchQuery).not.toHaveBeenCalled();
   });
 
   it('should return correct fields for argumentType domainList', async () => {
@@ -1868,5 +1913,33 @@ describe('getFormattedDestinations', () => {
     ]);
     expect(result?.[0]?.config).not.toHaveProperty('timeout');
     expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
+  });
+});
+
+describe('getFqnSearchIndexes', () => {
+  it('includes the source index plus the descriptor-provided ancestor indexes', () => {
+    expect(
+      getFqnSearchIndexes('databaseSchema', ['databaseService', 'database'])
+    ).toEqual([
+      SearchIndex.DATABASE_SCHEMA,
+      SearchIndex.DATABASE_SERVICE,
+      SearchIndex.DATABASE,
+    ]);
+    expect(getFqnSearchIndexes('glossaryTerm', ['glossary'])).toEqual([
+      SearchIndex.GLOSSARY_TERM,
+      SearchIndex.GLOSSARY,
+    ]);
+  });
+
+  it('returns only the source index when there are no ancestors', () => {
+    expect(getFqnSearchIndexes('databaseService')).toEqual([
+      SearchIndex.DATABASE_SERVICE,
+    ]);
+  });
+
+  it('returns only the ALL index for the "all" source, ignoring container types', () => {
+    expect(getFqnSearchIndexes('all', ['databaseService', 'database'])).toEqual(
+      [SearchIndex.ALL]
+    );
   });
 });

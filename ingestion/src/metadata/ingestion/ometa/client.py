@@ -16,19 +16,18 @@ import time
 import traceback
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any, Callable, Dict, List, Optional, Union, cast  # noqa: UP035
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion import diagnostics
-from metadata.ingestion.diagnostics.http_introspect import get_global_tracker
+from metadata.ingestion.diagnostics.collectors.http import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.ingestion.ometa.utils import sanitize_user_agent
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -186,6 +185,8 @@ class REST:
         headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
+        retry_wait: Optional[int] = None,  # noqa: UP045
+        raw: bool = False,
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -251,23 +252,23 @@ class REST:
         if effective_timeout:
             opts["timeout"] = effective_timeout
 
-        # Per-call `retries` override takes precedence over the client
-        # config. `_retry` / `_retry_wait` are Optional in ClientConfig;
-        # narrow to plain ints here so the loop body type-checks cleanly.
+        # Per-call `retries` / `retry_wait` override the client config. `_retry` /
+        # `_retry_wait` are Optional in ClientConfig; narrow to plain ints here so
+        # the loop body type-checks cleanly.
         total_retries: int
         if retries is not None:
             total_retries = retries if retries > 0 else 0
         else:
             total_retries = self._retry if self._retry and self._retry > 0 else 0
         retry: int = total_retries
-        retry_wait_base: int = self._retry_wait or 0
+        retry_wait_base: int = retry_wait if retry_wait is not None else (self._retry_wait or 0)
         http_tracker = get_global_tracker()
         http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
         op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
         with http_cm, op_cm:
             while retry >= 0:
                 try:
-                    return self._one_request(method, url, opts, retry)
+                    return self._one_request(method, url, opts, retry, raw)
                 except LimitsException as exc:
                     logger.error(f"Feature limit exceeded for {url}")
                     self._limits_reached.add(path)
@@ -287,12 +288,16 @@ class REST:
                         traceback.format_exc()
             return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int):
+    def _one_request(self, method: str, url: URL, opts: dict, retry: int, raw: bool = False):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
         then it decodes to json object and returns APIError.
         Returns the body json in the 200 status.
+
+        When ``raw`` is set, returns the ``Response`` after the same retry/limit
+        decisions (504/429 still retry) instead of the decoded body, so the caller
+        can read a status the error handling below would otherwise drop.
         """
         retry_codes = self._retry_codes
         limit_codes = self._limit_codes
@@ -300,6 +305,8 @@ class REST:
         try:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
+            if raw:
+                return resp
 
             if resp.text != "":
                 try:
@@ -321,6 +328,8 @@ class REST:
                 raise RetryException() from http_error
             if resp.status_code in limit_codes:
                 raise LimitsException() from http_error
+            if raw:
+                return http_error.response
             if "code" in resp.text:
                 error = resp.json()
                 if "code" in error:
@@ -338,10 +347,13 @@ class REST:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
+            # A raw caller asked for the response; swallowing to None would strand it
+            # with an AttributeError. Re-raise so the real cause reaches the caller.
+            if raw:
+                raise
 
         return None
 
-    @calculate_execution_time(context="GET")
     def get(self, path, data=None, headers=None):
         """
         GET method
@@ -356,7 +368,27 @@ class REST:
         """
         return self._request("GET", path, data, headers=headers)
 
-    @calculate_execution_time(context="POST")
+    def get_raw(
+        self,
+        path: str,
+        data: Any = None,
+        headers: Optional[dict] = None,  # noqa: UP045
+        retry_wait: Optional[int] = None,  # noqa: UP045
+        retries: Optional[int] = None,  # noqa: UP045
+    ) -> requests.Response:
+        """GET returning the raw ``Response`` so the caller can read its status.
+
+        ``get`` drops the status and returns ``None`` for an error body it cannot
+        classify; a caller that needs the status uses this instead. Same pipeline as
+        ``get`` (auth, retries); ``retries`` and ``retry_wait`` override the client's
+        retry count and between-retry sleep - the sleep grows per attempt, so a
+        caller on a budget must bound both.
+        """
+        return cast(
+            "requests.Response",
+            self._request("GET", path, data, headers=headers, retry_wait=retry_wait, retries=retries, raw=True),
+        )
+
     def post(
         self,
         path: str,
@@ -439,7 +471,6 @@ class REST:
             headers = {**headers, **extra_headers}
         return headers
 
-    @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
         """
         PUT method
@@ -455,26 +486,30 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    @calculate_execution_time(context="PATCH")
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
 
-    @calculate_execution_time(context="DELETE")
     def delete(self, path, data=None, headers=None):
         """
         DELETE method

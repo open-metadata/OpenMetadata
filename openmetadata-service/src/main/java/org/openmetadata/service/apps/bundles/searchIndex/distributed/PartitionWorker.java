@@ -55,9 +55,6 @@ public class PartitionWorker {
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key used by search sinks to write into staged indexes. */
-  private static final String STAGED_WRITE_KEY = "recreateIndex";
-
   /** Context key for staged index context. */
   private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
@@ -307,32 +304,51 @@ public class PartitionWorker {
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
-      // Adjust partition counts to include process-stage failures.
+      // Adjust partition counts to include stage-level failures and warnings.
       // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
-      // Process failures happen async in addEntity() and are tracked by StageStatsTracker.
+      // Process and sink results happen async and are tracked by StageStatsTracker.
       long processFailed =
           statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
-      if (processFailed > 0) {
-        long adjustment = Math.min(processFailed, successCount.get());
+      long sinkFailed =
+          statsTracker != null ? statsTracker.getSink().getCumulativeFailed().get() : 0;
+      long stageFailed = processFailed + sinkFailed;
+      if (stageFailed > 0) {
+        long adjustment = Math.min(stageFailed, successCount.get());
         if (adjustment > 0) {
           successCount.addAndGet(-adjustment);
           failedCount.addAndGet(adjustment);
         }
       }
+      long processWarnings =
+          statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
+      long sinkWarnings =
+          statsTracker != null ? statsTracker.getSink().getCumulativeWarnings().get() : 0;
+      long stageWarnings = processWarnings + sinkWarnings;
+      if (stageWarnings > 0) {
+        long adjustment = Math.min(stageWarnings, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          warningsCount.addAndGet(adjustment);
+        }
+      }
 
       // Mark partition as completed (stats are now in the database)
-      coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
+      coordinator.completePartition(
+          partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
-      long actualProcessed = successCount.get() + failedCount.get();
+      long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, sinkFailed: {}, processWarnings: {}, sinkWarnings: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
           processFailed,
+          sinkFailed,
+          processWarnings,
+          sinkWarnings,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(
@@ -693,6 +709,7 @@ public class PartitionWorker {
 
     if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
       List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
@@ -712,7 +729,6 @@ public class PartitionWorker {
     String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
-    contextData.put(STAGED_WRITE_KEY, true);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);

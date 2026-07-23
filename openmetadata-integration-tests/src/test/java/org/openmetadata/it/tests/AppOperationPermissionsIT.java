@@ -1,17 +1,18 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -34,6 +35,15 @@ public class AppOperationPermissionsIT {
   private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   private static final String APP_NAME = "SearchIndexingApplication";
 
+  // dataConsumer JWT tests hit SubjectCache.getUserContext during authorization; if that user
+  // hasn't been created in this JVM session the lookup throws EntityNotFoundException (→404)
+  // and short-circuits the authorizer before it can return the expected 403. Pin the user up
+  // front so the result is deterministic regardless of suite ordering.
+  @BeforeAll
+  static void ensureDataConsumerUser() {
+    UserTestFactory.getDataConsumer(null);
+  }
+
   @Test
   void test_triggerApp_noAuth_returns401(TestNamespace ns) throws Exception {
     HttpRequest request =
@@ -53,9 +63,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/trigger/" + APP_NAME, "{}", getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to trigger applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to trigger applications");
   }
 
   @Test
@@ -77,9 +86,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/deploy/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to deploy applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to deploy applications");
   }
 
   @Test
@@ -101,9 +109,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/stop/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to stop applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to stop applications");
   }
 
   @Test
@@ -125,9 +132,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/schedule/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to schedule applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to schedule applications");
   }
 
   @Test
@@ -149,9 +155,8 @@ public class AppOperationPermissionsIT {
     HttpResponse<String> response =
         postWithToken("/v1/apps/configure/" + APP_NAME, null, getDataConsumerToken());
 
-    assertTrue(
-        response.statusCode() == 403 || response.statusCode() == 404,
-        "DataConsumer should not be able to configure applications, got: " + response.statusCode());
+    assertEquals(
+        403, response.statusCode(), "DataConsumer should not be able to configure applications");
   }
 
   private static String getDataConsumerToken() {

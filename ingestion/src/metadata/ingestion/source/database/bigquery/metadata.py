@@ -71,10 +71,13 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import (
     clear_constraint_cache,
     clear_constraint_cache_for_schema,
+    clone_connection_for_project,
+    get_bigquery_client_for_project,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -92,6 +95,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -107,8 +111,6 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -347,11 +349,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
-            inspector_details = get_inspector_details(
+            project_connection = clone_connection_for_project(
                 database_name=project_id, service_connection=self.service_connection
             )
-            test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(self.metadata, inspector_details.engine, self.service_connection)
+            test_connection_fn = get_test_connection_fn(project_connection)
+            test_connection_fn(self.metadata)
             # GOOGLE_CREDENTIALS may not have been set,
             # to avoid key error, we use `get` for dict
             if os.environ.get(GOOGLE_CREDENTIALS):
@@ -409,7 +411,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return []
 
     # pylint: disable=arguments-differ
-    @calculate_execution_time()
     def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str:
         schema_name = f"{self.context.get().database}.{schema_name}"
         return super().get_table_description(schema_name=schema_name, table_name=table_name, inspector=inspector)
@@ -454,6 +455,41 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     exc,
                 )
         yield from super().yield_life_cycle_data(_)
+
+    def _get_schema_region(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+        """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
+        region = None
+        try:
+            dataset_obj = self.get_dataset_obj(schema_name)
+            region = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not resolve dataset region for schema '%s', falling back to dataset-scoped query: %s",
+                schema_name,
+                exc,
+            )
+        return region
+
+    def get_life_cycle_query(self):
+        """
+        Build the life cycle query.
+
+        When the dataset region is resolvable we use the region-scoped variant that
+        also captures the last-modified timestamp from INFORMATION_SCHEMA.TABLE_STORAGE
+        (which is only exposed at region/org level). Otherwise we fall back to the
+        dataset-scoped created-only query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        region = self._get_schema_region(schema_name)
+        if region:
+            query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+                database_name=database, schema_name=schema_name, region=region
+            )
+        else:
+            query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=database, schema_name=schema_name)
+        return query
 
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""
@@ -646,35 +682,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return [
             schema_name
             for schema_name in self.get_raw_database_schema_names()
-            if not filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                (
-                    fqn.build(
-                        self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=project_id,
-                        schema_name=schema_name,
-                    )
-                    if self.source_config.useFqnForFiltering
-                    else schema_name
-                ),
-            )
+            if not self._is_schema_filtered(project_id, schema_name)
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
+        project_id = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+                database_name=project_id,
                 schema_name=schema_name,
             )
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
-            ):
+            if self._is_schema_filtered(project_id, schema_name):
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
@@ -822,21 +843,67 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return None
 
+    def _raw_dataset_names(self, project_id: str) -> Iterable[str]:
+        """Dataset IDs for ``project_id``, context-free (does not read the walk's
+        current database). Honors a single configured ``databaseSchema``. Reuses the
+        walk's client when set, else builds a lightweight project-scoped client so
+        the totals hook (which runs before ``set_inspector``) can still list."""
+        configured_schema = getattr(self.service_connection, "databaseSchema", None)
+        if configured_schema:
+            yield configured_schema
+        else:
+            client = self.client or get_bigquery_client_for_project(project_id, self.service_connection)
+            for dataset in client.list_datasets(project_id):  # pyright: ignore[reportAttributeAccessIssue]
+                yield dataset.dataset_id
+
+    def _kept_schema_counts(self, project_ids: List[str]) -> Optional[Dict[str, int]]:  # noqa: UP006,UP045
+        """Post-filter dataset count per project from ``list_datasets``. Returns
+        ``None`` when any project's listing fails, so the caller reconciles the
+        schema total instead of seeding partial scopes."""
+        counts: Dict[str, int] = {}  # noqa: UP006
+        try:
+            for project_id in project_ids:
+                counts[project_id] = sum(
+                    1
+                    for dataset in self._raw_dataset_names(project_id)
+                    if not self._is_schema_filtered(project_id, dataset)
+                )
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "BigQuery dataset listing failed (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        return counts
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` (filtered project count) and per-project
+        ``DatabaseSchema`` (filtered dataset count) counters upfront. When dataset
+        listing fails for any project, mark the schema counter reconcilable so the
+        walk fills its total instead."""
+        filtered_projects = [
+            project_id for project_id in self.project_ids if not self._is_database_filtered(project_id)
+        ]
+        totals.set_total(Database.__name__, len(filtered_projects))
+        kept_by_project = self._kept_schema_counts(filtered_projects)
+        if kept_by_project is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            for project_id, count in kept_by_project.items():
+                totals.seed_scope_total(DatabaseSchema.__name__, project_id, count)
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self.project_ids
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
-            database_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=project_id,
-            )
-            if filter_by_database(
-                self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else project_id,
-            ):
+            if self._is_database_filtered(project_id):
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=project_id,
+                )
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:
@@ -915,7 +982,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             logger.warning(f"Error getting partition column name for {partition_field_name}: {exc}")
         return None
 
-    @calculate_execution_time()
     def update_table_constraints(
         self,
         table_name,
@@ -1229,7 +1295,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.get_global().deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()

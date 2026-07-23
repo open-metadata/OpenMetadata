@@ -93,6 +93,12 @@ const waitForDirectionalColumnLineageResponse = (
     return true;
   });
 
+const expectImpactAnalysisTextVisible = async (page: Page, text: string) => {
+  await expect(
+    page.getByTestId('lineage-card-table').getByText(text)
+  ).toBeVisible();
+};
+
 test.describe('Impact Analysis', () => {
   let tableColumns: string[] = [];
   let table2Columns: string[] = [];
@@ -294,14 +300,12 @@ test.describe('Impact Analysis', () => {
 
   test('validate upstream/ downstream counts', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 1' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 1' })).toBeVisible();
   });
 
   test('Verify impact analysis requests include entityType and explicit depth bounds', async ({
@@ -353,15 +357,16 @@ test.describe('Impact Analysis', () => {
       table2.entityResponseData.displayName ?? table2.entity.displayName,
     ];
     for (const node of tableDownstreamNodes) {
-      await expect(page.getByText(node)).toBeVisible();
+      await expectImpactAnalysisTextVisible(page, node);
     }
 
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
 
     await dashboard.visitEntityPage(page);
     await visitLineageTab(page);
@@ -387,17 +392,18 @@ test.describe('Impact Analysis', () => {
     ];
 
     for (const node of dashboardDownstreamNodes) {
-      await expect(page.getByText(node)).toBeVisible();
+      await expectImpactAnalysisTextVisible(page, node);
     }
   });
 
   test('Verify Upstream connections', async ({ page }) => {
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
 
     await topic.visitEntityPage(page);
     await visitLineageTab(page);
@@ -414,16 +420,16 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Verify Table is visible in Impact Analysis for Upstream of Topic
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByText(
-        table.entityResponseData.displayName ?? table.entity.displayName
-      )
-    ).toBeVisible();
-    await expect(
-      page.getByText(dashboard.entityResponseData.displayName)
-    ).toBeVisible();
+    await expectImpactAnalysisTextVisible(
+      page,
+      table.entityResponseData.displayName ?? table.entity.displayName
+    );
+    await expectImpactAnalysisTextVisible(
+      page,
+      dashboard.entityResponseData.displayName
+    );
   });
 
   test('verify owner filter for Asset level impact analysis', async ({
@@ -535,14 +541,12 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 0' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 0' })).toBeVisible();
     await expect
       .poll(() => paginationRequests.length, { timeout: 5000 })
       .toBe(paginationRequestCountBeforeColumnMode);
@@ -576,13 +580,11 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 0' })
+      page.getByRole('radio', { name: 'Downstream 0' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
-    await expect(
-      page.getByRole('button', { name: 'Upstream 5' })
-    ).toBeVisible();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
+    await expect(page.getByRole('radio', { name: 'Upstream 5' })).toBeVisible();
   });
 
   test('Verify column mode switches direction with directional lineage requests', async ({
@@ -627,7 +629,7 @@ test.describe('Impact Analysis', () => {
         downstreamDepth: 0,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -691,14 +693,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -732,7 +734,7 @@ test.describe('Impact Analysis', () => {
         fqn: table2.entityResponseData.fullyQualifiedName,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -781,14 +783,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -804,7 +806,7 @@ test.describe('Impact Analysis', () => {
     const firstAssetLink = lineageCardTable
       .locator('tbody tr')
       .first()
-      .getByRole('cell')
+      .locator('td')
       .first()
       .getByRole('link');
 
@@ -1109,10 +1111,9 @@ test.describe('Impact Analysis', () => {
     ];
 
     for (const columnName of expectedColumns) {
-      const columnHeader = page.getByRole('columnheader', {
-        name: columnName,
-        exact: true,
-      });
+      const columnHeader = page
+        .locator('thead th')
+        .filter({ hasText: new RegExp(`^${columnName}$`) });
       await expect(columnHeader).toBeVisible();
     }
   });
@@ -1128,10 +1129,10 @@ test.describe('Impact Analysis', () => {
 
     const downstreamCount = await page.locator('[data-row-key]').count();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByRole('button', { name: 'Downstream' }).click();
+    await page.getByRole('radio', { name: 'Downstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
     const finalCount = await page.locator('[data-row-key]').count();

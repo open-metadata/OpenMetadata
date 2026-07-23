@@ -25,7 +25,7 @@ import {
   fetchTestCaseSummary,
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
-import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -38,7 +38,13 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -83,8 +89,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
   const fetchTestSummary = async (params?: DataQualityPageParams) => {
     const filters = {
@@ -96,6 +103,9 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
         'testCaseStatus',
         'testCaseType',
       ]),
+      dataProductFqns: params?.dataProductFqn
+        ? [params.dataProductFqn]
+        : undefined,
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
@@ -105,17 +115,17 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await fetchTestCaseSummary(filters);
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        filters,
-        true
-      );
-      const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
-        filters,
-        false
-      );
-
-      const { data: entityCount } = await fetchTotalEntityCount(filters);
+      const [
+        { data },
+        { data: unhealthyData },
+        { data: totalDQCoverage },
+        { data: entityCount },
+      ] = await Promise.all([
+        fetchTestCaseSummary(filters),
+        fetchEntityCoveredWithDQ(filters, true),
+        fetchEntityCoveredWithDQ(filters, false),
+        fetchTotalEntityCount(filters),
+      ]);
 
       const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
       const total = parseInt(totalDQCoverage[0].originEntityFQN);

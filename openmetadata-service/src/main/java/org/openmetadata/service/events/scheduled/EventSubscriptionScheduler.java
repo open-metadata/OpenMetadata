@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -666,8 +667,8 @@ public class EventSubscriptionScheduler {
     }
   }
 
-  private static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
-  private static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
+  static final String AUDIT_LOG_JOB_GROUP = "OMAuditLogJobGroup";
+  static final String AUDIT_LOG_JOB_ID = "AuditLogConsumerJob";
   private static final int AUDIT_LOG_POLL_INTERVAL_SECONDS = 5;
 
   /**
@@ -676,29 +677,35 @@ public class EventSubscriptionScheduler {
    * in multi-server setups.
    */
   public void scheduleAuditLogConsumer() throws SchedulerException {
+    ensureAuditLogConsumerScheduled(alertsScheduler);
+  }
+
+  /**
+   * (Re)arms the audit log consumer trigger on every startup. With the clustered {@code JobStoreTX}
+   * the job and trigger persist across restarts, so a plain existence check sees the job and skips
+   * rescheduling forever. That strands the consumer whenever the persisted trigger stops firing —
+   * not only in ERROR/BLOCKED/PAUSED states, but also while still reported as WAITING/NORMAL with a
+   * frozen past next-fire-time (an abandoned trigger after an unclean shutdown). We therefore always
+   * replace it with a fresh trigger. The consumer offset lives in {@code change_event_consumers},
+   * not in Quartz, so re-arming loses no progress; {@code replace=true} swaps atomically so
+   * concurrent cluster nodes don't race.
+   */
+  static void ensureAuditLogConsumerScheduled(Scheduler scheduler) throws SchedulerException {
     JobKey jobKey = new JobKey(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP);
-
-    // Check if already scheduled
-    if (alertsScheduler.checkExists(jobKey)) {
-      LOG.info("Audit log consumer job already scheduled");
-      return;
-    }
-
     JobDetail jobDetail =
         JobBuilder.newJob(AuditLogConsumer.class).withIdentity(jobKey).storeDurably().build();
-
-    Trigger trigger =
-        TriggerBuilder.newTrigger()
-            .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
-            .withSchedule(
-                SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
-            .startNow()
-            .build();
-
-    alertsScheduler.scheduleJob(jobDetail, trigger);
+    scheduler.scheduleJob(jobDetail, Set.of(buildAuditLogTrigger()), true);
     LOG.info(
-        "Audit log consumer scheduled with poll interval: {} seconds",
+        "Audit log consumer (re)scheduled with poll interval: {} seconds",
         AUDIT_LOG_POLL_INTERVAL_SECONDS);
+  }
+
+  private static Trigger buildAuditLogTrigger() {
+    return TriggerBuilder.newTrigger()
+        .withIdentity(AUDIT_LOG_JOB_ID, AUDIT_LOG_JOB_GROUP)
+        .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(AUDIT_LOG_POLL_INTERVAL_SECONDS))
+        .startNow()
+        .build();
   }
 
   public static void shutDown() throws SchedulerException {

@@ -6,6 +6,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.sdk.fluent.DatabaseServices;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating DatabaseService entities in integration tests.
@@ -25,11 +26,13 @@ public class DatabaseServiceTestFactory {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("postgresService_" + uniqueId);
 
-    return DatabaseServices.builder()
-        .name(name)
-        .connection(conn)
-        .description("Test Postgres service")
-        .create();
+    return ns.trackRoot(
+        Entity.DATABASE_SERVICE,
+        DatabaseServices.builder()
+            .name(name)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create());
   }
 
   /**
@@ -46,11 +49,13 @@ public class DatabaseServiceTestFactory {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("snowflakeService_" + uniqueId);
 
-    return DatabaseServices.builder()
-        .name(name)
-        .connection(conn)
-        .description("Test Snowflake service")
-        .create();
+    return ns.trackRoot(
+        Entity.DATABASE_SERVICE,
+        DatabaseServices.builder()
+            .name(name)
+            .connection(conn)
+            .description("Test Snowflake service")
+            .create());
   }
 
   /**
@@ -74,10 +79,12 @@ public class DatabaseServiceTestFactory {
     PostgresConnection conn =
         DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
 
-    return DatabaseServices.builder()
-        .name(name)
-        .connection(conn)
-        .description("Test Postgres service")
-        .create();
+    return ns.trackRoot(
+        Entity.DATABASE_SERVICE,
+        DatabaseServices.builder()
+            .name(name)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create());
   }
 }

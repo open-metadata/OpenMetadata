@@ -38,14 +38,14 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getTableFQNFromColumnFQN } from '../../../../../utils/FqnUtils';
 import {
   calculatePercentage,
   formatNumberWithComma,
-  getTableFQNFromColumnFQN,
-} from '../../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+} from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
@@ -460,7 +460,7 @@ const ColumnProfileTable = () => {
       </div>
 
       {isEmpty(activeColumnFqn) ? (
-        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:ring-1 tw:ring-secondary tw:overflow-hidden">
+        <div className="tw:flex tw:flex-col tw:gap-4 tw:rounded-xl tw:outline-1 tw:outline-secondary tw:overflow-hidden">
           <div className="p-x-md p-y-md">
             <Searchbar
               removeMargin

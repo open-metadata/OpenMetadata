@@ -76,6 +76,15 @@ function writeEdges(
   }
 }
 
+function writeCardinalityMap(
+  container: HTMLDivElement | null,
+  map: Record<string, { startLabelText: string; endLabelText: string }>
+) {
+  if (container) {
+    container.dataset.cardinalityMap = JSON.stringify(map);
+  }
+}
+
 const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
   (
     {
@@ -116,6 +125,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       neighborSet,
       computeNodeColor,
       assetToTermMap,
+      cardinalityLabelMap,
     } = useGraphDataBuilder({
       inputNodes,
       inputEdges,
@@ -253,6 +263,10 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     useEffect(() => {
       writeEdges(containerRef.current, mergedEdgesList);
     }, [mergedEdgesList]);
+
+    useEffect(() => {
+      writeCardinalityMap(containerRef.current, cardinalityLabelMap);
+    }, [cardinalityLabelMap]);
 
     return (
       <div

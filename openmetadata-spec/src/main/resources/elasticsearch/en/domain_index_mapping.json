@@ -75,6 +75,9 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -367,7 +370,8 @@
         "dynamic": false
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "certification": {
         "type": "object",

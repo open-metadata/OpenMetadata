@@ -32,4 +32,8 @@ public class RdfStorageCircuitOpenException extends RuntimeException {
   public RdfStorageCircuitOpenException(String operation) {
     super("RDF circuit breaker is open; skipping " + operation + " until storage recovers");
   }
+
+  public RdfStorageCircuitOpenException(String operation, Throwable cause) {
+    super("RDF circuit breaker is open; skipping " + operation + " until storage recovers", cause);
+  }
 }

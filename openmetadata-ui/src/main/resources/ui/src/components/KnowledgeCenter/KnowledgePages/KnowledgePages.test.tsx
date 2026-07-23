@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_KNOWLEDGE_PAGES } from 'pages/KnowledgePage/KnowledgePage.mock';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
+import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 
 const mockProps = {
   entityId: '6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2',
@@ -29,6 +28,9 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+}));
+
+jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,
@@ -36,7 +38,7 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(

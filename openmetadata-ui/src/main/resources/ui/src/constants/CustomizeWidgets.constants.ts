@@ -20,6 +20,8 @@ import { TagSource } from '../generated/type/tagLabel';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const TAB_GRID_MAX_COLUMNS = 8;
+export const GRID_ROW_HEIGHT = 100;
+export const GRID_VERTICAL_MARGIN = 16;
 
 export type GridSizes = keyof typeof WidgetWidths;
 export interface CommonWidgetType {

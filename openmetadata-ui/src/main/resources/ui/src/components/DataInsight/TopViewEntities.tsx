@@ -23,7 +23,7 @@ import { DataInsightChartType } from '../../generated/dataInsight/dataInsightCha
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
-import { getDecodedFqn } from '../../utils/StringsUtils';
+import { getDecodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import Table from '../common/Table/Table';

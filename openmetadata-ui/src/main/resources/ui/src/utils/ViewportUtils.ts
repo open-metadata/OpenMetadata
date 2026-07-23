@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CSSProperties } from 'react';
-import { Viewport } from 'reactflow';
+import type { Viewport } from 'reactflow';
 
 export function getAbsolutePosition(
   x: number,

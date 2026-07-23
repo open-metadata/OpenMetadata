@@ -309,7 +309,6 @@ test.describe('Activity Feed - Filters', () => {
       await subFilterDropdown.click();
       await page.getByRole('menuitem', { name: menuLabel }).click();
       await expect(subFilterDropdown).toContainText(new RegExp(menuLabel, 'i'));
-      await page.waitForTimeout(300);
     };
 
     await subFilterDropdown.click();
@@ -465,7 +464,7 @@ test.describe('Activity Feed - Entity Page', () => {
 
     // Find tabs/filters
     const allButton = page.getByRole('button', { name: /all/i });
-    const tasksButton = page.getByRole('button', { name: /tasks/i });
+    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
 
     // Click Tasks
     if (await tasksButton.isVisible()) {
@@ -625,7 +624,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
     await waitForPageLoaded(page);
 
     // Count initial tasks
-    const tasksButton = page.getByRole('button', { name: /tasks/i });
+    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksButton.isVisible()) {
       await tasksButton.click();
       await waitForPageLoaded(page);

@@ -17,7 +17,7 @@ import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
 import { GREY_200 } from '../../../constants/Color.constants';
 import { TEXT_GREY_MUTED } from '../../../constants/constants';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
 
@@ -98,12 +98,12 @@ const CustomPieChart = ({
       {showLegends && (
         <Space wrap size={16}>
           {data.map((item) => (
-            <Space key={item.name} size={8}>
+            <Space align="center" key={item.name} size={8}>
               <div
                 className="legend-dot"
                 style={{ backgroundColor: item.color }}
               />
-              <Typography.Paragraph className="text-grey-muted m-b-0">
+              <Typography.Paragraph className="text-grey-muted m-b-0 font-medium">
                 {item.name}{' '}
                 <Typography.Text
                   strong

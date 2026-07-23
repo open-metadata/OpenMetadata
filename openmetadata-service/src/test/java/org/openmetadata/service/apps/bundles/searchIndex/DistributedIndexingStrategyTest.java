@@ -511,7 +511,8 @@ class DistributedIndexingStrategyTest {
   }
 
   @Test
-  void finalizeAllEntityReindexSkipsPromotedEntitiesAndFailsMissingEntityStats() throws Exception {
+  void finalizeAllEntityReindexSkipsPromotedEntitiesAndPromotesMissingEntityStats()
+      throws Exception {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
@@ -575,15 +576,14 @@ class DistributedIndexingStrategyTest {
           contextCaptor.getAllValues().get(i).getEntityType(), successCaptor.getAllValues().get(i));
     }
 
-    assertEquals(
-        Boolean.FALSE,
-        outcomes.get("user"),
-        "user has no entityStats entry — finalizer can't evaluate; default to not fully successful");
-    assertEquals(
-        Boolean.FALSE,
-        outcomes.get("dashboard"),
-        "dashboard 4/5 (ratio 0.80) is below 0.95 — finalizer reports NOT fully successful;"
-            + " DefaultRecreateHandler's doc-count rescue then decides whether to promote");
+    // 084c5c2205 flipped the contract: an entity with no stats recorded means the reader
+    // did zero work (source had 0 rows, or the entity is driven by a parallel pipeline like
+    // vectorEmbedding/RecreateWithEmbeddings). Such entities are now promoted as success so
+    // the staged index gets swapped in instead of the job rolling up to FAILED on something
+    // that had nothing to fail on. `dashboard` still fails because PromotionPolicy reports its
+    // 4/5 (ratio 0.80) below the 0.95 threshold.
+    assertEquals(Boolean.TRUE, outcomes.get("user"));
+    assertEquals(Boolean.FALSE, outcomes.get("dashboard"));
   }
 
   @Test

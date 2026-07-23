@@ -20,9 +20,9 @@ import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla.less';
 
 const ContractSLA: React.FC<{

@@ -594,6 +594,106 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
+  describe('Test Configuration', () => {
+    const selectGoogleProvider = async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Select Google'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('test-sso-configuration')
+        ).toBeInTheDocument();
+      });
+    };
+
+    beforeEach(() => {
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+    });
+
+    it('should render the test configuration button in edit mode', async () => {
+      await selectGoogleProvider();
+
+      expect(screen.getByTestId('test-sso-configuration')).toBeInTheDocument();
+    });
+
+    it('should show a lockout warning for a new configuration', async () => {
+      await selectGoogleProvider();
+
+      expect(
+        screen.getByText('message.sso-new-config-save-warning')
+      ).toBeInTheDocument();
+    });
+
+    it('should validate the configuration without saving when tested', async () => {
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.SUCCESS,
+        } as SecurityValidationResponse)
+      );
+
+      await selectGoogleProvider();
+
+      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+      });
+
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText('message.sso-configuration-test-success')
+      ).toBeInTheDocument();
+    });
+
+    it('should surface validation errors when the test fails', async () => {
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          status: VALIDATION_STATUS.FAILED,
+          errors: [
+            {
+              field: 'authenticationConfiguration.clientId',
+              error: 'Client ID is required',
+            },
+          ],
+        } as SecurityValidationResponse)
+      );
+
+      await selectGoogleProvider();
+
+      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+      });
+
+      expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+      expect(
+        await screen.findByText(
+          'message.sso-configuration-test-failed-with-count'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should show an error toast when the test request throws', async () => {
+      mockValidateSecurityConfiguration.mockRejectedValue(
+        new Error('Network error') as AxiosError
+      );
+
+      await selectGoogleProvider();
+
+      fireEvent.click(screen.getByTestId('test-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockShowErrorToast).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe('Props Handling', () => {
     it('should handle selectedProvider prop', async () => {
       renderComponent({ selectedProvider: AuthProvider.Okta });

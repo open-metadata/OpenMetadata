@@ -117,11 +117,12 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityPureUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('column_x'),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn().mockReturnValue('delete-message'),
 }));
 
@@ -151,8 +152,8 @@ jest.mock('../../../Database/SampleDataTable/RowData', () => ({
   RowData: jest.fn().mockImplementation(() => <div>RowData</div>),
 }));
 
-jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
-  jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>)
+jest.mock('../../../common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(() => <div>DeleteModal</div>)
 );
 
 const FQN = 'svc.db.schema.table.failing_test_case';

@@ -9,18 +9,13 @@
     "sapSuccessFactorsType": {
       "description": "Service type.",
       "type": "string",
-      "enum": [
-        "SapSuccessFactors"
-      ],
+      "enum": ["SapSuccessFactors"],
       "default": "SapSuccessFactors"
     },
     "authType": {
       "description": "Authentication type to connect to SAP SuccessFactors.",
       "type": "string",
-      "enum": [
-        "OAuth2Credentials",
-        "BasicAuth"
-      ],
+      "enum": ["OAuth2Credentials", "BasicAuth"],
       "default": "BasicAuth"
     }
   },
@@ -68,7 +63,8 @@
       "title": "Private Key",
       "description": "PEM-encoded RSA private key used to sign SAML assertions for OAuth2 SAML Bearer flow. Required when authType is OAuth2Credentials.",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "uiFieldType": "fileOrInput"
     },
     "tokenUrl": {
       "title": "Token URL",

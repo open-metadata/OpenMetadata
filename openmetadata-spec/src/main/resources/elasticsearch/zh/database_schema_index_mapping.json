@@ -174,7 +174,8 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
               }
             }
           },
@@ -264,7 +265,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "owners": {
         "type": "nested",
@@ -477,7 +479,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

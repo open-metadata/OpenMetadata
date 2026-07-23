@@ -26,6 +26,8 @@ import {
   checkAssetsCount,
   goToAssetsTab,
   selectDataProduct,
+  selectDataProductFromTab,
+  selectDomain,
   verifyAssetsInDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -322,5 +324,89 @@ test.describe('Data Product Domain Migration', () => {
       // Ignore
     }
     await cleanupAfter();
+  });
+
+  test('Data product remains visible after moving domains and deleting the original domain', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const testId = uuid();
+    const originalDomain = new Domain({
+      name: `original_domain_${testId}`,
+      displayName: `Original Domain ${testId}`,
+      description: 'Original domain for data product visibility test',
+      domainType: 'Aggregate',
+      fullyQualifiedName: `original_domain_${testId}`,
+    });
+    const vehicleDomain = new Domain({
+      name: `vehicle_domain_${testId}`,
+      displayName: `Vehicle Domain ${testId}`,
+      description: 'Vehicle domain for data product visibility test',
+      domainType: 'Aggregate',
+      fullyQualifiedName: `vehicle_domain_${testId}`,
+    });
+    const movedDataProduct = new DataProduct(
+      [originalDomain],
+      `dp_visibility_${testId}`
+    );
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await originalDomain.create(apiContext);
+      await vehicleDomain.create(apiContext);
+      await movedDataProduct.create(apiContext);
+
+      const patchResponse = await apiContext.patch(
+        `/api/v1/dataProducts/${movedDataProduct.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/domains',
+              value: [
+                {
+                  id: vehicleDomain.responseData.id,
+                  type: 'domain',
+                },
+              ],
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
+      expect(patchResponse.ok()).toBeTruthy();
+
+      const deleteOriginalDomainResponse = await apiContext.delete(
+        `/api/v1/domains/${originalDomain.responseData.id}?recursive=true&hardDelete=true`
+      );
+      expect(deleteOriginalDomainResponse.ok()).toBeTruthy();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, movedDataProduct.data);
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        movedDataProduct.responseData.name
+      );
+      await expect(page.getByTestId('domain-link').first()).toContainText(
+        vehicleDomain.data.displayName
+      );
+
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, vehicleDomain.data);
+      await selectDataProductFromTab(page, movedDataProduct.data);
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        movedDataProduct.responseData.name
+      );
+    } finally {
+      await movedDataProduct.delete(apiContext);
+      await originalDomain.delete(apiContext);
+      await vehicleDomain.delete(apiContext);
+      await afterAction();
+    }
   });
 });

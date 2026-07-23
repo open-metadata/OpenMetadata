@@ -14,14 +14,33 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { Type } from '../generated/entity/services/securityService';
-import rangerConnection from '../jsons/connectionSchemas/connections/security/rangerConnection.json';
 
-export const getSecurityConfig = (type: Type) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const securitySchemaLoaders: Partial<Record<Type, SchemaLoader>> = {
+  [Type.Ranger]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/security/rangerConnection.json'
+    ),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getSecurityConfig = async (type: Type) => {
+  const loader = securitySchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
 
-  if (type === Type.Ranger) {
-    schema = rangerConnection;
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

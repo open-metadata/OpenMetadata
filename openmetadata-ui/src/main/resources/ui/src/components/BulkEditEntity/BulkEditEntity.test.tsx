@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { Column } from 'react-data-grid';
 import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
@@ -77,6 +77,14 @@ jest.mock('react-data-grid', () => {
     <div data-testid="data-grid">
       <span data-testid="row-count">{rows?.length ?? 0}</span>
       <span data-testid="column-count">{columns?.length ?? 0}</span>
+      {columns?.map((column: Column<Record<string, string>>) => (
+        <span
+          data-frozen={String(Boolean(column.frozen))}
+          data-testid={`column-${column.key}`}
+          data-width={String(column.width ?? '')}
+          key={column.key}
+        />
+      ))}
     </div>
   ));
 
@@ -84,18 +92,6 @@ jest.mock('react-data-grid', () => {
     __esModule: true,
     default: MockDataGrid,
   };
-});
-
-jest.mock('../common/TitleBreadcrumb/TitleBreadcrumb.component', () => {
-  return jest.fn(({ titleLinks }) => (
-    <div data-testid="title-breadcrumb">
-      {titleLinks?.map((link: { name: string }, idx: number) => (
-        <span data-testid="breadcrumb-item" key={idx}>
-          {link.name}
-        </span>
-      ))}
-    </div>
-  ));
 });
 
 jest.mock(
@@ -171,12 +167,17 @@ const mockValidateCSVData = {
 
 const defaultProps: BulkEditEntityProps = {
   dataSource: mockDataSource,
-  columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+  initialDataSource: mockDataSource,
+  columns: mockColumns,
   breadcrumbList: mockBreadcrumbList,
   activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+  changedCellCount: 0,
+  changedCellKeysByRowId: {},
+  changedRowCount: 0,
   isValidating: false,
   handleBack: jest.fn(),
   handleValidate: jest.fn().mockResolvedValue(undefined),
+  handleRevertChanges: jest.fn(),
   onCSVReadComplete: jest.fn(),
   setGridContainer: jest.fn(),
   handleCopy: jest.fn(),
@@ -218,9 +219,11 @@ describe('BulkEditEntity', () => {
 
       const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
 
-      expect(breadcrumbItems).toHaveLength(2);
-      expect(breadcrumbItems[0]).toHaveTextContent('Home');
-      expect(breadcrumbItems[1]).toHaveTextContent('Entity');
+      expect(breadcrumbItems).toHaveLength(4);
+      expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
+      expect(breadcrumbItems[1]).toHaveTextContent('Home');
+      expect(breadcrumbItems[2]).toHaveTextContent('Entity');
+      expect(breadcrumbItems[3]).toHaveTextContent('label.bulk-edit');
     });
 
     it('should render stepper with correct active step', () => {
@@ -277,6 +280,25 @@ describe('BulkEditEntity', () => {
       ).toBeInTheDocument();
     });
 
+    it('should disable next button when there are no bulk edit changes', () => {
+      renderComponent({ activeStep: VALIDATION_STEP.EDIT_VALIDATE });
+
+      expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
+    });
+
+    it('should allow metric import preview validation without additional edits', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        isExportHydrationRequired: false,
+        isNextDisabled: false,
+        workflowMode: 'import',
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'label.next' })
+      ).not.toBeDisabled();
+    });
+
     it('should show update button at step 2', () => {
       renderComponent({
         activeStep: VALIDATION_STEP.UPDATE,
@@ -305,6 +327,9 @@ describe('BulkEditEntity', () => {
       const handleValidate = jest.fn().mockResolvedValue(undefined);
       renderComponent({
         activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellCount: 1,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedRowCount: 1,
         handleValidate,
       });
 
@@ -459,6 +484,44 @@ describe('BulkEditEntity', () => {
       );
     });
 
+    it('should not trigger export when source data is hydrated by parent', () => {
+      renderComponent({ isExportHydrationRequired: false });
+
+      expect(mockTriggerExportForBulkEdit).not.toHaveBeenCalled();
+    });
+
+    it('should not re-trigger export when the provider callback identity changes for the same entity', () => {
+      const firstTrigger = jest.fn();
+      const secondTrigger = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: firstTrigger,
+        csvExportData: 'col1,col2\nval1,val2',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(firstTrigger).toHaveBeenCalledTimes(1);
+
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: secondTrigger,
+        csvExportData: 'col1,col2\nval1,val2\nval3,val4',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(secondTrigger).not.toHaveBeenCalled();
+    });
+
     it('should call clearCSVExportData on unmount', () => {
       const { unmount } = renderComponent();
 
@@ -487,14 +550,14 @@ describe('BulkEditEntity', () => {
       renderComponent({ columns: [] });
 
       expect(screen.getByTestId('data-grid')).toBeInTheDocument();
-      expect(screen.getByTestId('column-count')).toHaveTextContent('0');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('1');
     });
 
     it('should handle empty breadcrumbList', () => {
       renderComponent({ breadcrumbList: [] });
 
       expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
-      expect(screen.queryByTestId('breadcrumb-item')).not.toBeInTheDocument();
+      expect(screen.getAllByTestId('breadcrumb-item')).toHaveLength(2);
     });
 
     it('should handle undefined validationData at UPDATE step', () => {
@@ -637,11 +700,84 @@ describe('BulkEditEntity', () => {
     it('should pass correct props to DataGrid', () => {
       renderComponent({
         dataSource: mockDataSource,
-        columns: mockColumns as unknown as Column<Record<string, string>[]>[],
+        initialDataSource: mockDataSource,
+        columns: mockColumns,
       });
 
       expect(screen.getByTestId('row-count')).toHaveTextContent('2');
-      expect(screen.getByTestId('column-count')).toHaveTextContent('2');
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should add an operation column to the edit grid', () => {
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        changedCellKeysByRowId: { '0': ['col1'] },
+        changedCellCount: 1,
+        changedRowCount: 1,
+      });
+
+      expect(
+        screen.getByTestId('bulk-edit-operation-summary')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('column-count')).toHaveTextContent('3');
+    });
+
+    it('should freeze operation and metric name columns in the edit grid', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'displayName', name: 'Display Name' },
+        ] as Column<Record<string, string>>[],
+      });
+
+      expect(screen.getByTestId('column-__bulkEditOperation')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-frozen',
+        'true'
+      );
+      expect(screen.getByTestId('column-name*')).toHaveAttribute(
+        'data-width',
+        '200'
+      );
+      expect(screen.getByTestId('column-displayName')).toHaveAttribute(
+        'data-frozen',
+        'false'
+      );
+    });
+
+    it('should classify a blank new metric row as skip and show an error pill', () => {
+      mockEntityType = EntityType.METRIC;
+      renderComponent({
+        activeStep: VALIDATION_STEP.EDIT_VALIDATE,
+        dataSource: [
+          {
+            id: 'new-1',
+            __bulkEditNewRow: 'true',
+            'name*': '',
+            metricType: 'COUNT',
+          },
+        ],
+        initialDataSource: [],
+        columns: [
+          { key: 'name*', name: 'Name' },
+          { key: 'metricType', name: 'Metric Type' },
+        ] as Column<Record<string, string>>[],
+        changedCellCount: 1,
+        changedCellKeysByRowId: { 'new-1': ['metricType'] },
+        changedRowCount: 1,
+      });
+
+      const operationSummary = within(
+        screen.getByTestId('bulk-edit-operation-summary')
+      );
+
+      expect(operationSummary.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText('1 label.error')).toBeInTheDocument();
     });
   });
 
@@ -675,6 +811,15 @@ describe('BulkEditEntity', () => {
 
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     });
+
+    it('should show loader while parent-hydrated source data is loading', () => {
+      renderComponent({
+        isExportHydrationRequired: false,
+        isLoadingSourceData: true,
+      });
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
   });
 
   describe('Banner Loading State', () => {
@@ -700,6 +845,31 @@ describe('BulkEditEntity', () => {
       });
 
       expect(screen.getByTestId('banner-loading')).toHaveTextContent('false');
+    });
+  });
+
+  describe('Export hydration error', () => {
+    it('should show a retriable error instead of the loader when export hydration fails', () => {
+      const triggerExport = jest.fn();
+      const clearData = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: triggerExport,
+        csvExportData: undefined,
+        csvExportError: 'Entity not found: databaseService BigQuery',
+        clearCSVExportData: clearData,
+      });
+
+      renderComponent();
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+        'Entity not found: databaseService BigQuery'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.try-again' }));
+
+      expect(clearData).toHaveBeenCalled();
+      expect(triggerExport).toHaveBeenCalled();
     });
   });
 });

@@ -38,7 +38,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -61,7 +67,6 @@ class SecurityServiceTopology(ServiceTopology):
                 processor="yield_create_request_security_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=[],  # Security services typically don't have child entities like policies, roles, etc.
@@ -99,21 +104,27 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: SecurityServiceMetadataPipeline = self.config.sourceConfig.config
 
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.client = self.get_client()
-        self.test_connection()
+        self.client = self.connection
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
         return self.service_connection.type.name
 
     def close(self):
-        pass
+        if self._connection is not None:
+            self._connection.close()
 
     def yield_create_request_security_service(self, config: WorkflowSource):
         yield Either(right=self.metadata.get_create_service_from_source(entity=SecurityService, config=config))
 
     def test_connection(self) -> None:
-        self.client.test_connection()
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

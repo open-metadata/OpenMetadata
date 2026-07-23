@@ -227,6 +227,9 @@
       },
       "default": []
     },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
+    },
     "owners": {
       "description": "Owners of this dashboard service.",
       "$ref": "../../type/entityReferenceList.json"

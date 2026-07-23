@@ -15,11 +15,13 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
-import { getEntityFQN, getEntityType } from '../../../../../utils/FeedUtils';
+import {
+  getEntityFQN,
+  getEntityType,
+} from '../../../../../utils/FeedUtilsPure';
 import { getEntityIcon } from '../../../../../utils/TableUtils';
 import './announcement-card-v1.less';
 import AnnouncementCardV1Content from './AnnouncementCardV1Content.component';
-
 interface AnnouncementCardV1Props {
   announcement: AnnouncementEntity;
   currentBackgroundColor?: string;
