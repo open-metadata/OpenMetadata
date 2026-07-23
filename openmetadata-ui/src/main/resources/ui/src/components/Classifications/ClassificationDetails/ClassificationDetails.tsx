@@ -388,7 +388,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="h-full overflow-y-auto" data-testid="tags-container">
+      <div
+        className="h-full classification-details-container"
+        data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">
@@ -486,7 +488,7 @@ const ClassificationDetails = forwardRef(
             onUpdate={(updatedData: Classification) =>
               Promise.resolve(handleUpdateClassification?.(updatedData))
             }>
-            <Row className="m-t-md" gutter={16}>
+            <Row className="m-t-md classification-details-content" gutter={16}>
               <Col span={18}>
                 <Card className="classification-details-card">
                   <div className="m-b-sm" data-testid="description-container">
@@ -541,7 +543,7 @@ const ClassificationDetails = forwardRef(
                       loading={isLoading}
                       pagination={false}
                       rowKey="id"
-                      scroll={{ x: true }}
+                      scroll={{ x: true, y: 'calc(100vh - 380px)' }}
                       size="small"
                     />
                   )}
