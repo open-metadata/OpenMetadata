@@ -199,7 +199,7 @@ export const getDataProductDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.DataProduct} />,
+      children: <GenericTab type={PageType.DataProduct} variant="flat" />,
     },
     ...(isVersionsView
       ? []
