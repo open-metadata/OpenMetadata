@@ -14,9 +14,8 @@ REST Auth & Client for Apache Superset
 
 import json
 import traceback
-from operator import attrgetter
 
-from cachetools import LRUCache, cachedmethod
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
@@ -219,7 +218,6 @@ class SupersetAPIClient:
         response = self.client.get(f"/chart/{chart_id}")
         return response  # noqa: RET504
 
-    @cachedmethod(attrgetter("_datasource_cache"))
     def fetch_datasource(self, datasource_id: str) -> SupersetDatasource:
         """
         Fetch data source
@@ -229,19 +227,22 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; a transient failure must stay retryable, not
+        # poison the id with an empty result for the rest of the run.
+        if datasource_id in self._datasource_cache:
+            return self._datasource_cache[datasource_id]
         try:
             datasource_response = self.client.get(f"/dataset/{datasource_id}")
             if datasource_response:
                 datasource_list = SupersetDatasource(**datasource_response)
-                return datasource_list  # noqa: RET504
+                self._datasource_cache[datasource_id] = datasource_list
+                return datasource_list
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the datasource list")
 
         return SupersetDatasource()
 
-    @cachedmethod(attrgetter("_database_cache"))
     def fetch_database(self, database_id: str) -> ListDatabaseResult:
         """
         Fetch database
@@ -251,12 +252,15 @@ class SupersetAPIClient:
         Returns:
             requests.Response
         """
-
+        # Cache only real responses; keep transient failures retryable.
+        if database_id in self._database_cache:
+            return self._database_cache[database_id]
         try:
             database_response = self.client.get(f"/database/{database_id}")
             if database_response:
                 database_list = ListDatabaseResult(**database_response)
-                return database_list  # noqa: RET504
+                self._database_cache[database_id] = database_list
+                return database_list
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the database list")

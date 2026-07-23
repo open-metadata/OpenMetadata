@@ -154,25 +154,32 @@ class SupersetAPISource(SupersetSourceMixin):
         database_json = self.client.fetch_database(datasource_json.result.database.id)
         default_database_name = database_json.result.parameters.database if database_json.result.parameters else None
         db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+        if db_service_entity is None:
+            return default_database_name
         return get_database_name_for_lineage(db_service_entity, default_database_name)
 
-    def _get_source_table_fqn(self, chart_json: FetchChart, db_service_prefix: Optional[str]) -> Optional[str]:  # noqa: UP045
-        (
-            db_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix)
-        database_name = None
-        if db_service_name and chart_json.datasource_id:
-            datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
-            database_name = self._resolve_lineage_database_name(datasource_json, db_service_name)
-        return build_es_fqn_search_string(
-            database_name=prefix_database_name or database_name,
-            schema_name=prefix_schema_name or chart_json.table_schema,
-            service_name=db_service_name or "*",
-            table_name=prefix_table_name or chart_json.table_name,
-        )
+    def _get_source_table_fqn(self, chart_json: FetchChart, db_service_prefix: str | None) -> str | None:
+        try:
+            (
+                db_service_name,
+                prefix_database_name,
+                prefix_schema_name,
+                prefix_table_name,
+            ) = self.parse_db_service_prefix(db_service_prefix)
+            database_name = None
+            if db_service_name and chart_json.datasource_id:
+                datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
+                database_name = self._resolve_lineage_database_name(datasource_json, db_service_name)
+            return build_es_fqn_search_string(
+                database_name=prefix_database_name or database_name,
+                schema_name=prefix_schema_name or chart_json.table_schema,
+                service_name=db_service_name or "*",
+                table_name=prefix_table_name or chart_json.table_name,
+            )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to build source table fqn for [{getattr(chart_json, 'table_name', None)}]: {err}")
+        return None
 
     def yield_dashboard_chart(self, dashboard_details: DashboardResult) -> Iterable[Either[CreateChartRequest]]:
         """Method to fetch charts linked to dashboard"""

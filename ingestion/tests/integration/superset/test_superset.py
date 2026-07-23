@@ -703,6 +703,35 @@ class SupersetUnitTest(TestCase):
             self.superset_api.client.fetch_datasource(8)
         self.assertEqual(mock_get.call_count, 2)
 
+    def test_api_fetch_datasource_failure_is_retryable(self):
+        """
+        A failed/empty fetch is not cached, so a later call for the same id retries instead of
+        being served the poisoned empty result
+        """
+        with patch.object(self.superset_api.client.client, "get", side_effect=[None, {"id": 5}]) as mock_get:
+            first = self.superset_api.client.fetch_datasource(5)
+            second = self.superset_api.client.fetch_datasource(5)
+        self.assertIsNone(first.id)
+        self.assertEqual(second.id, 5)
+        self.assertEqual(mock_get.call_count, 2)
+
+    def test_api_source_table_fqn_missing_db_service_does_not_crash(self):
+        """
+        When the db service prefix is not registered in OM, fqn resolution degrades gracefully
+        instead of raising on a None DatabaseService
+        """
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=None),
+            patch.object(self.superset_api.client, "fetch_datasource", return_value=MOCK_DATASOURCE_RESPONSE),
+            patch.object(self.superset_api.client, "fetch_database", return_value=MOCK_DATABASE_RESPONSE),
+        ):
+            fqn = self.superset_api._get_source_table_fqn(  # pylint: disable=protected-access
+                FetchChart(table_name="orders", schema="main", datasource_id=1),
+                "missing_service",
+            )
+        self.assertIn("orders", fqn)
+        self.assertIn("missing_service", fqn)
+
     def test_is_table_to_table_lineage(self):
         table = Table(name="table_name", schema=Schema(name="schema_name"))
 
