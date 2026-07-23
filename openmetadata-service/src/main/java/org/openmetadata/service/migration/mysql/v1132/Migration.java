@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.mysql.v1132;
 
 import static org.openmetadata.service.migration.utils.v1132.MigrationUtil.fixOwnerDisplayNameAggregation;
+import static org.openmetadata.service.migration.utils.v1132.MigrationUtil.removeBroadPiiContextKeywords;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -18,5 +19,10 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     fixOwnerDisplayNameAggregation();
+    try {
+      removeBroadPiiContextKeywords(handle);
+    } catch (Exception e) {
+      LOG.error("v1132: failed to remove broad PII context keywords", e);
+    }
   }
 }

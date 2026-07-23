@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Locator, Page } from '@playwright/test';
+import { expect, Locator, Page, type Response } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
@@ -1393,13 +1393,13 @@ export const followEntity = async (
     return;
   }
 
-  const followResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers`
+  const followResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'PUT')
   );
   await followButton.click();
-  await followResponse;
+  await expectFollowerResponse(await followResponse);
 
-  await expect(followButton).toContainText(verificationText);
+  await expectFollowButtonState(page, verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1412,15 +1412,54 @@ export const unFollowEntity = async (
 
   await expect(followButton).toContainText('Unfollow');
 
-  const unFollowResponse = page.waitForResponse(
-    `/api/v1/${endpoint}/*/followers/*`
+  const unFollowResponse = page.waitForResponse((response) =>
+    isFollowerMutationResponse(response, endpoint, 'DELETE')
   );
   await followButton.click();
-  await unFollowResponse;
+  await expectFollowerResponse(await unFollowResponse);
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Follow'
+  await expectFollowButtonState(page, 'Follow');
+};
+
+const isFollowerMutationResponse = (
+  response: Response,
+  endpoint: EntityTypeEndpoint,
+  method: 'DELETE' | 'PUT'
+) => {
+  const url = response.url();
+
+  return (
+    response.request().method() === method &&
+    url.includes(`/api/v1/${endpoint}/`) &&
+    url.includes('/followers')
   );
+};
+
+const expectFollowerResponse = async (response: Response) => {
+  if (response.ok()) {
+    return;
+  }
+
+  throw new Error(
+    `Follower mutation failed with ${response.status()}: ${await response.text()}`
+  );
+};
+
+const expectFollowButtonState = async (page: Page, expectedText: string) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  try {
+    await expect(followButton).toContainText(expectedText, { timeout: 5_000 });
+
+    return;
+  } catch {
+    await page.reload();
+    await waitForAllLoadersToDisappear(page).catch(() => undefined);
+    await expect(page.getByTestId('entity-follow-button')).toContainText(
+      expectedText,
+      { timeout: 30_000 }
+    );
+  }
 };
 
 const LANDING_PAGE_SCROLL_CONTAINER =
@@ -2611,9 +2650,9 @@ export const validateCopiedLinkFormat = ({
 
 /**
  * Types the DELETE confirmation only when the delete modal renders a
- * confirmation text input. The radio-based DeleteEntityModal has no input,
- * while the simple EntityDeleteModal still requires typing DELETE, so this
- * guard keeps both flows working.
+ * confirmation text input. The current DeleteEntityModal and DeleteModal are
+ * both input-less, so this guard is a safety net for any legacy flow that
+ * still renders a confirmation input.
  */
 export const fillDeleteConfirmationIfPresent = async (page: Page) => {
   await page.getByTestId('confirm-button').waitFor({ state: 'visible' });

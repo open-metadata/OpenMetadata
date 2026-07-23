@@ -29,6 +29,7 @@ import {
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addTagToTableColumn,
@@ -257,11 +258,14 @@ test('Classification Page', async ({ page }) => {
 
     await validateForm(page);
 
-    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-    await page.fill(
-      '[data-testid="displayName"]',
-      NEW_CLASSIFICATION.displayName
-    );
+    await page
+      .getByTestId('name')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.displayName);
     await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
@@ -291,14 +295,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_TAG.name);
-    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+    await page.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
-    await page
-      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-      .click();
+    await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
       .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
       .click();
@@ -360,10 +364,9 @@ test('Classification Page', async ({ page }) => {
     const permissions = page.waitForResponse(
       'api/v1/permissions/databaseSchema/name/*'
     );
-    await page
-      .getByTestId('breadcrumb')
-      .getByRole('link', { name: entity.name })
-      .click();
+    // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+    // narrow viewports, so navigate through the overflow-aware helper.
+    await clickBreadcrumbAncestor(page, entity.name);
 
     await databaseSchemaPage;
     await permissions;
@@ -488,8 +491,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="manage-button"]');
 
     await page.click('[data-testid="delete-button"]');
-
-    await page.click('[data-testid="hard-delete"]');
 
     const deleteClassification = page.waitForResponse(
       (response) =>

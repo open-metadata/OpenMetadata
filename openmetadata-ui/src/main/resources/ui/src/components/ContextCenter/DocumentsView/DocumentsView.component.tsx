@@ -19,34 +19,31 @@ import {
   Checkbox,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   FileIcon,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronRight,
-  Copy06,
-  Download01,
-  Pin02,
-  Trash01,
-} from '@untitledui/icons';
+import { Check, ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
+import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentsViewProps,
   FileActionsProps,
@@ -61,12 +58,28 @@ import {
    dropdown from the bulk Move button in ListHeader.
 --------------------------------------------------------------- */
 
+const FOLDER_PICKER_SCROLL_THRESHOLD = 24;
+
 const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
   folders,
   currentFolderId,
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   onPick,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
+
+  const handleMenuScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (
+      hasMoreFolders &&
+      !isLoadingMoreFolders &&
+      scrollHeight - scrollTop - clientHeight < FOLDER_PICKER_SCROLL_THRESHOLD
+    ) {
+      onLoadMoreFolders?.();
+    }
+  };
 
   if (folders.length === 0) {
     return (
@@ -79,7 +92,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
   return (
     <Dropdown.Menu
       className="tw:max-h-48 tw:overflow-y-auto"
-      onAction={(key) => onPick(key as string)}>
+      onAction={(key) => onPick(key as string)}
+      onScroll={handleMenuScroll}>
       {folders.map((folder) => {
         const isCurrent = folder.id === currentFolderId;
 
@@ -115,6 +129,17 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
           </Dropdown.Item>
         );
       })}
+      {isLoadingMoreFolders && (
+        <Box
+          align="center"
+          className="tw:px-3 tw:py-2"
+          data-testid="folder-picker-loading-more"
+          justify="center">
+          <Typography className="tw:text-quaternary" size="text-xs">
+            {t('label.loading')}
+          </Typography>
+        </Box>
+      )}
     </Dropdown.Menu>
   );
 };
@@ -128,8 +153,11 @@ const FileActions: FC<FileActionsProps> = ({
   canEdit,
   file,
   folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   onDeleteFile,
   onFileMoved,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
@@ -167,12 +195,13 @@ const FileActions: FC<FileActionsProps> = ({
 
   return (
     <Dropdown.Root>
-      <Tooltip
-        title={t('label.manage-entity', { entity: t('label.document') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.document') })}
+      />
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
@@ -184,13 +213,21 @@ const FileActions: FC<FileActionsProps> = ({
             <SubmenuTrigger>
               <Dropdown.Item
                 data-testid="move-btn"
-                icon={Pin02}
                 isDisabled={isMoving || folders.length === 0}>
                 {() => (
                   <Box align="center" justify="between">
-                    <Typography ellipsis className="tw:grow tw:text-secondary">
-                      {t('label.move-to-folder')}
-                    </Typography>
+                    <Box align="center" gap={2}>
+                      <MoveFolderIcon
+                        className="tw:text-secondary"
+                        height={20}
+                        width={20}
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:grow tw:text-secondary">
+                        {t('label.move-to-folder')}
+                      </Typography>
+                    </Box>
                     <ChevronRight
                       aria-hidden="true"
                       className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
@@ -206,6 +243,9 @@ const FileActions: FC<FileActionsProps> = ({
                 <FolderPickerMenu
                   currentFolderId={file.folder?.id}
                   folders={folders}
+                  hasMoreFolders={hasMoreFolders}
+                  isLoadingMoreFolders={isLoadingMoreFolders}
+                  onLoadMoreFolders={onLoadMoreFolders}
                   onPick={handleMoveToFolder}
                 />
               </Dropdown.Popover>
@@ -215,9 +255,11 @@ const FileActions: FC<FileActionsProps> = ({
           {canDelete && (
             <Dropdown.Item data-testid="delete-btn" id="delete">
               <Box align="center" gap={2}>
-                <Trash01
+                <TrashIcon
                   aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                  className="tw:shrink-0 tw:text-error-primary"
+                  height={20}
+                  width={20}
                 />
                 <Typography
                   ellipsis
@@ -279,12 +321,15 @@ const ListHeader: FC<ListHeaderProps> = ({
   canDelete,
   canEdit,
   folders = [],
+  hasMoreFolders = false,
+  isLoadingMoreFolders = false,
   selectedCount,
   totalFileCount,
   onClear,
   onBulkDelete,
   onBulkMove,
   onBulkDownload,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
@@ -316,7 +361,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<Download01 size={18} />}
+          iconLeading={<DownloadIcon height={18} width={18} />}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -337,6 +382,9 @@ const ListHeader: FC<ListHeaderProps> = ({
             <Dropdown.Popover className="tw:w-52" placement="bottom end">
               <FolderPickerMenu
                 folders={folders}
+                hasMoreFolders={hasMoreFolders}
+                isLoadingMoreFolders={isLoadingMoreFolders}
+                onLoadMoreFolders={onLoadMoreFolders}
                 onPick={(folderId) => onBulkMove?.(folderId)}
               />
             </Dropdown.Popover>
@@ -348,7 +396,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<Trash01 size={16} />}
+            iconLeading={<TrashIcon height={16} width={16} />}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}
@@ -388,13 +436,16 @@ const FileRow: FC<FileRowProps> = ({
   canEdit,
   file,
   folders,
+  hasMoreFolders,
   isActive,
+  isLoadingMoreFolders,
   isSelected,
   onDeleteFile,
   onDownload,
   onFileMoved,
   onPreview,
   onSelectFile,
+  onLoadMoreFolders,
 }) => {
   const { t } = useTranslation();
 
@@ -449,15 +500,13 @@ const FileRow: FC<FileRowProps> = ({
       />
 
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Box align="center" className="tw:min-w-0" gap={2}>
-          <Typography
-            ellipsis
-            data-testid="document-name"
-            size="text-sm"
-            weight="medium">
-            {fileName}
-          </Typography>
-        </Box>
+        <Typography
+          ellipsis
+          data-testid="document-name"
+          size="text-sm"
+          weight="medium">
+          {fileName}
+        </Typography>
         <Box align="center" gap={2} wrap="wrap">
           <Typography
             className="tw:text-quaternary"
@@ -465,17 +514,6 @@ const FileRow: FC<FileRowProps> = ({
             size="text-xs">
             {formattedFileSize}
           </Typography>
-          {Boolean(file.memoryCount) && (
-            <>
-              <Dot className="tw:text-quaternary" size="micro" />
-              <Typography
-                className="tw:text-quaternary"
-                data-testid="document-memory-count"
-                size="text-xs">
-                {file.memoryCount} {t('label.memory-plural').toLowerCase()}
-              </Typography>
-            </>
-          )}
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
@@ -518,29 +556,27 @@ const FileRow: FC<FileRowProps> = ({
         gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-        <DocumentStatusBadge
-          error={file.processingError}
-          stats={file.extractionStats}
-          status={file.processingStatus}
-        />
         <ButtonUtility
           className="tw:ml-1.5"
           color="tertiary"
           data-testid="download-btn"
-          icon={<Download01 size={19} />}
+          icon={<DownloadIcon height={20} width={20} />}
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton className="tw:w-7.5 tw:h-7.5" url={rowUrl}>
-          <Copy06 aria-hidden="true" size={19} strokeWidth={1.8} />
+        <CopyLinkButton url={rowUrl}>
+          <CopyIcon aria-hidden="true" height={20} width={20} />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
           canEdit={canEdit}
           file={file}
           folders={folders}
+          hasMoreFolders={hasMoreFolders}
+          isLoadingMoreFolders={isLoadingMoreFolders}
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
+          onLoadMoreFolders={onLoadMoreFolders}
         />
       </Box>
     </Box>
@@ -563,11 +599,14 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   canEdit,
   data,
   folders,
+  hasMoreFolders,
+  isLoadingMoreFolders,
   totalFileCount,
   isLoading,
   isLoadingMore,
   previewFileId,
   selectedIds,
+  selectedFolderName,
   onBulkDelete,
   onBulkDownload,
   onBulkMove,
@@ -577,7 +616,10 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onPreview,
   onSelectFile,
   onScrollEnd,
+  onUploadFile,
+  onLoadMoreFolders,
 }) => {
+  const { t } = useTranslation();
   const selectedCount = selectedIds?.size ?? 0;
 
   const handleClear = () => {
@@ -597,7 +639,10 @@ const DocumentsView: FC<DocumentsViewProps> = ({
 
   return (
     <Card
-      className="tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0"
+      className={classNames(
+        'tw:flex tw:overflow-hidden tw:h-full tw:flex-1 tw:min-w-0',
+        { 'tw:rounded-tr-none tw:rounded-br-none': previewFileId }
+      )}
       data-testid="documents-view">
       {data.length > 0 || isLoading ? (
         <Box
@@ -608,12 +653,15 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               canDelete={canDelete}
               canEdit={canEdit}
               folders={folders}
+              hasMoreFolders={hasMoreFolders}
+              isLoadingMoreFolders={isLoadingMoreFolders}
               selectedCount={selectedCount}
               totalFileCount={totalFileCount}
               onBulkDelete={onBulkDelete}
               onBulkDownload={onBulkDownload}
               onBulkMove={onBulkMove}
               onClear={handleClear}
+              onLoadMoreFolders={onLoadMoreFolders}
             />
           )}
           <Box
@@ -630,12 +678,15 @@ const DocumentsView: FC<DocumentsViewProps> = ({
                     canEdit={canEdit}
                     file={file}
                     folders={folders}
+                    hasMoreFolders={hasMoreFolders}
                     isActive={previewFileId === file.id}
+                    isLoadingMoreFolders={isLoadingMoreFolders}
                     isSelected={selectedIds?.has(file.id)}
                     key={file.id}
                     onDeleteFile={onDeleteFile}
                     onDownload={onDownload}
                     onFileMoved={onFileMoved}
+                    onLoadMoreFolders={onLoadMoreFolders}
                     onPreview={onPreview}
                     onSelectFile={onSelectFile}
                   />
@@ -650,10 +701,38 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             )}
           </Box>
         </Box>
+      ) : selectedFolderName ? (
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            actions={
+              onUploadFile
+                ? [
+                    {
+                      color: 'primary',
+                      key: 'upload-file',
+                      label: t('label.upload-file'),
+                      onClick: onUploadFile,
+                    },
+                  ]
+                : []
+            }
+            description={t('message.context-center-folder-empty-subtitle')}
+            icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+            title={t('label.folder-name-is-empty', {
+              folderName: selectedFolderName,
+            })}
+            variant="blank"
+          />
+        </div>
       ) : (
-        <Box align="center" className="tw:flex-1 tw:p-12" justify="center">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-        </Box>
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
+        </div>
       )}
     </Card>
   );

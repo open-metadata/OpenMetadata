@@ -1051,5 +1051,5 @@ class AirflowSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
 
     def close(self):
-        self.metadata.compute_percentile(Pipeline, self.today)
         self.session.close()
+        super().close()

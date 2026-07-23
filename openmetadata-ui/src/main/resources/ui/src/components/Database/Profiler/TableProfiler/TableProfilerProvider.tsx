@@ -62,11 +62,11 @@ import {
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
-const TestCaseFormV1 = withSuspenseFallback(
+const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
     () =>
       import(
-        '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1'
+        '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer'
       )
   )
 );
@@ -398,17 +398,13 @@ export const TableProfilerProvider = ({
           onVisibilityChange={handleSettingModal}
         />
       )}
-      {isTestCaseDrawerOpen && (
-        <TestCaseFormV1
-          drawerProps={{
-            open: isTestCaseDrawerOpen,
-          }}
-          table={table}
-          testLevel={testLevel}
-          onCancel={handleCloseTestCaseDrawer}
-          onFormSubmit={onTestCaseSubmit}
-        />
-      )}
+      <TestCaseFormDrawer
+        open={isTestCaseDrawerOpen}
+        table={table}
+        testLevel={testLevel}
+        onClose={handleCloseTestCaseDrawer}
+        onFormSubmit={onTestCaseSubmit}
+      />
     </TableProfilerContext.Provider>
   );
 };

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from '@playwright/test';
+import { Page, test as setup } from '@playwright/test';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -21,6 +21,26 @@ import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
 import { getApiContext, uuid } from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
+
+/**
+ * Opt every E2E session out of client-side conditional (If-None-Match) reads.
+ *
+ * The server ETag only covers the entity's version/updatedAt, so it does not change for
+ * relationship-only or child mutations (followers, votes, customMetrics, testSuite). A refetch
+ * racing such a mutation can be answered "not modified" and render a stale body, which surfaces
+ * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
+ * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
+ */
+// Keep in sync with DISABLE_ETAG_CONDITIONAL_READS_KEY in src/rest/etagInterceptor.ts.
+// Inlined deliberately: importing it across the playwright -> src boundary resolves to
+// undefined at runtime, which silently wrote the flag under the key "undefined".
+const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
+
+const disableEtagConditionalReads = async (page: Page) => {
+  await page.evaluate((key) => {
+    localStorage.setItem(key, 'true');
+  }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+};
 
 const adminFile = 'playwright/.auth/admin.json';
 const dataConsumerFile = 'playwright/.auth/dataConsumer.json';
@@ -208,42 +228,50 @@ setup('authenticate all users', async ({ browser }) => {
     await adminPage.waitForTimeout(2000);
 
     // Save admin state
+    await disableEtagConditionalReads(newAdminPage);
     await newAdminPage
       .context()
       .storageState({ path: adminFile, indexedDB: true });
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
+    await disableEtagConditionalReads(dataConsumerPage);
     await dataConsumerPage
       .context()
       .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
+    await disableEtagConditionalReads(dataStewardPage);
     await dataStewardPage
       .context()
       .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
+    await disableEtagConditionalReads(editDescriptionPage);
     await editDescriptionPage
       .context()
       .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
+    await disableEtagConditionalReads(editTagsPage);
     await editTagsPage
       .context()
       .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
+    await disableEtagConditionalReads(editGlossaryTermPage);
     await editGlossaryTermPage
       .context()
       .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await viewOnlyUser.login(viewOnlyPage);
+    await disableEtagConditionalReads(viewOnlyPage);
     await viewOnlyPage
       .context()
       .storageState({ path: viewOnlyFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
+    await disableEtagConditionalReads(ownerPage);
     await ownerPage
       .context()
       .storageState({ path: ownerFile, indexedDB: true });

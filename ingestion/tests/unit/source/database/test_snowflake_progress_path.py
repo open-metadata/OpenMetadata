@@ -14,9 +14,10 @@ import inspect
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.ingestion.source.database import database_service
 from metadata.ingestion.source.database.snowflake import metadata as snowflake_metadata
-from metadata.utils.progress_registry import ProgressRegistry
 
 
 class _ConcreteSource(database_service.DatabaseServiceSource):
@@ -32,7 +33,7 @@ def _path_for(database, schema, entity_type_name):
     ctx = SimpleNamespace(database=database, database_schema=schema)
     source.context = MagicMock()
     source.context.get.return_value = ctx
-    return source.current_progress_path(entity_type_name)
+    return source.progress_tracker.current_path(entity_type_name)
 
 
 class TestSnowflakeProgressPath:
@@ -65,14 +66,14 @@ class TestSnowflakeProgressPath:
 
 
 class TestProgressOptIn:
-    def test_database_family_is_off_by_default(self):
-        assert database_service.DatabaseServiceSource.progress_tracking_enabled is False
+    def test_database_family_is_auto_by_default(self):
+        assert database_service.DatabaseServiceSource.progress_mode is ProgressMode.AUTO
 
-    def test_concrete_db_source_inherits_off(self):
-        assert _ConcreteSource.progress_tracking_enabled is False
+    def test_concrete_db_source_inherits_auto(self):
+        assert _ConcreteSource.progress_mode is ProgressMode.AUTO
 
-    def test_snowflake_is_opted_in(self):
-        assert snowflake_metadata.SnowflakeSource.progress_tracking_enabled is True
+    def test_snowflake_is_auto(self):
+        assert snowflake_metadata.SnowflakeSource.progress_mode is ProgressMode.AUTO
 
 
 class TestStaleContextDoesNotStrandDatabases:
@@ -83,7 +84,7 @@ class TestStaleContextDoesNotStrandDatabases:
 
     def _path(self, source, ctx, entity_type_name):
         source.context.get.return_value = ctx
-        return source.current_progress_path(entity_type_name)
+        return source.progress_tracker.current_path(entity_type_name)
 
     def test_second_database_completes_and_prunes(self):
         source = object.__new__(_ConcreteSource)

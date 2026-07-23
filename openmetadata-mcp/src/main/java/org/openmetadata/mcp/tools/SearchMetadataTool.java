@@ -13,10 +13,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -138,6 +140,10 @@ public class SearchMetadataTool implements McpTool {
           from = 0;
         }
       }
+    }
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(stringParam(params, "cursor", null));
+    if (cursor.isPresent() && cursor.get().isOffset()) {
+      from = cursor.get().offset();
     }
 
     size = Math.min(size, 50);
@@ -374,7 +380,8 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    if (totalResults > requestedLimit) {
+    boolean moreInIndex = (long) from + cleanedResults.size() < totalResults;
+    if (moreInIndex) {
       result.put(
           "message",
           String.format(
@@ -385,9 +392,28 @@ public class SearchMetadataTool implements McpTool {
       result.put("hasMore", true);
     }
 
-    fitResultsToBudget(result, cleanedResults, totalResults, from, query);
+    fitResultsToBudget(result, cleanedResults, totalResults, query);
+    attachPagingContract(result, from, totalResults);
 
     return result;
+  }
+
+  /**
+   * Sets the unified paging markers. {@code total} is the real ES hit count; {@code nextCursor}
+   * advances by the count actually returned this page (after any budget trim) so the next call never
+   * skips rows. Emitted only when {@code hasMore} was set — either the total exceeds this page or the
+   * size budget trimmed it.
+   */
+  private static void attachPagingContract(
+      Map<String, Object> result, int from, long totalResults) {
+    result.put(McpResponseTrim.TOTAL_KEY, totalResults);
+    int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY)) && returned > 0) {
+      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    } else if (returned == 0) {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+      result.remove(McpResponseTrim.MESSAGE_KEY);
+    }
   }
 
   /**
@@ -401,7 +427,6 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result,
       List<Map<String, Object>> cleanedResults,
       long totalResults,
-      int from,
       String query) {
     long overhead = overheadWithoutResults(result);
     int fit = ResponseBudget.fitCount(cleanedResults, overhead);
@@ -419,8 +444,8 @@ public class SearchMetadataTool implements McpTool {
           "message",
           String.format(
               "Returning %d of %d results to stay within the response size budget. "
-                  + "Fetch more with 'from'=%d, or narrow the query with a service, schema, or name.",
-              trimmed.size(), totalResults, from + trimmed.size()));
+                  + "Pass 'nextCursor' to fetch the next page, or narrow the query.",
+              trimmed.size(), totalResults));
     }
   }
 

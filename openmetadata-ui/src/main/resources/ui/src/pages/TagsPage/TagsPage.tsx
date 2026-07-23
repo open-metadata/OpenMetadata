@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
+import {
+  Badge,
+  Box,
+  Button,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Grid01, Plus, Star01, Tag01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
@@ -65,15 +72,21 @@ import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
-import { DeleteTagsType } from './TagsPage.interface';
+import {
+  DeleteTagsType,
+  TagFormValues,
+  TAG_FORM_DEFAULTS,
+} from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
-  const [tagForm] = useForm();
-  const [classificationForm] = useForm();
+  const tagForm = useForm<TagFormValues>({ defaultValues: TAG_FORM_DEFAULTS });
+  const classificationForm = useForm<TagFormValues>({
+    defaultValues: TAG_FORM_DEFAULTS,
+  });
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -594,7 +607,7 @@ const TagsPage = () => {
 
   const handleTagDrawerClose = useCallback(() => {
     setIsTagDrawerOpen(false);
-    tagForm.resetFields();
+    tagForm.reset();
     setEditTag(undefined);
   }, [tagForm]);
 
@@ -604,12 +617,12 @@ const TagsPage = () => {
 
   const handleClassificationDrawerClose = useCallback(() => {
     setIsClassificationDrawerOpen(false);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleClassificationDrawerOpen = useCallback(() => {
     setIsClassificationDrawerOpen(true);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleTagFormSubmit = useCallback(
@@ -648,7 +661,7 @@ const TagsPage = () => {
 
   const handleAddNewTagClick = useCallback(() => {
     setEditTag(undefined);
-    tagForm.resetFields();
+    tagForm.reset();
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
@@ -668,7 +681,7 @@ const TagsPage = () => {
                   iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
                   size="sm"
                   onClick={() => {
-                    classificationForm.resetFields();
+                    classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
                   <span className="tw:text-brand-600 tw:font-normal">
@@ -736,6 +749,49 @@ const TagsPage = () => {
     ]
   );
 
+  const classificationEmptyState = (
+    <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px] tw:border tw:border-border-secondary">
+      <EmptyPlaceholder
+        actions={
+          createClassificationPermission
+            ? [
+                {
+                  key: 'new-classification',
+                  label: t('label.new-classification'),
+                  color: 'primary',
+                  iconLeading: Plus,
+                  onPress: handleClassificationDrawerOpen,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.classification-empty-state-description')}
+        features={[
+          {
+            key: 'create',
+            icon: <Grid01 className="tw:text-fg-brand-primary" />,
+            title: t('label.create-a-classification'),
+            description: t('message.classification-create-description'),
+          },
+          {
+            key: 'tags',
+            icon: <Tag01 className="tw:text-fg-warning-primary" />,
+            title: t('label.add-tags-inside-it'),
+            description: t('message.classification-add-tags-description'),
+          },
+          {
+            key: 'assets',
+            icon: <Star01 className="tw:text-fg-success-primary" />,
+            title: t('label.tag-your-assets'),
+            description: t('message.classification-tag-assets-description'),
+          },
+        ]}
+        title={t('message.classification-empty-state-title')}
+        variant="features"
+      />
+    </Box>
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -751,58 +807,62 @@ const TagsPage = () => {
 
   return (
     <div>
-      <ResizableLeftPanels
-        showLearningIcon
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: leftPanelLayout,
-          title: t('label.classification-plural'),
-        }}
-        learningPageId={LEARNING_PAGE_IDS.CLASSIFICATION}
-        learningTitle={t('label.classification-plural')}
-        pageTitle={getEntityName(currentClassification)}
-        secondPanel={{
-          children: (
-            <>
-              <ClassificationDetails
-                classificationPermissions={classificationPermissions}
-                currentClassification={currentClassification}
-                deleteTags={deleteTags}
-                disableEditButton={disableEditButton}
-                handleActionDeleteTag={handleActionDeleteTag}
-                handleAddNewTagClick={handleAddNewTagClick}
-                handleAfterDeleteAction={handleAfterDeleteAction}
-                handleEditTagClick={handleEditTagClick}
-                handleToggleDisable={handleToggleDisable}
-                handleUpdateClassification={handleUpdateClassification}
-                isAddingTag={false}
-                isClassificationLoading={isClassificationLoading}
-                ref={classificationDetailsRef}
-              />
+      {classifications.length === 0 ? (
+        classificationEmptyState
+      ) : (
+        <ResizableLeftPanels
+          showLearningIcon
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            minWidth: 280,
+            flex: 0.13,
+            children: leftPanelLayout,
+            title: t('label.classification-plural'),
+          }}
+          learningPageId={LEARNING_PAGE_IDS.CLASSIFICATION}
+          learningTitle={t('label.classification-plural')}
+          pageTitle={getEntityName(currentClassification)}
+          secondPanel={{
+            children: (
+              <>
+                <ClassificationDetails
+                  classificationPermissions={classificationPermissions}
+                  currentClassification={currentClassification}
+                  deleteTags={deleteTags}
+                  disableEditButton={disableEditButton}
+                  handleActionDeleteTag={handleActionDeleteTag}
+                  handleAddNewTagClick={handleAddNewTagClick}
+                  handleAfterDeleteAction={handleAfterDeleteAction}
+                  handleEditTagClick={handleEditTagClick}
+                  handleToggleDisable={handleToggleDisable}
+                  handleUpdateClassification={handleUpdateClassification}
+                  isAddingTag={false}
+                  isClassificationLoading={isClassificationLoading}
+                  ref={classificationDetailsRef}
+                />
 
-              <DeleteModal
-                entityTitle={deleteTags.data?.name ?? ''}
-                message={t('message.delete-entity-message', {
-                  entity: deleteTags.data?.name ?? '',
-                })}
-                open={deleteTags.state}
-                onCancel={handleCancelClassificationDelete}
-                onDelete={handleConfirmClick}
-              />
-            </>
-          ),
-          className: 'content-resizable-panel-container',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
+                <DeleteModal
+                  entityTitle={deleteTags.data?.name ?? ''}
+                  message={t('message.delete-entity-message', {
+                    entity: deleteTags.data?.name ?? '',
+                  })}
+                  open={deleteTags.state}
+                  onCancel={handleCancelClassificationDelete}
+                  onDelete={handleConfirmClick}
+                />
+              </>
+            ),
+            className: 'content-resizable-panel-container',
+            minWidth: 800,
+            flex: 0.87,
+          }}
+        />
+      )}
 
       <TagFormDrawer
         editTag={editTag}
-        formRef={tagForm}
+        form={tagForm}
         isLoading={isTagFormLoading}
         isTier={isTier}
         open={isTagDrawerOpen}
@@ -814,7 +874,7 @@ const TagsPage = () => {
 
       <ClassificationFormDrawer
         classifications={classifications}
-        formRef={classificationForm}
+        form={classificationForm}
         isLoading={isClassificationFormLoading}
         isTier={isTier}
         open={isClassificationDrawerOpen}

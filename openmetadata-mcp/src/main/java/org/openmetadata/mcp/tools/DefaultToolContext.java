@@ -88,6 +88,9 @@ public class DefaultToolContext {
         case "get_asset_context":
           result = new GetAssetContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_persona_context":
+          result = new GetPersonaContextTool().execute(authorizer, securityContext, params);
+          break;
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;

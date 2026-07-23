@@ -455,7 +455,7 @@ test.describe('Metric search result highlight', () => {
     await afterAction();
   });
 
-  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+  test('breadcrumb shows the entity category and display name header should have highlighted terms', async ({
     page,
   }) => {
     await test.step('Select Metric search index and search', async () => {
@@ -496,24 +496,23 @@ test.describe('Metric search result highlight', () => {
       await page.getByTestId('search-results').waitFor({ state: 'visible' });
     });
 
-    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+    await test.step('Verify breadcrumb shows the Metrics category without HTML tags', async () => {
       const entityCard = page.getByTestId(
         `table-data-card_${metric.entity.name}`
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      // The result-card breadcrumb migrated to the core Breadcrumbs component:
-      // the category ("Metrics") renders as a link and the entity name is the
-      // current (last) crumb marked aria-current="page". `exact` keeps the link
-      // match off the entity-name link (which contains "metric").
-      await expect(
-        entityCard.getByRole('link', { exact: true, name: 'Metrics' })
-      ).toBeVisible();
-
-      const currentCrumb = entityCard.locator('[aria-current="page"]');
-      await expect(currentCrumb).toHaveText(metric.entity.name);
-      await expect(currentCrumb).not.toContainText('<span');
-      await expect(currentCrumb).not.toContainText('text-highlighter');
+      // The result-card breadcrumb (core Breadcrumbs) shows only the ancestor
+      // trail — it excludes the current entity, which the card renders as its
+      // title. A Metric's sole ancestor is the "Metrics" category, so it is the
+      // last (plain, non-link) crumb. The entity name lives in the card title
+      // (asserted below), so search-highlight markup can never leak into the
+      // breadcrumb.
+      const breadcrumb = entityCard.getByRole('list', { name: 'Breadcrumb' });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText('Metrics');
+      await expect(breadcrumb).not.toContainText('<span');
+      await expect(breadcrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {

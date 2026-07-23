@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { act, ComponentType } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -89,11 +90,20 @@ const ModeRoutesMock: ComponentType = () => (
   <div data-testid="custom-mode-routes" />
 );
 
+const makeQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
+    },
+  });
+
 const renderRouter = () =>
   render(
-    <MemoryRouter>
-      <AppRouter />
-    </MemoryRouter>
+    <QueryClientProvider client={makeQueryClient()}>
+      <MemoryRouter>
+        <AppRouter />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
 describe('AppRouter — App Mode routing integration', () => {
