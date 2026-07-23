@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +41,7 @@ import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -1967,6 +1969,78 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_hardDeleteReapsResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_reap_children"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    org.openmetadata.schema.tests.type.TestCaseResolutionStatus status =
+        client.testCaseResolutionStatuses().create(newStatus);
+    UUID statusId = status.getId();
+
+    assertEquals(
+        1,
+        countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+        "resolution-status time-series row should exist before delete");
+    assertEquals(
+        1, countRelationshipsTo(statusId), "parentOf relationship should exist before delete");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.testCases().delete(testCase.getId().toString(), params);
+
+    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
+    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
+    Awaitility.await("resolution-status children reaped after hard delete")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                  "resolution-status time-series row must be hard deleted with its test case");
+              assertEquals(
+                  0,
+                  countRelationshipsTo(statusId),
+                  "parentOf relationship must be cleaned up, otherwise it is left orphaned");
+            });
+  }
+
+  private int countRowsById(String tableName, String id) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
+                    .bind("id", id)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private int countRelationshipsTo(UUID toId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE toId = :id")
+                    .bind("id", toId.toString())
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -2629,6 +2703,86 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_searchListIncidentIdClearedAfterResolve(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_search_resolve"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Test failed - trigger incident"));
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "*")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .queryParam("offset", "0")
+            .build();
+
+    // The failure materializes the incident into the search document (compute-at-index).
+    Awaitility.await("search/list shows the open incident")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertNotNull(searchListIncidentId(client, table, testCase, options)));
+
+    // Acknowledge then resolve: pure status transitions, no new test result.
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+                .withTestCaseResolutionStatusDetails(
+                    new org.openmetadata.schema.tests.type.Resolved()));
+
+    // A resolve carries no test result, so only the targeted search update can clear the pointer.
+    Awaitility.await("search/list incidentId cleared after resolve")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertNull(searchListIncidentId(client, table, testCase, options)));
+  }
+
+  private UUID searchListIncidentId(
+      OpenMetadataClient client, Table table, TestCase testCase, RequestOptions options) {
+    String responseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+    TestCaseResource.TestCaseList result =
+        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+    TestCase matching =
+        result.getData().stream()
+            .filter(tc -> testCase.getId().equals(tc.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(matching, "Expected created test case in search/list response");
+    return matching.getIncidentId();
+  }
+
+  @Test
   void test_searchListReturnsIncidentIdWhenFieldsIncludeAll(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -2840,6 +2994,158 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   org.openmetadata.schema.tests.type.TestCaseStatus.Failed,
                   matching.getTestCaseStatus());
             });
+  }
+
+  @Test
+  void test_incidentIdDerivation_followsLatestUnresolvedTcrs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_derivation"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase beforeIncident = client.testCases().get(testCase.getId().toString(), "incidentId");
+    assertNull(beforeIncident.getIncidentId(), "no incident yet -> incidentId must be null");
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Initial failure"));
+
+    final UUID stateId =
+        Awaitility.await()
+            .atMost(90, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () ->
+                    client
+                        .testCases()
+                        .get(testCase.getId().toString(), "incidentId")
+                        .getIncidentId(),
+                java.util.Objects::nonNull);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+
+    Awaitility.await("Ack keeps the ongoing incident pointer")
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Ack,
+                  latestStatus.getTestCaseResolutionStatusType());
+              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
+              assertEquals(stateId, fetched.getIncidentId());
+            });
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+                .withTestCaseResolutionStatusDetails(
+                    new org.openmetadata.schema.tests.type.Resolved()));
+
+    Awaitility.await("Resolved clears the ongoing incident pointer")
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
+              assertNull(fetched.getIncidentId());
+              assertNull(
+                  bulkListedIncidentId(client, table, testCase),
+                  "bulk list derivation must also clear the pointer after resolve");
+            });
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+
+    Awaitility.await("reopen restores the same incident pointer")
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
+                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Ack,
+                  latestStatus.getTestCaseResolutionStatusType());
+              assertEquals(stateId, latestStatus.getStateId());
+              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
+              assertEquals(stateId, fetched.getIncidentId());
+              assertEquals(
+                  stateId,
+                  bulkListedIncidentId(client, table, testCase),
+                  "bulk list derivation must agree with the single read");
+            });
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis() + 1)
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success)
+                .withResult("Passing while incident open"));
+
+    Awaitility.await("open incident stays visible while the test passes")
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(testCase.getId().toString(), "incidentId,testCaseResult");
+              assertNotNull(fetched.getTestCaseResult());
+              assertEquals(
+                  org.openmetadata.schema.tests.type.TestCaseStatus.Success,
+                  fetched.getTestCaseResult().getTestCaseStatus());
+              assertEquals(stateId, fetched.getIncidentId());
+            });
+  }
+
+  private UUID bulkListedIncidentId(OpenMetadataClient client, Table table, TestCase testCase) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "incidentId")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .build();
+
+    String responseJson =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/dataQuality/testCases", null, options);
+    TestCaseResource.TestCaseList result =
+        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+
+    return result.getData().stream()
+        .filter(tc -> testCase.getId().equals(tc.getId()))
+        .findFirst()
+        .map(TestCase::getIncidentId)
+        .orElse(null);
   }
 
   private org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestIncidentStatus(

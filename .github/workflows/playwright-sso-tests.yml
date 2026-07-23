@@ -26,6 +26,7 @@
 name: SSO Playwright E2E Tests
 
 on:
+  merge_group:
   pull_request_target:
     types:
       - labeled
@@ -86,12 +87,6 @@ jobs:
         provider: ${{ github.event_name == 'pull_request_target' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
 
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -124,8 +119,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v4
@@ -164,6 +160,7 @@ jobs:
           python-version: "3.10"
           args: "-d postgresql -i false"
           ingestion_dependency: "all"
+          install-test-dependencies: "false"
         env:
           AUTHENTICATION_PROVIDER: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || 'basic' }}
           CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${{ matrix.provider == 'mock-oidc' && 'mock-oidc' || '' }}
@@ -296,7 +293,7 @@ jobs:
         continue-on-error: true
         env:
           MATRIX_OUTCOME: ${{ needs.sso-auth-tests.result }}
-          SOURCE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/sso-results-json-*/sso-results.json' \

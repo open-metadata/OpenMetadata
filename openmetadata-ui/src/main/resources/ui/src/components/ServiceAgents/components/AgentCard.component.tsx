@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -35,6 +36,7 @@ import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
+  canRunAgent,
   fmtNum,
   formatEtaLong,
   getAgentTypeLabelKey,
@@ -54,7 +56,7 @@ interface AgentCardProps {
   agent: Agent;
   allowedActions?: string[];
   permissions?: AgentActionPermissions;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
@@ -82,6 +84,9 @@ const AgentCard: FC<AgentCardProps> = ({
   const isQueued = agent.status === 'queued';
   const isSuccess = agent.status === 'success';
   const isNone = agent.status === 'none';
+  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+  // flag means the agent is running and only an explicit false means paused.
+  const isPaused = agent.enabled === false;
   const showLastRunMetric =
     isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
   const finishedSuffix = agent.finishedAt
@@ -153,46 +158,60 @@ const AgentCard: FC<AgentCardProps> = ({
           <Box
             align="center"
             className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            <StatusPill status={agent.status} />
-            {isRunning && (
-              <Metric
-                dataTestId="agent-assets-metric"
-                icon={unitIcon}
-                label={unitVerbLabel}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isRunning && (
-              <Metric
-                dataTestId="agent-eta-metric"
-                icon={<Clock size={15} />}
-                value={etaLabel}
-              />
-            )}
-            {showLastRunMetric && (
-              <Metric
-                icon={unitIcon}
-                label={`${unitLabel}${finishedSuffix}`}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isQueued && agent.after && (
-              <span className="tw:text-sm tw:text-tertiary">
-                {t('label.starts-after')}{' '}
-                <strong className="tw:font-semibold tw:text-secondary">
-                  {agent.after}
-                </strong>
-              </span>
-            )}
-            {isFailed && agent.failStep && (
-              <Metric
-                icon={<AlertCircle size={15} />}
-                label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                  'label.before-error'
-                )}`}
-                tone="error"
-                value={`${t('label.failed-at')} ${agent.failStep}`}
-              />
+            {isPaused ? (
+              <Badge
+                className="tw:gap-1.5 tw:font-semibold"
+                color="warning"
+                data-testid="paused-pipeline-badge"
+                size="sm"
+                type="pill-color">
+                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+                {t('label.paused')}
+              </Badge>
+            ) : (
+              <>
+                <StatusPill status={agent.status} />
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-assets-metric"
+                    icon={unitIcon}
+                    label={unitVerbLabel}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-eta-metric"
+                    icon={<Clock size={15} />}
+                    value={etaLabel}
+                  />
+                )}
+                {showLastRunMetric && (
+                  <Metric
+                    icon={unitIcon}
+                    label={`${unitLabel}${finishedSuffix}`}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isQueued && agent.after && (
+                  <span className="tw:text-sm tw:text-tertiary">
+                    {t('label.starts-after')}{' '}
+                    <strong className="tw:font-semibold tw:text-secondary">
+                      {agent.after}
+                    </strong>
+                  </span>
+                )}
+                {isFailed && agent.failStep && (
+                  <Metric
+                    icon={<AlertCircle size={15} />}
+                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
+                      'label.before-error'
+                    )}`}
+                    tone="error"
+                    value={`${t('label.failed-at')} ${agent.failStep}`}
+                  />
+                )}
+              </>
             )}
           </Box>
           {isRunning && (
@@ -272,7 +291,7 @@ const AgentCard: FC<AgentCardProps> = ({
             </Button>
           ) : (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="logs-button"
               iconLeading={<AlignLeft size={15} />}
@@ -281,9 +300,9 @@ const AgentCard: FC<AgentCardProps> = ({
               {t('label.log-plural')}
             </Button>
           )}
-          {!isRunning && permissions.trigger && (
+          {canRunAgent(agent, permissions) && (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
               iconLeading={<PlayIcon height={14} width={14} />}
@@ -294,6 +313,7 @@ const AgentCard: FC<AgentCardProps> = ({
           )}
           <AgentOverflowMenu
             allowedActions={allowedActions}
+            enabled={agent.enabled}
             permissions={permissions}
             status={agent.status}
             onAction={(action) => onAction(action, agent)}
