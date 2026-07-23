@@ -41,7 +41,7 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
     assert planner.lane_bounds("chromium", "full") == (5, 24)
 
 
-def test_full_common_baseline_is_capped_at_24_shards():
+def test_full_common_shard_count_is_capped_at_24():
     planner = load_script("build_playwright_shards")
     units = [
         planner.Unit(
