@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -108,6 +109,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
@@ -2405,6 +2407,174 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         updatedTable.getTags().stream()
             .anyMatch(tag -> "PersonalData.Personal".equals(tag.getTagFQN())),
         "Table should have PersonalData.Personal tag");
+  }
+
+  @Test
+  void testResolveColumnTagUpdateBumpsVersionAndRecordsChangeDescription(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    String columnName = table.getColumns().get(0).getName();
+    String fieldPath = "columns." + columnName + ".tags";
+    Double initialVersion = table.getVersion();
+    long resolveStartTs = System.currentTimeMillis();
+
+    List<TagLabel> tagsToAdd =
+        List.of(
+            new TagLabel()
+                .withTagFQN("PersonalData.Personal")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL)
+                .withState(TagLabel.State.CONFIRMED)
+                .withName("Personal"));
+
+    Map<String, Object> payloadMap =
+        Map.of(
+            "fieldPath",
+            fieldPath,
+            "tagsToAdd",
+            tagsToAdd,
+            "tagsToRemove",
+            List.of(),
+            "currentTags",
+            List.of(),
+            "operation",
+            "Add");
+    Payload resolvePayload = JsonUtils.convertValue(payloadMap, Payload.class);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("col-tag-update-audit"))
+            .withDescription("Add tag to column and expect versioned audit")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.TagUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payloadMap);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(JsonUtils.pojoToJson(tagsToAdd))
+            .withPayload(resolvePayload)
+            .withComment("Approved - apply column tag");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tags,columns,changeDescription");
+
+    assertTrue(
+        updatedTable.getVersion() > initialVersion,
+        "Column-level TagUpdate must bump the entity version: "
+            + initialVersion
+            + " -> "
+            + updatedTable.getVersion());
+
+    assertNotNull(
+        updatedTable.getChangeDescription(),
+        "Column-level TagUpdate must populate changeDescription");
+    boolean columnTagsInAdded =
+        updatedTable.getChangeDescription().getFieldsAdded().stream()
+            .anyMatch(f -> fieldPath.equals(f.getName()));
+    assertTrue(
+        columnTagsInAdded,
+        "changeDescription.fieldsAdded must record '"
+            + fieldPath
+            + "'; got: "
+            + updatedTable.getChangeDescription().getFieldsAdded());
+
+    List<TagLabel> columnTags = updatedTable.getColumns().get(0).getTags();
+    assertNotNull(columnTags, "Column should have tags after task resolution");
+    assertTrue(
+        columnTags.stream().anyMatch(t -> "PersonalData.Personal".equals(t.getTagFQN())),
+        "Column must carry the applied tag");
+    assertTrue(
+        columnTags.stream()
+            .filter(t -> "PersonalData.Personal".equals(t.getTagFQN()))
+            .findFirst()
+            .map(t -> "admin".equals(t.getAppliedBy()))
+            .orElse(false),
+        "Applied tag must record appliedBy=admin (versioned path); got: " + columnTags);
+
+    assertEquals(
+        2,
+        SdkClients.adminClient().tables().getVersionList(updatedTable.getId()).getVersions().size(),
+        "Version history must contain both 0.1 (baseline) and the post-TagUpdate bump");
+
+    JsonNode events;
+    try {
+      String eventsJson =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events",
+                  null,
+                  RequestOptions.builder()
+                      .queryParam("entityUpdated", "table")
+                      .queryParam("timestamp", Long.toString(resolveStartTs))
+                      .queryParam("limit", "1000")
+                      .build());
+      events = JsonUtils.readTree(eventsJson);
+    } catch (Exception e) {
+      throw new AssertionError("Failed to fetch /v1/events", e);
+    }
+    boolean entityUpdatedEmitted = false;
+    for (JsonNode event : events.path("data")) {
+      if (table.getFullyQualifiedName().equals(event.path("entityFullyQualifiedName").asText())
+          && "entityUpdated".equals(event.path("eventType").asText())) {
+        entityUpdatedEmitted = true;
+        break;
+      }
+    }
+    assertTrue(
+        entityUpdatedEmitted,
+        "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
+            + events.path("data"));
+
+    // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
+    // can inflate the boolean-clause count under parallel test load and trip the shard-level
+    // maxClauseCount limit ([search_phase_execution_exception] all shards failed).
+    Awaitility.await("search index reflects column tag after TagUpdate")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              String searchJson =
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/search/query",
+                          null,
+                          RequestOptions.builder()
+                              .queryParam("index", "table_search_index")
+                              .queryParam("q", "id:" + table.getId().toString())
+                              .build());
+              JsonNode search = JsonUtils.readTree(searchJson);
+              JsonNode hits = search.path("hits").path("hits");
+              assertTrue(hits.size() > 0, "Search hit for table must be present");
+              JsonNode columns = hits.get(0).path("_source").path("columns");
+              assertTrue(columns.size() > 0, "Search doc must include columns");
+              JsonNode searchTags = columns.get(0).path("tags");
+              boolean searchHasTag = false;
+              for (JsonNode t : searchTags) {
+                if ("PersonalData.Personal".equals(t.path("tagFQN").asText())) {
+                  searchHasTag = true;
+                  break;
+                }
+              }
+              assertTrue(
+                  searchHasTag,
+                  "Column-level TagUpdate must reindex the parent table; got tags: " + searchTags);
+            });
   }
 
   @Test
