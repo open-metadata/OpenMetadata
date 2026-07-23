@@ -23,9 +23,19 @@ import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
-import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
+import {
+  Agent,
+  AgentActionPermissions,
+  AgentRun,
+  RunStatus,
+} from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
-import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
+import {
+  AGENT_TYPE_ICON,
+  canRunAgent,
+  fmtNum,
+  RUN_META,
+} from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
 import RunStepRow from './RunStepRow.component';
 
@@ -121,6 +131,7 @@ interface RunHistoryDrawerProps {
   // Must be a stable reference (memoize with `useCallback`) — it feeds
   // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
   fetchRuns?: () => Promise<AgentRun[]>;
+  permissions?: AgentActionPermissions;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
@@ -131,6 +142,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   open,
   initialRunId,
   fetchRuns,
+  permissions,
   onClose,
   onOpenLogs,
   onRun,
@@ -188,7 +200,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             </div>
           </div>
           <Button
-            className="tw:font-semibold tw:ring-secondary"
+            className="tw:font-semibold tw:after:outline-secondary"
             color="secondary"
             data-testid="raw-logs-button"
             iconLeading={<AlignLeft size={15} />}
@@ -196,15 +208,17 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}
           </Button>
-          <Button
-            className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
-            color="secondary"
-            data-testid="drawer-run-now-button"
-            iconLeading={<PlayIcon height={14} width={14} />}
-            size="sm"
-            onClick={() => onRun(agent)}>
-            {t('label.run-now')}
-          </Button>
+          {canRunAgent(agent, permissions) && (
+            <Button
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
+              color="secondary"
+              data-testid="drawer-run-now-button"
+              iconLeading={<PlayIcon height={14} width={14} />}
+              size="sm"
+              onClick={() => onRun(agent)}>
+              {t('label.run-now')}
+            </Button>
+          )}
         </Box>
       </SlideoutMenu.Header>
 

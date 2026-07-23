@@ -99,8 +99,9 @@ public class TestCaseResolutionStatusRepository
     for (String json : jsons) {
       TestCaseResolutionStatus testCaseResolutionStatus =
           JsonUtils.readValue(json, TestCaseResolutionStatus.class);
-      setInheritedFields(testCaseResolutionStatus);
-      testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      if (resolveTestCaseReference(testCaseResolutionStatus)) {
+        testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      }
     }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
@@ -267,6 +268,27 @@ public class TestCaseResolutionStatusRepository
   protected void setInheritedFields(TestCaseResolutionStatus recordEntity) {
     recordEntity.setTestCaseReference(
         getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
+  }
+
+  /**
+   * Resolves the parent test case reference, returning false for orphaned rows whose parentOf
+   * relationship no longer exists. Such rows are skipped rather than failing the whole request; the
+   * DataRetention job removes them.
+   */
+  private boolean resolveTestCaseReference(TestCaseResolutionStatus recordEntity) {
+    boolean resolved = true;
+    try {
+      setInheritedFields(recordEntity);
+    } catch (RuntimeException exception) {
+      if (!shouldSkipSearchResultOnInheritedFieldError(exception, recordEntity)) {
+        throw exception;
+      }
+      LOG.warn(
+          "Skipping orphaned testCaseResolutionStatus {} with no parent test case relationship",
+          recordEntity.getId());
+      resolved = false;
+    }
+    return resolved;
   }
 
   @Override

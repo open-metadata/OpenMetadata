@@ -292,9 +292,19 @@ export const addTeamHierarchy = async (
       response.request().method() === 'POST' &&
       response.ok()
   );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.url().includes('fields=') &&
+      response.request().method() === 'GET'
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  const teamsListResponseResult = await teamsListResponse;
+
+  expect(teamsListResponseResult.status()).toBe(200);
   await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await waitForAllLoadersToDisappear(page);
   await expect(
     page.locator(`[data-row-key="${teamDetails.name}"]`)
   ).toBeVisible({

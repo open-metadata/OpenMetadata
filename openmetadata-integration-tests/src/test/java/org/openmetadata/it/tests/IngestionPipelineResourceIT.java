@@ -7,6 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -1733,5 +1740,60 @@ public class IngestionPipelineResourceIT
     List<Object> data = (List<Object>) response.get("data");
     assertNotNull(data, "Data array should not be null");
     assertEquals(statusCount, data.size(), "Should return all " + statusCount + " status records");
+  }
+
+  @Test
+  void get_ingestionLogs_acceptsIdOrFqn(TestNamespace ns) throws Exception {
+    // The log endpoints accept either the pipeline Id (UUID) or its fullyQualifiedName. Create a
+    // pipeline, then confirm both forms resolve to the same pipeline (not 404) while unknown
+    // identifiers 404 — exercising the id-vs-fqn dispatch through the real endpoint.
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+
+    int byId = logsLastStatus(pipeline.getId().toString());
+    int byFqn = logsLastStatus(pipeline.getFullyQualifiedName());
+    assertNotEquals(404, byId, "a real Id must resolve the pipeline (not 404)");
+    assertNotEquals(404, byFqn, "a real fqn must resolve the pipeline (not 404)");
+    assertEquals(byId, byFqn, "Id and fqn must resolve to the same pipeline");
+
+    assertEquals(404, logsLastStatus(UUID.randomUUID().toString()), "an unknown Id must 404");
+    assertEquals(
+        404, logsLastStatus(ns.prefix("missing") + ".no_such_pipeline"), "an unknown fqn must 404");
+
+    // The download endpoint takes the same id-or-fqn path segment.
+    assertNotEquals(
+        404,
+        logsLastDownloadStatus(pipeline.getFullyQualifiedName()),
+        "download by fqn must resolve the pipeline (not 404)");
+    assertEquals(
+        404,
+        logsLastDownloadStatus(ns.prefix("missing") + ".no_such_pipeline"),
+        "download by unknown fqn must 404");
+  }
+
+  private static int logsLastStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last");
+  }
+
+  private static int logsLastDownloadStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last/download");
+  }
+
+  private static int logEndpointStatus(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HttpClient.newHttpClient()
+        .send(request, HttpResponse.BodyHandlers.ofString())
+        .statusCode();
+  }
+
+  private static String encodeSegment(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
   }
 }
