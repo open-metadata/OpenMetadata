@@ -75,7 +75,7 @@ export interface CreateAIApplication {
      */
     knowledgeBases?: EntityReference[];
     /**
-     * MCP servers available to this application
+     * MCP servers this application connects to for tools, resources, and prompts
      */
     mcpServers?: EntityReference[];
     /**
