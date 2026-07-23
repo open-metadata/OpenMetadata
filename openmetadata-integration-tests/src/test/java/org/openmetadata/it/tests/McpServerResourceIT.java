@@ -148,27 +148,32 @@ public class McpServerResourceIT {
 
   @Test
   void testPutMcpServerPreservesUsageMetrics(final TestNamespace ns) throws Exception {
-    final McpUsageMetrics usageMetrics =
-        new McpUsageMetrics()
-            .withTotalInvocations(42_100)
-            .withSuccessRate(0.991)
-            .withAverageLatencyMs(145.0)
-            .withP95LatencyMs(310.0)
-            .withLastInvokedAt(1_775_001_600_000L)
-            .withUniqueUsers(128)
-            .withDailyActiveUsers(47);
-    final CreateMcpServer request =
-        new CreateMcpServer()
-            .withName(ns.prefix("mcp-usage-metrics"))
-            .withServerType(McpServerType.DataAccess)
-            .withUsageMetrics(usageMetrics);
-
+    final McpUsageMetrics usageMetrics = showcaseUsageMetrics();
+    final CreateMcpServer request = usageMetricsRequest(ns, usageMetrics);
     final McpServer created = updateMcpServer(request);
     final McpServer updated = updateMcpServer(request);
     final McpServer fetched = getMcpServer(created.getId().toString());
-
     assertEquals(created.getId(), updated.getId());
     assertEquals(usageMetrics, fetched.getUsageMetrics());
+  }
+
+  private static McpUsageMetrics showcaseUsageMetrics() {
+    return new McpUsageMetrics()
+        .withTotalInvocations(42_100)
+        .withSuccessRate(0.991)
+        .withAverageLatencyMs(145.0)
+        .withP95LatencyMs(310.0)
+        .withLastInvokedAt(1_775_001_600_000L)
+        .withUniqueUsers(128)
+        .withDailyActiveUsers(47);
+  }
+
+  private static CreateMcpServer usageMetricsRequest(
+      final TestNamespace ns, final McpUsageMetrics usageMetrics) {
+    return new CreateMcpServer()
+        .withName(ns.prefix("mcp-usage-metrics"))
+        .withServerType(McpServerType.DataAccess)
+        .withUsageMetrics(usageMetrics);
   }
 
   @Test

@@ -17,6 +17,8 @@ import base64
 import json
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.entity.ai.aiApplication import AIApplication
 from metadata.generated.schema.entity.ai.llmModel import LLMModel
 from metadata.generated.schema.entity.ai.mcpServer import McpServer
@@ -122,11 +124,6 @@ class OMetaUtilsTest(TestCase):
             (DatabaseSchema, "databaseSchema"),
             (SearchIndex, "searchIndex"),
             (DatabaseService, "databaseService"),
-            (LLMService, "llmService"),
-            (McpService, "mcpService"),
-            (LLMModel, "llmModel"),
-            (McpServer, "mcpServer"),
-            (AIApplication, "aiApplication"),
             (User, "user"),  # This one works correctly
         ]
 
@@ -157,7 +154,6 @@ class OMetaUtilsTest(TestCase):
             model_str(basic.Uuid("9fc58e81-7412-4023-a298-59f2494aab9d")),
             "9fc58e81-7412-4023-a298-59f2494aab9d",
         )
-
         self.assertEqual(model_str(basic.EntityName("EntityName")), "EntityName")
         self.assertEqual(model_str(basic.FullyQualifiedEntityName("FQDN")), "FQDN")
 
@@ -507,3 +503,21 @@ class OMetaUtilsTest(TestCase):
             HIERARCHY_BASE,
             f"HIERARCHY_BASE ({HIERARCHY_BASE}) must exceed the max stages per node ({max_stages})",
         )
+
+
+@pytest.mark.parametrize(
+    ("entity_class", "expected_type"),
+    [
+        (LLMService, "llmService"),
+        (McpService, "mcpService"),
+        (LLMModel, "llmModel"),
+        (McpServer, "mcpServer"),
+        (AIApplication, "aiApplication"),
+    ],
+)
+def test_get_entity_type_for_ai_entities(
+    entity_class: type,
+    expected_type: str,
+) -> None:
+    assert get_entity_type(entity_class) == expected_type
+    assert expected_type in ENTITY_REFERENCE_CLASS_MAP

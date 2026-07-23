@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class AIGovernanceBuiltInDataTest {
@@ -32,16 +34,29 @@ class AIGovernanceBuiltInDataTest {
   private static final String FRAMEWORK_INDEX = "/aiGovernance/frameworks/_index.json";
   private static final String POLICIES_PATH = "/aiGovernance/policies/";
   private static final Pattern AI_GOVERNANCE_DATA =
-      Pattern.compile(".*json/data/aiGovernance/.*\\.json$");
+      Pattern.compile(".*json[/\\\\]data[/\\\\]aiGovernance[/\\\\].*\\.json$");
 
   @Test
   void onlyProductFrameworksAndPoliciesAreBundledAtStartup() throws IOException {
-    final List<String> resources = getResources(AI_GOVERNANCE_DATA);
+    final List<String> resources =
+        getResources(AI_GOVERNANCE_DATA).stream()
+            .map(resource -> resource.replace('\\', '/'))
+            .toList();
 
     assertFalse(nullOrEmpty(resources));
     assertOnlyProductResources(resources);
     assertPolicyCount(resources);
     assertFrameworkControls(resources);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "target/classes/json/data/aiGovernance/policies/policy.json",
+        "target\\classes\\json\\data\\aiGovernance\\policies\\policy.json"
+      })
+  void discoversAiGovernanceResourcesOnEveryPlatform(final String resource) {
+    assertTrue(AI_GOVERNANCE_DATA.matcher(resource).matches());
   }
 
   private static void assertOnlyProductResources(final List<String> resources) {
