@@ -65,7 +65,7 @@ class UniqueCount(QueryMetric):
         # Run all queries on top of the sampled data
         col = column(self.col.name, self.col.type)
 
-        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for peformance
+        # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for performance
         if session.get_bind().dialect.name == Dialects.BigQuery:
             # We are querying against the subquery output (which is a COUNT), so the type is numeric.
             # Use an untyped column to avoid passing the original metric type (like STRING or BYTES) into the COUNTIF comparison.
