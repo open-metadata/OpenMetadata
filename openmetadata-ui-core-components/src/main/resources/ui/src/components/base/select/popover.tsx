@@ -1,5 +1,5 @@
 import { useObjectRef } from '@react-aria/utils';
-import { forwardRef, useContext } from 'react';
+import { forwardRef, useCallback, useContext } from 'react';
 import { useInteractOutside } from 'react-aria';
 import type { PopoverProps as AriaPopoverProps } from 'react-aria-components';
 import {
@@ -32,9 +32,16 @@ export const Popover = forwardRef<HTMLElement, PopoverProps>((props, ref) => {
   const isDismissable = props.isDismissable ?? false;
   const isNonModal = props.isNonModal ?? popoverContext?.isNonModal;
   const triggerRef = props.triggerRef ?? popoverContext?.triggerRef;
-  const shouldCloseOnInteractOutside =
+  const contextShouldCloseOnInteractOutside =
     props.shouldCloseOnInteractOutside ??
     popoverContext?.shouldCloseOnInteractOutside;
+
+  const shouldCloseOnInteractOutside = useCallback(
+    (target: Element) =>
+      !triggerRef?.current?.contains(target) &&
+      (contextShouldCloseOnInteractOutside?.(target) ?? true),
+    [contextShouldCloseOnInteractOutside, triggerRef]
+  );
 
   // React Aria intentionally keeps non-modal popovers open during outside
   // interaction. Opt into dismissal while preserving its standard filter.
@@ -46,8 +53,7 @@ export const Popover = forwardRef<HTMLElement, PopoverProps>((props, ref) => {
 
       if (
         target instanceof Element &&
-        (triggerRef?.current?.contains(target) ||
-          shouldCloseOnInteractOutside?.(target) === false)
+        shouldCloseOnInteractOutside(target) === false
       ) {
         return;
       }
@@ -88,6 +94,7 @@ export const Popover = forwardRef<HTMLElement, PopoverProps>((props, ref) => {
             : props.className
         )
       }
+      shouldCloseOnInteractOutside={shouldCloseOnInteractOutside}
     />
   );
 });
