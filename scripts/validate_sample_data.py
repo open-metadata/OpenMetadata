@@ -88,6 +88,17 @@ def require_single_lineage_edge(
         )
 
 
+def require_usage_metrics(server: McpServer, expected_metrics: dict[str, Any]) -> None:
+    if server.usageMetrics is None:
+        raise ValueError(f"MCP server lost usage metrics: {model_str(server.fullyQualifiedName)}")
+    actual_metrics = server.usageMetrics.model_dump(by_alias=True, exclude_none=True)
+    if actual_metrics != expected_metrics:
+        raise ValueError(
+            f"MCP server usage metrics changed for {model_str(server.fullyQualifiedName)}: "
+            f"expected {expected_metrics}, found {actual_metrics}"
+        )
+
+
 require_entity(Table, "sample_data.ecommerce_db.shopify.dim_address")
 
 services = read_fixture("services.json")
@@ -103,7 +114,10 @@ for service in services["mcpServices"]:
 for model in models:
     require_entity(LLMModel, f"{model['service']}.{model['name']}")
 for server in servers:
-    require_entity(McpServer, f"{server['service']}.{server['name']}")
+    require_usage_metrics(
+        require_entity(McpServer, f"{server['service']}.{server['name']}"),
+        server["usageMetrics"],
+    )
 for application in applications["registered"] + applications["shadow"]:
     require_entity(AIApplication, application["name"])
 
