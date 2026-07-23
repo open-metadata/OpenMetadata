@@ -69,7 +69,7 @@ class UniqueCount(QueryMetric):
         if session.get_bind().dialect.name == Dialects.BigQuery:
             # We are querying against the subquery output (which is a COUNT), so the type is numeric.
             # Use an untyped column to avoid passing the original metric type (like STRING or BYTES) into the COUNTIF comparison.
-            count_col = column(self.col.name)
+            count_col = column(col.name)
             return func.countif(count_col == 1).label(self.name())
 
         unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
