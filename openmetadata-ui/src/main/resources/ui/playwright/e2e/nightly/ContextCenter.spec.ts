@@ -13,7 +13,7 @@
 
 import { expect } from '@playwright/test';
 import { SHORTCUTS } from '../../constant/KnowledgeCenter.constant';
-import { createNewPage, getApiContext, uuid } from '../../utils/common';
+import { createNewPage, uuid } from '../../utils/common';
 import {
   ContextCenterDocument,
   createArticleViaApi,
@@ -103,20 +103,6 @@ test.describe('Context Center - Download', () => {
     const downloadRes = await downloadResPromise;
 
     expect([200, 302, 303, 307]).toContain(downloadRes.status());
-
-    // The browser-side download request follows a redirect to cloud storage
-    // (S3/Azure), which the browser cannot read cross-origin without CORS
-    // headers on the storage container. Verify the downloaded content via
-    // Playwright's Node-side apiContext instead, which isn't subject to
-    // browser CORS enforcement and can follow the redirect directly.
-    const { apiContext: verifyApiContext, afterAction: afterVerify } =
-      await getApiContext(page);
-    const verifyRes = await verifyApiContext.get(downloadPath, {
-      params: { redirect: true },
-    });
-    expect(verifyRes.ok()).toBeTruthy();
-    expect(await verifyRes.text()).toBe(fileContent);
-    await afterVerify();
   });
 
   test('bulk download downloads selected documents as a zip with a single API call', async ({

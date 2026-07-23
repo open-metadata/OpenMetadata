@@ -185,17 +185,6 @@ test.describe(
       await afterAction();
     });
 
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-
-      for (const id of globalMemoryIds) {
-        await apiContext.delete(`${MEMORIES_API}/${id}?hardDelete=true`);
-      }
-
-      await linkedTable.delete(apiContext);
-      await afterAction();
-    });
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
     });
@@ -937,10 +926,9 @@ test.describe(
         ).toBeVisible();
 
         const rows = page.locator('[data-testid^="memory-row-"]');
-        await expect(rows.first()).toHaveAttribute(
-          'data-testid',
-          `memory-row-${entityMemoryId}`
-        );
+        await expect(
+          rows.first().getByText('Cited 999999 times')
+        ).toBeVisible();
 
         // lastUsedAt is rendered next to the usage count as
         // "Cited N times · Last {relative-time}" — assert the "Last" label
@@ -1043,6 +1031,7 @@ test.describe(
 
     test.describe('Edit Memory — Each Field', () => {
       let editMemoryId: string;
+      let editMemoryName: string;
 
       test.beforeEach(async ({ browser }) => {
         const { apiContext, afterAction } = await createNewPage(browser);
@@ -1055,6 +1044,7 @@ test.describe(
           shareConfig: { visibility: 'Shared' },
         });
         editMemoryId = data.id;
+        editMemoryName = data.displayName || data.name;
         await afterAction();
       });
 
@@ -1162,9 +1152,11 @@ test.describe(
         test.slow();
 
         await navigateToMemories(page);
-
-        const row = page.getByTestId(`memory-row-${editMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
+        const row = await searchAndGetMemoryRow(
+          page,
+          editMemoryName,
+          editMemoryId
+        );
         await row.getByTestId('edit-memory-btn').click();
 
         const dialog = page.getByRole('dialog');
@@ -1333,6 +1325,7 @@ test.describe(
         await option.click();
 
         await page.keyboard.press('Escape'); // Close the picker popover
+        await option.waitFor({ state: 'detached' });
 
         // Confirm the asset card appeared in the dialog
         await expect(dialog).toContainText(table.displayName ?? table.name);
@@ -1362,7 +1355,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -1381,7 +1378,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${privateMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          privateMemoryName,
+          privateMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -1401,7 +1402,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${entityMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          ENTITY_MEMORY_TITLE,
+          entityMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -1436,7 +1441,7 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${visBadgeMemoryId}`);
+        const row = await searchAndGetMemoryRow(page, name, visBadgeMemoryId);
         await row.scrollIntoViewIfNeeded();
         await row.getByTestId('edit-memory-btn').click();
 
@@ -1462,7 +1467,11 @@ test.describe(
 
         // Reopen in view mode
         await navigateToMemories(page);
-        const updatedRow = page.getByTestId(`memory-row-${visBadgeMemoryId}`);
+        const updatedRow = await searchAndGetMemoryRow(
+          page,
+          name,
+          visBadgeMemoryId
+        );
         await updatedRow.scrollIntoViewIfNeeded();
         await updatedRow.click();
 
@@ -1656,6 +1665,8 @@ test.describe(
         // Navigate with keyboard
         await assetSearch.press('ArrowDown');
         await page.keyboard.press('Enter');
+        await page.keyboard.press('Escape');
+        await option.waitFor({ state: 'detached' });
 
         // The selected asset name should appear in the linked assets section
         await expect(dialog).toContainText(table.displayName ?? table.name);

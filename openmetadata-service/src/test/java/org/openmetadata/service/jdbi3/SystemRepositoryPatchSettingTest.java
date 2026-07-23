@@ -26,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -104,6 +105,55 @@ class SystemRepositoryPatchSettingTest {
   }
 
   @Test
+  void patchSettingRejectsDuplicateGlossaryTermRelationTypeNames() {
+    String existingJson = "{\"relationTypes\":[{\"name\":\"prescribes\"}]}";
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(existingJson);
+
+    SystemSettingsException failure =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> systemRepository.patchSetting(SETTING_NAME, duplicateRelationTypePatch()));
+
+    assertTrue(failure.getMessage().contains("already exists"));
+    assertEquals(Response.Status.CONFLICT.getStatusCode(), failure.getResponse().getStatus());
+    verify(systemDAO, never())
+        .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
+  void patchSettingTranslatesStaleRelationIndexToPreconditionFailed() {
+    String existingJson = "{\"relationTypes\":[{\"name\":\"relatedTo\"}]}";
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(existingJson);
+
+    PreconditionFailedException failure =
+        assertThrows(
+            PreconditionFailedException.class,
+            () -> systemRepository.patchSetting(SETTING_NAME, staleRelationTypePatch()));
+
+    assertTrue(failure.getMessage().contains("settings changed"));
+    verify(systemDAO, never())
+        .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
+  void patchSettingRejectsDeletingSystemDefinedRelationType() {
+    String existingJson = "{\"relationTypes\":[{\"name\":\"relatedTo\",\"isSystemDefined\":true}]}";
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(existingJson);
+
+    SystemSettingsException failure =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> systemRepository.patchSetting(SETTING_NAME, removeFirstRelationTypePatch()));
+
+    assertTrue(failure.getMessage().contains("system-defined"));
+    verify(systemDAO, never())
+        .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
   void patchSettingRejectsMissingSetting() {
     when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(null);
 
@@ -170,5 +220,22 @@ class SystemRepositoryPatchSettingTest {
         .test("/relationTypes", Json.createArrayBuilder().build())
         .add("/relationTypes/-", Json.createObjectBuilder().add("name", "prescribes").build())
         .build();
+  }
+
+  private JsonPatch duplicateRelationTypePatch() {
+    return Json.createPatchBuilder()
+        .add("/relationTypes/-", Json.createObjectBuilder().add("name", "PRESCRIBES").build())
+        .build();
+  }
+
+  private JsonPatch staleRelationTypePatch() {
+    return Json.createPatchBuilder()
+        .test("/relationTypes/0/name", "synonym")
+        .remove("/relationTypes/0")
+        .build();
+  }
+
+  private JsonPatch removeFirstRelationTypePatch() {
+    return Json.createPatchBuilder().remove("/relationTypes/0").build();
   }
 }
