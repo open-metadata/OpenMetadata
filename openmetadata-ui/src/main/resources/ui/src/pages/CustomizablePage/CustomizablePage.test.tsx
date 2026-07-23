@@ -116,6 +116,16 @@ jest.mock(
   }
 );
 
+jest.mock('../SettingsNavigationPage/SettingsNavigationPage', () => ({
+  SettingsNavigationPage: jest.fn().mockImplementation(({ persona }) => (
+    <div data-testid="settings-navigation-page">
+      <span data-testid="settings-navigation-persona-name">
+        {persona?.displayName ?? persona?.name}
+      </span>
+    </div>
+  )),
+}));
+
 describe('CustomizablePage component', () => {
   it('CustomizablePage should show ErrorPlaceholder if the API to fetch the persona details fails', async () => {
     (getPersonaByName as jest.Mock).mockImplementationOnce(() =>
@@ -175,5 +185,21 @@ describe('CustomizablePage component', () => {
     expect(screen.queryByText('ErrorPlaceHolder')).toBeInTheDocument();
     expect(screen.queryByText('Loader')).toBeNull();
     expect(screen.queryByTestId('customize-my-data')).toBeNull();
+  });
+
+  it('CustomizablePage should render SettingsNavigationPage with persona for pageFqn "navigation"', async () => {
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: mockPersonaName,
+      pageFqn: 'navigation',
+    }));
+
+    await act(async () => {
+      render(<CustomizablePage />);
+    });
+
+    expect(screen.getByTestId('settings-navigation-page')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('settings-navigation-persona-name')
+    ).toHaveTextContent(mockPersonaName);
   });
 });

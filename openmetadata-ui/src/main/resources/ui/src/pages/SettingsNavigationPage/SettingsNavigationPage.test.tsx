@@ -14,6 +14,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { TreeDataNode } from 'antd';
 import { HelmetProvider } from 'react-helmet-async';
+import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import { SettingsNavigationPage } from './SettingsNavigationPage';
 
@@ -102,8 +103,9 @@ jest.mock(
   () => ({
     CustomizablePageHeader: jest
       .fn()
-      .mockImplementation(({ onReset, onSave }) => (
+      .mockImplementation(({ onReset, onSave, personaName }) => (
         <div data-testid="customizable-page-header">
+          <span data-testid="persona-name-prop">{personaName}</span>
           <button data-testid="save-button" onClick={onSave}>
             Save
           </button>
@@ -147,10 +149,17 @@ jest.mock('react-router-dom', () => ({
 describe('SettingsNavigationPage', () => {
   const mockOnSave = jest.fn().mockResolvedValue(undefined);
 
-  const renderComponent = () => {
+  const mockPersona: Persona = {
+    id: 'persona-1',
+    name: 'data-scientist',
+    displayName: 'Data Scientist',
+    fullyQualifiedName: 'data-scientist',
+  };
+
+  const renderComponent = (persona: Persona = mockPersona) => {
     return render(
       <HelmetProvider>
-        <SettingsNavigationPage onSave={mockOnSave} />
+        <SettingsNavigationPage persona={persona} onSave={mockOnSave} />
       </HelmetProvider>
     );
   };
@@ -278,5 +287,23 @@ describe('SettingsNavigationPage', () => {
     switches.forEach((switchElement) => {
       expect(switchElement).toBeInTheDocument();
     });
+  });
+
+  it('should forward persona displayName to CustomizablePageHeader as personaName', () => {
+    renderComponent();
+
+    expect(screen.getByTestId('persona-name-prop')).toHaveTextContent(
+      'Data Scientist'
+    );
+  });
+
+  it('should fall back to persona name when displayName is missing', () => {
+    renderComponent({
+      id: 'persona-2',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+    } as Persona);
+
+    expect(screen.getByTestId('persona-name-prop')).toHaveTextContent('admin');
   });
 });

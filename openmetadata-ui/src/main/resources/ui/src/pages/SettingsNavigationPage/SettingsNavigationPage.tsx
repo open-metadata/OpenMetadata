@@ -29,22 +29,25 @@ import {
 import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
+import { Persona } from '../../generated/entity/teams/persona';
+import { getEntityName } from '../../utils/EntityNameUtils';
 
 interface Props {
+  persona: Persona;
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
 }
 
-export const SettingsNavigationPage = ({ onSave }: Props) => {
+export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
   const { t } = useTranslation();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
   const { plugins = [] } = useApplicationsProvider();
 
   const [hiddenKeys, setHiddenKeys] = useState<string[]>(
-    getHiddenKeysFromNavigationItems(currentNavigation, plugins)
+    getHiddenKeysFromNavigationItems(currentNavigation, plugins),
   );
   const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
-    getTreeDataForNavigationItems(currentNavigation, plugins)
+    getTreeDataForNavigationItems(currentNavigation, plugins),
   );
 
   const disableSave = useMemo(() => {
@@ -70,7 +73,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
     const loop = (
       data: TreeDataNode[],
       key: React.Key,
-      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void
+      callback: (node: TreeDataNode, i: number, data: TreeDataNode[]) => void,
     ) => {
       for (let i = 0; i < data.length; i++) {
         if (data[i].key === key) {
@@ -127,7 +130,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
 
   const handleRemoveToggle = (checked: boolean, key: string) => {
     setHiddenKeys((prev) =>
-      checked ? prev.filter((i) => i !== key) : [...prev, key]
+      checked ? prev.filter((i) => i !== key) : [...prev, key],
     );
   };
 
@@ -149,7 +152,7 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
           <Col span={24}>
             <CustomizablePageHeader
               disableSave={disableSave}
-              personaName={t('label.customize-your-navigation')}
+              personaName={getEntityName(persona)}
               onReset={handleReset}
               onSave={handleSave}
             />

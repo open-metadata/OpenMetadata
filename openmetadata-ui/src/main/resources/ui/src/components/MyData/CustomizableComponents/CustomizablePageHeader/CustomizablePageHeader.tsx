@@ -28,6 +28,7 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 
 export const CustomizablePageHeader = ({
   disableSave,
@@ -44,6 +45,7 @@ export const CustomizablePageHeader = ({
 }) => {
   const { t } = useTranslation();
   const { fqn: personaFqn } = useFqn();
+  const { pageFqn } = useRequiredParams<{ pageFqn: string }>();
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
@@ -57,7 +59,10 @@ export const CustomizablePageHeader = ({
     currentPageType === PageType.LandingPage ||
     currentPageType === PageType.DataMarketplace;
 
-  const isLandingPage = currentPageType === PageType.LandingPage;
+  const isLandingPage =
+    currentPageType === PageType.LandingPage || currentPageType === 'homepage';
+  const isNavigationPage = pageFqn === 'navigation';
+  const isAppModePage = pageFqn === 'app-mode';
 
   const handleCancel = () => {
     // Go back in history
@@ -132,6 +137,18 @@ export const CustomizablePageHeader = ({
     }
   }, [disableSave, handleCancel]);
 
+  const subTitle = useMemo(() => {
+    if (isNavigationPage) {
+      return 'message.customize-your-navigation-subheader';
+    } else if (isAppModePage) {
+      return 'message.customize-your-app-mode-subheader';
+    } else if (isLandingPage) {
+      return 'message.customize-home-page-page-header-for-persona';
+    }
+
+    return 'message.customize-entity-landing-page-header-for-persona';
+  }, [isNavigationPage, isAppModePage, isLandingPage]);
+
   return (
     <Card
       className="customize-page-header m-b-lg"
@@ -150,11 +167,7 @@ export const CustomizablePageHeader = ({
           </Typography.Title>
           <Typography.Paragraph className="m-0">
             <Transi18next
-              i18nKey={
-                isLandingPage
-                  ? 'message.customize-home-page-page-header-for-persona'
-                  : 'message.customize-entity-landing-page-header-for-persona'
-              }
+              i18nKey={subTitle}
               renderElement={<Link to={getPersonaDetailsPath(personaFqn)} />}
               values={i18Values}
             />
