@@ -350,7 +350,7 @@ jobs:
           retention-days: 1
 
   plan-playwright:
-    needs: detect-changes
+    needs: [build, detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
