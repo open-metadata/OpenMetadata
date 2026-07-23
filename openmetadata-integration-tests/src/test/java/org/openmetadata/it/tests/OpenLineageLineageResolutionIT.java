@@ -19,10 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -245,5 +248,161 @@ public class OpenLineageLineageResolutionIT {
     JsonNode json = MAPPER.readTree(response);
     assertEquals(
         0, json.get("lineageEdgesCreated").asInt(), "Empty inputs/outputs should create 0 edges");
+  }
+
+  // ====================================================================================
+  // §8 Catalog-platform identifier forms (Glue, Databricks, Hive warehouse paths)
+  // ====================================================================================
+
+  @Test
+  @Order(12)
+  void glueSymlinkForm_resolvesAndCreatesEdge(TestNamespace ns) throws Exception {
+    String inputName = "ol_glue_input_" + uniqueSuffix();
+    String outputName = "ol_glue_output_" + uniqueSuffix();
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> glueInput =
+        Map.of(
+            "namespace",
+            "s3://it-test-bucket",
+            "name",
+            "warehouse/zone/shopify.db/" + inputName,
+            "facets",
+            Map.of(
+                "symlinks",
+                Map.of(
+                    "identifiers",
+                    List.of(
+                        Map.of(
+                            "namespace", "arn:aws:glue:us-west-2:123456789012",
+                            "name", "table/shopify/" + inputName,
+                            "type", "TABLE")))));
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("glue_symlink_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(glueInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+    assertTrue(
+        json.get("lineageEdgesCreated").asInt() >= 1,
+        "Glue-form symlink (table/db/table) should resolve and create an edge, got: " + response);
+
+    Map<?, ?> details = fetchOpenLineageEdgeDetails(inputName, outputName);
+    assertNotNull(details, "Edge resolved via Glue symlink should exist between the test tables");
+  }
+
+  @Test
+  @Order(13)
+  void hiveWarehousePathName_resolvesAndCreatesEdge(TestNamespace ns) throws Exception {
+    String inputName = "ol_hivepath_input_" + uniqueSuffix();
+    String outputName = "ol_hivepath_output_" + uniqueSuffix();
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> pathInput =
+        Map.of(
+            "namespace", "s3://it-test-bucket", "name", "warehouse/zone/shopify.db/" + inputName);
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("hive_path_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(pathInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+    assertTrue(
+        json.get("lineageEdgesCreated").asInt() >= 1,
+        "Hive warehouse path (.../<db>.db/<table>) should resolve without symlinks, got: "
+            + response);
+
+    Map<?, ?> details = fetchOpenLineageEdgeDetails(inputName, outputName);
+    assertNotNull(details, "Edge resolved via Hive warehouse path should exist");
+  }
+
+  // ====================================================================================
+  // Helpers
+  // ====================================================================================
+
+  private static String uniqueSuffix() {
+    return UUID.randomUUID().toString().substring(0, 8);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<?, ?> fetchOpenLineageEdgeDetails(
+      String inputTableName, String outputTableName) {
+    String inputFqn = schemaFqn + "." + inputTableName;
+    String outputFqn = schemaFqn + "." + outputTableName;
+    Map<?, ?>[] holder = new Map<?, ?>[1];
+    Awaitility.await("OpenLineage edge from " + inputTableName + " to " + outputTableName)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              LineageAPI.LineageGraph graph =
+                  LineageAPI.forName$("table", inputFqn).upstream(0).downstream(1).fetch();
+              Map<String, Object> lineage = MAPPER.readValue(graph.getRaw(), Map.class);
+              List<?> edges = (List<?>) lineage.get("downstreamEdges");
+              if (edges == null) {
+                return false;
+              }
+              Map<String, String> nodeIdToFqn = buildNodeIdToFqnMap(lineage);
+              for (Object raw : edges) {
+                Map<?, ?> edge = (Map<?, ?>) raw;
+                Map<?, ?> details = (Map<?, ?>) edge.get("lineageDetails");
+                if (details == null
+                    || !"OpenLineage".equals(details.get("source"))
+                    || details.get("createdAt") == null) {
+                  continue;
+                }
+                Object toEntityId = edge.get("toEntity");
+                String toFqn = toEntityId == null ? null : nodeIdToFqn.get(toEntityId.toString());
+                if (outputFqn.equals(toFqn)) {
+                  holder[0] = details;
+                  return true;
+                }
+              }
+              return false;
+            });
+    return holder[0];
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, String> buildNodeIdToFqnMap(Map<String, Object> lineage) {
+    Map<String, String> result = new HashMap<>();
+    Object nodes = lineage.get("nodes");
+    if (nodes instanceof List<?> list) {
+      for (Object item : list) {
+        if (item instanceof Map<?, ?> node) {
+          Object id = node.get("id");
+          Object fqn = node.get("fullyQualifiedName");
+          if (id != null && fqn != null) {
+            result.put(id.toString(), fqn.toString());
+          }
+        }
+      }
+    }
+    Object entity = lineage.get("entity");
+    if (entity instanceof Map<?, ?> entityNode) {
+      Object id = entityNode.get("id");
+      Object fqn = entityNode.get("fullyQualifiedName");
+      if (id != null && fqn != null) {
+        result.put(id.toString(), fqn.toString());
+      }
+    }
+    return result;
   }
 }
