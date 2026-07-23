@@ -315,17 +315,10 @@ class ServiceBaseClass {
 
     await selectOnDemandSchedule(page);
 
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
+    await expect(page.getByLabel('Raise on Error')).toBeChecked();
+    await page.getByTestId('raise-on-error').click();
 
-    await page.click('#root\\/raiseOnError');
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    await expect(page.getByLabel('Raise on Error')).not.toBeChecked();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`

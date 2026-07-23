@@ -2344,6 +2344,30 @@ public class SearchRepository {
   }
 
   /**
+   * Targeted partial update of a single field in an entity's search document via a Painless script,
+   * without rebuilding the whole document. Used to keep a derived denormalized field fresh when a
+   * related entity changes. The ES write is routed through {@link #deferIfFlushScopeActive} so it is
+   * drained after commit when a flush scope is open, never blocking while a DB connection is held.
+   */
+  public void updateEntityFieldInSearch(
+      String entityType, String entityId, String entityFqn, String field, Object value) {
+    if (!checkIfIndexingIsSupported(entityType)) {
+      return;
+    }
+    IndexMapping indexMapping = entityIndexMap.get(entityType);
+    Map<String, Object> params = new HashMap<>();
+    params.put(field, value);
+    String indexName = getWriteIndexName(indexMapping);
+    String script = String.format("ctx._source.%s = params.%s;", field, field);
+    deferIfFlushScopeActive(
+        () -> searchClient.updateEntity(indexName, entityId, params, script),
+        "updateEntityFieldInSearch:" + field,
+        entityId,
+        entityFqn,
+        entityType);
+  }
+
+  /**
    * Determines if changes require propagation to child entities.
    * Only propagate when fields that actually affect children have been modified.
    */

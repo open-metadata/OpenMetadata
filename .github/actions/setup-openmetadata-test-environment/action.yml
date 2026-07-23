@@ -47,6 +47,15 @@ inputs:
     description: Build the ingestion container without installing duplicate host dependencies
     required: false
     default: "false"
+  install-test-dependencies:
+    # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
+    # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
+    # workflows that invoke Python on the runner. Playwright E2E workflows drive
+    # the browser and let the ingestion Docker container run its own installs, so
+    # they can pass "false" here to shave ~3-4 minutes per shard off setup.
+    description: Whether to install the ingestion Python packages needed to run ingestion / py-tests on the runner
+    required: false
+    default: "true"
 
 runs:
   using: composite
@@ -104,7 +113,7 @@ runs:
       shell: bash
 
     - name: Install Python Dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
         uv pip install "setuptools<81"

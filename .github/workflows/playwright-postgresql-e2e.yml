@@ -837,6 +837,7 @@ jobs:
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
+          install-test-dependencies: "false"
 
       - name: Record environment setup duration
         run: |
