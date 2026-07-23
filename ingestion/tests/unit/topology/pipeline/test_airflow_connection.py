@@ -21,11 +21,14 @@ These tests verify every auth path in auth.py and the AirflowApiClient construct
 """
 
 import base64
+import sys
+import types
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.utils.common.accessTokenConfig import AccessToken
 from metadata.generated.schema.entity.utils.common.basicAuthConfig import BasicAuth
@@ -1058,3 +1061,72 @@ class TestDecoratedCheckAccess:
         ):
             _decorated_check_access(client, None, None, True)
         assert "transport closed" in str(exc_info.value)
+
+
+# ── Backend engine disposal ──────────────────────────────────────────────────
+
+
+def _fake_airflow_modules(engine, version="2.9.0"):
+    """Fake airflow package tree so the connection module imports without the
+    real dependency. On Airflow 2.x the BackendConnection engine is airflow's
+    process-global settings.engine, reached via settings.Session().get_bind()."""
+    airflow = types.ModuleType("airflow")
+    airflow.__version__ = version
+    settings = types.ModuleType("airflow.settings")
+    settings.engine = engine
+    session = MagicMock()
+    session.get_bind.return_value = engine
+    session_ctx = MagicMock()
+    session_ctx.__enter__.return_value = session
+    settings.Session = MagicMock(return_value=session_ctx)
+    airflow.settings = settings
+    models = types.ModuleType("airflow.models")
+    serialized_dag = types.ModuleType("airflow.models.serialized_dag")
+    serialized_dag.SerializedDagModel = MagicMock()
+    models.serialized_dag = serialized_dag
+    return {
+        "airflow": airflow,
+        "airflow.settings": settings,
+        "airflow.models": models,
+        "airflow.models.serialized_dag": serialized_dag,
+    }
+
+
+def _backend_config():
+    from metadata.generated.schema.entity.services.connections.pipeline.airflowConnection import (
+        AirflowConnection as AirflowConnectionConfig,
+    )
+    from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
+        BackendConnection,
+    )
+
+    return AirflowConnectionConfig(hostPort="http://airflow.example.com:8080", connection=BackendConnection())
+
+
+class TestBackendEngineDisposal:
+    def test_borrowed_backend_engine_is_not_disposed(self):
+        borrowed_engine = MagicMock(spec=Engine)
+        with patch.dict(sys.modules, _fake_airflow_modules(borrowed_engine)):
+            sys.modules.pop("metadata.ingestion.source.pipeline.airflow.connection", None)
+            from metadata.ingestion.source.pipeline.airflow import connection as airflow_connection
+
+            owner = airflow_connection.AirflowConnection(_backend_config())
+            assert owner.client is borrowed_engine
+            owner.close()
+
+        borrowed_engine.dispose.assert_not_called()
+
+    def test_om_built_engine_is_disposed(self):
+        borrowed_engine = MagicMock(spec=Engine)
+        om_engine = MagicMock(spec=Engine)
+        with patch.dict(sys.modules, _fake_airflow_modules(borrowed_engine)):
+            sys.modules.pop("metadata.ingestion.source.pipeline.airflow.connection", None)
+            from metadata.ingestion.source.pipeline.airflow import connection as airflow_connection
+
+            owner = airflow_connection.AirflowConnection(_backend_config())
+            with patch.object(airflow_connection, "_get_connection", return_value=om_engine):
+                assert owner.client is om_engine
+            owner.close()
+
+        om_engine.dispose.assert_called_once()
+        borrowed_engine.dispose.assert_not_called()
