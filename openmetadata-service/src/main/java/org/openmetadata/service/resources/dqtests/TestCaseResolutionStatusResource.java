@@ -202,8 +202,6 @@ public class TestCaseResolutionStatusResource
 
     ListFilter filter = new ListFilter(include);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-    // "incidentAssignee" compares the record's assignee column; the generic "assignee" param is
-    // owned by the task listing and would hash-match ASSIGNED_TO relationships instead.
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
@@ -509,8 +507,6 @@ public class TestCaseResolutionStatusResource
         .build();
   }
 
-  // Resolves every referenced test case in one query so the per-entry loop never has to fetch;
-  // entries whose FQN is absent from the map fail individually with a not-found message.
   private static Map<String, TestCase> prefetchTestCases(
       List<CreateTestCaseResolutionStatus> createRequests) {
     List<String> fqns =

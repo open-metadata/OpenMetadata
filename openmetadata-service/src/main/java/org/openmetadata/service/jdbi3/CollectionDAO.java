@@ -10503,8 +10503,7 @@ public interface CollectionDAO {
     // the last timestamp — MAX(id) is an arbitrary but deterministic tie-breaker, without which
     // two records sharing the chain's max timestamp would both enter the aggregates (stale
     // assignees, double-counted trend points) — and `incident` loads that record's current
-    // status/assignee/severity. This replaces ROW_NUMBER/MIN/MAX window functions, which
-    // materialized three buffered passes over the whole table at scale.
+    // status/assignee/severity.
     String INCIDENT_GROUPS_CTE =
         """
         WITH chain AS (
