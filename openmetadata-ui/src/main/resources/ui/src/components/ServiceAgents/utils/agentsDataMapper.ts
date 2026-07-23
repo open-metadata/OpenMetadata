@@ -282,6 +282,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     unit,
     verb,
     status: uiStatus,
+    enabled: pipeline.enabled,
     errors,
     warnings,
     failStep,
@@ -407,6 +408,10 @@ export const getLogTaskFieldForType = (
   log: IngestionPipelineLogByIdInterface,
   pipelineType: PipelineType
 ): string => {
+  // A by-fqn fetch returns the logs under a generic `logs` key; prefer it, else the *_task field.
+  if (log.logs) {
+    return log.logs;
+  }
   const fieldKey =
     PIPELINE_TYPE_TO_LOG_TASK_FIELD[pipelineType] ?? 'ingestion_task';
 

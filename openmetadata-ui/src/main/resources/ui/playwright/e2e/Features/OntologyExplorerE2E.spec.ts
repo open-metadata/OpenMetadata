@@ -276,7 +276,7 @@ test.describe('Ontology Explorer — E2E', () => {
       .locator('input')
       .fill('__pw_no_such_term__');
 
-    await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+    await expect(page.getByTestId('ontology-graph-search-empty')).toBeVisible();
   });
 
   test('toggling edge labels off and back on leaves the graph and cardinality map intact', async ({

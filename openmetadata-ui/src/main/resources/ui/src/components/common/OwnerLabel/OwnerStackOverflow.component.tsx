@@ -111,7 +111,10 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         size="xs">
         <Avatar
           className={classNames(
-            'tw:bg-brand-50 tw:ring-2 tw:ring-white tw:text-brand-700 tw:font-medium',
+            // Border on ::after: Avatar's own outline draws its inset contrast border, so an
+            // element-level outline would clobber it. This edge was a non-inset ring, so the
+            // overlay outline sits at offset 0 (outward), keeping both edges visible.
+            'tw:bg-brand-50 tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-2 tw:after:outline-white tw:text-brand-700 tw:font-medium',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}

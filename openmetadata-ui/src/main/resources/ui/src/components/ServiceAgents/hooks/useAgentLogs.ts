@@ -36,25 +36,26 @@ interface UseAgentLogsResult {
  * only while `isActive`. Parses the accumulated text into LogLine[].
  */
 export const useAgentLogs = (
-  id: string,
+  fqn: string,
   pipelineType: PipelineType,
   enabled: boolean,
   isActive = false
 ): UseAgentLogsResult => {
   const fetchPage = useCallback(
     (cursor?: string) =>
-      getIngestionPipelineLogById(id, cursor).then((res) => ({
+      // Fetch by fqn so the backend serves logs without a prior id -> fqn lookup.
+      getIngestionPipelineLogById(fqn, cursor).then((res) => ({
         content: getLogTaskFieldForType(res.data, pipelineType),
         after: res.data.after,
         total: res.data.total,
       })),
-    [id, pipelineType]
+    [fqn, pipelineType]
   );
 
   const { logs, hasMore, loading, loadMore } = usePaginatedLiveLog({
     fetchPage,
-    resetKey: id,
-    enabled: Boolean(enabled && id),
+    resetKey: fqn,
+    enabled: Boolean(enabled && fqn),
     isLive: isActive,
   });
 
