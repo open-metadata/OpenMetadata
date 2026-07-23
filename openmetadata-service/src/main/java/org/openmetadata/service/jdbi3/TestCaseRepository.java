@@ -108,6 +108,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1018,24 +1019,26 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     RdfUpdater.updateEntity(testSuite);
   }
 
-  @Transaction
   @Override
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
-      }
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+      AsyncService.getInstance()
+          .execute(
+              () -> {
+                for (CollectionDAO.EntityRelationshipRecord child : children) {
+                  try {
+                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
+                  }
+                }
+              });
     }
   }
 

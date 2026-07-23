@@ -818,17 +818,19 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <div className="tw:flex tw:mx-5 tw:items-end">
-            <div className="tw:flex-1">
+          <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
+            <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 badge={statusBadge}
                 breadcrumb={[]}
+                displayNameClassName="entity-header-title-wrap"
                 entityData={{ ...dataProduct, displayName, name }}
                 entityType={EntityType.DATA_PRODUCT}
                 handleFollowingClick={handleFollowingClick}
                 icon={iconData}
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
+                nameClassName="entity-header-title-wrap"
                 serviceName=""
                 suffix={
                   <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
@@ -836,8 +838,8 @@ const DataProductsDetailsPage = ({
                 titleColor={dataProduct.style?.color}
               />
             </div>
-            <div>
-              <div className="tw:flex tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
+            <div className="tw:shrink-0 tw:max-w-full">
+              <div className="tw:flex tw:flex-wrap tw:gap-3 tw:justify-end tw:items-center tw:pb-1">
                 {dataProductClassBase.getRequestDataAccessButton()}
 
                 {!isVersionsView && dataProductPermission.Create && (
