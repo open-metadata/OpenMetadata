@@ -80,7 +80,9 @@ final class UserContextSearch {
       summary.put("byType", tallyByType(recent));
       // byType is tallied over the returned page only; when the page is truncated it does not cover
       // every owned entity. The flag lets the LLM avoid presenting a partial breakdown as complete.
-      summary.put("byTypeComplete", recent.size() == total);
+      // Compare the raw hit count (not recent.size()) so hits dropped by summarizeHit for missing
+      // fields don't make a fully-covered page report as incomplete.
+      summary.put("byTypeComplete", rawHitCount(raw) == total);
       summary.put("recent", recent);
     }
     return summary;
@@ -298,6 +300,15 @@ final class UserContextSearch {
     if (value != null) {
       target.put(key, value);
     }
+  }
+
+  private static int rawHitCount(Map<String, Object> raw) {
+    int count = 0;
+    Object hits = raw.get("hits");
+    if (hits instanceof Map<?, ?> hitsMap && hitsMap.get("hits") instanceof List<?> hitList) {
+      count = hitList.size();
+    }
+    return count;
   }
 
   private static int parseTotal(Map<String, Object> raw) {
