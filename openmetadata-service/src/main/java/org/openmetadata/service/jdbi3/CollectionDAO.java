@@ -3234,11 +3234,6 @@ public interface CollectionDAO {
         @Bind("cutoffMillis") long cutoffMillis,
         @Bind("batchSize") int batchSize);
 
-    @SqlQuery(
-        "SELECT id FROM thread_entity WHERE type = 'Conversation' AND createdAt < :cutoffMillis LIMIT :batchSize")
-    List<UUID> fetchConversationThreadIdsOlderThan(
-        @Bind("cutoffMillis") long cutoffMillis, @Bind("batchSize") int batchSize);
-
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM <tableName> <condition> "

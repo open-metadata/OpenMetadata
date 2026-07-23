@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { redirectToExplorePage } from './common';
+import { clickOutside, redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -137,6 +137,13 @@ export const openEntitySummaryPanel = async ({
   }
 
   if (fullyQualifiedName) {
+    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
+    await cardByFqn.waitFor({ state: 'visible' });
+    await clickOutside(page);
+    await expect(
+      page.locator('.ant-popover:not(.ant-popover-hidden)')
+    ).toHaveCount(0);
+
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
     await entityResultCard.getByTestId('description-text').click();
