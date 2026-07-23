@@ -26,7 +26,6 @@ import {
 } from '@tanstack/react-query';
 import {
   AlertCircle,
-  BarChartSquare02,
   Check,
   ChevronDown,
   CursorClick01,
@@ -465,9 +464,6 @@ const MetricListPage = () => {
 
         return (
           <Box align="center" gap={3}>
-            <div className="metric-list-icon">
-              <BarChartSquare02 />
-            </div>
             <div className="metric-list-cell">
               <Link
                 className="metric-list-name"
