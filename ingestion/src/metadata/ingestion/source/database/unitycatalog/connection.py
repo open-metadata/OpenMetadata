@@ -73,6 +73,10 @@ from metadata.ingestion.source.database.databricks.connection import (
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_product,
+    get_databricks_user_agent,
+)
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
@@ -304,7 +308,13 @@ def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
         client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(host=normalize_host_port(connection.hostPort), **client_params)
+    product, product_version = get_databricks_product()
+    return WorkspaceClient(
+        host=normalize_host_port(connection.hostPort),
+        product=product,
+        product_version=product_version,
+        **client_params,
+    )
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engine:
@@ -314,9 +324,15 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engin
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 

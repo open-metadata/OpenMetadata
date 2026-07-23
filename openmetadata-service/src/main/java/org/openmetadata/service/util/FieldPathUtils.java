@@ -82,6 +82,19 @@ public class FieldPathUtils {
   }
 
   /**
+   * Locate the nested field POJO addressed by {@code fieldPath} (e.g. a Column or SchemaField).
+   * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
+   * its own getters/setters and generate a JSON patch against the parent entity.
+   */
+  public static Optional<Object> findField(EntityInterface entity, String fieldPath) {
+    FieldPathComponents components = parseFieldPath(fieldPath);
+    if (components == null) {
+      return Optional.empty();
+    }
+    return locateField(entity, components);
+  }
+
+  /**
    * Resolve the current description for a field path.
    *
    * @param entity The entity to inspect
@@ -383,6 +396,86 @@ public class FieldPathUtils {
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
+    return Optional.empty();
+  }
+
+  /** Navigate the parsed components to the target field POJO. */
+  private static Optional<Object> locateField(
+      EntityInterface entity, FieldPathComponents components) {
+    String container = components.containerName();
+    String fieldName = components.fieldName();
+
+    List<?> fieldList = getFieldList(entity, container);
+    if (fieldList != null) {
+      return findFieldInList(fieldList, fieldName);
+    }
+
+    List<?> nested = getNestedContainerList(entity, container);
+    if (nested != null) {
+      return findFieldInList(nested, fieldName);
+    }
+
+    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
+    return Optional.empty();
+  }
+
+  /** Get the list of fields hosted by a nested container (messageSchema, dataModel, …). */
+  private static List<?> getNestedContainerList(EntityInterface entity, String container) {
+    List<?> result = null;
+    if ("messageSchema".equals(container)) {
+      Object schema = invokeGetter(entity, "getMessageSchema");
+      if (schema != null) {
+        result = getFieldListFromObject(schema, "schemaFields");
+      }
+    } else if ("dataModel".equals(container)) {
+      Object dataModel = invokeGetter(entity, "getDataModel");
+      if (dataModel != null) {
+        result = getFieldListFromObject(dataModel, "columns");
+      }
+    } else if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
+      Object schema = invokeGetter(entity, "get" + capitalize(container));
+      if (schema != null) {
+        result = getFieldListFromObject(schema, "schemaFields");
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Locate a field POJO in a list by name, recursing into `children` for dotted paths and any
+   * nested subtrees, mirroring {@link #setDescriptionInList}.
+   */
+  @SuppressWarnings("unchecked")
+  private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
+    Optional<Object> found = (Optional<Object>) findFieldByName(fieldList, fieldName);
+    if (found.isPresent()) {
+      return found;
+    }
+
+    if (fieldName.contains(".")) {
+      String[] parts = fieldName.split("\\.", 2);
+      Optional<?> parent = findFieldByName(fieldList, parts[0]);
+      if (parent.isPresent()) {
+        List<?> children = getFieldListFromObject(parent.get(), "children");
+        if (children != null) {
+          Optional<Object> childHit = findFieldInList(children, parts[1]);
+          if (childHit.isPresent()) {
+            return childHit;
+          }
+        }
+      }
+    }
+
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        Optional<Object> hit = findFieldInList(children, fieldName);
+        if (hit.isPresent()) {
+          return hit;
+        }
+      }
+    }
+
     return Optional.empty();
   }
 

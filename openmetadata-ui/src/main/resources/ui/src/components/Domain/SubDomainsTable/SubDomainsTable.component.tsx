@@ -28,7 +28,6 @@ import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCa
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
@@ -61,12 +60,6 @@ const SubDomainsTable = ({
     filterConfigs: defaultFilters,
     parsedFilters: subdomainListing.parsedFilters,
     onFilterChange: subdomainListing.handleFilterChange,
-  });
-
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.sub-domain-plural',
-    count: subdomainListing.totalEntities,
-    loading: subdomainListing.loading,
   });
 
   const [searchInputValue, setSearchInputValue] = useState(
@@ -218,9 +211,8 @@ const SubDomainsTable = ({
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
             <Input
-              className="tw:max-w-86"
+              className="tw:max-w-60"
               icon={SearchLg}
               placeholder={t('label.search-entity', {
                 entity: t('label.sub-domain'),
