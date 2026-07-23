@@ -149,11 +149,6 @@ class PowerbiSource(DashboardServiceSource):
         self.datamodel_file_mappings = []
         self.state = WorkspaceState()
 
-    def close(self):
-        self.metadata.close()
-        if self.client.file_client:
-            self.client.file_client.delete_tmp_files()
-
     def get_org_workspace_data(self) -> Iterable[Optional[Group]]:  # noqa: UP045
         """
         fetch all the workspace data for non-admin users
