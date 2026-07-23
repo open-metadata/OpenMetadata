@@ -16,8 +16,7 @@
 export interface TestCaseResolutionStatus {
     /**
      * Human-readable summary of the test failure that opened the incident, denormalized from
-     * the failed test case result so incident listings do not need a per-incident result
-     * lookup.
+     * the failed test case result so incident listings do not need a per-incident result lookup.
      */
     failureSummary?: string;
     /**

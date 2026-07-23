@@ -60,8 +60,8 @@ export interface TestCaseIncidentGroup {
      */
     severity?: Severities;
     /**
-     * Most actionable current status across the group's open incidents, in the order Assigned
-     * > Ack > New.
+     * Most actionable current status across the group's open incidents, in the order Assigned >
+     * Ack > New.
      */
     status?: TestCaseResolutionStatusTypes;
     /**
@@ -101,13 +101,13 @@ export enum Severities {
 }
 
 /**
- * Most actionable current status across the group's open incidents, in the order Assigned
- * > Ack > New.
+ * Most actionable current status across the group's open incidents, in the order Assigned >
+ * Ack > New.
  *
  * Test case resolution status type.
  */
 export enum TestCaseResolutionStatusTypes {
-    Ack = "Ack",
+    ACK = "Ack",
     Assigned = "Assigned",
     New = "New",
     Resolved = "Resolved",
