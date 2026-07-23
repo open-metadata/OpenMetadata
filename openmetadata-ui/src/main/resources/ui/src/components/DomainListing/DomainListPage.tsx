@@ -19,14 +19,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
 import { debounce, isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -42,6 +41,7 @@ import EntityListingTable from '../common/EntityListingTable/EntityListingTable.
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
@@ -332,6 +332,18 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   );
 };
 
+const DomainListPageWithLayout: FC<DomainListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DomainListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DomainListPage };
 
-export default withPageLayout(DomainListPage);
+export default DomainListPageWithLayout;
