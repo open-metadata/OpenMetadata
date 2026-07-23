@@ -782,7 +782,7 @@ def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     ]
 
 
-def test_request_metrics_count_ui_scenarios_without_counting_manual_chunk_boots():
+def test_request_metrics_exclude_diagnostic_beacons_and_manual_chunk_boots():
     requests = load_script("summarize_playwright_requests")
     accumulator = requests.RequestAccumulator()
     accumulator.add_all(
@@ -797,10 +797,15 @@ def test_request_metrics_count_ui_scenarios_without_counting_manual_chunk_boots(
 
     payload = accumulator.payload("chromium-01")
 
-    assert payload["staticRequests"] == 5
+    assert payload["totalRequests"] == 3
+    assert payload["staticRequests"] == 3
+    assert payload["staticBytes"] == 240
+    assert payload["staticServerMs"] == 7
+    assert payload["statuses"] == {"static:200": 3}
     assert payload["appBoots"] == 2
     assert payload["uiScenarios"] == 1
     assert payload["appEntryRequests"] == 1
+    assert "GET /favicon.ico" not in payload["staticEndpointCounts"]
 
 
 def test_performance_metrics_aggregate_ranked_endpoint_counts():
@@ -919,6 +924,13 @@ def test_boot_measurement_integrity_requires_beacons_for_entry_requests():
     assert evaluator.has_valid_boot_measurement(0, 0, 1) is False
     assert evaluator.has_valid_boot_measurement(1, 1, 2) is False
     assert evaluator.has_valid_boot_measurement(1, 2, 1) is False
+
+
+def test_boot_target_uses_exact_counts_instead_of_rounded_ratio():
+    evaluator = load_script("evaluate_playwright_performance")
+
+    assert evaluator.has_at_most_one_app_boot_per_ui_scenario(1_000, 1_000)
+    assert not evaluator.has_at_most_one_app_boot_per_ui_scenario(1_001, 1_000)
 
 
 def test_outcome_classifier_reads_include_matrix():

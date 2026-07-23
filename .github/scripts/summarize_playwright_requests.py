@@ -70,8 +70,9 @@ class RequestAccumulator:
             diagnostics = parse_qs(request_url.query)
             if diagnostics.get("playwright-app-boot") == ["1"]:
                 self.counters["appBoots"] += 1
-            if diagnostics.get("playwright-ui-scenario") == ["1"]:
-                self.counters["uiScenarios"] += 1
+                if diagnostics.get("playwright-ui-scenario") == ["1"]:
+                    self.counters["uiScenarios"] += 1
+                return
         kind = "api" if path.startswith("/api/") else "static"
         response_bytes = match["bytes"]
         self.counters[f"{kind}Requests"] += 1

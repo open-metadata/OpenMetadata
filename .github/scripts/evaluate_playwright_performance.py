@@ -43,6 +43,12 @@ def has_valid_boot_measurement(
     )
 
 
+def has_at_most_one_app_boot_per_ui_scenario(
+    app_boots: int, ui_scenarios: int
+) -> bool:
+    return ui_scenarios > 0 and app_boots <= ui_scenarios
+
+
 def aggregate_ranked_counts(
     payloads: list[dict[str, Any]], counts_key: str, ranked_key: str, limit: int
 ) -> list[dict[str, Any]]:
@@ -220,8 +226,9 @@ def main() -> None:
         "requestsPerAttemptBelowTwoHundred": metrics["requestsPerAttempt"] < 200,
         "staticRequestsPerAppBootBelowOneHundred": app_boots > 0
         and metrics["staticRequestsPerAppBoot"] < 100,
-        "atMostOneAppBootPerUIScenario": ui_scenarios > 0
-        and metrics["appBootsPerUIScenario"] <= 1,
+        "atMostOneAppBootPerUIScenario": has_at_most_one_app_boot_per_ui_scenario(
+            app_boots, ui_scenarios
+        ),
         "appBootMeasurementIntegrity": has_valid_boot_measurement(
             app_boots, ui_scenarios, app_entry_requests
         ),
