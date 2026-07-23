@@ -21,8 +21,8 @@ import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -3739,7 +3739,10 @@ test.describe('Domain description editor popups', () => {
     page,
   }) => {
     const entityName = table.entityResponseData.name ?? table.entity.name;
-    const displayName = table.entityResponseData.displayName ?? table.entity.displayName;
+    const displayName =
+      table.entityResponseData.displayName ??
+      table.entity.displayName ??
+      entityName;
 
     await sidebarClick(page, SidebarItem.DOMAIN);
     await waitForAllLoadersToDisappear(page);
@@ -3780,5 +3783,4 @@ test.describe('Domain description editor popups', () => {
       await expect(description.locator('a[data-type="hashtag"]')).toBeVisible();
     });
   });
-}
-);
+});
