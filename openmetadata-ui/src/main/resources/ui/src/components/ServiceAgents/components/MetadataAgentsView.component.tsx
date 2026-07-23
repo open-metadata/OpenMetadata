@@ -93,6 +93,14 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const isLogsAgentActive =
     liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
 
+  // Same reason for the run history drawer — its "Run now" guard has to see the
+  // status the agent has now, not the one it had when the drawer was opened.
+  const liveRunsAgent = useMemo(
+    () =>
+      agents.find((agent) => agent.id === runsFor?.agent.id) ?? runsFor?.agent,
+    [agents, runsFor]
+  );
+
   const { rawText, isLoading: isLogsLoading } = useAgentLogs(
     logsFor?.fqn ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
@@ -129,24 +137,17 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [deleteTarget, onRefresh]);
 
   const onAction = useCallback(
-    (action: string, agent: Agent) => {
+    (action: string, agent: Agent): void | Promise<void> => {
       switch (action) {
         case 'run':
-          void runAgent(agent);
-
-          break;
+          return runAgent(agent);
         case 'redeploy':
-          void redeployAgent(agent);
-
-          break;
+          return redeployAgent(agent);
         case 'kill':
-          void killAgent(agent);
-
-          break;
+          return killAgent(agent);
         case 'pause':
-          void toggleAgent(agent);
-
-          break;
+        case 'resume':
+          return toggleAgent(agent);
         case 'edit':
           navigate(
             connectionsRouterClassBase.getEditIngestionPath(
@@ -245,11 +246,12 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         onRun={onRun}
         onRunDetails={onRunDetails}
       />
-      {runsFor && (
+      {runsFor && liveRunsAgent && (
         <RunHistoryDrawer
           open
-          agent={runsFor.agent}
+          agent={liveRunsAgent}
           initialRunId={runsFor.runId}
+          permissions={agentPermissions?.[liveRunsAgent.fqn]}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
             setLogsFor(agent);
