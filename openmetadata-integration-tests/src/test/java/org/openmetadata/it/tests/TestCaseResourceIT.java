@@ -21,6 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.awaitility.Awaitility;
@@ -50,6 +54,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -1035,6 +1040,11 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("columnCount", "2")
             .create();
 
+    testCase1.setDescription("Edited before logical suite assignment");
+    patchEntity(testCase1.getId().toString(), testCase1);
+    testCase2.setDescription("Also edited before logical suite assignment");
+    patchEntity(testCase2.getId().toString(), testCase2);
+
     CreateTestSuite suiteReq = new CreateTestSuite();
     suiteReq.setName(ns.prefix("logical_bulk_ids"));
     TestSuite logicalSuite = client.testSuites().create(suiteReq);
@@ -1083,6 +1093,152 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         updatedSuite.getTests().stream().map(ref -> ref.getId()).toList();
     assertTrue(testIdsInSuite.contains(testCase1.getId()));
     assertTrue(testIdsInSuite.contains(testCase2.getId()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("edited test cases added to logical suite are indexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase1.getId()),
+                    logicalSuite.getId());
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase2.getId()),
+                    logicalSuite.getId());
+              });
+    }
+  }
+
+  @Test
+  void test_concurrentLogicalSuiteAddsPreserveEverySearchMembership(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("concurrent_logical_suites"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    List<TestSuite> logicalSuites =
+        java.util.stream.IntStream.range(0, 6)
+            .mapToObj(
+                index ->
+                    client
+                        .testSuites()
+                        .create(
+                            new CreateTestSuite()
+                                .withName(ns.prefix("concurrent_logical_suite_" + index))))
+            .toList();
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      List<CompletableFuture<Void>> updates =
+          logicalSuites.stream()
+              .map(
+                  suite ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            try {
+                              start.await();
+                              addTestCasesToLogicalTestSuite(
+                                  client, suite.getId(), List.of(testCase.getId()));
+                            } catch (InterruptedException exception) {
+                              Thread.currentThread().interrupt();
+                              throw new IllegalStateException(exception);
+                            }
+                          },
+                          executor))
+              .toList();
+
+      start.countDown();
+      CompletableFuture.allOf(updates.toArray(CompletableFuture[]::new)).join();
+    }
+
+    TestCase fetched = client.testCases().get(testCase.getId().toString(), "testSuites");
+    List<UUID> persistedSuiteIds = fetched.getTestSuites().stream().map(TestSuite::getId).toList();
+    assertTrue(
+        persistedSuiteIds.containsAll(logicalSuites.stream().map(TestSuite::getId).toList()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("every concurrent logical suite membership is indexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                JsonNode source = queryTestCaseSearchSource(searchClient, testCase.getId());
+                logicalSuites.forEach(
+                    suite -> assertSearchDocContainsTestSuite(source, suite.getId()));
+                assertTrue(source.path("testSuitesRevision").asLong() >= logicalSuites.size());
+              });
+    }
+  }
+
+  @Test
+  void test_concurrentLogicalSuiteTestAddsPreserveEverySearchTest(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    List<TestCase> testCases =
+        java.util.stream.IntStream.range(0, 6)
+            .mapToObj(
+                index ->
+                    TestCaseBuilder.create(client)
+                        .name(ns.prefix("concurrent_logical_suite_test_" + index))
+                        .forTable(table)
+                        .testDefinition("tableRowCountToEqual")
+                        .parameter("value", "100")
+                        .create())
+            .toList();
+    TestSuite logicalSuite =
+        client
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("concurrent_logical_suite_tests")));
+    CountDownLatch start = new CountDownLatch(1);
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      List<CompletableFuture<Void>> updates =
+          testCases.stream()
+              .map(
+                  testCase ->
+                      CompletableFuture.runAsync(
+                          () -> {
+                            try {
+                              start.await();
+                              addTestCasesToLogicalTestSuite(
+                                  client, logicalSuite.getId(), List.of(testCase.getId()));
+                            } catch (InterruptedException exception) {
+                              Thread.currentThread().interrupt();
+                              throw new IllegalStateException(exception);
+                            }
+                          },
+                          executor))
+              .toList();
+
+      start.countDown();
+      CompletableFuture.allOf(updates.toArray(CompletableFuture[]::new)).join();
+    }
+
+    TestSuite fetched = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    List<UUID> persistedTestCaseIds =
+        fetched.getTests().stream().map(EntityReference::getId).toList();
+    assertTrue(persistedTestCaseIds.containsAll(testCases.stream().map(TestCase::getId).toList()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("every concurrent logical suite test is indexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                JsonNode source = queryTestSuiteSearchSource(searchClient, logicalSuite.getId());
+                testCases.forEach(
+                    testCase -> assertSearchDocContainsTestCase(source, testCase.getId()));
+                assertTrue(source.path("testsRevision").asLong() >= testCases.size());
+              });
+    }
   }
 
   @Test
@@ -1808,6 +1964,78 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         Exception.class,
         () -> getEntity(testCaseId),
         "Test case should be deleted along with its resolution-status children");
+  }
+
+  @Test
+  void test_hardDeleteReapsResolutionStatusChildren(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("tcrs_reap_children"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    org.openmetadata.schema.tests.type.TestCaseResolutionStatus status =
+        client.testCaseResolutionStatuses().create(newStatus);
+    UUID statusId = status.getId();
+
+    assertEquals(
+        1,
+        countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+        "resolution-status time-series row should exist before delete");
+    assertEquals(
+        1, countRelationshipsTo(statusId), "parentOf relationship should exist before delete");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    params.put("recursive", "true");
+    client.testCases().delete(testCase.getId().toString(), params);
+
+    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
+    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
+    Awaitility.await("resolution-status children reaped after hard delete")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  0,
+                  countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                  "resolution-status time-series row must be hard deleted with its test case");
+              assertEquals(
+                  0,
+                  countRelationshipsTo(statusId),
+                  "parentOf relationship must be cleaned up, otherwise it is left orphaned");
+            });
+  }
+
+  private int countRowsById(String tableName, String id) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM " + tableName + " WHERE id = :id")
+                    .bind("id", id)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private int countRelationshipsTo(UUID toId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE toId = :id")
+                    .bind("id", toId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   @Test
@@ -4702,7 +4930,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private JsonNode queryTestCaseSearchSource(Rest5Client searchClient, UUID testCaseId)
       throws Exception {
-    refreshTestCaseSearchIndex(searchClient);
+    return querySearchSource(searchClient, getTestCaseSearchIndexName(), testCaseId);
+  }
+
+  private JsonNode queryTestSuiteSearchSource(Rest5Client searchClient, UUID testSuiteId)
+      throws Exception {
+    return querySearchSource(searchClient, getTestSuiteSearchIndexName(), testSuiteId);
+  }
+
+  private JsonNode querySearchSource(Rest5Client searchClient, String indexName, UUID entityId)
+      throws Exception {
+    refreshSearchIndex(searchClient, indexName);
 
     String query =
         """
@@ -4717,9 +4955,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
           }
         }
         """
-            .formatted(testCaseId);
+            .formatted(entityId);
 
-    Request request = new Request("POST", "/" + getTestCaseSearchIndexName() + "/_search");
+    Request request = new Request("POST", "/" + indexName + "/_search");
     request.setJsonEntity(query);
     Response response = searchClient.performRequest(request);
 
@@ -4744,12 +4982,30 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(found, "search document testSuites should contain " + testSuiteId);
   }
 
+  private void assertSearchDocContainsTestCase(JsonNode source, UUID testCaseId) {
+    assertNotNull(source);
+    JsonNode tests = source.path("tests");
+    assertTrue(tests.isArray(), "tests should be indexed in the search document");
+    boolean found = false;
+    for (JsonNode test : tests) {
+      if (testCaseId.toString().equals(test.path("id").asText())) {
+        found = true;
+        break;
+      }
+    }
+    assertTrue(found, "search document tests should contain " + testCaseId);
+  }
+
   private String getTestCaseSearchIndexName() {
     return "openmetadata_test_case_search_index";
   }
 
-  private void refreshTestCaseSearchIndex(Rest5Client searchClient) throws Exception {
-    Request request = new Request("POST", "/" + getTestCaseSearchIndexName() + "/_refresh");
+  private String getTestSuiteSearchIndexName() {
+    return "openmetadata_test_suite_search_index";
+  }
+
+  private void refreshSearchIndex(Rest5Client searchClient, String indexName) throws Exception {
+    Request request = new Request("POST", "/" + indexName + "/_refresh");
     searchClient.performRequest(request);
   }
 }

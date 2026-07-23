@@ -95,10 +95,44 @@ on:
         required: false
         type: string
         default: '8'
+      simpleReindexTables:
+        description: 'Table fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '5000'
+      simpleReindexTopics:
+        description: 'Topic fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexDashboards:
+        description: 'Dashboard fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '1500'
+      simpleReindexPipelines:
+        description: 'Pipeline fixtures for the simple reindex UI scenario'
+        required: false
+        type: string
+        default: '2000'
+      searchAvailableTables:
+        description: 'Table fixtures for the search availability UI scenario'
+        required: false
+        type: string
+        default: '5000'
 
 permissions:
   contents: read
   checks: write
+
+# All jobs hit ONE shared external cluster, and every job's purge-it step hard-deletes each
+# test-namespace root by the generic __<32hex>__ signature (ClusterPurgeIT) — NOT scoped to this
+# run. Two overlapping runs therefore delete each other's live data mid-seed (observed: a
+# concurrent run's purge 404'd a scale seed's schema). Serialize to at most one external run at a
+# time; a new run queues behind the current one rather than cancelling a multi-hour scale run.
+concurrency:
+  group: java-it-external-cluster
+  cancel-in-progress: false
 
 jobs:
   ui-it-external:
@@ -202,17 +236,24 @@ jobs:
           OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
           OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
           PW_VIDEO: 'true'
+          SIMPLE_REINDEX_TABLES: ${{ github.event.inputs.simpleReindexTables || '5000' }}
+          SIMPLE_REINDEX_TOPICS: ${{ github.event.inputs.simpleReindexTopics || '1500' }}
+          SIMPLE_REINDEX_DASHBOARDS: ${{ github.event.inputs.simpleReindexDashboards || '1500' }}
+          SIMPLE_REINDEX_PIPELINES: ${{ github.event.inputs.simpleReindexPipelines || '2000' }}
+          SEARCH_AVAILABLE_TABLES: ${{ github.event.inputs.searchAvailableTables || '5000' }}
+          IT_TEST: ${{ github.event.inputs.itTest }}
         run: |
-          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
-            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
-            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
-            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
-            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
-          IT_TEST_PROP=""
-          if [ -n "${{ github.event.inputs.itTest }}" ]; then
-            IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
+          test_args=(
+            "-Djpw.simpleReindex.tables=${SIMPLE_REINDEX_TABLES}"
+            "-Djpw.simpleReindex.topics=${SIMPLE_REINDEX_TOPICS}"
+            "-Djpw.simpleReindex.dashboards=${SIMPLE_REINDEX_DASHBOARDS}"
+            "-Djpw.simpleReindex.pipelines=${SIMPLE_REINDEX_PIPELINES}"
+            "-Djpw.searchAvailable.tables=${SEARCH_AVAILABLE_TABLES}"
+          )
+          if [ -n "$IT_TEST" ]; then
+            test_args+=("-Dit.test=${IT_TEST}")
           fi
-          mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
+          mvn verify -P ui-it -pl :openmetadata-integration-tests "${test_args[@]}" \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
             -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
             -Dui.it.excludedGroups="sso-bootstrap,search-direct"
@@ -222,6 +263,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/playwright-traces
           if-no-files-found: ignore
           retention-days: 14
@@ -231,6 +273,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-videos-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/playwright-videos
           if-no-files-found: ignore
           retention-days: 14
@@ -240,6 +283,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-ui-it-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
@@ -266,10 +310,12 @@ jobs:
   search-it-external:
     # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
     # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
-    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
-    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    # serially or they collide with "Job is already running". `needs` enforces ordering;
+    # `!cancelled()` keeps each job's own toggle independent (so it still runs if ui-it was
+    # skipped/failed) while STILL honoring a manual cancel — plain `always()` forces the job to
+    # start even when you cancel the run, which is why cancelling never stopped search-it/scale-it.
     needs: [ui-it-external]
-    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -371,6 +417,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-search-it-external-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14
@@ -401,7 +448,7 @@ jobs:
     # cancelled every night without ever completing. Larger sizes can still be requested on demand
     # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -512,6 +559,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scale-metrics-${{ matrix.seed }}-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/benchmark
           if-no-files-found: ignore
           retention-days: 30
@@ -521,6 +569,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: failsafe-reports-scale-${{ matrix.seed }}-${{ github.run_id }}
+          overwrite: true
           path: openmetadata-integration-tests/target/failsafe-reports
           if-no-files-found: ignore
           retention-days: 14

@@ -531,9 +531,10 @@ test.describe.serial(
 
       await expect(agentCard.getByTestId('more-actions')).toBeVisible();
 
-      // Open the more-actions dropdown and verify the run button is present
+      // Open the more-actions dropdown and verify the pipeline actions are present
       await agentCard.getByTestId('more-actions').click();
-      await expect(page.getByTestId('run-button')).toBeVisible();
+      await expect(page.getByTestId('edit-button')).toBeVisible();
+      await page.keyboard.press('Escape');
 
       // Trigger a pipeline run via the run button.
       // Also register a waiter for the pipelineStatus refresh that follows the trigger
@@ -549,7 +550,7 @@ test.describe.serial(
           res.url().includes('/pipelineStatus') &&
           res.request().method() === 'GET'
       );
-      await page.getByTestId('run-button').click();
+      await agentCard.getByTestId('run-agent-button').click();
       await triggerResponse;
       await statusRefreshResponse;
 

@@ -28,6 +28,7 @@ import {
   ForwardedRef,
   forwardRef,
   MouseEvent,
+  UIEvent,
   useCallback,
   useImperativeHandle,
   useState,
@@ -49,17 +50,23 @@ import {
   FolderFilesState,
 } from './DocumentsView.interface';
 
+const FOLDERS_SCROLL_THRESHOLD = 100;
+
 const DocumentFolderView = (
   {
     folders,
     isLoading,
     totalFileCount = 0,
+    totalFolderCount,
     selectedFolderId,
     canCreate = false,
     canDelete = false,
+    hasMoreFolders = false,
+    isLoadingMoreFolders = false,
     onSelectFolder,
     onFoldersChanged,
     onUploadToFolder,
+    onLoadMoreFolders,
   }: DocumentFolderViewProps,
   ref: ForwardedRef<DocumentFolderViewHandle>
 ) => {
@@ -74,6 +81,17 @@ const DocumentFolderView = (
   const [fetchingFolderIds, setFetchingFolderIds] = useState<Set<string>>(
     new Set()
   );
+
+  const handleFoldersScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (
+      hasMoreFolders &&
+      !isLoadingMoreFolders &&
+      scrollHeight - scrollTop - clientHeight < FOLDERS_SCROLL_THRESHOLD
+    ) {
+      onLoadMoreFolders?.();
+    }
+  };
 
   const fetchFolderFilesIfNeeded = useCallback(
     async (folderId: string) => {
@@ -303,7 +321,8 @@ const DocumentFolderView = (
                 className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 <span>
-                  {folders.length} {t('label.folder-plural')}
+                  {totalFolderCount ?? folders.length}{' '}
+                  {t('label.folder-plural')}
                 </span>
                 <Dot className="tw:text-quaternary" size="micro" />
                 <span data-testid="folder-view-file-count">
@@ -324,7 +343,9 @@ const DocumentFolderView = (
           )}
         </div>
 
-        <div className="tw:flex-1 tw:overflow-y-auto">
+        <div
+          className="tw:flex-1 tw:overflow-y-auto"
+          onScroll={handleFoldersScroll}>
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -385,7 +406,7 @@ const DocumentFolderView = (
                           color="tertiary"
                           iconLeading={
                             <FolderIcon
-                              className="tw:text-quaternary"
+                              className="tw:text-quaternary tw:shrink-0"
                               height={14}
                               width={14}
                             />
@@ -556,6 +577,13 @@ const DocumentFolderView = (
                 );
               })}
             </Tree>
+          )}
+          {!isLoading && isLoadingMoreFolders && (
+            <div
+              className="tw:flex tw:flex-col tw:gap-2 tw:px-1 tw:py-2"
+              data-testid="folders-loading-more">
+              <Skeleton height="28px" variant="rounded" width="100%" />
+            </div>
           )}
         </div>
       </Card>

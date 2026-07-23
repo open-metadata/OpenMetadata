@@ -59,7 +59,7 @@ const defaultProps = {
 const openPicker = () => fireEvent.click(screen.getByTestId(TRIGGER_TEST_ID));
 
 const pressKey = (key: string) =>
-  fireEvent.keyDown(screen.getByTestId('picker-popover'), { key });
+  fireEvent.keyDown(screen.getByRole('listbox'), { key });
 
 describe('DataAssetPickerShell', () => {
   beforeEach(() => {
@@ -117,7 +117,7 @@ describe('DataAssetPickerShell', () => {
 
     expect(screen.getByText('Orders')).toBeInTheDocument();
 
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('picker-popover'), { key: 'Escape' });
 
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });
@@ -128,7 +128,12 @@ describe('DataAssetPickerShell', () => {
 
     expect(screen.getByText('Orders')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('picker-overlay'));
+    const underlay = screen.getByTestId('underlay');
+    fireEvent.pointerDown(underlay);
+    fireEvent.mouseDown(underlay);
+    fireEvent.pointerUp(underlay);
+    fireEvent.mouseUp(underlay);
+    fireEvent.click(underlay);
 
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });

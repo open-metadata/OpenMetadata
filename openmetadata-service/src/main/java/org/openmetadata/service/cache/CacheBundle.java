@@ -72,8 +72,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       }
 
       CacheKeys keys = new CacheKeys(cacheConfig.redis.keyspace);
-      cachedEntityDao =
-          new CachedEntityDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedEntityDao = new CachedEntityDao(cacheProvider, keys, cacheConfig);
       cachedRelationshipDao =
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
