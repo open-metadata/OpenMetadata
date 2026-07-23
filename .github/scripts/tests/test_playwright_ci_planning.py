@@ -556,6 +556,20 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     assert "provider_address_texas" in fast_launcher
 
 
+def test_planner_discovers_oss_only_specs():
+    workflow = (
+        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    planner_job = workflow.split("  plan-playwright:", 1)[1].split(
+        "  restore-playwright-fixture:", 1
+    )[0]
+    discovery_step = planner_job.split("      - name: Discover tests", 1)[1].split(
+        "      - name: Build duration-aware shard plans", 1
+    )[0]
+
+    assert 'PLAYWRIGHT_IS_OSS: "true"' in discovery_step
+
+
 def test_normal_vite_build_keeps_hashed_entry_assets():
     vite_config = (
         SCRIPTS.parents[1] / "openmetadata-ui/src/main/resources/ui/vite.config.ts"

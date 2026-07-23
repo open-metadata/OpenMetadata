@@ -416,6 +416,7 @@ jobs:
       - name: Discover tests
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
+          PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
