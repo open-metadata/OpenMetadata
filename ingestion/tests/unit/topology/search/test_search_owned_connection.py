@@ -11,6 +11,7 @@
 """SearchServiceSource owns a single BaseConnection and reuses it for the
 test-connection step."""
 
+import ssl
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -114,4 +115,24 @@ def test_elasticsearch_removes_staging_dir_when_init_test_connection_fails(tmp_p
         pytest.raises(RuntimeError),
     ):
         ElasticsearchSource.create(config, MagicMock())
+    assert not staging_dir.exists()
+
+
+def test_elasticsearch_removes_staging_dir_when_ssl_context_build_fails(tmp_path):
+    staging_dir = tmp_path / "es-staging"
+    service_connection = ElasticsearchConnectionConfig(
+        hostPort="http://localhost:9200",
+        sslConfig=SslConfig(
+            certificates=SslCertificatesByValues(caCertValue="not-a-real-cert", stagingDir=str(staging_dir))
+        ),
+    )
+    connection = ElasticsearchConnection(service_connection)
+    with (
+        patch(
+            "metadata.ingestion.source.search.elasticsearch.connection.create_ssl_context",
+            side_effect=ssl.SSLError("bad certificate"),
+        ),
+        pytest.raises(ssl.SSLError),
+    ):
+        _ = connection.client
     assert not staging_dir.exists()

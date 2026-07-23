@@ -127,9 +127,9 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
 
         if connection.sslConfig and connection.sslConfig.certificates:
             if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
-                ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
                 staging_dir = connection.sslConfig.certificates.stagingDir
                 self._on_close(lambda: _cleanup_staging_dir(staging_dir))
+                ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
             elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
                 ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
 

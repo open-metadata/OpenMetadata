@@ -169,11 +169,11 @@ class ElasticsearchConnection(BaseConnection[ElasticsearchConnectionConfig, Elas
             connection.connectionArguments = init_empty_connection_arguments()
 
         if connection.sslConfig:
-            ssl_context = get_ssl_context(connection.sslConfig)
             certificates = connection.sslConfig.certificates
             if isinstance(certificates, SslCertificatesByValues):
                 staging_dir = certificates.stagingDir
                 self._on_close(lambda: _cleanup_staging_dir(staging_dir))
+            ssl_context = get_ssl_context(connection.sslConfig)
 
         return Elasticsearch(
             str(connection.hostPort),
