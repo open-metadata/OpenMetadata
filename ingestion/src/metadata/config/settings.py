@@ -44,13 +44,15 @@ def registered_settings() -> dict[str, Type["OMSettings"]]:  # noqa: UP006
 
 
 def import_all_settings_modules() -> dict[str, Type[OMSettings]]:  # noqa: UP006
-    """Import every ``settings.py`` under the metadata package; return the registry."""
+    """Import every OMSettings-defining ``settings.py`` under metadata; return the registry."""
     import metadata  # noqa: PLC0415
 
     root = Path(metadata.__file__).parent
     for path in sorted(root.rglob("settings.py")):
         parts = path.relative_to(root).with_suffix("").parts
-        if "generated" in parts:
+        # Skip unrelated settings.py (e.g. SDK entity wrappers) so discovery does not
+        # couple the registry to their imports.
+        if "generated" in parts or "OMSettings" not in path.read_text():
             continue
         importlib.import_module("metadata." + ".".join(parts))
     return registered_settings()
