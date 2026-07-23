@@ -11,16 +11,23 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
 import searchClassBase from './SearchClassBase';
+import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './TableUtils';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
-  className = 'w-8 h-8'
+  className = 'w-8 h-8',
+  size?: EntityIconSize
 ) => {
+  const iconClassName = classNames(
+    className,
+    size && ENTITY_ICON_SIZE_CLASS_MAP[size]
+  );
   const entityType = item.entityType ?? item.type ?? '';
 
   if (item.serviceType) {
@@ -31,7 +38,7 @@ export const getEntityIcon = (
       return (
         <img
           alt={item.name ?? item.serviceType}
-          className={className}
+          className={iconClassName}
           src={serviceIconUrl}
         />
       );
@@ -39,7 +46,7 @@ export const getEntityIcon = (
 
     return (
       <DataAssetServiceLogo
-        className={className}
+        className={iconClassName}
         serviceType={item.serviceType}
       />
     );
@@ -52,7 +59,7 @@ export const getEntityIcon = (
     return (
       <img
         alt={item.name ?? entityType}
-        className={className}
+        className={iconClassName}
         src={customIconUrl}
       />
     );
@@ -60,7 +67,7 @@ export const getEntityIcon = (
 
   const entityIcon = searchClassBase.getEntityIcon(
     entityType,
-    `tw:text-quaternary tw:shrink-0 ${className}`
+    `tw:text-quaternary tw:shrink-0 ${iconClassName}`
   );
 
   if (entityIcon) {
@@ -70,7 +77,7 @@ export const getEntityIcon = (
   return (
     <img
       alt={item.name ?? entityType}
-      className={className}
+      className={iconClassName}
       src={defaultServiceIconUrl}
     />
   );

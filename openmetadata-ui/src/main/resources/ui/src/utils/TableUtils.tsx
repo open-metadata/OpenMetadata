@@ -359,12 +359,32 @@ const entityIconMapping: Record<string, ElementType> = {
   testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
 };
 
+export enum EntityIconSize {
+  Size14 = 14,
+  Size16 = 16,
+  Size18 = 18,
+  Size20 = 20,
+  Size24 = 24,
+}
+
+export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
+  [EntityIconSize.Size14]: 'tw:w-3.5 tw:h-3.5',
+  [EntityIconSize.Size16]: 'tw:w-4 tw:h-4',
+  [EntityIconSize.Size18]: 'tw:w-4.5 tw:h-4.5',
+  [EntityIconSize.Size20]: 'tw:w-5 tw:h-5',
+  [EntityIconSize.Size24]: 'tw:w-6 tw:h-6',
+};
+
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',
-  iconStyle = {}
+  iconStyle = {},
+  size?: EntityIconSize
 ) => {
-  const className = iconClass;
+  const className = classNames(
+    iconClass,
+    size && ENTITY_ICON_SIZE_CLASS_MAP[size]
+  );
   const style: CSSProperties = iconStyle;
 
   const Icon = entityIconMapping[indexType];

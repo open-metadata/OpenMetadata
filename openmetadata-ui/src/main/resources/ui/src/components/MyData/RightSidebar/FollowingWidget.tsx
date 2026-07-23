@@ -45,6 +45,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { EntityIconSize } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -203,7 +204,11 @@ function FollowingWidget({
                       className="entity-button flex items-center gap-2 p-0 w-full"
                       icon={
                         <div className="d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item, 'tw:w-6! tw:h-6!')}
+                          {getEntityIcon(
+                            item,
+                            undefined,
+                            EntityIconSize.Size24
+                          )}
                         </div>
                       }
                       type="text">
