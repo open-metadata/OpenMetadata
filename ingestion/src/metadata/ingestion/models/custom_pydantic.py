@@ -45,6 +45,9 @@ class BaseModel(PydanticBaseModel):
     # Lazy per-model schema build (~200MB less import RSS). Guarded by
     # tests/unit/test_generated_models_defer_build.py. Env override is an ops
     # kill-switch (redeploy-free), mirroring openai/anthropic's DEFER_PYDANTIC_BUILD.
+    # Read the env directly, NOT via metadata.config.settings: this base class must
+    # import only pydantic — routing it through a metadata package would risk a
+    # circular import at the root of the generated-model hierarchy.
     model_config = ConfigDict(
         defer_build=os.environ.get("OM_PYDANTIC_DEFER_BUILD", "true").lower() not in ("0", "false", "no", "off")
     )
