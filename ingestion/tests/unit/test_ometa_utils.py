@@ -17,6 +17,9 @@ import base64
 import json
 from unittest import TestCase
 
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -36,6 +39,8 @@ from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.llmService import LLMService
+from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -117,6 +122,11 @@ class OMetaUtilsTest(TestCase):
             (DatabaseSchema, "databaseSchema"),
             (SearchIndex, "searchIndex"),
             (DatabaseService, "databaseService"),
+            (LLMService, "llmService"),
+            (McpService, "mcpService"),
+            (LLMModel, "llmModel"),
+            (McpServer, "mcpServer"),
+            (AIApplication, "aiApplication"),
             (User, "user"),  # This one works correctly
         ]
 
