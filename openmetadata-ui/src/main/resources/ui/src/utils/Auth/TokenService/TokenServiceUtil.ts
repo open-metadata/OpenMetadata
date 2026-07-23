@@ -131,12 +131,16 @@ class TokenService {
       try {
         response = await this.renewToken();
       } catch (error) {
-        // Silent Frame window timeout error since it doesn't affect refresh token process
-        if ((error as AxiosError).message === 'Frame window timed out') {
-          return null;
-        }
+        // Token renewal failures are usually caused by the user's session/browser
+        // environment (e.g. popups blocked, frame window timeout, silent auth
+        // interrupted). They don't require a thrown error — log for diagnostics
+        // and return null so callers fall back to their normal auth flow.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `Failed to refresh token: ${(error as AxiosError | Error).message}`
+        );
 
-        throw new Error(`Failed to refresh token: ${(error as Error).message}`);
+        return null;
       } finally {
         this.clearRefreshInProgress();
       }

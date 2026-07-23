@@ -51,7 +51,10 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
           t('label.less')
         ) : (
           <Avatar
-            className="tw:bg-brand-50 tw:ring-1 tw:ring-brand-600"
+            // Border on ::after: Avatar's own outline draws its inset contrast border, so an
+            // element-level outline would clobber it. This edge was a non-inset ring, so the
+            // overlay outline sits at offset 0 (outward), keeping both edges visible.
+            className="tw:bg-brand-50 tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-1 tw:after:outline-brand-600"
             placeholder={remainingCountLabel}
             size={AVATAR_SIZE_NAME_MAP[avatarSize]}
           />
@@ -66,7 +69,10 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         <Button className="tw:outline-none tw:-ml-1" color="link-color">
           <Avatar
             className={classNames(
-              'tw:bg-brand-50 tw:ring-1 tw:ring-brand-600',
+              // Border on ::after: Avatar's own outline draws its inset contrast border, so an
+              // element-level outline would clobber it. This edge was a non-inset ring, so the
+              // overlay outline sits at offset 0 (outward), keeping both edges visible.
+              'tw:bg-brand-50 tw:after:pointer-events-none tw:after:absolute tw:after:inset-0 tw:after:rounded-[inherit] tw:after:outline-1 tw:after:outline-brand-600',
               fontSizeClass
             )}
             placeholder={remainingCountLabel}
