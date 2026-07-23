@@ -2134,11 +2134,10 @@ public class MigrationUtil {
             continue;
           }
 
-          if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
-            addEntityStatusToTriggerExclude(workflowDefinition);
-          }
-
           try {
+            if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
+              addEntityStatusToTriggerExclude(workflowDefinition);
+            }
             workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
@@ -2158,28 +2157,20 @@ public class MigrationUtil {
     }
 
     private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
-      try {
-        if (workflowDefinition.getTrigger()
-            instanceof EventBasedEntityTriggerDefinition eventTrigger) {
-          Config config = eventTrigger.getConfig();
-          if (config != null) {
-            List<String> exclude = new ArrayList<>(listOrEmpty(config.getExclude()));
-            if (!exclude.contains(ENTITY_STATUS_FIELD)) {
-              exclude.add(ENTITY_STATUS_FIELD);
-              config.setExclude(exclude);
-              LOG.info(
-                  "Added '{}' to trigger exclude list for workflow '{}'",
-                  ENTITY_STATUS_FIELD,
-                  workflowDefinition.getName());
-            }
+      if (workflowDefinition.getTrigger()
+          instanceof EventBasedEntityTriggerDefinition eventTrigger) {
+        Config config = eventTrigger.getConfig();
+        if (config != null) {
+          List<String> exclude = new ArrayList<>(listOrEmpty(config.getExclude()));
+          if (!exclude.contains(ENTITY_STATUS_FIELD)) {
+            exclude.add(ENTITY_STATUS_FIELD);
+            config.setExclude(exclude);
+            LOG.info(
+                "Added '{}' to trigger exclude list for workflow '{}'",
+                ENTITY_STATUS_FIELD,
+                workflowDefinition.getName());
           }
         }
-      } catch (Exception e) {
-        LOG.warn(
-            "Failed to add '{}' to trigger exclude for workflow '{}': {}",
-            ENTITY_STATUS_FIELD,
-            workflowDefinition.getName(),
-            e.getMessage());
       }
     }
 
