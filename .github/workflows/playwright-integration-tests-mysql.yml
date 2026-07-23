@@ -92,6 +92,7 @@ jobs:
           python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
       - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }}
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}

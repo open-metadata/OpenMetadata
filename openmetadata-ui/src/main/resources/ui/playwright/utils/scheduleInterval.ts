@@ -76,5 +76,5 @@ export const setScheduleTime = async (
 };
 
 export const setCustomCron = async (page: Page, cron: string) => {
-  await page.getByTestId('custom-cron-input').fill(cron);
+  await page.getByTestId('custom-cron-input').getByRole('textbox').fill(cron);
 };
