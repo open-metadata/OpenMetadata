@@ -56,6 +56,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     TEST_TABLE_TAGS,
     TEST_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
+)
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
@@ -152,9 +155,15 @@ def get_connection(connection: DatabricksConnection) -> Engine:
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 
