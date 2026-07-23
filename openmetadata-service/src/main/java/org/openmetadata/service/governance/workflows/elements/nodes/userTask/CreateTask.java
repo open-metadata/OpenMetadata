@@ -91,7 +91,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  */
 @Slf4j
 public class CreateTask implements TaskListener {
-  static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
   private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;

@@ -126,6 +126,7 @@ jobs:
           args: "-d postgresql -s true"
           startup-script: "./docker/run_local_docker_rdf.sh"
           ingestion_dependency: "all"
+          install-test-dependencies: "false"
 
       - name: Wait for Fuseki to be healthy
         run: |
