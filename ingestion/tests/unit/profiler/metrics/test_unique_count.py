@@ -1,3 +1,17 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+Validate the UniqueCount metric query building
+"""
+
 from unittest.mock import Mock
 
 from sqlalchemy import Column, String
@@ -8,22 +22,21 @@ from metadata.profiler.orm.registry import Dialects
 
 
 def test_bigquery_unique_count():
-    # Mocking session binding
+    """The BigQuery COUNTIF path must not carry the source column type into the comparison"""
     session_mock = Mock()
     session_mock.get_bind().dialect.name = Dialects.BigQuery
 
-    # Pass a typed column to verify it does not leak into the countif expression
     unique_count_metric = UniqueCount(Column("test_col", String))
-    
-    # Bug 1 fix: use query(sample, session) instead of fn()
     result = unique_count_metric.query(sample=None, session=session_mock)
 
     assert "countif" in str(result).lower()
 
-    # Quality 2 fix: verify the type of the column inside countif is untyped (NullType)
-    # This prevents BigQuery type mismatch errors: No matching signature for operator = for argument types: INT64, STRING
+    # The column referenced inside COUNTIF must be untyped (NullType) so the literal `1`
+    # binds as INT64 and matches the numeric COUNT subquery output. A typed column would
+    # bind `1` as STRING/BYTES and fail on BigQuery with:
+    #   No matching signature for operator = for argument types: INT64, STRING
     countif_args = list(result.element.clauses)
     binary_expression = countif_args[0]
-    
+
     assert binary_expression.left.name == "test_col"
     assert isinstance(binary_expression.left.type, NullType)
