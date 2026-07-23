@@ -17,10 +17,10 @@ import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/context-center.svg';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-quick-link.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
@@ -126,7 +126,7 @@ const KnowledgeCenterWidget = ({
                 <Col className="d-flex items-center gap-2" span={24}>
                   <span>
                     <Icon
-                      className="knowledge-icon d-flex align-items-center justify-center"
+                      className="knowledge-icon d-flex align-items-center justify-center tw:text-brand-tertiary"
                       component={isQuickLink ? LinkIcon : IconArticle}
                       data-testid={`${
                         isQuickLink ? 'link-icon' : 'article-icon'
