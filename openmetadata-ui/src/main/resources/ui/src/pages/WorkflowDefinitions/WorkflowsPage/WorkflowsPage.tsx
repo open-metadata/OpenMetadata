@@ -16,6 +16,7 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
+  PaginationCardWithControls,
   SlideoutMenu,
   TextArea,
   Typography,
@@ -30,14 +31,14 @@ import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/Header
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import {
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -72,6 +73,7 @@ const WorkflowsPage = () => {
     total: 0,
   });
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_MEDIUM);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
@@ -162,7 +164,7 @@ const WorkflowsPage = () => {
         setLoading(true);
 
         const params: WorkflowDefinitionsParams = {
-          limit: PAGE_SIZE_MEDIUM,
+          limit: pageSize,
           ...cursor,
         };
 
@@ -184,16 +186,18 @@ const WorkflowsPage = () => {
         setLoading(false);
       }
     },
-    []
+    [pageSize]
   );
 
   const handlePageChange = useCallback(
-    ({ currentPage: page, cursorType }: PagingHandlerParams) => {
-      if (cursorType) {
-        getWorkflows(page, { [cursorType]: paging[cursorType] });
+    (page: number) => {
+      if (page > currentPage && paging.after) {
+        getWorkflows(page, { [CursorType.AFTER]: paging.after });
+      } else if (page < currentPage && paging.before) {
+        getWorkflows(page, { [CursorType.BEFORE]: paging.before });
       }
     },
-    [getWorkflows, paging]
+    [getWorkflows, paging, currentPage]
   );
 
   useEffect(() => {
@@ -305,9 +309,15 @@ const WorkflowsPage = () => {
       fullHeight
       className="workflow-page"
       mainContainerClassName="workflow-page-layout"
-      pageContainerStyle={{ paddingLeft: 0, paddingRight: 0 }}
+      pageContainerStyle={{
+        paddingLeft: 0,
+        paddingRight: 0,
+        ...(isAiMode
+          ? { paddingTop: 8, paddingBottom: 0, height: 'calc(100vh - 16px)' }
+          : {}),
+      }}
       pageTitle={t('label.workflow-plural')}>
-      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-6 tw:my-4">
+      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-2 tw:gap-4">
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}
@@ -322,13 +332,14 @@ const WorkflowsPage = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-5"
+            className="tw:mb-0!"
+            padding="comfortable"
             subtitle={t('message.workflow-subtitle')}
             title={t('label.workflow-plural')}
             variant="gradient"
           />
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:mb-4">
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:justify-between">
               <PageHeader
                 data={{
@@ -346,9 +357,9 @@ const WorkflowsPage = () => {
         {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
-          <div className="tw:px-6 tw:pt-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:justify-between">
-            <div className="tw:mb-4 tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
-              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
+          <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-primary tw:px-6 tw:pt-4">
+              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
                 {workflows.map((workflow) => (
                   <WorkflowCard
                     data={workflow}
@@ -358,19 +369,19 @@ const WorkflowsPage = () => {
                 ))}
               </div>
             </div>
-            {paging.total > PAGE_SIZE_MEDIUM && (
-              <div
-                className="tw:flex tw:justify-center tw:px-6 tw:py-3 tw:border-t tw:border-border-secondary tw:bg-primary"
-                data-testid="workflows-pagination">
-                <NextPrevious
-                  currentPage={currentPage}
-                  isLoading={loading}
-                  pageSize={PAGE_SIZE_MEDIUM}
-                  paging={paging}
-                  pagingHandler={handlePageChange}
-                />
-              </div>
-            )}
+            <PaginationCardWithControls
+              data-testid="workflows-pagination"
+              page={currentPage}
+              pageSize={pageSize}
+              pageSizeOptions={[
+                PAGE_SIZE_BASE,
+                PAGE_SIZE_MEDIUM,
+                PAGE_SIZE_LARGE,
+              ]}
+              total={Math.max(1, Math.ceil(paging.total / pageSize))}
+              onPageChange={handlePageChange}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         )}
       </div>

@@ -760,8 +760,13 @@ const MetricListPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <div className="p-b-md m-t-xs metric-list-page-stack">
+    <PageLayoutV1
+      pageContainerStyle={
+        isAiMode ? { padding: 8, paddingBottom: 16 } : undefined
+      }
+      pageTitle={t('label.metric-plural')}>
+      <div
+        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
         <div>
           {isAiMode ? (
             <HeaderShell
@@ -777,6 +782,8 @@ const MetricListPage = () => {
                   showHome={false}
                 />
               }
+              className="tw:mb-0!"
+              padding="comfortable"
               subtitle={t('message.metric-description')}
               title={t('label.metric-plural')}
               variant="gradient"
