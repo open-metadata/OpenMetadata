@@ -13,7 +13,10 @@
 import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import {
+  createNewPage,
+  stripEtagConditionalReads,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 test.use({
@@ -176,6 +179,7 @@ test.describe(
     });
 
     test.beforeEach(async ({ page }) => {
+      await stripEtagConditionalReads(page);
       await glossary.visitEntityPage(page);
       await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
       await waitForAllLoadersToDisappear(page);
