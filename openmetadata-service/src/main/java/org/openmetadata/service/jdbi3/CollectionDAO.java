@@ -10365,20 +10365,6 @@ public interface CollectionDAO {
                 + "WHERE stateId = :stateId ORDER BY timestamp ASC LIMIT 1")
     String listFirstTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
-    @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
-    @SqlQuery(
-        "SELECT t1.entityFQNHash, t1.json FROM test_case_resolution_status_time_series t1 "
-            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
-            + "FROM test_case_resolution_status_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
-            + "GROUP BY entityFQNHash) t2 "
-            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
-    List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
-        @BindListFQN("entityFQNHashes") List<String> entityFQNs);
-
-    default List<LatestRecordWithFQNHash> getLatestRecordBatch(List<String> entityFQNs) {
-      return EntityDAO.queryInChunks(entityFQNs, this::getLatestRecordBatchInternal);
-    }
-
     @SqlUpdate(
         "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
     void delete(@BindFQN("entityFQNHash") String entityFQNHash);
