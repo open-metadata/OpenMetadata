@@ -21,13 +21,10 @@ import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './TableUtils';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
-  className = 'w-8 h-8',
-  size?: EntityIconSize
+  className?: string,
+  size: EntityIconSize = EntityIconSize.Size32
 ) => {
-  const iconClassName = classNames(
-    className,
-    size && ENTITY_ICON_SIZE_CLASS_MAP[size]
-  );
+  const iconClassName = classNames(className, ENTITY_ICON_SIZE_CLASS_MAP[size]);
   const entityType = item.entityType ?? item.type ?? '';
 
   if (item.serviceType) {
@@ -67,7 +64,7 @@ export const getEntityIcon = (
 
   const entityIcon = searchClassBase.getEntityIcon(
     entityType,
-    `tw:text-quaternary tw:shrink-0 ${iconClassName}`
+    classNames('tw:text-quaternary tw:shrink-0', iconClassName)
   );
 
   if (entityIcon) {

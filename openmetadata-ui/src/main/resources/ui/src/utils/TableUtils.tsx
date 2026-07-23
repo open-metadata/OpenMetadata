@@ -365,6 +365,7 @@ export enum EntityIconSize {
   Size18 = 18,
   Size20 = 20,
   Size24 = 24,
+  Size32 = 32,
 }
 
 export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
@@ -373,6 +374,7 @@ export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
   [EntityIconSize.Size18]: 'tw:w-4.5 tw:h-4.5',
   [EntityIconSize.Size20]: 'tw:w-5 tw:h-5',
   [EntityIconSize.Size24]: 'tw:w-6 tw:h-6',
+  [EntityIconSize.Size32]: 'tw:w-8 tw:h-8',
 };
 
 export const getEntityIcon = (
