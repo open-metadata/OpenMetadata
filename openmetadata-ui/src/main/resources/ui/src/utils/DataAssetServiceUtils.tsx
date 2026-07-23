@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { startCase } from 'lodash';
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
@@ -21,7 +22,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
-import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
 import { getServiceIcon } from './ServiceIconUtils';
 
 type DataAssetServiceCategory =
@@ -205,7 +205,7 @@ export const DataAssetServiceLogo = ({
       SERVICE_ICON_ALIASES[normalizedServiceType] ?? normalizedServiceType
     ) ??
     getServiceIcon(DEFAULT_ICON_KEYS[category]) ??
-    LANDING_WIDGET_DEFAULT_ICON_URL;
+    defaultServiceIconUrl;
 
   return <img alt="" className={className} src={logo} />;
 };
