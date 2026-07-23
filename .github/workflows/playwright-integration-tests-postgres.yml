@@ -15,18 +15,14 @@
 name: Postgres Playwright Integration Tests
 on:
   merge_group:
-  # PRs targeting main run this workflow only when the run-playwright label is
-  # present. The merge queue (merge_group) remains the authoritative required
-  # suite. pull_request_target remains only for PRs targeting release branches,
-  # which have no merge queue.
+  # Main PRs can additionally run this workflow through pull_request when the
+  # run-playwright label is present.
   pull_request:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     branches:
       - main
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
-    branches-ignore:
-      - main
 
 permissions:
   contents: read

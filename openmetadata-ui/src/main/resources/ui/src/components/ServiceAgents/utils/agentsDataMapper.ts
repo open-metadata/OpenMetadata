@@ -282,6 +282,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     unit,
     verb,
     status: uiStatus,
+    enabled: pipeline.enabled,
     errors,
     warnings,
     failStep,

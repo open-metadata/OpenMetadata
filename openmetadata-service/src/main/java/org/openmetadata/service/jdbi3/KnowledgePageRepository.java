@@ -770,7 +770,13 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
-    return new ApprovalTaskWorkflow(threadContext);
+    FeedRepository.TaskWorkflow workflow;
+    if (EntityUtil.isApprovalTask(taskType)) {
+      workflow = new ApprovalTaskWorkflow(threadContext);
+    } else {
+      workflow = super.getTaskWorkflow(threadContext);
+    }
+    return workflow;
   }
 
   public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {

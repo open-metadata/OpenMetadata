@@ -16,15 +16,12 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
-  # Note: PRs targeting main run this workflow only when the run-playwright
-  # label is present. The merge queue (merge_group) remains the authoritative
-  # required suite, and playwright-required-checks-stub.yml reports the required
-  # playwright-summary check green on unlabeled main PRs so they can enter the
-  # queue. pull_request_target remains only for PRs targeting release branches
-  # (which have no merge queue), gated by the "safe to test" label. Path
-  # filtering is handled inside the workflow via dorny/paths-filter so PRs
-  # without relevant changes skip the expensive jobs while still reporting a
-  # passing status.
+  # Note: paths-ignore removed — the workflow always triggers so that the
+  # required status check (playwright-summary) always completes. Path filtering
+  # is handled inside the workflow via dorny/paths-filter so PRs without
+  # relevant changes skip the expensive jobs while still reporting a passing
+  # status. Main PRs can additionally run the full suite through pull_request
+  # when the run-playwright label is present.
   pull_request:
     types:
       - labeled
@@ -41,8 +38,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    branches-ignore:
-      - main
 
 permissions:
   contents: read
