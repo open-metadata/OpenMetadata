@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 
 /**
@@ -95,6 +96,41 @@ class AIContextMarkdownTest {
         "missing one-line description summary");
     assertTrue(markdown.contains("tags: [\"Tier.Tier1\", \"PII.None\"]"), "missing tags");
     assertTrue(markdown.contains("timestamp: \"2026-07-01T"), "missing ISO timestamp");
+  }
+
+  @Test
+  void textMarkdownMediaType_declaresUtf8Charset() {
+    assertTrue(
+        AIContextMarkdown.TEXT_MARKDOWN.contains("charset=UTF-8"),
+        "markdown media type must declare UTF-8 or clients default text/* to ISO-8859-1 and "
+            + "mojibake the em dashes, arrows and section signs the document embeds");
+  }
+
+  @Test
+  void render_emitsDataModelSectionWithFencedSql() {
+    TableContext table =
+        new TableContext()
+            .withColumns(List.of(new FieldContext().withName("id").withDataType("BIGINT")))
+            .withDataModel(
+                new TableDataModel()
+                    .withModelType("DBT")
+                    .withPath("models/marts/core/dim_customers.sql")
+                    .withSourceProject("banking_redshift")
+                    .withSql("SELECT * FROM staging.customers"));
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withAssetContext(new AssetContext().withTable(table));
+    String markdown = AIContextMarkdown.render(context);
+    assertTrue(markdown.contains("# Data Model"), "missing Data Model heading");
+    assertTrue(markdown.contains("**Type:** `DBT`"), "missing model type");
+    assertTrue(
+        markdown.contains("**Path:** `models/marts/core/dim_customers.sql`"), "missing model path");
+    assertTrue(markdown.contains("**Project:** `banking_redshift`"), "missing source project");
+    assertTrue(
+        markdown.contains("```sql\nSELECT * FROM staging.customers\n```"),
+        "missing fenced SQL block");
   }
 
   @Test

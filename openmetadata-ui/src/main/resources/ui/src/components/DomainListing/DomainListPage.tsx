@@ -96,23 +96,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
-  const { pageHeader } = usePageHeader({
-    titleKey: 'label.domain-plural',
-    descriptionMessageKey: 'message.domain-description',
-    createPermission: permissions.domain?.Create || false,
-    addButtonLabelKey: 'label.add-domain',
-    addButtonTestId: 'add-domain',
-    onAddClick: openDrawer,
-    learningPageId: LEARNING_PAGE_IDS.DOMAIN,
-    variant: isAiMode ? 'search' : undefined,
-    breadcrumb: headerBreadcrumb,
-  });
-
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.domain',
-    count: domainListing.totalEntities,
-    loading: domainListing.loading,
-  });
+  const showHeaderSearch = isAiMode && !renderPageHeader;
 
   const [searchInputValue, setSearchInputValue] = useState(
     domainListing.urlState.searchQuery ?? ''
@@ -133,6 +117,37 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       debouncedSearch.cancel();
     };
   }, [debouncedSearch]);
+
+  const searchInputProps = {
+    icon: SearchLg,
+    placeholder: t('label.search'),
+    value: searchInputValue,
+    onChange: (value: string) => {
+      setSearchInputValue(value);
+      debouncedSearch(value);
+    },
+  };
+
+  const { pageHeader } = usePageHeader({
+    titleKey: 'label.domain-plural',
+    descriptionMessageKey: 'message.domain-description',
+    createPermission: permissions.domain?.Create || false,
+    addButtonLabelKey: 'label.add-domain',
+    addButtonTestId: 'add-domain',
+    onAddClick: openDrawer,
+    learningPageId: LEARNING_PAGE_IDS.DOMAIN,
+    variant: isAiMode ? 'search' : undefined,
+    search: showHeaderSearch ? (
+      <Input className="tw:w-72" {...searchInputProps} />
+    ) : undefined,
+    breadcrumb: headerBreadcrumb,
+  });
+
+  const { titleAndCount } = useTitleAndCount({
+    titleKey: 'label.domain',
+    count: domainListing.totalEntities,
+    loading: domainListing.loading,
+  });
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const isTreeView = view === ViewMode.Tree;
@@ -294,17 +309,10 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
-            <Input
-              className="tw:max-w-86"
-              icon={SearchLg}
-              placeholder={t('label.search')}
-              value={searchInputValue}
-              onChange={(value) => {
-                setSearchInputValue(value);
-                debouncedSearch(value);
-              }}
-            />
+            {!showHeaderSearch && titleAndCount}
+            {!showHeaderSearch && (
+              <Input className="tw:max-w-86" {...searchInputProps} />
+            )}
             {!isTreeView && quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle

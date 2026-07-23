@@ -649,7 +649,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 <DataAssetSelectList
                   allowAllOption
                   placeholder={t('label.search-assets-by-name-or-path')}
-                  popoverPlacement="bottom"
+                  popoverPlacement="bottom start"
                   renderTrigger={({ open }) => (
                     <AriaButton
                       className={classNames(
@@ -756,6 +756,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       />
                     </div>
                     <Dropdown.Menu
+                      className="tw:max-h-90 tw:overflow-y-auto"
                       selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                       selectionMode="single"
                       onAction={(key) => {
