@@ -354,6 +354,10 @@ const entityIconMapping: Record<string, ElementType> = {
   contextPlugin: ENTITY_ICON_MAPPER['contextPlugin'].icon,
   marketplace: ENTITY_ICON_MAPPER['marketplace'].icon,
   dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
+  [EntityType.AI_APPLICATION]:
+    ENTITY_ICON_MAPPER[EntityType.AI_APPLICATION].icon,
+  [EntityType.LLM_MODEL]: ENTITY_ICON_MAPPER[EntityType.LLM_MODEL].icon,
+  [EntityType.MCP_SERVER]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVER].icon,
   dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
   report: ENTITY_ICON_MAPPER['report'].icon,
   testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
