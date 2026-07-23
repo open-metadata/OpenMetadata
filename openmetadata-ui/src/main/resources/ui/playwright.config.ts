@@ -49,6 +49,13 @@ const entityDependencies = hasPreseededState
   : ['setup', 'entity-data-setup'];
 const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
 const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+const dedicatedStateTestIgnore = hasDedicatedIngestionLane
+  ? [
+      '**/SearchSettings.spec.ts',
+      '**/SearchSeparation/**',
+      '**/*AfterReindex.spec.ts',
+    ]
+  : [];
 const combineGrep = (base?: RegExp) => {
   if (!base) {
     return shardGrep;
@@ -190,13 +197,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
-        ...(hasDedicatedIngestionLane
-          ? [
-              '**/SearchSettings.spec.ts',
-              '**/SearchSeparation/**',
-              '**/*AfterReindex.spec.ts',
-            ]
-          : []),
+        ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
       ],
     },
@@ -281,8 +282,19 @@ export default defineConfig({
       fullyParallel: true,
     },
     {
+      name: 'search-rbac-setup',
+      testMatch: '**/search-rbac.setup.ts',
+      dependencies: authDependencies,
+      teardown: 'search-rbac-teardown',
+    },
+    {
+      name: 'search-rbac-teardown',
+      testMatch: '**/search-rbac.teardown.ts',
+    },
+    {
       name: 'Basic',
       grep: combineGrep(/@basic/),
+      testIgnore: dedicatedStateTestIgnore,
       use: { ...devices['Desktop Chrome'] },
       dependencies: entityDependencies,
       fullyParallel: true,
@@ -305,9 +317,10 @@ export default defineConfig({
       name: 'SearchRBAC',
       testMatch: '**/SearchRBAC.spec.ts',
       grep: shardGrep,
-      dependencies: ['DataAssetRulesDisabled'],
+      dependencies: ['search-rbac-setup'],
       use: { ...devices['Desktop Chrome'] },
-      teardown: entityTeardown,
+      fullyParallel: false,
+      workers: 1,
     },
     // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
     // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)

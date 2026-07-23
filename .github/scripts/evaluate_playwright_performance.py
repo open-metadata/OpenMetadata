@@ -62,12 +62,34 @@ def main() -> None:
     requests = load_files(args.request_glob)
     phases = load_files(args.phase_glob)
     tests = [test for shard in timings for test in shard.get("tests", [])]
+    lifecycle_tests = [
+        test for shard in timings for test in shard.get("lifecycleTests", [])
+    ]
     executed_tests = [test for test in tests if test.get("outcome") != "skipped"]
+    executed_lifecycle_tests = [
+        test for test in lifecycle_tests if test.get("outcome") != "skipped"
+    ]
+    executed_stability_tests = executed_tests + executed_lifecycle_tests
 
     attempts = sum(int(test.get("attempts", 0)) for test in executed_tests)
-    total_worker_ms = sum(int(test.get("durationMs", 0)) for test in tests)
-    retry_worker_ms = sum(int(test.get("retryDurationMs", 0)) for test in tests)
-    flaky_tests = sum(test.get("outcome") == "flaky" for test in tests)
+    lifecycle_attempts = sum(
+        int(test.get("attempts", 0)) for test in executed_lifecycle_tests
+    )
+    product_worker_ms = sum(int(test.get("durationMs", 0)) for test in tests)
+    lifecycle_worker_ms = sum(
+        int(test.get("durationMs", 0)) for test in lifecycle_tests
+    )
+    total_worker_ms = product_worker_ms + lifecycle_worker_ms
+    product_retry_worker_ms = sum(int(test.get("retryDurationMs", 0)) for test in tests)
+    lifecycle_retry_worker_ms = sum(
+        int(test.get("retryDurationMs", 0)) for test in lifecycle_tests
+    )
+    retry_worker_ms = product_retry_worker_ms + lifecycle_retry_worker_ms
+    product_flaky_tests = sum(test.get("outcome") == "flaky" for test in tests)
+    lifecycle_flaky_tests = sum(
+        test.get("outcome") == "flaky" for test in lifecycle_tests
+    )
+    flaky_tests = product_flaky_tests + lifecycle_flaky_tests
     total_requests = sum(int(shard.get("totalRequests", 0)) for shard in requests)
     api_requests = sum(int(shard.get("apiRequests", 0)) for shard in requests)
     static_requests = sum(int(shard.get("staticRequests", 0)) for shard in requests)
@@ -100,6 +122,19 @@ def main() -> None:
         "tests": len(tests),
         "executedTests": len(executed_tests),
         "attempts": attempts,
+        "lifecycleTests": len(lifecycle_tests),
+        "executedLifecycleTests": len(executed_lifecycle_tests),
+        "lifecycleAttempts": lifecycle_attempts,
+        "stabilityAttempts": attempts + lifecycle_attempts,
+        "productWorkerMs": product_worker_ms,
+        "lifecycleWorkerMs": lifecycle_worker_ms,
+        "totalWorkerMs": total_worker_ms,
+        "productRetryWorkerMs": product_retry_worker_ms,
+        "lifecycleRetryWorkerMs": lifecycle_retry_worker_ms,
+        "retryWorkerMs": retry_worker_ms,
+        "productFlakyTests": product_flaky_tests,
+        "lifecycleFlakyTests": lifecycle_flaky_tests,
+        "flakyTests": flaky_tests,
         "totalRequests": total_requests,
         "apiRequests": api_requests,
         "staticRequests": static_requests,
@@ -119,7 +154,17 @@ def main() -> None:
         "topStaticEndpoints": aggregate_ranked_counts(
             requests, "staticEndpointCounts", "topStaticEndpoints", 20
         ),
-        "flakyRatePercent": percentage(flaky_tests, len(executed_tests)),
+        "productFlakyRatePercent": percentage(product_flaky_tests, len(executed_tests)),
+        "lifecycleFlakyRatePercent": percentage(
+            lifecycle_flaky_tests, len(executed_lifecycle_tests)
+        ),
+        "flakyRatePercent": percentage(flaky_tests, len(executed_stability_tests)),
+        "productRetryWorkerPercent": percentage(
+            product_retry_worker_ms, product_worker_ms
+        ),
+        "lifecycleRetryWorkerPercent": percentage(
+            lifecycle_retry_worker_ms, lifecycle_worker_ms
+        ),
         "retryWorkerPercent": percentage(retry_worker_ms, total_worker_ms),
         "commonShardSkewPercent": skew_percent,
         "maxEnvironmentSeconds": max(

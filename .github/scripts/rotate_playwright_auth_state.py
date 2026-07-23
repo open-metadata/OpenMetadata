@@ -38,7 +38,9 @@ def decode_jwt_payload(token: str) -> dict[str, Any]:
         decoded = base64.urlsafe_b64decode(payload.encode())
         value = json.loads(decoded)
     except (IndexError, ValueError, json.JSONDecodeError) as exc:
-        raise ValueError("Playwright auth state contains an invalid access token") from exc
+        raise ValueError(
+            "Playwright auth state contains an invalid access token"
+        ) from exc
     if not isinstance(value, dict):
         raise ValueError("Playwright access token payload is not an object")
     return value
@@ -88,19 +90,27 @@ def login(base_url: str, email: str, password: str) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    ssl_context = ssl._create_unverified_context() if base_url.startswith("https://") else None
+    ssl_context = (
+        ssl._create_unverified_context() if base_url.startswith("https://") else None
+    )
     try:
-        with urllib.request.urlopen(request, timeout=30, context=ssl_context) as response:
+        with urllib.request.urlopen(
+            request, timeout=30, context=ssl_context
+        ) as response:
             payload = json.load(response)
     except Exception as exc:
-        raise RuntimeError(f"Authentication failed for cached Playwright user {email}") from exc
+        raise RuntimeError(
+            f"Authentication failed for cached Playwright user {email}"
+        ) from exc
     access_token = payload.get("accessToken") if isinstance(payload, dict) else None
     if not isinstance(access_token, str) or not access_token:
         raise RuntimeError(f"Authentication returned no access token for {email}")
     return access_token
 
 
-def replace_session(storage_state: dict[str, Any], access_token: str, base_url: str) -> None:
+def replace_session(
+    storage_state: dict[str, Any], access_token: str, base_url: str
+) -> None:
     payload = decode_jwt_payload(access_token)
     session_id = payload.get("sessionId")
     expires = payload.get("exp")
@@ -133,7 +143,9 @@ def replace_session(storage_state: dict[str, Any], access_token: str, base_url: 
 
 
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
-    descriptor, temporary_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    descriptor, temporary_name = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.name}."
+    )
     try:
         with os.fdopen(descriptor, "w") as output:
             json.dump(payload, output, separators=(",", ":"))
@@ -148,9 +160,7 @@ def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
 def rotate_auth_state(auth_dir: Path, base_url: str) -> str:
     admin_token = ""
     state_files = sorted(
-        path
-        for path in auth_dir.glob("*.json")
-        if path.name != "admin-api-token.json"
+        path for path in auth_dir.glob("*.json") if path.name != "admin-api-token.json"
     )
     if not state_files:
         raise RuntimeError(f"No Playwright storage state found in {auth_dir}")
@@ -165,7 +175,9 @@ def rotate_auth_state(auth_dir: Path, base_url: str) -> str:
             admin_token = access_token
 
     if not admin_token:
-        raise RuntimeError("The cached Playwright state does not contain the admin user")
+        raise RuntimeError(
+            "The cached Playwright state does not contain the admin user"
+        )
     atomic_write_json(auth_dir / "admin-api-token.json", {"token": admin_token})
     return admin_token
 

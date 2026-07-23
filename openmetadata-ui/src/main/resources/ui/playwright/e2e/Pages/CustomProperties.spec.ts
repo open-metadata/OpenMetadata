@@ -262,6 +262,10 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
   const basicProperties =
     key === 'entity_table' ? BASIC_PROPERTIES : ['String'];
   const configProperties = key === 'entity_table' ? CONFIG_PROPERTIES : [];
+  const valuePropertyTypes =
+    key === 'entity_table'
+      ? Object.values(CustomPropertyTypeByName)
+      : [CustomPropertyTypeByName.STRING];
 
   test.describe(`Add update and delete custom properties for ${entity.name}`, () => {
     test.describe.configure({ mode: 'default' });
@@ -305,7 +309,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       } else if (makeInstance !== null) {
         mainEntity = makeInstance();
         await mainEntity.create(apiContext);
-        await mainEntity.prepareCustomProperty(apiContext);
+        await mainEntity.prepareCustomProperty(apiContext, valuePropertyTypes);
 
         if (key === 'entity_table') {
           for (let i = 0; i < 5; i++) {
@@ -459,18 +463,20 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
       });
     });
 
-    // ── Set & Update all CP types (entities with a UI entity page) ──────────
+    // ── Set & Update CP values (entities with a UI entity page) ─────────────
 
     if (makeInstance !== null) {
-      test(`Set & Update all CP types on ${entity.name}`, async ({ page }) => {
-        // 5 minutes timeout since the test handles set->update operation on all
-        // custom property types sequentially
-        test.setTimeout(300000);
-        const properties = Object.values(CustomPropertyTypeByName);
+      const valueCoverageLabel =
+        key === 'entity_table' ? 'all CP types' : 'String CP';
 
-        await test.step('Set all CP types', async () => {
+      test(`Set & Update ${valueCoverageLabel} on ${entity.name}`, async ({
+        page,
+      }) => {
+        test.setTimeout(key === 'entity_table' ? 300_000 : 90_000);
+
+        await test.step(`Set ${valueCoverageLabel}`, async () => {
           await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+          for (const type of valuePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -479,9 +485,9 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types', async () => {
+        await test.step(`Update ${valueCoverageLabel}`, async () => {
           await mainEntity.visitEntityPage(page);
-          for (const type of properties) {
+          for (const type of valuePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -490,8 +496,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step('Update all CP types in Right Panel', async () => {
-          for (const [index, type] of properties.entries()) {
+        await test.step(`Update ${valueCoverageLabel} in Right Panel`, async () => {
+          for (const [index, type] of valuePropertyTypes.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
               entityName: getEntityDisplayName(responseData),
@@ -3534,7 +3540,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           const data = await createCustomPropertyForEntity(
             apiContext,
-            EntityTypeEndpoint.TableColumn
+            EntityTypeEndpoint.TableColumn,
+            valuePropertyTypes
           );
           testData.customPropertyValue = data.customProperties;
           testData.cleanupUser = data.cleanupUser;
@@ -3556,7 +3563,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           await afterAction();
         });
 
-        for (const type of Object.values(CustomPropertyTypeByName)) {
+        for (const type of valuePropertyTypes) {
           test(`Set ${type} custom property on column and verify in UI`, async ({
             page,
           }) => {

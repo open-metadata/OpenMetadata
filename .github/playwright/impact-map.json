@@ -88,6 +88,14 @@
   "mappings": [
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
+      ],
+      "projects": ["SearchRBAC"],
+      "specs": ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
       ],
@@ -214,6 +222,17 @@
     },
     {
       "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/TypeRegistry.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TypeRepository.java"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
+        "playwright/e2e/Pages/CustomProperties.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-spec/**",
         "openmetadata-ui/src/main/resources/ui/src/generated/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/**"
@@ -221,6 +240,7 @@
       "projects": ["chromium", "Basic"],
       "specs": [
         "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts"

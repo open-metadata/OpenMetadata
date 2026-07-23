@@ -236,7 +236,7 @@ def test_fixture_fingerprint_tracks_backend_session_contract(tmp_path: Path) -> 
     write(
         tmp_path,
         "openmetadata-service/src/main/java/org/openmetadata/service/security/session/SessionCookieUtil.java",
-        "class SessionCookieUtil { String cookie = \"OM_SESSION_V2\"; }",
+        'class SessionCookieUtil { String cookie = "OM_SESSION_V2"; }',
     )
     assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
 
@@ -264,11 +264,15 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
 
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
-    payload = base64.urlsafe_b64encode(
-        json.dumps(
-            {"email": email, "sessionId": session_id, "exp": expiry}
-        ).encode()
-    ).decode().rstrip("=")
+    payload = (
+        base64.urlsafe_b64encode(
+            json.dumps(
+                {"email": email, "sessionId": session_id, "exp": expiry}
+            ).encode()
+        )
+        .decode()
+        .rstrip("=")
+    )
     return f"header.{payload}.signature"
 
 
@@ -335,9 +339,7 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
         return token(email, f"fresh-{email.split('@')[0]}")
 
     monkeypatch.setattr(auth_rotation, "login", fake_login)
-    admin_token = auth_rotation.rotate_auth_state(
-        auth_dir, "https://localhost:8585"
-    )
+    admin_token = auth_rotation.rotate_auth_state(auth_dir, "https://localhost:8585")
 
     assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {
         "token": admin_token
@@ -352,10 +354,14 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
     ]
     for filename, email in states.items():
         state = json.loads((auth_dir / filename).read_text())
-        cookie = next(cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION")
+        cookie = next(
+            cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION"
+        )
         assert cookie["value"] == f"fresh-{email.split('@')[0]}"
         assert cookie["secure"] is True
-        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])["primary"]
+        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])[
+            "primary"
+        ]
         assert auth_rotation.decode_jwt_payload(fresh_token)["email"] == email
         assert oct(os.stat(auth_dir / filename).st_mode & 0o777) == "0o600"
 
@@ -449,7 +455,10 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
     workflow = (ROOT / ".github/workflows/playwright-postgresql-e2e.yml").read_text()
-    assert "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]" in workflow
+    assert (
+        "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
+        in workflow
+    )
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
     assert "actions/cache/restore@v5" in workflow
     assert "actions/cache/save@v5" in workflow
@@ -458,8 +467,14 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
-    assert "COARSE_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}" in workflow
-    assert "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}" in workflow
+    assert (
+        "COARSE_BUNDLE: ${{ github.event_name != 'workflow_dispatch' || inputs.coarse_bundle }}"
+        in workflow
+    )
+    assert (
+        "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}"
+        in workflow
+    )
     assert "compression-level: 0" in workflow
     assert "CACHE_KEYS_RESULT: ${{ needs.cache-keys.result }}" in workflow
     assert (
@@ -484,8 +499,13 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
         in prepare_job
     )
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
-    assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
+    assert (
+        workflow.count("npx playwright test --project=bundle-smoke --reporter=line")
+        == 2
+    )
 
     fixture_start = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    assert 'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
+    assert (
+        'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
+    )
     assert "rotate_playwright_auth_state.py" in fixture_start

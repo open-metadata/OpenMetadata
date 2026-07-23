@@ -19,7 +19,7 @@ export type CSVExportResponse = {
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
+  status: 'CANCELLED' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
   data: string;
   error: string | null;
   progress?: number;

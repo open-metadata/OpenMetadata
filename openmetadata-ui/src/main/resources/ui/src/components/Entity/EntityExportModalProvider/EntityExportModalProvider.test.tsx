@@ -20,7 +20,11 @@ import {
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
-import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
+import {
+  CsvAsyncJob,
+  getCsvAsyncJob,
+  getCsvAsyncJobResult,
+} from '../../../rest/csvAPI';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import {
   EntityExportModalProvider,
@@ -57,6 +61,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../rest/csvAPI', () => ({
+  getCsvAsyncJob: jest.fn(),
   getCsvAsyncJobResult: jest.fn(),
 }));
 
@@ -134,6 +139,35 @@ const JobCorrelationConsumer = ({
         Complete matching job
       </button>
       <div data-testid="correlated-export-data">{csvExportData ?? ''}</div>
+    </>
+  );
+};
+
+const PollingConsumer = ({
+  onError,
+  onExport,
+}: {
+  onError?: () => void;
+  onExport: ExportData['onExport'];
+}) => {
+  const { csvExportData, csvExportError, triggerExportForBulkEdit } =
+    useEntityExportModalProvider();
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          triggerExportForBulkEdit({
+            name: 'polled-export',
+            exportTypes: [ExportTypes.CSV],
+            onError,
+            onExport,
+          })
+        }>
+        Start polled export
+      </button>
+      <div data-testid="polled-export-data">{csvExportData ?? ''}</div>
+      <div data-testid="polled-export-error">{csvExportError ?? ''}</div>
     </>
   );
 };
@@ -306,7 +340,10 @@ describe('EntityExportModalProvider component', () => {
       fireEvent.click(screen.getByText('Complete'));
     });
 
-    expect(getCsvAsyncJobResult).toHaveBeenCalledWith(mockExportJob.jobId);
+    expect(getCsvAsyncJobResult).toHaveBeenCalledWith(
+      mockExportJob.jobId,
+      expect.objectContaining({ aborted: expect.any(Boolean) })
+    );
 
     await waitFor(() =>
       expect(downloadFile).toHaveBeenCalledWith(
@@ -382,6 +419,201 @@ describe('EntityExportModalProvider component', () => {
         'matching,data'
       )
     );
+  });
+
+  it('recovers a completion that happened before the WebSocket subscription', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+    const onExport = jest.fn().mockResolvedValue(mockExportJob);
+    const completedJob: CsvAsyncJob = {
+      createdBy: 'admin',
+      entityType: 'database',
+      jobId: mockExportJob.jobId,
+      operation: 'EXPORT',
+      status: 'COMPLETED',
+    };
+    (getCsvAsyncJob as jest.Mock).mockResolvedValueOnce(completedJob);
+    (getCsvAsyncJobResult as jest.Mock).mockResolvedValueOnce(
+      'name\npolled-result'
+    );
+
+    render(
+      <EntityExportModalProvider>
+        <PollingConsumer onExport={onExport} />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start polled export'));
+    });
+
+    await waitFor(() =>
+      expect(getCsvAsyncJob).toHaveBeenCalledWith(
+        mockExportJob.jobId,
+        expect.objectContaining({ aborted: expect.any(Boolean) })
+      )
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('polled-export-data')).toHaveTextContent(
+        'name polled-result'
+      )
+    );
+  });
+
+  it.each(['FAILED', 'CANCELLED'] as const)(
+    'stops a bulk-edit export when polling observes %s',
+    async (status) => {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      const terminalJob: CsvAsyncJob = {
+        createdBy: 'admin',
+        entityType: 'database',
+        error: 'sensitive backend detail',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status,
+      };
+      (getCsvAsyncJob as jest.Mock).mockResolvedValueOnce(terminalJob);
+
+      render(
+        <EntityExportModalProvider>
+          <PollingConsumer onError={onError} onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+
+      await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'message.unexpected-error'
+      );
+      expect(screen.getByTestId('polled-export-error')).not.toHaveTextContent(
+        'sensitive backend detail'
+      );
+    }
+  );
+
+  it('fails a bulk-edit export when status requests repeatedly time out', async () => {
+    jest.useFakeTimers();
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      (getCsvAsyncJob as jest.Mock).mockImplementation(
+        () => new Promise<CsvAsyncJob>(() => undefined)
+      );
+
+      render(
+        <EntityExportModalProvider>
+          <PollingConsumer onError={onError} onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+
+      const retryIntervals = [1_000, 2_000, 4_000, 8_000, 10_000];
+
+      for (let failedRequest = 0; failedRequest < 6; failedRequest++) {
+        await act(async () => {
+          jest.advanceTimersByTime(5_000);
+        });
+
+        const retryInterval = retryIntervals[failedRequest];
+        if (retryInterval) {
+          await act(async () => {
+            jest.advanceTimersByTime(retryInterval);
+          });
+        }
+      }
+
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(6);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'message.unexpected-error'
+      );
+    } finally {
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps polling a healthy export beyond the former thirty-minute limit', async () => {
+    jest.useFakeTimers();
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      const runningJob: CsvAsyncJob = {
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      };
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue(runningJob);
+
+      const { unmount } = render(
+        <EntityExportModalProvider>
+          <PollingConsumer onError={onError} onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+
+      for (let pollAttempt = 1; pollAttempt <= 183; pollAttempt++) {
+        const intervalMs = Math.min(1_000 * 2 ** (pollAttempt - 1), 10_000);
+        await act(async () => {
+          jest.advanceTimersByTime(intervalMs);
+        });
+      }
+
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(184);
+      expect(onError).not.toHaveBeenCalled();
+      expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
+
+      unmount();
+    } finally {
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
+
+  it('aborts status polling when the provider unmounts', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+    const onExport = jest.fn().mockResolvedValue(mockExportJob);
+    let pollingSignal: AbortSignal | undefined;
+    (getCsvAsyncJob as jest.Mock).mockImplementationOnce(
+      (_jobId: string, signal: AbortSignal) => {
+        pollingSignal = signal;
+
+        return new Promise(() => undefined);
+      }
+    );
+
+    const { unmount } = render(
+      <EntityExportModalProvider>
+        <PollingConsumer onExport={onExport} />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Start polled export'));
+    });
+
+    await waitFor(() => expect(pollingSignal).toBeDefined());
+
+    unmount();
+
+    expect(pollingSignal?.aborted).toBe(true);
   });
 
   it('Export modal should not be visible if route is bulk edit', async () => {

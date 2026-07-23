@@ -34,7 +34,7 @@ PROJECT_LANES = {
     "Ingestion": "ingestion",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
-    "SearchRBAC": "data-asset-rules",
+    "SearchRBAC": "search-rbac",
     "DomainIsolation": "domain-isolation",
     "search-nightly": "search",
     "Reindex": "reindex",
@@ -44,7 +44,6 @@ PROJECT_LANES = {
 }
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
-    "SearchRBAC": {"DataAssetRulesDisabled", "DataAssetRulesEnabled"},
 }
 LANE_WORKERS = {
     "domain-isolation": 1,
@@ -52,6 +51,7 @@ LANE_WORKERS = {
     "ingestion": 1,
     "reindex": 1,
     "search": 1,
+    "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
 COMMON_SHARD_BUDGET_MS = 15 * 60 * 1000
@@ -277,6 +277,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         "ingestion",
         "reindex",
         "search",
+        "search-rbac",
     }:
         return (1, 8) if mode == "full" else (1, 2)
     return (1, 1)

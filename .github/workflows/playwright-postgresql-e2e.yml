@@ -1217,6 +1217,15 @@ jobs:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
 
+      - name: Download all results JSON
+        id: download-results
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        uses: actions/download-artifact@v7
+        continue-on-error: true
+        with:
+          pattern: playwright-results-json-*
+          path: results
+
       - name: Setup Node.js
         id: setup-node
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
@@ -1258,8 +1267,8 @@ jobs:
           timeout --foreground --signal=TERM --kill-after=30s 3m \
             npx playwright merge-reports --reporter=html "$RUNNER_TEMP/playwright-blobs"
 
-      - name: Merge and verify timing coverage
-        id: verify-report
+      - name: Merge Playwright timing history
+        id: merge-timings
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
         env:
@@ -1272,11 +1281,26 @@ jobs:
               --mode "$EXECUTION_MODE" \
               --source-sha "$SOURCE_SHA" \
               --output "$RUNNER_TEMP/playwright-timing-history/playwright-timing-history.json"
+
+      - name: Verify Playwright timing coverage
+        id: verify-coverage
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        run: |
           timeout --foreground --signal=TERM --kill-after=30s 1m \
             python3 .github/scripts/verify_playwright_coverage.py \
               --plan-glob "$RUNNER_TEMP/playwright-plans/*.json" \
               --timing-glob "$RUNNER_TEMP/playwright-timings/**/playwright-timings.json" \
+              --result-glob "$GITHUB_WORKSPACE/results/playwright-results-json-*/results.json" \
               --output "$RUNNER_TEMP/playwright-timing-history/playwright-coverage.json"
+
+      - name: Evaluate Playwright performance
+        id: evaluate-performance
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+        run: |
           performance_args=()
           if [[ "$EXECUTION_MODE" == "full" ]]; then
             performance_args+=(--enforce)
@@ -1335,14 +1359,6 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Download all results JSON
-        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
-        uses: actions/download-artifact@v7
-        continue-on-error: true
-        with:
-          pattern: playwright-results-json-*
-          path: results
-
       - name: Evaluate zero-retry gate in shadow mode
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
@@ -1386,11 +1402,14 @@ jobs:
           REPORT_DOWNLOAD_BLOBS_OUTCOME: ${{ steps.download-blobs.outcome }}
           REPORT_DOWNLOAD_TIMINGS_OUTCOME: ${{ steps.download-timings.outcome }}
           REPORT_DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
+          REPORT_DOWNLOAD_RESULTS_OUTCOME: ${{ steps.download-results.outcome }}
           REPORT_SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           REPORT_INSTALL_OUTCOME: ${{ steps.install-report-dependencies.outcome }}
           REPORT_START_OUTCOME: ${{ steps.mark-report-start.outcome }}
           REPORT_MERGE_OUTCOME: ${{ steps.merge-report.outcome }}
-          REPORT_VERIFY_OUTCOME: ${{ steps.verify-report.outcome }}
+          REPORT_TIMING_MERGE_OUTCOME: ${{ steps.merge-timings.outcome }}
+          REPORT_COVERAGE_OUTCOME: ${{ steps.verify-coverage.outcome }}
+          REPORT_PERFORMANCE_OUTCOME: ${{ steps.evaluate-performance.outcome }}
           REPORT_UPLOAD_OUTCOME: ${{ steps.upload-report.outcome }}
           REPORT_DURATION_OUTCOME: ${{ steps.record-report-duration.outcome }}
           REPORT_HISTORY_OUTCOME: ${{ steps.upload-timing-history.outcome }}
@@ -1412,25 +1431,6 @@ jobs:
             const fixtureRestoreResult = process.env.FIXTURE_RESTORE_RESULT;
             const fixtureResult = process.env.FIXTURE_RESULT;
             const upstreamResult = process.env.PLAYWRIGHT_RESULT;
-            const reportStepOutcomes = [
-              process.env.SUMMARY_CHECKOUT_OUTCOME,
-              process.env.REPORT_DOWNLOAD_BLOBS_OUTCOME,
-              process.env.REPORT_DOWNLOAD_TIMINGS_OUTCOME,
-              process.env.REPORT_DOWNLOAD_PLANS_OUTCOME,
-              process.env.REPORT_SETUP_NODE_OUTCOME,
-              process.env.REPORT_INSTALL_OUTCOME,
-              process.env.REPORT_START_OUTCOME,
-              process.env.REPORT_MERGE_OUTCOME,
-              process.env.REPORT_VERIFY_OUTCOME,
-              process.env.REPORT_UPLOAD_OUTCOME,
-              process.env.REPORT_DURATION_OUTCOME,
-              process.env.REPORT_HISTORY_OUTCOME,
-            ];
-            const reportResult = upstreamResult === 'skipped'
-              ? 'skipped'
-              : reportStepOutcomes.some(outcome => ['failure', 'cancelled'].includes(outcome))
-              ? 'failure'
-              : 'success';
             const eventAction = context.payload.action;
             const labelName = context.payload.label?.name ?? '';
             const isDraft = context.payload.pull_request?.draft === true;
@@ -1461,6 +1461,21 @@ jobs:
             const addInfrastructureIssue = issue => {
               if (!infrastructureIssues.includes(issue)) infrastructureIssues.push(issue);
             };
+            const failedOutcome = outcome => ['failure', 'cancelled'].includes(outcome);
+
+            let coverage;
+            const coveragePath = path.join(
+              process.env.RUNNER_TEMP,
+              'playwright-timing-history',
+              'playwright-coverage.json'
+            );
+            if (fs.existsSync(coveragePath)) {
+              try {
+                coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+              } catch (error) {
+                addInfrastructureIssue(`Playwright coverage output was invalid JSON: ${error.message}`);
+              }
+            }
 
             if (checkChangesResult !== 'success') {
               addInfrastructureIssue(`Change detection finished with status \`${checkChangesResult}\`.`);
@@ -1488,8 +1503,41 @@ jobs:
             } else if (upstreamResult === 'skipped') {
               addInfrastructureIssue('The Playwright shard matrix was unexpectedly skipped.');
             }
-            if (!['success', 'skipped'].includes(reportResult)) {
-              addInfrastructureIssue(`Merged report and coverage validation finished with status \`${reportResult}\`.`);
+
+            const reportChecks = [
+              [process.env.SUMMARY_CHECKOUT_OUTCOME, 'Summary checkout'],
+              [process.env.REPORT_DOWNLOAD_BLOBS_OUTCOME, 'Blob report download'],
+              [process.env.REPORT_DOWNLOAD_TIMINGS_OUTCOME, 'Timing metrics download'],
+              [process.env.REPORT_DOWNLOAD_PLANS_OUTCOME, 'Shard-plan download'],
+              [process.env.REPORT_DOWNLOAD_RESULTS_OUTCOME, 'Native Playwright result download'],
+              [process.env.REPORT_SETUP_NODE_OUTCOME, 'Summary Node.js setup'],
+              [process.env.REPORT_INSTALL_OUTCOME, 'Summary dependency installation'],
+              [process.env.REPORT_START_OUTCOME, 'Summary timer initialization'],
+              [process.env.REPORT_MERGE_OUTCOME, 'HTML report merge'],
+              [process.env.REPORT_TIMING_MERGE_OUTCOME, 'Timing-history merge'],
+              [process.env.REPORT_PERFORMANCE_OUTCOME, 'Performance target evaluation'],
+              [process.env.REPORT_UPLOAD_OUTCOME, 'Merged report upload'],
+              [process.env.REPORT_DURATION_OUTCOME, 'Reporting-duration evaluation'],
+              [process.env.REPORT_HISTORY_OUTCOME, 'Timing-history upload'],
+            ];
+            for (const [outcome, label] of reportChecks) {
+              if (failedOutcome(outcome)) {
+                addInfrastructureIssue(`${label} finished with status \`${outcome}\`.`);
+              }
+            }
+            if (failedOutcome(process.env.REPORT_COVERAGE_OUTCOME)) {
+              if (coverage) {
+                addInfrastructureIssue(
+                  `Playwright coverage validation found ${coverage.missingTestIds?.length ?? 0} missing, ` +
+                  `${coverage.unexpectedTestIds?.length ?? 0} unexpected, ` +
+                  `${coverage.duplicatePlanTestIds?.length ?? 0} duplicate-plan, and ` +
+                  `${coverage.duplicateExecutionTestIds?.length ?? 0} duplicate-execution test ID(s).`
+                );
+              } else {
+                addInfrastructureIssue(
+                  `Playwright coverage validation finished with status \`${process.env.REPORT_COVERAGE_OUTCOME}\`.`
+                );
+              }
             }
 
             let expectedShards = [];
@@ -1520,20 +1568,27 @@ jobs:
                 }
 
                 const allTests = [];
+                const lifecycleTests = [];
                 function collectTests(suite, filePath) {
                   const file = suite.file || filePath || '';
                   for (const spec of (suite.specs || [])) {
+                    const specFile = spec.file || file;
                     for (const test of (spec.tests || [])) {
                       const results = test.results || [];
                       const lastResult = results[results.length - 1] || {};
                       const firstResult = results[0] || {};
-                      allTests.push({
+                      const testResult = {
                         title: spec.title,
-                        file: file,
+                        file: specFile,
                         status: test.status,
                         retries: results.length - 1,
                         error: lastResult.error?.message || firstResult.error?.message || '',
-                      });
+                      };
+                      if (specFile.endsWith('.setup.ts') || specFile.endsWith('.teardown.ts')) {
+                        lifecycleTests.push(testResult);
+                      } else {
+                        allTests.push(testResult);
+                      }
                     }
                   }
                   for (const child of (suite.suites || [])) {
@@ -1546,11 +1601,28 @@ jobs:
 
                 const knownStatuses = new Set(['expected', 'unexpected', 'flaky', 'skipped']);
                 const unknownStatuses = allTests.filter(test => !knownStatuses.has(test.status));
+                const unknownLifecycleStatuses = lifecycleTests.filter(
+                  test => !knownStatuses.has(test.status)
+                );
+                const lifecycleFailures = lifecycleTests.filter(
+                  test => test.status === 'unexpected'
+                );
+                const lifecycleFlaky = lifecycleTests.filter(
+                  test => test.status === 'flaky'
+                );
                 if (allTests.length === 0) {
                   addInfrastructureIssue(`Shard ${shardNum} reported zero tests.`);
                 }
                 if (unknownStatuses.length > 0) {
                   addInfrastructureIssue(`Shard ${shardNum} reported ${unknownStatuses.length} test(s) with an unknown status.`);
+                }
+                if (unknownLifecycleStatuses.length > 0) {
+                  addInfrastructureIssue(`Shard ${shardNum} reported ${unknownLifecycleStatuses.length} lifecycle test(s) with an unknown status.`);
+                }
+                for (const failure of lifecycleFailures) {
+                  addInfrastructureIssue(
+                    `Shard ${shardNum} failed in Playwright lifecycle test \`${failure.file} › ${failure.title}\`.`
+                  );
                 }
                 shardResults.push({
                   shard: shardNum,
@@ -1558,6 +1630,8 @@ jobs:
                   flaky: allTests.filter(t => t.status === 'flaky'),
                   passed: allTests.filter(t => t.status === 'expected'),
                   skipped: allTests.filter(t => t.status === 'skipped'),
+                  lifecycleFailures,
+                  lifecycleFlaky,
                 });
               }
             }
@@ -1606,7 +1680,11 @@ jobs:
 
               const shardResult = resultsByShard.get(shard);
               const genuineFailures = shardResult?.genuine.length || 0;
-              if (steps.tests !== 'success' && !(steps.tests === 'failure' && genuineFailures > 0)) {
+              const lifecycleFailures = shardResult?.lifecycleFailures.length || 0;
+              if (
+                steps.tests !== 'success' &&
+                !(steps.tests === 'failure' && (genuineFailures > 0 || lifecycleFailures > 0))
+              ) {
                 addInfrastructureIssue(`Shard ${shard} test execution finished with status \`${steps.tests || 'not-run'}\` without a reported test failure.`);
               }
             }
@@ -1615,6 +1693,11 @@ jobs:
             const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
             const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
             const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
+            const totalLifecycleFlaky = shardResults.reduce(
+              (sum, result) => sum + result.lifecycleFlaky.length,
+              0
+            );
+            const zeroAttemptSkippedTests = coverage?.zeroAttemptSkippedTests ?? [];
             if (upstreamResult === 'failure' && totalFailed === 0 && infrastructureIssues.length === 0) {
               addInfrastructureIssue('The Playwright shard matrix failed outside a reported test failure.');
             }
@@ -1623,34 +1706,67 @@ jobs:
 
             if (totalFailed > 0 || infrastructureIssues.length > 0) {
               const testFailureText = totalFailed > 0 ? `${totalFailed} test failure(s)` : '';
-              const infrastructureText = infrastructureIssues.length > 0 ? `${infrastructureIssues.length} pipeline/setup failure(s)` : '';
+              const infrastructureText = infrastructureIssues.length > 0 ? `${infrastructureIssues.length} CI/reporting failure(s)` : '';
               lines.push(`## 🔴 Playwright Results — ${[testFailureText, infrastructureText].filter(Boolean).join(', ')}`);
-            } else if (totalFlaky > 0) {
-              lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
+            } else if (totalFlaky > 0 || totalLifecycleFlaky > 0) {
+              lines.push(
+                `## 🟡 Playwright Results — all passed (${totalFlaky} product flaky, ` +
+                `${totalLifecycleFlaky} lifecycle flaky)`
+              );
             } else {
               lines.push(`## ✅ Playwright Results — all ${totalPassed} tests passed`);
             }
             lines.push('');
-            lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
+            const zeroAttemptSkippedText = zeroAttemptSkippedTests.length > 0
+              ? ` (${zeroAttemptSkippedTests.length} zero-attempt; reason unknown)`
+              : '';
+            lines.push(
+              `✅ ${totalPassed} passed · ❌ ${totalFailed} failed · ` +
+              `🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped${zeroAttemptSkippedText} · ` +
+              `🧰 ${totalLifecycleFlaky} lifecycle flaky`
+            );
             lines.push('');
 
             if (infrastructureIssues.length > 0) {
-              lines.push('### Pipeline and setup failures');
+              lines.push('### CI and reporting failures');
               lines.push('');
               for (const issue of infrastructureIssues) lines.push(`- ${issue}`);
               lines.push('');
             }
 
-            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
-            lines.push('|-------|--------|--------|-------|---------|');
+            if (zeroAttemptSkippedTests.length > 0) {
+              lines.push('### Zero-attempt skipped tests');
+              lines.push('');
+              lines.push(
+                `${zeroAttemptSkippedTests.length} planned test(s) were reported by Playwright as skipped with no attempts. ` +
+                'They are accounted for by coverage; the native report does not provide a reliable reason.'
+              );
+              lines.push('');
+              const zeroAttemptSkipGroups = new Map();
+              for (const test of zeroAttemptSkippedTests) {
+                const key = `${test.project || 'unknown'} · ${test.file || 'unknown file'}`;
+                zeroAttemptSkipGroups.set(key, (zeroAttemptSkipGroups.get(key) ?? 0) + 1);
+              }
+              for (const [group, count] of zeroAttemptSkipGroups) {
+                lines.push(`- ${group}: ${count} (reason: unknown)`);
+              }
+              lines.push('');
+            }
+
+            lines.push('| Shard | Passed | Failed | Flaky | Skipped | Lifecycle flaky |');
+            lines.push('|-------|--------|--------|-------|---------|-----------------|');
             for (const shard of expectedShards) {
               const r = resultsByShard.get(shard);
               if (!r) {
-                lines.push(`| ⛔ Shard ${shard} | — | — | — | — |`);
+                lines.push(`| ⛔ Shard ${shard} | — | — | — | — | — |`);
                 continue;
               }
-              const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
-              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
+              const status = r.genuine.length > 0 || r.lifecycleFailures.length > 0
+                ? '🔴'
+                : r.flaky.length > 0 || r.lifecycleFlaky.length > 0
+                ? '🟡'
+                : '✅';
+              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} | ${r.lifecycleFlaky.length} |`);
             }
             lines.push('');
 
@@ -1690,6 +1806,24 @@ jobs:
               lines.push('');
             }
 
+            const allLifecycleFlaky = shardResults.flatMap(r =>
+              r.lifecycleFlaky.map(test => ({ ...test, shard: r.shard }))
+            );
+            if (allLifecycleFlaky.length > 0) {
+              lines.push(`<details><summary>🧰 ${allLifecycleFlaky.length} flaky lifecycle test(s) (passed on retry)</summary>`);
+              lines.push('');
+              for (const test of allLifecycleFlaky.slice(0, 30)) {
+                const shortFile = test.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(`- \`${shortFile}\` › ${test.title} (shard ${test.shard}, ${test.retries} ${test.retries === 1 ? 'retry' : 'retries'})`);
+              }
+              if (allLifecycleFlaky.length > 30) {
+                lines.push(`- ... and ${allLifecycleFlaky.length - 30} more`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
+            }
+
             lines.push(`📦 [Download artifacts](${artifactUrl})`);
             lines.push('');
             lines.push('<details><summary>How to debug locally</summary>');
@@ -1715,6 +1849,8 @@ jobs:
                 failed: result?.genuine.length ?? 0,
                 flaky: result?.flaky.length ?? 0,
                 skipped: result?.skipped.length ?? 0,
+                lifecycleFailed: result?.lifecycleFailures.length ?? 0,
+                lifecycleFlaky: result?.lifecycleFlaky.length ?? 0,
               };
             });
             for (const result of shardResults) {
@@ -1727,6 +1863,8 @@ jobs:
                   failed: result.genuine.length,
                   flaky: result.flaky.length,
                   skipped: result.skipped.length,
+                  lifecycleFailed: result.lifecycleFailures.length,
+                  lifecycleFlaky: result.lifecycleFlaky.length,
                 });
               }
             }
@@ -1744,6 +1882,8 @@ jobs:
                 failed: totalFailed,
                 flaky: totalFlaky,
                 skipped: totalSkipped,
+                zeroAttemptSkipped: zeroAttemptSkippedTests.length,
+                lifecycleFlaky: totalLifecycleFlaky,
               },
               shards: payloadShards,
               infrastructureIssueCount: infrastructureIssues.length,
@@ -1757,6 +1897,12 @@ jobs:
                 error: boundedString(test.error, 1000),
               })),
               flakyTests: allFlaky.slice(0, 30).map(test => ({
+                shard: boundedString(test.shard, 64),
+                file: boundedString(test.file, 300),
+                title: boundedString(test.title, 300),
+                retries: Math.max(0, test.retries),
+              })),
+              lifecycleFlakyTests: allLifecycleFlaky.slice(0, 30).map(test => ({
                 shard: boundedString(test.shard, 64),
                 file: boundedString(test.file, 300),
                 title: boundedString(test.title, 300),
@@ -1780,7 +1926,7 @@ jobs:
 
             if (totalFailed > 0 || infrastructureIssues.length > 0) {
               core.setFailed(
-                `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} pipeline/setup failure(s).`
+                `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} CI/reporting failure(s).`
               );
             }
 

@@ -482,7 +482,10 @@ export const getPropertyValues = (
 
 export const createCustomPropertyForEntity = async (
   apiContext: APIRequestContext,
-  endpoint: EntityTypeEndpoint
+  endpoint: EntityTypeEndpoint,
+  propertyTypes: readonly CustomPropertyTypeByName[] = Object.values(
+    CustomPropertyTypeByName
+  )
 ) => {
   const propertiesResponse = await apiContext.get(
     '/api/v1/metadata/types?category=field&limit=20'
@@ -490,7 +493,7 @@ export const createCustomPropertyForEntity = async (
   const properties = await propertiesResponse.json();
   const propertyList = properties.data.filter(
     (item: { name: CustomPropertyTypeByName }) =>
-      Object.values(CustomPropertyTypeByName).includes(item.name)
+      propertyTypes.includes(item.name)
   );
 
   const entitySchemaResponse = await apiContext.get(
@@ -509,11 +512,18 @@ export const createCustomPropertyForEntity = async (
     }
   >;
   const users: UserClass[] = [];
-  // Loop to create and add 4 new users to the users array
-  for (let i = 0; i < 4; i++) {
-    const user = new UserClass();
-    await user.create(apiContext);
-    users.push(user);
+  const needsReferenceUsers = propertyTypes.some(
+    (propertyType) =>
+      propertyType === CustomPropertyTypeByName.ENTITY_REFERENCE ||
+      propertyType === CustomPropertyTypeByName.ENTITY_REFERENCE_LIST
+  );
+
+  if (needsReferenceUsers) {
+    for (let i = 0; i < 4; i++) {
+      const user = new UserClass();
+      await user.create(apiContext);
+      users.push(user);
+    }
   }
 
   // Reduce the users array to a userNames object with keys as user1, user2, etc., and values as the user's names

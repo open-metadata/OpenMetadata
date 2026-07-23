@@ -42,6 +42,7 @@ class PerformanceReporter implements Reporter {
   private readonly outputFile: string;
   private rootDir = process.cwd();
   private readonly tests = new Map<string, TestTiming>();
+  private readonly lifecycleTests = new Map<string, TestTiming>();
 
   constructor(options: PerformanceReporterOptions = {}) {
     this.outputFile =
@@ -53,14 +54,12 @@ class PerformanceReporter implements Reporter {
   }
 
   onTestEnd(test: TestCase, result: TestResult) {
-    if (
+    const isLifecycleTest =
       test.location.file.endsWith('.setup.ts') ||
-      test.location.file.endsWith('.teardown.ts')
-    ) {
-      return;
-    }
+      test.location.file.endsWith('.teardown.ts');
+    const timings = isLifecycleTest ? this.lifecycleTests : this.tests;
 
-    const existing = this.tests.get(test.id);
+    const existing = timings.get(test.id);
     const project = test.parent.project()?.name ?? '';
     const timing: TestTiming = existing ?? {
       attempts: 0,
@@ -82,7 +81,7 @@ class PerformanceReporter implements Reporter {
     if (result.retry > 0) {
       timing.retryDurationMs += result.duration;
     }
-    this.tests.set(test.id, timing);
+    timings.set(test.id, timing);
   }
 
   async onEnd(result: FullResult) {
@@ -98,6 +97,9 @@ class PerformanceReporter implements Reporter {
           status: result.status,
           tests: [...this.tests.values()].sort((left, right) =>
             left.id.localeCompare(right.id)
+          ),
+          lifecycleTests: [...this.lifecycleTests.values()].sort(
+            (left, right) => left.id.localeCompare(right.id)
           ),
         },
         null,

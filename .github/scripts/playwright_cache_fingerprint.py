@@ -196,7 +196,7 @@ def typescript_dependencies(
         if source in discovered or not source.is_file():
             continue
         try:
-            relative = source.relative_to(root.resolve()).as_posix()
+            source.relative_to(root.resolve())
         except ValueError:
             continue
         discovered.add(source)
@@ -227,7 +227,8 @@ def select_files(kind: str, files: Sequence[str], root: Path) -> list[str]:
         selected = {
             path
             for path in files
-            if matches_prefix(path, INGESTION_PREFIXES) and is_runtime_ingestion_file(path)
+            if matches_prefix(path, INGESTION_PREFIXES)
+            and is_runtime_ingestion_file(path)
         }
     else:
         raise ValueError(f"Unknown fingerprint kind: {kind}")
@@ -289,7 +290,9 @@ def parse_args() -> argparse.Namespace:
         required=True,
         choices=("fixture", "distribution", "ingestion", "schema", "seed"),
     )
-    parser.add_argument("--bundle-mode", choices=("regular", "coarse"), default="regular")
+    parser.add_argument(
+        "--bundle-mode", choices=("regular", "coarse"), default="regular"
+    )
     parser.add_argument("--toolchain", default="")
     return parser.parse_args()
 

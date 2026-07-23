@@ -272,7 +272,20 @@ def test_audited_parallel_suite_is_split_into_individual_tests():
     assert [unit.test_ids for unit in units] == [{"first"}, {"second"}]
 
 
-def test_project_dependencies_are_added_to_targeted_plans():
+def test_data_asset_rule_dependencies_are_added_to_targeted_plans():
+    planner = load_script("build_playwright_shards")
+    enabled = planner.Unit("DataAssetRulesEnabled", "enabled.spec.ts", "enabled")
+    disabled = planner.Unit("DataAssetRulesDisabled", "disabled.spec.ts", "disabled")
+
+    expanded = planner.include_project_dependencies([disabled], [enabled, disabled])
+
+    assert {unit.project for unit in expanded} == {
+        "DataAssetRulesEnabled",
+        "DataAssetRulesDisabled",
+    }
+
+
+def test_search_rbac_does_not_depend_on_data_asset_rule_assertions():
     planner = load_script("build_playwright_shards")
     enabled = planner.Unit("DataAssetRulesEnabled", "enabled.spec.ts", "enabled")
     disabled = planner.Unit("DataAssetRulesDisabled", "disabled.spec.ts", "disabled")
@@ -282,11 +295,15 @@ def test_project_dependencies_are_added_to_targeted_plans():
         [search], [enabled, disabled, search]
     )
 
-    assert {unit.project for unit in expanded} == {
-        "DataAssetRulesEnabled",
-        "DataAssetRulesDisabled",
-        "SearchRBAC",
-    }
+    assert expanded == [search]
+
+
+def test_search_rbac_uses_an_isolated_single_worker_lane():
+    planner = load_script("build_playwright_shards")
+
+    assert planner.PROJECT_LANES["SearchRBAC"] == "search-rbac"
+    assert planner.LANE_WORKERS["search-rbac"] == 1
+    assert planner.lane_bounds("search-rbac", "full") == (1, 8)
 
 
 def test_source_glob_matching_is_explicit():
@@ -457,6 +474,191 @@ def test_coverage_verifier_detects_missing_and_duplicate_tests(tmp_path):
     assert [test_id for test_id, count in executed.items() if count > 1] == ["one"]
 
 
+def test_coverage_verifier_accounts_for_native_zero_attempt_skips():
+    verifier = load_script("verify_playwright_coverage")
+    report = {
+        "suites": [
+            {
+                "suites": [
+                    {
+                        "specs": [
+                            {
+                                "id": "zero-attempt-skipped",
+                                "file": "Flow/SearchRBAC.spec.ts",
+                                "title": "User with permission",
+                                "tests": [
+                                    {
+                                        "projectName": "SearchRBAC",
+                                        "status": "skipped",
+                                        "results": [],
+                                    }
+                                ],
+                            },
+                            {
+                                "id": "executed",
+                                "file": "Flow/SearchRBAC.spec.ts",
+                                "title": "User without permission",
+                                "tests": [
+                                    {
+                                        "projectName": "SearchRBAC",
+                                        "status": "expected",
+                                        "results": [{"status": "passed"}],
+                                    }
+                                ],
+                            },
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+
+    skipped = verifier.zero_attempt_skipped_tests(
+        report, verifier.Counter({"executed": 1})
+    )
+
+    assert skipped == {
+        "zero-attempt-skipped": {
+            "id": "zero-attempt-skipped",
+            "project": "SearchRBAC",
+            "file": "Flow/SearchRBAC.spec.ts",
+            "title": "User with permission",
+            "category": "zero-attempt-skipped",
+            "reason": "unknown",
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    "annotations",
+    [
+        [{"type": "skip", "description": "intentional static skip"}],
+        [],
+    ],
+    ids=["intentional-static", "serial-or-max-failures"],
+)
+def test_zero_attempt_skip_does_not_infer_dependency_provenance(annotations):
+    verifier = load_script("verify_playwright_coverage")
+    report = {
+        "suites": [
+            {
+                "specs": [
+                    {
+                        "id": "zero-attempt",
+                        "file": "Flow/Example.spec.ts",
+                        "title": "skipped without an attempt",
+                        "tests": [
+                            {
+                                "projectName": "chromium",
+                                "status": "skipped",
+                                "results": [],
+                                "annotations": annotations,
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+
+    skipped = verifier.zero_attempt_skipped_tests(report, verifier.Counter())
+
+    assert skipped["zero-attempt"]["category"] == "zero-attempt-skipped"
+    assert skipped["zero-attempt"]["reason"] == "unknown"
+    assert "dependency" not in json.dumps(skipped).lower()
+
+
+@pytest.mark.parametrize(
+    ("status", "results"),
+    [
+        ("skipped", [{"status": "skipped"}]),
+        ("expected", []),
+    ],
+)
+def test_zero_attempt_skip_requires_both_native_skip_and_no_results(status, results):
+    verifier = load_script("verify_playwright_coverage")
+    report = {
+        "suites": [
+            {
+                "specs": [
+                    {
+                        "id": "not-zero-attempt-skipped",
+                        "tests": [
+                            {
+                                "projectName": "chromium",
+                                "status": status,
+                                "results": results,
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+
+    assert verifier.zero_attempt_skipped_tests(report, verifier.Counter()) == {}
+
+
+def test_coverage_verifier_reconciles_zero_attempt_skips_in_output(
+    tmp_path, monkeypatch
+):
+    verifier = load_script("verify_playwright_coverage")
+    plan = {
+        "shardId": "search-rbac-01",
+        "testIds": ["executed", "zero-attempt-skipped"],
+    }
+    timing = {"tests": [{"id": "executed"}]}
+    result = {
+        "suites": [
+            {
+                "specs": [
+                    {
+                        "id": "zero-attempt-skipped",
+                        "file": "Flow/SearchRBAC.spec.ts",
+                        "title": "User with permission",
+                        "tests": [
+                            {
+                                "projectName": "SearchRBAC",
+                                "status": "skipped",
+                                "results": [],
+                            }
+                        ],
+                    }
+                ]
+            }
+        ]
+    }
+    (tmp_path / "plan.json").write_text(json.dumps(plan))
+    (tmp_path / "timing.json").write_text(json.dumps(timing))
+    (tmp_path / "result.json").write_text(json.dumps(result))
+    output = tmp_path / "coverage.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "verify_playwright_coverage.py",
+            "--plan-glob",
+            str(tmp_path / "plan.json"),
+            "--timing-glob",
+            str(tmp_path / "timing.json"),
+            "--result-glob",
+            str(tmp_path / "result.json"),
+            "--output",
+            str(output),
+        ],
+    )
+
+    verifier.main()
+
+    coverage = json.loads(output.read_text())
+    assert coverage["plannedTests"] == 2
+    assert coverage["executedTests"] == 1
+    assert coverage["accountedTests"] == 2
+    assert coverage["missingTestIds"] == []
+    assert coverage["zeroAttemptSkippedTestIds"] == ["zero-attempt-skipped"]
+    assert coverage["zeroAttemptSkippedTests"][0]["reason"] == "unknown"
+
+
 def test_request_metrics_count_app_boots_bytes_and_hot_api_endpoints():
     requests = load_script("summarize_playwright_requests")
     accumulator = requests.RequestAccumulator()
@@ -515,6 +717,70 @@ def test_performance_metrics_support_legacy_ranked_endpoint_counts():
     ) == [{"endpoint": "GET /assets/app-a.js", "requests": 2}]
 
 
+def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monkeypatch):
+    evaluator = load_script("evaluate_playwright_performance")
+    timing = {
+        "tests": [
+            {
+                "id": "product",
+                "outcome": "expected",
+                "attempts": 1,
+                "durationMs": 100,
+                "retryDurationMs": 0,
+            }
+        ],
+        "lifecycleTests": [
+            {
+                "id": "setup",
+                "outcome": "flaky",
+                "attempts": 2,
+                "durationMs": 100,
+                "retryDurationMs": 50,
+            }
+        ],
+    }
+    requests = {"totalRequests": 100}
+    phases = {"lane": "chromium", "executionSeconds": 1}
+    timing_file = tmp_path / "timing.json"
+    request_file = tmp_path / "requests.json"
+    phase_file = tmp_path / "phases.json"
+    output = tmp_path / "performance.json"
+    timing_file.write_text(json.dumps(timing))
+    request_file.write_text(json.dumps(requests))
+    phase_file.write_text(json.dumps(phases))
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "evaluate_playwright_performance.py",
+            "--timing-glob",
+            str(timing_file),
+            "--request-glob",
+            str(request_file),
+            "--phase-glob",
+            str(phase_file),
+            "--mode",
+            "targeted",
+            "--output",
+            str(output),
+        ],
+    )
+
+    evaluator.main()
+
+    metrics = json.loads(output.read_text())["metrics"]
+    assert metrics["tests"] == 1
+    assert metrics["attempts"] == 1
+    assert metrics["lifecycleTests"] == 1
+    assert metrics["lifecycleAttempts"] == 2
+    assert metrics["lifecycleFlakyTests"] == 1
+    assert metrics["productFlakyRatePercent"] == 0
+    assert metrics["lifecycleFlakyRatePercent"] == 100
+    assert metrics["flakyRatePercent"] == 50
+    assert metrics["lifecycleRetryWorkerPercent"] == 50
+    assert metrics["retryWorkerPercent"] == 25
+
+
 def test_outcome_classifier_reads_include_matrix():
     classifier = load_script("classify_playwright_outcome")
 
@@ -525,6 +791,62 @@ def test_outcome_classifier_reads_include_matrix():
 
     assert error == ""
     assert shards == ["chromium-01", "search-01"]
+
+
+def test_outcome_classifier_separates_lifecycle_retries_from_product_totals(tmp_path):
+    classifier = load_script("classify_playwright_outcome")
+    report = {
+        "suites": [
+            {
+                "file": "Flow/SearchRBAC.spec.ts",
+                "specs": [
+                    {
+                        "title": "product assertion",
+                        "tests": [
+                            {
+                                "projectName": "SearchRBAC",
+                                "status": "expected",
+                                "results": [{"status": "passed"}],
+                            }
+                        ],
+                    }
+                ],
+            },
+            {
+                "file": "search-rbac.setup.ts",
+                "specs": [
+                    {
+                        "title": "enable search RBAC",
+                        "tests": [
+                            {
+                                "projectName": "search-rbac-setup",
+                                "status": "flaky",
+                                "results": [
+                                    {"status": "failed"},
+                                    {"status": "passed"},
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        ]
+    }
+    report_dir = tmp_path / "playwright-results-json-search-rbac-01"
+    report_dir.mkdir()
+    report_file = report_dir / "results.json"
+    report_file.write_text(json.dumps(report))
+
+    outcome = classifier.classify_playwright_outcome(
+        [report_file], [], matrix_outcome="success"
+    )
+
+    assert outcome["classification"] == "passed_with_retries"
+    assert outcome["counts"]["tests"] == 1
+    assert outcome["counts"]["retryPassed"] == 0
+    assert outcome["counts"]["lifecycleTests"] == 1
+    assert outcome["counts"]["lifecycleRetryPassed"] == 1
+    assert outcome["retryPasses"][0]["lifecycle"] is True
 
 
 def test_fast_opensearch_config_does_not_duplicate_security_disable():
@@ -568,6 +890,79 @@ def test_planner_discovers_oss_only_specs():
     )[0]
 
     assert 'PLAYWRIGHT_IS_OSS: "true"' in discovery_step
+
+
+def test_basic_project_excludes_dedicated_state_specs():
+    playwright_config = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    ).read_text()
+    basic_project = playwright_config.split("name: 'Basic'", 1)[1].split(
+        "name: 'Ingestion'", 1
+    )[0]
+
+    assert "testIgnore: dedicatedStateTestIgnore" in basic_project
+    assert "'**/SearchSettings.spec.ts'" in playwright_config
+    assert "'**/SearchSeparation/**'" in playwright_config
+    assert "'**/*AfterReindex.spec.ts'" in playwright_config
+
+
+def test_search_rbac_uses_only_its_setup_and_teardown_projects():
+    playwright_config = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    ).read_text()
+    search_project = playwright_config.split("name: 'SearchRBAC'", 1)[1].split(
+        "name: 'DomainIsolation'", 1
+    )[0]
+
+    assert "name: 'search-rbac-setup'" in playwright_config
+    assert "teardown: 'search-rbac-teardown'" in playwright_config
+    assert "dependencies: ['search-rbac-setup']" in search_project
+    assert "DataAssetRulesDisabled" not in search_project
+
+
+def test_search_rbac_state_setup_maps_only_to_search_rbac():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts"
+        in entry["sources"]
+    )
+
+    assert mapping["projects"] == ["SearchRBAC"]
+    assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
+
+
+def test_summary_reconciles_results_and_evaluates_performance_independently():
+    workflow = (
+        SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
+    ).read_text()
+    coverage_step = workflow.split(
+        "      - name: Verify Playwright timing coverage", 1
+    )[1].split("      - name: Evaluate Playwright performance", 1)[0]
+    performance_step = workflow.split(
+        "      - name: Evaluate Playwright performance", 1
+    )[1].split("      - name: Upload merged Playwright report", 1)[0]
+
+    assert "--result-glob" in coverage_step
+    assert "playwright-results-json-*/results.json" in coverage_step
+    assert "evaluate_playwright_performance.py" not in coverage_step
+    assert "evaluate_playwright_performance.py" in performance_step
+    assert "zero-attempt; reason unknown" in workflow
+    assert "CI/reporting failure(s)" in workflow
+    assert "### CI and reporting failures" in workflow
+    assert "specFile.endsWith('.setup.ts')" in workflow
+    assert "lifecycleFailures" in workflow
+    assert "lifecycleFlaky" in workflow
+    performance_reporter = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"
+    ).read_text()
+    assert "lifecycleTests" in performance_reporter
 
 
 def test_normal_vite_build_keeps_hashed_entry_assets():

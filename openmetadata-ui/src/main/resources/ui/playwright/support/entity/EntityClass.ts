@@ -22,6 +22,7 @@ import {
 import {
   createCustomPropertyForEntity,
   CustomProperty,
+  CustomPropertyTypeByName,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
@@ -101,12 +102,16 @@ export class EntityClass {
     // Override for entity visit
   }
 
-  async prepareCustomProperty(apiContext: APIRequestContext) {
+  async prepareCustomProperty(
+    apiContext: APIRequestContext,
+    propertyTypes?: readonly CustomPropertyTypeByName[]
+  ) {
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
       const data = await createCustomPropertyForEntity(
         apiContext,
-        this.endpoint
+        this.endpoint,
+        propertyTypes
       );
 
       this.customPropertyValue = data.customProperties;
