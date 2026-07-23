@@ -22,13 +22,23 @@ def test_sftp_connection_is_base_connection():
     assert issubclass(SftpConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = SftpConnection(MagicMock())
-        client = conn.client
+def test_get_client_builds_sftp_client():
+    from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
+        BasicAuth,
+    )
+    from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
+        SftpConnection as SftpConnectionConfig,
+    )
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    config = SftpConnectionConfig(host="localhost", port=22, authType=BasicAuth(username="u", password="p"))
+    with (
+        patch(f"{CONNECTION_MODULE}.Transport") as mock_transport,
+        patch(f"{CONNECTION_MODULE}.SFTPClient") as mock_sftp,
+    ):
+        client = SftpConnection(config).client
+
+    assert client.sftp is mock_sftp.from_transport.return_value
+    mock_transport.assert_called_once_with(("localhost", 22))
 
 
 def test_test_connection_runs_steps():

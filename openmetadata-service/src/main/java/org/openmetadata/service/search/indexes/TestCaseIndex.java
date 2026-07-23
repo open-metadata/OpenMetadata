@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestCase;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -39,8 +41,20 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
     fields.add(Entity.FIELD_TEST_SUITES);
     fields.add(TestCaseRepository.TEST_DEFINITION_FIELD);
     fields.add(Entity.TEST_CASE_RESULT);
-    fields.add(TestCaseRepository.INCIDENTS_FIELD);
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    Long revision = ctx.relationshipRevision();
+    if (revision == null) {
+      revision =
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(testCase.getId()))
+              .getOrDefault(testCase.getId(), 0L);
+    }
+    doc.put(TestCaseRepository.TEST_SUITES_REVISION_FIELD, revision);
+    return doc;
   }
 
   @Override
@@ -59,6 +73,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    UUID ongoingIncidentId = tcrsRepo.getOngoingIncidentStateId(testCase.getFullyQualifiedName());
+    doc.put(
+        TestCaseRepository.INCIDENTS_FIELD,
+        ongoingIncidentId != null ? ongoingIncidentId.toString() : null);
     if (testCase.getTestDefinition() != null) {
       try {
         TestDefinition testDefinition =

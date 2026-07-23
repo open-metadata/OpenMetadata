@@ -26,6 +26,24 @@
   }
 }
 
+// Opt-in modifier: lets a header title wrap onto multiple lines instead of
+// truncating with an ellipsis. Overrides antd's single-line ellipsis so a long
+// name stays fully visible within a width-capped container. Only active when a
+// consumer passes `entity-header-title-wrap` via nameClassName/displayNameClassName.
+.entity-header-title-wrap.ant-typography {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word;
+}
+
+// When the title wraps onto multiple lines, top-align the icon and the name
+// container with the first line instead of centering them against the full
+// (tall) title block. `!important` overrides antd's `.ant-row-middle`.
+.entity-header-title-top .entity-header-title {
+  align-items: flex-start !important;
+}
+
 .ant-btn.entity-follow-button {
   border-radius: 16px;
   background-color: @primary-button-background;

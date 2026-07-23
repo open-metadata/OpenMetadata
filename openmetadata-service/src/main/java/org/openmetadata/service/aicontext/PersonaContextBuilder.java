@@ -124,6 +124,8 @@ public class PersonaContextBuilder {
     "entityType",
     "entityStatus",
     "href",
+    "owners",
+    "serviceType",
     "tags",
     "tier",
     "classificationTags",
@@ -317,13 +319,25 @@ public class PersonaContextBuilder {
       ContextRule rule, Map<String, Object> document, boolean loadHeavySections) {
     String fqn = stringValue(document.get("fullyQualifiedName"));
     String id = stringValue(document.get("id"));
+    UUID assetId = null;
+    if (!nullOrEmpty(id)) {
+      try {
+        assetId = UUID.fromString(id);
+      } catch (IllegalArgumentException ignored) {
+        // Degrade like the sibling owner/href parses rather than aborting the whole build.
+        LOG.debug("Ignoring invalid indexed id for {}: {}", fqn, id);
+      }
+    }
     AIContext context =
         new AIContext()
+            .withId(assetId)
             .withFullyQualifiedName(fqn)
             .withEntityType(rule.getEntityType())
             .withDisplayName(stringValue(document.get("displayName")))
             .withDescription(stringValue(document.get("description")))
+            .withServiceType(stringValue(document.get("serviceType")))
             .withTags(classificationTags(document))
+            .withOwners(ownerReferences(document))
             .withAssetContext(assetContext(document))
             .withGeneratedAt(System.currentTimeMillis());
     String href = stringValue(document.get("href"));
@@ -404,13 +418,21 @@ public class PersonaContextBuilder {
     Set<ContextSection> selected = sections == null ? Set.of() : sections;
     boolean needsLineage = selected.contains(ContextSection.LINEAGE);
     boolean needsDataQuality = selected.contains(ContextSection.DATA_QUALITY);
-    if (!needsLineage && !needsDataQuality) {
-      return;
+    if (needsLineage || needsDataQuality) {
+      AIContext heavy =
+          new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+      applyHeavySections(context, heavy, needsLineage, needsDataQuality);
     }
-    AIContext heavy =
-        new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+  }
+
+  static void applyHeavySections(
+      AIContext context, AIContext heavy, boolean needsLineage, boolean needsDataQuality) {
     if (needsLineage) {
-      context.withUpstream(heavy.getUpstream()).withDownstream(heavy.getDownstream());
+      context
+          .withUpstream(heavy.getUpstream())
+          .withUpstreamEdges(heavy.getUpstreamEdges())
+          .withDownstream(heavy.getDownstream())
+          .withDownstreamEdges(heavy.getDownstreamEdges());
     }
     if (needsDataQuality && heavy.getObservability() != null) {
       context.withObservability(
@@ -430,6 +452,7 @@ public class PersonaContextBuilder {
       }
       AIContext context =
           new AIContext()
+              .withId(entity.getId())
               .withFullyQualifiedName(entity.getFullyQualifiedName())
               .withEntityType(entityType)
               .withDisplayName(entity.getDisplayName())
@@ -673,6 +696,7 @@ public class PersonaContextBuilder {
               "Unsupported knowledge type: " + entityType);
         };
     return new KnowledgeItem()
+        .withId(entity.getId())
         .withType(type)
         .withName(entity.getName())
         .withDisplayName(entity.getDisplayName())
@@ -682,6 +706,7 @@ public class PersonaContextBuilder {
 
   private static KnowledgeItem referenceOf(KnowledgeItem item) {
     return new KnowledgeItem()
+        .withId(item.getId())
         .withType(item.getType())
         .withName(item.getName())
         .withDisplayName(item.getDisplayName())
@@ -766,6 +791,33 @@ public class PersonaContextBuilder {
       }
     }
     return new ArrayList<>(terms);
+  }
+
+  private static List<EntityReference> ownerReferences(Map<String, Object> document) {
+    List<EntityReference> owners = new ArrayList<>();
+    for (Map<String, Object> owner : tagMaps(document.get("owners"))) {
+      String name = stringValue(owner.get("name"));
+      String fqn = stringValue(owner.get("fullyQualifiedName"));
+      if (nullOrEmpty(name) && nullOrEmpty(fqn)) {
+        continue;
+      }
+      EntityReference reference =
+          new EntityReference()
+              .withName(name)
+              .withType(stringValue(owner.get("type")))
+              .withFullyQualifiedName(fqn)
+              .withDisplayName(stringValue(owner.get("displayName")));
+      String ownerId = stringValue(owner.get("id"));
+      if (!nullOrEmpty(ownerId)) {
+        try {
+          reference.withId(UUID.fromString(ownerId));
+        } catch (IllegalArgumentException ignored) {
+          // Non-UUID id in the indexed document; keep name/type, skip the id.
+        }
+      }
+      owners.add(reference);
+    }
+    return owners;
   }
 
   private static void addStrings(Set<String> destination, Object value) {

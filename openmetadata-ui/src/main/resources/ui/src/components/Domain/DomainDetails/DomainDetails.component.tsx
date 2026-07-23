@@ -953,10 +953,15 @@ const DomainDetails = ({
             position={{ y: domain.style?.coverImage?.position }}
           />
         )}
-        <Box align="end" className="entity-header tw:mx-5">
-          <div className="tw:flex-1">
+        <Box
+          align="start"
+          className="entity-header tw:mx-5 tw:gap-y-3"
+          justify="between"
+          wrap="wrap">
+          <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
+              displayNameClassName="entity-header-title-wrap"
               entityData={{ ...domain, displayName, name }}
               entityType={EntityType.DOMAIN}
               entityUrl={`${globalThis.location.origin}/domain/${urlEncodedFqn}`}
@@ -964,6 +969,7 @@ const DomainDetails = ({
               icon={iconData}
               isFollowing={isFollowing}
               isFollowingLoading={isFollowingLoading}
+              nameClassName="entity-header-title-wrap"
               serviceName=""
               suffix={
                 !isTreeView && (
@@ -975,9 +981,10 @@ const DomainDetails = ({
           </div>
           <Box
             align="center"
-            className="domain-header-action-container tw:pb-1"
+            className="domain-header-action-container tw:pb-1 tw:shrink-0 tw:max-w-full"
             gap={3}
-            justify="end">
+            justify="end"
+            wrap="wrap">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 data-testid="domain-details-add-button-menu"
@@ -1070,7 +1077,7 @@ const DomainDetails = ({
         </Box>
 
         <GenericProvider<Domain>
-          muiTags
+          newTagsUI
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}

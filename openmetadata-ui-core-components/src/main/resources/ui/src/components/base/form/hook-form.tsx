@@ -9,7 +9,9 @@ import type {
   UseFormReturn,
 } from 'react-hook-form';
 import { FormProvider, useController, useFormContext } from 'react-hook-form';
+import { cx } from '@/utils/cx';
 import { FieldDocProvider } from '../../application/form-field/field-doc-context';
+import { FieldDocPanel } from '../../application/form-field/field-doc-panel';
 import { FieldDocPopover } from '../../application/form-field/field-doc-popover';
 
 interface FormProps<TFieldValues extends FieldValues = FieldValues>
@@ -20,6 +22,16 @@ interface FormProps<TFieldValues extends FieldValues = FieldValues>
   renderFieldDoc?: (doc: string) => ReactNode;
   fieldDocHeader?: ReactNode;
   fieldDocOffset?: number;
+  fieldDocMaxHeight?: number;
+  /**
+   * 'popover' (default) floats the doc next to the focused field.
+   * 'panel' renders it as a column beside the form, inside the same surface.
+   */
+  fieldDocDisplay?: 'popover' | 'panel';
+  /** Panel-only: shown when no documented field has focus. */
+  emptyFieldDoc?: ReactNode;
+  /** Panel-only: classes for the scrolling form column (padding, etc). */
+  formClassName?: string;
 }
 
 interface FormFieldProps<
@@ -71,22 +83,80 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   renderFieldDoc,
   fieldDocHeader,
   fieldDocOffset,
+  fieldDocMaxHeight,
+  fieldDocDisplay = 'popover',
+  emptyFieldDoc,
+  formClassName,
   ...props
 }: FormProps<TFieldValues>) => {
+  const isPanel = fieldDocDisplay === 'panel';
+
   // Always keep the same tree shape (FormProvider > FieldDocProvider > AriaForm)
   // so toggling showFieldDocs never remounts the form and resets its state.
   // FieldDocProvider is a no-op when disabled, and adds no DOM.
+  //
+  // The panel is rendered here rather than by the caller because it reads the
+  // active field from FieldDocProvider: rendered as a sibling of this form it
+  // would fall outside the provider and always be empty.
   return (
     <FormProvider {...form}>
       <FieldDocProvider enabled={showFieldDocs}>
-        <AriaForm {...props} />
-        {showFieldDocs ? (
-          <FieldDocPopover
-            header={fieldDocHeader}
-            offset={fieldDocOffset}
-            renderDoc={renderFieldDoc}
-          />
-        ) : null}
+        {isPanel ? (
+          // No `h-full` here, deliberately. The host caps the body with
+          // `max-height` and no explicit height, so `height: 100%` would be an
+          // indefinite percentage: it resolves to `auto` (the full content
+          // height) AND suppresses flex `stretch`. The columns then never
+          // become scrollable and the host clips them instead. Letting the row
+          // stretch to the clamped height is what makes `overflow-y-auto` on
+          // each column actually scroll.
+          <div className="tw:flex tw:min-h-0 tw:w-full tw:flex-row">
+            {/* The form's min-width is load-bearing, not cosmetic: without a
+                floor here the hint's width is reserved first and the form
+                merely grows into what is left, so the hint's shrink never fires
+                (there is no overflow to distribute) and the form is crushed on
+                narrow viewports instead. Callers can raise it via
+                `formClassName` when their form needs more room than the
+                default. */}
+            <AriaForm
+              {...props}
+              className={cx(
+                'tw:min-w-95 tw:flex-1 tw:overflow-y-auto',
+                formClassName,
+                props.className as string | undefined
+              )}
+            />
+            {/* Stays mounted and animates 380 -> 0 so toggling never remounts
+                the form. shrink + min-w-65 (260px) lets the hint give ground on
+                narrow screens; overflow-hidden clips the inner column so its
+                text does not reflow while the collapse animates. */}
+            <div
+              className={cx(
+                'tw:shrink tw:overflow-hidden tw:transition-[width,min-width] tw:duration-[240ms] tw:ease-in-out',
+                showFieldDocs ? 'tw:min-w-65' : 'tw:min-w-0'
+              )}
+              style={{ width: showFieldDocs ? 380 : 0 }}>
+              <div className="tw:h-full tw:w-full tw:min-w-65 tw:border-l tw:border-secondary tw:bg-secondary">
+                <FieldDocPanel
+                  emptyState={emptyFieldDoc}
+                  header={fieldDocHeader}
+                  renderDoc={renderFieldDoc}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <AriaForm {...props} />
+            {showFieldDocs ? (
+              <FieldDocPopover
+                header={fieldDocHeader}
+                maxHeight={fieldDocMaxHeight}
+                offset={fieldDocOffset}
+                renderDoc={renderFieldDoc}
+              />
+            ) : null}
+          </>
+        )}
       </FieldDocProvider>
     </FormProvider>
   );
