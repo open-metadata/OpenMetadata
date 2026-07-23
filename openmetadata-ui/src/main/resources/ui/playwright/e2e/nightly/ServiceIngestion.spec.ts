@@ -142,8 +142,12 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
 
 test.describe('Service form', () => {
   /**
-   * Tests validation for invalid service names
-   * @description Ensures required and character constraints surface errors on the name field
+   * Tests service-name gating on the Configure & Connect step.
+   * @description The merged step's advance button stays disabled until a valid
+   * service name is entered. Character-constraint validation is no longer done
+   * client-side in this form (the field enforces required + uniqueness only),
+   * so this test asserts the enable/disable gating rather than inline
+   * character-error messages.
    */
   test('name field gates the Configure & Connect step', async ({ page }) => {
     await redirectToHomePage(page);
