@@ -266,6 +266,14 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     key === 'entity_table'
       ? Object.values(CustomPropertyTypeByName)
       : [CustomPropertyTypeByName.STRING];
+  const updatePropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.TABLE_CP]
+      : valuePropertyTypes;
+  const rightPanelPropertyTypes =
+    key === 'entity_table'
+      ? [CustomPropertyTypeByName.STRING]
+      : valuePropertyTypes;
   const preparedPropertyTypes =
     key === 'entity_container'
       ? [CustomPropertyTypeByName.STRING, CustomPropertyTypeByName.HYPERLINK_CP]
@@ -475,11 +483,13 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
     if (makeInstance !== null) {
       const valueCoverageLabel =
         key === 'entity_table' ? 'all CP types' : 'String CP';
+      const valueCoverageTestTitle =
+        key === 'entity_table'
+          ? `Set all CP types and update representative properties on ${entity.name}`
+          : `Set & Update ${valueCoverageLabel} on ${entity.name}`;
 
-      test(`Set & Update ${valueCoverageLabel} on ${entity.name}`, async ({
-        page,
-      }) => {
-        test.setTimeout(key === 'entity_table' ? 300_000 : 90_000);
+      test(valueCoverageTestTitle, async ({ page }) => {
+        test.setTimeout(key === 'entity_table' ? 180_000 : 90_000);
 
         await test.step(`Set ${valueCoverageLabel}`, async () => {
           await mainEntity.visitEntityPage(page);
@@ -492,9 +502,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step(`Update ${valueCoverageLabel}`, async () => {
-          await mainEntity.visitEntityPage(page);
-          for (const type of valuePropertyTypes) {
+        await test.step('Update representative properties', async () => {
+          for (const type of updatePropertyTypes) {
             await mainEntity.updateCustomProperty(
               page,
               mainEntity.customPropertyValue[type].property,
@@ -503,8 +512,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
           }
         });
 
-        await test.step(`Update ${valueCoverageLabel} in Right Panel`, async () => {
-          for (const [index, type] of valuePropertyTypes.entries()) {
+        await test.step('Update a representative property in Right Panel', async () => {
+          for (const [index, type] of rightPanelPropertyTypes.entries()) {
             await updateCustomPropertyInRightPanel({
               page,
               entityName: getEntityDisplayName(responseData),

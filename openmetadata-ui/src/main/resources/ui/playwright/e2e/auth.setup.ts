@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as setup } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import { mkdir, writeFile } from 'fs/promises';
 import {
   EDIT_DESCRIPTION_RULE,
@@ -20,7 +20,12 @@ import {
 } from '../constant/permission';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
-import { getApiContext, getToken, uuid } from '../utils/common';
+import {
+  disableEtagConditionalReads,
+  getApiContext,
+  getToken,
+  uuid,
+} from '../utils/common';
 import { loginAsAdmin } from '../utils/initialSetup';
 
 /**
@@ -32,17 +37,6 @@ import { loginAsAdmin } from '../utils/initialSetup';
  * as flaky assertions across the suite. Setting the flag here persists it into storageState, so
  * every spec in both OpenMetadata and Collate inherits it without a per-test helper.
  */
-// Keep in sync with DISABLE_ETAG_CONDITIONAL_READS_KEY in src/rest/etagInterceptor.ts.
-// Inlined deliberately: importing it across the playwright -> src boundary resolves to
-// undefined at runtime, which silently wrote the flag under the key "undefined".
-const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
-
-const disableEtagConditionalReads = async (page: Page) => {
-  await page.evaluate((key) => {
-    localStorage.setItem(key, 'true');
-  }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
-};
-
 const adminFile = 'playwright/.auth/admin.json';
 const dataConsumerFile = 'playwright/.auth/dataConsumer.json';
 const dataStewardFile = 'playwright/.auth/dataSteward.json';

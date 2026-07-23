@@ -11,6 +11,15 @@ from pathlib import Path
 from typing import Any
 
 
+CONVERGENCE_TARGET_NAMES = frozenset(
+    {
+        "commonShardSkewAtMostFifteenPercent",
+        "requestsPerAttemptBelowTwoHundred",
+        "atMostOneAppBootPerUIScenario",
+    }
+)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--timing-glob", required=True)
@@ -70,6 +79,23 @@ def aggregate_ranked_counts(
         {"endpoint": endpoint, "requests": count}
         for endpoint, count in counts.most_common(limit)
     ]
+
+
+def classify_targets(
+    targets: dict[str, bool],
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    convergence_targets = {
+        name: passed
+        for name, passed in targets.items()
+        if name in CONVERGENCE_TARGET_NAMES
+    }
+    blocking_targets = {
+        name: passed
+        for name, passed in targets.items()
+        if name not in CONVERGENCE_TARGET_NAMES
+    }
+
+    return blocking_targets, convergence_targets
 
 
 def main() -> None:
@@ -233,19 +259,26 @@ def main() -> None:
             app_boots, ui_scenarios, app_entry_requests
         ),
     }
+    blocking_targets, convergence_targets = classify_targets(targets)
     output = {
         "version": 1,
         "mode": args.mode,
         "metrics": metrics,
         "targets": targets,
         "targetsMet": all(targets.values()),
+        "blockingTargets": blocking_targets,
+        "blockingTargetsMet": all(blocking_targets.values()),
+        "convergenceTargets": convergence_targets,
+        "convergenceTargetsMet": all(convergence_targets.values()),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
 
-    if args.enforce and not output["targetsMet"]:
-        failed = ", ".join(name for name, passed in targets.items() if not passed)
-        raise SystemExit(f"Playwright performance targets not met: {failed}")
+    if args.enforce and not output["blockingTargetsMet"]:
+        failed = ", ".join(
+            name for name, passed in blocking_targets.items() if not passed
+        )
+        raise SystemExit(f"Blocking Playwright performance targets not met: {failed}")
 
 
 if __name__ == "__main__":

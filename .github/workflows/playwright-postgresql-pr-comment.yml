@@ -96,6 +96,18 @@ jobs:
               return value;
             }
 
+            function assertNumber(value, label, minimum, maximum) {
+              if (
+                typeof value !== 'number' ||
+                !Number.isFinite(value) ||
+                value < minimum ||
+                value > maximum
+              ) {
+                throw new Error(`${label} must be a number from ${minimum} to ${maximum}.`);
+              }
+              return value;
+            }
+
             function assertString(value, label, minimumLength, maximumLength, pattern) {
               if (
                 typeof value !== 'string' ||
@@ -165,6 +177,19 @@ jobs:
               throw new Error(`The Playwright comment payload is not valid JSON: ${error.message}`);
             }
 
+            if (
+              payload === null ||
+              typeof payload !== 'object' ||
+              Array.isArray(payload) ||
+              Object.getPrototypeOf(payload) !== Object.prototype
+            ) {
+              throw new Error('payload must be an object.');
+            }
+            const payloadVersion = payload.version;
+            if (!Number.isSafeInteger(payloadVersion) || ![1, 2].includes(payloadVersion)) {
+              throw new Error(`Unsupported Playwright comment payload version ${payloadVersion}.`);
+            }
+            const hasLifecycleDetails = payloadVersion >= 2;
             assertExactObject(payload, 'payload', [
               'version',
               'totals',
@@ -173,23 +198,50 @@ jobs:
               'infrastructureIssues',
               'failures',
               'flakyTests',
+              ...(hasLifecycleDetails ? ['lifecycleFlakyTests', 'performance'] : []),
             ]);
-            if (payload.version !== 1) {
-              throw new Error(`Unsupported Playwright comment payload version ${payload.version}.`);
-            }
 
             const totals = assertExactObject(payload.totals, 'payload.totals', [
               'passed',
               'failed',
               'flaky',
               'skipped',
+              ...(hasLifecycleDetails ? ['zeroAttemptSkipped', 'lifecycleFlaky'] : []),
             ]);
             for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
               assertInteger(totals[key], `payload.totals.${key}`, 0, maximumCount);
             }
+            const zeroAttemptSkipped = hasLifecycleDetails
+              ? assertInteger(
+                  totals.zeroAttemptSkipped,
+                  'payload.totals.zeroAttemptSkipped',
+                  0,
+                  maximumCount
+                )
+              : 0;
+            const lifecycleFlaky = hasLifecycleDetails
+              ? assertInteger(
+                  totals.lifecycleFlaky,
+                  'payload.totals.lifecycleFlaky',
+                  0,
+                  maximumCount
+                )
+              : 0;
+            if (zeroAttemptSkipped > totals.skipped) {
+              throw new Error(
+                'payload.totals.zeroAttemptSkipped cannot exceed payload.totals.skipped.'
+              );
+            }
 
             const shardIds = new Set();
-            const shardTotals = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
+            const shardTotals = {
+              passed: 0,
+              failed: 0,
+              flaky: 0,
+              skipped: 0,
+              lifecycleFailed: 0,
+              lifecycleFlaky: 0,
+            };
             const shards = assertArray(payload.shards, 'payload.shards', maximumShards);
             for (const [index, shard] of shards.entries()) {
               assertExactObject(shard, `payload.shards[${index}]`, [
@@ -200,6 +252,7 @@ jobs:
                 'failed',
                 'flaky',
                 'skipped',
+                ...(hasLifecycleDetails ? ['lifecycleFailed', 'lifecycleFlaky'] : []),
               ]);
               assertString(
                 shard.id,
@@ -214,7 +267,14 @@ jobs:
               shardIds.add(shard.id);
               assertBoolean(shard.expected, `payload.shards[${index}].expected`);
               assertBoolean(shard.present, `payload.shards[${index}].present`);
-              for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
+              const shardCountKeys = [
+                'passed',
+                'failed',
+                'flaky',
+                'skipped',
+                ...(hasLifecycleDetails ? ['lifecycleFailed', 'lifecycleFlaky'] : []),
+              ];
+              for (const key of shardCountKeys) {
                 const count = assertInteger(
                   shard[key],
                   `payload.shards[${index}].${key}`,
@@ -226,6 +286,10 @@ jobs:
                 }
                 shardTotals[key] += count;
               }
+              if (!hasLifecycleDetails) {
+                shard.lifecycleFailed = 0;
+                shard.lifecycleFlaky = 0;
+              }
             }
             for (const key of ['passed', 'failed', 'flaky', 'skipped']) {
               if (shardTotals[key] !== totals[key]) {
@@ -233,6 +297,11 @@ jobs:
                   `payload.totals.${key} does not equal the sum of shard ${key} counts.`
                 );
               }
+            }
+            if (shardTotals.lifecycleFlaky !== lifecycleFlaky) {
+              throw new Error(
+                'payload.totals.lifecycleFlaky does not equal the sum of shard lifecycleFlaky counts.'
+              );
             }
 
             const infrastructureIssueCount = assertInteger(
@@ -307,9 +376,155 @@ jobs:
               assertInteger(flakyTest.retries, `payload.flakyTests[${index}].retries`, 0, 100);
             }
 
+            const lifecycleFlakyTests = hasLifecycleDetails
+              ? assertArray(
+                  payload.lifecycleFlakyTests,
+                  'payload.lifecycleFlakyTests',
+                  maximumPublishedTests
+                )
+              : [];
+            if (
+              lifecycleFlakyTests.length !==
+              Math.min(lifecycleFlaky, maximumPublishedTests)
+            ) {
+              throw new Error('payload.lifecycleFlakyTests has an inconsistent item count.');
+            }
+            for (const [index, flakyTest] of lifecycleFlakyTests.entries()) {
+              assertExactObject(
+                flakyTest,
+                `payload.lifecycleFlakyTests[${index}]`,
+                ['shard', 'file', 'title', 'retries']
+              );
+              assertString(
+                flakyTest.shard,
+                `payload.lifecycleFlakyTests[${index}].shard`,
+                1,
+                64
+              );
+              if (!shardIds.has(flakyTest.shard)) {
+                throw new Error(
+                  `payload.lifecycleFlakyTests[${index}] references an unknown shard.`
+                );
+              }
+              assertString(
+                flakyTest.file,
+                `payload.lifecycleFlakyTests[${index}].file`,
+                0,
+                300
+              );
+              assertString(
+                flakyTest.title,
+                `payload.lifecycleFlakyTests[${index}].title`,
+                0,
+                300
+              );
+              assertInteger(
+                flakyTest.retries,
+                `payload.lifecycleFlakyTests[${index}].retries`,
+                0,
+                100
+              );
+            }
+
+            let performance;
+            if (hasLifecycleDetails) {
+              performance = payload.performance;
+              if (performance !== null) {
+                assertExactObject(performance, 'payload.performance', [
+                  'blockingTargetsMet',
+                  'convergenceTargetsMet',
+                  'metrics',
+                  'convergenceWarnings',
+                ]);
+              }
+            }
+            if (performance) {
+              assertBoolean(
+                performance.blockingTargetsMet,
+                'payload.performance.blockingTargetsMet'
+              );
+              assertBoolean(
+                performance.convergenceTargetsMet,
+                'payload.performance.convergenceTargetsMet'
+              );
+              const performanceMetrics = assertExactObject(
+                performance.metrics,
+                'payload.performance.metrics',
+                [
+                  'maxEnvironmentSeconds',
+                  'maxExecutionSeconds',
+                  'maxElapsedBeforeUploadSeconds',
+                  'reportingSeconds',
+                  'workflowWallSeconds',
+                  'requestsPerAttempt',
+                  'appBootsPerUIScenario',
+                  'commonShardSkewPercent',
+                ]
+              );
+              for (const key of [
+                'maxEnvironmentSeconds',
+                'maxExecutionSeconds',
+                'maxElapsedBeforeUploadSeconds',
+                'reportingSeconds',
+                'workflowWallSeconds',
+              ]) {
+                assertInteger(
+                  performanceMetrics[key],
+                  `payload.performance.metrics.${key}`,
+                  0,
+                  maximumCount
+                );
+              }
+              for (const key of ['requestsPerAttempt', 'appBootsPerUIScenario']) {
+                assertNumber(
+                  performanceMetrics[key],
+                  `payload.performance.metrics.${key}`,
+                  0,
+                  maximumCount
+                );
+              }
+              assertNumber(
+                performanceMetrics.commonShardSkewPercent,
+                'payload.performance.metrics.commonShardSkewPercent',
+                0,
+                100
+              );
+              const convergenceWarnings = assertArray(
+                performance.convergenceWarnings,
+                'payload.performance.convergenceWarnings',
+                3
+              );
+              for (const [index, warning] of convergenceWarnings.entries()) {
+                assertString(
+                  warning,
+                  `payload.performance.convergenceWarnings[${index}]`,
+                  1,
+                  300
+                );
+              }
+              if (new Set(convergenceWarnings).size !== convergenceWarnings.length) {
+                throw new Error(
+                  'payload.performance.convergenceWarnings must not contain duplicates.'
+                );
+              }
+              if (performance.convergenceTargetsMet && convergenceWarnings.length !== 0) {
+                throw new Error(
+                  'payload.performance.convergenceWarnings must be empty when convergence targets are met.'
+                );
+              }
+              if (!performance.convergenceTargetsMet && convergenceWarnings.length === 0) {
+                throw new Error(
+                  'payload.performance.convergenceWarnings must describe unmet convergence targets.'
+                );
+              }
+            }
+
             if (
               run.conclusion === 'success' &&
-              (totals.failed !== 0 || infrastructureIssueCount !== 0)
+              (totals.failed !== 0 ||
+                shardTotals.lifecycleFailed !== 0 ||
+                infrastructureIssueCount !== 0 ||
+                (performance && !performance.blockingTargetsMet))
             ) {
               throw new Error('A successful workflow cannot report test or infrastructure failures.');
             }
@@ -329,8 +544,23 @@ jobs:
               icon: '⚪',
               label: 'finished with an unknown conclusion',
             };
+            const formatDuration = totalSeconds => {
+              const hours = Math.floor(totalSeconds / 3600);
+              const minutes = Math.floor(totalSeconds / 60);
+              const seconds = totalSeconds % 60;
+              if (hours > 0) {
+                return `${hours}h ${minutes % 60}m ${seconds}s`;
+              }
+              return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            };
             const repo = context.repo;
             const runUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${run.id}`;
+            const zeroAttemptSkippedText = zeroAttemptSkipped > 0
+              ? ` (${zeroAttemptSkipped} zero-attempt; reason unknown)`
+              : '';
+            const lifecycleFlakyText = hasLifecycleDetails
+              ? ` · 🧰 ${lifecycleFlaky} lifecycle flaky`
+              : '';
             const lines = [
               marker,
               runMarker,
@@ -338,7 +568,9 @@ jobs:
               '',
               `Validated commit \`${sourceSha}\` in [Playwright run ${run.id}, attempt ${runAttempt}](${runUrl}).`,
               '',
-              `✅ ${totals.passed} passed · ❌ ${totals.failed} failed · 🟡 ${totals.flaky} flaky · ⏭️ ${totals.skipped} skipped`,
+              `✅ ${totals.passed} passed · ❌ ${totals.failed} failed · ` +
+                `🟡 ${totals.flaky} flaky · ⏭️ ${totals.skipped} skipped` +
+                `${zeroAttemptSkippedText}${lifecycleFlakyText}`,
               '',
             ];
 
@@ -354,16 +586,92 @@ jobs:
               lines.push('');
             }
 
-            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
-            lines.push('|-------|--------|--------|-------|---------|');
+            if (performance) {
+              const metrics = performance.metrics;
+              const blockingStatus = performance.blockingTargetsMet ? '✅ met' : '❌ unmet';
+              const convergenceStatus = performance.convergenceTargetsMet
+                ? '✅ met'
+                : '🟡 in progress';
+              lines.push('### Performance');
+              lines.push('');
+              lines.push(
+                `Blocking targets: ${blockingStatus} · Optimization targets: ${convergenceStatus}`
+              );
+              lines.push('');
+              lines.push(
+                'Shard-job maxima below are not the full workflow wall time; the linked run includes build, fixture, planning, and reporting.'
+              );
+              lines.push('');
+              lines.push(
+                `🕒 Full workflow signal wall (to summary) ${formatDuration(metrics.workflowWallSeconds)}`
+              );
+              lines.push('');
+              lines.push(
+                `⏱️ Max setup ${formatDuration(metrics.maxEnvironmentSeconds)} · ` +
+                  `max shard execution ${formatDuration(metrics.maxExecutionSeconds)} · ` +
+                  `max shard-job elapsed before upload ${formatDuration(metrics.maxElapsedBeforeUploadSeconds)} · ` +
+                  `reporting ${formatDuration(metrics.reportingSeconds)}`
+              );
+              lines.push('');
+              lines.push(
+                `🌐 ${metrics.requestsPerAttempt.toFixed(2)} requests/attempt · ` +
+                  `${metrics.appBootsPerUIScenario.toFixed(2)} app boots/UI scenario · ` +
+                  `${metrics.commonShardSkewPercent.toFixed(2)}% common-shard skew`
+              );
+              lines.push('');
+              if (performance.convergenceWarnings.length > 0) {
+                lines.push('Optimization targets still in progress:');
+                for (const warning of performance.convergenceWarnings) {
+                  lines.push(`- ${escapeMarkdown(warning)}`);
+                }
+                lines.push('');
+              }
+            } else if (hasLifecycleDetails) {
+              lines.push('### Performance');
+              lines.push('');
+              lines.push(
+                '⚪ Performance metrics unavailable; see the CI and reporting failures above.'
+              );
+              lines.push('');
+            }
+
+            if (zeroAttemptSkipped > 0) {
+              lines.push('### Zero-attempt skipped tests');
+              lines.push('');
+              lines.push(
+                `${zeroAttemptSkipped} planned test(s) were reported as skipped with no attempts. ` +
+                  'They remain included in coverage; Playwright did not report a reliable reason.'
+              );
+              lines.push('');
+            }
+
+            const shardHeaders = hasLifecycleDetails
+              ? '| Shard | Passed | Failed | Flaky | Skipped | Lifecycle failed | Lifecycle flaky |'
+              : '| Shard | Passed | Failed | Flaky | Skipped |';
+            const shardSeparators = hasLifecycleDetails
+              ? '|-------|--------|--------|-------|---------|------------------|-----------------|'
+              : '|-------|--------|--------|-------|---------|';
+            lines.push(shardHeaders);
+            lines.push(shardSeparators);
             for (const shard of shards.filter(item => item.expected)) {
               if (!shard.present) {
-                lines.push(`| ⛔ Shard ${escapeMarkdown(shard.id)} | — | — | — | — |`);
+                lines.push(
+                  hasLifecycleDetails
+                    ? `| ⛔ Shard ${escapeMarkdown(shard.id)} | — | — | — | — | — | — |`
+                    : `| ⛔ Shard ${escapeMarkdown(shard.id)} | — | — | — | — |`
+                );
                 continue;
               }
-              const status = shard.failed > 0 ? '🔴' : shard.flaky > 0 ? '🟡' : '✅';
+              const status =
+                shard.failed > 0 || shard.lifecycleFailed > 0
+                  ? '🔴'
+                  : shard.flaky > 0 || shard.lifecycleFlaky > 0
+                  ? '🟡'
+                  : '✅';
               lines.push(
-                `| ${status} Shard ${escapeMarkdown(shard.id)} | ${shard.passed} | ${shard.failed} | ${shard.flaky} | ${shard.skipped} |`
+                hasLifecycleDetails
+                  ? `| ${status} Shard ${escapeMarkdown(shard.id)} | ${shard.passed} | ${shard.failed} | ${shard.flaky} | ${shard.skipped} | ${shard.lifecycleFailed} | ${shard.lifecycleFlaky} |`
+                  : `| ${status} Shard ${escapeMarkdown(shard.id)} | ${shard.passed} | ${shard.failed} | ${shard.flaky} | ${shard.skipped} |`
               );
             }
             lines.push('');
@@ -398,6 +706,27 @@ jobs:
               }
               if (totals.flaky > flakyTests.length) {
                 lines.push(`- ... and ${totals.flaky - flakyTests.length} more`);
+              }
+              lines.push('');
+              lines.push('</details>');
+              lines.push('');
+            }
+
+            if (lifecycleFlakyTests.length > 0) {
+              lines.push(
+                `<details><summary>🧰 ${lifecycleFlaky} flaky lifecycle test(s) (passed on retry)</summary>`
+              );
+              lines.push('');
+              for (const flakyTest of lifecycleFlakyTests) {
+                const shortFile = flakyTest.file.replace(/.*playwright\/e2e\//, '');
+                lines.push(
+                  `- <code>${escapeHtml(shortFile)}</code> › <code>${escapeHtml(flakyTest.title)}</code> (shard ${escapeHtml(flakyTest.shard)}, ${flakyTest.retries} ${flakyTest.retries === 1 ? 'retry' : 'retries'})`
+                );
+              }
+              if (lifecycleFlaky > lifecycleFlakyTests.length) {
+                lines.push(
+                  `- ... and ${lifecycleFlaky - lifecycleFlakyTests.length} more`
+                );
               }
               lines.push('');
               lines.push('</details>');

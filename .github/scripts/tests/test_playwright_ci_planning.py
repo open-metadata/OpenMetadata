@@ -909,6 +909,15 @@ def test_performance_stability_metrics_include_lifecycle_retries(tmp_path, monke
     assert performance["targets"]["atMostOneAppBootPerUIScenario"] is True
     assert performance["targets"]["appBootMeasurementIntegrity"] is True
     assert "atMostOneAppBootPerAttempt" not in performance["targets"]
+    assert performance["blockingTargetsMet"] is False
+    assert performance["convergenceTargetsMet"] is True
+    assert (
+        "appBootMeasurementIntegrity" in performance["blockingTargets"]
+    )
+    assert (
+        "atMostOneAppBootPerUIScenario"
+        in performance["convergenceTargets"]
+    )
     assert metrics["lifecycleFlakyTests"] == 1
     assert metrics["productFlakyRatePercent"] == 0
     assert metrics["lifecycleFlakyRatePercent"] == 100
@@ -931,6 +940,145 @@ def test_boot_target_uses_exact_counts_instead_of_rounded_ratio():
 
     assert evaluator.has_at_most_one_app_boot_per_ui_scenario(1_000, 1_000)
     assert not evaluator.has_at_most_one_app_boot_per_ui_scenario(1_001, 1_000)
+
+
+def test_performance_enforcement_reports_convergence_without_failing(
+    tmp_path, monkeypatch
+):
+    evaluator = load_script("evaluate_playwright_performance")
+    timing_file = tmp_path / "timing.json"
+    request_file = tmp_path / "requests.json"
+    output = tmp_path / "performance.json"
+    timing_file.write_text(
+        json.dumps(
+            {
+                "tests": [
+                    {
+                        "id": "product",
+                        "outcome": "expected",
+                        "attempts": 1,
+                        "durationMs": 100,
+                        "retryDurationMs": 0,
+                    }
+                ]
+            }
+        )
+    )
+    request_file.write_text(
+        json.dumps(
+            {
+                "totalRequests": 300,
+                "appBoots": 2,
+                "uiScenarios": 1,
+                "appEntryRequests": 1,
+            }
+        )
+    )
+    (tmp_path / "phase-1.json").write_text(
+        json.dumps({"lane": "chromium", "executionSeconds": 1})
+    )
+    (tmp_path / "phase-2.json").write_text(
+        json.dumps({"lane": "chromium", "executionSeconds": 2})
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "evaluate_playwright_performance.py",
+            "--timing-glob",
+            str(timing_file),
+            "--request-glob",
+            str(request_file),
+            "--phase-glob",
+            str(tmp_path / "phase-*.json"),
+            "--mode",
+            "full",
+            "--output",
+            str(output),
+            "--enforce",
+        ],
+    )
+
+    evaluator.main()
+
+    performance = json.loads(output.read_text())
+    assert performance["targetsMet"] is False
+    assert performance["blockingTargetsMet"] is True
+    assert performance["convergenceTargetsMet"] is False
+    assert performance["convergenceTargets"] == {
+        "commonShardSkewAtMostFifteenPercent": False,
+        "requestsPerAttemptBelowTwoHundred": False,
+        "atMostOneAppBootPerUIScenario": False,
+    }
+
+
+def test_performance_enforcement_still_fails_blocking_targets(
+    tmp_path, monkeypatch
+):
+    evaluator = load_script("evaluate_playwright_performance")
+    timing_file = tmp_path / "timing.json"
+    request_file = tmp_path / "requests.json"
+    phase_file = tmp_path / "phase.json"
+    output = tmp_path / "performance.json"
+    timing_file.write_text(
+        json.dumps(
+            {
+                "tests": [
+                    {
+                        "id": "product",
+                        "outcome": "expected",
+                        "attempts": 1,
+                        "durationMs": 100,
+                        "retryDurationMs": 0,
+                    }
+                ]
+            }
+        )
+    )
+    request_file.write_text(
+        json.dumps(
+            {
+                "totalRequests": 10,
+                "appBoots": 1,
+                "uiScenarios": 1,
+                "appEntryRequests": 1,
+            }
+        )
+    )
+    phase_file.write_text(
+        json.dumps(
+            {
+                "lane": "chromium",
+                "environmentSeconds": 301,
+                "executionSeconds": 1,
+            }
+        )
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "evaluate_playwright_performance.py",
+            "--timing-glob",
+            str(timing_file),
+            "--request-glob",
+            str(request_file),
+            "--phase-glob",
+            str(phase_file),
+            "--mode",
+            "full",
+            "--output",
+            str(output),
+            "--enforce",
+        ],
+    )
+
+    with pytest.raises(
+        SystemExit,
+        match="Blocking Playwright performance targets not met: "
+        "environmentAtMostFiveMinutes",
+    ):
+        evaluator.main()
 
 
 def test_outcome_classifier_reads_include_matrix():
@@ -1112,6 +1260,16 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "specFile.endsWith('.setup.ts')" in workflow
     assert "lifecycleFailures" in workflow
     assert "lifecycleFlaky" in workflow
+    assert ".blockingTargets.reportingAtMostTwoMinutes" in workflow
+    assert ".blockingTargetsMet = ([.blockingTargets[]] | all)" in workflow
+    assert "### Performance targets" in workflow
+    assert "### Performance convergence warnings" in workflow
+    assert "Blocking targets enforce CI" in workflow
+    assert "convergenceWarnings" in workflow
+    assert "workflowWallSeconds" in workflow
+    assert "Full workflow signal wall (to summary)" in workflow
+    assert "Maximum shard-job elapsed before upload" in workflow
+    assert "version: 2" in workflow
     performance_reporter = (
         SCRIPTS.parents[1]
         / "openmetadata-ui/src/main/resources/ui/playwright/reporters/PerformanceReporter.ts"

@@ -18,7 +18,7 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { stripEtagConditionalReads, uuid } from '../../utils/common';
+import { disableEtagConditionalReads, uuid } from '../../utils/common';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
   exploreShouldShowEntity,
@@ -29,7 +29,7 @@ import {
 
 const newStrippedPage = async (browser: Browser) => {
   const page = await browser.newPage();
-  await stripEtagConditionalReads(page);
+  await disableEtagConditionalReads(page);
 
   return page;
 };

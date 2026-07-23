@@ -97,6 +97,22 @@ export const fillTableColumnInputDetails = async (
     .press('Enter', { delay: 100 });
 };
 
+const addTablePropertyRow = async (page: Page) => {
+  const modal = page.getByTestId('edit-table-type-property-modal');
+  const addRowButton = modal.getByTestId('add-new-row');
+  const firstColumnCell = modal.locator('div.rdg-cell-pw-column1').last();
+  const secondColumnCell = modal.locator('div.rdg-cell-pw-column2').last();
+
+  await expect(async () => {
+    if (!(await firstColumnCell.isVisible())) {
+      await expect(addRowButton).toBeEnabled();
+      await addRowButton.click();
+    }
+    await expect(firstColumnCell).toBeVisible({ timeout: 5_000 });
+    await expect(secondColumnCell).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+};
+
 export const setValueForProperty = async (data: {
   page: Page;
   propertyName: string;
@@ -252,10 +268,7 @@ export const setValueForProperty = async (data: {
 
     case 'table-cp': {
       const values = value.split(',');
-      await page.locator('[data-testid="add-new-row"]').click();
-
-      // Editor grid to be visible
-      await page.locator('.om-rdg').waitFor({ state: 'visible' });
+      await addTablePropertyRow(page);
 
       await fillTableColumnInputDetails(page, values[0], 'pw-column1');
 
@@ -1026,14 +1039,7 @@ export const editColumnCustomProperty = async (
       .getByText(testValue, { exact: true })
       .click();
   } else if (propertyType === 'table-cp') {
-    await page
-      .getByTestId('edit-table-type-property-modal')
-      .getByTestId('add-new-row')
-      .waitFor({
-        state: 'visible',
-      });
-    await page.getByTestId('add-new-row').click();
-    await page.locator('.om-rdg').waitFor({ state: 'visible' });
+    await addTablePropertyRow(page);
 
     // Fill Row
     await page.locator('div.rdg-cell-pw-column1').last().dblclick();

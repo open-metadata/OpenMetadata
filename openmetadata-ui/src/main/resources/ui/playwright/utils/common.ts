@@ -76,39 +76,40 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-// Pages that already have the network strip installed, so redirectToHomePage
-// (called many times per spec) does not stack duplicate routes.
-const etagStripInstalled = new WeakSet<Page>();
+const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
+const etagOptOutInstalled = new WeakSet<Page>();
 
 /**
- * Strip the client `If-None-Match` header from `/api/v1/**` requests at the
- * Playwright network layer.
+ * Disable client-side conditional reads without installing a Playwright route.
  *
  * The UI attaches an ETag conditional-GET interceptor; the server ETag only
  * covers version/updatedAt, so a refetch racing a relationship-only or child
  * mutation (followers, votes, customMetrics, testSuite) is answered 304 and the
- * UI renders a stale body — a flaky-assertion source across the suite. Removing
- * the header here forces the server to always return the current body, and it
- * works regardless of the deployed bundle (unlike the localStorage opt-out,
- * which depends on the bundle carrying the interceptor guard).
+ * UI renders a stale body. A Playwright route would disable Chromium's HTTP
+ * cache for the page and can shadow suite-specific API mocks, so E2E sessions
+ * use the application's localStorage opt-out instead.
  */
-export const stripEtagConditionalReads = async (page: Page) => {
-  if (etagStripInstalled.has(page)) {
+export const disableEtagConditionalReads = async (page: Page) => {
+  if (etagOptOutInstalled.has(page)) {
     return;
   }
-  etagStripInstalled.add(page);
-  await page.route('**/api/v1/**', async (route) => {
-    const headers = route.request().headers();
-    delete headers['if-none-match'];
-    await route.continue({ headers });
-  });
+  etagOptOutInstalled.add(page);
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, 'true');
+  }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate((key) => {
+      localStorage.setItem(key, 'true');
+    }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+  }
 };
 
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await stripEtagConditionalReads(page);
+  await disableEtagConditionalReads(page);
   await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });

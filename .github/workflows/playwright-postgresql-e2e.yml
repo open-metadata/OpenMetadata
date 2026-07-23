@@ -1180,6 +1180,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
+      actions: read
       contents: read
     steps:
       - name: Checkout
@@ -1341,7 +1342,10 @@ jobs:
             --argjson reportSeconds "$report_seconds" \
             '.metrics.reportingSeconds = $reportSeconds |
              .targets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
-             .targetsMet = ([.targets[]] | all)' \
+             .blockingTargets.reportingAtMostTwoMinutes = ($reportSeconds <= 120) |
+             .targetsMet = ([.targets[]] | all) |
+             .blockingTargetsMet = ([.blockingTargets[]] | all) |
+             .convergenceTargetsMet = ([.convergenceTargets[]] | all)' \
             "$performance" > "$performance.tmp"
           mv "$performance.tmp" "$performance"
           if [[ "$EXECUTION_MODE" == "full" && "$report_seconds" -gt 120 ]]; then
@@ -1476,6 +1480,69 @@ jobs:
               } catch (error) {
                 addInfrastructureIssue(`Playwright coverage output was invalid JSON: ${error.message}`);
               }
+            }
+
+            let performance;
+            const performancePath = path.join(
+              process.env.RUNNER_TEMP,
+              'playwright-timing-history',
+              'playwright-performance.json'
+            );
+            if (fs.existsSync(performancePath)) {
+              try {
+                performance = JSON.parse(fs.readFileSync(performancePath, 'utf8'));
+              } catch (error) {
+                addInfrastructureIssue(`Playwright performance output was invalid JSON: ${error.message}`);
+              }
+            }
+            const finiteMetric = value =>
+              typeof value === 'number' && Number.isFinite(value) ? value : null;
+            const displayMetric = value => finiteMetric(value) ?? 'unavailable';
+            const performanceMetrics = performance?.metrics ?? {};
+            const performanceTargets = performance?.targets ?? {};
+            const convergenceTargets = performance?.convergenceTargets ?? {};
+            if (performance) {
+              try {
+                const workflowRun = await github.rest.actions.getWorkflowRun({
+                  ...repo,
+                  run_id: Number(runId),
+                });
+                const createdAtMillis = Date.parse(workflowRun.data.created_at);
+                if (!Number.isFinite(createdAtMillis)) {
+                  throw new Error('workflow created_at was not a valid timestamp');
+                }
+                performanceMetrics.workflowWallSeconds = Math.max(
+                  0,
+                  Math.round((Date.now() - createdAtMillis) / 1000)
+                );
+                fs.writeFileSync(
+                  performancePath,
+                  `${JSON.stringify(performance, null, 2)}\n`,
+                  'utf8'
+                );
+              } catch (error) {
+                core.warning(`Could not calculate full workflow wall time: ${error.message}`);
+              }
+            }
+            const convergenceWarnings = [];
+            if (convergenceTargets.commonShardSkewAtMostFifteenPercent === false) {
+              convergenceWarnings.push(
+                `Common shard skew was ${displayMetric(performanceMetrics.commonShardSkewPercent)}% ` +
+                '(convergence target: at most 15%).'
+              );
+            }
+            if (convergenceTargets.requestsPerAttemptBelowTwoHundred === false) {
+              convergenceWarnings.push(
+                `Browser traffic was ${displayMetric(performanceMetrics.requestsPerAttempt)} requests per attempt ` +
+                '(convergence target: fewer than 200).'
+              );
+            }
+            if (convergenceTargets.atMostOneAppBootPerUIScenario === false) {
+              convergenceWarnings.push(
+                `Application boot ratio was ${displayMetric(performanceMetrics.appBootsPerUIScenario)} per UI scenario ` +
+                `(${displayMetric(performanceMetrics.appBoots)} boots / ` +
+                `${displayMetric(performanceMetrics.uiScenarios)} scenarios; convergence target: at most 1).`
+              );
             }
 
             if (checkChangesResult !== 'success') {
@@ -1754,6 +1821,131 @@ jobs:
               lines.push('');
             }
 
+            if (performance) {
+              const performanceRows = [
+                {
+                  classification: 'Blocking',
+                  metric: 'Environment setup',
+                  observed: `${displayMetric(performanceMetrics.maxEnvironmentSeconds)} s`,
+                  target: '≤ 300 s',
+                  passed: performanceTargets.environmentAtMostFiveMinutes,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Maximum shard execution',
+                  observed: `${displayMetric(performanceMetrics.maxExecutionSeconds)} s`,
+                  target: '≤ 1,260 s',
+                  passed: performanceTargets.executionAtMostTwentyOneMinutes,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Maximum shard-job elapsed before upload',
+                  observed: `${displayMetric(performanceMetrics.maxElapsedBeforeUploadSeconds)} s`,
+                  target: '≤ 1,800 s',
+                  passed: performanceTargets.shardsAtMostThirtyMinutesBeforeUpload,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Reporting and upload',
+                  observed: `${displayMetric(performanceMetrics.reportingSeconds)} s`,
+                  target: '≤ 120 s',
+                  passed: performanceTargets.reportingAtMostTwoMinutes,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Flaky test rate',
+                  observed: `${displayMetric(performanceMetrics.flakyRatePercent)}%`,
+                  target: '≤ 0.5%',
+                  passed: performanceTargets.flakyRateAtMostPointFivePercent,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Retry worker time',
+                  observed: `${displayMetric(performanceMetrics.retryWorkerPercent)}%`,
+                  target: '≤ 2%',
+                  passed: performanceTargets.retryWorkerTimeAtMostTwoPercent,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'Static requests per app boot',
+                  observed: String(
+                    displayMetric(performanceMetrics.staticRequestsPerAppBoot)
+                  ),
+                  target: '< 100',
+                  passed: performanceTargets.staticRequestsPerAppBootBelowOneHundred,
+                },
+                {
+                  classification: 'Blocking',
+                  metric: 'App-boot measurement integrity',
+                  observed:
+                    `${displayMetric(performanceMetrics.appBoots)} boots / ` +
+                    `${displayMetric(performanceMetrics.uiScenarios)} scenarios / ` +
+                    `${displayMetric(performanceMetrics.appEntryRequests)} entry requests`,
+                  target: 'Complete',
+                  passed: performanceTargets.appBootMeasurementIntegrity,
+                },
+                {
+                  classification: 'Observation',
+                  metric: 'Full workflow signal wall (to summary)',
+                  observed: `${displayMetric(performanceMetrics.workflowWallSeconds)} s`,
+                  target: 'Reported',
+                  status: 'ℹ️',
+                },
+                {
+                  classification: 'Convergence',
+                  metric: 'Requests per attempt',
+                  observed: String(displayMetric(performanceMetrics.requestsPerAttempt)),
+                  target: '< 200',
+                  passed: convergenceTargets.requestsPerAttemptBelowTwoHundred,
+                },
+                {
+                  classification: 'Convergence',
+                  metric: 'App boots per UI scenario',
+                  observed:
+                    `${displayMetric(performanceMetrics.appBootsPerUIScenario)} ` +
+                    `(${displayMetric(performanceMetrics.appBoots)} / ` +
+                    `${displayMetric(performanceMetrics.uiScenarios)})`,
+                  target: '≤ 1',
+                  passed: convergenceTargets.atMostOneAppBootPerUIScenario,
+                },
+                {
+                  classification: 'Convergence',
+                  metric: 'Common shard skew',
+                  observed: `${displayMetric(performanceMetrics.commonShardSkewPercent)}%`,
+                  target: '≤ 15%',
+                  passed: convergenceTargets.commonShardSkewAtMostFifteenPercent,
+                },
+              ];
+              lines.push('### Performance targets');
+              lines.push('');
+              lines.push(
+                'Blocking targets enforce CI. Convergence targets remain measured and visible while the suite is optimized.'
+              );
+              lines.push('');
+              lines.push('| Class | Metric | Observed | Target | Status |');
+              lines.push('|-------|--------|----------|--------|--------|');
+              for (const row of performanceRows) {
+                const status = row.status ?? (row.passed === true
+                  ? '✅'
+                  : row.classification === 'Blocking'
+                  ? '❌'
+                  : '⚠️');
+                lines.push(
+                  `| ${row.classification} | ${row.metric} | ${row.observed} | ${row.target} | ${status} |`
+                );
+              }
+              lines.push('');
+            }
+
+            if (convergenceWarnings.length > 0) {
+              lines.push('### Performance convergence warnings');
+              lines.push('');
+              for (const warning of convergenceWarnings) {
+                lines.push(`- ${warning}`);
+              }
+              lines.push('');
+            }
+
             lines.push('| Shard | Passed | Failed | Flaky | Skipped | Lifecycle flaky |');
             lines.push('|-------|--------|--------|-------|---------|-----------------|');
             for (const shard of expectedShards) {
@@ -1876,8 +2068,37 @@ jobs:
               throw new Error(`Refusing to publish ${infrastructureIssues.length} infrastructure issues.`);
             }
 
+            const performancePayloadMetrics = {
+              maxEnvironmentSeconds: finiteMetric(performanceMetrics.maxEnvironmentSeconds),
+              maxExecutionSeconds: finiteMetric(performanceMetrics.maxExecutionSeconds),
+              maxElapsedBeforeUploadSeconds: finiteMetric(
+                performanceMetrics.maxElapsedBeforeUploadSeconds
+              ),
+              reportingSeconds: finiteMetric(performanceMetrics.reportingSeconds),
+              workflowWallSeconds: finiteMetric(performanceMetrics.workflowWallSeconds),
+              requestsPerAttempt: finiteMetric(performanceMetrics.requestsPerAttempt),
+              appBootsPerUIScenario: finiteMetric(
+                performanceMetrics.appBootsPerUIScenario
+              ),
+              commonShardSkewPercent: finiteMetric(
+                performanceMetrics.commonShardSkewPercent
+              ),
+            };
+            const hasCompletePerformancePayload = Object.values(
+              performancePayloadMetrics
+            ).every(value => value !== null);
+            const performancePayload = performance && hasCompletePerformancePayload
+              ? {
+                  blockingTargetsMet: performance.blockingTargetsMet === true,
+                  convergenceTargetsMet: performance.convergenceTargetsMet === true,
+                  metrics: performancePayloadMetrics,
+                  convergenceWarnings: convergenceWarnings.map(warning =>
+                    boundedString(warning, 300)
+                  ),
+                }
+              : null;
             const commentPayload = {
-              version: 1,
+              version: 2,
               totals: {
                 passed: totalPassed,
                 failed: totalFailed,
@@ -1909,6 +2130,7 @@ jobs:
                 title: boundedString(test.title, 300),
                 retries: Math.max(0, test.retries),
               })),
+              performance: performancePayload,
             };
             const commentPayloadPath = process.env.COMMENT_PAYLOAD_PATH;
             const serializedCommentPayload = `${JSON.stringify(commentPayload, null, 2)}\n`;

@@ -41,6 +41,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
       - "openmetadata-spec/src/main/resources/rdf/**"
       - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyExplorerRdf.spec.ts"
       - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
       - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
       - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"

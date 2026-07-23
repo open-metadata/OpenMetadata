@@ -17,7 +17,11 @@ import {
   DATA_STEWARD_RULES,
   SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { generateRandomUsername, uuid } from '../../utils/common';
+import {
+  disableEtagConditionalReads,
+  generateRandomUsername,
+  uuid,
+} from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
@@ -275,6 +279,7 @@ export class UserClass {
       })
       .catch(() => undefined);
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+    await disableEtagConditionalReads(page);
 
     const modal = await page
       .getByRole('dialog')
