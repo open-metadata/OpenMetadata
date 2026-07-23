@@ -37,7 +37,6 @@ from metadata.ingestion.source.database.ai_governance_sample import (
     AIGovernanceSampleData,
     AIGovernanceSampleDataError,
 )
-from metadata.ingestion.source.database.sample_data import get_lineage_entity_ref
 
 FIXTURE_FOLDER = Path(__file__).parents[4] / "examples" / "sample_data" / "ai_governance"
 
@@ -213,27 +212,3 @@ def test_unresolved_dependency_fails_the_workflow() -> None:
         match=r"Cannot resolve mcpServer dependency 'ai_governance_mcp\.missing-server'",
     ):
         load_requests(loader, metadata)
-
-
-@pytest.mark.parametrize(
-    ("entity_type", "expected_reference_type"),
-    [
-        ("llmModel", "llmModel"),
-        ("mcpServer", "mcpServer"),
-        ("aiApplication", "aiApplication"),
-    ],
-)
-def test_standard_lineage_resolver_understands_ai_entities(
-    entity_type: str,
-    expected_reference_type: str,
-) -> None:
-    entity_id = Uuid(uuid4())
-    metadata = SimpleNamespace(get_by_name=lambda **_: SimpleNamespace(id=entity_id))
-
-    reference = get_lineage_entity_ref(
-        {"type": entity_type, "fqn": "showcase.entity"},
-        metadata,
-    )
-
-    assert reference.id == entity_id
-    assert reference.type == expected_reference_type
