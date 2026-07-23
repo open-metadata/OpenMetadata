@@ -622,6 +622,8 @@ class TestAirflow(TestCase):
         self.assertEqual(len(self.airflow.status.failures), 1)
         self.assertEqual(self.airflow.status.failures[0].name, "Airflow DAG Pagination")
         self.assertIn("offset 0", self.airflow.status.failures[0].error)
+        self.assertFalse(self.airflow._dag_listing_complete)
+        self.assertEqual(list(self.airflow.mark_pipelines_as_deleted()), [])
 
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.SerializedDagModel")
     @patch("metadata.ingestion.source.pipeline.airflow.metadata.DagModel")

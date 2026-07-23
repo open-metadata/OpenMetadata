@@ -63,6 +63,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -144,6 +145,7 @@ class AirflowSource(PipelineServiceSource):
 
         self._execution_date_column = None
         self._is_remote_airflow_3 = None
+        self._dag_listing_complete = True
 
     @property
     def is_remote_airflow_3(self):
@@ -501,6 +503,7 @@ class AirflowSource(PipelineServiceSource):
         us retrieve all the task and inlets/outlets information
         """
 
+        self._dag_listing_complete = True
         json_data_column = (
             SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
             if hasattr(SerializedDagModel, "_data")
@@ -601,6 +604,7 @@ class AirflowSource(PipelineServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+                self._dag_listing_complete = False
                 break
             if not results:
                 break
@@ -667,6 +671,16 @@ class AirflowSource(PipelineServiceSource):
                     )
 
             offset += limit
+
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        if not self._dag_listing_complete:
+            logger.warning(
+                "Skipping stale-pipeline deletion: DAG listing was incomplete due to a "
+                "page-fetch error, so the live set is partial and would delete DAGs that "
+                "still exist."
+            )
+            return
+        yield from super().mark_pipelines_as_deleted()
 
     def fetch_dag_owners(self, data) -> Optional[str]:  # noqa: UP045
         """
