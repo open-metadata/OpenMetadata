@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
@@ -451,7 +451,7 @@ export const getDomainIcon = (iconURL?: string) => {
   // Try to render the icon using the utility (handles both URLs and icon names)
   const iconElement = renderIcon(iconURL, {
     size: 24,
-    className: 'tw:h-6 tw:w-6',
+    className: 'tw:h-6 tw:w-6 tw:text-quaternary',
   });
 
   // If we got an icon element, return it
@@ -460,5 +460,5 @@ export const getDomainIcon = (iconURL?: string) => {
   }
 
   // Otherwise return the default domain icon
-  return <DomainIcon className="domain-default-icon" />;
+  return <DomainIcon className="tw:text-quaternary" />;
 };
