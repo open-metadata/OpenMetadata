@@ -580,7 +580,6 @@ const ContextCenterDashboardPage: FC = () => {
                     <Box
                       align="center"
                       className="tw:py-1.5"
-                      
                       gap={2}
                       key={item.id}>
                       <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
@@ -589,11 +588,12 @@ const ContextCenterDashboardPage: FC = () => {
                         className="tw:min-w-0 tw:flex-1"
                         gap={4}
                         justify="between">
-                        <div className="tw:min-w-0" data-testid="most-cited-memory">
+                        <div
+                          className="tw:min-w-0"
+                          data-testid="most-cited-memory">
                           <Typography
                             ellipsis
                             className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-                           
                             size="text-xs"
                             weight="medium">
                             {item.title}
