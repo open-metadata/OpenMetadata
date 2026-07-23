@@ -16,7 +16,6 @@ import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -33,13 +32,7 @@ import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataA
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';
 
-interface RelatedMetricsProps {
-  isInSummaryPanel?: boolean;
-}
-
-const RelatedMetrics: FC<RelatedMetricsProps> = ({
-  isInSummaryPanel = false,
-}) => {
+const RelatedMetrics: FC = () => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
   const [isShowMore, setIsShowMore] = useState(false);
@@ -182,8 +175,6 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
       onCancel={() => setIsEdit(false)}
       onSubmit={handleRelatedMetricUpdate}
     />
-  ) : isEmpty(relatedMetrics) && (metricDetails.deleted || isInSummaryPanel) ? (
-    <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
   ) : (
     !isEmpty(relatedMetrics) && (
       <div
