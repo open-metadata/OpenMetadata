@@ -316,6 +316,21 @@ public class AppRepository extends EntityRepository<App> {
         app, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
   }
 
+  /**
+   * Deserializes a stored app-extension payload, ignoring fields the running schema does not know
+   * about.
+   *
+   * <p>Extension rows outlive the code that wrote them. When a newer build adds a field and is then
+   * rolled back, or a branch cut before that field runs against the same database, a strict read
+   * cannot parse the rows the newer build already wrote. Every caller below aggregates rows in
+   * bulk, so one unparseable row fails the entire scan instead of being skipped — a single write
+   * from a newer build can make an app's whole history unreadable until the row is deleted by hand.
+   * Ignoring unknown fields keeps adding a field backward compatible for readers.
+   */
+  private static <T> T readExtension(String json, Class<T> clazz) {
+    return JsonUtils.readValueLenient(json, clazz);
+  }
+
   public <T> ResultList<T> listAppExtensionByName(
       App app,
       int limitParam,
@@ -333,7 +348,7 @@ public class AppRepository extends EntityRepository<App> {
               .appExtensionTimeSeriesDao()
               .listAppExtensionByName(app.getName(), limitParam, offset, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
 
@@ -373,7 +388,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtension(
                   app.getId().toString(), limitParam, offset, extensionType.toString(), service);
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
       return new ResultList<>(entities, offset, total);
@@ -403,7 +418,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtensionAfterTimeByName(
                   app.getName(), limitParam, offset, startTime, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
 
@@ -445,7 +460,7 @@ public class AppRepository extends EntityRepository<App> {
                 app.getName(), limitParam, offset, startTime, endTime, extensionType.toString());
     List<T> entities = new ArrayList<>(jsons.size());
     for (String json : jsons) {
-      entities.add(JsonUtils.readValue(json, clazz));
+      entities.add(readExtension(json, clazz));
     }
     return entities;
   }
@@ -471,7 +486,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtensionAfterTime(
                   app.getId().toString(), limitParam, offset, startTime, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
       return new ResultList<>(entities, offset, total);
