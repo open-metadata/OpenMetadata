@@ -16,6 +16,8 @@ toggles use ``CoreSettings`` (``env_prefix="OM_"``). Connector/domain settings l
 that domain's own module so they load lazily; register each class with ``@om_settings``.
 """
 
+import importlib
+from pathlib import Path
 from typing import Type  # noqa: UP035
 
 from pydantic import Field
@@ -39,6 +41,19 @@ def om_settings(cls: Type["OMSettings"]) -> Type["OMSettings"]:  # noqa: UP006
 def registered_settings() -> dict[str, Type["OMSettings"]]:  # noqa: UP006
     """Return the registered settings classes keyed by import path."""
     return dict(_REGISTRY)
+
+
+def import_all_settings_modules() -> dict[str, Type[OMSettings]]:  # noqa: UP006
+    """Import every ``settings.py`` under the metadata package; return the registry."""
+    import metadata  # noqa: PLC0415
+
+    root = Path(metadata.__file__).parent
+    for path in sorted(root.rglob("settings.py")):
+        parts = path.relative_to(root).with_suffix("").parts
+        if "generated" in parts:
+            continue
+        importlib.import_module("metadata." + ".".join(parts))
+    return registered_settings()
 
 
 @om_settings

@@ -8,17 +8,18 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Enforcement for OM_ settings: prefix, no raw env reads, documentation coverage."""
+"""Enforcement for OM_ settings: prefix, no raw env reads, documentation in sync."""
 
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import metadata
-from metadata.config.settings import OMSettings
-from metadata.config.settings_docs import import_all_settings_modules
+from metadata.config.settings import OMSettings, import_all_settings_modules
 
 _METADATA_ROOT = Path(metadata.__file__).parent
-_SETTINGS_MD = Path(__file__).resolve().parents[3] / "SETTINGS.md"
+_GENERATOR = Path(__file__).resolve().parents[3] / "scripts" / "generate_settings_docs.py"
 
 _RAW_ENV_PATTERN = re.compile(r"""os\.(?:environ(?:\.get)?|getenv)\s*[(\[]\s*['"]OM_""")
 
@@ -47,10 +48,11 @@ def test_no_raw_om_env_reads_outside_settings():
     assert not offenders, f"raw OM_ env reads must move to metadata.config.settings: {offenders}"
 
 
-def test_all_settings_documented():
-    doc = _SETTINGS_MD.read_text()
-    for cls in import_all_settings_modules().values():
-        prefix = cls.model_config.get("env_prefix", "")
-        for field_name in cls.model_fields:
-            env = f"{prefix}{field_name}".upper()
-            assert env in doc, f"{env} missing from SETTINGS.md — run scripts/generate_settings_docs.py"
+def test_settings_md_is_up_to_date():
+    result = subprocess.run(
+        [sys.executable, str(_GENERATOR), "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
