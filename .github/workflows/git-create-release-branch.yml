@@ -23,7 +23,12 @@ jobs:
         ref: ${{ inputs.base_branch_name }}
     - name: Update application versions
       run: |
-        make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}
+        RELEASE_VERSION=${{ inputs.release_branch_name }}
+        if [[ $RELEASE_VERSION =~ ^[0-9]+\.[0-9]+$ ]]; then
+          RELEASE_VERSION="${RELEASE_VERSION}.0"
+          echo "Release version is in format X.Y, appending .0 to make it X.Y.0: $RELEASE_VERSION"
+        fi
+        make update_all RELEASE_VERSION=$RELEASE_VERSION
     - name: Commit changes to ${{ inputs.release_branch_name }} branch
       uses: EndBug/add-and-commit@v9
       with:
