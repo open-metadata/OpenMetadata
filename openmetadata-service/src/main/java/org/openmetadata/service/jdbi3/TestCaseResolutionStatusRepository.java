@@ -17,10 +17,12 @@ import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -236,19 +238,29 @@ public class TestCaseResolutionStatusRepository
       // If there is an unresolved incident update the state ID
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
-      // the old severity
+      // the old severity; same for the denormalized failure summary so the chain's latest record
+      // never loses the failure reason on a status transition.
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
+      recordEntity.setFailureSummary(
+          recordEntity.getFailureSummary() == null
+              ? lastIncident.getFailureSummary()
+              : recordEntity.getFailureSummary());
     } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
-      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
-      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId, severity,
+      // and failure summary so the timeline stays contiguous. New is excluded — a new failure
+      // starts a fresh incident.
       recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
+      recordEntity.setFailureSummary(
+          recordEntity.getFailureSummary() == null
+              ? lastIncident.getFailureSummary()
+              : recordEntity.getFailureSummary());
     }
 
     setResolutionMetrics(lastIncident, recordEntity);
@@ -672,12 +684,20 @@ public class TestCaseResolutionStatusRepository
       recordEntity.setUpdatedAt(incomingTimestamp);
     }
 
-    // Inherit severity from the previous record for this stateId if the caller didn't set one
-    if (recordEntity.getSeverity() == null && recordEntity.getStateId() != null) {
+    // Inherit severity and failure summary from the previous record for this stateId if the
+    // caller didn't set them (e.g. tasks created before the payload carried a failure reason)
+    if ((recordEntity.getSeverity() == null || recordEntity.getFailureSummary() == null)
+        && recordEntity.getStateId() != null) {
       TestCaseResolutionStatus priorForStateId =
           getLatestRecordForStateId(recordEntity.getStateId());
-      if (priorForStateId != null && priorForStateId.getSeverity() != null) {
-        recordEntity.setSeverity(priorForStateId.getSeverity());
+      if (priorForStateId != null) {
+        if (recordEntity.getSeverity() == null && priorForStateId.getSeverity() != null) {
+          recordEntity.setSeverity(priorForStateId.getSeverity());
+        }
+        if (recordEntity.getFailureSummary() == null
+            && priorForStateId.getFailureSummary() != null) {
+          recordEntity.setFailureSummary(priorForStateId.getFailureSummary());
+        }
       }
     }
 
@@ -727,9 +747,16 @@ public class TestCaseResolutionStatusRepository
         (CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao;
     CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage page =
         dao.listIncidentGroups(groupBy, filter, incidentGroupSortOrder(sortType), limit, offsetInt);
+    Map<String, EntityReference> references = resolveIncidentGroupEntities(page.counts());
     List<TestCaseIncidentGroup> groups =
         page.counts().stream()
-            .map(count -> toIncidentGroup(groupBy, count, parseIncidentCreatedAt(count)))
+            .map(
+                count ->
+                    toIncidentGroup(
+                        groupBy,
+                        count,
+                        parseIncidentCreatedAt(count),
+                        references.get(count.groupKey())))
             .toList();
     return new ResultList<>(
         groups,
@@ -752,7 +779,8 @@ public class TestCaseResolutionStatusRepository
   private static TestCaseIncidentGroup toIncidentGroup(
       IncidentGroupBy groupBy,
       CollectionDAO.TestCaseIncidentGroupCount count,
-      List<Long> incidentCreatedAt) {
+      List<Long> incidentCreatedAt,
+      EntityReference reference) {
     TestCaseIncidentGroup group =
         new TestCaseIncidentGroup()
             .withGroupBy(groupBy)
@@ -764,11 +792,11 @@ public class TestCaseResolutionStatusRepository
     if (count.severity() != null) {
       group.withSeverity(Severity.fromValue(count.severity()));
     }
-    if (!nullOrEmpty(count.assignees())) {
-      group.withAssignees(List.of(count.assignees().split(",")));
+    List<String> assignees = parseAssignees(count.assignees());
+    if (!assignees.isEmpty()) {
+      group.withAssignees(assignees);
     }
     setIncidentTrend(group, incidentCreatedAt);
-    EntityReference reference = resolveIncidentGroupEntity(count);
     if (reference != null) {
       group
           .withId(reference.getId())
@@ -779,6 +807,18 @@ public class TestCaseResolutionStatusRepository
       setFallbackIncidentGroupIdentity(group, count);
     }
     return group;
+  }
+
+  private static List<String> parseAssignees(String assigneesJson) {
+    List<String> result = List.of();
+    if (!nullOrEmpty(assigneesJson)) {
+      result =
+          Arrays.stream(JsonUtils.readValue(assigneesJson, String[].class))
+              .filter(assignee -> !nullOrEmpty(assignee))
+              .distinct()
+              .toList();
+    }
+    return result;
   }
 
   private static List<Long> parseIncidentCreatedAt(CollectionDAO.TestCaseIncidentGroupCount count) {
@@ -833,19 +873,31 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
-  private static EntityReference resolveIncidentGroupEntity(
-      CollectionDAO.TestCaseIncidentGroupCount count) {
-    EntityReference result = null;
-    try {
-      result =
-          Entity.TABLE.equals(count.groupType())
-              ? Entity.getEntityReferenceByName(Entity.TABLE, count.groupKey(), Include.ALL)
-              : Entity.getEntityReferenceById(
-                  count.groupType(), UUID.fromString(count.groupKey()), Include.ALL);
-    } catch (EntityNotFoundException e) {
-      LOG.debug(
-          "Incident group {} '{}' could not be resolved", count.groupType(), count.groupKey());
-    }
+  private static Map<String, EntityReference> resolveIncidentGroupEntities(
+      List<CollectionDAO.TestCaseIncidentGroupCount> counts) {
+    Map<String, EntityReference> result = new HashMap<>();
+    Map<String, List<String>> keysByType =
+        counts.stream()
+            .collect(
+                Collectors.groupingBy(
+                    CollectionDAO.TestCaseIncidentGroupCount::groupType,
+                    Collectors.mapping(
+                        CollectionDAO.TestCaseIncidentGroupCount::groupKey, Collectors.toList())));
+    keysByType.forEach(
+        (groupType, groupKeys) -> {
+          EntityDAO<?> entityDAO = Entity.getEntityRepository(groupType).getDao();
+          if (Entity.TABLE.equals(groupType)) {
+            for (EntityReference reference :
+                entityDAO.findReferencesByFqns(groupKeys, Include.ALL)) {
+              result.put(reference.getFullyQualifiedName(), reference);
+            }
+          } else {
+            List<UUID> ids = groupKeys.stream().map(UUID::fromString).toList();
+            for (EntityReference reference : entityDAO.findReferencesByIds(ids, Include.ALL)) {
+              result.put(reference.getId().toString(), reference);
+            }
+          }
+        });
     return result;
   }
 

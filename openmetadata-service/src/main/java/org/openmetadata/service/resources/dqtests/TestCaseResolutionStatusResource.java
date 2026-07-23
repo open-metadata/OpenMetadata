@@ -287,11 +287,11 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
           @QueryParam("domain")
           String domain,
-      @Parameter(description = "Limit the number of groups returned. (1 to 1000000, default = 10)")
+      @Parameter(description = "Limit the number of groups returned. (1 to 1000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
           int limit,
       @Parameter(
               description =

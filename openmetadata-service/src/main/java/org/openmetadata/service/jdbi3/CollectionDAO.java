@@ -10499,10 +10499,12 @@ public interface CollectionDAO {
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
     // An incident is a stateId chain. `chain` folds each stateId to its first/last timestamps
-    // over the (stateId, timestamp) index and `incident` joins back on the last timestamp to
-    // pick the chain's latest record, which carries the current status/assignee/severity. This
-    // replaces ROW_NUMBER/MIN/MAX window functions, which materialized three buffered passes
-    // over the whole table at scale.
+    // over the (stateId, timestamp) index, `latestRecord` picks exactly one record per chain at
+    // the last timestamp — MAX(id) is an arbitrary but deterministic tie-breaker, without which
+    // two records sharing the chain's max timestamp would both enter the aggregates (stale
+    // assignees, double-counted trend points) — and `incident` loads that record's current
+    // status/assignee/severity. This replaces ROW_NUMBER/MIN/MAX window functions, which
+    // materialized three buffered passes over the whole table at scale.
     String INCIDENT_GROUPS_CTE =
         """
         WITH chain AS (
@@ -10511,12 +10513,18 @@ public interface CollectionDAO {
           <incidentCond>
           GROUP BY stateId
         ),
-        incident AS (
-          SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
-                 <severityExpr> AS severity, c.createdAt, c.updatedAt
+        latestRecord AS (
+          SELECT c.stateId, c.createdAt, c.updatedAt, MAX(t.id) AS latestId
           FROM chain c
           INNER JOIN test_case_resolution_status_time_series t
             ON t.stateId = c.stateId AND t.timestamp = c.updatedAt
+          GROUP BY c.stateId, c.createdAt, c.updatedAt
+        ),
+        incident AS (
+          SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
+                 <severityExpr> AS severity, l.createdAt, l.updatedAt
+          FROM latestRecord l
+          INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
         )
         """;
 
@@ -10633,10 +10641,13 @@ public interface CollectionDAO {
           : "json ->> 'severity'";
     }
 
+    // JSON aggregates instead of GROUP_CONCAT/STRING_AGG: the 1024-char group_concat_max_len
+    // default would truncate an assignee-dense group mid-name. MySQL's JSON_ARRAYAGG cannot take
+    // DISTINCT, so the array may carry nulls and duplicates — the repository dedupes on parse.
     private static String assigneesExpr() {
       return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "GROUP_CONCAT(DISTINCT i.assignee)"
-          : "STRING_AGG(DISTINCT i.assignee, ',')";
+          ? "JSON_ARRAYAGG(i.assignee)"
+          : "JSON_AGG(i.assignee)";
     }
 
     private static String createdAtAggExpr() {

@@ -8,7 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.dropwizard.db.DataSourceFactory;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -18,11 +22,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -61,6 +67,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for GET /v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups.
@@ -84,7 +91,7 @@ public class IncidentGroupsIT {
   private static final String GROUP_BY_TABLE = "table";
   private static final String GROUP_BY_TEST_DEFINITION = "testDefinition";
   private static final String GROUP_BY_OWNER = "owner";
-  private static final String MAX_LIMIT = "1000000";
+  private static final String MAX_LIMIT = "1000";
 
   private OpenMetadataClient client;
   private Table tableA;
@@ -745,6 +752,194 @@ public class IncidentGroupsIT {
         Set.of(testCase2.getFullyQualifiedName()),
         statusTestCaseFqns(latest),
         "latest-per-test-case filtering must also honor the assignee");
+  }
+
+  // Pins the invariant that a status transition never loses the denormalized failure reason:
+  // the latest record after a bulk Ack must still carry the summary captured when the failed
+  // result opened the incident (whether stamped from the task payload or inherited from the
+  // chain's prior record in storeInternal/syncFromTask).
+  @Test
+  void testBulkTransitionPreservesFailureSummary() throws Exception {
+    long ts = System.currentTimeMillis();
+    String failureText = "Bulk chain summary " + ts;
+    Table summaryTable = createTable(schemaFqn, "incident_groups_bulk_summary_" + ts);
+    TestDefinition summaryDefinition =
+        createTestDefinition(
+            "incident_groups_bulk_summary_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase summaryCase =
+        createTestCase(
+            "incident_groups_bulk_summary_case_" + ts,
+            tableLink(summaryTable),
+            summaryDefinition,
+            List.of());
+    client
+        .testCaseResults()
+        .create(
+            summaryCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withResult(failureText));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    fetchStatuses(summaryCase).isEmpty(),
+                    "the failed result must open an incident"));
+
+    BulkOperationResult result =
+        client
+            .testCaseResolutionStatuses()
+            .bulkCreate(
+                List.of(
+                    new CreateTestCaseResolutionStatus()
+                        .withTestCaseReference(summaryCase.getFullyQualifiedName())
+                        .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)));
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              TestCaseResolutionStatus latest = fetchStatuses(summaryCase).getFirst();
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Ack, latest.getTestCaseResolutionStatusType());
+              assertEquals(
+                  failureText,
+                  latest.getFailureSummary(),
+                  "the status transition must not lose the denormalized failure reason");
+            });
+  }
+
+  // The public API cannot produce two records with an identical timestamp (storeInternal forces
+  // per-FQN monotonicity), so the tie shape is seeded straight into the suite's database and
+  // asserted through the API — pinning the MAX(id) tie-breaker in the incident CTE. Without it,
+  // both tied records enter the aggregates: two assignees and a double-counted trend point for a
+  // single incident.
+  @Test
+  void testDuplicateMaxTimestampTieBreak() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table tieTable = createTable(schemaFqn, "incident_groups_tie_" + ts);
+    TestDefinition tieDefinition =
+        createTestDefinition("incident_groups_tie_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase tieCase =
+        createTestCase(
+            "incident_groups_tie_case_" + ts, tableLink(tieTable), tieDefinition, List.of());
+
+    String stateId = UUID.randomUUID().toString();
+    long tieTimestamp = ts - 3_600_000;
+    insertStatusRecords(
+        tieCase,
+        List.of(
+            seededRecord(stateId, tieTimestamp - 60_000, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                stateId,
+                tieTimestamp,
+                TestCaseResolutionStatusTypes.Assigned,
+                "incident_groups_tie_assignee_a_" + ts),
+            seededRecord(
+                stateId,
+                tieTimestamp,
+                TestCaseResolutionStatusTypes.Assigned,
+                "incident_groups_tie_assignee_b_" + ts)));
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", tieCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), tieTable.getFullyQualifiedName());
+
+    assertEquals(1, group.getIncidentCount());
+    assertEquals(
+        1, group.getAssigneeCount(), "only the tie-broken latest record's assignee may count");
+    assertEquals(1, group.getAssignees().size());
+    assertEquals(
+        1,
+        group.getTrend().stream().mapToInt(Integer::intValue).sum(),
+        "the tied incident must enter the trend exactly once");
+  }
+
+  // 60 distinct assignee names exceed GROUP_CONCAT's default 1024-char cap; the JSON aggregate
+  // must deliver every name complete. Seeded via the database for speed and determinism.
+  @Test
+  void testAssigneeDenseGroupIsNotTruncated() throws Exception {
+    long ts = System.currentTimeMillis();
+    Table denseTable = createTable(schemaFqn, "incident_groups_dense_" + ts);
+    TestDefinition denseDefinition =
+        createTestDefinition("incident_groups_dense_def_" + ts, TestDefinitionEntityType.TABLE);
+    TestCase denseCase =
+        createTestCase(
+            "incident_groups_dense_case_" + ts, tableLink(denseTable), denseDefinition, List.of());
+
+    List<TestCaseResolutionStatus> records = new ArrayList<>();
+    for (int i = 0; i < 60; i++) {
+      String stateId = UUID.randomUUID().toString();
+      long chainStart = ts - (i + 2) * 3_600_000L;
+      records.add(seededRecord(stateId, chainStart, TestCaseResolutionStatusTypes.New, null));
+      records.add(
+          seededRecord(
+              stateId,
+              chainStart + 60_000,
+              TestCaseResolutionStatusTypes.Assigned,
+              String.format("incident_groups_dense_assignee_number_%02d_%d", i, ts)));
+    }
+    insertStatusRecords(denseCase, records);
+
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", denseCase.getFullyQualifiedName());
+    TestCaseIncidentGroup group =
+        findGroup(fetchGroups(params), denseTable.getFullyQualifiedName());
+
+    assertEquals(60, group.getIncidentCount());
+    assertEquals(60, group.getAssigneeCount());
+    assertEquals(60, group.getAssignees().size(), "no aggregation cap may drop assignees");
+    assertTrue(
+        group.getAssignees().stream()
+            .allMatch(name -> name.matches("incident_groups_dense_assignee_number_\\d{2}_\\d+")),
+        "every assignee name must arrive complete, never truncated mid-name");
+  }
+
+  private TestCaseResolutionStatus seededRecord(
+      String stateId, long timestamp, TestCaseResolutionStatusTypes type, String assigneeName) {
+    TestCaseResolutionStatus record =
+        new TestCaseResolutionStatus()
+            .withId(UUID.randomUUID())
+            .withStateId(UUID.fromString(stateId))
+            .withTimestamp(timestamp)
+            .withUpdatedAt(timestamp)
+            .withTestCaseResolutionStatusType(type);
+    if (assigneeName != null) {
+      record.withTestCaseResolutionStatusDetails(
+          new Assigned()
+              .withAssignee(
+                  new EntityReference()
+                      .withId(UUID.randomUUID())
+                      .withType("user")
+                      .withName(assigneeName)));
+    }
+    return record;
+  }
+
+  private void insertStatusRecords(TestCase testCase, List<TestCaseResolutionStatus> records)
+      throws Exception {
+    DataSourceFactory dataSource =
+        TestSuiteBootstrap.createApplicationConfigCopy().getDataSourceFactory();
+    boolean postgres = dataSource.getUrl().contains("postgresql");
+    String insert =
+        "INSERT INTO test_case_resolution_status_time_series (entityFQNHash, jsonSchema, json) "
+            + (postgres ? "VALUES (?, ?, ?::jsonb)" : "VALUES (?, ?, ?)");
+    String fqnHash = FullyQualifiedName.buildHash(testCase.getFullyQualifiedName());
+    try (Connection connection =
+            DriverManager.getConnection(
+                dataSource.getUrl(), dataSource.getUser(), dataSource.getPassword());
+        PreparedStatement statement = connection.prepareStatement(insert)) {
+      for (TestCaseResolutionStatus record : records) {
+        statement.setString(1, fqnHash);
+        statement.setString(2, "testCaseResolutionStatus");
+        statement.setString(3, JsonUtils.pojoToJson(record));
+        statement.addBatch();
+      }
+      statement.executeBatch();
+    }
   }
 
   @Test
