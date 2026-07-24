@@ -439,7 +439,9 @@ test.describe('Dashboard Task UI Flow', () => {
   test('should show task in activity feed after creation', async ({
     browser,
   }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       // Create task via API

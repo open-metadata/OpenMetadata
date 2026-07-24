@@ -248,7 +248,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
-    await pageSizeDropdown.hover();
+    await expect(pageSizeDropdown).toBeEnabled();
+    await pageSizeDropdown.click();
 
     const pageSizeOption = page
       .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
@@ -397,20 +398,29 @@ test.describe('Table & Data Model columns table pagination', () => {
 });
 
 test.describe('Tags and glossary terms should be consistent for search ', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const testClassification = new ClassificationClass();
-  const testTag = new TagClass({
-    classification: testClassification.data.name,
-  });
+  let glossary: Glossary;
+  let glossaryTerm: GlossaryTerm;
+  let testClassification: ClassificationClass;
+  let testTag: TagClass;
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext } = await performAdminLogin(browser);
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    testClassification = new ClassificationClass();
+    testTag = new TagClass({
+      classification: testClassification.data.name,
+    });
 
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await testClassification.create(apiContext);
-    await testTag.create(apiContext);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await testClassification.create(apiContext);
+      await testTag.create(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Glossary term should be consistent for search', async ({
@@ -586,7 +596,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
       page.getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
-    page.reload();
+    await page.reload();
     // Wait for page to be fully loaded
     await waitForAllLoadersToDisappear(page);
     const getRequest = page.waitForResponse(

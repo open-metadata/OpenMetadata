@@ -106,20 +106,26 @@ export const getCsvAsyncJobs = async (limit = 20) => {
   return response.data;
 };
 
-export const getCsvAsyncJob = async (jobId: string) => {
-  const response = await APIClient.get<CsvAsyncJob>(`/csvAsyncJobs/${jobId}`);
+export const getCsvAsyncJob = async (jobId: string, signal?: AbortSignal) => {
+  const response = await APIClient.get<CsvAsyncJob>(`/csvAsyncJobs/${jobId}`, {
+    signal,
+  });
 
   return response.data;
 };
 
 // Export results are intentionally omitted from the jobs list (they can be
 // arbitrarily large); download a single job's CSV through this endpoint.
-export const getCsvAsyncJobResult = async (jobId: string) => {
+export const getCsvAsyncJobResult = async (
+  jobId: string,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<string>(
     `/csvAsyncJobs/${jobId}/result`,
     {
       headers: { Accept: 'text/csv' },
       responseType: 'text',
+      signal,
     }
   );
 

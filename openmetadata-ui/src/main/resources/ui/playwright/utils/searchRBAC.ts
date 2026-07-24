@@ -118,6 +118,11 @@ export const enableDisableSearchRBAC = async (
   const settingResponse = await apiContext.get(
     '/api/v1/system/settings/searchSettings'
   );
+  if (!settingResponse.ok()) {
+    throw new Error(
+      `Unable to read search settings: ${settingResponse.status()} ${await settingResponse.text()}`
+    );
+  }
   const initialSetting = await settingResponse.json();
 
   const updatedSetting = {
@@ -131,9 +136,34 @@ export const enableDisableSearchRBAC = async (
     },
   };
 
-  await apiContext.put('/api/v1/system/settings', {
+  const updateResponse = await apiContext.put('/api/v1/system/settings', {
     data: updatedSetting,
   });
+  if (!updateResponse.ok()) {
+    throw new Error(
+      `Unable to update search RBAC: ${updateResponse.status()} ${await updateResponse.text()}`
+    );
+  }
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          '/api/v1/system/settings/searchSettings'
+        );
+        if (!response.ok()) {
+          return undefined;
+        }
+        const settings = await response.json();
+
+        return settings.config_value?.globalSettings?.enableAccessControl;
+      },
+      {
+        message: `Search RBAC setting did not become ${String(enable)}`,
+        timeout: 30_000,
+      }
+    )
+    .toBe(enable);
 };
 
 export const searchForEntityShouldWork = async (
