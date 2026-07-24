@@ -12,6 +12,7 @@
  */
 import { startCase } from 'lodash';
 import { useEffect, useState } from 'react';
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
@@ -22,7 +23,6 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { StorageServiceType } from '../generated/entity/services/storageService';
-import { LANDING_WIDGET_DEFAULT_ICON_URL } from './LandingPageWidgetIconUtils.constants';
 
 type DataAssetServiceCategory =
   | 'api'
@@ -300,7 +300,7 @@ export const DataAssetServiceLogo = ({
 }): JSX.Element | null => {
   const category = getDataAssetServiceCategory(serviceType);
   const normalizedServiceType = normalizeServiceType(serviceType);
-  const [logo, setLogo] = useState<string>(LANDING_WIDGET_DEFAULT_ICON_URL);
+  const [logo, setLogo] = useState<string>(defaultServiceIconUrl);
 
   useEffect(() => {
     let isMounted = true;
@@ -316,7 +316,7 @@ export const DataAssetServiceLogo = ({
       })
       .catch(() => {
         if (isMounted) {
-          setLogo(LANDING_WIDGET_DEFAULT_ICON_URL);
+          setLogo(defaultServiceIconUrl);
         }
       });
 
