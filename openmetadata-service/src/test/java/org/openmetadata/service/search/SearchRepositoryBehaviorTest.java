@@ -577,6 +577,36 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
+      throws IOException {
+    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(hidden);
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntitiesIndex(List.of(hidden, visible));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  visible.getId().toString(),
+                  visible.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  hidden.getId().toString(),
+                  hidden.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"),
+          never());
+    }
+  }
+
+  @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
     EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
     EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");

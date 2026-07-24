@@ -77,9 +77,11 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -94,6 +96,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final boolean isClientAvailable;
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final ContextMemorySearchVisibility contextMemoryVisibility =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -391,6 +395,37 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
+  }
+
+  /**
+   * Enforces ContextMemory shareConfig visibility on search results for non-admin subjects. Applied
+   * independently of {@code shouldApplyRbacConditions} because memory visibility is a per-memory
+   * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
+   * memories. Non-memory documents are left untouched.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder =
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query visibilityQuery = ((ElasticQueryBuilder) visibilityBuilder).buildV2();
+      Query existingQuery = requestBuilder.query();
+      if (existingQuery != null) {
+        Query combinedQuery =
+            Query.of(
+                qb ->
+                    qb.bool(
+                        b -> {
+                          b.must(existingQuery);
+                          b.filter(visibilityQuery);
+                          return b;
+                        }));
+        requestBuilder.query(combinedQuery);
+      } else {
+        requestBuilder.query(visibilityQuery);
+      }
+    }
   }
 
   @Override
@@ -648,6 +683,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           }
         }
       }
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -1564,6 +1601,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           }
         }
       }
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());

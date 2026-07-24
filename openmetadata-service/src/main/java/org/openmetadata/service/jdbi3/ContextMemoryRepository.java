@@ -72,9 +72,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are searchable; PRIVATE and SHARED
    * memories (and the {@code null}/unset default, which is PRIVATE) are kept out of the search
    * index. This live-write check and {@link #getReindexFilter()} (the bulk-reindex equivalent
-   * expressed as a DB query) are the single home for the memory search-visibility rule — owners and
-   * shared principals still read restricted memories through the REST {@code /contextCenter/memories}
-   * endpoints (see {@link
+   * expressed as a DB query) are the primary index-time enforcement points. A query-time
+   * defense-in-depth filter still protects restricted documents written before this policy was
+   * introduced. Owners and shared principals read restricted memories through the REST {@code
+   * /contextCenter/memories} endpoints (see {@link
    * org.openmetadata.service.resources.context.ContextMemoryVisibility}).
    */
   @Override

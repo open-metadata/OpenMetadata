@@ -34,8 +34,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 /**
- * The ContextMemory search-visibility rule lives entirely in {@link ContextMemoryRepository}: only
- * org-wide ({@link MemoryVisibility#ENTITY}) memories are indexed. {@link
+ * The ContextMemory index-time search-visibility rule lives in {@link ContextMemoryRepository}:
+ * only org-wide ({@link MemoryVisibility#ENTITY}) memories are indexed. {@link
  * ContextMemoryRepository#isSearchIndexable} gates the live create/update path and {@link
  * ContextMemoryRepository#getReindexFilter} carries the same rule into the bulk reindex as a DB
  * query. These tests pin both halves across every visibility state.

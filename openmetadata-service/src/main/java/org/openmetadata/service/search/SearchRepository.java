@@ -1449,11 +1449,21 @@ public class SearchRepository {
       try {
         if (!getSearchClient().isClientAvailable()) {
           for (EntityInterface entity : entities) {
-            SearchIndexRetryQueue.enqueue(
-                entity.getId() != null ? entity.getId().toString() : null,
-                entity.getFullyQualifiedName(),
-                entityType,
-                "createEntitiesIndex: Search client unavailable");
+            try {
+              if (Entity.isSearchIndexable(entity)) {
+                SearchIndexRetryQueue.enqueue(
+                    entity.getId() != null ? entity.getId().toString() : null,
+                    entity.getFullyQualifiedName(),
+                    entityType,
+                    "createEntitiesIndex: Search client unavailable");
+              }
+            } catch (Exception ie) {
+              LOG.error(
+                  "Issue checking search indexability for entity [{}] and entityType [{}]",
+                  entity != null ? entity.getId() : null,
+                  entityType,
+                  ie);
+            }
           }
           return;
         }

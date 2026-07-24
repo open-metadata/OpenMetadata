@@ -56,8 +56,10 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
-    this.filter = Entity.getEntityRepository(entityType).getReindexFilter();
-    this.cachedTotalCount = Entity.getEntityRepository(entityType).getDao().listCount(this.filter);
+    EntityRepository<? extends EntityInterface> entityRepository =
+        Entity.getEntityRepository(entityType);
+    this.filter = entityRepository.getReindexFilter();
+    this.cachedTotalCount = entityRepository.getDao().listCount(this.filter);
     this.stats
         .withTotalRecords(cachedTotalCount)
         .withSuccessRecords(0)
