@@ -3339,6 +3339,7 @@
     "entity-size-must-be-between-2-and-64": "يجب أن يكون حجم {{entity}} بين 2 و 64",
     "entity-transfer-confirmation-message": "للمتابعة، أكد أنك تفهم أن حالة <0>{{from}}</0> ستتغير إلى",
     "entity-transfer-message": "انقر على تأكيد إذا كنت ترغب في نقل {{entity}} <0>{{from}}</0> تحت {{entity}} <0>{{to}}</0>.",
+    "entity-with-name-already-exists": "{{entity}} بهذا الاسم موجود بالفعل.",
     "enum-property-update-message": "بدأ تحديث قيم التعداد. سيتم إخطارك بمجرد الانتهاء.",
     "enum-with-description-update-note": "غير مسموح بتحديث مفاتيح القيم الحالية؛ يمكن تعديل الوصف فقط. ومع ذلك، يُسمح بإضافة قيم جديدة.",
     "error-generating-export-type": "خطأ أثناء إنشاء {{exportType}}",

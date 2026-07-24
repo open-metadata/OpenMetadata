@@ -3339,6 +3339,7 @@
     "entity-size-must-be-between-2-and-64": "Storleken på {{entity}} måste vara mellan 2 och 64",
     "entity-transfer-confirmation-message": "För att fortsätta, bekräfta att du förstår att statusen för <0>{{from}}</0> kommer att ändras till",
     "entity-transfer-message": "Klicka på Bekräfta om du vill flytta <0>{{from}}</0> {{entity}} under <0>{{to}}</0> {{entity}}.",
+    "entity-with-name-already-exists": "{{entity}} med detta namn finns redan.",
     "enum-property-update-message": "Uppdatering av enum-värden har startat. Du meddelas när den är klar.",
     "enum-with-description-update-note": "Det är inte tillåtet att uppdatera befintliga värdenycklar; endast beskrivningen kan redigeras. Det är dock tillåtet att lägga till nya värden.",
     "error-generating-export-type": "Fel vid generering av {{exportType}}",

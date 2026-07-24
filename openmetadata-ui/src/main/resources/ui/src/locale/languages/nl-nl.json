@@ -3339,6 +3339,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} grootte moet tussen 2 en 64 liggen",
     "entity-transfer-confirmation-message": "Om door te gaan, bevestig dat je begrijpt dat de status van <0>{{from}}</0> zal veranderen naar",
     "entity-transfer-message": "Klik op Bevestigen als je <0>{{from}}</0> {{entity}} wilt verplaatsen naar <0>{{to}}</0> {{entity}}.",
+    "entity-with-name-already-exists": "{{entity}} met deze naam bestaat al.",
     "enum-property-update-message": "Enum-waardenupdate is gestart. U krijgt een melding zodra het klaar is.",
     "enum-with-description-update-note": "Het bijwerken van bestaande waardesleutels is niet toegestaan; alleen de beschrijving kan worden bewerkt. Het toevoegen van nieuwe waarden is wel toegestaan.",
     "error-generating-export-type": "Fout bij het genereren van de {{exportType}}",

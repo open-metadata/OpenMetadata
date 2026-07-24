@@ -3339,6 +3339,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} יכול להיות בגודל בין 2 ל-64",
     "entity-transfer-confirmation-message": "כדי להמשיך, אשר שאתה מבין שהמצב של <0>{{from}}</0> ישתנה ל",
     "entity-transfer-message": "לחץ על אישור אם ברצונך להעביר <0>{{from}}</0> {{entity}} מתחת ל-<0>{{to}}</0> {{entity}}.",
+    "entity-with-name-already-exists": "{{entity}} בשם זה כבר קיימת.",
     "enum-property-update-message": "עדכון ערכי enum החל. תקבל הודעה כשזה יסתיים.",
     "enum-with-description-update-note": "עדכון מפתחות ערך קיימים אינו מותר; רק את התיאור ניתן לערוך. עם זאת, הוספת ערכים חדשים מותרת.",
     "error-generating-export-type": "שגיאה ביצירת {{exportType}}",

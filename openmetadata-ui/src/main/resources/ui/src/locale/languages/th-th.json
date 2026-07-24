@@ -3339,6 +3339,7 @@
     "entity-size-must-be-between-2-and-64": "ขนาดของ {{entity}} ต้องอยู่ระหว่าง 2 และ 64",
     "entity-transfer-confirmation-message": "เพื่อดำเนินการต่อ โปรดยืนยันว่าคุณเข้าใจว่าสถานะของ <0>{{from}}</0> จะเปลี่ยนเป็น",
     "entity-transfer-message": "คลิกที่ยืนยันหากคุณต้องการย้าย <0>{{from}}</0> {{entity}} ไปยัง <0>{{to}}</0> {{entity}}",
+    "entity-with-name-already-exists": "{{entity}} ที่มีชื่อนี้มีอยู่แล้ว",
     "enum-property-update-message": "การอัปเดตค่า enum เริ่มต้นแล้ว คุณจะได้รับแจ้งเมื่อเสร็จสิ้น",
     "enum-with-description-update-note": "การอัปเดตคีย์ค่าที่มีอยู่ไม่อนุญาต; สามารถปรับแต่งได้เพียงคำอธิบายเท่านั้น อย่างไรก็ตาม การเพิ่มค่าผลใหม่เป็นสิ่งที่อนุญาต",
     "error-generating-export-type": "เกิดข้อผิดพลาดขณะสร้าง {{exportType}}",
