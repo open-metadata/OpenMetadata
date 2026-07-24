@@ -1326,7 +1326,12 @@ jobs:
     #   same-repo PR + pull_request (not draft, no bad label)
     #                                                    → 'playwright-summary'
     #   fork PR + pull_request_target + 'safe to test'
-    #     (not draft, no bad label)                       → 'playwright-summary'
+    #     (not draft, not synchronize, no bad label)      → 'playwright-summary'
+    #     synchronize events are rejected here to match the gate — the
+    #     pre-gate step strips the label mid-run but the event payload
+    #     still shows it as present, so we must ignore synchronize
+    #     explicitly to avoid publishing a synthetic green under the
+    #     required check name for unreviewed new commits.
     #   labeled event with non-'safe to test' label     → 'playwright-summary (label ignored)'
     #   everything else (redundant events, drafts, fork
     #     PRs without label)                             → 'playwright-summary (skipped)'
@@ -1346,6 +1351,7 @@ jobs:
             github.event_name == 'pull_request_target'
             && github.event.pull_request.head.repo.full_name != github.repository
             && !github.event.pull_request.draft
+            && github.event.action != 'synchronize'
             && contains(github.event.pull_request.labels.*.name, 'safe to test')
             && !(github.event.action == 'labeled' && github.event.label.name != 'safe to test')
           )
