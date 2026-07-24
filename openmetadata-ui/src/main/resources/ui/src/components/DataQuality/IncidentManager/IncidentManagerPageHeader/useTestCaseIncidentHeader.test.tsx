@@ -228,6 +228,30 @@ describe('useTestCaseIncidentHeader', () => {
     expect(result.current.testCaseStatusData).toBeUndefined();
   });
 
+  it('should clear stale incident state when moving to a test case without an incident', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentId: '123',
+    };
+
+    const { result, rerender } = renderIncidentHeaderHook();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toEqual(
+        MOCK_TEST_CASE_INCIDENT.data[0]
+      )
+    );
+
+    mockUseTestCaseStore.testCase = { ...MOCK_TEST_CASE_DATA };
+    rerender();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toBeUndefined()
+    );
+
+    expect(result.current.incidentTask).toBeNull();
+  });
+
   it('should expose the owner version diff only on the version page', async () => {
     const { result: liveResult } = renderIncidentHeaderHook();
 

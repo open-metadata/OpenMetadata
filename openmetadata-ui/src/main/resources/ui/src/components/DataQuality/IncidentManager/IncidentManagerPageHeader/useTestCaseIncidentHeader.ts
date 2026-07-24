@@ -215,18 +215,17 @@ export const useTestCaseIncidentHeader = ({
     try {
       const { data } = await getListTestCaseIncidentByStateId(id);
 
-      setTestCaseStatusData(first(data));
+      return first(data);
     } catch {
-      setTestCaseStatusData(undefined);
+      return undefined;
     }
   };
 
   const fetchIncidentTask = async (stateId: string) => {
     try {
-      const task = await getIncidentTaskByStateId(stateId);
-      setIncidentTask(task);
+      return await getIncidentTaskByStateId(stateId);
     } catch {
-      setIncidentTask(null);
+      return null;
     }
   };
 
@@ -248,30 +247,50 @@ export const useTestCaseIncidentHeader = ({
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 
   useEffect(() => {
-    const inlineStatus = testCaseData?.incidentStatus as
-      | TestCaseResolutionStatus
-      | undefined;
+    const inlineStatus = testCaseData?.incidentStatus;
     const resolvedStatus =
       inlineStatus?.testCaseResolutionStatusType ===
       TestCaseResolutionStatusTypes.Resolved
         ? inlineStatus
         : undefined;
+    const incidentId = testCaseData?.incidentId;
+    const stateId = incidentId ?? resolvedStatus?.stateId;
 
-    if (testCaseData?.incidentId) {
-      setIsLoading(true);
-      Promise.allSettled([
-        fetchTestCaseResolution(testCaseData.incidentId),
-        fetchIncidentTask(testCaseData.incidentId),
-      ]).finally(() => setIsLoading(false));
-    } else if (resolvedStatus?.stateId) {
-      setIsLoading(true);
-      setTestCaseStatusData(resolvedStatus);
-      fetchIncidentTask(resolvedStatus.stateId).finally(() =>
-        setIsLoading(false)
-      );
-    } else {
+    if (!stateId) {
+      setTestCaseStatusData(undefined);
+      setIncidentTask(null);
       setIsLoading(false);
+
+      return;
     }
+
+    // Guard against a stale response landing after the test case changed:
+    // both fetches below resolve asynchronously, so the cleanup flips `active`
+    // and the late writer is dropped instead of showing the prior incident.
+    let active = true;
+    setIsLoading(true);
+
+    Promise.all([
+      incidentId
+        ? fetchTestCaseResolution(incidentId)
+        : Promise.resolve(resolvedStatus),
+      fetchIncidentTask(stateId),
+    ])
+      .then(([status, task]) => {
+        if (active) {
+          setTestCaseStatusData(status);
+          setIncidentTask(task);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [testCaseData?.incidentId, testCaseData?.incidentStatus]);
 
   const handleDomainUpdate = async (
