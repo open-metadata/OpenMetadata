@@ -591,19 +591,31 @@ test.describe(
         test.slow();
 
         await navigateToMemories(page);
-        const searchPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
-        );
+        const noMatchQuery = 'zzz_no_match_expected';
+        const searchPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            url.pathname === MEMORIES_API &&
+            url.searchParams.get('q') === noMatchQuery &&
+            res.request().method() === 'GET'
+          );
+        });
         const searchInput = page.getByTestId('search-input').locator('input');
-        await searchInput.fill('zzz_no_match_expected');
+        await searchInput.fill(noMatchQuery);
         await searchPromise;
         await waitForAllLoadersToDisappear(page);
 
-        const restoreResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
-        );
+        const restoreResPromise = page.waitForResponse((res) => {
+          const url = new URL(res.url());
+
+          return (
+            url.pathname === MEMORIES_API &&
+            !url.searchParams.has('q') &&
+            url.searchParams.get('limit') === '10' &&
+            res.request().method() === 'GET'
+          );
+        });
         await searchInput.clear();
         await restoreResPromise;
         await waitForAllLoadersToDisappear(page);

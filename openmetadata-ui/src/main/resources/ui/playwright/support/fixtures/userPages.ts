@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Browser, Page, test as base } from '@playwright/test';
-import { stripEtagConditionalReads } from '../../utils/common';
+import { disableEtagConditionalReads } from '../../utils/common';
 
 // Declare the types of your fixtures
 type UserPages = {
@@ -31,7 +31,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/admin.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -40,7 +40,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/dataConsumer.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -49,7 +49,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/dataSteward.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -58,7 +58,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/owner.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -67,7 +67,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/editDescription.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -76,7 +76,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/editTags.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
@@ -85,7 +85,7 @@ export const test = base.extend<UserPages>({
       storageState: 'playwright/.auth/editGlossaryTerm.json',
     });
     const page = await context.newPage();
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await use(page);
     await context.close();
   },
