@@ -29,7 +29,6 @@ import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
   ContractExecutionStatus,
   DataContract,
-  SemanticsRule,
 } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { formatMonth } from '../date-time/DateTimeUtils';
@@ -49,126 +48,6 @@ export const semanticRuleValidator = (_: RuleObject, value: string) => {
   }
 
   return Promise.resolve();
-};
-
-interface QueryBuilderTreeNode {
-  properties?: { field?: string; operator?: string };
-  children1?: QueryBuilderTreeNode[] | Record<string, QueryBuilderTreeNode>;
-}
-
-// Confirms, from the persisted query-builder tree, that a field's `==null`
-// JsonLogic condition really came from the "Is Not Set" operator rather than
-// a hand-authored rule using the same shape with different intent.
-export const isFieldUsingIsNullOperator = (
-  jsonTree: string | undefined,
-  field: string
-): boolean => {
-  if (!jsonTree) {
-    return false;
-  }
-
-  let found = false;
-  try {
-    const nodes: QueryBuilderTreeNode[] = [JSON.parse(jsonTree)];
-    while (nodes.length > 0 && !found) {
-      const node = nodes.pop();
-      const children = node?.children1;
-      found =
-        node?.properties?.field === field &&
-        node?.properties?.operator === 'is_null';
-      if (Array.isArray(children)) {
-        nodes.push(...children);
-      } else if (children && typeof children === 'object') {
-        nodes.push(...Object.values(children));
-      }
-    }
-  } catch {
-    found = false;
-  }
-
-  return found;
-};
-
-// Counts, per field, how many "Is Not Set" (is_null) nodes the persisted
-// query-builder tree actually has. Used to build a one-shot confirmation
-// callback below: a field name alone can't disambiguate two sibling
-// conditions on the same field (e.g. an "Is Not Set" rule alongside an
-// unrelated hand-authored `==null` rule on that same field), but consuming
-// one is_null occurrence per rewrite keeps the rewrite count from exceeding
-// the number of confirmed is_null nodes in the tree.
-const countIsNullNodesByField = (
-  jsonTree: string | undefined
-): Map<string, number> => {
-  const counts = new Map<string, number>();
-  if (!jsonTree) {
-    return counts;
-  }
-  try {
-    const nodes: QueryBuilderTreeNode[] = [JSON.parse(jsonTree)];
-    while (nodes.length > 0) {
-      const node = nodes.pop();
-      const field = node?.properties?.field;
-      if (field && node?.properties?.operator === 'is_null') {
-        counts.set(field, (counts.get(field) ?? 0) + 1);
-      }
-      const children = node?.children1;
-      if (Array.isArray(children)) {
-        nodes.push(...children);
-      } else if (children && typeof children === 'object') {
-        nodes.push(...Object.values(children));
-      }
-    }
-  } catch {
-    // Malformed tree: treat as no confirmed is_null nodes.
-  }
-
-  return counts;
-};
-
-// Builds a confirmation callback for getNegativeQueryForNotContainsReverserOperation
-// that consumes one is_null occurrence per field as it confirms rewrites,
-// so at most as many `==null` nodes are rewritten per field as the tree
-// actually confirms came from the "Is Not Set" operator.
-export const createIsNullFieldConfirmation = (
-  jsonTree: string | undefined
-): ((field: string) => boolean) => {
-  const remainingByField = countIsNullNodesByField(jsonTree);
-
-  return (field: string): boolean => {
-    const remaining = remainingByField.get(field) ?? 0;
-    if (remaining <= 0) {
-      return false;
-    }
-    remainingByField.set(field, remaining - 1);
-
-    return true;
-  };
-};
-
-// Normalizes persisted semantic rules so contracts saved before the
-// negation-lift rewrite don't stay broken on validation. Only rewrites a
-// field's `==null` shape when the persisted tree confirms it came from the
-// "Is Not Set" operator, to avoid corrupting a differently-intended rule
-// that happens to share the same JsonLogic AST shape.
-export const getNormalizedContractSemantics = (
-  semantics?: SemanticsRule[]
-): SemanticsRule[] | undefined => {
-  return semantics?.map((item) => {
-    if (!item.rule) {
-      return item;
-    }
-    try {
-      const normalized =
-        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
-          JSON.parse(item.rule),
-          createIsNullFieldConfirmation(item.jsonTree)
-        );
-
-      return { ...item, rule: JSON.stringify(normalized) };
-    } catch {
-      return item;
-    }
-  });
 };
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {

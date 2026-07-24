@@ -776,16 +776,8 @@ class JSONLogicSearchClassBase {
   // the (already-correct) "Is Set" check and is true exactly when the array
   // is empty.
   // Return the rule with negation applied at group level.
-  // `isConfirmedIsNullField` lets a caller verify (e.g. against the
-  // persisted query-builder tree) that a given field's `==null` really
-  // came from the "Is Not Set" operator before rewriting it — a plain
-  // JsonLogic `some/==null` shape is otherwise ambiguous with a
-  // hand-authored rule that intentionally means "some element is null".
-  // Defaults to always-confirmed to preserve prior behavior for callers
-  // that don't have tree context (e.g. a rule just edited in the builder).
   getNegativeQueryForNotContainsReverserOperation = (
-    logic: Record<string, unknown>,
-    isConfirmedIsNullField: (field: string) => boolean = () => true
+    logic: Record<string, unknown>
   ) => {
     const processNotContains = (
       logic: Record<string, unknown>
@@ -828,8 +820,7 @@ class JSONLogicSearchClassBase {
         if (
           Array.isArray(equalsNullArgs) &&
           equalsNullArgs.length === 2 &&
-          equalsNullArgs[1] === null &&
-          isConfirmedIsNullField(equalsNullArgs[0] as string)
+          equalsNullArgs[1] === null
         ) {
           const [field] = equalsNullArgs;
 
