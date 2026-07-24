@@ -27,6 +27,26 @@ inputs:
     description: Whether to install Java, Node, and the OpenMetadata server
     required: false
     default: "true"
+  fast-mode:
+    description: Restore a pre-seeded PostgreSQL/OpenSearch fixture and start the server on the host
+    required: false
+    default: "false"
+  fixture-path:
+    description: Path to the pre-seeded Playwright fixture archive
+    required: false
+    default: ""
+  distribution-path:
+    description: Path to the OpenMetadata distribution archive used by fast mode
+    required: false
+    default: ""
+  ingestion-image-path:
+    description: Optional prebuilt Airflow ingestion image archive for dedicated ingestion lanes
+    required: false
+    default: ""
+  lightweight-ingestion:
+    description: Build the ingestion container without installing duplicate host dependencies
+    required: false
+    default: "false"
   install-test-dependencies:
     # ingestion[all], ingestion[test], cx_Oracle, sqlalchemy-redshift/ibmi,
     # pydoris-custom, and nox are only used by py-tests / py-cli-e2e / py-operator
@@ -42,6 +62,7 @@ runs:
   steps:
     # ---- Install Ubuntu Dependencies ---------------------------------------------
     - name: Install Ubuntu dependencies
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
         libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
@@ -50,8 +71,8 @@ runs:
 
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK ${{ inputs.java-version }}
-      if: ${{ inputs.install-server == 'true' }}
-      uses: actions/setup-java@v4
+      if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
+      uses: actions/setup-java@v5
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
@@ -59,27 +80,30 @@ runs:
 
     # ---- Setup Node --------------------------------------------------------------
     - name: Use Node.js ${{ inputs.npm-version }}
-      if: ${{ inputs.install-server == 'true' }}
-      uses: actions/setup-node@v4
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/setup-node@v5
       with:
         node-version: ${{ inputs.npm-version }}
 
     - name: Install yarn
-      if: ${{ inputs.install-server == 'true' }}
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: corepack enable
       shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v5
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ inputs.python-version }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v4
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      uses: astral-sh/setup-uv@v7
 
     - name: Generate Models
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
         python3 -m venv env
         source env/bin/activate
@@ -89,7 +113,7 @@ runs:
       shell: bash
 
     - name: Install Python Dependencies
-      if: ${{ inputs.install-test-dependencies == 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       run: |
         source env/bin/activate
         uv pip install "setuptools<81"
@@ -111,8 +135,8 @@ runs:
       shell: bash
 
     - name: Start Server and Ingest Sample Data
-      if: ${{ inputs.install-server == 'true' }}
-      uses: nick-fields/retry@v3.0.2
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' }}
+      uses: nick-fields/retry@v4
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
       with:
@@ -120,3 +144,21 @@ runs:
         max_attempts: 2
         retry_on: error
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
+
+    - name: Restore fast Playwright environment
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      run: |
+        if [[ -z "${{ inputs.fixture-path }}" || -z "${{ inputs.distribution-path }}" ]]; then
+          echo "fixture-path and distribution-path are required in fast mode" >&2
+          exit 2
+        fi
+        fast_args=(
+          "${{ inputs.fixture-path }}"
+          "${{ inputs.distribution-path }}"
+        )
+        if [[ -n "${{ inputs.ingestion-image-path }}" ]]; then
+          fast_args+=("${{ inputs.ingestion-image-path }}")
+        fi
+        timeout --signal=TERM --kill-after=30s 5m \
+          ./.github/scripts/start_playwright_fast_environment.sh "${fast_args[@]}"
+      shell: bash

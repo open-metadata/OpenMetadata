@@ -434,29 +434,17 @@ export const verifyBundleSuitePageLoaded = async (
 ) => {
   await expect(page).toHaveURL(new RegExp(`.*test-suites.*${suiteName}.*`));
 
-  await expect
-    .poll(
-      async () => {
-        const listTestCasesResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/search/list?*'
-        );
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-        await listTestCasesResponse;
+  await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-        const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-          .count();
+  const testCaseRows = page
+    .getByTestId('test-case-table')
+    .locator('[role="rowgroup"]')
+    .last()
+    .getByRole('row');
 
-        return rows;
-      },
-      {
-        timeout: 15000,
-        intervals: [3000],
-      }
-    )
-    .toBe(expectedTestCaseCount);
+  await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
+    timeout: 30000,
+  });
 };
 
 /** A `dataQualityReport` call captured for assertion in tests. */

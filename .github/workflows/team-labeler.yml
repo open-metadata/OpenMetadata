@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Team Label
     steps:
-      - uses: JulienKode/team-labeler-action@v0.1.1
+      - uses: JulienKode/team-labeler-action@v3.0.0
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
 
@@ -28,7 +28,7 @@ jobs:
 
       - name: Add verification comment
         if: steps.verify.outcome != 'success'
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

@@ -108,6 +108,8 @@ export default defineConfig(async ({ mode }) => {
     env.VITE_DEV_SERVER_TARGET ||
     env.DEV_SERVER_TARGET ||
     'http://localhost:8585/';
+  const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
+  const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -164,6 +166,7 @@ export default defineConfig(async ({ mode }) => {
           filter: /\.(js|mjs|css|html|svg|json|wasm)(\?.*)?$/i,
         }),
       mode === 'production' &&
+        !isPlaywrightBundle &&
         viteCompression({
           algorithm: 'brotliCompress',
           ext: '.br',
@@ -287,7 +290,7 @@ export default defineConfig(async ({ mode }) => {
       target: ['chrome93', 'edge93', 'firefox91', 'safari16'],
       minify: mode === 'production' ? 'esbuild' : false,
       cssMinify: 'esbuild',
-      cssCodeSplit: true,
+      cssCodeSplit: !isPlaywrightBundle,
       reportCompressedSize: false,
       chunkSizeWarningLimit: 1500,
       // Vite auto-emits <link rel="modulepreload"> for the entry chunk's
@@ -299,7 +302,16 @@ export default defineConfig(async ({ mode }) => {
       // count, and we're not the right project to be carrying it.
       modulePreload: { polyfill: false },
       rollupOptions: {
+        onwarn(warning, warn) {
+          if (isPlaywrightBundle && warning.code === 'CIRCULAR_CHUNK') {
+            throw new Error(warning.message);
+          }
+          warn(warning);
+        },
         output: {
+          entryFileNames: isPlaywrightBuild
+            ? 'assets/app-entry-[hash].js'
+            : 'assets/[name]-[hash].js',
           assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
@@ -312,8 +324,54 @@ export default defineConfig(async ({ mode }) => {
             return `assets/[name]-[hash][extname]`;
           },
           manualChunks: (id: string) => {
+            const normalizedId = id.split('?')[0].replaceAll('\\', '/');
+
+            if (isPlaywrightBundle) {
+              // Keep every connector schema independently lazy so the minimum
+              // chunk-size pass cannot attach shared shell code and preload the
+              // full connector catalog during an authenticated app boot.
+              if (normalizedId.includes('/src/jsons/connectionSchemas/')) {
+                const schemaPath = normalizedId.split(
+                  '/src/jsons/connectionSchemas/'
+                )[1];
+
+                return `app-e2e-schema-${schemaPath
+                  .replace(/\.json$/, '')
+                  .replaceAll(/[^a-zA-Z0-9_-]/g, '-')}`;
+              }
+              if (
+                normalizedId.includes('/src/components/MyData/') ||
+                normalizedId.includes('/src/pages/MyDataPage/') ||
+                normalizedId.includes('/src/components/KnowledgeCenter/') ||
+                normalizedId.includes('/src/utils/LandingPageWidget/') ||
+                /\/src\/utils\/(?:CustomizeMyDataPage|CustomizableLandingPage|DataAssetService|LandingPageWidgetIconUtils)/.test(
+                  normalizedId
+                )
+              ) {
+                return 'app-e2e-runtime';
+              }
+            }
+
             if (!id.includes('node_modules')) {
               return;
+            }
+            if (isPlaywrightBundle) {
+              if (
+                id.includes('node_modules/elkjs') ||
+                id.includes('node_modules/@reactflow') ||
+                id.includes('node_modules/reactflow')
+              ) {
+                return 'vendor-e2e-lineage';
+              }
+              const packagePath = id.split(/node_modules[\\/]/).pop() ?? id;
+              const [scopeOrName, scopedName] = packagePath.split(/[\\/]/);
+              const packageName = scopeOrName.startsWith('@')
+                ? `${scopeOrName}/${scopedName}`
+                : scopeOrName;
+
+              return ['react', 'react-dom', 'scheduler'].includes(packageName)
+                ? 'vendor-e2e-framework'
+                : 'app-e2e-runtime';
             }
             // Antd remains its own vendor chunk — almost every route touches some
             // part of it, so the cache-sharing argument holds. Tree-shaking inside
@@ -404,13 +462,11 @@ export default defineConfig(async ({ mode }) => {
               return `vendor-${unscopedMatch[1]}`;
             }
           },
-          // Merge any chunk smaller than this back into its primary importer. Keeps
-          // the per-package split sane for big packages while preventing the long
-          // tail of ~1 KB utility packages from each becoming their own HTTP
-          // request. 10 KB is a balance — small enough that lodash / dayjs /
-          // classnames stay separable, large enough that 200 tiny packages don't
-          // each get a network roundtrip.
-          experimentalMinChunkSize: 10 * 1024,
+          // The CI-only coarse bundle trades fine-grained browser caching for
+          // fewer cold-context requests. Production keeps the existing 10 KiB
+          // threshold, while Playwright groups small application modules more
+          // aggressively without collapsing route or connector boundaries.
+          experimentalMinChunkSize: isPlaywrightBundle ? 32 * 1024 : 10 * 1024,
         },
       },
     },
@@ -431,6 +487,7 @@ export default defineConfig(async ({ mode }) => {
     cacheDir: 'node_modules/.vite',
 
     define: {
+      'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
       'process.env.NODE_ENV': JSON.stringify(mode),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'

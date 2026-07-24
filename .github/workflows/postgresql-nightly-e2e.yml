@@ -62,13 +62,13 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.branch }}
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -169,7 +169,7 @@ jobs:
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: blob-report-${{ matrix.shardIndex }}
           overwrite: true
@@ -178,7 +178,7 @@ jobs:
 
       - name: Upload HTML report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-HTML-report-${{ matrix.shardIndex }}
           overwrite: true
@@ -205,17 +205,17 @@ jobs:
       SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.branch }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
       - name: Download blob reports from GitHub Actions Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: openmetadata-ui/src/main/resources/ui/blob-reports
           pattern: blob-report-*
@@ -241,7 +241,7 @@ jobs:
       - name: Upload Playwright shadow-gate ledger
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-shadow-gate-postgresql-nightly-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
