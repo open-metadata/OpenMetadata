@@ -547,6 +547,18 @@ test.describe.serial('Team persona setting flow', () => {
       const personaResponse2 = await personasLoadResponse2;
       expect(personaResponse2.status()).toBe(200);
 
+      // Typing filters via the server-side search endpoint, not client-side.
+      const personaSearchResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/personas/search') &&
+          response.request().method() === 'GET'
+      );
+      await adminPage
+        .locator('[data-testid="default-persona-select-list"] input')
+        .fill(teamPersona2.responseData.displayName);
+      const searchResponse = await personaSearchResponse;
+      expect(searchResponse.status()).toBe(200);
+
       // Click the new persona (teamPersona2)
       const userPersonaOption = adminPage.locator(
         `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
