@@ -248,16 +248,31 @@ export const useTestCaseIncidentHeader = ({
   }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
 
   useEffect(() => {
+    const inlineStatus = testCaseData?.incidentStatus as
+      | TestCaseResolutionStatus
+      | undefined;
+    const resolvedStatus =
+      inlineStatus?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Resolved
+        ? inlineStatus
+        : undefined;
+
     if (testCaseData?.incidentId) {
       setIsLoading(true);
       Promise.allSettled([
         fetchTestCaseResolution(testCaseData.incidentId),
         fetchIncidentTask(testCaseData.incidentId),
       ]).finally(() => setIsLoading(false));
+    } else if (resolvedStatus?.stateId) {
+      setIsLoading(true);
+      setTestCaseStatusData(resolvedStatus);
+      fetchIncidentTask(resolvedStatus.stateId).finally(() =>
+        setIsLoading(false)
+      );
     } else {
       setIsLoading(false);
     }
-  }, [testCaseData?.incidentId]);
+  }, [testCaseData?.incidentId, testCaseData?.incidentStatus]);
 
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]

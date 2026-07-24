@@ -155,6 +155,7 @@ class TestCaseClassBase {
       TabSpecificField.TEST_DEFINITION,
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
       TabSpecificField.TAGS,
       TabSpecificField.DATA_PRODUCTS,
       TabSpecificField.DOMAINS,
