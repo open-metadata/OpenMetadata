@@ -1,7 +1,9 @@
 package org.openmetadata.service.security;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,6 +11,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +42,7 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -55,6 +61,9 @@ import org.pac4j.oidc.config.OidcConfiguration;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class AuthenticationCodeFlowHandlerTest {
 
+  private static final String TEST_SERVER_URL = "https://om.test";
+  private static final String MCP_CALLBACK = "/mcp/callback";
+
   @Mock private SessionService sessionService;
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
@@ -68,11 +77,13 @@ class AuthenticationCodeFlowHandlerTest {
     captureOutputStream = new CaptureServletOutputStream();
     when(response.getOutputStream()).thenReturn(captureOutputStream);
     AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
   }
 
   @AfterEach
   void tearDown() {
     AuthenticationCodeFlowHandler.setMcpStateChecker(null);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
   }
 
   @Test
@@ -471,6 +482,127 @@ class AuthenticationCodeFlowHandlerTest {
       throw e;
     }
     return result;
+  }
+
+  @Test
+  void handleLogin_mcpFlow_skipsActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    createLoginHandler().handleLogin(request, response);
+
+    // MCP must always run the full OIDC round-trip so the id_token is provider-issued; taking the
+    // active-session shortcut would mint an OpenMetadata JWT and fail the MCP issuer check.
+    verify(sessionService, never()).getActiveSession(any(), any());
+  }
+
+  @Test
+  void handleLogin_webFlow_stillUsesActiveSessionShortcut() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    createLoginHandler().handleLogin(request, response);
+
+    verify(sessionService).getActiveSession(request, response);
+  }
+
+  @Test
+  void handleLogin_mcpFlow_persistsPendingStateBeforeProviderRedirect() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+
+    Map<String, String> persisted = new HashMap<>();
+    AtomicBoolean redirectAlreadySent = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> {
+          redirectAlreadySent.set(
+              mockingDetails(response).getInvocations().stream()
+                  .anyMatch(invocation -> "sendRedirect".equals(invocation.getMethod().getName())));
+          persisted.put("state", state);
+          persisted.put("nonce", nonce);
+          persisted.put("codeVerifier", codeVerifier);
+        });
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisted.isEmpty(), "persister must run for the MCP flow");
+    assertNotNull(persisted.get("state"), "state must be linked to the pending MCP request");
+    assertNotNull(persisted.get("nonce"));
+    assertNotNull(persisted.get("codeVerifier"));
+    assertFalse(
+        redirectAlreadySent.get(),
+        "state must be persisted BEFORE the provider redirect, otherwise a fast round-trip "
+            + "can return to /callback before the state is resolvable");
+  }
+
+  @Test
+  void handleLogin_webFlow_doesNotPersistMcpPendingState() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + "/auth/callback");
+    when(sessionService.getActiveSession(request, response)).thenReturn(Optional.empty());
+
+    AtomicBoolean persisterCalled = new AtomicBoolean(false);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+        (req, state, nonce, codeVerifier) -> persisterCalled.set(true));
+
+    createLoginHandler().handleLogin(request, response);
+
+    assertFalse(persisterCalled.get(), "web login must not touch MCP pending state");
+  }
+
+  @Test
+  void handleLogin_mcpFlow_withNoPersisterRegistered_doesNotThrow() throws Exception {
+    stubOidcConfigForLogin();
+    when(request.getParameter(AuthenticationCodeFlowHandler.REDIRECT_URI_KEY))
+        .thenReturn(TEST_SERVER_URL + MCP_CALLBACK);
+    AuthenticationCodeFlowHandler.setMcpPendingStatePersister(null);
+
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+
+    assertDoesNotThrow(() -> handler.handleLogin(request, response));
+  }
+
+  @Test
+  void isMcpRedirectUri_matchesOnlyTheMcpCallback() throws Exception {
+    AuthenticationCodeFlowHandler handler = createLoginHandler();
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("isMcpRedirectUri", String.class);
+    method.setAccessible(true);
+
+    // Drives the handleCallback gate that decides whether provider credentials are handed to MCP.
+    assertTrue((Boolean) method.invoke(handler, TEST_SERVER_URL + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, TEST_SERVER_URL + "/auth/callback"));
+    assertFalse((Boolean) method.invoke(handler, "https://evil.example.com" + MCP_CALLBACK));
+    assertFalse((Boolean) method.invoke(handler, (Object) null));
+  }
+
+  private void stubOidcConfigForLogin() {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(oidcConfiguration.getScope()).thenReturn("openid email profile");
+    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    when(oidcConfiguration.getCustomParams()).thenReturn(new HashMap<>());
+    when(oidcConfiguration.getClientId()).thenReturn("test-client-id");
+    when(oidcConfiguration.isWithState()).thenReturn(true);
+    when(oidcConfiguration.isUseNonce()).thenReturn(true);
+    when(oidcConfiguration.isDisablePkce()).thenReturn(false);
+  }
+
+  /** Handler wired up far enough to drive handleLogin() through state generation. */
+  private AuthenticationCodeFlowHandler createLoginHandler() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(authConfig.getProvider()).thenReturn(AuthProvider.GOOGLE);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    setField(handler, "authenticationConfiguration", authConfig);
+    return handler;
   }
 
   /**

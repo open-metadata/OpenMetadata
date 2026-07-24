@@ -124,6 +124,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
+  private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
@@ -367,9 +369,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       //    - MCP handles its own final redirect
       // 2. Web login flow: any other redirect URI
       String redirectUri;
-      String expectedMcpCallback = serverUrl + "/mcp/callback";
-      boolean isMcpFlow =
-          requestedRedirectUri != null && requestedRedirectUri.equals(expectedMcpCallback);
+      boolean isMcpFlow = isMcpRedirectUri(requestedRedirectUri);
       if (isMcpFlow) {
         redirectUri = requestedRedirectUri;
         LOG.debug(
@@ -436,6 +436,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
+  private boolean isMcpRedirectUri(String redirectUri) {
+    return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
+  }
+
   private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
     McpPendingStatePersister persister = mcpPendingStatePersister;
     if (persister != null) {
@@ -488,6 +492,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       validateNonceIfRequired(pendingSession, credentials.getIdToken().getJWTClaimsSet());
+
+      // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
+      // is only available here. Hand the validated credentials over on the session for it to pick
+      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
+        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+      }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(credentials.getIdToken().getJWTClaimsSet().getClaims());
