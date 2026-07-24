@@ -699,15 +699,19 @@ export const closeTaskFromDetails = async (page: Page) => {
       '[data-testid="workflow-task-action-dropdown"], [data-testid="edit-accept-task-dropdown"], [data-testid="add-close-task-dropdown"]'
     )
     .first();
-  const trigger = getDropdownTrigger(dropdown);
-
-  await expect(trigger).toBeVisible();
   logTaskDebug('closeTaskFromDetails:dropdown');
-  await trigger.click();
   const taskActionResponse = waitForTaskActionResponse(page);
-  await page.getByRole('menuitem', { name: /reject|decline|close/i }).click();
+  await clickDropdownMenuItem({
+    dropdown,
+    page,
+    menuPattern: /reject|decline|close/i,
+  });
 
   const visibleModal = page.locator(VISIBLE_TASK_MODAL_SELECTOR).first();
+  await visibleModal
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .catch(() => undefined);
+
   if (await visibleModal.isVisible().catch(() => false)) {
     const commentInput = visibleModal.locator('textarea').last();
     if (await commentInput.isVisible().catch(() => false)) {

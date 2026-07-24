@@ -22,10 +22,12 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-const testUser = new UserClass();
+let testUser: UserClass;
 
 test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
+    testUser = new UserClass();
+
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await testUser.create(apiContext);
     await afterAction();
@@ -82,14 +84,18 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   test('Should update user activity time when user navigates', async ({
+    browser,
     page,
   }) => {
-    // First, navigate around to generate activity
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    await waitForAllLoadersToDisappear(page);
-
-    await sidebarClick(page, SidebarItem.DATA_QUALITY);
-    await waitForAllLoadersToDisappear(page);
+    const userPage = await browser.newPage();
+    try {
+      await testUser.login(userPage);
+      await redirectToHomePage(userPage);
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await waitForAllLoadersToDisappear(userPage);
+    } finally {
+      await userPage.close();
+    }
 
     const onlineUsersRes = page.waitForResponse('/api/v1/users/online?*');
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
@@ -99,14 +105,19 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await expect(page.getByTestId('online-users-table')).toBeVisible();
 
-    // Admin user should appear in the online users list with recent activity
-    const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
+    const displayName = testUser.responseData.displayName;
+    const searchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=user&from=0&size=*'
+    );
+    await page.getByTestId('searchbar').fill(displayName);
+    await searchResponse;
+    await waitForAllLoadersToDisappear(page);
 
-    await expect(adminLink).toBeVisible();
+    const userCell = page.getByRole('cell', { name: displayName }).first();
+    await expect(userCell).toBeVisible();
 
-    // Check that admin user shows recent activity since we just navigated
-    const adminRow = page.locator('tr').filter({ has: adminLink });
-    const activityCell = adminRow.locator('td:nth-child(3)');
+    const userRow = page.locator('tr').filter({ has: userCell });
+    const activityCell = userRow.locator('td:nth-child(3)');
 
     await expect(activityCell).toHaveText(
       /(Online now|\d+\s+(seconds?|minutes?)\s+ago)/

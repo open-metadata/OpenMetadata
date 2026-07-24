@@ -129,7 +129,7 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # On a PR, test the PR head (the changed code). workflow_dispatch honours the
           # dispatched ref so feature branches can validate the nightly matrix before merge.
@@ -137,13 +137,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -172,10 +172,10 @@ jobs:
         run: mvn -DskipTests install -pl :openmetadata-dist -am
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Build openmetadata-server image (with GHA layer cache)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/development/Dockerfile
@@ -193,7 +193,7 @@ jobs:
           ls -lh /tmp/jpw-server-image.tar
 
       - name: Upload server image artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: jpw-server-image-${{ github.run_id }}
           path: /tmp/jpw-server-image.tar
@@ -220,18 +220,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -259,7 +259,7 @@ jobs:
         run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
 
       - name: Download server image artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jpw-server-image-${{ github.run_id }}
           path: /tmp
@@ -320,7 +320,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -329,7 +329,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -338,7 +338,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -359,7 +359,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
@@ -389,18 +389,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -428,7 +428,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: failsafe-reports-search-it-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -445,7 +445,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
