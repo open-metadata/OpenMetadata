@@ -29,7 +29,6 @@ import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
   getApiContext,
-  INVALID_NAMES,
   redirectToHomePage,
 } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -143,37 +142,28 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
 
 test.describe('Service form', () => {
   /**
-   * Tests validation for invalid service names
-   * @description Ensures required and character constraints surface errors on the name field
+   * Tests service-name gating on the Configure & Connect step.
+   * @description The merged step's advance button stays disabled until a valid
+   * service name is entered. Character-constraint validation is no longer done
+   * client-side in this form (the field enforces required + uniqueness only),
+   * so this test asserts the enable/disable gating rather than inline
+   * character-error messages.
    */
-  test('name field should throw error for invalid name', async ({ page }) => {
+  test('name field gates the Configure & Connect step', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.DATABASES);
     await page.click('[data-testid="add-service-button"]');
+
+    // Selecting a connector auto-advances to the merged Configure & Connect step
+    // (service name + connection share one step now).
     await page.click('[data-testid="Mysql"]');
-    await page.click('[data-testid="next-button"]');
-
     await page.getByTestId('service-name').waitFor();
-    await page.click('[data-testid="next-button"]');
 
-    await expect(page.locator('#name_help')).toBeVisible();
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
+    // The step's advance button stays disabled until a valid service name is set.
+    await expect(page.getByTestId('next-button')).toBeDisabled();
 
-    await page.fill(
-      '[data-testid="service-name"]',
-      INVALID_NAMES.WITH_SPECIAL_CHARS
-    );
-
-    await expect(page.locator('#name_help')).toBeVisible();
-    await expect(page.locator('#name_help')).toHaveText(
-      'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
-    );
-
-    await page.fill('[data-testid="service-name"]', 'test-service');
-
-    await page.click('[data-testid="next-button"]');
-
-    await expect(page.getByTestId('step-icon-3')).toHaveClass(/active/);
+    await page.fill('[data-testid="service-name"]', 'test-service-valid');
+    await expect(page.getByTestId('next-button')).toBeEnabled();
   });
 });
 

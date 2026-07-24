@@ -54,7 +54,10 @@ import { ResponseDataType } from '../Entity.interface';
 
 interface RunnerDetails {
   name: string;
-  displayName?: string;
+  // The react-aria runner Select matches options by their visible label, so a
+  // display name is required — the system `name` (e.g. `CollateSaaS`) is not
+  // rendered and would not match.
+  displayName: string;
 }
 class ServiceBaseClass {
   public category: Services;
@@ -129,19 +132,20 @@ class ServiceBaseClass {
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
 
-      // Using data-key which relies on `name` which is more reliable data in AUTs
-      // instead of data-testid which depends on the `displayName` which can change
-      const runnerOption = page.locator(
-        `[data-key="${this.ingestionRunner.name}"]`
-      );
+      // The runner control is now a react-aria Select whose options render as
+      // role="listbox" entries (no more antd `data-key`). Match the option by
+      // its visible label (displayName); the substring match tolerates a
+      // display-name suffix (e.g. "Collate SaaS" matches "Collate SaaS Runner").
+      const runnerLabel = this.ingestionRunner.displayName;
+      const runnerOption = page
+        .getByRole('option', { name: runnerLabel })
+        .first();
       await runnerOption.waitFor({ state: 'visible' });
       await runnerOption.click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
-      ).toContainText(
-        this.ingestionRunner.displayName ?? this.ingestionRunner.name
-      );
+      ).toContainText(runnerLabel);
     }
 
     if (this.shouldTestConnection) {
@@ -470,10 +474,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 5 minutes past the hour'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Every hour, every day'
     );
 
@@ -495,12 +499,10 @@ class ServiceBaseClass {
 
     await getIngestionPipelines;
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 04:04 AM'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every day'
-    );
+    await expect(page.getByTestId('agent-schedule')).toContainText('Every day');
 
     // click and edit pipeline schedule for Week
     await page.getByTestId('more-actions').first().click();
@@ -514,10 +516,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'At 05:05 AM'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Only on wednesday'
     );
 
@@ -533,12 +535,22 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Every hour'
     );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+    await expect(page.getByTestId('agent-schedule')).toContainText(
       'Only on saturday, only in february'
     );
+  }
+
+  async openIngestionFilterSection(page: Page) {
+    await waitForAllLoadersToDisappear(page);
+    const ingestionFilterSection = page.getByTestId(
+      'ingestion-section-filters'
+    );
+    if (await ingestionFilterSection.isVisible()) {
+      await ingestionFilterSection.click();
+    }
   }
 
   async updateDescriptionForIngestedTables(
