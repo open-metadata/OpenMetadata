@@ -48,9 +48,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -85,7 +83,6 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
-import org.openmetadata.service.jdbi3.TableRepository.ColumnTagFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
@@ -93,6 +90,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.ColumnSearchUtil.ColumnTagFilter;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Path("/v1/tables")
@@ -2089,7 +2087,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
-            parseColumnTagFilters(tags, glossaryTerms),
+            ColumnTagFilter.fromCsv(tags, glossaryTerms),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
@@ -2191,30 +2189,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             include,
             sortBy,
             sortOrder,
-            parseColumnTagFilters(tags, glossaryTerms),
+            ColumnTagFilter.fromCsv(tags, glossaryTerms),
             authorizer,
             securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
     return tableColumnList;
-  }
-
-  private ColumnTagFilter parseColumnTagFilters(String tags, String glossaryTerms) {
-    return new ColumnTagFilter(parseFqnCsv(tags), parseFqnCsv(glossaryTerms));
-  }
-
-  private Set<String> parseFqnCsv(String csv) {
-    if (csv == null || csv.isBlank()) {
-      return Set.of();
-    }
-    Set<String> fqns = new HashSet<>();
-    for (String fqn : csv.split(",")) {
-      String trimmed = fqn.trim();
-      if (!trimmed.isEmpty()) {
-        fqns.add(trimmed);
-      }
-    }
-    return fqns;
   }
 }
