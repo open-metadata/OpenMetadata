@@ -13,12 +13,12 @@
 
 @import '../../../../styles/variables.less';
 .feeds-widget-container {
-  background: #ffffff;
+  background: var(--om-color-white);
   border: 1px solid @border-color;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
 
   .ant-tabs-tab-btn {
-    padding: 0 12px;
+    padding: 0 var(--om-space-12);
   }
   .ant-tabs-content {
     height: 100%;
@@ -28,7 +28,7 @@
     overflow-y: auto;
   }
   .ant-tabs-nav {
-    padding: 8px 16px 0 28px;
+    padding: var(--om-space-8) var(--om-space-16) 0 var(--om-space-28);
     margin-bottom: 0 !important;
   }
 
@@ -39,5 +39,5 @@
   }
 }
 .feed-card-body {
-  padding-left: 32px;
+  padding-left: var(--om-space-32);
 }

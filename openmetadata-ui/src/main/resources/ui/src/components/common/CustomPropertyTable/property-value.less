@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   max-width: 100%;
-  padding: 4px;
+  padding: var(--om-space-4);
 
   .entity-icon {
     height: 24px;
@@ -40,7 +40,7 @@
   svg {
     vertical-align: middle;
     width: 14px;
-    transition: 0.3s ease-in-out;
+    transition: var(--om-duration-300) ease-in-out;
   }
 }
 
@@ -52,8 +52,8 @@
 
 .ant-tag.enum-key-tag {
   width: max-content;
-  margin: 0px;
-  padding: 2px 8px;
+  margin: 0;
+  padding: var(--om-space-2) var(--om-space-8);
   border: 1px solid @text-color;
   background: var(--tw-color-bg-primary);
 }
@@ -79,11 +79,11 @@
   }
 
   .property-name {
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
   }
 
   .property-value {
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
 }
 
@@ -94,12 +94,12 @@
 .ant-tag.time-interval-separator {
   height: 26px;
   background: @grey-1;
-  padding: 4px 8px;
-  border-radius: 30px;
-  margin-right: 0px;
-  font-size: 12px;
+  padding: var(--om-space-4) var(--om-space-8);
+  border-radius: var(--om-radius-30);
+  margin-right: 0;
+  font-size: var(--om-font-size-xs);
   text-align: center;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   line-height: 18px;
 }
 

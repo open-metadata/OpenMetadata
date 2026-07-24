@@ -234,6 +234,39 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Custom styles in `.less` files with component-specific naming (legacy pattern, avoid for new code)
 - Follow BEM naming convention for custom CSS classes when writing raw CSS
 
+### Design system tokens & specs (LESS/CSS)
+
+**Before writing or modifying any UI code, read the relevant spec file in
+[`openmetadata-ui/src/main/resources/ui/specs/`](openmetadata-ui/src/main/resources/ui/specs/).**
+Start with `specs/README.md`; consult the matching `specs/foundations/*.md`
+(color, spacing, typography, radius, elevation, motion), the master
+`specs/tokens/token-reference.md`, and the `specs/components/*.md` file for the
+component you are touching.
+
+**Use only tokens from
+[`openmetadata-ui/src/main/resources/ui/src/styles/tokens.css`](openmetadata-ui/src/main/resources/ui/src/styles/tokens.css)**
+(the three-layer design token file: Layer 1 `--ds-*` primitives → Layer 2
+`--om-*` aliases → components reference Layer 2). In any `.less`/`.css`
+component style, reference `var(--om-*)` — never a raw hex, `rgb()`/`rgba()`,
+px spacing, raw font-size/weight, border-radius, box-shadow color, z-index, or
+transition duration. If a value has no token, add it to `tokens.css` (Layer 1 +
+Layer 2), not to the component. Existing LESS `@variable` usage
+(`variables.less`) is still allowed as the legacy bridge layer; prefer
+`var(--om-*)` for new work.
+
+**Run the token audit before committing — zero errors required:**
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn token-audit          # CI-ready; exits 1 on any error (hardcoded colors / spacing)
+```
+
+Supporting commands: `yarn token-audit:report` (full inventory + suggested
+token per value), `yarn token-migrate` (safe, idempotent codemod of raw values →
+tokens), `yarn token-gen` (regenerate the generated block of `tokens.css` and
+the token reference), `yarn token-test` (engine unit tests). Errors =
+hardcoded colors + spacing (fail CI); warnings = uncommon/off-grid values.
+
 ### UI considerations
 
 - Do not use string literals at any place. You should use useTranslation hook and use it like const {t} = useTranslation(). And for example if you want to have "Run" as string, you should be using { t('label.run') }, this label is defined in locales.

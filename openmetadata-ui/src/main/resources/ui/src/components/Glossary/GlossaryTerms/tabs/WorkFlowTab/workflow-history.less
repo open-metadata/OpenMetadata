@@ -44,7 +44,7 @@
         height: @size-xs;
         flex: 1;
         border-radius: @size-xxs;
-        transition: background-color 0.2s ease;
+        transition: background-color var(--om-duration-200) ease;
         min-width: @size-xs;
 
         &.completed {
@@ -93,12 +93,12 @@
       }
       .stage-time {
         color: @grey-400;
-        font-size: 10px;
+        font-size: var(--om-font-size-10);
       }
     }
   }
 }
 .workflow-history-widget-rightPanel {
   background-color: var(--tw-color-bg-primary);
-  padding: 18px 20px 12px 20px;
+  padding: var(--om-space-18) var(--om-space-20) var(--om-space-12) var(--om-space-20);
 }

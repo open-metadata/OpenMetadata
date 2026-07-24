@@ -22,7 +22,7 @@
   .sso-field-group-title {
     background: @grey-9;
     padding: @padding-md @padding-mlg;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     font-size: @font-size-base;
     color: @grey-900;
     border-bottom: 1px solid @border-color;
@@ -45,7 +45,7 @@
       }
 
       .control-label {
-        font-weight: 500;
+        font-weight: var(--om-font-weight-medium);
         font-size: @font-size-base;
         color: @grey-900;
         margin-bottom: @padding-xs;
@@ -63,7 +63,7 @@
         padding: @padding-mlg @padding-md;
         font-size: @font-size-base;
         line-height: @size-mlg;
-        transition: border-color 0.2s ease;
+        transition: border-color var(--om-duration-200) ease;
 
         &:focus {
           border-color: @primary-color;
@@ -146,7 +146,7 @@
 
   .array-item-label,
   .field-array .control-label {
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     font-size: @font-size-base;
     color: @grey-900;
     margin-bottom: @padding-xs;

@@ -19,12 +19,12 @@
 }
 
 .summary-panel-container {
-  border-radius: 12px;
-  border: 1px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  border: 1px solid var(--om-color-gray-blue-100);
   background-color: var(--tw-color-bg-primary);
 
   .ant-card-body {
-    padding: 20px;
+    padding: var(--om-space-20);
   }
 }
 
@@ -33,13 +33,13 @@
   overflow-y: scroll;
 
   .profile-section-user-details-card {
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: var(--om-space-20);
+    margin-bottom: var(--om-space-20);
     background: var(--tw-color-bg-primary);
     justify-content: center;
     align-items: center;
-    border-radius: 12px;
-    border: 1px solid #eaecf5;
+    border-radius: var(--om-radius-xl);
+    border: 1px solid var(--om-color-gray-blue-100);
 
     .user-details-menu-icon {
       position: absolute;
@@ -48,12 +48,12 @@
     }
 
     .profile-details-title {
-      margin-top: 20px;
-      font-size: 18px;
+      margin-top: var(--om-space-20);
+      font-size: var(--om-font-size-lg);
       font-style: normal;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
       line-height: 28px;
-      color: #181d27;
+      color: var(--om-color-gray-900);
       text-align: center;
       word-break: break-word;
     }
@@ -61,15 +61,15 @@
     .profile-details-email {
       color: @primary-heading-color;
       text-align: center;
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       line-height: 20px;
       word-break: break-word;
     }
 
     .profile-details-desc {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       font-style: normal;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
       line-height: 20px;
       color: @text-color;
       text-align: center;
@@ -79,63 +79,63 @@
 }
 
 .profile-section-card {
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   box-shadow: '0 2px 8px rgba(0, 0, 0, 0.1)';
-  margin-bottom: 16px;
-  padding: 20px;
+  margin-bottom: var(--om-space-16);
+  padding: var(--om-space-20);
   background-color: var(--tw-color-bg-primary);
-  margin: 8px 0px;
+  margin: var(--om-space-8) 0;
   width: 100%;
-  gap: 10px;
+  gap: var(--om-space-10);
 }
 
 .users-tabs-container {
   .activity-feed-tab {
     border: none;
-    border-radius: 0px;
+    border-radius: var(--om-radius-none);
   }
 }
 
 .tab-label {
   color: @grey-13;
-  font-size: 16px;
+  font-size: var(--om-font-size-md);
   line-height: 24px;
-  margin: 0px 16px;
+  margin: 0 var(--om-space-16);
   cursor: pointer;
 }
 
 .users-page-activity-feed {
   background: var(--tw-color-bg-primary);
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: var(--om-radius-lg);
+  padding: var(--om-space-20);
 }
 
 .user-profile-card {
   background: white;
-  padding: 20px 20px 10px 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  border: 1px solid #eaecf5;
+  padding: var(--om-space-20) var(--om-space-20) var(--om-space-10) var(--om-space-20);
+  border-radius: var(--om-radius-xl);
+  margin-bottom: var(--om-space-20);
+  border: 1px solid var(--om-color-gray-blue-100);
 
   .user-profile-card-header {
     margin-bottom: @margin-xs;
   }
 
   .user-profile-card-body {
-    margin-bottom: 10px;
+    margin-bottom: var(--om-space-10);
   }
 }
 
 .user-profile-edit-popover-card-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
 }
 
 .chip-text {
   color: @primary-heading-color;
   border: none;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   background-color: white;
 }
 
@@ -150,30 +150,30 @@
 }
 
 .no-default-persona-text {
-  padding-left: 26px;
-  font-size: 14px;
+  padding-left: var(--om-space-26);
+  font-size: var(--om-font-size-sm);
   color: @text-color-tertiary;
 }
 
 .user-page-icon {
-  margin: 2px;
+  margin: var(--om-space-2);
 }
 
 .profile-edit-popover-card {
   .ant-popover {
     overflow: visible !important;
-    z-index: 1050;
+    z-index: var(--om-z-1050);
   }
 
   .ant-popover-inner {
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
   }
 
   .ant-popover-inner-content {
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-20);
     width: 379px;
-    box-shadow: 0px 4px 4px 0px rgba(0, 0, 0, 0.25);
+    box-shadow: 0px 4px 4px 0px var(--om-legacy-color-0-0-0-0-25);
   }
 
   .ant-select-selection-search-input {
@@ -185,45 +185,45 @@
   }
 
   .ant-select {
-    border-radius: 5px;
+    border-radius: var(--om-radius-5);
   }
 
   .ant-select-item-option-content {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
   }
 
   .ant-select-item-option-selected,
   .ant-select-selection-item {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
   }
 
   .ant-select:not(.ant-select-customize-input) {
-    border-radius: 5px !important;
+    border-radius: var(--om-radius-5) !important;
 
     .ant-select-selector {
-      border-radius: 5px !important;
+      border-radius: var(--om-radius-5) !important;
       border: none;
-      background: #fdfdfd;
+      background: var(--om-color-gray-25);
       display: flex;
       align-items: center;
-      padding: 12px;
+      padding: var(--om-space-12);
 
       .ant-select-selection-item {
-        border-radius: 4px;
-        border: 0.5px solid #d4d4d8;
+        border-radius: var(--om-radius-sm);
+        border: 0.5px solid var(--om-legacy-color-d4d4d8);
         background: none;
         align-items: center;
-        margin-right: 8px;
-        padding: 4px 8px;
+        margin-right: var(--om-space-8);
+        padding: var(--om-space-4) var(--om-space-8);
         background: @grey-9;
       }
 
       .ant-select-selection-item-content {
-        color: #292929;
+        color: var(--om-color-gray-true-800);
         font-family: Inter;
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
         font-style: normal;
-        font-weight: 400;
+        font-weight: var(--om-font-weight-regular);
         line-height: normal;
       }
     }
@@ -262,7 +262,7 @@
 .persona-profile-edit-cancel.ant-btn-icon-only.ant-btn-sm {
   width: 30px;
   height: 30px;
-  background: #0950c5;
+  background: var(--om-legacy-color-0950c5);
   position: absolute;
   bottom: 0;
   display: flex;
@@ -273,7 +273,7 @@
 .persona-profile-edit-save.ant-btn-icon-only.ant-btn-sm {
   width: 30px;
   height: 30px;
-  background: #0950c5;
+  background: var(--om-legacy-color-0950c5);
   position: absolute;
   bottom: 0;
   right: 38px;
@@ -284,9 +284,9 @@
 
 .max-tag-text {
   font-family: Inter;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 22px;
   color: @primary-heading-color;
 }
@@ -306,7 +306,7 @@
 
 .custom-domain-edit-select {
   .ant-select-selector {
-    border: 1px solid #dde3ea !important;
+    border: 1px solid var(--om-legacy-color-dde3ea) !important;
   }
 
   width: 339px;
@@ -315,7 +315,7 @@
 .persona-custom-dropdown-class,
 .roles-custom-dropdown-class {
   .ant-select-item-option-selected {
-    font-weight: 400 !important;
+    font-weight: var(--om-font-weight-regular) !important;
   }
 }
 
@@ -326,11 +326,11 @@
   color: @red-10;
   text-align: center;
   font-style: normal;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-medium);
   line-height: 20px;
-  border-radius: 16px;
+  border-radius: var(--om-radius-2xl);
   background: @red-9;
-  padding: 2px 8px 2px 10px;
+  padding: var(--om-space-2) var(--om-space-8) var(--om-space-2) var(--om-space-10);
   margin-top: @margin-xs;
 
   svg {
@@ -340,10 +340,10 @@
   }
 }
 .selected-chip-tag-remove {
-  margin-left: 4px;
-  font-size: 12px;
+  margin-left: var(--om-space-4);
+  font-size: var(--om-font-size-xs);
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0 var(--om-space-4);
   border: none;
   background: none;
   svg {
@@ -358,7 +358,7 @@
 
   .domain-link-name {
     color: @text-color;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
 
     &:hover {
       color: @primary-heading-color;

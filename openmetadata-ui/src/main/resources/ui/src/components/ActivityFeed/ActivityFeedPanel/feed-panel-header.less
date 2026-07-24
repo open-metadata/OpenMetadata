@@ -12,29 +12,29 @@
  */
 
 .feed-panel-header {
-  padding: 16px;
-  border-bottom: 1px solid #e8e8e8;
-  background-color: #fafafa;
+  padding: var(--om-space-16);
+  border-bottom: 1px solid var(--om-legacy-color-e8e8e8);
+  background-color: var(--om-color-gray-50);
 
   .task-status-badge {
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: var(--om-space-2) var(--om-space-8);
+    border-radius: var(--om-radius-sm);
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-medium);
 
     &.open {
-      background-color: #e6f7ff;
-      color: #1890ff;
+      background-color: var(--om-legacy-color-e6f7ff);
+      color: var(--om-legacy-color-1890ff);
     }
 
     &.closed {
-      background-color: #f6ffed;
-      color: #52c41a;
+      background-color: var(--om-legacy-color-f6ffed);
+      color: var(--om-legacy-color-52c41a);
     }
 
     &.granted {
-      background-color: #e6fffb;
-      color: #13c2c2;
+      background-color: var(--om-legacy-color-e6fffb);
+      color: var(--om-legacy-color-13c2c2);
     }
   }
 }

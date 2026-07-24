@@ -15,7 +15,7 @@
 
 .contract-schema-component-container {
   .column-status-icon {
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
     &.success {
       color: transparent;
     }
@@ -35,11 +35,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     background: var(--tw-color-bg-primary);
-    box-shadow: 0 0 0 1px rgba(10, 13, 18, 0.18) inset,
-      0 -2px 0 0 rgba(10, 13, 18, 0.05) inset,
-      0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    box-shadow: 0 0 0 1px var(--om-legacy-color-10-13-18-0-18) inset,
+      0 -2px 0 0 var(--om-legacy-color-10-13-18-0-05) inset,
+      0 1px 2px 0 var(--om-legacy-color-10-13-18-0-05);
 
     .anticon {
       color: @grey-400;
@@ -51,7 +51,7 @@
   }
 
   .ant-pagination-prev {
-    margin-right: 10px;
+    margin-right: var(--om-space-10);
     .anticon {
       transform: rotate(180deg);
     }

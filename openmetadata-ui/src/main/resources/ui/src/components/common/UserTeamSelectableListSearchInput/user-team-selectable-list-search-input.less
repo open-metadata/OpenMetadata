@@ -21,23 +21,23 @@
 
 .select-owners {
   .assignee-tag {
-    margin-right: 8px;
+    margin-right: var(--om-space-8);
     background: var(--tw-color-bg-primary);
-    padding: 2px 8px;
+    padding: var(--om-space-2) var(--om-space-8);
     height: 24px;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
     border: 1px solid @grey-300;
 
     .ant-typography {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       color: @grey-700;
     }
 
     .anticon {
       color: @grey-400;
-      font-weight: 500;
-      font-size: 8px;
+      font-weight: var(--om-font-weight-medium);
+      font-size: var(--om-font-size-8);
     }
 
     .ant-select-selection-item-content {
@@ -46,7 +46,7 @@
     }
 
     .ant-select-selection-item-remove {
-      margin-top: 2px;
+      margin-top: var(--om-space-2);
     }
   }
 }

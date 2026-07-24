@@ -37,18 +37,18 @@
 
   .learning-drawer-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
     font-weight: @font-semibold;
     color: @grey-900;
   }
 
   .learning-drawer-close {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     color: @grey-500;
     cursor: pointer;
     padding: @padding-xs;
     border-radius: @border-rad-base;
-    transition: all 0.2s ease;
+    transition: all var(--om-duration-200) ease;
 
     &:hover {
       color: @grey-700;

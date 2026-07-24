@@ -16,34 +16,34 @@
 .main-container {
   .pricing-banner {
     background-color: @yellow-5;
-    padding: 0 24px;
+    padding: 0 var(--om-space-24);
     display: flex;
     justify-content: space-between;
     align-items: center;
     line-height: inherit;
 
     .anticon {
-      color: #ffab2a;
+      color: var(--om-legacy-color-ffab2a);
     }
 
     &.errored {
       background-color: @red-5;
 
       .anticon {
-        color: #f44336;
+        color: var(--om-legacy-color-f44336);
       }
     }
 
     .pricing-header {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       line-height: 21px;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
 
     .pricing-subheader {
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
-      color: #757575;
+      color: var(--om-legacy-color-757575);
     }
   }
 }

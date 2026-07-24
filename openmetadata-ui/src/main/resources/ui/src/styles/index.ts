@@ -17,6 +17,10 @@ import '@fontsource/source-code-pro'; // Font 400
 // Unicode subset covering the full 100–900 weight axis, replacing the prior
 // 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
 // header in {@link ./inter-variable.css} for context.
+// Design tokens (Layer 1 --ds-* / Layer 2 --om-*) — loaded first so the
+// custom properties are defined before any component style references them.
+// See ./tokens.css and ./specs/.
+import './tokens.css';
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';

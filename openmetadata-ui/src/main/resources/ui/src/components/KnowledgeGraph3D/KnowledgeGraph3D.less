@@ -15,14 +15,14 @@
 
 // Scene chrome colors are WebGL/stage surface values fixed by the Knowledge
 // Graph 3D design spec; they are not part of the app's token surfaces.
-@kg3d-stage-overlay: rgba(13, 18, 38, 0.72);
-@kg3d-overlay-border: rgba(255, 255, 255, 0.1);
-@kg3d-caption-muted: #717680;
-@kg3d-caption-text: #414651;
-@kg3d-panel-text-primary: #f4f7fc;
-@kg3d-panel-text-secondary: #eaf0fb;
-@kg3d-panel-text-muted: #94a3b8;
-@kg3d-panel-text-subtle: #8a93a8;
+@kg3d-stage-overlay: var(--om-legacy-color-13-18-38-0-72);
+@kg3d-overlay-border: var(--om-legacy-color-255-255-255-0-1);
+@kg3d-caption-muted: var(--om-color-gray-500);
+@kg3d-caption-text: var(--om-color-gray-700);
+@kg3d-panel-text-primary: var(--om-legacy-color-f4f7fc);
+@kg3d-panel-text-secondary: var(--om-legacy-color-eaf0fb);
+@kg3d-panel-text-muted: var(--om-legacy-color-94a3b8);
+@kg3d-panel-text-subtle: var(--om-legacy-color-8a93a8);
 
 .knowledge-graph-3d {
   height: @asset-details-tab-pane-height;
@@ -34,28 +34,28 @@
     flex: none;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 24px 12px;
-    font-size: 12px;
+    gap: var(--om-space-10);
+    padding: 0 var(--om-space-24) var(--om-space-12);
+    font-size: var(--om-font-size-xs);
     color: @kg3d-caption-muted;
 
     .knowledge-graph-3d-scope {
-      font-weight: 600;
-      color: #181d27;
+      font-weight: var(--om-font-weight-semibold);
+      color: var(--om-color-gray-900);
     }
 
     .knowledge-graph-3d-caption-sep {
-      color: #d5d7da;
+      color: var(--om-color-gray-300);
     }
 
     .knowledge-graph-3d-caption-desc {
       color: @kg3d-caption-text;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
 
     .knowledge-graph-3d-caption-truncated {
-      color: var(--color-text-warning-primary, #b54708);
-      font-weight: 600;
+      color: var(--color-text-warning-primary, var(--om-color-warning-700));
+      font-weight: var(--om-font-weight-semibold);
     }
   }
 
@@ -63,8 +63,8 @@
     flex: 1;
     min-height: 0;
     position: relative;
-    margin: 0 24px 22px;
-    border-radius: 14px;
+    margin: 0 var(--om-space-24) var(--om-space-22);
+    border-radius: var(--om-radius-14);
     overflow: hidden;
     border: 1px solid @border-color;
   }
@@ -92,13 +92,13 @@
 }
 
 .kg3d-hint {
-  color: #94a3b8;
+  color: var(--om-legacy-color-94a3b8);
 }
 
 .kg3d-panel {
-  background: rgba(11, 16, 33, 0.96);
+  background: var(--om-legacy-color-11-16-33-0-96);
   backdrop-filter: blur(16px);
-  animation: kg3dPanelIn 0.22s ease;
+  animation: kg3dPanelIn var(--om-duration-220) ease;
   color: @kg3d-panel-text-primary;
 
   .kg3d-panel-text-primary {
@@ -120,24 +120,24 @@
   .kg3d-panel-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 9px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 7px;
-    background: rgba(255, 255, 255, 0.07);
+    gap: var(--om-space-6);
+    padding: var(--om-space-3) var(--om-space-9);
+    border: 1px solid var(--om-legacy-color-255-255-255-0-1);
+    border-radius: var(--om-radius-7);
+    background: var(--om-legacy-color-255-255-255-0-07);
     color: @kg3d-panel-text-secondary;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--om-font-size-11);
+    font-weight: var(--om-font-weight-semibold);
     line-height: 16px;
   }
 
   .kg3d-panel-close {
     flex: none;
-    background: rgba(255, 255, 255, 0.08);
-    color: #c2c9d6;
+    background: var(--om-legacy-color-255-255-255-0-08);
+    color: var(--om-legacy-color-c2c9d6);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--om-legacy-color-255-255-255-0-14);
       color: @kg3d-panel-text-primary;
     }
   }
@@ -148,11 +148,11 @@
     color: inherit;
     cursor: pointer;
     font: inherit;
-    transition: background 0.15s ease;
+    transition: background var(--om-duration-150) ease;
 
     &:hover,
     &:focus-visible {
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--om-legacy-color-255-255-255-0-07);
       outline: none;
     }
   }
@@ -179,12 +179,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   border: 1px solid @kg3d-overlay-border;
   background: @kg3d-stage-overlay;
   backdrop-filter: blur(8px);
   cursor: pointer;
-  color: #eaf0fb;
+  color: var(--om-legacy-color-eaf0fb);
 
   svg {
     width: 16px;
@@ -192,7 +192,7 @@
   }
 
   &:hover {
-    background: rgba(13, 18, 38, 0.85);
+    background: var(--om-legacy-color-13-18-38-0-85);
   }
 }
 
@@ -202,6 +202,6 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 999;
+  z-index: var(--om-z-999);
   background: @white;
 }

@@ -13,15 +13,15 @@
 @import '../../../styles/variables.less';
 
 .constraint-columns {
-  border-radius: 5px;
+  border-radius: var(--om-radius-5);
   background: @grey-1;
-  padding: 16px;
+  padding: var(--om-space-16);
   width: 100%;
   overflow: auto;
 
   .constraint-icon-container {
-    margin-top: 12px;
-    margin-right: 8px;
+    margin-top: var(--om-space-12);
+    margin-right: var(--om-space-8);
   }
 }
 .referred-column-name {
@@ -33,7 +33,7 @@
   display: flex;
 
   .primary-key-section-line {
-    margin-top: -2px;
+    margin-top: calc(-1 * var(--om-space-2));
   }
   .primary-key-icon {
     position: absolute;
@@ -45,7 +45,7 @@
     width: 20px;
     border-radius: 50%;
     border: @global-border;
-    padding: 2px;
+    padding: var(--om-space-2);
     cursor: pointer;
   }
 }
@@ -65,7 +65,7 @@
     width: 20px;
     border-radius: 50%;
     border: @global-border;
-    padding: 2px;
+    padding: var(--om-space-2);
     transform: translate(-50%, -50%);
     cursor: pointer;
   }
