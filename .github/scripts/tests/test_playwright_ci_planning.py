@@ -108,9 +108,7 @@ def test_common_assignment_may_use_reserve_at_the_maximum_shard_count():
     ]
 
     shards = planner.assign_lane_within_budget(units, "chromium", "full")
-    predictions = [
-        planner.predicted_execution_ms(shard, 3) for shard in shards
-    ]
+    predictions = [planner.predicted_execution_ms(shard, 3) for shard in shards]
 
     assert len(shards) == planner.COMMON_MAX_SHARDS
     assert all(
@@ -1295,6 +1293,48 @@ def test_fast_opensearch_config_does_not_duplicate_security_disable():
 
     assert 'plugins.security.disabled: "true"' in fast_compose
     assert "DISABLE_SECURITY_PLUGIN" not in fast_compose
+
+
+def test_h2_config_is_derived_from_the_current_server_config():
+    generator = load_script("generate_playwright_h2_config")
+    source = (SCRIPTS.parents[1] / "conf/openmetadata.yaml").read_text()
+
+    rendered = generator.render_h2_config(source)
+
+    source_prefix, _, source_after_application = source.partition(
+        generator.APPLICATION_CONNECTORS_MARKER
+    )
+    _, _, source_suffix = source_after_application.partition(
+        generator.ADMIN_CONNECTORS_MARKER
+    )
+    rendered_prefix, _, rendered_after_application = rendered.partition(
+        generator.APPLICATION_CONNECTORS_MARKER
+    )
+    rendered_connector, _, rendered_suffix = rendered_after_application.partition(
+        generator.ADMIN_CONNECTORS_MARKER
+    )
+
+    assert rendered_prefix == source_prefix
+    assert rendered_suffix == source_suffix
+    assert "    - type: h2\n" in rendered_connector
+    assert "      keyStorePath: ${SERVER_H2_KEYSTORE_PATH}\n" in rendered_connector
+    assert "      certAlias: openmetadata-h2\n" in rendered_connector
+
+    fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
+    assert "generate_playwright_h2_config.py" in fast_launcher
+    assert 'server_config="$runtime_root/openmetadata-h2.yaml"' in fast_launcher
+    assert not (SCRIPTS.parents[1] / "conf/openmetadata-h2-test.yaml").exists()
+
+
+def test_h2_config_generation_fails_when_server_markers_drift():
+    generator = load_script("generate_playwright_h2_config")
+    config_without_admin_connector = """server:
+  applicationConnectors:
+    - type: http
+"""
+
+    with pytest.raises(ValueError, match="server.adminConnectors"):
+        generator.render_h2_config(config_without_admin_connector)
 
 
 def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():

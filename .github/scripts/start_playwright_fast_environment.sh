@@ -227,7 +227,10 @@ tar -xzf "$distribution_path" -C "$runtime_root/server" --strip-components=1
 
 server_config="$workspace_root/conf/openmetadata.yaml"
 if [[ "${PW_PROTOCOL:-http}" == "h2" ]]; then
-  server_config="$workspace_root/conf/openmetadata-h2-test.yaml"
+  server_config="$runtime_root/openmetadata-h2.yaml"
+  python3 "$workspace_root/.github/scripts/generate_playwright_h2_config.py" \
+    --source "$workspace_root/conf/openmetadata.yaml" \
+    --output "$server_config"
 fi
 
 mkfifo "$PW_SERVER_OUTPUT_PIPE"

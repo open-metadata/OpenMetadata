@@ -6,6 +6,7 @@
 - Merge queue, scheduled, and manual full-suite runs execute all projects covered by this workflow. Manual runs can opt out of the full suite and can select HTTP/1.1 or HTTP/2.
 
 The manual HTTP/2 benchmark applies to browser/server lanes. Dedicated Airflow shards stay on HTTP/1.1 because the fixture's self-signed browser certificate is not part of generated ingestion workflow configuration.
+The fast-environment launcher derives its temporary HTTP/2 server configuration from the checked-out `conf/openmetadata.yaml` and replaces only `server.applicationConnectors`. This prevents the benchmark configuration from falling behind new production configuration fields while keeping the TLS connector CI-only.
 
 SSO stays in its dedicated workflow, while knowledge graph and ontology share one RDF workflow and environment. HTTP/2-specific, data-insight application, and nightly specs are explicitly recorded as delegated rather than being silently misclassified as common Chromium coverage. Add new production-to-test relationships to `impact-map.json`; do not make an unmapped source path trigger the full suite.
 
