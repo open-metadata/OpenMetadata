@@ -49,9 +49,11 @@ const test = base.extend<{
   partialDeleteTablePage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   viewResultsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
