@@ -3830,7 +3830,7 @@
     "onboarding-explore-data-description": "Titta på de populära datatillgångarna i din organisation.",
     "onboarding-stay-up-to-date-description": "Följ de datamängder som du ofta använder för att hålla dig informerad om dem.",
     "only-image-files-supported": "Endast bildfiler stöds",
-    "only-reviewers-can-approve-or-reject": "Endast granskare kan godkänna eller avslå",
+    "only-reviewers-can-approve-or-reject": "Du kan inte godkänna eller avslå den här uppgiften eftersom du inte är en av dess granskare",
     "only-show-columns-with-lineage": "Visa endast kolumner med härkomst",
     "ontology-empty-description": "En ontologi fångar relationerna mellan dina termer – vad som hör till vad, vad som härleds från vad – så att ditt ordförråd blir en sammankopplad modell av din verksamhet, inte bara en alfabetisk lista.",
     "ontology-empty-title": "Förvandla din ordlista till en karta över hur begrepp hänger ihop",

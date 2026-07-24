@@ -3830,7 +3830,7 @@
     "onboarding-explore-data-description": "Sigue los activos de datos populares en tu organización.",
     "onboarding-stay-up-to-date-description": "Sigue los conjuntos de datos que usas con frecuencia para mantenerte informado acerca de ellos.",
     "only-image-files-supported": "Solo se admiten archivos de imagen",
-    "only-reviewers-can-approve-or-reject": "Solo los Revisores pueden Aprobar o Rechazar",
+    "only-reviewers-can-approve-or-reject": "No puedes aprobar ni rechazar esta tarea porque no eres uno de sus revisores",
     "only-show-columns-with-lineage": "Mostrar solo columnas con Lineage",
     "ontology-empty-description": "Una ontología captura las relaciones entre tus términos —qué pertenece a qué, qué deriva de qué— para que tu vocabulario se convierta en un modelo conectado de tu negocio, no solo en una lista alfabética.",
     "ontology-empty-title": "Convierte tu glosario en un mapa de cómo se conectan los conceptos",
