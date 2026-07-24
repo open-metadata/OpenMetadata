@@ -498,7 +498,9 @@ test.describe('Workflow History', () => {
   let glossaryTerm: GlossaryTerm;
 
   test.beforeAll(async ({ browser }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await glossary.create(apiContext);
 
@@ -545,7 +547,9 @@ test.describe('Workflow History', () => {
   test('should show workflow history popover on status badge hover', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -580,7 +584,9 @@ test.describe('Workflow History', () => {
   test('should view workflow history on term details page', async ({
     browser,
   }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
