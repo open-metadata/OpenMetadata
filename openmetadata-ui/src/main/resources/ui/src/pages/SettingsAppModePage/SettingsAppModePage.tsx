@@ -25,6 +25,7 @@ import {
   PersonaPreferences,
 } from '../../generated/type/personaPreferences';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 
 interface Props {
@@ -94,9 +95,8 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
-              hasNavigationBlocker
               disableSave={disableSave}
-              personaName={t('label.customize-your-app-mode')}
+              personaName={getEntityName(personaDetails)}
               onReset={handleReset}
               onSave={handleSave}
             />

@@ -151,7 +151,6 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
         <Row gutter={[0, 20]}>
           <Col span={24}>
             <CustomizablePageHeader
-              hasNavigationBlocker
               disableSave={disableSave}
               personaName={getEntityName(persona)}
               onReset={handleReset}

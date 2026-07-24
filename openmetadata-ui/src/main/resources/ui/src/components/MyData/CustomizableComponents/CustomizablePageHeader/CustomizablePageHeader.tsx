@@ -21,6 +21,7 @@ import { kebabCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -32,14 +33,12 @@ import './customizable-page-header.less';
 
 export const CustomizablePageHeader = ({
   disableSave,
-  hasNavigationBlocker = false,
   onAddWidget,
   onReset,
   onSave,
   personaName,
 }: {
   disableSave?: boolean;
-  hasNavigationBlocker?: boolean;
   onAddWidget?: () => void;
   onReset: () => void;
   onSave: () => Promise<void>;
@@ -51,49 +50,32 @@ export const CustomizablePageHeader = ({
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [confirmationModalOpen, setConfirmationModalOpen] = useState(false);
-
-  const [confirmationModalType, setConfirmationModalType] = useState<
-    'reset' | 'close'
-  >('close');
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   const showWidgetActions =
     currentPageType === PageType.LandingPage ||
     currentPageType === PageType.DataMarketplace;
 
   const isLandingPage =
-    currentPageType === PageType.LandingPage || currentPageType === 'homepage';
-  const isNavigationPage = pageFqn === 'navigation';
-  const isAppModePage = pageFqn === 'app-mode';
+    currentPageType === PageType.LandingPage ||
+    currentPageType === PersonaCustomizePageFqn.Homepage;
+  const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
+  const isAppModePage = pageFqn === PersonaCustomizePageFqn.AppMode;
 
-  const handleCancel = useCallback(() => {
-    // Go back in history
+  // The cancel (×) button just triggers back-navigation. The parent page's
+  // NavigationBlocker (enabled while there are unsaved changes) intercepts
+  // this and renders the single unsaved-changes confirmation modal, so this
+  // component no longer needs to render its own "close" modal.
+  const handleClose = useCallback(() => {
     navigate(-1);
   }, [navigate]);
 
-  const { modalTitle, modalDescription, okText, cancelText } = useMemo(() => {
-    if (confirmationModalType === 'reset') {
-      return {
-        modalTitle: t('label.reset-default-layout'),
-        modalDescription: t('message.reset-layout-confirmation'),
-        okText: t('label.reset'),
-        cancelText: t('label.cancel'),
-      };
-    }
-
-    return {
-      modalTitle: undefined,
-      modalDescription: undefined,
-    };
-  }, [confirmationModalType]);
-
   const handleOpenResetModal = useCallback(() => {
-    setConfirmationModalType('reset');
-    setConfirmationModalOpen(true);
+    setResetModalOpen(true);
   }, []);
 
   const handleCloseResetModal = useCallback(() => {
-    setConfirmationModalOpen(false);
+    setResetModalOpen(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -102,23 +84,10 @@ export const CustomizablePageHeader = ({
     setSaving(false);
   }, [onSave]);
 
-  const handleModalSave = useCallback(async () => {
-    if (confirmationModalType === 'reset') {
-      onReset();
-    } else {
-      await handleSave();
-    }
-    setConfirmationModalOpen(false);
-  }, [confirmationModalType, onReset, handleSave]);
-
-  const handleModalDiscard = useCallback(() => {
-    if (confirmationModalType === 'reset') {
-      handleCloseResetModal();
-    } else {
-      setConfirmationModalOpen(false);
-      handleCancel();
-    }
-  }, [confirmationModalType, handleCancel, onReset]);
+  const handleResetConfirm = useCallback(() => {
+    onReset();
+    setResetModalOpen(false);
+  }, [onReset]);
 
   const i18Values = useMemo(
     () => ({
@@ -129,15 +98,6 @@ export const CustomizablePageHeader = ({
     }),
     [personaName, isLandingPage]
   );
-
-  const handleClose = useCallback(() => {
-    if (!disableSave && !hasNavigationBlocker) {
-      setConfirmationModalType('close');
-      setConfirmationModalOpen(true);
-    } else {
-      handleCancel();
-    }
-  }, [disableSave, hasNavigationBlocker, handleCancel]);
 
   const subTitle = useMemo(() => {
     if (isNavigationPage) {
@@ -212,15 +172,15 @@ export const CustomizablePageHeader = ({
       </div>
 
       <UnsavedChangesModal
-        description={modalDescription}
-        discardText={cancelText}
+        description={t('message.reset-layout-confirmation')}
+        discardText={t('label.cancel')}
         loading={saving}
-        open={confirmationModalOpen}
-        saveText={okText}
-        title={modalTitle}
+        open={resetModalOpen}
+        saveText={t('label.reset')}
+        title={t('label.reset-default-layout')}
         onCancel={handleCloseResetModal}
-        onDiscard={handleModalDiscard}
-        onSave={handleModalSave}
+        onDiscard={handleCloseResetModal}
+        onSave={handleResetConfirm}
       />
     </Card>
   );
