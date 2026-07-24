@@ -312,9 +312,7 @@ const WorkflowsPage = () => {
       pageContainerStyle={{
         paddingLeft: 0,
         paddingRight: 0,
-        ...(isAiMode
-          ? { paddingBottom: 0, height: 'calc(100vh - 16px)' }
-          : {}),
+        ...(isAiMode ? { paddingBottom: 0, height: 'calc(100vh - 16px)' } : {}),
       }}
       pageTitle={t('label.workflow-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
