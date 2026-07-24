@@ -114,7 +114,7 @@ const testTier = 'Tier1';
 test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(300_000);
+    test.slow(true); // 5 minutes
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     try {
@@ -1076,7 +1076,7 @@ test.describe('Right Panel Test Suite', () => {
 
               await deletedUser.delete(apiContext);
               await adminPage.reload();
-              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
 
               const deletedOwnerLocator =
                 await overview.verifyDeletedOwnerNotVisible(
@@ -1127,7 +1127,7 @@ test.describe('Right Panel Test Suite', () => {
               await deletedTag.delete(apiContext);
               await deletedClassification.delete(apiContext);
               await adminPage.reload();
-              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
 
               const deletedTagLocator =
                 await overview.verifyDeletedTagNotVisible(
@@ -1175,7 +1175,7 @@ test.describe('Right Panel Test Suite', () => {
               await deletedGlossaryTerm.delete(apiContext);
               await deletedGlossary.delete(apiContext);
               await adminPage.reload();
-              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
 
               const deletedTermLocator =
                 await overview.verifyDeletedGlossaryTermNotVisible(

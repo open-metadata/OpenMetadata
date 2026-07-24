@@ -401,17 +401,12 @@ def assign_lane_within_budget(
         if all(predicted_execution_ms(shard, workers) <= budget_ms for shard in shards):
             return shards
         if count >= maximum:
-            if lane == "chromium" and all(
-                predicted_execution_ms(shard, workers) <= TARGET_MS
-                for shard in shards
-            ):
-                return shards
             heaviest_ms = max(
                 predicted_execution_ms(shard, workers) for shard in shards
             )
             raise SystemExit(
                 f"Lane {lane} needs more than {maximum} shards to stay within the "
-                f"{TARGET_MS / 60_000:.0f}-minute execution ceiling; the heaviest "
+                f"{budget_ms / 60_000:.0f}-minute plan budget; the heaviest "
                 f"shard is predicted at "
                 f"{heaviest_ms / 60_000:.1f}m"
             )
@@ -425,11 +420,12 @@ def write_plan(
     workers = LANE_WORKERS.get(lane, 3)
     total_weight_ms = sum(unit.weight_ms for unit in units)
     predicted_ms = predicted_execution_ms(units, workers)
-    if predicted_ms > TARGET_MS:
+    budget_ms = shard_budget_ms_for_lane(lane)
+    if predicted_ms > budget_ms:
         raise SystemExit(
             f"Shard {shard_id} is predicted to take "
             f"{predicted_ms / 60_000:.1f}m, above the "
-            f"{TARGET_MS / 60_000:.0f}-minute execution ceiling"
+            f"{budget_ms / 60_000:.0f}-minute plan budget"
         )
     plan = {
         "version": 1,

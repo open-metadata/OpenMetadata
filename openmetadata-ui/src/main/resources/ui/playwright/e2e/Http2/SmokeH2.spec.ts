@@ -12,9 +12,9 @@
  */
 
 /**
- * HTTP/2 + brotli smoke test. Opt-in: start the fast environment with
- * PW_PROTOCOL=h2 so its runtime config uses the TLS h2 connector. Skipped
- * otherwise so the default Playwright run is unaffected.
+ * HTTP/2 + brotli smoke test. Opt-in: set PW_PROTOCOL=h2 and start the server
+ * with conf/openmetadata-h2-test.yaml. Skipped otherwise so the default
+ * Playwright run is unaffected.
  *
  * What this verifies on the wire — the two things this PR makes possible:
  *   1. `type: h2` connector negotiates HTTP/2 with Chromium via ALPN.

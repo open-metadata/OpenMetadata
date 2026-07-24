@@ -26,12 +26,12 @@ dotenv.config();
 
 /**
  * HTTP/2 (TLS) mode is opt-in via PW_PROTOCOL=h2. When set, the suite runs
- * against the runtime h2 connector generated from conf/openmetadata.yaml on
- * https://localhost:8585 with the self-signed test certificate. The default
+ * against the h2 connector configured in conf/openmetadata-h2-test.yaml on
+ * https://localhost:8585 with the self-signed cert under
+ * openmetadata-service/src/test/resources/localhost-h2.p12. The default
  * `yarn playwright:run` flow is unaffected and still targets HTTP/1.1.
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
-const h2TestCertificateSpki = '/hlfPr1ztWbZeqPD3s1UITRBMp54ik8XOpHkRvnFau4=';
 const defaultBaseURL = isH2Mode
   ? 'https://localhost:8585'
   : 'http://localhost:8585';
@@ -140,13 +140,6 @@ export default defineConfig({
 
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
-    launchOptions: isH2Mode
-      ? {
-          args: [
-            `--ignore-certificate-errors-spki-list=${h2TestCertificateSpki}`,
-          ],
-        }
-      : undefined,
 
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',

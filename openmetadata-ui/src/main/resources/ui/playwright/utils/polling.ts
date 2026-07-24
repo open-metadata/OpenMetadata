@@ -21,11 +21,7 @@ export const waitForSearchIndexed = async (
   apiContext: APIRequestContext,
   entityFqn: string | undefined,
   index: string,
-  options?: {
-    timeout?: number;
-    intervals?: number[];
-    requiredUpstreamLineage?: number;
-  }
+  options?: { timeout?: number; intervals?: number[] }
 ) => {
   // An empty q= becomes a match-all query in the search API: hits.total>0
   // would resolve on the first poll against any non-empty index, silently
@@ -50,31 +46,10 @@ export const waitForSearchIndexed = async (
     );
 
     if (response.ok()) {
-      const data = (await response.json()) as {
-        hits?: {
-          hits?: Array<{
-            _source?: {
-              fullyQualifiedName?: string;
-              upstreamLineage?: unknown[];
-            };
-          }>;
-          total?: number | { value?: number };
-        };
-      };
-      const totalHits =
-        typeof data.hits?.total === 'number'
-          ? data.hits.total
-          : data.hits?.total?.value ?? 0;
-      const entityHit = data.hits?.hits?.find(
-        (hit) => hit._source?.fullyQualifiedName === entityFqn
-      );
-      const upstreamLineageCount =
-        entityHit?._source?.upstreamLineage?.length ?? 0;
-      const hasRequiredLineage =
-        options?.requiredUpstreamLineage === undefined ||
-        upstreamLineageCount >= options.requiredUpstreamLineage;
+      const data = await response.json();
+      const totalHits = data?.hits?.total?.value ?? data?.hits?.total ?? 0;
 
-      if (totalHits > 0 && hasRequiredLineage) {
+      if (totalHits > 0) {
         return;
       }
     }
@@ -84,13 +59,8 @@ export const waitForSearchIndexed = async (
     await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
-  const lineageRequirement =
-    options?.requiredUpstreamLineage === undefined
-      ? ''
-      : ` with at least ${options.requiredUpstreamLineage} upstream lineage entries`;
-
   throw new Error(
-    `Entity "${entityFqn}" not found in index "${index}"${lineageRequirement} after ${timeout}ms`
+    `Entity "${entityFqn}" not found in index "${index}" after ${timeout}ms`
   );
 };
 

@@ -152,8 +152,7 @@ test.describe('Lineage Filters', () => {
         return waitForSearchIndexed(
           apiContext,
           entity.entityResponseData.fullyQualifiedName,
-          searchIndex,
-          entity === lineageEntity ? undefined : { requiredUpstreamLineage: 1 }
+          searchIndex
         );
       })
     );

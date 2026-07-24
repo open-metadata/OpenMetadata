@@ -141,36 +141,28 @@ test.describe('Table Sorting', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const table1 = new TableClass();
+      const table1 = EntityDataClass.table1.get();
       const table2 = new TableClass();
 
-      await table1.create(apiContext);
-      const table1Data = table1.get();
+      table2.service.name = table1.service.name;
+      table2.database.name = table1.database.name;
+      table2.database.service = table1.service.name;
+      table2.schema.name = table1.schema.name;
+      table2.schema.database = `${table1.service.name}.${table1.database.name}`;
+      table2.entity.databaseSchema = table1.schema.fullyQualifiedName;
 
-      try {
-        table2.service.name = table1Data.service.name;
-        table2.database.name = table1Data.database.name;
-        table2.database.service = table1Data.service.name;
-        table2.schema.name = table1Data.schema.name;
-        table2.schema.database = `${table1Data.service.name}.${table1Data.database.name}`;
-        table2.entity.databaseSchema = table1Data.schema.fullyQualifiedName;
+      const table2Response = await apiContext.post(
+        `/api/v1/${EntityTypeEndpoint.Table}`,
+        {
+          data: table2.entity,
+        }
+      );
+      table2.entityResponseData = await table2Response.json();
 
-        const table2Response = await apiContext.post(
-          `/api/v1/${EntityTypeEndpoint.Table}`,
-          {
-            data: table2.entity,
-          }
-        );
-        table2.entityResponseData = await table2Response.json();
+      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
+      await testTableSorting(page, 'Name');
 
-        await page.goto(
-          `/databaseSchema/${table1Data.schema.fullyQualifiedName}`
-        );
-        await testTableSorting(page, 'Name');
-      } finally {
-        await table1.delete(apiContext);
-        await afterAction();
-      }
+      await afterAction();
     });
   });
 

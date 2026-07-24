@@ -113,7 +113,6 @@ jobs:
               - '.github/scripts/playwright_distribution_cache.sh'
               - '.github/scripts/rotate_playwright_auth_state.py'
               - '.github/scripts/evaluate_playwright_performance.py'
-              - '.github/scripts/generate_playwright_h2_config.py'
               - '.github/scripts/import_playwright_json_timings.py'
               - '.github/scripts/merge_playwright_timings.py'
               - '.github/scripts/render_playwright_summary.cjs'
@@ -881,7 +880,6 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           PLAYWRIGHT_IS_OSS: "true"
-          PW_BUNDLE_METRICS_PATH: playwright/output/bundle-metrics.json
           PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}
         run: npx playwright test --project=bundle-smoke --reporter=line
 
@@ -1101,7 +1099,6 @@ jobs:
           name: playwright-timings-${{ matrix.shardId }}
           overwrite: true
           path: |
-            openmetadata-ui/src/main/resources/ui/playwright/output/bundle-metrics.json
             openmetadata-ui/src/main/resources/ui/playwright/output/playwright-timings.json
             openmetadata-ui/src/main/resources/ui/playwright/output/request-metrics.json
             openmetadata-ui/src/main/resources/ui/playwright/output/shard-phases.json

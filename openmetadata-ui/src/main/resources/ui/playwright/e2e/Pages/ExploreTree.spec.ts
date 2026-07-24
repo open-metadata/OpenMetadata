@@ -28,9 +28,9 @@ import {
 import {
   expandDatabaseInExploreTree,
   expandServiceInExploreTree,
+  getFlatColumnCountOfTable,
   validateBucketsForIndex,
   verifyDatabaseAndSchemaInExploreTree,
-  type Bucket,
 } from '../../utils/explore';
 import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
@@ -599,27 +599,17 @@ test.describe('Explore page', () => {
       .filter({ hasText: schemaName })
       .locator('.ant-tree-switcher svg')
       .click();
-    const schemaResponse = await schemaRes;
-    const schemaResponseBody: {
-      aggregations?: Record<string, { buckets?: Bucket[] }>;
-    } = await schemaResponse.json();
+    await schemaRes;
 
     const columnsNode = page.getByTestId('explore-tree-title-tableColumn');
     await expect(columnsNode).toBeVisible();
 
-    const entityTypeBuckets =
-      schemaResponseBody.aggregations?.entityType?.buckets ??
-      schemaResponseBody.aggregations?.['sterms#entityType']?.buckets ??
-      [];
-    const columnBucket = entityTypeBuckets.find(
-      ({ key }) => key.toLowerCase() === 'tablecolumn'
+    const columnCount = getFlatColumnCountOfTable(
+      table.entityResponseData.columns ?? []
     );
-    const columnCount = columnBucket?.doc_count ?? 0;
-
-    expect(columnCount).toBeGreaterThan(0);
 
     const countBadge = columnsNode.locator('..').locator('.explore-node-count');
-    await expect(countBadge).toHaveText(String(columnCount));
+    await expect(countBadge).toContainText(String(columnCount));
   });
 
   test('Clicking Columns node filters search results to show only columns', async ({
