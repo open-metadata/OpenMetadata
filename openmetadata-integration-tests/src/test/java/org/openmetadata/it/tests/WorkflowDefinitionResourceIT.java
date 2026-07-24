@@ -24,9 +24,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -6551,6 +6553,193 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info(
         "test_reviewerChangeUpdatesApprovalTasks completed successfully - task assignee successfully changed from reviewer1 to reviewer2");
+  }
+
+  @Test
+  @Order(44)
+  void test_WorkflowInstanceStatesByInstanceIdEndpoint(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_WorkflowInstanceStatesByInstanceIdEndpoint");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    CreateUser createReviewer =
+        new CreateUser()
+            .withName(ns.prefix("wisReviewer"))
+            .withEmail(ns.prefix("wisReviewer") + "@example.com")
+            .withDisplayName("WIS Reviewer");
+    User reviewer = client.users().create(createReviewer);
+    EntityReference reviewerRef = reviewer.getEntityReference();
+
+    String workflowName = ns.prefix("wisEndpointApprovalWorkflow");
+    String approvalWorkflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "WIS Endpoint Approval Workflow",
+              "description": "Workflow used by test_WorkflowInstanceStatesByInstanceIdEndpoint",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["reviewers"],
+                  "filter": {}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "ApproveTag",
+                  "displayName": "Approve Tag",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "end", "displayName": "End", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "ApproveTag"},
+                {"from": "ApproveTag", "to": "end", "condition": "true"},
+                {"from": "ApproveTag", "to": "end", "condition": "false"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """;
+
+    CreateWorkflowDefinition approvalWorkflow =
+        JsonUtils.readValue(
+            approvalWorkflowJson.formatted(workflowName), CreateWorkflowDefinition.class);
+
+    WorkflowDefinition createdWorkflow = client.workflowDefinitions().create(approvalWorkflow);
+    trackWorkflow(createdWorkflow.getName(), createdWorkflow.getId().toString());
+    waitForWorkflowDeployment(client, createdWorkflow.getName());
+
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(ns.prefix("WisEndpointClassification"))
+            .withDescription("Classification for WIS endpoint test");
+    Classification classification = client.classifications().create(createClassification);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName("WisEndpointTag")
+            .withClassification(classification.getName())
+            .withDescription("Tag used to spawn a workflow instance for the endpoint test")
+            .withReviewers(List.of(reviewerRef));
+    Tag tag = client.tags().create(createTag);
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () -> !listOpenApprovalTasks(client, tag.getFullyQualifiedName()).getData().isEmpty());
+
+    Task approvalTask =
+        listOpenApprovalTasks(client, tag.getFullyQualifiedName()).getData().getFirst();
+    UUID workflowInstanceId = approvalTask.getWorkflowInstanceId();
+    assertNotNull(
+        workflowInstanceId, "Approval task must carry a workflowInstanceId to drive this test");
+
+    String statesBasePath = "/v1/governance/workflowInstanceStates";
+    String idPath = statesBasePath + "/workflowInstanceId/" + workflowInstanceId;
+    RequestOptions rangeOptions =
+        RequestOptions.builder()
+            .queryParam("startTs", "0")
+            .queryParam("endTs", "9999999999999")
+            .build();
+    String namePath = statesBasePath + "/" + createdWorkflow.getName() + "/" + workflowInstanceId;
+
+    ObjectMapper mapper =
+        new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+
+    String allResponseJson =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, idPath, null, RequestOptions.builder().build());
+    JsonNode allData = mapper.readTree(allResponseJson).get("data");
+    assertNotNull(allData, "id-based endpoint must return a data array");
+    assertTrue(
+        allData.isArray() && allData.size() > 0,
+        "id-based endpoint default response must include at least the user-task stage");
+
+    for (int i = 0; i < allData.size(); i++) {
+      JsonNode row = allData.get(i);
+      assertEquals(
+          workflowInstanceId.toString(),
+          row.get("workflowInstanceId").asText(),
+          "each state must be for the queried workflowInstanceId");
+      JsonNode stage = row.get("stage");
+      assertNotNull(stage, "state must carry a stage object");
+      assertNotNull(stage.get("name"), "stage.name must be present");
+      assertNotNull(stage.get("startedAt"), "stage.startedAt must be present");
+    }
+
+    long previousTs = Long.MIN_VALUE;
+    for (int i = 0; i < allData.size(); i++) {
+      long ts = allData.get(i).get("timestamp").asLong();
+      assertTrue(ts >= previousTs, "states must be ordered by timestamp ascending");
+      previousTs = ts;
+    }
+
+    String filteredResponseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                idPath,
+                null,
+                RequestOptions.builder().queryParam("onlyTaskTransitions", "true").build());
+    JsonNode filteredData = mapper.readTree(filteredResponseJson).get("data");
+    assertNotNull(filteredData, "filtered response must return a data array");
+    assertTrue(
+        filteredData.size() > 0,
+        "filtered response should include at least the currently-open user-task stage");
+
+    for (int i = 0; i < filteredData.size(); i++) {
+      JsonNode stage = filteredData.get(i).get("stage");
+      String stageName = stage.get("name").asText();
+      JsonNode variables = stage.get("variables");
+      assertNotNull(variables, "filtered rows must carry a variables map");
+      assertTrue(
+          variables.has(stageName + "_transitionId"),
+          "onlyTaskTransitions=true must return only stages with a "
+              + "<stageName>_transitionId variable (user-task fingerprint); offending stage: "
+              + stageName);
+    }
+
+    Set<String> allRowIds = collectIds(allData);
+    Set<String> filteredRowIds = collectIds(filteredData);
+    assertTrue(
+        allRowIds.containsAll(filteredRowIds),
+        "default (all) response must be a superset of the filtered (user-task-only) response");
+
+    String nameResponseJson =
+        client.getHttpClient().executeForString(HttpMethod.GET, namePath, null, rangeOptions);
+    JsonNode nameData = mapper.readTree(nameResponseJson).get("data");
+    assertNotNull(nameData, "name-based endpoint must return a data array");
+    Set<String> nameRowIds = collectIds(nameData);
+    assertEquals(
+        allRowIds,
+        nameRowIds,
+        "id-based default and name-based endpoint must return the same set of state rows");
+  }
+
+  private Set<String> collectIds(JsonNode dataArray) {
+    Set<String> ids = new HashSet<>();
+    for (int i = 0; i < dataArray.size(); i++) {
+      ids.add(dataArray.get(i).get("id").asText());
+    }
+    return ids;
   }
 
   @Test
