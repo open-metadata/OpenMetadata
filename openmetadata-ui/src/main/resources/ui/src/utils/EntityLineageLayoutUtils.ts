@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { graphlib, layout } from '@dagrejs/dagre';
+import * as dagre from '@dagrejs/dagre';
 import type { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import type { Edge, Node, ReactFlowInstance } from 'reactflow';
 import { Position } from 'reactflow';
@@ -55,7 +55,7 @@ export const getLayoutedElements = (
   direction = EntityLineageDirection.LEFT_RIGHT,
   isExpanded = true
 ): LayoutedElements => {
-  const Graph = graphlib.Graph;
+  const Graph = dagre.graphlib.Graph;
   const dagreGraph = new Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: direction });
@@ -82,7 +82,7 @@ export const getLayoutedElements = (
   );
   edgesRequired.forEach((el) => dagreGraph.setEdge(el.source, el.target));
 
-  layout(dagreGraph);
+  dagre.layout(dagreGraph);
 
   const uNode = nodeData.map((el) => {
     const nodeWithPosition = dagreGraph.node(el.id);
