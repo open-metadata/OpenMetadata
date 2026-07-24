@@ -24,6 +24,7 @@ import {
   performBulkDownload,
   startCsvPreviewAndWaitForGrid,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 // use the admin user to login
@@ -484,6 +485,15 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       database.fullyQualifiedName
     );
 
+    // Bulk-import/validate resolves the service by ID from ES; wait for it
+    // to be indexed before exporting/importing, or validation can 404 on a
+    // not-yet-propagated databaseService reference.
+    await waitForSearchIndexed(
+      apiContext,
+      service.fullyQualifiedName,
+      'database_service_search_index'
+    );
+
     await redirectToHomePage(page);
 
     await test.step('Export and reimport with multiple dots in name', async () => {
@@ -724,7 +734,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   test('Import at database level with dot in service name', async ({
     browser,
   }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(300_000);
 
     const { page, afterAction } = await createNewPage(browser, {
       navigate: true,
