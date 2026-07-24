@@ -19,7 +19,6 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  clickOutside,
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
@@ -277,7 +276,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
     });
 
-    test('Node edge tracing state responds to column selection and layer removal', async ({
+    test('Node edge tracing state responds to column selection and pane click', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -335,14 +334,10 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           );
         });
 
-        await test.step('4. Removing the column layer restores the default state', async () => {
-          const columnLayerBtn = page.locator(
-            '[data-testid="lineage-layer-column-btn"]'
-          );
-
-          await page.click('[data-testid="lineage-layer-btn"]');
-          await columnLayerBtn.click();
-          await clickOutside(page);
+        await test.step('4. Clicking the pane clears the tracing and restores the default state', async () => {
+          await page
+            .locator('.react-flow__pane')
+            .click({ position: { x: 10, y: 10 } });
 
           await expect(tableEdge).toBeVisible();
           await expect(tableEdge).toHaveAttribute('data-edge-state', 'default');
