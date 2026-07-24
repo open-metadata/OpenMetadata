@@ -103,9 +103,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -2735,7 +2737,9 @@ test.describe('Domains Rbac', () => {
     user1 = new UserClass();
     test.slow();
 
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -2799,7 +2803,9 @@ test.describe('Domains Rbac', () => {
   test('Domain Rbac', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
