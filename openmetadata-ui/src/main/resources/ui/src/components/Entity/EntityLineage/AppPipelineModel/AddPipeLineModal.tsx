@@ -73,12 +73,13 @@ const AddPipeLineModal = ({
         pageSize: PAGE_SIZE,
         searchIndex: [SearchIndex.PIPELINE, SearchIndex.STORED_PROCEDURE],
       });
-      const edgeOptions = data.hits.hits.map((hit) =>
-        getEntityReferenceFromEntity(
+      const edgeOptions = data.hits.hits.map((hit) => {
+        const entityType = hit._source.entityType || (hit._index.includes('pipeline') ? EntityType.PIPELINE : EntityType.STORED_PROCEDURE);
+        return getEntityReferenceFromEntity(
           hit._source,
-          hit._source.entityType as EntityType
-        )
-      );
+          entityType as EntityType
+        );
+      });
 
       setEdgeOptions(edgeOptions);
     } catch (error) {
