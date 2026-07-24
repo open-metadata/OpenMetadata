@@ -91,7 +91,7 @@ jobs:
         run: mvn -DskipTests clean package
 
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -226,7 +226,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Playwright diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:

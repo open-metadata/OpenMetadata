@@ -290,7 +290,7 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -344,7 +344,7 @@ jobs:
             "$RUNNER_TEMP/playwright-selection/selection.json"
 
       - name: Upload Playwright selection
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection/selection.json
@@ -460,7 +460,7 @@ jobs:
             "$RUNNER_TEMP/playwright-plans/matrix.json"
 
       - name: Upload shard plans
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -534,7 +534,7 @@ jobs:
 
       - name: Upload restored seeded fixture
         if: ${{ steps.validate-fixture.outputs.usable == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -543,7 +543,7 @@ jobs:
 
       - name: Upload restored ingestion image
         if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -652,7 +652,7 @@ jobs:
       - name: Upload fixture-state failure diagnostics
         if: ${{ failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true')) }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-fixture-state-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -709,7 +709,7 @@ jobs:
 
       - name: Upload seeded fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -718,7 +718,7 @@ jobs:
 
       - name: Upload ingestion image
         if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -1069,7 +1069,7 @@ jobs:
             }' > "$STATUS_DIR/ci-status.json"
 
       - name: Upload Playwright blob report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         continue-on-error: true
         with:
@@ -1081,7 +1081,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload failure-only test results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -1092,7 +1092,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload timing and request metrics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         continue-on-error: true
         with:
@@ -1106,7 +1106,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-results-json-${{ matrix.shardId }}
@@ -1150,7 +1150,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -1322,7 +1322,7 @@ jobs:
         id: upload-report
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-report
@@ -1358,7 +1358,7 @@ jobs:
         id: upload-timing-history
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-timing-history-${{ needs.detect-changes.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-timing-history
@@ -1385,7 +1385,7 @@ jobs:
       - name: Upload Playwright shadow-gate ledger
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-shadow-gate-postgresql-pr-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
@@ -1433,7 +1433,7 @@ jobs:
       - name: Upload Playwright PR comment payload
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-pr-comment-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-pr-comment/summary.json
