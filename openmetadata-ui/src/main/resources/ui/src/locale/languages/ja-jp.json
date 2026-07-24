@@ -3831,7 +3831,7 @@
     "onboarding-explore-data-description": "組織内で人気のあるデータアセットをチェックしましょう。",
     "onboarding-stay-up-to-date-description": "よく使うデータセットをフォローして、通知を受け取りましょう。",
     "only-image-files-supported": "画像ファイルのみサポートされています",
-    "only-reviewers-can-approve-or-reject": "承認または却下できるのはレビュアーのみです",
+    "only-reviewers-can-approve-or-reject": "このタスクのレビュアーではないため、承認または却下できません",
     "only-show-columns-with-lineage": "リネージを持つカラムのみを表示",
     "ontology-empty-description": "オントロジーは用語間の関係（何が何に属し、何が何から派生するか）を捉え、語彙を単なる五十音順のリストではなく、ビジネスのつながったモデルにします。",
     "ontology-empty-title": "用語集を、概念のつながりを示すマップに変えましょう",
