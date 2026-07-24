@@ -417,26 +417,28 @@ public class AIContextBuilder {
                   ? null
                   : profile.getProfileSampleType().value());
     }
-    List<ColumnProfileSummary> columnProfiles = new ArrayList<>();
-    for (Column column : listOrEmpty(profiled.getColumns())) {
-      ColumnProfile columnProfile = column.getProfile();
-      if (columnProfile != null) {
-        columnProfiles.add(
-            new ColumnProfileSummary()
-                .withName(column.getName())
-                .withNullProportion(columnProfile.getNullProportion())
-                .withUniqueProportion(columnProfile.getUniqueProportion())
-                .withDistinctCount(columnProfile.getDistinctCount())
-                .withMin(toStringOrNull(columnProfile.getMin()))
-                .withMax(toStringOrNull(columnProfile.getMax()))
-                .withMean(columnProfile.getMean())
-                .withMedian(columnProfile.getMedian())
-                .withCardinalityDistribution(columnProfile.getCardinalityDistribution()));
-      }
-    }
+    List<ColumnProfileSummary> columnProfiles =
+        listOrEmpty(profiled.getColumns()).stream()
+            .filter(column -> column.getProfile() != null)
+            .map(AIContextBuilder::toColumnProfileSummary)
+            .toList();
     if (!columnProfiles.isEmpty()) {
       observability.withColumnProfiles(columnProfiles);
     }
+  }
+
+  private static ColumnProfileSummary toColumnProfileSummary(Column column) {
+    ColumnProfile columnProfile = column.getProfile();
+    return new ColumnProfileSummary()
+        .withName(column.getName())
+        .withNullProportion(columnProfile.getNullProportion())
+        .withUniqueProportion(columnProfile.getUniqueProportion())
+        .withDistinctCount(columnProfile.getDistinctCount())
+        .withMin(toStringOrNull(columnProfile.getMin()))
+        .withMax(toStringOrNull(columnProfile.getMax()))
+        .withMean(columnProfile.getMean())
+        .withMedian(columnProfile.getMedian())
+        .withCardinalityDistribution(columnProfile.getCardinalityDistribution());
   }
 
   private DataQuality resolveDataQuality(Table table) {
