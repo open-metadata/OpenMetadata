@@ -57,7 +57,9 @@ const WORKFLOW_CREATION_DATA = (name: string) => ({
 
 const test = base.extend<{ page: Page; workflowName: string }>({
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },

@@ -19,7 +19,9 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },

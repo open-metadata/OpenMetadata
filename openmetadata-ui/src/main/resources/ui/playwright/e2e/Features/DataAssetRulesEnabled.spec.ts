@@ -45,12 +45,8 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
-import {
-  assignDataProduct,
-  clickOutside,
-  redirectToHomePage,
-} from '../../utils/common';
+import { authenticateAdminPage, performAdminLogin } from '../../utils/admin';
+import { assignDataProduct, clickOutside } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
 import { assignDomainWidget } from '../../utils/domain';
 import {
@@ -161,7 +157,7 @@ test.describe(
         await entity.create(apiContext);
         await afterAction();
 
-        await redirectToHomePage(page);
+        await authenticateAdminPage(page);
         await entity.visitEntityPage(page);
 
         // If after adding single team it closes then default rule is working. Single team or multiple users
