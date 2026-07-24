@@ -551,6 +551,34 @@ class TestAirbyteCloudClient:
 
         assert token == "test-token"
         assert expires_in == 3600
+        # Cloud (apiVersion="v1") -> token endpoint under /v1
+        called_url = mock_requests_post.call_args.args[0]
+        assert called_url == "https://api.airbyte.com/v1/applications/token"
+
+    @patch(MOCK_REQUESTS_POST)
+    @patch(MOCK_REST)
+    def test_fetch_oauth_token_self_hosted_public_api_path(self, mock_rest, mock_requests_post):
+        """Regression: on self-hosted instances the Applications token endpoint
+        lives under /api/public/v1, not /v1. Previously the path was hardcoded to
+        /v1/applications/token, which 404s to the web UI (HTML) and breaks JSON
+        parsing. The token URL must follow the resolved public-API version."""
+        mock_rest.return_value = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"access_token": "test-token", "expires_in": 3600}
+        mock_requests_post.return_value = mock_response
+
+        config = AirbyteConnection(
+            hostPort="http://airbyte.internal:8000",
+            # default internal apiVersion is auto-promoted to the public API path
+            apiVersion="api/v1",
+            auth=Oauth20ClientCredentialsAuthentication(clientId="client-id", clientSecret="client-secret"),
+        )
+
+        client = AirbyteCloudClient(config)
+        client._fetch_oauth_token()
+
+        called_url = mock_requests_post.call_args.args[0]
+        assert called_url == "http://airbyte.internal:8000/api/public/v1/applications/token"
 
     @patch(MOCK_REQUESTS_POST)
     @patch(MOCK_REST)
