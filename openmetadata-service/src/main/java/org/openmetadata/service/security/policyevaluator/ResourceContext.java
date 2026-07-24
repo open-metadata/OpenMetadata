@@ -1,12 +1,14 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -37,6 +40,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private final UUID id;
   private final String name;
   private T entity; // Will be lazily initialized
+  private Map<String, Object> cachedCustomProperties;
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
   private Fields requestedFields;
@@ -186,6 +190,43 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return entity.getDomains();
   }
 
+  @Override
+  public Map<String, Object> getCustomProperties() {
+    if (cachedCustomProperties != null) {
+      return cachedCustomProperties;
+    }
+    resolveEntity();
+    if (entity == null) {
+      cachedCustomProperties = Collections.emptyMap();
+      return cachedCustomProperties;
+    }
+    Object extension = entity.getExtension();
+    if (extension == null && entityRepository.isSupportsExtension()) {
+      try {
+        extension = entityRepository.getExtension(entity);
+      } catch (Exception e) {
+        LOG.warn("Failed to fetch extension for entity {}: {}", entity.getId(), e.getMessage());
+      }
+    }
+    if (extension == null) {
+      cachedCustomProperties = Collections.emptyMap();
+      return cachedCustomProperties;
+    }
+    try {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> props = JsonUtils.convertValue(extension, Map.class);
+      cachedCustomProperties = props != null ? props : Collections.emptyMap();
+      return cachedCustomProperties;
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to deserialize custom properties for entity {}: {}",
+          entity.getId(),
+          e.getMessage());
+      cachedCustomProperties = Collections.emptyMap();
+      return cachedCustomProperties;
+    }
+  }
+
   private EntityInterface resolveEntity() {
     if (entity == null) {
       Fields fieldList;
@@ -209,6 +250,9 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
         }
         if (entityRepository.isSupportsReviewers()) {
           fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+        }
+        if (entityRepository.isSupportsExtension()) {
+          fields = EntityUtil.addField(fields, FIELD_EXTENSION);
         }
         fieldList = entityRepository.getFields(fields);
       }
