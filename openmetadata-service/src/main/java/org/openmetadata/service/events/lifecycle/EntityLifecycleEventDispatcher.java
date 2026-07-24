@@ -124,7 +124,12 @@ public class EntityLifecycleEventDispatcher {
     Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_CREATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          entity, snapshot, OP_CREATED, e -> handler.onEntityCreated(e, subjectContext), handler);
+          entity,
+          snapshot,
+          OP_CREATED,
+          null,
+          e -> handler.onEntityCreated(e, subjectContext),
+          handler);
     }
   }
 
@@ -168,10 +173,11 @@ public class EntityLifecycleEventDispatcher {
             entity,
             snapshots.get(entity.getId()),
             OP_CREATED,
+            null,
             e -> handler.onEntityCreated(e, subjectContext),
             handler);
       }
-    } else {
+    } else if (shouldProcess(handler, OP_CREATED, null)) {
       runInline(() -> handler.onEntitiesCreated(entities, subjectContext), handler);
     }
   }
@@ -192,6 +198,7 @@ public class EntityLifecycleEventDispatcher {
           entity,
           snapshot,
           OP_UPDATED,
+          changeDescription,
           e -> handler.onEntityUpdated(e, changeDescription, subjectContext),
           handler);
     }
@@ -258,12 +265,13 @@ public class EntityLifecycleEventDispatcher {
             entity,
             snapshots.get(entity.getId()),
             OP_UPDATED,
+            change,
             e ->
                 handler.onEntityUpdated(
                     e, change, subjectContext, updateContext.forEntity(entity.getId())),
             handler);
       }
-    } else {
+    } else if (shouldProcess(handler, OP_UPDATED, changeDescription)) {
       runInline(
           () ->
               handler.onEntitiesUpdated(entities, changeDescription, subjectContext, updateContext),
@@ -281,6 +289,9 @@ public class EntityLifecycleEventDispatcher {
     LOG.debug("Dispatching entity updated event for {} {}", entityType, entityReference.getId());
 
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
+      if (!shouldProcess(handler, OP_UPDATED, null)) {
+        continue;
+      }
       executeHandler(
           entityReference,
           OP_UPDATED,
@@ -301,7 +312,12 @@ public class EntityLifecycleEventDispatcher {
     Supplier<EntityInterface> snapshot = new LazyEntitySnapshot(entity, OP_DELETED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
       executeHandler(
-          entity, snapshot, OP_DELETED, e -> handler.onEntityDeleted(e, subjectContext), handler);
+          entity,
+          snapshot,
+          OP_DELETED,
+          null,
+          e -> handler.onEntityDeleted(e, subjectContext),
+          handler);
     }
   }
 
@@ -325,6 +341,7 @@ public class EntityLifecycleEventDispatcher {
           entity,
           snapshot,
           OP_SOFT_DELETE_RESTORE,
+          null,
           e -> handler.onEntitySoftDeletedOrRestored(e, isDeleted, subjectContext),
           handler);
     }
@@ -344,8 +361,12 @@ public class EntityLifecycleEventDispatcher {
       EntityInterface entity,
       Supplier<EntityInterface> snapshotSupplier,
       String operation,
+      ChangeDescription changeDescription,
       Consumer<EntityInterface> handlerCall,
       EntityLifecycleEventHandler handler) {
+    if (!shouldProcess(handler, operation, changeDescription)) {
+      return;
+    }
     if (handler.isAsync()) {
       EntityInterface snapshot = snapshotSupplier.get();
       if (snapshot != null) {
@@ -366,6 +387,20 @@ public class EntityLifecycleEventDispatcher {
     return snapshots;
   }
 
+  private boolean shouldProcess(
+      EntityLifecycleEventHandler handler, String operation, ChangeDescription changeDescription) {
+    try {
+      return handler.shouldProcess(operation, changeDescription);
+    } catch (Throwable failure) {
+      LOG.error(
+          "Entity lifecycle handler '{}' failed while filtering '{}'; processing the event",
+          handler.getHandlerName(),
+          operation,
+          failure);
+      return true;
+    }
+  }
+
   /**
    * Snapshot the committed entity off the live request POJO so the async indexer never persists a
    * state the request thread masks or strips after dispatch (REST PII masking, clearFields, secret
@@ -380,7 +415,7 @@ public class EntityLifecycleEventDispatcher {
   private EntityInterface snapshotOrEnqueueRetry(EntityInterface entity, String operation) {
     EntityInterface snapshot;
     try {
-      snapshot = JsonUtils.readValue(JsonUtils.pojoToJson(entity), entity.getClass());
+      snapshot = JsonUtils.deepCopy(entity, entity.getClass());
     } catch (Throwable serializationFailure) {
       LOG.error(
           "Snapshot serialization failed for {} '{}'; routing to durable search-index retry outbox",

@@ -502,6 +502,11 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+ALTER TABLE entity_relationship
+    ADD COLUMN pipelineId VARCHAR(36)
+        GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id'))) VIRTUAL;
+CREATE INDEX idx_entity_relationship_pipeline_id ON entity_relationship (pipelineId);
+
 -- Index the executionId column on the workflow instance state series so both the v200
 -- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
 -- fallback avoid full-scanning this table (single row per stage transition; grows unbounded

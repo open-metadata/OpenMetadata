@@ -57,6 +57,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 @Path("/v1/analytics/web/events")
@@ -86,6 +87,9 @@ public class WebAnalyticEventResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<WebAnalyticEvent> webAnalyticEvents =
         repository.getEntitiesFromSeedData(".*json/data/analytics/webAnalyticEvents/.*\\.json$");

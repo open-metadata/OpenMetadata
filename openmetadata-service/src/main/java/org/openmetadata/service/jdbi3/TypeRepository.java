@@ -121,6 +121,10 @@ public class TypeRepository extends EntityRepository<Type> {
     updateTypeMap(type);
   }
 
+  public void populateRegistryFromDatabase() {
+    listAll(getFields(UPDATE_FIELDS), new ListFilter(NON_DELETED)).forEach(this::addToRegistry);
+  }
+
   @Override
   public void storeRelationships(Type type) {
     // No relationships to store beyond what is stored in the super class

@@ -1,0 +1,28 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/startupChecksums.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StartupChecksums",
+  "description": "Fingerprints of bundled resources successfully applied during server startup.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.StartupChecksums",
+  "properties": {
+    "seedDataFingerprint": {
+      "description": "Fingerprint of the bundled seed data and type schemas.",
+      "type": "string"
+    },
+    "searchTemplateFingerprint": {
+      "description": "Fingerprint of the search index templates.",
+      "type": "string"
+    },
+    "serverVersion": {
+      "description": "Server version that produced these fingerprints.",
+      "type": "string"
+    },
+    "appliedAt": {
+      "description": "Timestamp when the fingerprints were last persisted.",
+      "type": "integer",
+      "format": "utc-millisec"
+    }
+  },
+  "additionalProperties": false
+}

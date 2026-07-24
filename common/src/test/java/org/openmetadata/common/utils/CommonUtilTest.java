@@ -12,6 +12,7 @@
  */
 package org.openmetadata.common.utils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,11 +20,48 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import org.junit.jupiter.api.Test;
 
 class CommonUtilTest {
 
   private static final JsonNodeFactory FACTORY = JsonNodeFactory.instance;
+  private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
+  private static final Pattern COMMON_UTIL_CLASS_PATTERN =
+      Pattern.compile(
+          ".*org[/\\\\]openmetadata[/\\\\]common[/\\\\]utils[/\\\\]CommonUtil(?:Test)?\\.class$");
+
+  @Test
+  void getResourcesMatchesDirectClasspathWalk() throws IOException {
+    List<String> indexedResources = CommonUtil.getResources(COMMON_UTIL_CLASS_PATTERN);
+    List<String> directlyWalkedResources = getResourcesDirectly(COMMON_UTIL_CLASS_PATTERN);
+
+    assertFalse(indexedResources.isEmpty());
+    assertEquals(sorted(directlyWalkedResources), sorted(indexedResources));
+  }
+
+  @Test
+  void getResourcesReturnsMutableListWithoutExposingCachedIndex() throws IOException {
+    List<String> resources = CommonUtil.getResources(COMMON_UTIL_CLASS_PATTERN);
+    List<String> expectedResources = new ArrayList<>(resources);
+
+    resources.clear();
+    resources.add("caller-owned-resource");
+
+    List<String> resourcesFromCache = CommonUtil.getResources(COMMON_UTIL_CLASS_PATTERN);
+    assertEquals(expectedResources, resourcesFromCache);
+    assertFalse(resourcesFromCache.contains("caller-owned-resource"));
+  }
 
   @Test
   void nullOrEmpty_jsonNode_trueForNullReference() {
@@ -100,5 +138,43 @@ class CommonUtilTest {
     assertTrue(
         CommonUtil.nullOrEmpty(nullNode),
         "NullNode must be treated as empty — do not remove the JsonNode overload");
+  }
+
+  private static List<String> getResourcesDirectly(Pattern pattern) throws IOException {
+    String classPath = System.getProperty("java.class.path", ".");
+    Set<String> classPathElements =
+        Arrays.stream(classPath.split(File.pathSeparator))
+            .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
+            .collect(Collectors.toSet());
+    List<String> resources = new ArrayList<>();
+
+    for (String element : classPathElements) {
+      File file = new File(element);
+      resources.addAll(
+          file.isDirectory()
+              ? CommonUtil.getResourcesFromDirectory(file, pattern)
+              : getResourcesFromJarFile(file, pattern));
+    }
+    return resources;
+  }
+
+  private static List<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    List<String> resources = new ArrayList<>();
+    try (ZipFile zipFile = new ZipFile(file)) {
+      Enumeration<? extends ZipEntry> entries = zipFile.entries();
+      while (entries.hasMoreElements()) {
+        String fileName = entries.nextElement().getName();
+        if (pattern.matcher(fileName).matches()) {
+          resources.add(fileName);
+        }
+      }
+    } catch (IOException ignored) {
+      return resources;
+    }
+    return resources;
+  }
+
+  private static List<String> sorted(List<String> resources) {
+    return resources.stream().sorted().toList();
   }
 }

@@ -262,8 +262,8 @@ class EntityRepositoryRestoreTest {
   void remoteInvalidationEvictsLocalEntriesAndAdvancesLoaderEpochs() {
     UUID id = UUID.randomUUID();
     String fqn = "service.pipeline";
-    long idEpoch = EntityRepository.writeEpochById(Entity.PIPELINE, id);
-    long nameEpoch = EntityRepository.writeEpochByName(Entity.PIPELINE, fqn);
+    long idEpoch = EntityRepository.readEpochById(Entity.PIPELINE, id);
+    long nameEpoch = EntityRepository.readEpochByName(Entity.PIPELINE, fqn);
     EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
     EntityRepository.CACHE_WITH_NAME.put(
         EntityRepository.cacheNameKey(Entity.PIPELINE, fqn), "stale");
@@ -275,8 +275,8 @@ class EntityRepositoryRestoreTest {
     assertNull(
         EntityRepository.CACHE_WITH_NAME.getIfPresent(
             EntityRepository.cacheNameKey(Entity.PIPELINE, fqn)));
-    assertTrue(EntityRepository.writeEpochById(Entity.PIPELINE, id) > idEpoch);
-    assertTrue(EntityRepository.writeEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
+    assertTrue(EntityRepository.readEpochById(Entity.PIPELINE, id) > idEpoch);
+    assertTrue(EntityRepository.readEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
   }
 
   @Test

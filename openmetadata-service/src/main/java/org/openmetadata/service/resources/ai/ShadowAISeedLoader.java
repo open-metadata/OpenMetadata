@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 /**
  * Bootstrap loader for Shadow AI demo fixtures. Materialises a handful of
@@ -59,10 +60,12 @@ final class ShadowAISeedLoader {
         try {
           seedApplication(appFile);
         } catch (Exception e) {
+          SeedDataGate.getInstance().recordSeedFailure();
           LOG.warn("Shadow AI app seed {} failed: {}", appFile, e.getMessage(), e);
         }
       }
     } catch (Exception e) {
+      SeedDataGate.getInstance().recordSeedFailure();
       LOG.warn("Shadow AI seed bootstrap failed: {}", e.getMessage(), e);
     }
   }

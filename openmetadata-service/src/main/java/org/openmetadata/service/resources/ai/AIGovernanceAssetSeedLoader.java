@@ -31,6 +31,7 @@ import org.openmetadata.service.jdbi3.LLMModelRepository;
 import org.openmetadata.service.jdbi3.LLMServiceRepository;
 import org.openmetadata.service.jdbi3.McpServerRepository;
 import org.openmetadata.service.jdbi3.McpServiceRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 final class AIGovernanceAssetSeedLoader {
@@ -63,6 +64,7 @@ final class AIGovernanceAssetSeedLoader {
         LLMService stored = seedServiceIfMissing(repository, service);
         seededService = stored.getEntityReference();
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance LLM service seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }
@@ -79,6 +81,7 @@ final class AIGovernanceAssetSeedLoader {
         McpService stored = seedServiceIfMissing(repository, service);
         seededService = stored.getEntityReference();
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance MCP service seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }
@@ -101,6 +104,7 @@ final class AIGovernanceAssetSeedLoader {
           LOG.info("Seeded AI Governance LLM model '{}'", model.getFullyQualifiedName());
         }
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance LLM model seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }
@@ -122,6 +126,7 @@ final class AIGovernanceAssetSeedLoader {
           LOG.info("Seeded AI Governance MCP server '{}'", server.getFullyQualifiedName());
         }
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance MCP server seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }

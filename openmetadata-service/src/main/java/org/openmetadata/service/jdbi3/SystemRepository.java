@@ -121,6 +121,8 @@ import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
+import org.openmetadata.service.seeding.RequiredSeedRows;
+import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
@@ -199,6 +201,42 @@ public class SystemRepository {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  public boolean hasRequiredSeedRows(RequiredSeedRows requiredSeedRows) {
+    if (requiredSeedRows.expectedCount() == 0) {
+      return false;
+    }
+    long actualCount =
+        dao.countRequiredSeedData(
+            requiredSeedRows.bindableIdentities(SeedTable.TYPE),
+            requiredSeedRows.bindableIdentities(SeedTable.POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.ROLE),
+            requiredSeedRows.bindableIdentities(SeedTable.TASK_FORM_SCHEMA),
+            requiredSeedRows.bindableIdentities(SeedTable.DOCUMENT),
+            requiredSeedRows.bindableIdentities(SeedTable.WORKFLOW_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.EVENT_SUBSCRIPTION),
+            requiredSeedRows.bindableIdentities(SeedTable.NOTIFICATION_TEMPLATE),
+            requiredSeedRows.bindableIdentities(SeedTable.LEARNING_RESOURCE),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.TEST_CONNECTION_DEFINITION),
+            requiredSeedRows.bindableIdentities(SeedTable.WEB_ANALYTIC_EVENT),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.DATA_INSIGHT_CUSTOM_CHART),
+            requiredSeedRows.bindableIdentities(SeedTable.BOT),
+            requiredSeedRows.bindableIdentities(SeedTable.CLASSIFICATION),
+            requiredSeedRows.bindableIdentities(SeedTable.TAG),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY),
+            requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY_TERM),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_POLICY),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_FRAMEWORK),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL),
+            requiredSeedRows.bindableIdentities(SeedTable.AI_APPLICATION),
+            requiredSeedRows.bindableIdentities(SeedTable.LLM_SERVICE),
+            requiredSeedRows.bindableIdentities(SeedTable.LLM_MODEL),
+            requiredSeedRows.bindableIdentities(SeedTable.MCP_SERVICE),
+            requiredSeedRows.bindableIdentities(SeedTable.MCP_SERVER));
+    return actualCount == requiredSeedRows.expectedCount();
   }
 
   private Settings prepareFetchedSettings(Settings fetchedSettings) {

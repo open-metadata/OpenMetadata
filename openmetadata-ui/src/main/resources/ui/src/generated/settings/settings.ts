@@ -57,6 +57,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -108,6 +109,8 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -642,6 +645,22 @@ export interface PipelineServiceClientConfiguration {
      * List of configured glossary term relation types.
      */
     relationTypes?: GlossaryTermRelationType[];
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {
