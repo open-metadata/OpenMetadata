@@ -1313,6 +1313,7 @@ jobs:
     if: ${{ always() && !cancelled() }}
     needs:
       [
+        gate,
         check-changes,
         cache-keys,
         build,
@@ -1544,8 +1545,24 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # Short-circuit when gate said "don't run" — every upstream job is
+      # legitimately `skipped` in that case (redundant pull_request_target
+      # for a same-repo PR, or fork PR without safe-to-test), and the
+      # renderer below counts each skipped upstream as a "CI/reporting
+      # failure" and fails the whole check. That's what turned run 30090391086
+      # red on PR #30454 despite the pipeline correctly opting out.
+      # The authoritative playwright-summary check for such PRs comes from
+      # the OTHER event's run — this job needs to exit success so branch
+      # protection isn't blocked by the redundant event's synthetic red.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run != 'true' }}
+        run: |
+          echo "Gate returned should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
+          echo "Exiting 0 so this check does not block branch protection."
+
       - name: Render consolidated job summary and gate on results
-        if: always()
+        if: ${{ always() && needs.gate.outputs.should_run == 'true' }}
         uses: actions/github-script@v8
         env:
           CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
