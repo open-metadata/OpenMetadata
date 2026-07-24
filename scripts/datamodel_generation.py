@@ -13,17 +13,16 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
-import datamodel_code_generator.model.pydantic
-from datamodel_code_generator.imports import Import
+import glob
 import os
-import re
 
+from datamodel_code_generator.imports import Import
+from datamodel_code_generator.model import pydantic as pydantic_model
+from datamodel_code_generator.__main__ import main
 
-datamodel_code_generator.model.pydantic.types.IMPORT_SECRET_STR = Import.from_full_path(
+pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
 )
-
-from datamodel_code_generator.__main__ import main
 
 current_directory = os.getcwd()
 ingestion_path = "./" if current_directory.endswith("/ingestion") else "ingestion/"
@@ -42,16 +41,15 @@ args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schem
 
 main(args)
 
+# Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
     with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
-        # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 
-# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1895
-# TODO: This has been merged but `Union` is still not there. We'll need to validate
+# Add missing Union import
 MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
 WRITE_AFTER = "from __future__ import annotations"
 
@@ -65,36 +63,58 @@ for file_path in MISSING_IMPORTS:
                 file_.write("from typing import Union  # custom generate import\n\n")
 
 
-# unsupported rust regex pattern for pydantic v2
-# https://docs.pydantic.dev/2.7/api/config/#pydantic.config.ConfigDict.regex_engine
-# We'll remove validation from the client and let it fail on the server, rather than on the model generation
-UNSUPPORTED_REGEX_PATTERN_FILE_PATHS = [
-    f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
-    f"{ingestion_path}src/metadata/generated/schema/entity/data/searchIndex.py",
-    f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py",
+# -------------------------------------------------------------------------
+# REMOVE UNSUPPORTED REGEX PATTERN FROM ALL GENERATED FILES
+# -------------------------------------------------------------------------
+# pydantic-core's regex engine does not support the negative-lookahead
+# pattern used in the JSON Schema (`(?!::)...`) that blocks reserved FQN
+# separator characters. The actual enforcement of that rule lives in the
+# JSON Schema itself (validated server-side by the Java backend) and in
+# metadata.ingestion.models.custom_basemodel_validation.transform_entity_names,
+# which deliberately allows these characters through the Python model layer
+# so it can encode them (e.g. "::" -> "__reserved__colon__") on Create/Store
+# models and decode them back on Fetch models. Do NOT add a client-side
+# Pydantic field_validator here that rejects these characters at
+# construction time -- that would make it impossible to ever construct the
+# raw-named object that transform_entity_names is meant to encode, breaking
+# tests in tests/unit/models/test_custom_basemodel_validation.py.
+generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
+
+patterns_to_remove = [
+    "pattern='^((?!::).)*$',",
+    "pattern='^((?!::).)*$'",
+    "pattern='^((?!::)[^>\"\\\\x00-\\\\x1f])*$',",
+    "pattern='^((?!::)[^>\"\\\\x00-\\\\x1f])*$'",
+    r"pattern='^((?!::)[^>\"\\x00-\\x1f])*$',",
+    r"pattern='^((?!::)[^>\"\\x00-\\x1f])*$'",
 ]
 
-for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
-        content = file_.read()
-        content = content.replace("pattern='^((?!::).)*$',", "")
-    with open(file_path, "w", encoding=UTF_8) as file_:
-        file_.write(content)
+for file_path in generated_files:
+    with open(file_path, "r", encoding=UTF_8) as f:
+        content = f.read()
+    for pat in patterns_to_remove:
+        content = content.replace(pat, "")
+    with open(file_path, "w", encoding=UTF_8) as f:
+        f.write(content)
 
-# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1996
-# Supporting timezone aware datetime is too complex for the profiler
+
+# -------------------------------------------------------------------------
+# DATETIME AWARE FIX (for basic.py)
+# -------------------------------------------------------------------------
 DATETIME_AWARE_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
-        content = file_.read()
+    with open(file_path, "r", encoding=UTF_8) as f:
+        content = f.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
             "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
         )
         content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
         content = content.replace("AwareDatetime", "datetime")
-    with open(file_path, "w", encoding=UTF_8) as file_:
-        file_.write(content)
+    with open(file_path, "w", encoding=UTF_8) as f:
+        f.write(content)
+
+print("Model generation and post-processing completed successfully.")

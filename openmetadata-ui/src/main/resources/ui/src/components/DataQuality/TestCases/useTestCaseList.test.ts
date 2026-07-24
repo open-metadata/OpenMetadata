@@ -110,6 +110,7 @@ describe('useTestCaseList', () => {
       TabSpecificField.TEST_CASE_RESULT,
       TabSpecificField.TESTSUITE,
       TabSpecificField.INCIDENT_ID,
+      TabSpecificField.INCIDENT_STATUS,
     ]);
     expect(payload.includeAllTests).toBe(true);
     expect(payload.limit).toBe(10);
