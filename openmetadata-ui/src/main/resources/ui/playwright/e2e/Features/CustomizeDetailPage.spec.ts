@@ -973,6 +973,11 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .getByTestId('remove-widget-button')
       .click();
 
+    // Wait for the dirty state to propagate so NavigationBlocker has
+    // installed its pushState override before we click cancel — otherwise
+    // the cancel navigate goes through natively and the modal never opens.
+    await expect(adminPage.getByTestId('save-button')).toBeEnabled();
+
     await adminPage.getByTestId('cancel-button').click();
 
     // Assert on -title (inside the visible .ant-modal) rather than the
