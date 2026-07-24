@@ -106,20 +106,40 @@ export const PersonaSelectableList = ({
   }, [isDropdownOpen, isDefaultPersona]);
 
   const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
+  // Server-side search replaces selectOptions per query, so the selected FQNs are
+  // resolved against this cache of every persona ever seen — otherwise a persona
+  // picked under a previous query is dropped on save.
+  const personaByFqnRef = useRef<Map<string, EntityReference>>(new Map());
+  const latestRequestIdRef = useRef(0);
 
-  // Server-side search: the endpoint filters by name/displayName so the picker
-  // finds personas beyond the first fetched page. A caller-provided `personaList`
-  // is a fixed set, so filter it locally instead of hitting the server.
+  const cachePersonasByFqn = useCallback((personas: EntityReference[]) => {
+    personas.forEach((persona) => {
+      if (persona.fullyQualifiedName) {
+        personaByFqnRef.current.set(persona.fullyQualifiedName, persona);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    cachePersonasByFqn(selectedPersonas);
+    if (personaList) {
+      cachePersonasByFqn(personaList);
+    }
+  }, [selectedPersonas, personaList, cachePersonasByFqn]);
+
+  // A caller-provided `personaList` is a fixed set filtered locally (case-
+  // insensitively, like the server); otherwise search hits the server endpoint.
   const fetchOptions = useCallback(
     async (searchText: string): Promise<EntityReference[]> => {
       let options: EntityReference[] = [];
       try {
         if (personaList) {
+          const query = searchText.toLowerCase();
           options = searchText
             ? personaList.filter(
                 (persona) =>
-                  persona.displayName?.includes(searchText) ||
-                  persona.name?.includes(searchText)
+                  persona.displayName?.toLowerCase().includes(query) ||
+                  persona.name?.toLowerCase().includes(query)
               )
             : personaList;
         } else if (searchText) {
@@ -138,22 +158,30 @@ export const PersonaSelectableList = ({
       } catch (error) {
         options = [];
       }
+      cachePersonasByFqn(options);
 
       return options;
     },
-    [personaList]
+    [personaList, cachePersonasByFqn]
   );
 
-  const loadOptions = useCallback(async () => {
-    setSelectOptions(await fetchOptions(''));
-  }, [fetchOptions]);
+  const runSearch = useCallback(
+    async (searchText: string) => {
+      const requestId = ++latestRequestIdRef.current;
+      const options = await fetchOptions(searchText);
+      // Drop a slow earlier response that resolves after a newer query.
+      if (requestId === latestRequestIdRef.current) {
+        setSelectOptions(options);
+      }
+    },
+    [fetchOptions]
+  );
+
+  const loadOptions = useCallback(() => runSearch(''), [runSearch]);
 
   const handleSearch = useMemo(
-    () =>
-      debounce(async (searchText: string) => {
-        setSelectOptions(await fetchOptions(searchText));
-      }, 300),
-    [fetchOptions]
+    () => debounce((searchText: string) => runSearch(searchText), 300),
+    [runSearch]
   );
 
   useEffect(() => () => handleSearch.cancel(), [handleSearch]);
@@ -184,19 +212,13 @@ export const PersonaSelectableList = ({
     }
   };
 
-  const handleChange = useCallback(
-    (selectedPersonas: string | string[]) => {
-      const selectedArr = normalizeToArray(selectedPersonas);
-
-      const selectedPersonasList = selectOptions.filter(
-        (persona) =>
-          persona.fullyQualifiedName &&
-          selectedArr.includes(persona.fullyQualifiedName)
-      );
-      setCurrentlySelectedPersonas(selectedPersonasList);
-    },
-    [selectOptions]
-  );
+  const handleChange = useCallback((selected: string | string[]) => {
+    const selectedFqns = normalizeToArray(selected);
+    const selectedPersonasList = selectedFqns
+      .map((fqn) => personaByFqnRef.current.get(fqn))
+      .filter((persona): persona is EntityReference => Boolean(persona));
+    setCurrentlySelectedPersonas(selectedPersonasList);
+  }, []);
 
   if (!hasPermission) {
     return null;

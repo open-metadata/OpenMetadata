@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { EntityReference } from '../../../../generated/entity/type';
 import { PersonaSelectableList } from './PersonaSelectableList.component';
 
 const mockGetAllPersonas = jest.fn();
 const mockSearchPersonas = jest.fn();
+// Captures the Select's onChange so a test can emulate antd reporting the full
+// multi-select value (all FQNs), not just the option just clicked.
+let latestOnChange: ((value: string[]) => void) | undefined;
 
 jest.mock('../../../../rest/PersonaAPI', () => ({
   getAllPersonas: (...args: unknown[]) => mockGetAllPersonas(...args),
@@ -50,22 +59,26 @@ jest.mock('antd', () => {
         {content}
       </div>
     ),
-    Select: ({ options, onSearch, onChange }: any) => (
-      <div>
-        <input
-          data-testid="persona-search"
-          onChange={(e) => onSearch?.(e.target.value)}
-        />
-        {(options ?? []).map((option: { label: string; value: string }) => (
-          <div
-            data-testid={`option-${option.value}`}
-            key={option.value}
-            onClick={() => onChange?.([option.value])}>
-            {option.label}
-          </div>
-        ))}
-      </div>
-    ),
+    Select: ({ options, onSearch, onChange }: any) => {
+      latestOnChange = onChange;
+
+      return (
+        <div>
+          <input
+            data-testid="persona-search"
+            onChange={(e) => onSearch?.(e.target.value)}
+          />
+          {(options ?? []).map((option: { label: string; value: string }) => (
+            <div
+              data-testid={`option-${option.value}`}
+              key={option.value}
+              onClick={() => onChange?.([option.value])}>
+              {option.label}
+            </div>
+          ))}
+        </div>
+      );
+    },
   };
 });
 
@@ -149,5 +162,60 @@ describe('PersonaSelectableList', () => {
     expect(screen.getByTestId('option-analyst')).toBeInTheDocument();
     expect(mockSearchPersonas).not.toHaveBeenCalled();
     expect(mockGetAllPersonas).not.toHaveBeenCalled();
+  });
+
+  it('retains a persona selected under a previous query when saving', async () => {
+    mockSearchPersonas.mockImplementation((query: string) =>
+      Promise.resolve(
+        query === 'ana' ? [PERSONAS[0]] : query === 'stew' ? [PERSONAS[1]] : []
+      )
+    );
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
+
+    render(
+      <PersonaSelectableList
+        hasPermission
+        multiSelect
+        selectedPersonas={[]}
+        onUpdate={onUpdate}
+      />
+    );
+
+    const searchInput = screen.getByTestId('persona-search');
+
+    fireEvent.change(searchInput, { target: { value: 'ana' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('option-analyst')).toBeInTheDocument()
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'stew' } });
+    await waitFor(() =>
+      expect(screen.getByTestId('option-steward')).toBeInTheDocument()
+    );
+
+    // antd reports the full multi-select value; 'analyst' is no longer in the
+    // current search page, yet it must survive the save.
+    act(() => latestOnChange?.(['analyst', 'steward']));
+
+    fireEvent.click(screen.getByTestId('user-profile-persona-edit-save'));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith([
+        {
+          id: 'p1',
+          name: 'analyst',
+          displayName: 'Analyst',
+          fullyQualifiedName: 'analyst',
+          type: 'persona',
+        },
+        {
+          id: 'p2',
+          name: 'steward',
+          displayName: 'Steward',
+          fullyQualifiedName: 'steward',
+          type: 'persona',
+        },
+      ])
+    );
   });
 });
