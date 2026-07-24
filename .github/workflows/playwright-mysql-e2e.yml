@@ -198,7 +198,7 @@ jobs:
       # (report + traces run 50-100MB after retries) without losing any
       # programmatic data.
       - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -225,7 +225,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
