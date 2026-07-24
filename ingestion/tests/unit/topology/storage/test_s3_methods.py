@@ -41,6 +41,7 @@ def _make_s3_source():
     source.service_connection.awsConfig.endPointURL = None
     source.source_config = Mock()
     source.source_config.containerFilterPattern = None
+    source.context.get.return_value.objectstore_service = "s3_service"
 
     # Bind real methods to the mock
     source.list_keys = S3Source.list_keys.__get__(source)
@@ -393,6 +394,7 @@ class TestGenerateUnstructuredContainer:
         assert result.file_formats == []
         assert result.fullPath == "s3://test-bucket"
         assert result.creation_date == "2024-01-15T00:00:00"
+        assert result.container_fqn == "s3_service.test-bucket"
 
     def test_bucket_without_creation_date(self):
         source = _make_s3_source()
@@ -431,6 +433,12 @@ class TestGetBucketNameAndKey:
         bucket, key = source._get_bucket_name_and_key("")
         assert bucket is None
         assert key is None
+
+    def test_root_level_file(self):
+        source = self._bind()
+        bucket, key = source._get_bucket_name_and_key("s3://my-bucket/file.csv")
+        assert bucket == "my-bucket"
+        assert key == "file.csv"
 
     def test_bucket_only(self):
         source = self._bind()

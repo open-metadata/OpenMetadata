@@ -182,9 +182,18 @@ class S3Source(StorageServiceSource):
         """
         if full_path:
             parts = full_path.removeprefix("s3://").split(KEY_SEPARATOR)
-            if len(parts) > 2:
+            if len(parts) >= 2:
                 return parts[0], KEY_SEPARATOR.join(parts[1:])
         return None, None
+
+    def _get_root_bucket_name(self, full_path: str) -> Optional[str]:  # noqa: UP045
+        """Return the bucket name when full_path points at a bucket root (no key)."""
+        bucket_name = None
+        if full_path:
+            parts = full_path.removeprefix("s3://").split(KEY_SEPARATOR)
+            if len(parts) == 1 and parts[0]:
+                bucket_name = parts[0]
+        return bucket_name
 
     def get_tag_by_fqn(self, entity_fqn: str) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
         """
@@ -216,10 +225,8 @@ class S3Source(StorageServiceSource):
         From topology. To be run for each container
         """
         try:
-            bucket_name, key = self._get_bucket_name_and_key(container_details.fullPath)
-            if container_details.leaf_container and container_details.container_fqn and bucket_name and key:
-                tags = self.s3_client.get_object_tagging(Bucket=bucket_name, Key=key)
-                tags_list: List[S3Tag] = S3TagResponse.model_validate(tags).TagSet  # noqa: UP006
+            if container_details.container_fqn:
+                tags_list = self._fetch_s3_tags(container_details)
                 for tag in tags_list:
                     yield from get_ometa_tag_and_classification(
                         tag_fqn=FullyQualifiedEntityName(container_details.container_fqn),
@@ -231,6 +238,20 @@ class S3Source(StorageServiceSource):
         except Exception as exc:
             logger.debug(f"Failed to ingest tags due to: {exc}")
             logger.debug(traceback.format_exc())
+
+    def _fetch_s3_tags(self, container_details: S3ContainerDetails) -> List[S3Tag]:  # noqa: UP006
+        """Object tags for leaf files, bucket tags for the bucket container."""
+        tags_list: List[S3Tag] = []  # noqa: UP006
+        bucket_name, key = self._get_bucket_name_and_key(container_details.fullPath)
+        if container_details.leaf_container and bucket_name and key:
+            response = self.s3_client.get_object_tagging(Bucket=bucket_name, Key=key)
+            tags_list = S3TagResponse.model_validate(response).TagSet
+        else:
+            root_bucket = self._get_root_bucket_name(container_details.fullPath)
+            if root_bucket:
+                response = self.s3_client.get_bucket_tagging(Bucket=root_bucket)
+                tags_list = S3TagResponse.model_validate(response).TagSet
+        return tags_list
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
@@ -708,6 +729,9 @@ class S3Source(StorageServiceSource):
         return S3ContainerDetails(
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
+            container_fqn=fqn._build(  # pylint: disable=protected-access
+                self.context.get().objectstore_service, bucket_response.name
+            ),
             creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
             number_of_objects=self._fetch_metric(bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS),
             size=self._fetch_metric(bucket_name=bucket_response.name, metric=S3Metric.BUCKET_SIZE_BYTES),

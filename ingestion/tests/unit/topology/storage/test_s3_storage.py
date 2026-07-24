@@ -243,10 +243,12 @@ class StorageUnitTest(TestCase):
     def test_generate_unstructured_container(self):
         bucket_response = S3BucketResponse(Name="test_bucket", CreationDate=datetime.datetime(2000, 1, 1))
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
+        self.object_store_source.context.get().objectstore_service = "s3_test"
         self.assertEqual(
             S3ContainerDetails(
                 name=bucket_response.name,
                 prefix="/",
+                container_fqn="s3_test.test_bucket",
                 number_of_objects=100,
                 size=100,
                 file_formats=[],
