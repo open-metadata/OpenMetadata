@@ -71,7 +71,7 @@ VERSIONS = {
     "pyathena": "pyathena~=3.25.0",
     "s3fs": "s3fs~=2026.3",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.15.0",
-    "presidio-analyzer": "presidio-analyzer==2.2.358",
+    "presidio-analyzer": "presidio-analyzer==2.2.363",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
