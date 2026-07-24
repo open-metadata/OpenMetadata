@@ -136,23 +136,43 @@ class OmniSource(DashboardServiceSource):
         self._datamodel_cache: LRUCache = LRUCache(maxsize=DATAMODEL_CACHE_SIZE)
 
     def prepare(self):
-        """Fetch models and resolve their topics once, up front."""
+        """Fetch models and resolve their topics once, up front.
+
+        The data-model filter pattern is applied here, once, so a filtered-out
+        topic is absent everywhere downstream (bulk data models, the lineage
+        index and lineage emission) rather than being filtered inconsistently.
+        """
         for model in self.client.get_models() or []:
             for topic in self.client.get_model_topics(model) or []:
+                datamodel_name = self._datamodel_name(topic)
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
+                    self.status.filter(datamodel_name, "Data model (Topic) filtered out.")
+                    continue
                 self.topics.append(topic)
                 for key in self._topic_index_keys(topic):
                     self._topic_index[key].append(topic)
         logger.info("Fetched %d Omni topics across models", len(self.topics))
 
     @staticmethod
-    def _topic_index_keys(topic: OmniTopic) -> set[str]:
+    def _normalize_ref(ref: str) -> str:
+        """Canonicalize a reference's qualifier separator.
+
+        Omni qualifies references with ``.``, ``/`` or ``__`` (see the data-lineage
+        integration docs), so collapse them to a single ``.`` form. A single
+        underscore is a valid identifier character, so only the double underscore
+        is treated as a separator.
+        """
+        return ref.replace("__", ".").replace("/", ".")
+
+    @classmethod
+    def _topic_index_keys(cls, topic: OmniTopic) -> set[str]:
         """Reference keys a tile/base-view may use to point at this topic.
 
         Includes the bare view/topic name and, when the base schema is known, the
-        schema-qualified forms (``schema.name`` / ``schema/name``). Indexing the
-        qualified forms lets a qualified reference resolve to the correct schema's
-        topic instead of being stripped to a bare leaf that could match an
-        unrelated model/schema.
+        canonical schema-qualified form (``schema.name``). Indexing the qualified
+        form lets a qualified reference resolve to the correct schema's topic
+        instead of being stripped to a bare leaf that could match an unrelated
+        model/schema. Callers normalize the reference separator before lookup.
         """
         keys: set[str] = set()
         names = {topic.name}
@@ -161,8 +181,7 @@ class OmniSource(DashboardServiceSource):
         for name in names:
             keys.add(name)
             if topic.base_schema:
-                keys.add(f"{topic.base_schema}.{name}")
-                keys.add(f"{topic.base_schema}/{name}")
+                keys.add(cls._normalize_ref(f"{topic.base_schema}.{name}"))
         return keys
 
     # -- data models (topics) ----------------------------------------------
@@ -171,14 +190,10 @@ class OmniSource(DashboardServiceSource):
         """Producer for the bulk data model topology node."""
         if not self.source_config.includeDataModels:
             return
-        for topic in self.topics:
-            datamodel_name = self._datamodel_name(topic)
-            if filter_by_datamodel(self.source_config.dataModelFilterPattern, datamodel_name):
-                self.status.filter(datamodel_name, "Data model (Topic) filtered out.")
-                continue
-            yield topic
-        # Emitted after every data model so the processor can draw table lineage
-        # once they are all persisted, even when the instance has no dashboards.
+        # Topics are already filtered in prepare(); emit them all, then a sentinel
+        # so the processor can draw table lineage once they are persisted (even when
+        # the instance has no dashboards).
+        yield from self.topics
         yield _DATAMODEL_LINEAGE_SENTINEL
 
     @staticmethod
@@ -202,7 +217,7 @@ class OmniSource(DashboardServiceSource):
         # bare leaf: that could match an unrelated topic and misroute lineage, so
         # an unmatched qualified reference is left unresolved instead.
         matches: list[OmniTopic] = []
-        for candidate in (table_ref, table_ref.replace("/", "."), table_ref.replace(".", "/")):
+        for candidate in (table_ref, self._normalize_ref(table_ref)):
             matches = self._topic_index.get(candidate) or []
             if matches:
                 break

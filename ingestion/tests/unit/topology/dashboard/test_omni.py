@@ -189,8 +189,10 @@ def test_resolve_topic_qualified_reference(omni_source):
     omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
     omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC]  # base_schema=ANALYTICS
     omni_source.prepare()
+    # Omni qualifies references with '.', '/', or '__' (data-lineage docs).
     assert omni_source._resolve_topic("ANALYTICS.orders").base_table == "ORDERS"
     assert omni_source._resolve_topic("ANALYTICS/orders").base_table == "ORDERS"
+    assert omni_source._resolve_topic("ANALYTICS__orders").base_table == "ORDERS"
 
 
 def test_resolve_topic_qualified_reference_never_misroutes(omni_source):
@@ -411,6 +413,19 @@ def test_parse_model_yaml_ambiguous_leaf_no_misroute():
     assert bare.base_table is None
     # Qualified reference resolves to the matching physical view.
     assert qualified.base_table == "FINANCE.ORDERS"
+
+
+def test_prepare_filters_datamodels(omni_source):
+    """The data-model filter pattern is applied once in prepare(), so a filtered
+    topic is absent from both the topic list and the lineage index."""
+    from metadata.generated.schema.type.filterPattern import FilterPattern
+
+    omni_source.client.get_models = lambda *_: [OmniModel(id="m1", name="sales")]
+    omni_source.client.get_model_topics = lambda *_: [MOCK_TOPIC]  # -> "sales.orders"
+    omni_source.source_config.dataModelFilterPattern = FilterPattern(excludes=["sales.orders"])
+    omni_source.prepare()
+    assert omni_source.topics == []
+    assert omni_source._resolve_topic("orders") is None
 
 
 def test_list_datamodels_respects_include_flag(omni_source):

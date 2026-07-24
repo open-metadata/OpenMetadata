@@ -81,6 +81,11 @@ class OmniApiClient:
             auth_token_mode="Bearer",
             extra_headers={"Content-Type": "application/json"},
             verify=verify_ssl,
+            # Omni is rate limited (60 req/min by default), so a 429 should be
+            # retried with back-off rather than dropped. Retry transient 5xx too;
+            # nothing is treated as a hard "skip" limit.
+            retry_codes=[429, 500, 502, 503],
+            limit_codes=[],
         )
         self.client = TrackedREST(client_config, source_name="omni")
 
@@ -274,16 +279,13 @@ class OmniApiClient:
                 continue
             seen_names.add(topic_name)
             base_view = cls._first(topic_def, _BASE_VIEW_KEYS) or topic_name
-            # ``base_view`` may be bare or schema-qualified (``analytics/orders`` or
-            # ``analytics.orders``); try each form. We never strip a qualifier down
-            # to a bare leaf, so a qualified reference cannot bind to an unrelated
-            # view -- it is left unresolved instead.
-            view = (
-                view_lookup.get(base_view)
-                or view_lookup.get(base_view.replace("/", "."))
-                or view_lookup.get(base_view.replace(".", "/"))
-                or {}
-            )
+            # ``base_view`` may be bare or schema-qualified with ``.``, ``/`` or
+            # ``__`` (per Omni's data-lineage docs); try the raw value and a
+            # separator-normalized form. We never strip a qualifier down to a bare
+            # leaf, so a qualified reference cannot bind to an unrelated view -- it
+            # is left unresolved instead. (A single underscore is a valid
+            # identifier character, so only ``__`` is treated as a separator.)
+            view = view_lookup.get(base_view) or view_lookup.get(base_view.replace("__", ".").replace("/", ".")) or {}
             topics.append(
                 OmniTopic(
                     model_id=model.id,
