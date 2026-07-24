@@ -4861,6 +4861,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected final void cleanup(String deletedBy, T entityInterface) {
+    List<EntityDAO.EntityIdFqnPair> deletedTasks = new ArrayList<>();
     Entity.getJdbi()
         .inTransaction(
             handle -> {
@@ -4898,6 +4899,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete all the threads that are about this entity
               Entity.getFeedRepository().deleteByAbout(entityInterface.getId());
 
+              // Delete all the tasks that are about this entity so they don't outlive their
+              // target as unmanageable orphans (the relationship wipe above already removed
+              // their about link)
+              deletedTasks.addAll(
+                  taskRepository()
+                      .deleteTasksAboutEntities(List.of(entityInterface.getFullyQualifiedName())));
+
               // Drop cached state before the DB row goes away. A concurrent read arriving
               // between this invalidate and the dao.delete below would still observe the
               // entity in the DB; the post-commit invalidate below closes that window.
@@ -4914,6 +4922,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
     markEntityNotFound(entityInterface);
+    taskRepository().invalidateTaskCaches(deletedTasks, "about-entity-delete");
+  }
+
+  private TaskRepository taskRepository() {
+    return (TaskRepository) Entity.getEntityRepository(Entity.TASK);
   }
 
   private void markEntityNotFound(T entity) {
@@ -6781,8 +6794,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
       // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
       // already deleted by the recursion above, so this transaction is bounded to this chunk.
-      bulkDeleteReferencesAndRows(entities);
+      List<EntityDAO.EntityIdFqnPair> deletedTasks = bulkDeleteReferencesAndRows(entities);
       bulkInvalidate(entities);
+      taskRepository().invalidateTaskCaches(deletedTasks, "about-entity-delete");
       // When an ancestor's deleteFromSearch cascade already removes these docs in a single
       // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
       // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
@@ -6850,22 +6864,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void bulkDeleteReferencesAndRows(List<T> entities) {
+  private List<EntityDAO.EntityIdFqnPair> bulkDeleteReferencesAndRows(List<T> entities) {
+    List<EntityDAO.EntityIdFqnPair> deletedTasks;
     var jdbi = Entity.getJdbi();
     if (jdbi == null) {
-      bulkCleanupReferences(entities);
+      deletedTasks = bulkCleanupReferences(entities);
       bulkDeleteEntityRows(entities);
-      return;
+    } else {
+      deletedTasks =
+          jdbi.inTransaction(
+              handle -> {
+                List<EntityDAO.EntityIdFqnPair> tasks = bulkCleanupReferences(entities);
+                bulkDeleteEntityRows(entities);
+                return tasks;
+              });
     }
-    jdbi.inTransaction(
-        handle -> {
-          bulkCleanupReferences(entities);
-          bulkDeleteEntityRows(entities);
-          return null;
-        });
+    return deletedTasks;
   }
 
-  private void bulkCleanupReferences(List<T> entities) {
+  private List<EntityDAO.EntityIdFqnPair> bulkCleanupReferences(List<T> entities) {
     List<UUID> entityIds = new ArrayList<>(entities.size());
     List<String> entityIdStrings = new ArrayList<>(entities.size());
     for (T entity : entities) {
@@ -6904,6 +6921,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("bulkHardDeleteFeedThreads")) {
       Entity.getFeedRepository().deleteByAbout(entityIds);
     }
+    List<EntityDAO.EntityIdFqnPair> deletedTasks;
+    try (var ignored = phase("bulkHardDeleteTasks")) {
+      List<String> entityFqns =
+          entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+      deletedTasks = taskRepository().deleteTasksAboutEntities(entityFqns);
+    }
+    return deletedTasks;
   }
 
   private void bulkDeleteEntityRows(List<T> entities) {
