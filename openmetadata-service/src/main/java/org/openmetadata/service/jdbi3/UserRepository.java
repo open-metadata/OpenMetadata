@@ -245,6 +245,9 @@ public class UserRepository extends EntityRepository<User> {
   public void prepare(User user, boolean update) {
     validateTeams(user);
     validateRoles(user.getRoles());
+    // A reference is only required to carry id and type, so populate the rest before the updater
+    // diffs personas — it sorts them by name.
+    user.setPersonas(EntityUtil.populateEntityReferences(user.getPersonas()));
   }
 
   @Override
