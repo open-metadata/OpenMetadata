@@ -1393,6 +1393,25 @@ jobs:
           # See run 30088248354 for the failure this addresses.
           merge-multiple: false
 
+      # Diagnostic: log the actual on-disk layout the renderer sees. The
+      # explicit merge-multiple pin above matches the documented default,
+      # so if single-shard runs still fail the same way we need this
+      # trace to see whether download-artifact placed files at
+      # `results/playwright-results-json-<shardId>/results.json` (expected)
+      # or somewhere else. Remove once single-shard runs are consistently
+      # green.
+      - name: Diagnose downloaded results layout
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          echo "=== results/ tree ==="
+          ls -laR results 2>&1 || echo "(results/ does not exist)"
+          echo
+          echo "=== expected shardIds (from plan-playwright.matrix) ==="
+          echo '${{ needs.plan-playwright.outputs.matrix }}' \
+            | jq -r '.include[].shardId' \
+            || echo "(jq parse failed)"
+
       - name: Setup Node.js
         id: setup-node
         if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
