@@ -25,7 +25,7 @@ DORIS_GET_TABLE_NAMES = textwrap.dedent(
     select TABLE_NAME as name, `ENGINE` as engine
     from INFORMATION_SCHEMA.tables 
     where TABLE_SCHEMA = :schema
-    """
+    """  # noqa: W291
 )
 
 DORIS_TABLE_COMMENTS = textwrap.dedent(

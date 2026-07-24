@@ -67,17 +67,27 @@ export class GlossaryTerm extends EntityClass {
     const glossaryDisplayName =
       this.responseData.glossary?.displayName ?? this.glossary.data.displayName;
     await visitGlossaryPage(page, glossaryDisplayName);
-    const expandCollapseButtonText = await page
-      .locator('[data-testid="expand-collapse-all-button"]')
-      .textContent();
-    const isExpanded = expandCollapseButtonText?.includes('Expand All');
-    if (isExpanded) {
+    const glossaryTerm = page.getByTestId(this.data.displayName);
+    const expandCollapseButton = page.getByTestId('expand-collapse-all-button');
+    await expect
+      .poll(async () => {
+        if (await glossaryTerm.isVisible()) {
+          return 'term-visible';
+        }
+
+        return (await expandCollapseButton.textContent())?.trim();
+      })
+      .toMatch(/^(term-visible|.*Expand All.*)$/);
+    if (!(await glossaryTerm.isVisible())) {
       const glossaryId =
         this.responseData.glossary?.id ?? this.glossary.responseData.id;
       const glossaryTermListResponse = page.waitForResponse(
-        `/api/v1/glossaryTerms?*glossary=${glossaryId}*`
+        (response) =>
+          response.url().includes('/api/v1/glossaryTerms?') &&
+          response.url().includes(`glossary=${glossaryId}`) &&
+          response.status() === 200
       );
-      await page.click('[data-testid="expand-collapse-all-button"]');
+      await expandCollapseButton.click();
       await glossaryTermListResponse;
     }
     const glossaryTermResponse = page.waitForResponse(
@@ -85,7 +95,7 @@ export class GlossaryTerm extends EntityClass {
         this.responseData.fullyQualifiedName
       )}?*`
     );
-    await page.getByTestId(this.data.displayName).click();
+    await glossaryTerm.click();
     await glossaryTermResponse;
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(
@@ -123,6 +133,15 @@ export class GlossaryTerm extends EntityClass {
       }
     );
 
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `GlossaryTerm.patch failed for ${
+          this.responseData.id
+        }: HTTP ${response.status()} — ${body}`
+      );
+    }
+
     this.responseData = await response.json();
   }
 
@@ -138,14 +157,6 @@ export class GlossaryTerm extends EntityClass {
         fqn
       )}?recursive=true&hardDelete=true`
     );
-
-    if (!response.ok()) {
-      const errorText = await response.text();
-
-      throw new Error(
-        `Failed to delete glossary term "${fqn}": ${response.status()} ${response.statusText()} - ${errorText}`
-      );
-    }
 
     return await response.json();
   }

@@ -1,0 +1,36 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+
+# Override that adds a Redis cache to the development stack.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.redis.yml up -d
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: openmetadata_redis
+    restart: always
+    command: ["redis-server", "--appendonly", "no", "--save", "", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - local_app_net
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  openmetadata-server:
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      CACHE_PROVIDER: redis
+      CACHE_REDIS_URL: redis://redis:6379
+      CACHE_REDIS_AUTH_TYPE: NONE
+      CACHE_REDIS_KEYSPACE: om:dev
+      CACHE_ENTITY_TTL: 3600
+      CACHE_RELATIONSHIP_TTL: 3600
+      CACHE_TAG_TTL: 3600
+      CACHE_REDIS_COMMAND_TIMEOUT: 300

@@ -21,6 +21,7 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   getListTestSuitesBySearch,
 } from '../../../rest/testAPI';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import AddToBundleSuiteModal from './AddToBundleSuiteModal.component';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
 
@@ -338,5 +339,24 @@ describe('AddToBundleSuiteModal', () => {
 
     expect(mockOnCancel).toHaveBeenCalled();
     expect(addTestCasesToLogicalTestSuiteBulk).not.toHaveBeenCalled();
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('should navigate using observabilityRouterClassBase.getTestSuitePath after success', async () => {
+      render(<AddToBundleSuiteModal {...mockProps} />);
+
+      fireEvent.click(await screen.findByTestId('bundle-suite-select-option'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('add-button'));
+      });
+
+      const expectedFqn = mockTestSuites[0].fullyQualifiedName ?? '';
+      const expectedPath =
+        observabilityRouterClassBase.getTestSuitePath(expectedFqn);
+
+      expect(mockNavigate).toHaveBeenCalledWith(expectedPath);
+      expect(mockNavigate).toHaveBeenCalledWith(`/test-suites/${expectedFqn}`);
+    });
   });
 });

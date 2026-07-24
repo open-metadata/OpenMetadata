@@ -157,7 +157,8 @@
     "parentAliases": [
       "storageService",
       "all",
-      "dataAsset"
+      "dataAsset",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -248,7 +249,7 @@
     "indexName": "test_case_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
-    "parentAliases": ["testSuite", "all"],
+    "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
     "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
   },
   "testCaseResult": {
@@ -256,13 +257,14 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_result_index_mapping.json",
     "alias": "testCaseResult",
     "parentAliases": ["testSuite", "testCase"],
-    "childAliases": []
+    "childAliases": [],
+    "dataInsightAliases": ["di-data-assets-testcaseresult"]
   },
   "testSuite": {
     "indexName": "test_suite_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_suite_index_mapping.json",
     "alias": "testSuite",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": ["testCase", "testCaseResolutionStatus", "testCaseResult"]
   },
   "dataProduct": {
@@ -273,7 +275,8 @@
       "domain",
       "all",
       "dataAsset",
-      "dataAssetEmbeddings"
+      "dataAssetEmbeddings",
+      "marketplace"
     ],
     "childAliases": []
   },
@@ -281,7 +284,7 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -504,7 +507,8 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_resolution_status_index_mapping.json",
     "alias": "testCaseResolutionStatus",
     "parentAliases": [],
-    "childAliases": []
+    "childAliases": [],
+    "dataInsightAliases": ["di-data-assets-testcaseresolutionstatus"]
   },
   "ingestionPipeline": {
     "indexName": "ingestion_pipeline_search_index",
@@ -537,10 +541,10 @@
     ],
     "childAliases": ["mcpServer"]
   },
-  "aiAgent": {
-    "indexName": "ai_agent_search_index",
-    "indexMappingFile": "/elasticsearch/%s/ai_agent_index_mapping.json",
-    "alias": "aiAgent",
+  "aiApplication": {
+    "indexName": "ai_application_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_application_index_mapping.json",
+    "alias": "aiApplication",
     "parentAliases": ["all"],
     "childAliases": []
   },
@@ -567,6 +571,34 @@
     ],
     "childAliases": []
   },
+  "aiGovernanceFramework": {
+    "indexName": "ai_governance_framework_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_governance_framework_index_mapping.json",
+    "alias": "aiGovernanceFramework",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": ["aiFrameworkControl"]
+  },
+  "aiFrameworkControl": {
+    "indexName": "ai_framework_control_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_framework_control_index_mapping.json",
+    "alias": "aiFrameworkControl",
+    "parentAliases": [
+      "aiGovernanceFramework",
+      "all"
+    ],
+    "childAliases": []
+  },
+  "auditReport": {
+    "indexName": "audit_report_search_index",
+    "indexMappingFile": "/elasticsearch/%s/audit_report_index_mapping.json",
+    "alias": "auditReport",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
   "mcpServer": {
     "indexName": "mcp_server_search_index",
     "indexMappingFile": "/elasticsearch/%s/mcp_server_index_mapping.json",
@@ -586,6 +618,34 @@
     "parentAliases": [
       "mcpServer"
     ],
+    "childAliases": []
+  },
+  "page": {
+    "indexName": "knowledge_page_search_index",
+    "indexMappingFile": "/elasticsearch/%s/knowledge_page_search_index.json",
+    "alias": "page",
+    "parentAliases": ["all", "dataAsset", "dataAssetEmbeddings"],
+    "childAliases": []
+  },
+  "folder": {
+    "indexName": "folder_search_index",
+    "indexMappingFile": "/elasticsearch/%s/folder_search_index.json",
+    "alias": "folder",
+    "parentAliases": ["all"],
+    "childAliases": []
+  },
+  "contextFile": {
+    "indexName": "context_file_search_index",
+    "indexMappingFile": "/elasticsearch/%s/context_file_search_index.json",
+    "alias": "contextFile",
+    "parentAliases": ["all"],
+    "childAliases": []
+  },
+  "contextMemory": {
+    "indexName": "context_memory_search_index",
+    "indexMappingFile": "/elasticsearch/%s/context_memory_search_index.json",
+    "alias": "contextMemory",
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   }
 }

@@ -14,9 +14,8 @@ public class QuartzJobContext implements ReindexingJobContext {
   private final String jobName;
   private final Long startTime;
   private final UUID appId;
-  private final boolean distributed;
 
-  public QuartzJobContext(JobExecutionContext jobExecutionContext, App app, boolean distributed) {
+  public QuartzJobContext(JobExecutionContext jobExecutionContext, App app) {
     this.jobName =
         jobExecutionContext != null
             ? jobExecutionContext.getJobDetail().getKey().getName()
@@ -24,7 +23,6 @@ public class QuartzJobContext implements ReindexingJobContext {
     this.startTime = System.currentTimeMillis();
     this.appId = app != null ? app.getId() : null;
     this.jobId = appId != null ? appId : UUID.randomUUID();
-    this.distributed = distributed;
   }
 
   @Override
@@ -45,11 +43,6 @@ public class QuartzJobContext implements ReindexingJobContext {
   @Override
   public UUID getAppId() {
     return appId;
-  }
-
-  @Override
-  public boolean isDistributed() {
-    return distributed;
   }
 
   @Override

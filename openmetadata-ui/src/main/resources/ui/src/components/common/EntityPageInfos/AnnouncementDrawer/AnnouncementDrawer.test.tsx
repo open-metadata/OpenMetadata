@@ -14,13 +14,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import AnnouncementDrawer from './AnnouncementDrawer';
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
-  deletePost: jest.fn(),
-  updateThreadData: jest.fn(),
+jest.mock('../../../../rest/announcementsAPI', () => ({
+  deleteAnnouncement: jest.fn(),
+  patchAnnouncement: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({

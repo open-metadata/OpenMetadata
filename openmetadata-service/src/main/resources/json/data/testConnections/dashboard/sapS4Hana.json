@@ -1,0 +1,26 @@
+{
+  "name": "SapS4Hana",
+  "displayName": "SAP S/4HANA Test Connection",
+  "description": "This Test Connection validates access against the SAP S/4HANA instance and basic metadata extraction of Fiori apps and CDS views.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the SAP S/4HANA instance and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to SAP S/4HANA. Please validate the host, port, and credentials.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDashboards",
+      "description": "List Fiori apps available in the SAP S/4HANA Fiori app index.",
+      "errorMessage": "Failed to fetch Fiori apps. Please validate that the user has access to the Fiori app index.",
+      "mandatory": false
+    },
+    {
+      "name": "GetDataModels",
+      "description": "List CDS views available in the SAP S/4HANA instance.",
+      "errorMessage": "Failed to fetch CDS views. Please validate that the user has access to the CDS view API.",
+      "mandatory": false
+    }
+  ]
+}

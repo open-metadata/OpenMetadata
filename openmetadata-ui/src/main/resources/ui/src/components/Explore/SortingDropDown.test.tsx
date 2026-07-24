@@ -12,7 +12,40 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import SortingDropDown from './SortingDropDown';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <button {...props}>{children}</button>
+    )),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    )),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    )),
+    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+      <div role="menuitem" onClick={onClick} {...props}>
+        {children}
+      </div>
+    )),
+  },
+}));
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
+}));
 
 const handleFieldDropDown = jest.fn();
 const fieldList = [
@@ -24,7 +57,7 @@ const fieldList = [
 ];
 const sortField = '';
 
-const mockPorps = {
+const mockProps = {
   fieldList,
   sortField,
   handleFieldDropDown,
@@ -32,41 +65,53 @@ const mockPorps = {
 
 describe('Test Sorting DropDown Component', () => {
   it('Should render dropdown component', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+    const { findByTestId, findByRole } = render(
+      <MemoryRouter>
+        <SortingDropDown {...mockProps} />
+      </MemoryRouter>
     );
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdown = await findByTestId('dropdown');
 
-    expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdown).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+    const dropdownButton = dropdown.querySelector('button');
+
+    expect(dropdownButton).toBeInTheDocument();
+
+    fireEvent.click(dropdownButton!);
 
     const dropdownMenu = await findByRole('menu');
 
     expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
 
     expect(menuItems).toHaveLength(fieldList.length);
   });
 
   it('Should call onSelect method on onClick option', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+    const { findByTestId, findByRole } = render(
+      <MemoryRouter>
+        <SortingDropDown {...mockProps} />
+      </MemoryRouter>
     );
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    const dropdown = await findByTestId('dropdown');
 
-    expect(dropdownLabel).toBeInTheDocument();
+    expect(dropdown).toBeInTheDocument();
 
-    fireEvent.click(dropdownLabel);
+    const dropdownButton = dropdown.querySelector('button');
+
+    expect(dropdownButton).toBeInTheDocument();
+
+    fireEvent.click(dropdownButton!);
 
     const dropdownMenu = await findByRole('menu');
 
     expect(dropdownMenu).toBeInTheDocument();
 
-    const menuItems = await findAllByTestId('dropdown-menu-item');
+    const menuItems = dropdownMenu.querySelectorAll('[role="menuitem"]');
 
     expect(menuItems).toHaveLength(fieldList.length);
 

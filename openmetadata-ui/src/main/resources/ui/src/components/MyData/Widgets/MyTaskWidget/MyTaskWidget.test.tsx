@@ -14,12 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
-import {
-  TaskType,
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../../generated/entity/feed/thread';
+import { TaskEntityStatus, TaskEntityType } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import MyTaskWidget from './MyTaskWidget';
@@ -55,32 +50,32 @@ const mockProps = {
   ],
 };
 
-const mockEntityThread: Thread[] = [
+const mockTasks = [
   {
     id: '1',
-    message: 'Task 1',
-    about: 'test.task1',
-    task: {
-      status: ThreadTaskStatus.Open,
-      id: 1,
-      type: TaskType.RequestDescription,
-      assignees: [],
+    taskId: 'TASK-00001',
+    status: TaskEntityStatus.Open,
+    type: TaskEntityType.DescriptionUpdate,
+    assignees: [],
+    about: {
+      type: 'table',
+      fullyQualifiedName: 'service.db.schema.task1',
+      name: 'task1',
     },
-    type: ThreadType.Task,
-    updatedAt: 1640995200000,
+    createdAt: 1640995200000,
   },
   {
     id: '2',
-    message: 'Task 2',
-    about: 'test.task2',
-    task: {
-      status: ThreadTaskStatus.Open,
-      id: 2,
-      type: TaskType.RequestDescription,
-      assignees: [],
+    taskId: 'TASK-00002',
+    status: TaskEntityStatus.Open,
+    type: TaskEntityType.DescriptionUpdate,
+    assignees: [],
+    about: {
+      type: 'table',
+      fullyQualifiedName: 'service.db.schema.task2',
+      name: 'task2',
     },
-    type: ThreadType.Task,
-    updatedAt: 1641081600000,
+    createdAt: 1641081600000,
   },
 ];
 
@@ -106,8 +101,8 @@ describe('MyTaskWidget', () => {
     jest.clearAllMocks();
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: jest.fn(),
-      entityThread: mockEntityThread,
+      getTaskData: jest.fn(),
+      tasks: mockTasks,
     });
   });
 
@@ -121,8 +116,8 @@ describe('MyTaskWidget', () => {
   it('renders empty state when no tasks', () => {
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: jest.fn(),
-      entityThread: [],
+      getTaskData: jest.fn(),
+      tasks: [],
     });
 
     renderMyTaskWidget();
@@ -138,18 +133,17 @@ describe('MyTaskWidget', () => {
   });
 
   it('calls getFeedData on mount with correct parameters', () => {
-    const mockGetFeedData = jest.fn();
+    const mockGetTaskData = jest.fn();
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
-      getFeedData: mockGetFeedData,
-      entityThread: mockEntityThread,
+      getTaskData: mockGetTaskData,
+      tasks: mockTasks,
     });
     renderMyTaskWidget();
 
-    expect(mockGetFeedData).toHaveBeenCalledWith(
+    expect(mockGetTaskData).toHaveBeenCalledWith(
       'OWNER_OR_FOLLOWS',
       undefined,
-      'Task',
       undefined,
       undefined,
       undefined,

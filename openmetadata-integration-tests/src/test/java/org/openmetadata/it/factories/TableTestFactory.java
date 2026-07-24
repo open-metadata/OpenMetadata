@@ -62,4 +62,32 @@ public class TableTestFactory {
   public static Table createSimpleWithName(String name, TestNamespace ns, String schemaFqn) {
     return Tables.create().name(name).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
   }
+
+  /**
+   * Create table with columns that have descriptions using fluent API. Useful for testing
+   * column-level description updates.
+   */
+  public static Table createWithColumns(TestNamespace ns, String schemaFqn) {
+    List<Column> columnsWithDescriptions =
+        List.of(
+            new Column()
+                .withName("id")
+                .withDataType(ColumnDataType.BIGINT)
+                .withDescription("Primary key identifier"),
+            new Column()
+                .withName("name")
+                .withDataType(ColumnDataType.VARCHAR)
+                .withDataLength(255)
+                .withDescription("Entity name field"),
+            new Column()
+                .withName("created_at")
+                .withDataType(ColumnDataType.TIMESTAMP)
+                .withDescription("Record creation timestamp"));
+
+    return Tables.create()
+        .name(ns.prefix("table_with_cols"))
+        .inSchema(schemaFqn)
+        .withColumns(columnsWithDescriptions)
+        .execute();
+  }
 }

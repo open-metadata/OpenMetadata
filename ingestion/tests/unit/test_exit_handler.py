@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 operators_path = Path(__file__).parent.parent.parent / "operators" / "docker"
 sys.path.insert(0, str(operators_path))
 
-from exit_handler import (
+from exit_handler import (  # noqa: E402
     FailureDiagnostics,
     create_pod_diagnostics,
     find_main_pod,
@@ -277,9 +277,7 @@ class TestGatherFailureDiagnostics:
     @patch("exit_handler.find_main_pod")
     @patch("exit_handler.get_main_pod_logs")
     @patch("exit_handler.get_main_pod_description")
-    def test_gathers_all_diagnostics(
-        self, mock_description, mock_logs, mock_find_pod, mock_get_client
-    ):
+    def test_gathers_all_diagnostics(self, mock_description, mock_logs, mock_find_pod, mock_get_client):
         """Test gathering complete diagnostics."""
         mock_get_client.return_value = MagicMock()
         mock_find_pod.return_value = MagicMock()
@@ -296,9 +294,7 @@ class TestGatherFailureDiagnostics:
     @patch("exit_handler.find_main_pod")
     @patch("exit_handler.get_main_pod_logs")
     @patch("exit_handler.get_main_pod_description")
-    def test_continues_on_partial_failure(
-        self, mock_description, mock_logs, mock_find_pod, mock_get_client
-    ):
+    def test_continues_on_partial_failure(self, mock_description, mock_logs, mock_find_pod, mock_get_client):
         """Test continues gathering even when some operations fail."""
         mock_get_client.return_value = MagicMock()
         mock_find_pod.return_value = MagicMock()

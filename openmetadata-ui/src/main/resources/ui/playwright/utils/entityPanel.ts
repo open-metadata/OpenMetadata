@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { redirectToExplorePage } from './common';
+import { clickOutside, redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -25,100 +25,174 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
+const findOptionByScrolling = async (page: Page, endpoint: string) => {
+  let tries = 0;
+  const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
+  const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
+  const dropdown = page
+    .getByTestId('global-search-select-dropdown')
+    .locator('.rc-virtual-list-holder');
+  const option = page.getByTestId(`global-search-select-option-${filterName}`);
+  while (tries < maxTries) {
+    if (await option.isVisible()) {
+      await option.click();
+      return;
+    }
+    // Scroll the dropdown to load more options
+    await dropdown.evaluate((element) => {
+      element.scrollBy(0, 100); // Adjust scroll amount as needed
+    });
+    tries++;
+  }
+  await dropdown.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  throw new Error(
+    `Unable to find global search filter option "${filterName}" for endpoint "${endpoint}" after ${maxTries} scroll attempts.`
+  );
+};
+
 export const openEntitySummaryPanel = async ({
   page,
   entityName,
   endpoint,
   fullyQualifiedName,
   exploreTab,
+  dataAssetTypeLeftPanelTestId,
 }: {
   page: Page;
   entityName: string;
   endpoint?: string;
   fullyQualifiedName?: string;
   exploreTab?: string;
+  dataAssetTypeLeftPanelTestId?: string;
 }) => {
-  if (
-    endpoint &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] &&
-    ENDPOINT_TO_FILTER_MAP[endpoint] !== 'Search Index'
-  ) {
-    await page.getByTestId('global-search-selector').waitFor({
-      state: 'visible',
-    });
-    await page.getByTestId('global-search-selector').click();
-    await page.getByTestId('global-search-select-dropdown').waitFor({
-      state: 'visible',
-    });
-    await page
-      .getByTestId(
-        `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
-      )
-      .click();
-  }
-  const searchResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/search/query')
-  );
-
-  await page.getByTestId('searchBox').fill(entityName);
-
-  const searchResponse = await searchResponsePromise;
-  expect(searchResponse.status()).toBe(200);
-
-  await page.getByTestId('searchBox').press('Enter');
-  await waitForAllLoadersToDisappear(page);
-
-  if (exploreTab) {
-    const tab = page
-      .getByTestId('explore-left-panel')
-      .getByRole('menuitem', { name: exploreTab });
-    await tab.waitFor({ state: 'visible' });
-    await tab.click();
+  const runSearch = async () => {
+    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+      await page.getByTestId('global-search-selector').waitFor({
+        state: 'visible',
+      });
+      await page.getByTestId('global-search-selector').click();
+      await page.getByTestId('global-search-select-dropdown').waitFor({
+        state: 'visible',
+      });
+      await findOptionByScrolling(page, endpoint);
+    }
+    const searchResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query')
+    );
+    await page.getByTestId('searchBox').fill(entityName);
+    await searchResponsePromise;
+    await page.getByTestId('searchBox').press('Enter');
     await waitForAllLoadersToDisappear(page);
+
+    // Select the entity-type tab as part of each search attempt: for callers that
+    // pass an exploreTab without an endpoint filter (e.g. Column), the result card
+    // only renders under its tab, so the poll's visibility check must run after the
+    // tab is selected — not once, after the poll.
+    if (exploreTab) {
+      const tab = page
+        .getByTestId('explore-left-panel')
+        .getByRole('menuitem', { name: exploreTab });
+      await tab.waitFor({ state: 'visible' });
+      await tab.click();
+      await waitForAllLoadersToDisappear(page);
+    }
+  };
+
+  const entityResultCard = fullyQualifiedName
+    ? page.getByTestId(`table-data-card_${fullyQualifiedName}`)
+    : page
+        .locator('[data-testid^="table-data-card"]')
+        .filter({
+          has: page.getByTestId('entity-link').filter({ hasText: entityName }),
+        })
+        .first();
+
+  if (dataAssetTypeLeftPanelTestId) {
+    // The knowledge-center card is only revealed after selecting the KC item
+    // below, so it cannot gate the retry — issue a single search here.
+    await runSearch();
+  } else {
+    // Search indexing is eventually consistent and lags further under CI load, so
+    // a freshly created entity may not surface on the first query. Retry the
+    // search — reloading between attempts to force a fresh fetch — until the
+    // entity's result card appears, rather than assuming one query surfaces it.
+    let hasSearched = false;
+    await expect
+      .poll(
+        async () => {
+          if (hasSearched) {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+          }
+          hasSearched = true;
+          await runSearch();
+
+          return entityResultCard.isVisible();
+        },
+        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
+      )
+      .toBe(true);
   }
 
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
+    await clickOutside(page);
+    await expect(
+      page.locator('.ant-popover:not(.ant-popover-hidden)')
+    ).toHaveCount(0);
+
+    // Since the directly clicking on the card can sometimes click on title element which is link,
+    // we need to click on description container to open the summary panel.
+    await entityResultCard.getByTestId('description-text').click();
+
     return;
   }
 
-  const entityCard = page
-    .locator('[data-testid="table-data-card"]')
-    .filter({ hasText: entityName })
-    .first();
-
-  const isCardVisible = await entityCard.isVisible().catch(() => false);
-  if (isCardVisible) {
-    await entityCard.click();
+  if (dataAssetTypeLeftPanelTestId) {
+    const knowledgeCenterItem = page.getByTestId(dataAssetTypeLeftPanelTestId);
+    await knowledgeCenterItem.waitFor({ state: 'visible' });
+    await knowledgeCenterItem.click();
   }
+
+  await entityResultCard.getByTestId('description-text').click();
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(
   page: Page,
   entityName: string,
-  endpoint?: string
+  endpoint?: string,
+  exploreTab?: string,
+  fullyQualifiedName?: string
 ) {
   await redirectToExplorePage(page);
 
   await waitForAllLoadersToDisappear(page);
 
-  const permissionsResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/permissions')
-  );
+  await openEntitySummaryPanel({
+    page,
+    entityName,
+    endpoint,
+    exploreTab,
+    fullyQualifiedName,
+  });
 
-  await openEntitySummaryPanel({ page, entityName, endpoint });
-
-  const permissionsResponse = await permissionsResponsePromise;
-  expect(permissionsResponse.status()).toBe(200);
-
-  // Ensure all the component for right panel are rendered
-  const loaders = page.locator(
-    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
-  );
+  // Opening the panel triggers a permissions fetch, but that response is often
+  // served from the client cache (the entity's permissions were already loaded
+  // by the preceding Set/Update steps), so no network request fires and waiting
+  // on the /permissions response hangs until the test times out. Assert the
+  // panel opened and finished loading via the DOM instead — the panel only
+  // renders when permissions resolve, so this covers the same outcome without
+  // depending on a network round-trip.
+  const summaryPanel = page.getByTestId('entity-summary-panel-container');
+  await summaryPanel.waitFor({ state: 'visible' });
 
   // Wait for the loader elements count to become 0
-  await expect(loaders).toHaveCount(0, { timeout: 30000 });
+  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
+    timeout: 30000,
+  });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
@@ -572,7 +646,7 @@ export const editDisplayNameFromPanel = async (
   await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
-  const modal = page.locator('.ant-modal');
+  const modal = page.getByTestId('entity-name-modal');
   await modal.waitFor({ state: 'visible' });
 
   const displayNameInput = modal.locator('#displayName');

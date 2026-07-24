@@ -13,7 +13,6 @@
 Map Types to convert/cast mssql related data types to relevant data types
 """
 
-
 from sqlalchemy import NVARCHAR, TEXT
 
 from metadata.profiler.orm.converter.common import CommonMapTypes

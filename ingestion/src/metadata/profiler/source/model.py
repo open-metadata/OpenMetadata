@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Model for the OpenMetadata Profiler Source"""
+
 from pydantic import ConfigDict
 
 from metadata.ingestion.models.custom_pydantic import BaseModel

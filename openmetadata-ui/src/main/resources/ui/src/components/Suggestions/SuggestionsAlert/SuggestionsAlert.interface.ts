@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Suggestion } from '../../../generated/entity/feed/suggestion';
+import { Suggestion } from '../../../types/taskSuggestion';
 
 export interface SuggestionsAlertProps {
   suggestion: Suggestion;

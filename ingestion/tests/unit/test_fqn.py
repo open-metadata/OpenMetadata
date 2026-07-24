@@ -11,6 +11,7 @@
 """
 Test FQN build behavior
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -104,8 +105,27 @@ class TestFqn(TestCase):
             fqn.quote_name('a"b')
         self.assertEqual('Invalid name a"b', str(context.exception))
 
+    def test_quote_name_rejects_newline(self):
+        """
+        Names with embedded newlines (which Snowflake's ``information_schema``
+        occasionally returns when source tables were created from scripts that
+        forgot to strip a trailing ``\\n``) are not valid OpenMetadata FQN
+        components — the OM server's ``quoteName`` rejects them too. Python's
+        ``quote_name`` therefore raises here to keep the client/server
+        contract consistent. The defensive try/except added to
+        ``_get_schema_columns`` (snowflake/utils.py) and
+        ``CommonDbSourceService.get_tables_name_and_type``
+        (common_db_source.py) catch this ValueError and let the rest of the
+        schema continue ingesting.
+        """
+        with self.assertRaises(ValueError) as context:
+            fqn.quote_name("REPRO_BACKUP\n  ")
+        self.assertIn("Invalid name", str(context.exception))
+        with self.assertRaises(ValueError):
+            fqn.quote_name("a\nb")
+
     def test_invalid(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             fqn.split('a.."')
 
     def test_build_table(self):
@@ -157,9 +177,7 @@ class TestFqn(TestCase):
         assert split_fqn.column == "customer_id"
         assert split_fqn.test_case == "expect_column_max_to_be_between"
 
-        split_fqn = fqn.split_test_case_fqn(
-            "local_redshift.dev.dbt_jaffle.customers.expect_table_column_to_be_between"
-        )
+        split_fqn = fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers.expect_table_column_to_be_between")
 
         assert not split_fqn.column
         assert split_fqn.test_case == "expect_table_column_to_be_between"
@@ -281,9 +299,7 @@ class TestFqn(TestCase):
             table_name="events",
             column_name=postgres_column,
         )
-        expected2 = (
-            f"postgres.mydb.public.events.created_at{RESERVED_COLON_KEYWORD}timestamp"
-        )
+        expected2 = f"postgres.mydb.public.events.created_at{RESERVED_COLON_KEYWORD}timestamp"
         self.assertEqual(result2, expected2)
 
         # BigQuery partition notation
@@ -349,9 +365,7 @@ class TestFqn(TestCase):
 
         # APICollection (2 slots: service.collection)
         api_collection_fqn = "users_api"
-        result = fqn.prefix_entity_for_wildcard_search(
-            APICollection, api_collection_fqn
-        )
+        result = fqn.prefix_entity_for_wildcard_search(APICollection, api_collection_fqn)
         self.assertEqual(result, "*.users_api")
 
         # Chart (2 slots: service.chart)
@@ -398,15 +412,11 @@ class TestFqn(TestCase):
         self.assertEqual(result, "*.*.*.calculate_revenue")
 
         stored_proc_fqn_partial = "public.calculate_revenue"
-        result = fqn.prefix_entity_for_wildcard_search(
-            StoredProcedure, stored_proc_fqn_partial
-        )
+        result = fqn.prefix_entity_for_wildcard_search(StoredProcedure, stored_proc_fqn_partial)
         self.assertEqual(result, "*.*.public.calculate_revenue")
 
         stored_proc_fqn_full = "oracle.sales_db.public.calculate_revenue"
-        result = fqn.prefix_entity_for_wildcard_search(
-            StoredProcedure, stored_proc_fqn_full
-        )
+        result = fqn.prefix_entity_for_wildcard_search(StoredProcedure, stored_proc_fqn_full)
         self.assertEqual(result, "oracle.sales_db.public.calculate_revenue")
 
         # Pipeline (2 slots: service.pipeline)
@@ -417,9 +427,7 @@ class TestFqn(TestCase):
         # Test error cases
         # FQN with too many parts
         with pytest.raises(fqn.FQNBuildingException) as exc:
-            fqn.prefix_entity_for_wildcard_search(
-                Table, "service.db.schema.table.extra"
-            )
+            fqn.prefix_entity_for_wildcard_search(Table, "service.db.schema.table.extra")
         assert "has too many parts" in str(exc.value)
 
         # Test unsupported entity type (Column doesn't have slots defined)

@@ -14,14 +14,9 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo } from 'react';
-import { EntityType } from '../../../enums/entity.enum';
-import { Post, ThreadType } from '../../../generated/entity/feed/thread';
-import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
-import { getEntityType } from '../../../utils/FeedUtils';
-import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
+import { Post } from '../../../generated/entity/feed/thread';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import '../ActivityFeedTab/activity-feed-tab.less';
-import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 import './feed-panel-body-v1.less';
 import { FeedPanelBodyPropV1 } from './FeedPanelBodyV1.interface';
 
@@ -29,69 +24,34 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   feed,
   className,
   showThread = true,
-  isOpenInDrawer = false,
   onFeedClick,
   isActive,
-  hidePopover = false,
-  isForFeedTab = false,
 }) => {
   const mainFeed = useMemo(
     () =>
-      ({
-        message: feed.message,
-        postTs: feed.threadTs,
-        from: feed.createdBy,
-        id: feed.id,
-        reactions: feed.reactions,
-      } as Post),
+      feed
+        ? ({
+            message: feed.message,
+            postTs: feed.threadTs,
+            from: feed.createdBy,
+            id: feed.id,
+            reactions: feed.reactions,
+          } as Post)
+        : undefined,
     [feed]
   );
 
   const handleFeedClick = useCallback(() => {
-    onFeedClick?.(feed);
+    if (feed) {
+      onFeedClick?.(feed);
+    }
   }, [onFeedClick, feed]);
 
-  const isUserEntity = useMemo(
-    () => feed.entityRef?.type === EntityType.USER,
-    [feed.entityRef?.type]
-  );
-
-  const entityTypeTask = useMemo(
-    () =>
-      feed?.about?.split(ENTITY_LINK_SEPARATOR)?.[1] as Exclude<
-        EntityType,
-        EntityType.TABLE
-      >,
-    [feed]
-  );
+  if (!feed) {
+    return null;
+  }
 
   const renderFeedContent = () => {
-    if (feed.type === ThreadType.Task) {
-      if (!isForFeedTab) {
-        return (
-          <TaskFeedCard
-            feed={feed}
-            hidePopover={hidePopover}
-            isActive={isActive}
-            isForFeedTab={isForFeedTab}
-            isOpenInDrawer={isOpenInDrawer}
-            key={feed.id}
-            post={mainFeed}
-            showThread={showThread}
-          />
-        );
-      }
-
-      return (
-        <TaskTabNew
-          isOpenInDrawer
-          entityType={isUserEntity ? entityTypeTask : getEntityType(feed.about)}
-          isForFeedTab={isForFeedTab}
-          taskThread={feed}
-        />
-      );
-    }
-
     return (
       <ActivityFeedCardNew
         isForFeedTab

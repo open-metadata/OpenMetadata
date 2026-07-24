@@ -261,6 +261,7 @@ export interface WorkflowCanvasProps {
   onConnect: OnConnect;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onEdgeClick: (event: React.MouseEvent, edge: Edge) => void;
+  onEdgeDelete: (edgeId: string) => void;
   onDragOver: (event: React.DragEvent) => void;
   onDragEnter: (event: React.DragEvent) => void;
   onDragLeave: (event: React.DragEvent) => void;

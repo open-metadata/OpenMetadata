@@ -2,8 +2,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
-import static org.openmetadata.schema.type.EventType.THREAD_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
@@ -13,19 +11,16 @@ import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.CloseTask;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
-import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Metric;
@@ -33,29 +28,27 @@ import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
-import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskDetails;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
-import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.IncidentManagerException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 
+@Slf4j
 public class TestCaseResolutionStatusRepository
     extends EntityTimeSeriesRepository<TestCaseResolutionStatus> {
   public static final String TIME_TO_RESPONSE = "timeToResponse";
@@ -69,9 +62,31 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
+  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
+  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
+  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+  }
+
+  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
+  // feeds the raw ES hit straight into strict deserialization, so the full set of non-schema
+  // search fields must be pushed into the {@code _source.exclude} of the query itself — matching
+  // exactly what the {@code latest=true} path strips client-side. Excluding only {@code testSuites}
+  // leaves {@code @timestamp}, {@code domains}, {@code testCase}, and {@code testSuite} in the
+  // source, each of which 400s strict Jackson in turn.
+  @Override
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
+    String existingExcludeFields = searchListFilter.getQueryParam("excludeFields");
+    String scrubFields = String.join(",", getExcludeSearchFields());
+    String mergedExcludeFields =
+        nullOrEmpty(existingExcludeFields)
+            ? scrubFields
+            : existingExcludeFields + "," + scrubFields;
+    searchListFilter.addQueryParam("excludeFields", mergedExcludeFields);
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
@@ -84,8 +99,9 @@ public class TestCaseResolutionStatusRepository
     for (String json : jsons) {
       TestCaseResolutionStatus testCaseResolutionStatus =
           JsonUtils.readValue(json, TestCaseResolutionStatus.class);
-      setInheritedFields(testCaseResolutionStatus);
-      testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      if (resolveTestCaseReference(testCaseResolutionStatus)) {
+        testCaseResolutionStatuses.add(testCaseResolutionStatus);
+      }
     }
 
     return getResultList(testCaseResolutionStatuses, null, null, testCaseResolutionStatuses.size());
@@ -160,13 +176,17 @@ public class TestCaseResolutionStatusRepository
             .equals(TestCaseResolutionStatusTypes.Resolved);
   }
 
-  private Thread getIncidentTask(TestCaseResolutionStatus incident) {
-    // Fetch the latest task (which comes from the NEW state) and close it
-    String jsonThread =
-        Entity.getCollectionDAO()
-            .feedDAO()
-            .fetchThreadByTestCaseResolutionStatusId(incident.getStateId());
-    return JsonUtils.readValue(jsonThread, Thread.class);
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
+  public UUID getOngoingIncidentStateId(String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    return Boolean.TRUE.equals(unresolvedIncident(latest)) ? latest.getStateId() : null;
+  }
+
+  private static boolean isReopeningStatus(TestCaseResolutionStatus recordEntity) {
+    TestCaseResolutionStatusTypes statusType = recordEntity.getTestCaseResolutionStatusType();
+    return statusType == TestCaseResolutionStatusTypes.Ack
+        || statusType == TestCaseResolutionStatusTypes.Assigned
+        || statusType == TestCaseResolutionStatusTypes.Resolved;
   }
 
   @Override
@@ -206,32 +226,49 @@ public class TestCaseResolutionStatusRepository
           recordEntity.getSeverity() == null
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
+    } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
+      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
+      recordEntity.setStateId(lastIncident.getStateId());
+      recordEntity.setSeverity(
+          recordEntity.getSeverity() == null
+              ? lastIncident.getSeverity()
+              : recordEntity.getSeverity());
     }
 
     setResolutionMetrics(lastIncident, recordEntity);
     inferIncidentSeverity(recordEntity);
 
+    LOG.debug(
+        "storeInternal switch: status={}, stateId={}",
+        recordEntity.getTestCaseResolutionStatusType(),
+        recordEntity.getStateId());
     switch (recordEntity.getTestCaseResolutionStatusType()) {
       case New -> {
-        // If there is already an existing New incident we'll return it
         if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
+          LOG.debug("Skipping - already have unresolved incident");
           return;
         }
       }
-      case Ack, Assigned -> openOrAssignTask(recordEntity);
+      case Ack, Assigned -> {
+        // Bridge legacy TCRS status writes onto the task-first incident workflow so existing
+        // clients keep working while Task remains the source of truth.
+        if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+          return;
+        }
+      }
       case Resolved -> {
-        // When the incident is Resolved, we will close the Assigned task.
-        resolveTask(recordEntity, lastIncident);
-        // We don't create a new record. The new status will be added via the
-        // TestCaseFailureResolutionTaskWorkflow
-        // implemented in the TestCaseRepository.
-        return;
+        // Bridge legacy TCRS status writes onto the task-first incident workflow so existing
+        // clients keep working while Task remains the source of truth.
+        if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+          return;
+        }
       }
       default -> throw new IllegalArgumentException(
           String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
-    recordEntity.withTestCaseReference(null); // we don't want to store the reference in the record
+    recordEntity.withTestCaseReference(null);
     timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
     recordEntity.withTestCaseReference(testCaseReference);
   }
@@ -254,190 +291,187 @@ public class TestCaseResolutionStatusRepository
         getFromEntityRef(recordEntity.getId(), Relationship.PARENT_OF, Entity.TEST_CASE, true));
   }
 
-  private void openOrAssignTask(TestCaseResolutionStatus incidentStatus) {
-    switch (incidentStatus.getTestCaseResolutionStatusType()) {
-      case Ack -> // If the incident has been acknowledged, the task will be assigned to the user
-      // who acknowledged it
-      createTask(incidentStatus, Collections.singletonList(incidentStatus.getUpdatedBy()));
-      case Assigned -> {
-        // If no existing task is found (New -> Assigned), we'll create a new one,
-        // otherwise (Ack -> Assigned) we'll update the existing
-        Thread existingTask = getIncidentTask(incidentStatus);
-        Assigned assigned =
-            JsonUtils.convertValue(
-                incidentStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
-        if (existingTask == null) {
-          // New -> Assigned flow
-          createTask(incidentStatus, Collections.singletonList(assigned.getAssignee()));
-        } else {
-          // Ack -> Assigned or Assigned -> Assigned flow
-          patchTaskAssignee(
-              existingTask, assigned.getAssignee(), incidentStatus.getUpdatedBy().getName());
-        }
+  /**
+   * Resolves the parent test case reference, returning false for orphaned rows whose parentOf
+   * relationship no longer exists. Such rows are skipped rather than failing the whole request; the
+   * DataRetention job removes them.
+   */
+  private boolean resolveTestCaseReference(TestCaseResolutionStatus recordEntity) {
+    boolean resolved = true;
+    try {
+      setInheritedFields(recordEntity);
+    } catch (RuntimeException exception) {
+      if (!shouldSkipSearchResultOnInheritedFieldError(exception, recordEntity)) {
+        throw exception;
       }
-        // Should not land in the default case as we only call this method for Ack and Assigned
-      default -> throw new IllegalArgumentException(
-          String.format(
-              "Task cannot be opened for status `%s`",
-              incidentStatus.getTestCaseResolutionStatusType()));
+      LOG.warn(
+          "Skipping orphaned testCaseResolutionStatus {} with no parent test case relationship",
+          recordEntity.getId());
+      resolved = false;
     }
+    return resolved;
   }
 
-  private void resolveTask(
-      TestCaseResolutionStatus newIncidentStatus, TestCaseResolutionStatus lastIncidentStatus) {
-
-    if (lastIncidentStatus == null) {
-      throw new IncidentManagerException(
-          String.format(
-              "Cannot find the last incident status for stateId %s",
-              newIncidentStatus.getStateId()));
+  @Override
+  protected boolean shouldSkipSearchResultOnInheritedFieldError(
+      RuntimeException exception, TestCaseResolutionStatus entity) {
+    if (exception instanceof EntityNotFoundException) {
+      return true;
     }
 
-    Resolved resolved =
-        JsonUtils.convertValue(
-            newIncidentStatus.getTestCaseResolutionStatusDetails(), Resolved.class);
-    TestCase testCase =
-        Entity.getEntity(
-            Entity.TEST_CASE, newIncidentStatus.getTestCaseReference().getId(), "", Include.ALL);
-    User updatedBy =
-        Entity.getEntity(Entity.USER, newIncidentStatus.getUpdatedBy().getId(), "", Include.ALL);
-    ResolveTask resolveTask =
-        new ResolveTask()
-            .withTestCaseFQN(testCase.getFullyQualifiedName())
-            .withTestCaseFailureReason(resolved.getTestCaseFailureReason())
-            .withNewValue(resolved.getTestCaseFailureComment());
-
-    Thread thread = getIncidentTask(lastIncidentStatus);
-
-    if (thread != null) {
-      // If there is an existing task, we'll close it without performing the workflow
-      // (i.e. creating a new incident which will be handled here).
-      FeedRepository.ThreadContext threadContext = new FeedRepository.ThreadContext(thread);
-      threadContext.getThread().getTask().withNewValue(resolveTask.getNewValue());
-      Entity.getFeedRepository()
-          .closeTaskWithoutWorkflow(
-              threadContext.getThread(), updatedBy.getFullyQualifiedName(), new CloseTask());
-    }
-    // if there is no task, we'll simply create a new incident status (e.g. New -> Resolved)
-    EntityReference testCaseReference = newIncidentStatus.getTestCaseReference();
-    newIncidentStatus.setTestCaseReference(
-        null); // we don't want to store the reference in the record
-    timeSeriesDao.insert(
-        testCaseReference.getFullyQualifiedName(),
-        entityType,
-        JsonUtils.pojoToJson(newIncidentStatus));
-    newIncidentStatus.setTestCaseReference(testCaseReference);
+    String message = exception.getMessage();
+    return message != null
+        && message.contains(Entity.TEST_CASE_RESOLUTION_STATUS)
+        && message.contains(Relationship.PARENT_OF.value());
   }
 
   /**
-   * Creates a ChangeEvent for when a task is automatically created or updated during incident management.
-   *
-   * <p>This method is ONLY called from internal code paths (not REST endpoints).
-   * REST endpoints have their ChangeEvents created by ChangeEventHandler.process().
-   *
-   * @param thread The Thread entity (task) that was just created or updated
-   * @param userName The user who triggered the incident status change
-   * @param eventType The type of event: THREAD_CREATED for new tasks, THREAD_UPDATED for reassignments
-   * @param changeDescription Optional description of changes (for THREAD_UPDATED events)
+   * Bridge a legacy-style {@link TestCaseResolutionStatus} onto the task-first incident workflow,
+   * advancing the workflow task to match the recorded status. Used by {@link #storeInternal} on
+   * live Ack/Assigned/Resolved writes so existing TCRS clients keep working while Task remains the
+   * source of truth. Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when the
+   * task is already at the target stage.
    */
-  private void createAndPersistThreadChangeEvent(
-      Thread thread, String userName, EventType eventType, ChangeDescription changeDescription) {
-    // Create the ChangeEvent for the newly created or updated task
-    ChangeEvent changeEvent =
-        new ChangeEvent()
-            .withId(UUID.randomUUID())
-            .withEventType(eventType)
-            .withEntityId(thread.getId())
-            .withEntityType(Entity.THREAD)
-            .withEntityFullyQualifiedName(thread.getId().toString())
-            .withUserName(userName)
-            .withTimestamp(System.currentTimeMillis())
-            .withEntity(thread);
-
-    // Include change description if provided (tracks what changed in the update)
-    if (changeDescription != null) {
-      changeEvent.withChangeDescription(changeDescription);
+  public boolean applyLegacyStatusToIncidentTask(
+      TestCaseResolutionStatus recordEntity, String recordFQN) {
+    Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
+    if (incidentTask == null) {
+      LOG.debug(
+          "No workflow-managed incident task found for legacy status {} on {}. Falling back to direct TCRS insert.",
+          recordEntity.getTestCaseResolutionStatusType(),
+          recordFQN);
+      return false;
     }
 
-    // Persist the ChangeEvent to the database
-    // This triggers the notification pipeline to process the event
-    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-  }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task task =
+        taskRepository.get(
+            null,
+            incidentTask.getId(),
+            taskRepository.getFields(
+                "assignees,reviewers,watchers,about,domains,comments,createdBy,payload,resolution,availableTransitions"));
 
-  private void createTask(
-      TestCaseResolutionStatus incidentStatus, List<EntityReference> assignees) {
-
-    TaskDetails taskDetails =
-        new TaskDetails()
-            .withAssignees(assignees)
-            .withType(TaskType.RequestTestCaseFailureResolution)
-            .withStatus(TaskStatus.Open)
-            // Each incident flow - flagged by its State ID - will have a single unique Task
-            .withTestCaseResolutionStatusId(incidentStatus.getStateId());
-
-    MessageParser.EntityLink entityLink =
-        new MessageParser.EntityLink(
-            Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
-
-    // Fetch the TestCase to get its domains
-    TestCase testCase =
-        Entity.getEntity(
-            Entity.TEST_CASE,
-            incidentStatus.getTestCaseReference().getId(),
-            "domains",
-            Include.ALL);
-
-    Thread thread =
-        new Thread()
-            .withId(UUID.randomUUID())
-            .withThreadTs(System.currentTimeMillis())
-            .withMessage("New Incident")
-            .withCreatedBy(incidentStatus.getUpdatedBy().getName())
-            .withAbout(entityLink.getLinkString())
-            .withType(ThreadType.Task)
-            .withTask(taskDetails)
-            .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
-            .withUpdatedAt(System.currentTimeMillis());
-
-    // Inherit domains from the test case
-    if (testCase.getDomains() != null && !testCase.getDomains().isEmpty()) {
-      List<UUID> domainIds =
-          testCase.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList());
-      thread.withDomains(domainIds);
+    if (TaskRepository.isTerminalStatus(task.getStatus())
+        && recordEntity.getTestCaseResolutionStatusType()
+            != TestCaseResolutionStatusTypes.Resolved) {
+      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
+      String reopeningUser =
+          recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
+      try {
+        task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
+      } catch (Exception e) {
+        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
+        if (e instanceof RuntimeException) {
+          throw (RuntimeException) e;
+        }
+        throw new RuntimeException(e);
+      }
     }
 
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    feedRepository.create(thread);
+    String transitionId = resolveLegacyTransitionId(task, recordEntity);
+    if (transitionId == null) {
+      LOG.debug(
+          "Skipping legacy status {} for incident task {} already at stage {}",
+          recordEntity.getTestCaseResolutionStatusType(),
+          task.getId(),
+          task.getWorkflowStageId());
+      return true;
+    }
 
-    // Create explicit ChangeEvent for the auto-created task
-    // No ChangeDescription needed for task creation (null)
-    createAndPersistThreadChangeEvent(
-        thread, incidentStatus.getUpdatedBy().getName(), THREAD_CREATED, null);
+    TaskResolutionType resolutionType =
+        recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
+            ? TaskResolutionType.Completed
+            : null;
+    Object resolvedPayload = buildLegacyResolvedPayload(recordEntity);
+    String comment = extractLegacyResolutionComment(recordEntity);
 
-    // Send WebSocket Notification
-    WebsocketNotificationHandler.handleTaskNotification(thread);
+    taskRepository.resolveTaskWithWorkflow(
+        task,
+        transitionId,
+        resolutionType,
+        null,
+        resolvedPayload,
+        comment,
+        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null);
+
+    LOG.info(
+        "Applied legacy incident status {} to task {} using transition {}",
+        recordEntity.getTestCaseResolutionStatusType(),
+        task.getId(),
+        transitionId);
+    return true;
   }
 
-  private void patchTaskAssignee(Thread originalTask, EntityReference newAssignee, String user) {
-    Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-    List<EntityReference> updatedAssignees =
-        nullOrEmpty(newAssignee) ? new ArrayList<>() : Collections.singletonList(newAssignee);
-    updatedTask.setTask(updatedTask.getTask().withAssignees(updatedAssignees));
+  private Task findIncidentTaskForLegacyStatus(
+      TestCaseResolutionStatus recordEntity, String recordFQN) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
-    JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
+    UUID stateId = recordEntity.getStateId();
+    if (stateId != null) {
+      try {
+        // `about` is relationship-backed and stripped from stored JSON — request it explicitly,
+        // or a bare find() leaves it null and the FQN guard below never matches.
+        Task task =
+            taskRepository.get(
+                null, stateId, taskRepository.getFields("about"), Include.ALL, false);
+        if (task != null
+            && !Boolean.TRUE.equals(task.getDeleted())
+            && task.getType() == TaskEntityType.TestCaseResolution
+            && task.getAbout() != null
+            && recordFQN.equals(task.getAbout().getFullyQualifiedName())) {
+          return task;
+        }
+      } catch (EntityNotFoundException ignored) {
+        // Fall through to lookup by entity/type.
+      }
+    }
 
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    RestUtil.PatchResponse<Thread> thread =
-        feedRepository.patchThread(null, originalTask.getId(), user, patch);
-    Thread updatedThread = thread.entity();
+    return taskRepository.findOpenTaskByEntityAndType(recordFQN, TaskEntityType.TestCaseResolution);
+  }
 
-    // Create explicit ChangeEvent for the assignee update with ChangeDescription
-    // The ChangeDescription from patchThread() tracks the assignee field change
-    createAndPersistThreadChangeEvent(
-        updatedThread, user, THREAD_UPDATED, updatedThread.getChangeDescription());
+  private String resolveLegacyTransitionId(Task task, TestCaseResolutionStatus recordEntity) {
+    return switch (recordEntity.getTestCaseResolutionStatusType()) {
+      case Ack -> "ack".equals(task.getWorkflowStageId()) ? null : "ack";
+      case Assigned -> "assigned".equals(task.getWorkflowStageId()) ? "reassign" : "assign";
+      case Resolved -> TaskEntityStatus.Completed == task.getStatus() ? null : "resolve";
+      default -> null;
+    };
+  }
 
-    // Send WebSocket Notification
-    WebsocketNotificationHandler.handleTaskNotification(updatedThread);
+  private Object buildLegacyResolvedPayload(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved) {
+      if (recordEntity.getTestCaseResolutionStatusType()
+          == TestCaseResolutionStatusTypes.Assigned) {
+        Assigned assigned =
+            JsonUtils.convertValue(
+                recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
+        if (assigned == null || assigned.getAssignee() == null) {
+          return null;
+        }
+        return Map.of("assignees", List.of(assigned.getAssignee()));
+      }
+      return null;
+    }
+
+    Resolved resolved =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
+    if (resolved == null || resolved.getTestCaseFailureReason() == null) {
+      return null;
+    }
+
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("testCaseFailureReason", resolved.getTestCaseFailureReason().value());
+    return payload;
+  }
+
+  private String extractLegacyResolutionComment(TestCaseResolutionStatus recordEntity) {
+    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved) {
+      return null;
+    }
+
+    Resolved resolved =
+        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Resolved.class);
+    return resolved != null ? resolved.getTestCaseFailureComment() : null;
   }
 
   public void inferIncidentSeverity(TestCaseResolutionStatus incident) {
@@ -481,41 +515,60 @@ public class TestCaseResolutionStatusRepository
   }
 
   protected static UUID getOrCreateIncident(TestCase testCase, String updatedBy) {
-    CollectionDAO daoCollection = Entity.getCollectionDAO();
-    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-        (TestCaseResolutionStatusRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
-    String json =
-        daoCollection
-            .testCaseResolutionStatusTimeSeriesDao()
-            .getLatestRecord(testCase.getFullyQualifiedName());
-
-    TestCaseResolutionStatus storedTestCaseResolutionStatus =
-        json != null ? JsonUtils.readValue(json, TestCaseResolutionStatus.class) : null;
-
-    // if we already have a non resolve status then we'll simply return it
-    if (Boolean.TRUE.equals(
-        testCaseResolutionStatusRepository.unresolvedIncident(storedTestCaseResolutionStatus))) {
-      // storedTestCaseResolutionStatus != null is checked in unresolvedIncident
-      return Objects.requireNonNull(storedTestCaseResolutionStatus).getStateId();
+    Task existing =
+        taskRepository.findTaskByEntityTypeAndStatuses(
+            testCase.getFullyQualifiedName(),
+            TaskEntityType.TestCaseResolution,
+            TaskRepository.OPEN_TASK_STATUSES);
+    if (existing != null) {
+      return existing.getId();
     }
 
-    // if the incident is null or resolved then we'll create a new one
-    TestCaseResolutionStatus status =
-        new TestCaseResolutionStatus()
-            .withStateId(UUID.randomUUID())
-            .withTimestamp(System.currentTimeMillis())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)
-            .withUpdatedBy(getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL))
-            .withUpdatedAt(System.currentTimeMillis())
-            .withTestCaseReference(testCase.getEntityReference());
+    return createIncidentTask(testCase, updatedBy);
+  }
 
-    testCaseResolutionStatusRepository.createNewRecord(status, testCase.getFullyQualifiedName());
-    TestCaseResolutionStatus incident =
-        testCaseResolutionStatusRepository.getLatestRecord(testCase.getFullyQualifiedName());
+  private static UUID createIncidentTask(TestCase testCase, String updatedBy) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
 
-    return incident.getStateId();
+    TestCase fullTestCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE, testCase.getFullyQualifiedName(), "owners,domains", Include.ALL);
+
+    EntityReference updatedByRef = getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL);
+
+    List<EntityReference> assignees =
+        !nullOrEmpty(fullTestCase.getOwners()) ? fullTestCase.getOwners() : List.of();
+    UUID taskId = UUID.randomUUID();
+
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withName("Incident: " + fullTestCase.getName())
+            .withDisplayName("Test Case Incident - " + fullTestCase.getDisplayName())
+            .withDescription("New incident for test case: " + fullTestCase.getFullyQualifiedName())
+            .withCategory(TaskCategory.Incident)
+            .withType(TaskEntityType.TestCaseResolution)
+            .withStatus(TaskEntityStatus.Open)
+            .withAbout(fullTestCase.getEntityReference())
+            .withPayload(new TestCaseResolutionPayload().withTestCaseResolutionStatusId(taskId))
+            .withCreatedBy(updatedByRef)
+            .withAssignees(assignees)
+            .withCreatedAt(System.currentTimeMillis())
+            .withUpdatedBy(updatedBy)
+            .withUpdatedAt(System.currentTimeMillis());
+
+    if (!nullOrEmpty(fullTestCase.getDomains())) {
+      task.withDomains(fullTestCase.getDomains());
+    }
+
+    task = taskRepository.createInternal(task);
+    LOG.info(
+        "Incident task created on test failure: id={}, testCase={}",
+        task.getId(),
+        fullTestCase.getFullyQualifiedName());
+    return task.getId();
   }
 
   private void setResolutionMetrics(
@@ -574,5 +627,91 @@ public class TestCaseResolutionStatusRepository
 
       createNewRecord(newStatus, newStatus.getTestCaseReference().getFullyQualifiedName());
     }
+  }
+
+  /**
+   * Write a TCRS record derived from a task lifecycle event.
+   *
+   * <p>This is the persistence path used by {@code IncidentTcrsSyncHandler} to keep the
+   * legacy time series in sync with task-first incident transitions. Unlike {@link
+   * #storeInternal}, it does not execute the legacy Ack/Assigned/Resolved task-mutation
+   * branches (those are no-ops on this branch anyway) and does not apply the "skip New if
+   * there's an unresolved incident" guard — the caller is expected to have already checked
+   * idempotency via {@link #getLatestRecordForStateId(UUID)}.
+   *
+   * <p>The record should have its {@code stateId}, {@code testCaseResolutionStatusType},
+   * {@code testCaseReference}, {@code testCaseResolutionStatusDetails}, {@code timestamp},
+   * {@code updatedAt}, and {@code updatedBy} already populated by the caller. The
+   * {@code stateId} should be set to the driving task's {@code id}, giving us a 1:1
+   * mapping between incidents and Tasks.
+   */
+  public void syncFromTask(TestCaseResolutionStatus recordEntity, String recordFQN) {
+    if (recordEntity == null || recordFQN == null) {
+      return;
+    }
+
+    TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    long lastTimestamp =
+        lastIncident != null && lastIncident.getTimestamp() != null
+            ? lastIncident.getTimestamp()
+            : -1L;
+    long incomingTimestamp =
+        recordEntity.getTimestamp() != null
+            ? recordEntity.getTimestamp()
+            : System.currentTimeMillis();
+    if (incomingTimestamp <= lastTimestamp) {
+      incomingTimestamp = lastTimestamp + 1;
+    }
+    recordEntity.setTimestamp(incomingTimestamp);
+    if (recordEntity.getUpdatedAt() == null || recordEntity.getUpdatedAt() < incomingTimestamp) {
+      recordEntity.setUpdatedAt(incomingTimestamp);
+    }
+
+    // Inherit severity from the previous record for this stateId if the caller didn't set one
+    if (recordEntity.getSeverity() == null && recordEntity.getStateId() != null) {
+      TestCaseResolutionStatus priorForStateId =
+          getLatestRecordForStateId(recordEntity.getStateId());
+      if (priorForStateId != null && priorForStateId.getSeverity() != null) {
+        recordEntity.setSeverity(priorForStateId.getSeverity());
+      }
+    }
+
+    setResolutionMetrics(lastIncident, recordEntity);
+    inferIncidentSeverity(recordEntity);
+
+    LOG.debug(
+        "[TCRS Sync] Inserting record: status={}, stateId={}, testCase={}",
+        recordEntity.getTestCaseResolutionStatusType(),
+        recordEntity.getStateId(),
+        recordFQN);
+
+    EntityReference testCaseReference = recordEntity.getTestCaseReference();
+    recordEntity.withTestCaseReference(null);
+    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
+    recordEntity.withTestCaseReference(testCaseReference);
+
+    storeRelationship(recordEntity);
+    postCreate(recordEntity);
+  }
+
+  /**
+   * Return the most recent TCRS record for a given {@code stateId}, or {@code null} if none
+   * exists. Used by {@link #syncFromTask} for idempotency checks and severity inheritance.
+   */
+  public TestCaseResolutionStatus getLatestRecordForStateId(UUID stateId) {
+    if (stateId == null) {
+      return null;
+    }
+    List<TestCaseResolutionStatus> records =
+        listTestCaseResolutionStatusesForStateId(stateId).getData();
+    if (records == null || records.isEmpty()) {
+      return null;
+    }
+    // listTestCaseResolutionStatusesForStateId doesn't document its ordering; sort defensively
+    // so we always return the highest-timestamp record.
+    return records.stream()
+        .filter(r -> r.getTimestamp() != null)
+        .max((a, b) -> Long.compare(a.getTimestamp(), b.getTimestamp()))
+        .orElse(records.get(records.size() - 1));
   }
 }

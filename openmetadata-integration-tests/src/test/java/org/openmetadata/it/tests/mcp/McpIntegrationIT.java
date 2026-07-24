@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
 
@@ -87,6 +89,45 @@ public class McpIntegrationIT extends McpTestBase {
     JsonNode result = responseJson.get("result");
     assertThat(result.has("prompts")).isTrue();
     assertThat(result.get("prompts").isArray()).isTrue();
+  }
+
+  @Test
+  void testGetEntityDetailsSurfacesCustomProperties() throws Exception {
+    String propertyName = "mcpCustomProperty";
+    String propertyValue = "mcp-value-" + UUID.randomUUID().toString().substring(0, 8);
+    addStringCustomProperty(Entity.TABLE, propertyName);
+
+    String jsonPatch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/extension\",\"value\":{\"%s\":\"%s\"}}]",
+            propertyName, propertyValue);
+    patch("tables/" + testTable.getId(), jsonPatch);
+
+    Map<String, Object> toolCallRequest =
+        McpTestUtils.createGetEntityToolCall(Entity.TABLE, testTable.getFullyQualifiedName());
+    JsonNode responseJson = executeMcpRequest(toolCallRequest);
+
+    String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
+    assertThat(responseText).contains("extension");
+    assertThat(responseText).contains(propertyValue);
+  }
+
+  private static void addStringCustomProperty(String entityType, String propertyName)
+      throws Exception {
+    JsonNode entityTypeNode =
+        get("metadata/types/name/" + entityType + "?category=Field", JsonNode.class);
+    JsonNode stringTypeNode = get("metadata/types/name/string", JsonNode.class);
+
+    Map<String, Object> propertyType = new HashMap<>();
+    propertyType.put("id", stringTypeNode.get("id").asText());
+    propertyType.put("type", "type");
+
+    Map<String, Object> customProperty = new HashMap<>();
+    customProperty.put("name", propertyName);
+    customProperty.put("description", "MCP custom property test");
+    customProperty.put("propertyType", propertyType);
+
+    put("metadata/types/" + entityTypeNode.get("id").asText(), customProperty, JsonNode.class);
   }
 
   @Test
@@ -258,5 +299,92 @@ public class McpIntegrationIT extends McpTestBase {
 
     assertThat(allCompleted).isTrue();
     assertThat(successfulRequests.get()).isGreaterThan(totalRequests / 2);
+  }
+
+  @Test
+  void getEntityDetailsIsDeniedByTagBasedPolicy() throws Exception {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String tagFqn = createRestrictedTag(suffix);
+    Table restricted = createServiceDatabaseSchemaTable("mcp_authz_" + suffix);
+    tagTable(restricted.getId().toString(), tagFqn);
+    String deniedToken = createUserDeniedByTag(suffix, tagFqn);
+
+    Map<String, Object> call =
+        McpTestUtils.createGetEntityToolCall(Entity.TABLE, restricted.getFullyQualifiedName());
+
+    // Admin bypasses the policy and sees the table — proves the denial below is real, not a fluke.
+    assertThat(executeMcpRequest(call).toString()).contains("created_at");
+
+    // The non-admin is hit by the tag Deny: no entity data must come back.
+    assertThat(executeMcpRequest(call, deniedToken).toString()).doesNotContain("created_at");
+  }
+
+  private String createRestrictedTag(String suffix) throws Exception {
+    String classification = "McpAuthz" + suffix;
+    post(
+        "classifications",
+        Map.of("name", classification, "description", "mcp authz"),
+        JsonNode.class);
+    JsonNode tag =
+        post(
+            "tags",
+            Map.of("classification", classification, "name", "Restricted", "description", "mcp"),
+            JsonNode.class);
+    return tag.get("fullyQualifiedName").asText();
+  }
+
+  private void tagTable(String tableId, String tagFqn) throws Exception {
+    patch(
+        "tables/" + tableId,
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/tags/0\",\"value\":{\"tagFQN\":\"%s\",\"source\":"
+                + "\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}}]",
+            tagFqn));
+  }
+
+  private String createUserDeniedByTag(String suffix, String tagFqn) throws Exception {
+    String prefix = "mcpauthz_" + suffix;
+    JsonNode policy =
+        post(
+            "policies",
+            Map.of(
+                "name",
+                prefix + "_policy",
+                "rules",
+                List.of(
+                    Map.of(
+                        "name", prefix + "_rule",
+                        "resources", List.of("table"),
+                        "operations", List.of("ViewAll"),
+                        "effect", "deny",
+                        "condition", String.format("matchAnyTag('%s')", tagFqn)))),
+            JsonNode.class);
+    JsonNode role =
+        post(
+            "roles",
+            Map.of(
+                "name",
+                prefix + "_role",
+                "policies",
+                List.of(policy.get("fullyQualifiedName").asText())),
+            JsonNode.class);
+    JsonNode dataConsumer = get("roles/name/DataConsumer", JsonNode.class);
+    JsonNode team =
+        post(
+            "teams",
+            Map.of(
+                "name",
+                prefix + "_team",
+                "teamType",
+                "Group",
+                "defaultRoles",
+                List.of(dataConsumer.get("id").asText(), role.get("id").asText())),
+            JsonNode.class);
+    String email = prefix + "_u@test.openmetadata.org";
+    post(
+        "users",
+        Map.of("name", prefix + "_u", "email", email, "teams", List.of(team.get("id").asText())),
+        JsonNode.class);
+    return "Bearer " + JwtAuthProvider.tokenFor(email, email, new String[] {}, 3_600);
   }
 }

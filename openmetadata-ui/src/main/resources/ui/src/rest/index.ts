@@ -14,10 +14,26 @@
 import axios from 'axios';
 import Qs from 'qs';
 import { getBasePath } from '../utils/HistoryUtils';
+import {
+  attachEtagInterceptor,
+  DISABLE_ETAG_CONDITIONAL_READS_KEY,
+} from './etagInterceptor';
 
 const axiosClient = axios.create({
   baseURL: `${getBasePath()}/api/v1`,
   paramsSerializer: (params) => Qs.stringify(params, { arrayFormat: 'comma' }),
 });
+
+// Client-side If-None-Match support paired with the server's ETagResponseFilter. Saves the
+// response body bytes + a JSON parse + a render on entity GET revisits within a session.
+// Attached here (before AuthProvider's interceptors) so it sits closest to the wire and
+// every other interceptor sees the resolved 304→200-with-cached-body translation.
+// Skipped when the session opts out (see DISABLE_ETAG_CONDITIONAL_READS_KEY).
+if (
+  typeof localStorage === 'undefined' ||
+  localStorage.getItem(DISABLE_ETAG_CONDITIONAL_READS_KEY) !== 'true'
+) {
+  attachEtagInterceptor(axiosClient);
+}
 
 export default axiosClient;

@@ -21,7 +21,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export interface ListStoredProcedureParams {

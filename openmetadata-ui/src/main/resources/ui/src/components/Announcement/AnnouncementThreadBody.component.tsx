@@ -18,9 +18,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
-import { Thread, ThreadType } from '../../generated/entity/feed/thread';
-import { getAllFeeds } from '../../rest/feedsAPI';
+import {
+  AnnouncementEntity,
+  listAnnouncements,
+} from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ConfirmState } from '../ActivityFeed/ActivityFeedCard/ActivityFeedCard.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,12 +33,11 @@ const AnnouncementThreadBody = ({
   threadLink,
   refetchThread,
   editPermission,
-  postFeedHandler,
-  deletePostHandler,
-  updateThreadHandler,
+  deleteAnnouncementHandler,
+  updateAnnouncementHandler,
 }: AnnouncementThreadBodyProp) => {
   const { t } = useTranslation();
-  const [threads, setThreads] = useState<Thread[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
   const [confirmationState, setConfirmationState] = useState<ConfirmState>(
     confirmStateInitialValue
   );
@@ -47,14 +47,13 @@ const AnnouncementThreadBody = ({
     setIsThreadLoading(true);
 
     try {
-      const res = await getAllFeeds(
-        threadLink,
+      const res = await listAnnouncements({
+        entityLink: threadLink,
+        limit: 100,
         after,
-        ThreadType.Announcement,
-        FeedFilter.ALL
-      );
+      });
 
-      setThreads(res.data);
+      setAnnouncements(res.data ?? []);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -78,12 +77,8 @@ const AnnouncementThreadBody = ({
   };
 
   const onPostDelete = async (): Promise<void> => {
-    if (confirmationState.postId && confirmationState.threadId) {
-      await deletePostHandler?.(
-        confirmationState.threadId,
-        confirmationState.postId,
-        confirmationState.isThread
-      );
+    if (confirmationState.threadId) {
+      await deleteAnnouncementHandler?.(confirmationState.threadId);
     }
     onDiscard();
     loadNewThreads();
@@ -93,18 +88,11 @@ const AnnouncementThreadBody = ({
     setConfirmationState(data);
   };
 
-  const postFeed = async (value: string, id: string): Promise<void> => {
-    await postFeedHandler?.(value, id);
-    loadNewThreads();
-  };
-
-  const onUpdateThread = async (
-    threadId: string,
-    postId: string,
-    isThread: boolean,
+  const onUpdateAnnouncement = async (
+    announcementId: string,
     data: Operation[]
   ): Promise<void> => {
-    await updateThreadHandler(threadId, postId, isThread, data);
+    await updateAnnouncementHandler(announcementId, data);
     loadNewThreads();
   };
 
@@ -112,7 +100,7 @@ const AnnouncementThreadBody = ({
     getThreads();
   }, [threadLink, refetchThread]);
 
-  if (isEmpty(threads) && !isThreadLoading) {
+  if (isEmpty(announcements) && !isThreadLoading) {
     return (
       <ErrorPlaceHolder
         className="h-auto mt-24"
@@ -129,10 +117,9 @@ const AnnouncementThreadBody = ({
       className="announcement-thread-body"
       data-testid="announcement-thread-body">
       <AnnouncementThreads
+        announcements={announcements}
         editPermission={editPermission}
-        postFeed={postFeed}
-        threads={threads}
-        updateThreadHandler={onUpdateThread}
+        updateAnnouncementHandler={onUpdateAnnouncement}
         onConfirmation={onConfirmation}
       />
 

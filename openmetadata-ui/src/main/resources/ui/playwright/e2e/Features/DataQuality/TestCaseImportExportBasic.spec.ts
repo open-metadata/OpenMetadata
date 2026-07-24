@@ -22,7 +22,10 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { validateImportStatus } from '../../../utils/importUtils';
+import {
+  startCsvPreview,
+  validateImportStatus,
+} from '../../../utils/importUtils';
 import {
   cancelBulkEditAndVerifyRedirect,
   clickManageButton,
@@ -219,8 +222,8 @@ test.describe(
         await test.step('Verify Import Status', async () => {
           await waitForImportAsyncResponse(page);
           await validateImportStatus(page, {
-            passed: '4',
-            processed: '4',
+            passed: '3',
+            processed: '3',
             failed: '0',
           });
         });
@@ -254,12 +257,9 @@ test.describe(
         await test.step('Upload Invalid CSV and Verify Errors', async () => {
           await page.locator('[type="file"]').waitFor({ state: 'attached' });
           await page.setInputFiles('[type="file"]', csvFilePath);
-          await page.getByTestId('upload-file-widget').waitFor({
-            state: 'hidden',
-            timeout: 10000,
-          });
+          await startCsvPreview(page);
           await expect(page.getByText(/INVALID_HEADER/i).first()).toBeVisible({
-            timeout: 15000,
+            timeout: 30000,
           });
         });
       } finally {

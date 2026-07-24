@@ -22,9 +22,20 @@ export interface LinkModalProps {
   data: LinkData;
   onSave: (data: LinkData) => void;
   onCancel: () => void;
+  /**
+   * Portal container for the modal. Lets it mount inside a focus-trapping
+   * dialog so the dialog does not steal focus from the input.
+   */
+  getContainer?: () => HTMLElement;
 }
 
-const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
+const LinkModal: FC<LinkModalProps> = ({
+  isOpen,
+  data,
+  onSave,
+  onCancel,
+  getContainer,
+}) => {
   const handleSubmit: FormProps<LinkData>['onFinish'] = (values) => {
     onSave(values);
   };
@@ -32,6 +43,7 @@ const LinkModal: FC<LinkModalProps> = ({ isOpen, data, onSave, onCancel }) => {
   return (
     <Modal
       className="block-editor-link-modal"
+      getContainer={getContainer}
       maskClosable={false}
       okButtonProps={{
         htmlType: 'submit',

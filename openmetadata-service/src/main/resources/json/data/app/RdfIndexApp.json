@@ -3,7 +3,7 @@
   "displayName": "RDF Knowledge Graph Indexing",
   "appConfiguration": {
     "entities": [],
-    "recreateIndex": false,
+    "recreateIndex": true,
     "batchSize": 100,
     "producerThreads": 2,
     "consumerThreads": 3,
@@ -13,7 +13,7 @@
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
+    "cronExpression": "0 0 * * 6"
   },
   "supportsInterrupt": true
 }

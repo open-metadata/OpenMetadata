@@ -17,6 +17,8 @@ import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { ThreadUpdatedFunc } from '../../../interface/feed.interface';
 import { ConfirmState } from '../ActivityFeedCard/ActivityFeedCard.interface';
 
+export type ActivityThreadPanelView = 'tasks' | 'conversations';
+
 export interface ActivityThreadPanelProp
   extends HTMLAttributes<HTMLDivElement> {
   threadLink: string;
@@ -44,7 +46,7 @@ export interface ActivityThreadPanelBodyProp
       | 'createThread'
       | 'deletePostHandler'
     > {
-  threadType: ThreadType;
+  view: ActivityThreadPanelView;
   showHeader?: boolean;
 }
 

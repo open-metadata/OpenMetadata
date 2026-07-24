@@ -174,8 +174,8 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
             ],
             edges: [
               { from: 'Start', to: 'ApprovalTask' },
-              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'true' },
-              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'false' },
+              { from: 'ApprovalTask', to: 'ApprovedEnd', condition: 'approve' },
+              { from: 'ApprovalTask', to: 'RejectedEnd', condition: 'reject' },
             ],
           },
         }
@@ -587,12 +587,12 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
                   {
                     from: 'ApprovalTask',
                     to: 'ApprovedEnd',
-                    condition: 'true',
+                    condition: 'approve',
                   },
                   {
                     from: 'ApprovalTask',
                     to: 'RejectedEnd',
-                    condition: 'false',
+                    condition: 'reject',
                   },
                 ],
               },
@@ -653,15 +653,15 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
         const historyResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/governance/workflowInstances') &&
-            response.ok()
+            response.request().method() === 'GET'
         );
 
         await page.getByTestId('workflow-execution-history').click();
-        await historyResponse;
         await waitForAllLoadersToDisappear(page);
+        await historyResponse;
 
         await expect(
-          page.getByTestId('workflow-execution-history')
+          page.getByTestId('workflow-execution-history-table')
         ).toBeVisible();
       });
     });

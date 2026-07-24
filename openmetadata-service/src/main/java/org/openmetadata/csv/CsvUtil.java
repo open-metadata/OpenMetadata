@@ -339,10 +339,14 @@ public final class CsvUtil {
   }
 
   public static void addDomains(List<String> csvRecord, List<EntityReference> domains) {
+    List<EntityReference> directDomains =
+        listOrEmpty(domains).stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .toList();
     csvRecord.add(
-        nullOrEmpty(domains)
+        nullOrEmpty(directDomains)
             ? null
-            : domains.stream()
+            : directDomains.stream()
                 .map(EntityReference::getFullyQualifiedName)
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
@@ -381,12 +385,12 @@ public final class CsvUtil {
 
     String extensionString =
         extensionMap.entrySet().stream()
+            .map(entry -> Map.entry(entry.getKey(), formatValue(entry.getValue())))
+            .filter(entry -> !entry.getValue().isBlank())
             .map(
-                entry -> {
-                  String key = entry.getKey();
-                  Object value = entry.getValue();
-                  return CsvUtil.quoteCsvField(key + ENTITY_TYPE_SEPARATOR + formatValue(value));
-                })
+                entry ->
+                    CsvUtil.quoteCsvField(
+                        entry.getKey() + ENTITY_TYPE_SEPARATOR + entry.getValue()))
             .collect(Collectors.joining(FIELD_SEPARATOR));
 
     csvRecord.add(extensionString);

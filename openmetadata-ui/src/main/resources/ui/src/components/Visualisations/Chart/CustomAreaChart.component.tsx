@@ -19,8 +19,7 @@ import {
   Tooltip,
   TooltipProps,
 } from 'recharts';
-import { BLUE_2, PRIMARY_COLOR } from '../../../constants/Color.constants';
-import { WHITE_COLOR } from '../../../constants/constants';
+import { DQ_CHART_BLUE_COLOR } from '../../../constants/Color.constants';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { CustomAreaChartProps } from './Chart.interface';
 import './chart.less';
@@ -60,19 +59,17 @@ const CustomAreaChart = ({
   const gradientId = `${name}-splitColor`;
 
   const gradientArea = useMemo(() => {
+    const startColor =
+      colorScheme?.strokeColor ??
+      colorScheme?.gradientStartColor ??
+      DQ_CHART_BLUE_COLOR;
+    const endColor = colorScheme?.gradientEndColor ?? startColor;
+
     return (
       <defs>
         <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop
-            offset="0%"
-            stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
-            stopOpacity="0.7"
-          />
-          <stop
-            offset="100%"
-            stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
-            stopOpacity="0.2"
-          />
+          <stop offset="0%" stopColor={startColor} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={endColor} stopOpacity="0" />
         </linearGradient>
       </defs>
     );
@@ -100,7 +97,7 @@ const CustomAreaChart = ({
           dot={false}
           fill={`url(#${gradientId})`}
           isAnimationActive={false}
-          stroke={colorScheme?.strokeColor ?? PRIMARY_COLOR}
+          stroke={colorScheme?.strokeColor ?? DQ_CHART_BLUE_COLOR}
           strokeWidth={2}
           type="monotone"
         />

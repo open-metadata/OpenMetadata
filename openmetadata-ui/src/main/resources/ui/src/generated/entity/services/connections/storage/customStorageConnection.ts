@@ -25,6 +25,7 @@ export interface CustomStorageConnection {
      */
     sourcePythonClass?:          string;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Custom storage service type
      */

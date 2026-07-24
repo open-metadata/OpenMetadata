@@ -119,12 +119,7 @@ export const softDeleteTeam = async (page: Page) => {
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.waitForLoadState('domcontentloaded');
-
-  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
-
-  await page.click('[data-testid="soft-delete-option"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=false&recursive=true'
@@ -136,20 +131,25 @@ export const softDeleteTeam = async (page: Page) => {
   expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page, teamName: string) => {
+export const hardDeleteTeam = async (
+  page: Page,
+  teamName: string,
+  isSoftDeleted = false
+) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  // A live team shows the radio-based modal (defaults to soft delete), so the
+  // hard-delete option must be selected. An already soft-deleted team shows the
+  // hard-delete-only modal where the radio is absent.
+  if (!isSoftDeleted) {
+    await page.click('[data-testid="hard-delete"]');
+  }
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'
@@ -252,16 +252,17 @@ export const addTeamHierarchy = async (
   index?: number,
   isHierarchy = false
 ) => {
-  const getTeamsResponse = page.waitForResponse('/api/v1/teams*');
+  const addTeamModal = page.locator('[role="dialog"].ant-modal').last();
 
   // Fetching the add button and clicking on it
   if (index && index > 0) {
-    await page.click('[data-testid="add-placeholder-button"]');
+    await page.click('[data-testid="add-placeholder-button"]', { force: true });
   } else {
-    await page.click('[data-testid="add-team"]');
+    await page.click('[data-testid="add-team"]', { force: true });
   }
 
-  await getTeamsResponse;
+  await expect(addTeamModal).toBeVisible();
+  await expect(page.locator('[data-testid="name"]')).toBeVisible();
 
   // Entering team details
   await validateFormNameFieldInput({
@@ -285,9 +286,30 @@ export const addTeamHierarchy = async (
   await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
-  const saveTeamResponse = page.waitForResponse('/api/v1/teams');
+  const saveTeamResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams') &&
+      response.request().method() === 'POST' &&
+      response.ok()
+  );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.url().includes('fields=') &&
+      response.request().method() === 'GET'
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  const teamsListResponseResult = await teamsListResponse;
+
+  expect(teamsListResponseResult.status()).toBe(200);
+  await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await waitForAllLoadersToDisappear(page);
+  await expect(
+    page.locator(`[data-row-key="${teamDetails.name}"]`)
+  ).toBeVisible({
+    timeout: 60000,
+  });
 };
 
 export const removeOrganizationPolicyAndRole = async (
@@ -348,11 +370,18 @@ export const searchTeam = async (
   } else {
     await expect
       .poll(
-        async () =>
-          teamNameLinks
-            .filter({ hasText: teamName })
-            .isVisible()
-            .catch(() => false),
+        async () => {
+          const matchingCells = page.getByRole('cell', { name: teamName });
+          const count = await matchingCells.count();
+
+          return (
+            count > 0 &&
+            (await matchingCells
+              .first()
+              .isVisible()
+              .catch(() => false))
+          );
+        },
         { timeout: 30000, intervals: [500, 1000, 2000] }
       )
       .toBe(true);

@@ -19,10 +19,11 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
 import { postThread } from '../../../rest/feedsAPI';
-import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { GenericProvider, useGenericContext } from './GenericProvider';
+import { useGenericContext } from './GenericContext';
+import { GenericProvider } from './GenericProvider';
 
 // Mock dependencies
 jest.mock('../../../rest/feedsAPI');
@@ -54,7 +55,7 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageWidgetUtils', () => ({
   getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
   updateWidgetHeightRecursively: jest.fn(),
 }));

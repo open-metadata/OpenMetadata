@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageType } from '../../generated/system/ui/page';
 import {
@@ -20,8 +20,8 @@ import {
   mockPersonaName,
   mockUserData,
 } from '../../mocks/MyDataPage.mock';
+import { getActiveAnnouncements } from '../../rest/announcementsAPI';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import MyDataPage from './MyDataPage.component';
 
 const mockLocalStorage = (() => {
@@ -47,9 +47,23 @@ Object.defineProperty(window, 'localStorage', {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
+
+jest.mock(
+  '../../components/common/DeferredWidget/DeferredWidget.component',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  })
+);
+
+jest.mock('./MyDataPageSkeleton.component', () => {
+  return jest.fn().mockImplementation(() => <div>MyDataPageSkeleton</div>);
+});
+
 jest.mock('../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
+
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest
     .fn()
@@ -57,6 +71,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
       <div data-testid="page-layout-v1">{children}</div>
     ));
 });
+
 jest.mock(
   '../../components/MyData/WelcomeScreen/WelcomeScreen.component',
   () => {
@@ -81,6 +96,17 @@ jest.mock(
   }
 );
 
+jest.mock(
+  '../../components/MyData/LandingPageWidgetRenderer/LandingPageWidgetRenderer',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ widgetConfig }) => (
+        <div data-testid={widgetConfig.i}>{widgetConfig.i}</div>
+      ));
+  }
+);
+
 let mockSelectedPersona: Record<string, string> | null = {
   fullyQualifiedName: mockPersonaName,
 };
@@ -101,8 +127,8 @@ jest.mock('../../rest/DocStoreAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockDocumentData)),
 }));
-jest.mock('../../rest/feedsAPI', () => ({
-  getActiveAnnouncement: jest
+jest.mock('../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockActiveAnnouncementData)),
 }));
@@ -190,6 +216,9 @@ jest.mock(
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
+    mockSelectedPersona = {
+      fullyQualifiedName: mockPersonaName,
+    };
     // Reset all mocks before each test
     jest.clearAllMocks();
   });
@@ -219,19 +248,19 @@ describe('MyDataPage component', () => {
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
   });
 
-  it('MyDataPage should display loader initially while loading data', async () => {
+  it('MyDataPage should display skeleton while resolving the landing page layout', async () => {
     render(<MyDataPage />);
 
-    expect(screen.getByText('Loader')).toBeInTheDocument();
-    expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-
+    expect(screen.getByText('MyDataPageSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('react-grid-layout')).not.toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).toBeNull();
+    expect(
+      screen.getByTestId('customise-landing-page-header')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should render CustomiseLandingPageHeader component', async () => {
-    await act(async () => {
-      render(<MyDataPage />);
-    });
+    render(<MyDataPage />);
 
     expect(
       screen.getByTestId('customise-landing-page-header')
@@ -251,13 +280,16 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+    });
   });
 
   it('MyDataPage should not render announcement widget if there are no announcements', async () => {
-    (getActiveAnnouncement as jest.Mock).mockImplementationOnce(() =>
+    (getActiveAnnouncements as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...mockActiveAnnouncementData,
         data: [],
@@ -274,9 +306,12 @@ describe('MyDataPage component', () => {
     expect(
       await screen.findByText('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
-    expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
-    expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.queryByText('KnowledgePanel.KPI')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.TotalAssets')).toBeNull();
+      expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
+    });
   });
 
   it('MyDataPage should render default widgets when getDocumentByFQN API fails', async () => {
@@ -289,7 +324,10 @@ describe('MyDataPage component', () => {
       await screen.findByText('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.RecentlyViewed')
+      await screen.findByText('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
     expect(
       await screen.findByText('KnowledgePanel.Following')
@@ -305,15 +343,18 @@ describe('MyDataPage component', () => {
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
     mockSelectedPersona = null;
-    render(<MyDataPage />);
+    await act(async () => {
+      render(<MyDataPage />);
+    });
 
     await screen.findByTestId('page-layout-v1');
 
     expect(
       screen.getByTestId('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.DataAssets')).toBeInTheDocument();
     expect(
-      screen.getByTestId('KnowledgePanel.RecentlyViewed')
+      screen.getByTestId('KnowledgePanel.KnowledgeCenter')
     ).toBeInTheDocument();
     expect(screen.getByTestId('KnowledgePanel.Following')).toBeInTheDocument();
     expect(screen.getByTestId('KnowledgePanel.KPI')).toBeInTheDocument();

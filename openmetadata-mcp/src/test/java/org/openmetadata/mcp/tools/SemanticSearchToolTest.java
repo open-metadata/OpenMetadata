@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -9,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -16,11 +18,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -203,7 +208,8 @@ class SemanticSearchToolTest {
     hit.put("columns", List.of(Map.of("name", "id", "dataType", "INT")));
     hit.put("embedding", new float[] {0.1f, 0.2f});
     hit.put("fingerprint", "abc123");
-    hit.put("textToEmbed", "name: users; entityType: table | description: A short description");
+    hit.put(
+        "textToLLMContext", "name: users; entityType: table | description: A short description");
 
     VectorSearchResponse response = new VectorSearchResponse(10L, List.of(hit));
 
@@ -233,7 +239,7 @@ class SemanticSearchToolTest {
       assertTrue(!cleaned.containsKey("_score"));
       assertTrue(!cleaned.containsKey("embedding"));
       assertTrue(!cleaned.containsKey("fingerprint"));
-      assertTrue(!cleaned.containsKey("textToEmbed"));
+      assertTrue(!cleaned.containsKey("textToLLMContext"));
     }
   }
 
@@ -298,7 +304,7 @@ class SemanticSearchToolTest {
       hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
     }
 
-    VectorSearchResponse response = new VectorSearchResponse(10L, hits);
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
 
     try (MockedStatic<OpenSearchVectorService> vectorMock =
         mockStatic(OpenSearchVectorService.class)) {
@@ -411,6 +417,170 @@ class SemanticSearchToolTest {
       Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
 
       assertNotNull(result);
+    }
+  }
+
+  @Test
+  void fullPageEmitsNextCursorAtRequestedOffset() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertEquals(Boolean.TRUE, result.get("hasMore"));
+      Optional<PageCursor.Cursor> decoded = PageCursor.decode((String) result.get("nextCursor"));
+      assertTrue(decoded.isPresent());
+      assertTrue(decoded.get().isOffset());
+      assertEquals(3, decoded.get().offset());
+    }
+  }
+
+  @Test
+  void cursorParamThreadsOffsetIntoVectorSearch() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    VectorSearchResponse response = new VectorSearchResponse(5L, Collections.emptyList());
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      ArgumentCaptor<Integer> fromCaptor = ArgumentCaptor.forClass(Integer.class);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("cursor", PageCursor.encodeOffset(30));
+
+      semanticSearchTool.execute(authorizer, securityContext, params);
+
+      verify(vectorService)
+          .search(anyString(), anyMap(), anyInt(), fromCaptor.capture(), anyInt(), anyDouble());
+      assertEquals(30, fromCaptor.getValue());
+    }
+  }
+
+  @Test
+  void fullLastPageWithKnownTotalDoesNotAdvertiseMore() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, 3L, false);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
+    }
+  }
+
+  @Test
+  void fullPageWithNullTotalButHasMoreFalseDoesNotAdvertise() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, false);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
+    }
+  }
+
+  @Test
+  void fullPageWithNoSignalDoesNotAdvertisePhantomPage() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, null);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
+    }
+  }
+
+  @Test
+  void zeroReturnedAfterBudgetTrimDoesNotSelfLoop() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    Map<String, Object> huge = createHit("table", "db.schema.huge", "Huge", 0.99);
+    huge.put("description", "x".repeat(200_000));
+    hits.add(huge);
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 1);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      int returned = result.get("returnedCount") instanceof Number n ? n.intValue() : -1;
+      if (returned == 0) {
+        assertNull(result.get("nextCursor"), "cursor must not point back to the same page");
+      }
     }
   }
 

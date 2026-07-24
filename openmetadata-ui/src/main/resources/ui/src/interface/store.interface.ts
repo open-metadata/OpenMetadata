@@ -51,6 +51,15 @@ export interface ApplicationStore
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
+  /**
+   * `true` once `ApplicationsProvider` has finished fetching the list
+   * of installed applications. Downstream consumers that branch on
+   * `applications` (e.g. plugins gating themselves on install state)
+   * must wait for this signal — `applications` defaults to `[]` and
+   * is indistinguishable from "no apps installed" before the fetch
+   * resolves.
+   */
+  applicationsLoaded: boolean;
   appPreferences: AppPreferences;
   rdfEnabled?: boolean;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
@@ -73,6 +82,7 @@ export interface ApplicationStore
   }) => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   setApplicationsName: (applications: string[]) => void;
+  setApplicationsLoaded: (loaded: boolean) => void;
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
   initializeAuthState: () => void;
@@ -82,6 +92,8 @@ export interface DomainStore {
   userDomains: EntityReference[];
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
+  isDomainRestricted: boolean;
   updateActiveDomain: (domain: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  setDomainRestriction: (restricted: boolean) => void;
 }

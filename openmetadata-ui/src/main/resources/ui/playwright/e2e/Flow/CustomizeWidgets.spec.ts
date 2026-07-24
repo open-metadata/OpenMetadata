@@ -31,6 +31,7 @@ import {
   verifyWidgetEntityNavigation,
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -184,11 +185,10 @@ test('Activity Feed Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.ActivityFeed';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -228,11 +228,10 @@ test('Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.DataAssets';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -282,11 +281,10 @@ test('My Data Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.MyData';
-  const widget = page.getByTestId(widgetKey);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -301,7 +299,7 @@ test('My Data Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'dataAsset');
   });
 
   await test.step('Test widget displays entities and navigation', async () => {
@@ -312,7 +310,7 @@ test('My Data Widget', async ({ page }) => {
       entitySelector: '[data-testid^="My-Data-"]',
       urlPattern: '/', // My Data can navigate to various entity types
       apiResponseUrl: '/api/v1/search/query',
-      searchQuery: `index=${SearchIndex.ALL}`,
+      searchQuery: `index=${SearchIndex.DATA_ASSET}`,
     });
   });
 
@@ -353,9 +351,8 @@ test.fixme('KPI Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.KPI';
-  const widget = page.getByTestId(widgetKey);
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -395,9 +392,7 @@ test.fixme('KPI Widget', async ({ page }) => {
 
     await waitForAllLoadersToDisappear(page);
 
-    const widget = page.getByTestId(widgetKey);
-
-    await expect(widget).toBeVisible();
+    const widget = await waitForLandingPageWidget(page, widgetKey);
 
     await kpiListResponse;
     await kpiResultsResponse;
@@ -445,12 +440,11 @@ test('Total Data Assets Widget', async ({ page }) => {
   test.slow(true);
 
   const widgetKey = 'KnowledgePanel.TotalAssets';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -499,12 +493,11 @@ test('Following Assets Widget', async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 
   const widgetKey = 'KnowledgePanel.Following';
-  const widget = page.getByTestId(widgetKey);
 
   // Wait for the widgets data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
-  await expect(widget).toBeVisible();
+  await waitForLandingPageWidget(page, widgetKey);
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
@@ -519,7 +512,7 @@ test('Following Assets Widget', async ({ page }) => {
   await test.step('Test widget filters', async () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-    await verifyDataFilters(page, widgetKey);
+    await verifyDataFilters(page, widgetKey, 'all');
   });
 
   await test.step('Test widget displays followed entities', async () => {
@@ -614,23 +607,20 @@ test('My Tasks Widget', async ({ page }) => {
   await test.step('Create a task', async () => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = EntityDataClass.glossary1;
-    await apiContext.post('/api/v1/feed', {
+
+    // Use new Task API endpoint
+    await apiContext.post('/api/v1/tasks', {
       data: {
-        from: 'admin',
-        message: `Update description for glossary ${glossary1.responseData.displayName}`,
-        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}::description>`,
-        taskDetails: {
-          assignees: [
-            {
-              id: adminUser.responseData.id,
-              type: 'user',
-            },
-          ],
-          suggestion: '<p>Test task description for My Tasks widget test</p>',
-          type: 'UpdateDescription',
-          oldValue: '',
+        name: `My Tasks Widget Test - ${Date.now()}`,
+        about: `<#E::glossary::${glossary1.responseData.fullyQualifiedName}>`,
+        type: 'DescriptionUpdate',
+        category: 'MetadataUpdate',
+        assignees: [adminUser.responseData.name],
+        payload: {
+          suggestedValue: 'Test task description for My Tasks widget test',
+          currentValue: '',
+          field: 'description',
         },
-        type: 'Task',
       },
     });
 
@@ -677,7 +667,8 @@ test('My Tasks Widget', async ({ page }) => {
       urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
       apiResponseUrl: '/api/v1/feed',
       searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
-      emptyStateTestId: 'my-task-empty-state',
+      altApiResponseUrl: '/api/v1/tasks', // New Task API endpoint
+      emptyStateTestId: 'my-task-empty-state', // Custom empty state test ID for MyTaskWidget
     });
   });
 

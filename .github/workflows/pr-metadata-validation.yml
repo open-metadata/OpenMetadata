@@ -1,0 +1,424 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: PR Metadata Validation
+
+# Fails the PR check unless it links a GitHub issue that (a) has a real
+# description and (b) is tracked in the "Shipping" project with the Status,
+# Source, Priority, Domain and Release fields set.
+#
+# Linked issues are resolved from two sources:
+#   * Same-repo: GitHub's native `closingIssuesReferences` (the PR "Development"
+#     section + same-repo closing keywords). This is authoritative and also
+#     catches issues linked via the sidebar without a body keyword.
+#   * Cross-repo (same org only): parsed from the PR body, because GitHub cannot
+#     represent a cross-repo link in `closingIssuesReferences`. This path is
+#     restricted to trusted authors and an explicit repo allowlist so the
+#     privileged PROJECTS_TOKEN is never pointed at attacker-chosen repositories
+#     under pull_request_target, and the public PR comment never echoes private
+#     issue content (only numbers and field names).
+#
+# Projects v2 data is only available via GraphQL and the default GITHUB_TOKEN
+# cannot read org-level projects (nor private same-org repos), so a PROJECTS_TOKEN
+# secret (a PAT or GitHub App token with `read:project` and read access to the
+# allowlisted repos) is required. Only PR / issue / project metadata is read
+# through the API — no untrusted checkout — so pull_request_target is safe here.
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to validate"
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: write
+
+concurrency:
+  # Serialize runs per PR (avoids duplicate sticky comments) but never cancel:
+  # this check gates merges, so every event must reach a definitive conclusion.
+  group: pr-metadata-validation-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate-pr-metadata:
+    name: Validate PR Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check linked issue and Shipping project fields
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          PROJECTS_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+        with:
+          script: |
+            const CHECK_MARKER = '<!-- pr-metadata-check -->';
+            const BYPASS_LABEL = 'skip-pr-checks';
+
+            const { owner, repo } = context.repo;
+
+            // ---- Policy --------------------------------------------------------
+            const REQUIRE_LINKED_ISSUE = true;
+            const MIN_DESCRIPTION_WORDS = 25;
+            const PROJECT_NAME = 'Shipping';
+            const REQUIRED_PROJECT_FIELDS = ['Status', 'Source', 'Priority', 'Domain', 'Release'];
+            const FAIL_WHEN_PROJECT_UNVERIFIABLE = true;
+
+            // ---- Cross-repo policy (security-sensitive) ------------------------
+            // closingIssuesReferences is same-repo only, so a cross-repo link can
+            // only live in the PR body. Honor it ONLY for trusted authors and ONLY
+            // for these same-org repos, so untrusted fork PRs can never drive the
+            // privileged token at arbitrary repositories or probe private issues.
+            const CLOSING_KEYWORDS = '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)';
+            const ALLOWED_CROSS_REPOS = new Set(['openmetadata-collate']);
+            const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+
+            const PR_LINKS_QUERY = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 25) {
+                      nodes { number repository { name owner { login } } }
+                    }
+                  }
+                }
+              }`;
+
+            const ISSUE_PROJECT_QUERY = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $number) {
+                    projectItems(first: 25) {
+                      nodes {
+                        project { title }
+                        fieldValues(first: 50) {
+                          nodes {
+                            __typename
+                            ... on ProjectV2ItemFieldSingleSelectValue { name field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldIterationValue { title field { ... on ProjectV2FieldCommon { name } } }
+                            ... on ProjectV2ItemFieldDateValue { date field { ... on ProjectV2FieldCommon { name } } }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+
+            function elevatedClient() {
+              const token = process.env.PROJECTS_TOKEN;
+              return token ? new github.constructor({ auth: token }) : null;
+            }
+
+            const isSameRepo = (ref) => ref.owner === owner && ref.repo === repo;
+            const refKey = (ref) => `${ref.owner}/${ref.repo}#${ref.number}`;
+            const refLabel = (ref) => (isSameRepo(ref) ? `#${ref.number}` : refKey(ref));
+            const dedupeRefs = (refs) => [...new Map(refs.map((r) => [refKey(r), r])).values()];
+
+            async function loadPullRequest() {
+              if (context.payload.pull_request) {
+                return context.payload.pull_request;
+              }
+              const pull_number = Number(context.payload.inputs.pr_number);
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number });
+              return data;
+            }
+
+            // Same-repo links: authoritative, includes sidebar-linked issues.
+            async function nativeLinkedRefs(prNumber) {
+              const data = await github.graphql(PR_LINKS_QUERY, { owner, repo, number: prNumber });
+              const nodes =
+                (data.repository &&
+                  data.repository.pullRequest &&
+                  data.repository.pullRequest.closingIssuesReferences.nodes) ||
+                [];
+              return nodes.map((node) => ({
+                owner: node.repository.owner.login,
+                repo: node.repository.name,
+                number: node.number,
+              }));
+            }
+
+            // Trust the author for cross-repo refs if their PR association is already a trusted
+            // value, or — since the default GITHUB_TOKEN cannot see *private* org membership and
+            // reports such authors as CONTRIBUTOR — by confirming org membership with the elevated
+            // token. Fork PRs from non-members still resolve to untrusted.
+            async function isTrustedAuthor(pr) {
+              let trusted = TRUSTED_ASSOCIATIONS.has(pr.author_association);
+              const client = elevatedClient();
+              if (!trusted && client && pr.user && pr.user.login) {
+                try {
+                  await client.rest.orgs.checkMembershipForUser({ org: owner, username: pr.user.login });
+                  trusted = true; // 204 => org member (including private membership)
+                } catch (error) {
+                  trusted = false; // 404 => not a member
+                }
+              }
+              return trusted;
+            }
+
+            // Cross-repo links: body-parsed, allowlisted repos only (caller gates on author trust).
+            function crossRepoRefsFromBody(text) {
+              const refs = [];
+              const add = (refOwner, refRepo, number) => {
+                if (refOwner === owner && ALLOWED_CROSS_REPOS.has(refRepo)) {
+                  refs.push({ owner: refOwner, repo: refRepo, number: Number(number) });
+                }
+              };
+              const shorthand = new RegExp(
+                `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*([\\w.-]+)/([\\w.-]+)#(\\d+)`,
+                'gi'
+              );
+              const url = new RegExp(
+                `\\b${CLOSING_KEYWORDS}\\b\\s*:?\\s*https?://github\\.com/([\\w.-]+)/([\\w.-]+)/issues/(\\d+)`,
+                'gi'
+              );
+              let match;
+              while ((match = shorthand.exec(text)) !== null) {
+                add(match[1], match[2], match[3]);
+              }
+              while ((match = url.exec(text)) !== null) {
+                add(match[1], match[2], match[3]);
+              }
+              return refs;
+            }
+
+            function hasProperDescription(body) {
+              if (!body) {
+                return false;
+              }
+              const meaningful = body.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\s+/g, ' ').trim();
+              const wordCount = meaningful ? meaningful.split(' ').filter(Boolean).length : 0;
+              return wordCount >= MIN_DESCRIPTION_WORDS;
+            }
+
+            async function loadIssue(ref) {
+              const client = isSameRepo(ref) ? github : elevatedClient();
+              if (!client) {
+                return { error: 'missing-token' };
+              }
+              try {
+                const { data } = await client.rest.issues.get({
+                  owner: ref.owner,
+                  repo: ref.repo,
+                  issue_number: ref.number,
+                });
+                return { issue: data };
+              } catch (error) {
+                return { error: error.status === 404 ? 'not-found' : error.message };
+              }
+            }
+
+            async function loadIssueProjectItems(ref) {
+              const client = elevatedClient();
+              if (!client) {
+                return { error: 'missing-token' };
+              }
+              try {
+                const data = await client.graphql(ISSUE_PROJECT_QUERY, {
+                  owner: ref.owner,
+                  repo: ref.repo,
+                  number: ref.number,
+                });
+                return { items: data.repository.issue.projectItems.nodes };
+              } catch (error) {
+                return { error: error.message };
+              }
+            }
+
+            function resolveFieldValue(fieldValue) {
+              const candidates = [fieldValue.name, fieldValue.text, fieldValue.title, fieldValue.date];
+              const text = candidates.find((value) => value != null && String(value).trim() !== '');
+              if (text != null) {
+                return text;
+              }
+              return fieldValue.number != null ? String(fieldValue.number) : null;
+            }
+
+            function collectSetFields(item) {
+              const setFields = new Map();
+              for (const fieldValue of item.fieldValues.nodes) {
+                const fieldName = fieldValue.field && fieldValue.field.name;
+                const resolved = resolveFieldValue(fieldValue);
+                if (fieldName && resolved != null) {
+                  setFields.set(fieldName, resolved);
+                }
+              }
+              return setFields;
+            }
+
+            async function collectProjectProblems(ref) {
+              const result = await loadIssueProjectItems(ref);
+              if (result.error) {
+                if (!FAIL_WHEN_PROJECT_UNVERIFIABLE) {
+                  core.warning(`Skipping project validation for ${refLabel(ref)}: ${result.error}`);
+                  return [];
+                }
+                core.warning(`Project verification failed for ${refLabel(ref)}: ${result.error}`);
+                const detail = result.error === 'missing-token'
+                  ? 'the `PROJECTS_TOKEN` secret (a token with `read:project` and access to the linked repo) is not configured'
+                  : 'the project query could not be completed (see the workflow run logs)';
+                return [`Could not verify the **${PROJECT_NAME}** project on issue ${refLabel(ref)}: ${detail}.`];
+              }
+              const projectItem = (result.items || []).find(
+                (item) => item.project && item.project.title === PROJECT_NAME
+              );
+              if (!projectItem) {
+                return [`Linked issue ${refLabel(ref)} is not added to the **${PROJECT_NAME}** project.`];
+              }
+              const setFields = collectSetFields(projectItem);
+              const problems = [];
+              for (const field of REQUIRED_PROJECT_FIELDS) {
+                if (!setFields.has(field)) {
+                  problems.push(`Issue ${refLabel(ref)} is missing **${PROJECT_NAME} → ${field}**.`);
+                }
+              }
+              return problems;
+            }
+
+            async function validateIssue(ref) {
+              const loaded = await loadIssue(ref);
+              if (loaded.error === 'not-found') {
+                return { ref, problems: [`Linked issue ${refLabel(ref)} does not exist or is not accessible.`] };
+              }
+              if (loaded.error) {
+                const detail = loaded.error === 'missing-token'
+                  ? 'the `PROJECTS_TOKEN` secret is not configured'
+                  : 'the issue lookup could not be completed (see the workflow run logs)';
+                core.warning(`Issue lookup failed for ${refLabel(ref)}: ${loaded.error}`);
+                return { ref, problems: [`Could not read linked issue ${refLabel(ref)}: ${detail}.`] };
+              }
+              const issue = loaded.issue;
+              if (issue.pull_request) {
+                return { ref, problems: [`${refLabel(ref)} is a pull request, not an issue.`] };
+              }
+              const problems = [];
+              if (!hasProperDescription(issue.body)) {
+                problems.push(
+                  `Linked issue ${refLabel(ref)} needs a real description ` +
+                  `(at least ${MIN_DESCRIPTION_WORDS} words covering the problem, repro, and expected behavior).`
+                );
+              }
+              problems.push(...(await collectProjectProblems(ref)));
+              return { ref, problems };
+            }
+
+            async function collectIssueProblems(pr) {
+              const native = await nativeLinkedRefs(pr.number);
+              const cross = (await isTrustedAuthor(pr))
+                ? crossRepoRefsFromBody(`${pr.title || ''}\n${pr.body || ''}`)
+                : [];
+              const refs = dedupeRefs([...native, ...cross]);
+              if (refs.length === 0) {
+                return [
+                  'No GitHub issue is linked. Link an issue in the **Development** section of the PR ' +
+                  '(or add `Fixes #12345` to the description). For a same-org cross-repo issue, add ' +
+                  '`Fixes open-metadata/<repo>#123` to the description.',
+                ];
+              }
+              const validations = await Promise.all(refs.map(validateIssue));
+              const validIssues = validations.filter((validation) => validation.problems.length === 0);
+              const problems = [];
+              if (validIssues.length === 0) {
+                for (const validation of validations) {
+                  problems.push(...validation.problems);
+                }
+              }
+              return problems;
+            }
+
+            function buildFailureComment(problems) {
+              const lines = [
+                CHECK_MARKER,
+                '### ❌ PR checklist incomplete',
+                '',
+                'This PR cannot be merged until the following are addressed on its linked issue:',
+                '',
+              ];
+              for (const problem of problems) {
+                lines.push(`- ${problem}`);
+              }
+              lines.push('');
+              lines.push(
+                `The fields live on the **linked issue** in the **${PROJECT_NAME}** project ` +
+                '(open the issue → right sidebar → **Projects**). After you set them, ' +
+                '**re-run this check** (or push a commit) — issue/project changes do not re-trigger it automatically.'
+              );
+              lines.push('');
+              lines.push(`_Maintainers can bypass this check by adding the \`${BYPASS_LABEL}\` label._`);
+              return lines.join('\n');
+            }
+
+            function buildSuccessComment() {
+              return [
+                CHECK_MARKER,
+                '### ✅ PR checks passed',
+                '',
+                `The linked issue has a description and all required **${PROJECT_NAME}** project fields set. Thanks!`,
+              ].join('\n');
+            }
+
+            async function syncStickyComment(prNumber, body, hadFailure) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100,
+              });
+              const existing = comments.find((comment) => comment.body && comment.body.includes(CHECK_MARKER));
+              if (hadFailure) {
+                if (existing) {
+                  await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+                } else {
+                  await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+                }
+              } else if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              }
+            }
+
+            const pr = await loadPullRequest();
+
+            if (pr.draft) {
+              core.info('Draft PR — skipping metadata validation.');
+              return;
+            }
+            if (pr.user && pr.user.type === 'Bot') {
+              core.info(`PR opened by bot ${pr.user.login} — skipping metadata validation.`);
+              return;
+            }
+            const labels = (pr.labels || []).map((label) => label.name);
+            if (labels.includes(BYPASS_LABEL)) {
+              core.info(`'${BYPASS_LABEL}' label present — skipping metadata validation.`);
+              return;
+            }
+
+            const problems = [];
+            if (REQUIRE_LINKED_ISSUE) {
+              problems.push(...(await collectIssueProblems(pr)));
+            }
+
+            const hadFailure = problems.length > 0;
+            const body = hadFailure ? buildFailureComment(problems) : buildSuccessComment();
+            await syncStickyComment(pr.number, body, hadFailure);
+
+            if (hadFailure) {
+              core.setFailed(
+                `PR metadata checklist incomplete: ${problems.length} item(s) need attention. See the PR comment.`
+              );
+            } else {
+              core.info('All PR metadata checks passed.');
+            }

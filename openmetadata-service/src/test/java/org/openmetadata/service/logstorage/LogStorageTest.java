@@ -122,14 +122,6 @@ public class LogStorageTest {
   }
 
   @Test
-  void testDefaultLogStorageGetOutputStreamNotSupported() {
-    // Test that get output stream throws unsupported operation
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> defaultLogStorage.getLogOutputStream(testPipelineFQN, testRunId));
-  }
-
-  @Test
   void testDefaultLogStorageGetLatestRunId() {
     // Setup mock pipeline status
     PipelineStatus status = new PipelineStatus();

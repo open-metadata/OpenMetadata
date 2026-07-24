@@ -190,6 +190,11 @@ public final class StoredProcedures {
     public StoredProcedureDeleter delete() {
       return new StoredProcedureDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<StoredProcedure> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.storedProcedures(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -389,5 +394,15 @@ public final class StoredProcedures {
     public String apply() {
       return execute();
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().storedProcedures().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().storedProcedures().getContextByName(fqn);
   }
 }

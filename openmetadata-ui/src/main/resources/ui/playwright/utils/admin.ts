@@ -10,9 +10,68 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser } from '@playwright/test';
+import { APIRequestContext, Browser, Page, request } from '@playwright/test';
+import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
+
+export const authenticateAdminPage = async (page: Page) => {
+  await page.goto('/');
+  await page.waitForURL((url) => {
+    return (
+      url.pathname.includes('/my-data') || url.pathname.includes('/signin')
+    );
+  });
+
+  if (page.url().includes('/signin')) {
+    const admin = new AdminClass();
+    await admin.login(page);
+  }
+
+  await redirectToHomePage(page);
+};
+
+export const createAdminApiContext = async (): Promise<{
+  apiContext: APIRequestContext;
+  afterAction: () => Promise<void>;
+}> => {
+  const loginContext = await request.newContext({
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585',
+    timeout: 90000,
+  });
+
+  try {
+    const loginResponse = await loginContext.post('/api/v1/auth/login', {
+      data: {
+        email: DEFAULT_ADMIN_USER.userName,
+        password: Buffer.from(DEFAULT_ADMIN_USER.password).toString('base64'),
+      },
+    });
+
+    if (!loginResponse.ok()) {
+      throw new Error(
+        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`
+      );
+    }
+
+    const loginPayload = (await loginResponse.json()) as {
+      accessToken: string;
+    };
+    const apiContext = await getAuthContext(loginPayload.accessToken);
+
+    return {
+      apiContext,
+      afterAction: async () => {
+        await apiContext.dispose();
+        await loginContext.dispose();
+      },
+    };
+  } catch (error) {
+    await loginContext.dispose();
+
+    throw error;
+  }
+};
 
 export const performAdminLogin = async (browser: Browser) => {
   const admin = new AdminClass();

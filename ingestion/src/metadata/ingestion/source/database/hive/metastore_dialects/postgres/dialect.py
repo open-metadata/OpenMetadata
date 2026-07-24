@@ -11,6 +11,7 @@
 """
 Hive Metastore Postgres Dialect Mixin
 """
+
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.engine import reflection
@@ -39,9 +40,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
 
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
-        schema_names = [
-            row[0] for row in connection.execute(text('select "NAME" from "DBS";'))
-        ]
+        schema_names = [row[0] for row in connection.execute(text('select "NAME" from "DBS";'))]
         logger.debug(f"Fetched schema names: {schema_names}")
         return schema_names
 
@@ -95,7 +94,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             SELECT * FROM regular_columns
             UNION ALL
             SELECT * FROM partition_columns
-        """
+        """  # noqa: W291
         return connection.execute(text(query)).fetchall()
 
     def _get_table_names_base_query(self, schema=None):
@@ -124,7 +123,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 JOIN "DBS" dbs on tbls."DB_ID" = dbs."DB_ID" 
             where 
                 tbls."VIEW_ORIGINAL_TEXT" is not null;
-        """
+        """  # noqa: W291
         return get_view_definition_wrapper(
             self,
             connection,
@@ -146,7 +145,7 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 "TBLS" ON "DBS"."DB_ID" = "TBLS"."DB_ID" 
                 LEFT JOIN "TABLE_PARAMS" ON "TBLS"."TBL_ID" = "TABLE_PARAMS"."TBL_ID" 
                 and "TABLE_PARAMS"."PARAM_KEY" = 'comment'
-        """
+        """  # noqa: W291
         return get_table_comment_wrapper(
             self,
             connection,

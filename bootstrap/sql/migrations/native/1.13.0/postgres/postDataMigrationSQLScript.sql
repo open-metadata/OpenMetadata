@@ -82,8 +82,68 @@ UPDATE glossary_term_entity
 SET json = (json::jsonb - 'relatedTerms')::json
 WHERE jsonb_exists(json::jsonb, 'relatedTerms');
 
+-- entity_extension version snapshots: handled by Java migration
+-- migrateGlossaryTermVersionRelatedTermsToTermRelation (transforms in place to preserve history).
+
 -- Backfill conceptMappings for existing glossary terms
 UPDATE glossary_term_entity
 SET json = jsonb_set(COALESCE(json::jsonb, '{}'::jsonb), '{conceptMappings}', '[]'::jsonb)
 WHERE json IS NULL OR json::jsonb->'conceptMappings' IS NULL;
 
+-- Add Container permissions to AutoClassificationBotPolicy for storage auto-classification support
+UPDATE policy_entity
+SET json = jsonb_insert(
+    json::jsonb,
+    '{rules,1}',
+    jsonb_build_object(
+        'name', 'AutoClassificationBotRule-Allow-Container',
+        'description', 'Allow adding tags and sample data to the containers',
+        'resources', jsonb_build_array('Container'),
+        'operations', jsonb_build_array('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'AutoClassificationBotPolicy'
+  AND (json->'rules'->1->>'name' IS NULL OR json->'rules'->1->>'name' != 'AutoClassificationBotRule-Allow-Container');
+
+-- Fix PII classification autoClassificationConfig (issue #27910)
+UPDATE classification
+SET json = jsonb_set(
+    json::jsonb,
+    '{autoClassificationConfig}',
+    '{"enabled": true, "conflictResolution": "highest_priority", "minimumConfidence": 0.6, "requireExplicitMatch": true}'::jsonb
+)::json
+WHERE json->>'name' = 'PII'
+  AND json->'autoClassificationConfig'->>'enabled' IS NULL;
+
+-- Fix PII tags autoClassificationEnabled (issue #27910)
+UPDATE tag
+SET json = jsonb_set(json::jsonb, '{autoClassificationEnabled}', 'true'::jsonb)::json
+WHERE json->'classification'->>'name' = 'PII'
+  AND json->>'name' IN ('NonSensitive', 'Sensitive')
+  AND (
+    json->>'autoClassificationEnabled' IS NULL
+    OR (json->>'autoClassificationEnabled')::boolean = false
+  );
+
+-- Remove default column_name recognizers from PII tags (no longer used as boosters)
+UPDATE tag
+SET json = jsonb_set(
+    json::jsonb,
+    '{recognizers}',
+    COALESCE(
+        (
+            SELECT jsonb_agg(r)
+            FROM jsonb_array_elements(json::jsonb->'recognizers') AS r
+            WHERE r->>'target' IS NULL OR r->>'target' != 'column_name'
+        ),
+        '[]'::jsonb
+    )
+)::json
+WHERE json->'classification'->>'name' = 'PII'
+  AND json->>'name' IN ('NonSensitive', 'Sensitive')
+  AND EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(json::jsonb->'recognizers') AS r
+    WHERE r->>'target' = 'column_name'
+  );

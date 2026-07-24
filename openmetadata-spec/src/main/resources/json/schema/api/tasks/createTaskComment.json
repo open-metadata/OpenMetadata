@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/api/tasks/createTaskComment.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTaskCommentRequest",
+  "description": "Schema for adding or updating a comment on a task.",
+  "javaType": "org.openmetadata.schema.api.tasks.CreateTaskComment",
+  "type": "object",
+  "properties": {
+    "message": {
+      "description": "Comment content in Markdown format. Supports @mentions for notifying users.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": ["message"],
+  "additionalProperties": false
+}

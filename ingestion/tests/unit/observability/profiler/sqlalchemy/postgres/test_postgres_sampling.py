@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.sql.selectable import CTE
+from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
@@ -18,15 +18,16 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection,
 )
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.sampler.models import (
     ProfileSampleConfig,
-    ProfileSampleConfigType,
     SampleConfig,
-    StaticSamplingConfig,
 )
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -86,24 +87,21 @@ class SampleTest(TestCase):
             service_connection_config=self.psql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
                 )
             ),
         )
-        query: CTE = sampler.get_sample_query()
-        expected_query = (
-            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
-        )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
+        expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling(self, sampler_mock):
         """
@@ -117,23 +115,22 @@ class SampleTest(TestCase):
                 service_connection_config=self.psql_conn,
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=ProfileSampleConfigType.STATIC,
-                        config=StaticSamplingConfig(
-                            profileSample=50.0,
-                            profileSampleType=ProfileSampleType.PERCENTAGE,
-                            samplingMethodType=sampling_method_type,
-                        ),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(
+                                profileSample=50.0,
+                                profileSampleType=ProfileSampleType.PERCENTAGE,
+                                samplingMethodType=sampling_method_type,
+                            ),
+                        )
                     )
                 ),
             )
-            query: CTE = sampler.get_sample_query()
+            query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = f"SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0)"
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
 
     def test_sampling_with_partition(self, sampler_mock):
         """
@@ -143,28 +140,26 @@ class SampleTest(TestCase):
             service_connection_config=self.psql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
         )
-        query: CTE = sampler.get_sample_query()
+        query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
-            "SELECT users_1.id \nFROM users AS users_1 "
-            "TABLESAMPLE bernoulli(50.0) \nWHERE id IN ('1', '2')"
+            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0) \nWHERE id IN ('1', '2')"
         )
-        assert (
-            expected_query.casefold()
-            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
-        )
+        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()

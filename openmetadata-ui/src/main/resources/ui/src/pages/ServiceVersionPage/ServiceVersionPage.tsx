@@ -55,12 +55,12 @@ import {
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -73,7 +73,7 @@ import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 

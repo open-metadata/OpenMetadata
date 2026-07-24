@@ -91,9 +91,7 @@ class User(Base):
 def create_sqlite_table(worker_id):
     """create and delete sqlite table"""
     worker_suffix = f"_{worker_id}" if worker_id != "master" else ""
-    db_path = os.path.join(
-        os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db"
-    )
+    db_path = os.path.join(os.path.dirname(__file__), f"{os.path.splitext(__file__)[0]}{worker_suffix}.db")  # noqa: PTH118, PTH120, PTH122
     sqlite_conn = SQLiteConnection(
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
@@ -226,8 +224,8 @@ def create_sqlite_table(worker_id):
     yield runner
 
     User.__table__.drop(bind=engine)
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    if os.path.exists(db_path):  # noqa: PTH110
+        os.remove(db_path)  # noqa: PTH107
 
 
 @pytest.fixture
@@ -600,9 +598,7 @@ def test_case_column_to_match_set():
         entityLink=ENTITY_LINK_USER,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
-        parameterValues=[
-            TestCaseParameterValue(name="columnNames", value="id,name,nickname")
-        ],
+        parameterValues=[TestCaseParameterValue(name="columnNames", value="id,name,nickname")],
     )  # type: ignore
 
 
@@ -615,9 +611,7 @@ def test_case_column_to_match_set_ordered():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="columnNames", value="id,name,nickname,fullname,age"
-            ),
+            TestCaseParameterValue(name="columnNames", value="id,name,nickname,fullname,age"),
             TestCaseParameterValue(name="ordered", value="True"),
         ],
     )  # type: ignore
@@ -632,9 +626,7 @@ def test_case_table_custom_sql_query():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="sqlExpression", value="SELECT * FROM users WHERE age > 20"
-            ),
+            TestCaseParameterValue(name="sqlExpression", value="SELECT * FROM users WHERE age > 20"),
         ],
     )  # type: ignore
 
@@ -648,9 +640,7 @@ def test_case_table_custom_sql_query_success():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="sqlExpression", value="SELECT * FROM users WHERE age < 0"
-            ),
+            TestCaseParameterValue(name="sqlExpression", value="SELECT * FROM users WHERE age < 0"),
         ],
     )  # type: ignore
 
@@ -664,9 +654,7 @@ def test_case_table_custom_sql_query_with_threshold_success():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
-            TestCaseParameterValue(
-                name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"
-            ),
+            TestCaseParameterValue(name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"),
             TestCaseParameterValue(
                 name="strategy",
                 value="COUNT",
@@ -813,9 +801,7 @@ def test_case_table_custom_sql_query_success_dl_with_partition_expression():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="sqlExpression", value="age < 0"),
-            TestCaseParameterValue(
-                name="partitionExpression", value="nickname == 'johnny b goode'"
-            ),
+            TestCaseParameterValue(name="partitionExpression", value="nickname == 'johnny b goode'"),
         ],
     )
 

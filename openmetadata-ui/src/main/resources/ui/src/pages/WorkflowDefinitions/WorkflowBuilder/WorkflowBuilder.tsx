@@ -25,7 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
-import DeleteModalMUI from '../../../components/common/DeleteModal/DeleteModalMUI';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -76,6 +76,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   const {
     canAccessSidebar,
     canDragNodes,
+    canDragNodesInViewMode,
     enterViewMode,
     isEditMode,
     showWorkflowNodePalette,
@@ -250,6 +251,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     handleConnectionCancel,
     handleConnectionSave,
     handleEdgeClick,
+    handleEdgeDelete: originalHandleEdgeDelete,
     handleNodeClick,
     handleNodeConfigSave: originalHandleNodeConfigSave,
     handleSaveWorkflow,
@@ -257,6 +259,14 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     handleWorkflowMetadataUpdate,
     performDeleteWorkflow,
   } = workflowActions;
+
+  const handleEdgeDelete = useCallback(
+    (edgeId: string) => {
+      saveState(nodes, edges, 'Before Edge Delete');
+      originalHandleEdgeDelete(edgeId);
+    },
+    [saveState, nodes, edges, originalHandleEdgeDelete]
+  );
 
   const handleNodeConfigSave = (
     nodeId: string,
@@ -426,6 +436,10 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     <PageLayoutV1
       fullHeight
       mainContainerClassName="workflow-builder-layout"
+      pageContainerStyle={{
+        height: 'calc(100vh - var(--ant-navbar-height))',
+        overflow: 'hidden',
+      }}
       pageTitle={t('label.workflow-plural')}>
       {isConnectionModalOpen && (
         <div className="tw:fixed tw:inset-0 tw:bg-black/30 tw:z-9999" />
@@ -468,9 +482,9 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
             </Tabs.List>
           </Tabs>
         </Card>
-        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:overflow-hidden tw:pt-4">
+        <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
           {activeTab === workflowBuilderTabs[0].value ? (
-            <div className="tw:flex-1 tw:min-h-0">
+            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
               <WorkflowCanvas
                 canRedo={canRedo}
                 canUndo={canUndo}
@@ -479,7 +493,11 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 isConnectionModalOpen={isConnectionModalOpen}
                 isDragging={isDragging}
                 isNodeDragEnabled={
-                  canDragNodes ? isNodeDragEnabledWrapper : () => false
+                  canDragNodes
+                    ? isNodeDragEnabledWrapper
+                    : canDragNodesInViewMode
+                    ? () => true
+                    : () => false
                 }
                 nodes={nodes}
                 pendingConnection={pendingConnection}
@@ -489,6 +507,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 onEdgeClick={handleEdgeClick}
+                onEdgeDelete={handleEdgeDelete}
                 onEdgesChange={onEdgesChange}
                 onNodeClick={handleNodeClick}
                 onNodesChange={onNodesChange}
@@ -498,7 +517,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
               />
             </div>
           ) : (
-            <div className="tw:mt-4">
+            <div className="tw:flex-1 tw:min-h-0 tw:flex tw:flex-col tw:overflow-hidden">
               <WorkflowExecutionHistory />
             </div>
           )}
@@ -559,7 +578,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         onSave={navigationBlock.onSave}
       />
 
-      <DeleteModalMUI
+      <DeleteModal
         entityTitle={workflowMetadata?.displayName || ''}
         isDeleting={isDeleting}
         message={t('message.delete-entity-message', {

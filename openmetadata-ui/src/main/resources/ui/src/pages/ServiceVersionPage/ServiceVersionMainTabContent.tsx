@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../components/common/Table/Table';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -25,7 +25,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
+import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
@@ -63,7 +63,7 @@ function ServiceVersionMainTabContent({
       <Col className="p-t-sm m-x-lg" flex="auto">
         <Row gutter={[16, 16]}>
           <Col data-testid="description-container" span={24}>
-            <DescriptionV1
+            <Description
               description={description}
               entityName={serviceName}
               entityType={entityType}

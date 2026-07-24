@@ -11,9 +11,10 @@
 """
 Client to interact with Alation apis
 """
+
 import json
 import traceback
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.metadata.alationSinkConnection import (
     AlationSinkConnection,
@@ -66,9 +67,7 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
         Generate the auth token
         """
         if isinstance(self.config.authType, ApiAccessTokenAuth):
-            self.generated_auth_token = (
-                self.config.authType.accessToken.get_secret_value()
-            )
+            self.generated_auth_token = self.config.authType.accessToken.get_secret_value()
             self.expiry = 0
         else:
             self._get_access_token_from_basic_auth()
@@ -90,18 +89,14 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
             "password": self.config.authType.password.get_secret_value(),
             "name": self.config.projectName,
         }
-        refresh_token_response = self.client.post(
-            "/createRefreshToken/", json.dumps(refresh_token_data)
-        )
+        refresh_token_response = self.client.post("/createRefreshToken/", json.dumps(refresh_token_data))
 
         # Get the access token
         access_token_data = {
             "refresh_token": refresh_token_response["refresh_token"],
             "user_id": refresh_token_response["user_id"],
         }
-        access_token_response = self.client.post(
-            "/createAPIAccessToken/", json.dumps(access_token_data)
-        )
+        access_token_response = self.client.post("/createAPIAccessToken/", json.dumps(access_token_data))
 
         self.generated_auth_token = access_token_response["api_access_token"]
         self.expiry = 0
@@ -128,8 +123,11 @@ class AlationSinkClient:
         self.pagination_limit = self.config.paginationLimit
 
     def paginate_entity(
-        self, api_url: str, data: Optional[Dict] = None, is_key_offset: bool = False
-    ) -> Optional[List[Any]]:
+        self,
+        api_url: str,
+        data: dict | None = None,
+        is_key_offset: bool = False,
+    ) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """
         Method to paginate the entities
         """
@@ -164,11 +162,9 @@ class AlationSinkClient:
         Method to list all the connectors used by OCF data sources
         """
         response = self.client.get("/v2/connectors/")
-        return {
-            response_data["name"]: response_data["id"] for response_data in response
-        }
+        return {response_data["name"]: response_data["id"] for response_data in response}
 
-    def write_entity(self, create_request: Any) -> Optional[Any]:
+    def write_entity(self, create_request: Any) -> Optional[Any]:  # noqa: UP045
         """
         Method to write the entity to Alation
         """
@@ -188,26 +184,24 @@ class AlationSinkClient:
             logger.error(f"Failed to write entity: {exc}")
         return None
 
-    def write_entities(self, ds_id: int, create_requests: Any) -> Optional[Any]:
+    def write_entities(self, ds_id: int, create_requests: Any) -> Optional[Any]:  # noqa: UP045
         """
         Method to write the entities to Alation
         """
         try:
-            entity_names = [
-                create_request.key for create_request in create_requests.root or []
-            ]
+            entity_names = [create_request.key for create_request in create_requests.root or []]
             url = f"/v2{ROUTES.get(type(create_requests))}/"
             if ds_id:
-                url = f"{url}?ds_id={str(ds_id)}"
+                url = f"{url}?ds_id={str(ds_id)}"  # noqa: RUF010
             req = self.client.post(
                 url,
                 json=create_requests.model_dump(exclude_none=True)["root"],
             )
             if req:
                 logger.info(
-                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"
+                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: RUF010
                 )
-            return req
+            return req  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to write entities: {exc}")

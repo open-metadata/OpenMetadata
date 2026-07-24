@@ -11,6 +11,7 @@
 
 from airflow.plugins_manager import AirflowPlugin
 from flask import Blueprint
+
 from openmetadata_managed_apis.api.app import get_blueprint
 from openmetadata_managed_apis.api.config import PLUGIN_NAME
 from openmetadata_managed_apis.views.rest_api import RestApiView
@@ -47,10 +48,10 @@ class RestApiPlugin(AirflowPlugin):
     """
 
     name = PLUGIN_NAME
-    operators = []
-    hooks = []
-    executors = []
-    menu_links = []
+    operators = []  # noqa: RUF012
+    hooks = []  # noqa: RUF012
+    executors = []  # noqa: RUF012
+    menu_links = []  # noqa: RUF012
 
     # Use Flask Blueprints for both Airflow 2.x and 3.x
     flask_blueprints = [template_blueprint, api_blueprint] if api_blueprint else []

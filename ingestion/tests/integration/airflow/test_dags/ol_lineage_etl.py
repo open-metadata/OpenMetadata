@@ -33,7 +33,7 @@ FACT_ORDER = Dataset(
 def ol_lineage_etl():
     @task(inlets=[RAW_ORDER], outlets=[FACT_ORDER])
     def transform():
-        print("Transforming raw_order -> fact_order")
+        print("Transforming raw_order -> fact_order")  # noqa: T201
 
     transform()
 

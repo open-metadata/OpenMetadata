@@ -1,0 +1,89 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.explore-query-filter-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0 6px 8px;
+
+  &__query-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 12px;
+    font-weight: 600;
+    color: @grey-4;
+  }
+
+  &__empty {
+    color: @text-grey-muted;
+    font-size: 12px;
+  }
+
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid @border-color;
+    border-radius: 8px;
+    background-color: @white;
+    font-size: 12px;
+    line-height: 20px;
+
+    // Browse-location chips read as "where you are" — tinted with the brand
+    // color to stand apart from plain filter chips.
+    &--browse {
+      border-color: @primary-1;
+      background-color: @primary-50;
+
+      .explore-query-filter-chips__chip-label,
+      .explore-query-filter-chips__chip-value {
+        color: @primary-color;
+      }
+
+      .explore-query-filter-chips__chip-label {
+        font-weight: 400;
+      }
+    }
+  }
+
+  &__chip-label {
+    color: @text-grey-muted;
+  }
+
+  &__chip-value {
+    color: @text-color;
+    font-weight: 500;
+  }
+
+  &__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: @grey-4;
+    cursor: pointer;
+
+    &:hover {
+      color: @text-color;
+    }
+  }
+}

@@ -11,13 +11,13 @@
 
 from airflow import DAG
 
-# these are params only used in the DAG factory, not in the tasks
-from openmetadata_managed_apis.utils.logger import workflow_logger
-from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
-
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+
+# these are params only used in the DAG factory, not in the tasks
+from openmetadata_managed_apis.utils.logger import workflow_logger
+from openmetadata_managed_apis.workflows.ingestion.registry import build_registry
 
 logger = workflow_logger()
 
@@ -51,6 +51,6 @@ class WorkflowBuilder:
         if not isinstance(dag, DAG):
             msg = f"Invalid return type from {build_fn.__name__} when building {dag_type}."
             logger.error(msg)
-            raise ValueError(msg)
+            raise ValueError(msg)  # noqa: TRY004
 
         return dag

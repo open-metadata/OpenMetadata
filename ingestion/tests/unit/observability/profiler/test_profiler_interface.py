@@ -30,6 +30,7 @@ from metadata.generated.schema.security.credentials.awsCredentials import AWSCre
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.api.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
@@ -153,9 +154,7 @@ class ProfilerInterfaceTest(TestCase):
         self.assertIsNone(get_database_profiler_config(database_entity=None))
         database_entity_copy = deepcopy(self.database_entity)
         database_entity_copy.databaseProfilerConfig = None
-        self.assertIsNone(
-            get_database_profiler_config(database_entity=database_entity_copy)
-        )
+        self.assertIsNone(get_database_profiler_config(database_entity=database_entity_copy))
         self.assertEqual(
             get_database_profiler_config(database_entity=self.database_entity),
             self.database_profiler_config,
@@ -171,7 +170,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 11)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
@@ -188,7 +187,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=profiler,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 11)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
@@ -202,7 +201,7 @@ class ProfilerInterfaceTest(TestCase):
             entity_config=None,
             default_sample_config=SampleConfig(),
         )
-        static = actual.get_static_config()
+        static = actual.get_config(StaticSamplingConfig)
         self.assertIsNotNone(static)
         self.assertEqual(static.profileSample, 22)
         self.assertEqual(static.profileSampleType, ProfileSampleType.PERCENTAGE)
@@ -279,9 +278,7 @@ class ProfilerInterfaceTest(TestCase):
         )
         self.assertEqual(
             expected,
-            TableConfig.from_database_and_schema_config(
-                schema_config, table_fqn="demo"
-            ),
+            TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo"),
         )
 
         expected = TableConfig(fullyQualifiedName="demo")
@@ -291,7 +288,5 @@ class ProfilerInterfaceTest(TestCase):
         )
         self.assertEqual(
             expected,
-            TableConfig.from_database_and_schema_config(
-                schema_config, table_fqn="demo"
-            ),
+            TableConfig.from_database_and_schema_config(schema_config, table_fqn="demo"),
         )

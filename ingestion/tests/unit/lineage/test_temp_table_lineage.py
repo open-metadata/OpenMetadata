@@ -208,9 +208,7 @@ class TestProcessSequence:
         graph.add_node("source_table", fqns=["service.db.schema.source_table"])
         graph.add_node("temp_table", fqns=[])  # temp table has no FQN
         graph.add_node("target_table", fqns=["service.db.schema.target_table"])
-        graph.add_edges_from(
-            [("source_table", "temp_table"), ("temp_table", "target_table")]
-        )
+        graph.add_edges_from([("source_table", "temp_table"), ("temp_table", "target_table")])
 
         sequence = ["source_table", "temp_table", "target_table"]
         mock_metadata = MagicMock()
@@ -322,9 +320,9 @@ class TestTimeoutBehavior:
                 node = f"node_{i}_{j}"
                 graph.add_node(node, fqns=[])
                 if i > 0:
-                    graph.add_edge(f"node_{i-1}_{j}", node)
+                    graph.add_edge(f"node_{i - 1}_{j}", node)
                 if j > 0:
-                    graph.add_edge(f"node_{i}_{j-1}", node)
+                    graph.add_edge(f"node_{i}_{j - 1}", node)
 
         # Should complete without hanging
         paths = _get_paths_from_subtree(graph)
@@ -615,7 +613,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == hops
         assert details.sqlQuery is None
 
@@ -635,7 +633,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables is None
         assert details.sqlQuery is not None
 
@@ -655,7 +653,7 @@ class TestBuildTableLineageWithTempField:
         )
 
         assert result.right is not None
-        assert result.right.edge.lineageDetails.tempLineageTables is None
+        assert result.right.lineage_details.tempLineageTables is None
 
 
 class TestGetLineageForPathTempLineage:
@@ -688,7 +686,7 @@ class TestGetLineageForPathTempLineage:
         )
 
         assert result is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == [
             TempLineageTable(fromEntity="svc.db.sch.source", toEntity="temp1"),
             TempLineageTable(fromEntity="temp1", toEntity="temp2"),
@@ -715,11 +713,9 @@ class TestGetLineageForPathTempLineage:
         )
 
         assert result is not None
-        details = result.right.edge.lineageDetails
+        details = result.right.lineage_details
         assert details.tempLineageTables == [
-            TempLineageTable(
-                fromEntity="svc.db.sch.source", toEntity="svc.db.sch.target"
-            ),
+            TempLineageTable(fromEntity="svc.db.sch.source", toEntity="svc.db.sch.target"),
         ]
 
     @patch("metadata.ingestion.lineage.sql_lineage.get_entity_from_es_result")
@@ -774,9 +770,7 @@ class TestCollectTempLineageHops:
         graph.add_node("t1", fqns=[])
         graph.add_node("t2", fqns=[])
         graph.add_node("target", fqns=["svc.db.sch.target"])
-        graph.add_edges_from(
-            [("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")]
-        )
+        graph.add_edges_from([("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")])
 
         paths = [
             ["source", "t1", "target"],
@@ -805,9 +799,7 @@ class TestCollectTempLineageHops:
         graph.add_node("t2", fqns=[])
         graph.add_node("target1", fqns=["svc.db.sch.target1"])
         graph.add_node("target2", fqns=["svc.db.sch.target2"])
-        graph.add_edges_from(
-            [("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")]
-        )
+        graph.add_edges_from([("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")])
 
         paths = [
             ["source", "t1", "target1"],
@@ -893,12 +885,8 @@ class TestCollectTempLineageHops:
         assert key_ab in hops_map
         hops_ab = hops_map[key_ab]
         assert len(hops_ab) == 2
-        assert (
-            TempLineageTable(fromEntity="svc.db.sch.realA", toEntity="tmp1") in hops_ab
-        )
-        assert (
-            TempLineageTable(fromEntity="tmp1", toEntity="svc.db.sch.realB") in hops_ab
-        )
+        assert TempLineageTable(fromEntity="svc.db.sch.realA", toEntity="tmp1") in hops_ab
+        assert TempLineageTable(fromEntity="tmp1", toEntity="svc.db.sch.realB") in hops_ab
 
         # (realB, realC) should have hops: realB -> tmp2, tmp2 -> realC
         # NOT the full chain from realA
@@ -906,12 +894,8 @@ class TestCollectTempLineageHops:
         assert key_bc in hops_map
         hops_bc = hops_map[key_bc]
         assert len(hops_bc) == 2
-        assert (
-            TempLineageTable(fromEntity="svc.db.sch.realB", toEntity="tmp2") in hops_bc
-        )
-        assert (
-            TempLineageTable(fromEntity="tmp2", toEntity="svc.db.sch.realC") in hops_bc
-        )
+        assert TempLineageTable(fromEntity="svc.db.sch.realB", toEntity="tmp2") in hops_bc
+        assert TempLineageTable(fromEntity="tmp2", toEntity="svc.db.sch.realC") in hops_bc
 
 
 class TestMergedLineageByGraph:
@@ -957,15 +941,13 @@ class TestMergedLineageByGraph:
         graph.add_node("t1", fqns=[])
         graph.add_node("t2", fqns=[])
         graph.add_node("target", fqns=["svc.db.sch.target"])
-        graph.add_edges_from(
-            [("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")]
-        )
+        graph.add_edges_from([("source", "t1"), ("source", "t2"), ("t1", "target"), ("t2", "target")])
 
         results = list(get_lineage_by_graph(graph, mock_metadata))
 
         # Should produce exactly one request (not two)
         assert len(results) == 1
-        details = results[0].right.edge.lineageDetails
+        details = results[0].right.lineage_details
         hops = details.tempLineageTables
         assert len(hops) == 4
         assert TempLineageTable(fromEntity="svc.db.sch.source", toEntity="t1") in hops
@@ -1009,19 +991,14 @@ class TestMergedLineageByGraph:
         graph.add_node("t2", fqns=[])
         graph.add_node("target1", fqns=["svc.db.sch.target1"])
         graph.add_node("target2", fqns=["svc.db.sch.target2"])
-        graph.add_edges_from(
-            [("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")]
-        )
+        graph.add_edges_from([("source", "t1"), ("source", "t2"), ("t1", "target1"), ("t2", "target2")])
 
         results = list(get_lineage_by_graph(graph, mock_metadata))
 
         assert len(results) == 2
         fqn_pairs = set()
         for r in results:
-            edge = r.right.edge
-            from_fqn = edge.fromEntity.id
-            to_fqn = edge.toEntity.id
-            fqn_pairs.add((str(from_fqn), str(to_fqn)))
+            fqn_pairs.add((r.right.from_entity_fqn, r.right.to_entity_fqn))
         # Two distinct pairs
         assert len(fqn_pairs) == 2
 
@@ -1071,7 +1048,7 @@ class TestMergedLineageByGraph:
         results = list(get_lineage_by_graph(graph, mock_metadata))
 
         assert len(results) == 1
-        hops = results[0].right.edge.lineageDetails.tempLineageTables
+        hops = results[0].right.lineage_details.tempLineageTables
         # Both temp tables must be present
         to_entities = [h.toEntity for h in hops]
         from_entities = [h.fromEntity for h in hops]

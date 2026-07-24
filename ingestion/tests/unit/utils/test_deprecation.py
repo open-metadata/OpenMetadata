@@ -57,9 +57,7 @@ class TestDeprecationWarning(TestCase):
 
             # Count deprecation log messages
             log_output = log_capture.getvalue()
-            log_lines = [
-                line for line in log_output.split("\n") if "will be deprecated" in line
-            ]
+            log_lines = [line for line in log_output.split("\n") if "will be deprecated" in line]
             log_counts.append(len(log_lines))
 
             # Clean up

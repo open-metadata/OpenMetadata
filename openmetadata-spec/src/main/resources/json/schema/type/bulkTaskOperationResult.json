@@ -1,0 +1,52 @@
+{
+  "$id": "https://open-metadata.org/schema/type/bulkTaskOperationResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkTaskOperationResult",
+  "description": "Result of a bulk task operation.",
+  "javaType": "org.openmetadata.schema.type.BulkTaskOperationResult",
+  "type": "object",
+  "definitions": {
+    "bulkTaskOperationResultItem": {
+      "javaType": "org.openmetadata.schema.type.BulkTaskOperationResultItem",
+      "description": "Result of a single task operation.",
+      "type": "object",
+      "properties": {
+        "taskId": {
+          "description": "The task ID that was processed.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status of the operation.",
+          "type": "string",
+          "enum": ["success", "failed"]
+        },
+        "error": {
+          "description": "Error message if the operation failed.",
+          "type": "string"
+        }
+      }
+    }
+  },
+  "properties": {
+    "totalRequested": {
+      "description": "Total number of tasks in the request.",
+      "type": "integer"
+    },
+    "successful": {
+      "description": "Number of successfully processed tasks.",
+      "type": "integer"
+    },
+    "failed": {
+      "description": "Number of failed tasks.",
+      "type": "integer"
+    },
+    "results": {
+      "description": "Individual results for each task.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/bulkTaskOperationResultItem"
+      }
+    }
+  },
+  "additionalProperties": false
+}

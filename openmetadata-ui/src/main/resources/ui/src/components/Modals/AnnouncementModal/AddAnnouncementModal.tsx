@@ -17,22 +17,13 @@ import { DateTime } from 'luxon';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../generated/api/feed/createThread';
-import { postThread } from '../../../rest/feedsAPI';
+import { createAnnouncement } from '../../../rest/announcementsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-import { useSnackbar } from 'notistack';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../../utils/NotistackUtils';
 import DatePicker from '../../common/DatePicker/DatePicker';
 import './announcement-modal.less';
 
@@ -42,7 +33,6 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
-  showToastInSnackbar?: boolean;
 }
 
 export interface CreateAnnouncement {
@@ -58,10 +48,8 @@ const AddAnnouncementModal: FC<Props> = ({
   onSave,
   entityType,
   entityFQN,
-  showToastInSnackbar = false,
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
 
   const handleCreateAnnouncement = async ({
@@ -74,39 +62,23 @@ const AddAnnouncementModal: FC<Props> = ({
     const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
-      showToastInSnackbar
-        ? showNotistackError(
-            enqueueSnackbar,
-            t('message.announcement-invalid-start-time')
-          )
-        : showErrorToast(t('message.announcement-invalid-start-time'));
+      showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
-      const announcementData: CreateThread = {
-        message: title,
-        about: getEntityFeedLink(entityType, entityFQN),
-        announcementDetails: {
-          description,
-          startTime: startTimeMs,
-          endTime: endTimeMs,
-        },
-        type: ThreadType.Announcement,
-      };
       try {
         setIsLoading(true);
-        const data = await postThread(announcementData);
+        const data = await createAnnouncement({
+          displayName: title,
+          description,
+          entityLink: getEntityFeedLink(entityType, entityFQN),
+          startTime: startTimeMs,
+          endTime: endTimeMs,
+        });
         if (data) {
-          showToastInSnackbar
-            ? showNotistackSuccess(
-                enqueueSnackbar,
-                t('message.announcement-created-successfully')
-              )
-            : showSuccessToast(t('message.announcement-created-successfully'));
+          showSuccessToast(t('message.announcement-created-successfully'));
         }
         onSave();
       } catch (error) {
-        showToastInSnackbar
-          ? showNotistackError(enqueueSnackbar, error as AxiosError)
-          : showErrorToast(error as AxiosError);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }

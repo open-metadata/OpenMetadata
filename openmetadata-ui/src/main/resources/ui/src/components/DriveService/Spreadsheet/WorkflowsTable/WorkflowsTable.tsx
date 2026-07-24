@@ -19,12 +19,13 @@ import {
   EntityReference,
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
-import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function WorkflowsTable() {
   const { t } = useTranslation();

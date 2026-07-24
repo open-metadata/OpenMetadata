@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditorOptions } from '@tiptap/core';
+import type { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
 import { DependencyList, useEffect, useRef, useState } from 'react';
 

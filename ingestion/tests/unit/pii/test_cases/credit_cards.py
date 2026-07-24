@@ -25,9 +25,7 @@ from metadata.sampler.models import SampleData
 table = Table(
     id=Uuid(root=uuid.uuid4()),
     name=EntityName(root="example_table"),
-    fullyQualifiedName=FullyQualifiedEntityName(
-        root="Service.database.schema.example_table"
-    ),
+    fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table"),
     columns=[
         Column(
             name=ColumnName(root="card_number"),
@@ -38,9 +36,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.card_number"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.card_number"),
         ),
         Column(
             name=ColumnName(root="card_family"),
@@ -51,9 +47,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.card_family"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.card_family"),
         ),
         Column(
             name=ColumnName(root="credit_limit"),
@@ -64,9 +58,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="float",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.credit_limit"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.credit_limit"),
         ),
         Column(
             name=ColumnName(root="customer_id"),
@@ -77,9 +69,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.example_table.customer_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.example_table.customer_id"),
         ),
     ],
 )

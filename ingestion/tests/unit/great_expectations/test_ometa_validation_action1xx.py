@@ -31,7 +31,8 @@ except ImportError:
     _gx_version_ok = False
 
 skip_gx1xx = pytest.mark.skipif(
-    not _gx_version_ok, reason=f"Great Expectations 1.x required"
+    not _gx_version_ok,
+    reason=f"Great Expectations 1.x required",  # noqa: F541
 )
 
 
@@ -46,9 +47,7 @@ def test_gx1xx_config_map_initialization():
         }
     }
 
-    action = OpenMetadataValidationAction1xx(
-        database_name="default_db", expectation_suite_table_config_map=config_map
-    )
+    action = OpenMetadataValidationAction1xx(database_name="default_db", expectation_suite_table_config_map=config_map)
 
     assert action.expectation_suite_table_config_map == config_map
 
@@ -73,8 +72,7 @@ def test_gx1xx_mapping_actually_works():
 
     # Convert dict configs to TableConfig objects like run() method does
     converted_config_map = {
-        k: TableConfig.model_validate(v)
-        for k, v in action.expectation_suite_table_config_map.items()
+        k: TableConfig.model_validate(v) for k, v in action.expectation_suite_table_config_map.items()
     }
 
     # Create a TableMapper like run() method does

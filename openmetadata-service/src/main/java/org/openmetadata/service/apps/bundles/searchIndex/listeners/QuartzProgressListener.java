@@ -23,6 +23,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingJobContext;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingProgressListener;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobContext;
+import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
 
@@ -228,6 +229,7 @@ public class QuartzProgressListener implements ReindexingProgressListener {
   private AppRunRecord getUpdatedAppRunRecord() {
     AppRunRecord appRecord = readExistingRecord();
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
+    OmAppJobListener.fillTerminalTimings(appRecord);
 
     if (jobData.getStats() != null) {
       SuccessContext ctx = appRecord.getSuccessContext();

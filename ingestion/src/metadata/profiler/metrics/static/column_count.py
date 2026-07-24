@@ -90,9 +90,7 @@ class ColumnCount(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if not hasattr(self, "table"):
-            raise AttributeError(
-                "Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)"
-            )
+            raise AttributeError("Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)")
         return ColumnCountFn(literal(len(inspect(self.table).c)))
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):

@@ -108,10 +108,15 @@ test.describe('search dropdown quick filters - index readiness', () => {
         filter.key
       }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-      const queryRes = page.waitForResponse(querySearchURL);
-      await page.click('[data-testid="update-btn"]');
-      await queryRes;
-      await page.click('[data-testid="clear-filters"]');
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(querySearchURL);
+        await updateButton.click();
+        await queryRes;
+      } else {
+        await waitForAllLoadersToDisappear(page);
+      }
+      await page.getByTestId('clear-all-chips').click();
     }
   });
 });
@@ -200,7 +205,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 
   await page.getByTestId('searchBox').click();
@@ -208,7 +213,7 @@ test('should persist quick filter on global search', async ({ page }) => {
 
   // expect the quick filter to be persisted
   await expect(
-    page.getByRole('button', { name: 'Owners : No Owners' })
+    page.getByRole('button', { name: 'Owners : (1)' })
   ).toBeVisible();
 });
 
@@ -233,10 +238,18 @@ test('Filter by column entity type shows only column results', async ({
   await dataAssetDropdownRequest;
 
   await columnCheckbox.check();
-  await page.getByTestId('update-btn').click();
 
-  const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-  await expect(quickFilter).toContainText('tablecolumn');
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    // Legacy mode: apply, then reopen the dropdown to confirm persistence.
+    await updateButton.click();
+    await page.getByTestId('search-dropdown-Data Assets').click();
+  }
+  // Immediate-apply leaves the dropdown open with the box already checked.
+  await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
+  await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
+    '(1)'
+  );
 });
 
 test.describe('Tier filter - aggregation-based options', () => {
@@ -310,11 +323,14 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
-      const queryRes = page.waitForResponse(
-        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -322,6 +338,99 @@ test.describe('Tier filter - aggregation-based options', () => {
           `table-data-card_${table.entityResponseData?.fullyQualifiedName}`
         )
       ).toBeVisible();
+    });
+  });
+});
+
+test.describe('Filter persistence after bug fixes', () => {
+  test('explore tree sidebar selection is not cleared when a top dropdown filter is applied', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Click on Databases in the explore tree to select it', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the Databases node is marked as selected', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify Databases node selection is still preserved after filter change', async () => {
+      await expect(page.locator('.ant-tree-node-selected')).toBeVisible();
+    });
+  });
+
+  test('sort order is preserved in URL when explore tree node is clicked after applying a top dropdown filter', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await test.step('Toggle sort order to ascending', async () => {
+      const sortRes = page.waitForResponse(
+        '/api/v1/search/query?*sort_order=asc*'
+      );
+      await page.getByTestId('sort-order-button').click();
+      await sortRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Apply Tag filter from top dropdown', async () => {
+      await page.getByTestId('search-dropdown-Tag').click();
+      await searchAndClickOnOption(
+        page,
+        { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
+        true
+      );
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Click on Databases in the explore tree', async () => {
+      const treeSearchRes = page.waitForResponse(
+        (resp) =>
+          resp.url().includes('/api/v1/search/query') &&
+          resp.url().includes('index=dataAsset')
+      );
+      await page.getByTestId('explore-tree-title-Databases').click();
+      await treeSearchRes;
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify sort order is preserved in the URL after tree node click', async () => {
+      await expect(page).toHaveURL(/sortOrder=asc/);
     });
   });
 });
@@ -346,7 +455,7 @@ test.describe('Metric search result highlight', () => {
     await afterAction();
   });
 
-  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+  test('breadcrumb shows the entity category and display name header should have highlighted terms', async ({
     page,
   }) => {
     await test.step('Select Metric search index and search', async () => {
@@ -387,24 +496,23 @@ test.describe('Metric search result highlight', () => {
       await page.getByTestId('search-results').waitFor({ state: 'visible' });
     });
 
-    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+    await test.step('Verify breadcrumb shows the Metrics category without HTML tags', async () => {
       const entityCard = page.getByTestId(
         `table-data-card_${metric.entity.name}`
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      const breadcrumb = entityCard.getByTestId('breadcrumb');
-
-      const firstLink = breadcrumb
-        .getByTestId('breadcrumb-link')
-        .first()
-        .getByRole('link');
-      await expect(firstLink).toHaveText('Metrics');
-
-      const inactiveLink = breadcrumb.getByTestId('inactive-link');
-      await expect(inactiveLink).toHaveText(metric.entity.name);
-      await expect(inactiveLink).not.toContainText('<span');
-      await expect(inactiveLink).not.toContainText('text-highlighter');
+      // The result-card breadcrumb (core Breadcrumbs) shows only the ancestor
+      // trail — it excludes the current entity, which the card renders as its
+      // title. A Metric's sole ancestor is the "Metrics" category, so it is the
+      // last (plain, non-link) crumb. The entity name lives in the card title
+      // (asserted below), so search-highlight markup can never leak into the
+      // breadcrumb.
+      const breadcrumb = entityCard.getByRole('list', { name: 'Breadcrumb' });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText('Metrics');
+      await expect(breadcrumb).not.toContainText('<span');
+      await expect(breadcrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {

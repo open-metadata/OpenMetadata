@@ -73,6 +73,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  CARDINALITY_AWARE_LINE_EDGE_TYPE,
   getCanvasColor,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
@@ -213,6 +214,7 @@ interface GraphComboMeta {
   color?: string;
   glossaryName?: string;
   isDimmed?: boolean;
+  extraVerticalPadding?: number;
 }
 
 interface UseOntologyGraphProps {
@@ -236,10 +238,6 @@ interface UseOntologyGraphProps {
     }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
-  onNodeContextMenu: (
-    node: OntologyNode,
-    position: { x: number; y: number }
-  ) => void;
   onPaneClick: () => void;
   onScrollNearEdge?: () => void;
   setClickedEdgeId: (id: string | null) => void;
@@ -266,7 +264,6 @@ export function useOntologyGraph({
   dataSignature,
   onNodeClick,
   onNodeDoubleClick,
-  onNodeContextMenu,
   onPaneClick,
   onScrollNearEdge,
   setClickedEdgeId,
@@ -1070,7 +1067,7 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: 'cubic-vertical',
+        type: () => CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
           enter: false,
         },
@@ -1116,9 +1113,13 @@ export function useOntologyGraph({
           const d = (datum.data ?? {}) as GraphComboMeta;
           const color = d?.color ?? COMBO_COLOR_FALLBACK;
           const glossaryName = d?.glossaryName ?? '';
+          const extraVerticalPadding =
+            typeof d?.extraVerticalPadding === 'number'
+              ? d.extraVerticalPadding
+              : 0;
 
           return {
-            ...buildComboStyle(glossaryName, color),
+            ...buildComboStyle(glossaryName, color, extraVerticalPadding),
             zIndex: 0,
             opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
           };
@@ -1192,23 +1193,8 @@ export function useOntologyGraph({
       }
     };
 
-    const handleNodeContextMenu = (e: IElementEvent) => {
-      e.preventDefault();
-      const id = e.target.id;
-      if (id) {
-        const node = findNodeById(id);
-        if (node) {
-          onNodeContextMenu(resolveNodeForCallback(node), {
-            x: e.clientX ?? 0,
-            y: e.clientY ?? 0,
-          });
-        }
-      }
-    };
-
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
-    graph.on(NodeEvent.CONTEXT_MENU, handleNodeContextMenu);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
       onPaneClick();
@@ -1219,7 +1205,7 @@ export function useOntologyGraph({
     };
     graph.on('edge:click', handleEdgeClick);
 
-    const EDGE_TRIGGER_PX = 400;
+    const TOOLBAR_AREA_PX = 80;
 
     const checkEdgeProximity = () => {
       const g = graphRef.current;
@@ -1236,15 +1222,18 @@ export function useOntologyGraph({
 
       const W = c.offsetWidth;
       const H = c.offsetHeight;
-      const canvasBottom = g.getCanvasByViewport([W / 2, H]);
-      const cvpBottom = Array.isArray(canvasBottom)
-        ? canvasBottom[1]
-        : (canvasBottom as unknown as ArrayLike<number>)[1];
+      // Canvas Y that corresponds to the toolbar zone in viewport space.
+      const canvasAtToolbar = g.getCanvasByViewport([
+        W / 2,
+        H - TOOLBAR_AREA_PX,
+      ]);
+      const cvpAtToolbar = Array.isArray(canvasAtToolbar)
+        ? canvasAtToolbar[1]
+        : (canvasAtToolbar as unknown as ArrayLike<number>)[1];
 
       const { maxY } = graphBoundsRef.current;
-      const nearBottom = cvpBottom >= maxY - EDGE_TRIGGER_PX;
-
-      if (nearBottom) {
+      // Fire when the bottom-most nodes have scrolled up to the toolbar level.
+      if (cvpAtToolbar >= maxY) {
         onScrollNearEdgeRef.current();
       }
     };
@@ -1372,7 +1361,6 @@ export function useOntologyGraph({
       resizeObserver.disconnect();
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
-      graph.off(NodeEvent.CONTEXT_MENU, handleNodeContextMenu);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);

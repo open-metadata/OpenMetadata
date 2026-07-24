@@ -11,6 +11,7 @@
 """
 UnityCatalog Query parser module
 """
+
 from abc import ABC
 from typing import Optional
 
@@ -26,18 +27,12 @@ from metadata.ingestion.source.database.databricks.query_parser import (
     DatabricksQueryParserSource,
 )
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import (
     get_sqlalchemy_connection,
 )
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
-class UnityCatalogQueryParserSource(
-    DatabricksQueryParserSource, QueryParserSource, ABC
-):
+class UnityCatalogQueryParserSource(DatabricksQueryParserSource, QueryParserSource, ABC):
     """
     UnityCatalog Query Parser Source
 
@@ -57,18 +52,13 @@ class UnityCatalogQueryParserSource(
     # pylint: disable=super-init-not-called
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self._init_super(config=config, metadata=metadata)
-        self.client = UnityCatalogClient(self.service_connection)
         self.sql_client = get_sqlalchemy_connection(self.service_connection)
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
-            raise InvalidSourceException(
-                f"Expected UnityCatalogConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
         return cls(config, metadata)

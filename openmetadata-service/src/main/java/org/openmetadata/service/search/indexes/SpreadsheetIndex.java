@@ -36,6 +36,13 @@ public class SpreadsheetIndex implements DataAssetIndex {
     return spreadsheet.getServiceType();
   }
 
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("worksheets");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put("directory", getEntityWithDisplayName(spreadsheet.getDirectory()));
     doc.put("mimeType", spreadsheet.getMimeType());

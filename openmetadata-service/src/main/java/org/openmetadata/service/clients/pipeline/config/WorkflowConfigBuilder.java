@@ -30,6 +30,7 @@ import org.openmetadata.service.clients.pipeline.config.types.AutoClassification
 import org.openmetadata.service.clients.pipeline.config.types.DBTWorkflowConfig;
 import org.openmetadata.service.clients.pipeline.config.types.LineageWorkflowConfig;
 import org.openmetadata.service.clients.pipeline.config.types.MetadataWorkflowConfig;
+import org.openmetadata.service.clients.pipeline.config.types.PolicyAgentWorkflowConfig;
 import org.openmetadata.service.clients.pipeline.config.types.ProfilerWorkflowConfig;
 import org.openmetadata.service.clients.pipeline.config.types.TestSuiteWorkflowConfig;
 import org.openmetadata.service.clients.pipeline.config.types.UsageWorkflowConfig;
@@ -65,6 +66,9 @@ public class WorkflowConfigBuilder {
         break;
       case DBT:
         workflowStrategy = new DBTWorkflowConfig();
+        break;
+      case POLICY_AGENT:
+        workflowStrategy = new PolicyAgentWorkflowConfig();
         break;
       default:
         throw new IllegalArgumentException(

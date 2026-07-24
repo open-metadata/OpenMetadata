@@ -153,6 +153,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       const response = await getTags({
         limit: 1000,
         parent: 'Tier',
+        disabled: false,
       });
       const options = (response.data
         ?.map((tag) => tag.fullyQualifiedName)

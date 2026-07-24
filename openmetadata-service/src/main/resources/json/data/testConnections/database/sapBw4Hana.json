@@ -1,0 +1,39 @@
+{
+  "name": "SapBw4Hana",
+  "displayName": "SAP BW/4HANA Test Connection",
+  "description": "This Test Connection validates access against the SAP BW/4HANA ABAP catalog tables and basic metadata extraction of InfoAreas and ADSOs.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can connect to the underlying SAP HANA database and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to SAP HANA. Please validate the host, port, username, and password.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetInfoAreas",
+      "description": "List InfoAreas from the RSDAREA table in the ABAP schema. InfoAreas are the top-level folder structure in BW/4HANA (mapped to database schemas in OpenMetadata).",
+      "errorMessage": "Failed to fetch InfoAreas from RSDAREA. Please validate that the ABAP schema is correct and the user has SELECT privilege on BW catalog tables.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetADSOs",
+      "description": "List Advanced DataStore Objects (ADSOs) from the RSOADSO table. ADSOs are the primary data storage objects in BW/4HANA (mapped to tables in OpenMetadata).",
+      "errorMessage": "Failed to fetch ADSOs from RSOADSO. Please validate the user has SELECT privilege on BW catalog tables.",
+      "mandatory": true
+    },
+    {
+      "name": "GetCompositeProviders",
+      "description": "List CompositeProviders from the RSOHCPR table. CompositeProviders are virtual JOIN views over multiple ADSOs (mapped to views in OpenMetadata).",
+      "errorMessage": "Failed to fetch CompositeProviders. The RSOHCPR table may not be present if no CompositeProviders are defined.",
+      "mandatory": false
+    },
+    {
+      "name": "GetBExQueries",
+      "description": "List BEx Queries from the RSRREPDIR table. BEx Queries are semantic query/reporting objects over ADSOs (mapped to views in the _BEX_QUERIES schema in OpenMetadata).",
+      "errorMessage": "Failed to fetch BEx Queries from RSRREPDIR. Please validate that the user has SELECT privilege on BW catalog tables.",
+      "mandatory": false
+    }
+  ]
+}

@@ -97,11 +97,9 @@ import {
   updateTableColumn,
 } from '../../../rest/tableAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getEntityLinkFromType,
-} from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -139,6 +137,7 @@ export default function EntitySummaryPanel({
   pipelineViewMode,
   nodesPerLayer,
   onEntityUpdate,
+  afterEntityUpdate,
   ontologyExplorerRelationsSlot,
   sideDrawerOverviewOnly = false,
 }: Readonly<EntitySummaryPanelProps>) {
@@ -357,6 +356,11 @@ export default function EntitySummaryPanel({
       const fetchFn = entityFetchMap[entityType];
       if (fetchFn) {
         entityPromise = fetchFn(fqn);
+      } else if (entityType === EntityType.TABLE_COLUMN) {
+        setEntityData(entityDetails.details as EntityData);
+        setIsEntityDataLoading(false);
+
+        return;
       } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
         entityPromise = entityUtilClassBase.getEntityByFqn(
           entityType,
@@ -490,16 +494,15 @@ export default function EntitySummaryPanel({
       if (onEntityUpdate) {
         onEntityUpdate(updatedData);
       } else {
-        setEntityData(
-          (prev) =>
-            ({
-              ...(prev ?? entityDetails.details),
-              ...updatedData,
-            } as EntityData)
-        );
+        const newData = {
+          ...(entityData ?? entityDetails.details),
+          ...updatedData,
+        } as EntityData;
+        setEntityData(newData);
+        afterEntityUpdate?.(newData);
       }
     },
-    [entityDetails.details, onEntityUpdate]
+    [entityData, entityDetails.details, onEntityUpdate, afterEntityUpdate]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -522,13 +525,12 @@ export default function EntitySummaryPanel({
       entityLabel: string,
       returnValue?: T
     ): T | undefined => {
-      setEntityData(
-        (prev) =>
-          ({
-            ...(prev || entityDetails.details),
-            ...result,
-          } as EntityData)
-      );
+      const newData = {
+        ...(entityData || entityDetails.details),
+        ...result,
+      } as EntityData;
+      setEntityData(newData);
+      afterEntityUpdate?.(newData);
 
       showSuccessToast(
         t('server.update-entity-success', {
@@ -538,7 +540,7 @@ export default function EntitySummaryPanel({
 
       return returnValue;
     },
-    [entityDetails.details, t]
+    [entityData, entityDetails.details, afterEntityUpdate, t]
   );
 
   const handleTagsUpdate = useCallback(

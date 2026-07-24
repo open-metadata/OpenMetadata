@@ -81,6 +81,11 @@ public class FileRepository extends EntityRepository<File> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -412,7 +417,7 @@ public class FileRepository extends EntityRepository<File> {
                   List.of(
                       Pair.of(12, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(13, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 14))
+          .withDomains(getDomains(printer, csvRecord, 14, newFile.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 15));
       if (processRecord) {
         createEntity(printer, csvRecord, newFile, FILE);

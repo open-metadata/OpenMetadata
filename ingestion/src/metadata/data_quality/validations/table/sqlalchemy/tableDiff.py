@@ -16,7 +16,7 @@ import traceback
 from decimal import Decimal
 from functools import reduce
 from itertools import islice
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 from urllib.parse import urlparse
 
 import data_diff
@@ -56,6 +56,7 @@ from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects, PythonDialects
+from metadata.sampler.config import resolve_static_sampling_config
 from metadata.utils.collections import CaseInsensitiveList
 from metadata.utils.credentials import normalize_pem_string
 from metadata.utils.logger import test_suite_logger
@@ -83,9 +84,9 @@ class SchemaDiffResult(BaseModel):
         arbitrary_types_allowed = True
         populate_by_name = True
 
-    serviceType: str
-    fullyQualifiedTableName: str
-    schema_: Dict[str, Dict[str, str]] = Field(alias="schema")
+    serviceType: str  # noqa: N815
+    fullyQualifiedTableName: str  # noqa: N815
+    schema_: Dict[str, Dict[str, str]] = Field(alias="schema")  # noqa: UP006
 
     def __str__(self):
         return " ".join(f"{k}={v!r}" for k, v in self.model_dump(by_alias=True).items())
@@ -95,27 +96,21 @@ class ColumnDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    removed: List[str]
-    added: List[str]
-    changed: List[str]
-    schemaTable1: SchemaDiffResult
-    schemaTable2: SchemaDiffResult
+    removed: List[str]  # noqa: UP006
+    added: List[str]  # noqa: UP006
+    changed: List[str]  # noqa: UP006
+    schemaTable1: SchemaDiffResult  # noqa: N815
+    schemaTable2: SchemaDiffResult  # noqa: N815
 
 
-def build_sample_where_clause(
-    table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str
-) -> str:
+def build_sample_where_clause(table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str) -> str:  # noqa: UP006
     sql_alchemy_columns = [
         build_orm_col(i, c, table.database_service_type)
         for i, c in enumerate(table.columns)
         if c.name.root in key_columns
     ]
-    reduced_concat = reduce(
-        lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
-    )
-    sqa_dialect = make_url(
-        f"{PythonDialects[table.database_service_type.name].value}://"
-    ).get_dialect()
+    reduced_concat = reduce(lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)])
+    sqa_dialect = make_url(f"{PythonDialects[table.database_service_type.name].value}://").get_dialect()
     return str(
         select()
         .filter(
@@ -159,12 +154,7 @@ def compile_and_clauses(elements) -> str:
         if len(elements) == 1:
             return compile_and_clauses(elements[0])
         return " and ".join(
-            (
-                f"({compile_and_clauses(e)})"
-                if isinstance(e, list)
-                else compile_and_clauses(e)
-            )
-            for e in elements
+            (f"({compile_and_clauses(e)})" if isinstance(e, list) else compile_and_clauses(e)) for e in elements
         )
     raise ValueError("Input must be a string or a list")
 
@@ -220,23 +210,21 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 testCaseStatus=TestCaseStatus.Failed,
                 result=str(e),
             )
-            return result
+            return result  # noqa: RET504
         except UnsupportedDialectError as e:
-            logger.warning(f"[Data Diff]: Unsupported dialect: {e}")
+            logger.error(f"[Data Diff]: Unsupported dialect: {e}")
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
                 result=str(e),
             )
-            return result
+            return result  # noqa: RET504
         except Exception as e:
-            logger.error(
-                f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}"
-            )
+            logger.error(f"Unexpected error while running the table diff test: {str(e)}\n{traceback.format_exc()}")  # noqa: RUF010
             result = TestCaseResult(
                 timestamp=self.execution_date,  # type: ignore
                 testCaseStatus=TestCaseStatus.Aborted,
-                result=f"ERROR: Unexpected error while running the table diff test: {str(e)}",
+                result=f"ERROR: Unexpected error while running the table diff test: {str(e)}",  # noqa: RUF010
             )
             logger.debug(result.result)
             return result
@@ -256,18 +244,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(
-            self.test_case.parameterValues, "threshold", int, default=0
-        )
+        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
             # Exclude incomparable columns (different data types) from the comparison
             # Also exclude key columns since they are handled separately and should not be in extra_columns
             common_columns = list(
-                (
-                    set(column_diff.schemaTable1.schema_.keys())
-                    & set(column_diff.schemaTable2.schema_.keys())
-                )
+                (set(column_diff.schemaTable1.schema_.keys()) & set(column_diff.schemaTable2.schema_.keys()))
                 - set(column_diff.changed)
                 - set(self.runtime_params.table1.key_columns or [])
                 - set(self.runtime_params.table2.key_columns or [])
@@ -299,12 +282,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             count = self._compute_row_count(self.runner, None)  # type: ignore
             test_case_result.passedRows = stats["unchanged"]
-            test_case_result.passedRowsPercentage = (
-                test_case_result.passedRows / count * 100
-            )
-            test_case_result.failedRowsPercentage = (
-                test_case_result.failedRows / count * 100
-            )
+            test_case_result.passedRowsPercentage = test_case_result.passedRows / count * 100
+            test_case_result.failedRowsPercentage = test_case_result.failedRows / count * 100
             return test_case_result
         return self.get_row_diff_test_case_result(
             threshold,
@@ -312,7 +291,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             column_diff,
         )
 
-    def get_incomparable_columns(self) -> List[str]:
+    def get_incomparable_columns(self) -> List[str]:  # noqa: UP006
         """Get the columns that have types that are not comparable between the two tables. For example
         a column that is a string in one table and an integer in the other.
 
@@ -326,9 +305,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=normalize_pem_string(
-                self.runtime_params.table1.privateKey.get_secret_value()
-            )
+            key_content=normalize_pem_string(self.runtime_params.table1.privateKey.get_secret_value())
             if self.runtime_params.table1.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table1.passPhrase.get_secret_value()
@@ -341,9 +318,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
-            key_content=normalize_pem_string(
-                self.runtime_params.table2.privateKey.get_secret_value()
-            )
+            key_content=normalize_pem_string(self.runtime_params.table2.privateKey.get_secret_value())
             if self.runtime_params.table2.privateKey
             else None,
             private_key_passphrase=self.runtime_params.table2.passPhrase.get_secret_value()
@@ -378,23 +353,21 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             column: An SQLAlchemy column object
         """
         result = None
-        try:
+        try:  # noqa: SIM105
             result = column.python_type
         except AttributeError:
             pass
-        try:
+        try:  # noqa: SIM105
             result = getattr(sqlalchemy.types, type(column).__name__)().python_type
         except AttributeError:
             pass
-        try:
-            result = getattr(
-                sqlalchemy.types, type(column).__name__.upper()
-            )().python_type
+        try:  # noqa: SIM105
+            result = getattr(sqlalchemy.types, type(column).__name__.upper())().python_type
         except AttributeError:
             pass
         if result == ArithAlphanumeric:
             result = str
-        elif result == bool:
+        elif result == bool:  # noqa: E721
             result = int
         elif result is None:
             return type(result)
@@ -442,11 +415,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
         return data_diff.diff_tables(table1, table2, **data_diff_kwargs)  # type: ignore
 
-    def get_where(self) -> Optional[str]:
+    def get_where(self) -> Optional[str]:  # noqa: UP045
         """Returns the where clause from the test case parameters or None if it is a blank string."""
         return self.runtime_params.whereClause or None
 
-    def sample_where_clause(self) -> Tuple[Optional[str], Optional[str]]:
+    def sample_where_clause(self) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
         """We use a where clause to sample the data for the diff. This is useful because with data diff
         we do not have access to the underlying 'SELECT' statement. This method generates a where clause
         that selects a random sample of the data based on the profile sample configuration.
@@ -471,15 +444,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             return None, None
         profile_sample_config = config.profileSampleConfig if config else None
         sample_config = profile_sample_config.root if profile_sample_config else None
-        static = sample_config.config if sample_config else None
-        profile_sample = getattr(static, "profileSample", None) if static else None
-        profile_sample_type = (
-            getattr(static, "profileSampleType", None) if static else None
+        static = resolve_static_sampling_config(
+            sample_config=sample_config,
+            row_count=self.get_total_row_count(),
         )
-        if profile_sample is None or (
-            profile_sample_type == ProfileSampleType.PERCENTAGE
-            and profile_sample == 100
-        ):
+        profile_sample = static.profileSample if static else None
+        profile_sample_type = static.profileSampleType if static else None
+        if profile_sample is None or (profile_sample_type == ProfileSampleType.PERCENTAGE and profile_sample == 100):
             return None, None
         if DatabaseServiceType.Mssql in [
             self.runtime_params.table1.database_service_type,
@@ -515,11 +486,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def maybe_case_sensitive(self, iterable: Iterable[str]) -> list[str]:
-        return (
-            CaseInsensitiveList(iterable)
-            if not self.get_case_sensitive()
-            else list(iterable)
-        )
+        return CaseInsensitiveList(iterable) if not self.get_case_sensitive() else list(iterable)
 
     def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
         """Calculate the nounce based on the profile sample configuration. The nounce is
@@ -527,26 +494,29 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         config = self.runtime_params.table_profile_config
         profile_sample_config = config.profileSampleConfig if config else None
         sample_config = profile_sample_config.root if profile_sample_config else None
-        static = sample_config.config if sample_config else None
-        profile_sample = getattr(static, "profileSample", 100)
-        profile_sample_type = getattr(static, "profileSampleType", None)
+        row_count = self.get_total_row_count()
+        static = resolve_static_sampling_config(
+            sample_config=sample_config,
+            row_count=row_count,
+        )
+        profile_sample = static.profileSample if static else None
+        profile_sample_type = static.profileSampleType if static else None
         if profile_sample_type == ProfileSampleType.PERCENTAGE:
-            return int(max_nounce * profile_sample / 100)
+            return int(max_nounce * ((profile_sample or 100) / 100))
         if profile_sample_type == ProfileSampleType.ROWS:
-            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
-            return int(max_nounce * (profile_sample / row_count))
+            return int(max_nounce * ((profile_sample or row_count) / row_count))
         raise ValueError("Invalid profile sample type")
 
     def get_row_diff_test_case_result(
         self,
         threshold: int,
         total_diffs: int,
-        changed: Optional[int] = None,
-        removed: Optional[int] = None,
-        added: Optional[int] = None,
-        column_diff: Optional[ColumnDiffResult] = None,
+        changed: Optional[int] = None,  # noqa: UP045
+        removed: Optional[int] = None,  # noqa: UP045
+        added: Optional[int] = None,  # noqa: UP045
+        column_diff: Optional[ColumnDiffResult] = None,  # noqa: UP045
     ) -> TestCaseResult:
         """Build a test case result for a row diff test. If the number of differences is less than the threshold,
         the test will pass, otherwise it will fail. The result will contain the number of added, removed, and changed
@@ -572,27 +542,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         if column_diff:
             test_case_results.extend(
                 [
-                    TestResultValue(
-                        name="removedColumns", value=str(len(column_diff.removed))
-                    ),
-                    TestResultValue(
-                        name="addedColumns", value=str(len(column_diff.added))
-                    ),
-                    TestResultValue(
-                        name="changedColumns", value=str(len(column_diff.changed))
-                    ),
-                    TestResultValue(
-                        name="schemaTable1", value=str(column_diff.schemaTable1)
-                    ),
-                    TestResultValue(
-                        name="schemaTable2", value=str(column_diff.schemaTable2)
-                    ),
+                    TestResultValue(name="removedColumns", value=str(len(column_diff.removed))),
+                    TestResultValue(name="addedColumns", value=str(len(column_diff.added))),
+                    TestResultValue(name="changedColumns", value=str(len(column_diff.changed))),
+                    TestResultValue(name="schemaTable1", value=str(column_diff.schemaTable1)),
+                    TestResultValue(name="schemaTable2", value=str(column_diff.schemaTable2)),
                 ]
             )
 
-        has_column_diff = column_diff is not None and (
-            column_diff.removed or column_diff.added or column_diff.changed
-        )
+        has_column_diff = column_diff is not None and (column_diff.removed or column_diff.added or column_diff.changed)
 
         if has_column_diff:
             result_message = (
@@ -608,8 +566,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=self.get_test_case_status(
-                not has_column_diff
-                and ((threshold or total_diffs) == 0 or total_diffs < threshold)
+                not has_column_diff and ((threshold or total_diffs) == 0 or total_diffs < threshold)
             ),
             result=result_message,
             failedRows=total_diffs,
@@ -629,7 +586,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             if dialect not in SUPPORTED_DIALECTS:
                 raise UnsupportedDialectError(name, dialect)
 
-    def get_column_diff(self) -> Optional[ColumnDiffResult]:
+    def get_column_diff(self) -> Optional[ColumnDiffResult]:  # noqa: UP045
         """Get the column diff between the two tables. If there are no differences, return None."""
         removed, added = self.get_changed_added_columns(
             [
@@ -679,8 +636,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     @staticmethod
     def get_changed_added_columns(
-        left: List[Column], right: List[Column], case_sensitive: bool
-    ) -> Optional[Tuple[List[str], List[str]]]:
+        left: list[Column],
+        right: list[Column],
+        case_sensitive: bool,
+    ) -> Optional[Tuple[List[str], List[str]]]:  # noqa: UP006, UP045
         """Given a list of columns from two tables, return the columns that are removed and added.
 
         Args:
@@ -690,13 +649,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Returns:
             A tuple of lists containing the removed and added columns or None if there are no differences
         """
-        removed: List[str] = []
-        added: List[str] = []
-        right_columns_dict: Dict[str, Column] = {c.name.root: c for c in right}
+        removed: List[str] = []  # noqa: UP006
+        added: List[str] = []  # noqa: UP006
+        right_columns_dict: Dict[str, Column] = {c.name.root: c for c in right}  # noqa: UP006
         if not case_sensitive:
-            right_columns_dict = cast(
-                Dict[str, Column], CaseInsensitiveDict(right_columns_dict)
-            )
+            right_columns_dict = cast(Dict[str, Column], CaseInsensitiveDict(right_columns_dict))  # noqa: TC006, UP006
         for column in left:
             table2_column = right_columns_dict.get(column.name.root)
             if table2_column is None:
@@ -708,9 +665,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def column_validation_result(
         self,
-        removed: List[str],
-        added: List[str],
-        changed: List[str],
+        removed: List[str],  # noqa: UP006
+        added: List[str],  # noqa: UP006
+        changed: List[str],  # noqa: UP006
     ) -> TestCaseResult:
         """Build the result for a column validation result. Messages will only be added
         for non-empty categories. Values will be populated reported for all categories.
@@ -723,30 +680,22 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Returns:
             TestCaseResult: The result of the column validation with a meaningful message
         """
-        message = (
-            f"Tables have {sum(map(len, [removed, added, changed]))} different columns:"
-        )
+        message = f"Tables have {sum(map(len, [removed, added, changed]))} different columns:"
         if removed:
             message += f"\n  Removed columns: {', '.join(removed)}\n"
         if added:
             message += f"\n  Added columns: {', '.join(added)}\n"
         if changed:
             message += "\n  Changed columns:"
-            table1_columns = {
-                c.name.root: c for c in self.runtime_params.table1.columns
-            }
-            table2_columns = {
-                c.name.root: c for c in self.runtime_params.table2.columns
-            }
+            table1_columns = {c.name.root: c for c in self.runtime_params.table1.columns}
+            table2_columns = {c.name.root: c for c in self.runtime_params.table2.columns}
             if not self.get_case_sensitive():
                 table1_columns = CaseInsensitiveDict(table1_columns)
                 table2_columns = CaseInsensitiveDict(table2_columns)
             for col in changed:
                 col1 = table1_columns[col]
                 col2 = table2_columns[col]
-                message += (
-                    f"\n    {col}: {col1.dataType.value} -> {col2.dataType.value}"
-                )
+                message += f"\n    {col}: {col1.dataType.value} -> {col2.dataType.value}"
         return TestCaseResult(
             timestamp=self.execution_date,  # type: ignore
             testCaseStatus=TestCaseStatus.Failed,
@@ -758,9 +707,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             ],
         )
 
-    def calculate_diffs_with_limit(
-        self, diff_iter: Iterable[Tuple[str, Tuple[str, ...]]], limit: int
-    ) -> int:
+    def calculate_diffs_with_limit(self, diff_iter: Iterable[Tuple[str, Tuple[str, ...]]], limit: int) -> int:  # noqa: UP006
         """Given an iterator of diffs like
         - ('+', (...))
         - ('-', (...))
@@ -804,14 +751,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                     pass
 
     def get_case_sensitive(self):
-        return utils.get_bool_test_case_param(
-            self.test_case.parameterValues, "caseSensitiveColumns"
-        )
+        return utils.get_bool_test_case_param(self.test_case.parameterValues, "caseSensitiveColumns")
 
-    def get_row_count(self) -> Optional[int]:
+    def get_row_count(self) -> Optional[int]:  # noqa: UP045
         return self._compute_row_count(self.runner, None)
 
-    def get_total_row_count(self) -> Optional[int]:
+    def get_total_row_count(self) -> Optional[int]:  # noqa: UP045
         row_count = Metrics.rowCount()
         try:
             row = self.runner.select_first_from_table(row_count.fn())

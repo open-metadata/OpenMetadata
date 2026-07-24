@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,6 +31,8 @@ import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -54,6 +57,10 @@ class TestCaseIndexTest {
     when(relDao.findFrom(any(UUID.class), anyString(), anyInt()))
         .thenReturn(Collections.emptyList());
     entityStaticMock.when(Entity::getCollectionDAO).thenReturn(dao);
+
+    entityStaticMock
+        .when(() -> Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS))
+        .thenReturn(mock(TestCaseResolutionStatusRepository.class));
   }
 
   @AfterAll
@@ -142,6 +149,36 @@ class TestCaseIndexTest {
 
     // Entity-specific
     assertNotNull(result.get("originEntityFQN"));
+  }
+
+  @Test
+  void testBuildSearchIndexDocCarriesRelationshipRevisionFromContext() {
+    TestCase tc = createTestCaseWithDefinition();
+
+    Map<String, Object> result =
+        new TestCaseIndex(tc)
+            .buildSearchIndexDoc(
+                DocBuildContext.of(
+                    null, DocBuildContext.ServiceStylePrefetch.notPrefetched(), 42L));
+
+    assertEquals(42L, result.get(TestCaseRepository.TEST_SUITES_REVISION_FIELD));
+  }
+
+  @Test
+  void testRequiredReindexFields_includesTestCaseResult() {
+    // Regression test for the 1.12.7 reindex bug: testCaseResult is stripped from the storage
+    // JSON and only loaded by TestCaseRepository.setFieldsInBulk when requested. Without it in
+    // getRequiredReindexFields(), reindex writes a doc with no testCaseStatus until a per-case
+    // write re-populates it. incidentId is no longer required here: it is derived at index time.
+    TestCase tc = new TestCase().withId(UUID.randomUUID()).withName("tc");
+    Set<String> required = new TestCaseIndex(tc).getRequiredReindexFields();
+
+    assertTrue(
+        required.contains(Entity.TEST_CASE_RESULT),
+        "TestCaseIndex.getRequiredReindexFields() must include 'testCaseResult'");
+    assertTrue(required.contains(TestCaseRepository.TEST_SUITE_FIELD));
+    assertTrue(required.contains(Entity.FIELD_TEST_SUITES));
+    assertTrue(required.contains(TestCaseRepository.TEST_DEFINITION_FIELD));
   }
 
   @Test

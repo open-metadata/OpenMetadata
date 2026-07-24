@@ -19,8 +19,9 @@ For migration, use TagProcessor instead:
     from metadata.pii.tag_processor import TagProcessor
     processor = TagProcessor(config, metadata, classification_filter=["PII"])
 """
+
 import warnings
-from typing import Any, Sequence
+from typing import Any, Sequence  # noqa: UP035
 
 from metadata.pii.algorithms.presidio_patches import ResultCapturingPatcher
 from metadata.pii.algorithms.presidio_utils import explain_recognition_results
@@ -32,29 +33,29 @@ warnings.warn(
     stacklevel=2,
 )
 
-from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.metadataIngestion.workflow import (
+from metadata.generated.schema.entity.classification.tag import Tag  # noqa: E402
+from metadata.generated.schema.entity.data.table import Column  # noqa: E402
+from metadata.generated.schema.metadataIngestion.workflow import (  # noqa: E402
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.tagLabel import (
+from metadata.generated.schema.type.tagLabel import (  # noqa: E402
     LabelType,
     State,
     TagLabel,
     TagSource,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.pii.algorithms.classifiers import (  # pylint: disable=import-outside-toplevel
+from metadata.ingestion.ometa.ometa_api import OpenMetadata  # noqa: E402
+from metadata.pii.algorithms.classifiers import (  # pylint: disable=import-outside-toplevel  # noqa: E402
     ColumnClassifier,
     HeuristicPIIClassifier,
     PIISensitiveClassifier,
 )
-from metadata.pii.algorithms.tags import PIISensitivityTag
-from metadata.pii.algorithms.utils import get_top_classes
-from metadata.pii.base_processor import AutoClassificationProcessor
-from metadata.pii.constants import PII
-from metadata.utils import fqn
-from metadata.utils.logger import profiler_logger
+from metadata.pii.algorithms.tags import PIISensitivityTag  # noqa: E402
+from metadata.pii.algorithms.utils import get_top_classes  # noqa: E402
+from metadata.pii.base_processor import AutoClassificationProcessor  # noqa: E402
+from metadata.pii.constants import PII  # noqa: E402
+from metadata.utils import fqn  # noqa: E402
+from metadata.utils.logger import profiler_logger  # noqa: E402
 
 logger = profiler_logger()
 
@@ -92,11 +93,9 @@ class PIIProcessor(AutoClassificationProcessor):
             reason=reason,
         )
 
-        return tag_label
+        return tag_label  # noqa: RET504
 
-    def create_column_tag_labels(
-        self, column: Column, sample_data: Sequence[Any]
-    ) -> Sequence[TagLabel]:
+    def create_column_tag_labels(self, column: Column, sample_data: Sequence[Any]) -> Sequence[TagLabel]:
         """
         Create tags for the column based on the sample data.
         """
@@ -112,9 +111,7 @@ class PIIProcessor(AutoClassificationProcessor):
         )
 
         # Get the tags and confidence
-        scores = classifier.predict_scores(
-            sample_data, column_name=column.name.root, column_data_type=column.dataType
-        )
+        scores = classifier.predict_scores(sample_data, column_name=column.name.root, column_data_type=column.dataType)
 
         # Filter noise and cap at 1.0 (don't normalize to sum=1)
         scores = {k: min(v, 1.0) for k, v in scores.items() if v > self._tolerance}
@@ -122,9 +119,6 @@ class PIIProcessor(AutoClassificationProcessor):
         # winner is at most 1 tag
         winner = get_top_classes(scores, 1, self.confidence_threshold)
         tag_labels = [
-            self.build_tag_label(
-                tag, explain_recognition_results(result_capturer.recognizer_results)
-            )
-            for tag in winner
+            self.build_tag_label(tag, explain_recognition_results(result_capturer.recognizer_results)) for tag in winner
         ]
-        return tag_labels
+        return tag_labels  # noqa: RET504

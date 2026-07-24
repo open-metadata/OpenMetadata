@@ -22,10 +22,8 @@ const onReactionSelect = jest.fn();
 const onReply = jest.fn();
 
 const mockProps = {
-  isAnnouncement: false,
   isAuthor: true,
   isThread: false,
-  editAnnouncementPermission: true,
   onConfirmation,
   onEdit,
   onPopoverHide,
@@ -131,30 +129,6 @@ describe('Test Popover content component', () => {
 
   it('Should call onConfirmation function on click of delete button', async () => {
     render(<PopoverContent {...mockProps} />);
-
-    const deleteButton = await screen.findByTestId('delete-message');
-
-    expect(deleteButton).toBeInTheDocument();
-
-    fireEvent.click(deleteButton);
-
-    expect(onConfirmation).toHaveBeenCalled();
-  });
-
-  it('Announcement should be editable by admin user', async () => {
-    render(<PopoverContent {...mockProps} isAnnouncement isAuthor={false} />);
-
-    const editButton = await screen.findByTestId('edit-message');
-
-    expect(editButton).toBeInTheDocument();
-
-    fireEvent.click(editButton);
-
-    expect(onEdit).toHaveBeenCalled();
-  });
-
-  it('Announcement should be delete by admin user', async () => {
-    render(<PopoverContent {...mockProps} isAnnouncement isAuthor={false} />);
 
     const deleteButton = await screen.findByTestId('delete-message');
 

@@ -11,24 +11,31 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Typography } from 'antd';
+import { Button } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
-import Reactions from '../../Reactions/Reactions';
+} from '../../../../utils/FeedUtilsPure';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
+
+const Reactions = withSuspenseFallback(
+  lazy(() => import('../../Reactions/Reactions'))
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
 
 const FeedCardBody: FC<FeedBodyProp> = ({
   message,
-  announcementDetails,
   className,
   reactions,
   onReactionSelect,
@@ -103,29 +110,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
   return (
     <>
       <div className={classNames('feed-message', isEditPost ? '' : className)}>
-        {!isUndefined(announcementDetails) ? (
-          <Space
-            className="w-full"
-            data-testid="announcement-data"
-            direction="vertical"
-            size={4}>
-            <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
-              {t('label.schedule')}{' '}
-              {formatDateTime(announcementDetails.startTime)}{' '}
-              {t('label.to-lowercase')}{' '}
-              {formatDateTime(announcementDetails.endTime)}{' '}
-            </Typography.Text>
-            <Typography.Text className="font-medium">
-              {postMessage}
-            </Typography.Text>
-            <RichTextEditorPreviewerV1
-              className="activity-feed-card-text"
-              markdown={announcementDetails.description || ''}
-            />
-          </Space>
-        ) : (
-          FEED_BODY
-        )}
+        {FEED_BODY}
       </div>
       {Boolean(reactions?.length) && (
         <Reactions

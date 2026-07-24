@@ -34,7 +34,8 @@
         "ThoughtSpot",
         "Grafana",
         "Hex",
-        "Ssrs"
+        "Ssrs",
+        "SapS4Hana"
       ],
       "javaEnums": [
         {
@@ -96,6 +97,9 @@
         },
         {
           "name": "Ssrs"
+        },
+        {
+          "name": "SapS4Hana"
         }
       ]
     },
@@ -169,6 +173,9 @@
             },
             {
               "$ref": "./connections/dashboard/ssrsConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/sapS4HanaConnection.json"
             }
           ]
         }
@@ -219,6 +226,9 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": []
+    },
+    "style": {
+      "$ref": "../../type/basic.json#/definitions/style"
     },
     "owners": {
       "description": "Owners of this dashboard service.",

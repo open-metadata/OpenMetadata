@@ -11,6 +11,7 @@
 """
 Handle big query lineage extraction
 """
+
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_STATEMENT,
@@ -25,9 +26,7 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils.helpers import get_start_and_end
 
 
-class BigqueryLineageSource(
-    BigqueryQueryParserSource, StoredProcedureLineageMixin, LineageSource
-):
+class BigqueryLineageSource(BigqueryQueryParserSource, StoredProcedureLineageMixin, LineageSource):
     """
     Implements the necessary methods to extract
     Database lineage from Bigquery Source
@@ -42,7 +41,7 @@ class BigqueryLineageSource(
             OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%CLONE%%')
             OR (statement_type = "CREATE_TABLE" and UPPER(query) like '%%LIKE%%')
         )
-    """
+    """  # noqa: W291
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
@@ -54,4 +53,4 @@ class BigqueryLineageSource(
             region=self.service_connection.usageLocation,
         )
 
-        return query
+        return query  # noqa: RET504

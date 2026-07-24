@@ -12,33 +12,25 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
 import AnnouncementCard from './AnnouncementCard';
 
 const mockOnClick = jest.fn();
 const mockAnnouncement = {
   id: '92d08ecb-129f-4b39-b2af-10b7663f8d29',
-  type: 'Announcement',
-  href: 'http://localhost:8585/api/v1/feed/92d08ecb-129f-4b39-b2af-10b7663f8d29',
-  threadTs: 1659609358138,
-  about: '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
-  entityId: 'b9aba5ce-6899-4a09-b378-1e7fcbe596cc',
+  name: 'deprecation-announcement',
+  displayName:
+    'This table will be deleted in 10 days, please store the necessary data.',
+  description:
+    'As this table is no longer maintained, we will be removing this table from our metadata store',
+  entityLink:
+    '<#E::table::sample_data.ecommerce_db.shopify.raw_product_catalog>',
   createdBy: 'aaron_johnson0',
   updatedAt: 1659610946842,
   updatedBy: 'anonymous',
-  resolved: false,
-  message:
-    'This table will be deleted in 10 days, please store the necessary data.',
-  postsCount: 0,
-  posts: [],
-  reactions: [],
-  announcement: {
-    description:
-      'As this table is no longer maintained, we will be removing this table from our metadata store',
-    startTime: 1659609300000,
-    endTime: 1659868500000,
-  },
-} as Thread;
+  startTime: 1659609300000,
+  endTime: 1659868500000,
+} as AnnouncementEntity;
 
 describe('Test Announcement card component', () => {
   it('should render the compnent', async () => {

@@ -61,7 +61,15 @@ export const getWorkflowDefinitionByFQN = async (fqn: string) => {
   return res.data;
 };
 
-export const getWorkflowInstancesByFQN = async (fqn: string) => {
+export interface WorkflowInstancesParams {
+  limit?: number;
+  offset?: string;
+}
+
+export const getWorkflowInstancesByFQN = async (
+  fqn: string,
+  params?: WorkflowInstancesParams
+) => {
   const res = await APIClient.get<PagingResponse<WorkflowInstance[]>>(
     `${WORKFLOW_INSTANCES_BASE_URL}`,
     {
@@ -69,6 +77,7 @@ export const getWorkflowInstancesByFQN = async (fqn: string) => {
         workflowDefinitionName: fqn,
         startTs: 0,
         endTs: Date.now(),
+        ...params,
       },
     }
   );

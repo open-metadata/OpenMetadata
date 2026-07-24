@@ -10,705 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Skeleton } from '@openmetadata/ui-core-components';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEqual, isString, isUndefined, omit, parseInt, pick } from 'lodash';
-import { DateRangeObject } from 'Models';
-import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isString } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
-import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  DEFAULT_DOMAIN_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../constants/constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
-import { EntityReference } from '../../generated/tests/testCase';
-import {
-  Assigned,
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
-} from '../../generated/tests/testCaseResolutionStatus';
-import { Include } from '../../generated/type/include';
-import { usePaging } from '../../hooks/paging/usePaging';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { useDomainStore } from '../../hooks/useDomainStore';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from '../../interface/search.interface';
-import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
+import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
-import { Option } from '../../pages/TasksPage/TasksPage.interface';
-import {
-  getListTestCaseIncidentStatusFromSearch,
-  postTestCaseIncidentStatus,
-  TestCaseIncidentStatusParams,
-  updateTestCaseIncidentById,
-} from '../../rest/incidentManagerAPI';
-import { getUserAndTeamSearch } from '../../rest/miscAPI';
-import { searchQuery } from '../../rest/searchAPI';
-import {
-  getNameFromFQN,
-  getPartialNameFromTableFQN,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import {
-  getEntityDetailsPath,
-  getTestCaseDetailPagePath,
-} from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
-import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
+import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import MuiDatePickerMenu from '../common/MuiDatePickerMenu/MuiDatePickerMenu';
-import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
-import Table from '../common/Table/Table';
-import {
-  ProfilerTabPath,
-  TestCasePermission,
-} from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
-import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerProps } from './IncidentManager.interface';
+import IncidentManagerTable from './IncidentManagerTable.component';
+import { useIncidentManagerListPage } from './useIncidentManagerListPage';
 
 const IncidentManager = ({
   isIncidentPage = true,
   tableDetails,
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
-  const location = useCustomLocation();
-  const navigate = useNavigate();
-  const { activeDomain } = useDomainStore();
-  const allParams = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
-
-    return isUndefined(searchData) ? {} : searchData;
-  }, [location.search]);
-
-  const filters = useMemo(() => {
-    const urlParams = omit(allParams, ['key', 'title']);
-
-    const params: TestCaseIncidentStatusParams = {
-      ...urlParams,
-    };
-
-    // Only use date params if they exist in the URL
-    if (urlParams.startTs || urlParams.endTs) {
-      if (urlParams.startTs && isString(urlParams.startTs)) {
-        params.startTs = parseInt(urlParams.startTs, 10);
-      }
-      if (urlParams.endTs && isString(urlParams.endTs)) {
-        params.endTs = parseInt(urlParams.endTs, 10);
-      }
-    }
-
-    return params;
-  }, [allParams]);
-
-  const dateRangeKey = useMemo(() => {
-    // Only return date range if URL has explicit date params
-    if (allParams.key && filters.startTs && filters.endTs) {
-      return {
-        key: allParams.key as string,
-        title: allParams.title as string,
-        startTs: filters.startTs,
-        endTs: filters.endTs,
-      };
-    }
-
-    // No date range selected - show placeholder
-    return undefined;
-  }, [allParams.key, allParams.title, filters.startTs, filters.endTs]);
-
-  const [testCaseListData, setTestCaseListData] =
-    useState<TestCaseIncidentStatusData>({
-      data: [],
-      isLoading: true,
-    });
-  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
-  const [users, setUsers] = useState<{
-    options: Option[];
-  }>({
-    options: [],
-  });
-
-  const assigneeOptionsWithSelected = useMemo(() => {
-    const options = [...users.options];
-    if (filters.assignee) {
-      const exists = options.some(
-        (opt) => opt.name === filters.assignee || opt.value === filters.assignee
-      );
-      if (!exists) {
-        options.push({
-          label: filters.assignee,
-          value: filters.assignee,
-          name: filters.assignee,
-          type: 'user',
-        });
-      }
-    }
-
-    return options;
-  }, [filters.assignee, users.options]);
-
-  const selectedAssignees = useMemo(() => {
-    if (!filters.assignee) {
-      return [];
-    }
-    const option = assigneeOptionsWithSelected.find(
-      (opt) => opt.name === filters.assignee || opt.value === filters.assignee
-    );
-
-    return option ? [option] : [];
-  }, [filters.assignee, assigneeOptionsWithSelected]);
-
-  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
-  const { testCase: commonTestCasePermission } = permissions;
-
-  const [isPermissionLoading, setIsPermissionLoading] = useState(true);
-  const [testCasePermissions, setTestCasePermissions] = useState<
-    TestCasePermission[]
-  >([]);
-
   const { t } = useTranslation();
-
-  const dateFilterOptions = useMemo(
-    () => [
-      { name: t('label.created-at'), value: 'timestamp' },
-      { name: t('label.updated-at'), value: 'updatedAt' },
-    ],
-    [t]
-  );
-
-  const selectedDateFilterKey = (filters.dateField as string) ?? 'timestamp';
-  const selectedDateFilterOption =
-    dateFilterOptions.find((o) => o.value === selectedDateFilterKey) ??
-    dateFilterOptions[0];
-
   const {
-    paging,
-    pageSize,
-    currentPage,
+    commonTestCasePermission,
+    filters,
+    dateRangeKey,
+    testCaseListData,
+    isDateFilterOpen,
+    setIsDateFilterOpen,
+    assigneeOptionsWithSelected,
+    selectedAssignees,
+    isPermissionLoading,
+    testCasePermissions,
+    dateFilterOptions,
+    selectedDateFilterKey,
+    selectedDateFilterOption,
     showPagination,
-    handlePageChange,
-    handlePagingChange,
-    handlePageSizeChange,
-  } = usePaging();
-
-  const fetchTestCaseIncidents = useCallback(
-    async (params: TestCaseIncidentStatusParams) => {
-      setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
-      try {
-        const { data, paging } = await getListTestCaseIncidentStatusFromSearch({
-          limit: pageSize,
-          offset: params.offset ?? 0,
-          latest: true,
-          include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
-          originEntityFQN: tableDetails?.fullyQualifiedName,
-          domain:
-            activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain,
-          ...params,
-        });
-        const assigneeOptions = data.reduce((acc, curr) => {
-          const assignee = curr.testCaseResolutionStatusDetails?.assignee;
-          const isExist = acc.some((item) => item.value === assignee?.name);
-
-          if (assignee && !isExist) {
-            acc.push({
-              label: getEntityName(assignee),
-              value: assignee.name ?? assignee.fullyQualifiedName ?? '',
-              type: assignee.type,
-              name: assignee.name,
-            });
-          }
-
-          return acc;
-        }, [] as Option[]);
-
-        setUsers((pre) => ({
-          ...pre,
-          options: assigneeOptions,
-        }));
-        setTestCaseListData((prev) => ({ ...prev, data: data }));
-        handlePagingChange(paging);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
-      }
-    },
-    [pageSize, setTestCaseListData, activeDomain]
-  );
-
-  const fetchTestCasePermissions = async () => {
-    const { data: incident } = testCaseListData;
-    try {
-      setIsPermissionLoading(true);
-      const promises = incident.map((testCase) => {
-        return getEntityPermissionByFqn(
-          ResourceEntity.TEST_CASE,
-          testCase.testCaseReference?.fullyQualifiedName ?? ''
-        );
-      });
-      const testCasePermission = await Promise.allSettled(promises);
-      const data = testCasePermission.reduce((acc, status, i) => {
-        if (status.status === 'fulfilled') {
-          return [
-            ...acc,
-            {
-              ...status.value,
-              fullyQualifiedName:
-                incident[i].testCaseReference?.fullyQualifiedName ?? '',
-            },
-          ];
-        }
-
-        return acc;
-      }, [] as TestCasePermission[]);
-
-      setTestCasePermissions(data);
-    } catch {
-      // do nothing
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
-
-  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCaseIncidents({
-      ...filters,
-      offset: (currentPage - 1) * pageSize,
-    });
-    handlePageChange(currentPage);
-  };
-
-  const pagingData = useMemo(
-    () => ({
-      paging,
-      currentPage,
-      pagingHandler: handlePagingClick,
-      pageSize,
-      onShowSizeChange: handlePageSizeChange,
-      isNumberBased: true,
-    }),
-    [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
-  );
-
-  const handleSeveritySubmit = async (
-    record: TestCaseResolutionStatus,
-    severity?: Severities
-  ) => {
-    const updatedData = { ...record, severity };
-    const patch = compare(record, updatedData);
-    try {
-      await updateTestCaseIncidentById(record.id ?? '', patch);
-
-      setTestCaseListData((prev) => {
-        const testCaseList = prev.data.map((item) => {
-          if (item.id === updatedData.id) {
-            return updatedData;
-          }
-
-          return item;
-        });
-
-        return {
-          ...prev,
-          data: testCaseList,
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleAssigneeUpdate = useCallback(
-    async (record: TestCaseResolutionStatus, assignee?: EntityReference[]) => {
-      const assigneeData = assignee?.[0];
-
-      const updatedData: TestCaseResolutionStatus = {
-        ...record,
-        testCaseResolutionStatusDetails: {
-          ...record?.testCaseResolutionStatusDetails,
-          assignee: assigneeData,
-        },
-        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-      };
-
-      try {
-        await postTestCaseIncidentStatus({
-          severity: record.severity,
-          testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
-          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-          testCaseResolutionStatusDetails: {
-            assignee: assigneeData,
-          },
-        });
-
-        setTestCaseListData((prev) => {
-          const testCaseList = prev.data.map((item) => {
-            if (item.stateId === updatedData.stateId) {
-              return updatedData;
-            }
-
-            return item;
-          });
-
-          return {
-            ...prev,
-            data: testCaseList,
-          };
-        });
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [setTestCaseListData]
-  );
-
-  const fetchUserFilterOptions = async (query: string) => {
-    if (!query) {
-      return;
-    }
-    try {
-      const res = await getUserAndTeamSearch(query, true);
-      const hits = res.data.hits.hits;
-      const suggestOptions = hits.map((hit) => ({
-        label: getEntityName(hit._source),
-        value: hit._source.name,
-        type: hit._source.entityType,
-        name: hit._source.name,
-      }));
-
-      setUsers((pre) => ({ ...pre, options: suggestOptions }));
-    } catch {
-      setUsers((pre) => ({ ...pre, options: [] }));
-    }
-  };
-
-  const updateFilters = useCallback(
-    (
-      newFilters: Partial<TestCaseIncidentStatusParams>,
-      dateRangeParams?: { key: string; title: string }
-    ) => {
-      const updatedFilters = { ...filters, ...newFilters };
-      const allUpdatedParams = dateRangeParams
-        ? { ...updatedFilters, ...dateRangeParams }
-        : { ...allParams, ...updatedFilters };
-
-      navigate(
-        {
-          search: QueryString.stringify(allUpdatedParams),
-        },
-        {
-          replace: true,
-        }
-      );
-    },
-    [filters, allParams, navigate]
-  );
-
-  const handleAssigneeChange = (value?: Option[]) => {
-    updateFilters({ assignee: value ? value[0]?.name : value });
-  };
-
-  const handleDateRangeChange = (value: DateRangeObject) => {
-    const updatedFilter = pick(value, ['startTs', 'endTs']);
-    const existingFilters = pick(filters, ['startTs', 'endTs']);
-    const dateRangeParams = pick(value, ['key', 'title']) as {
-      key: string;
-      title: string;
-    };
-
-    if (!isEqual(existingFilters, updatedFilter)) {
-      updateFilters(updatedFilter, dateRangeParams);
-    }
-  };
-
-  const handleDateFieldChange = useCallback(
-    (value: string) => {
-      updateFilters({ dateField: value as 'timestamp' | 'updatedAt' });
-    },
-    [updateFilters]
-  );
-
-  const handleDateRangeClear = useCallback(() => {
-    const updatedFilters = omit(allParams, [
-      'startTs',
-      'endTs',
-      'key',
-      'title',
-      'dateField',
-    ]);
-    navigate(
-      {
-        search: QueryString.stringify(updatedFilters),
-      },
-      {
-        replace: true,
-      }
-    );
-  }, [allParams, navigate]);
-
-  const handleStatusSubmit = useCallback(
-    (value: TestCaseResolutionStatus) => {
-      setTestCaseListData((prev) => {
-        const testCaseList = prev.data.map((item) => {
-          if (item.stateId === value.stateId) {
-            return value;
-          }
-
-          return item;
-        });
-
-        return {
-          ...prev,
-          data: testCaseList,
-        };
-      });
-    },
-    [setTestCaseListData]
-  );
-
-  const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
-    // Encode the search value to handle special characters like #, %, $, etc.
-    // Preserve wildcard character to maintain default search behavior
-    const encodedSearchValue: string =
-      searchValue === WILD_CARD_CHAR
-        ? searchValue
-        : encodeURIComponent(searchValue);
-    try {
-      const response = await searchQuery({
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_BASE,
-        searchIndex: SearchIndex.TEST_CASE,
-        query: encodedSearchValue,
-        fetchSource: true,
-        includeFields: ['name', 'displayName', 'fullyQualifiedName'],
-      });
-
-      return (
-        response.hits.hits as SearchHitBody<
-          SearchIndex.TEST_CASE,
-          TestCaseSearchSource
-        >[]
-      ).map((hit) => ({
-        label: getEntityName(hit._source),
-        value: hit._source.fullyQualifiedName,
-      }));
-    } catch {
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    if (
-      commonTestCasePermission?.ViewAll ||
-      commonTestCasePermission?.ViewBasic
-    ) {
-      fetchTestCaseIncidents(filters);
-    } else {
-      setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [commonTestCasePermission, pageSize, filters, activeDomain]);
-
-  useEffect(() => {
-    if (testCaseListData.data.length > 0) {
-      fetchTestCasePermissions();
-    }
-  }, [testCaseListData.data]);
-
-  const testCaseResolutionStatusDetailsRender = (
-    value?: Assigned,
-    record?: TestCaseResolutionStatus
-  ) => {
-    if (isPermissionLoading) {
-      return <Skeleton height={24} variant="rectangular" width={100} />;
-    }
-
-    const hasPermission = testCasePermissions.find(
-      (item) =>
-        item.fullyQualifiedName ===
-        record?.testCaseReference?.fullyQualifiedName
-    );
-
-    return (
-      <div data-testid="assignee">
-        <OwnerLabel
-          isCompactView
-          className="m-0"
-          hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-          multiple={{
-            user: false,
-            team: false,
-          }}
-          owners={value?.assignee ? [value.assignee] : []}
-          placeHolder={t('label.no-entity', {
-            entity: t('label.assignee'),
-          })}
-          tooltipText={t('label.edit-entity', {
-            entity: t('label.assignee'),
-          })}
-          onUpdate={(assignees) =>
-            record && handleAssigneeUpdate(record, assignees)
-          }
-        />
-      </div>
-    );
-  };
-
-  const columns: ColumnsType<TestCaseResolutionStatus> = useMemo(
-    () => [
-      {
-        title: t('label.test-case-name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 300,
-        fixed: 'left',
-        render: (_, record) => {
-          return (
-            <Link
-              className="m-0 break-all text-primary"
-              data-testid={`test-case-${record.testCaseReference?.name}`}
-              to={getTestCaseDetailPagePath(
-                record.testCaseReference?.fullyQualifiedName ?? ''
-              )}>
-              {getEntityName(record.testCaseReference)}
-            </Link>
-          );
-        },
-      },
-      ...(isIncidentPage
-        ? [
-            {
-              title: t('label.table'),
-              dataIndex: 'testCaseReference',
-              key: 'testCaseReference',
-              width: 150,
-              render: (value: EntityReference) => {
-                const tableFqn = getPartialNameFromTableFQN(
-                  value.fullyQualifiedName ?? '',
-                  [
-                    FqnPart.Service,
-                    FqnPart.Database,
-                    FqnPart.Schema,
-                    FqnPart.Table,
-                  ],
-                  '.'
-                );
-
-                return (
-                  <Link
-                    data-testid="table-link"
-                    to={getEntityDetailsPath(
-                      EntityType.TABLE,
-                      tableFqn,
-                      EntityTabs.PROFILER,
-                      ProfilerTabPath.DATA_QUALITY
-                    )}
-                    onClick={(e) => e.stopPropagation()}>
-                    {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
-                  </Link>
-                );
-              },
-            },
-          ]
-        : []),
-      {
-        title: t('label.last-updated'),
-        dataIndex: 'timestamp',
-        key: 'timestamp',
-        width: 150,
-        render: (value: number) => {
-          return <DateTimeDisplay timestamp={value} />;
-        },
-      },
-      {
-        title: t('label.status'),
-        dataIndex: 'testCaseResolutionStatusType',
-        key: 'testCaseResolutionStatusType',
-        width: 100,
-        render: (_, record: TestCaseResolutionStatus) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={24} variant="rectangular" width={100} />;
-          }
-          const hasPermission = testCasePermissions.find(
-            (item) =>
-              item.fullyQualifiedName ===
-              record.testCaseReference?.fullyQualifiedName
-          );
-
-          return (
-            <TestCaseIncidentManagerStatus
-              isInline
-              data={record}
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-              onSubmit={handleStatusSubmit}
-            />
-          );
-        },
-      },
-      {
-        title: t('label.severity'),
-        dataIndex: 'severity',
-        key: 'severity',
-        width: 100,
-        render: (value: Severities, record: TestCaseResolutionStatus) => {
-          if (isPermissionLoading) {
-            return <Skeleton height={24} variant="rectangular" width={100} />;
-          }
-
-          const hasPermission = testCasePermissions.find(
-            (item) =>
-              item.fullyQualifiedName ===
-              record.testCaseReference?.fullyQualifiedName
-          );
-
-          return (
-            <Severity
-              isInline
-              hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
-              severity={value}
-              onSubmit={(severity) => handleSeveritySubmit(record, severity)}
-            />
-          );
-        },
-      },
-      {
-        title: t('label.assignee'),
-        dataIndex: 'testCaseResolutionStatusDetails',
-        key: 'testCaseResolutionStatusDetails',
-        width: 200,
-        render: testCaseResolutionStatusDetailsRender,
-      },
-    ],
-    [
-      tableDetails?.deleted,
-      testCaseListData.data,
-      testCasePermissions,
-      isPermissionLoading,
-      handleAssigneeUpdate,
-      handleStatusSubmit,
-    ]
-  );
-
+    pagingData,
+    handleSeveritySubmit,
+    handleAssigneeUpdate,
+    fetchUserFilterOptions,
+    updateFilters,
+    handleAssigneeChange,
+    handleDateRangeChange,
+    handleDateFieldChange,
+    handleDateRangeClear,
+    handleStatusSubmit,
+    searchTestCases,
+  } = useIncidentManagerListPage({ isIncidentPage, tableDetails });
   if (
     !commonTestCasePermission?.ViewAll &&
     !commonTestCasePermission?.ViewBasic
@@ -725,7 +75,7 @@ const IncidentManager = ({
   }
 
   return (
-    <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-white">
+    <div className="tw:border tw:border-border-secondary tw:rounded-[10px] tw:bg-primary">
       <div className="new-form-style tw:flex tw:justify-between tw:items-center tw:p-4 tw:gap-5.5 tw:w-full">
         <AsyncSelect
           allowClear
@@ -812,11 +162,14 @@ const IncidentManager = ({
                   </Dropdown.Menu>
                 </Dropdown.Popover>
               </Dropdown.Root>
-              <MuiDatePickerMenu
+              <DatePickerMenu
                 allowClear
                 showSelectedCustomRange
                 defaultDateRange={dateRangeKey}
                 handleDateRangeChange={handleDateRangeChange}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.date'),
+                })}
                 size="small"
                 onClear={handleDateRangeClear}
               />
@@ -825,31 +178,17 @@ const IncidentManager = ({
         </div>
       </div>
 
-      <Table
-        columns={columns}
-        containerClassName="test-case-table-container custom-card-with-table"
-        data-testid="test-case-incident-manager-table"
-        dataSource={testCaseListData.data}
-        loading={testCaseListData.isLoading}
-        {...(pagingData && showPagination
-          ? {
-              customPaginationProps: {
-                ...pagingData,
-                showPagination,
-              },
-            }
-          : {})}
-        locale={{
-          emptyText: (
-            <FilterTablePlaceHolder
-              placeholderText={t('message.no-incident-found')}
-            />
-          ),
-        }}
-        pagination={false}
-        rowKey="id"
-        scroll={testCaseListData.data.length > 0 ? { x: '100%' } : undefined}
-        size="small"
+      <IncidentManagerTable
+        handleAssigneeUpdate={handleAssigneeUpdate}
+        handleSeveritySubmit={handleSeveritySubmit}
+        handleStatusSubmit={handleStatusSubmit}
+        isIncidentPage={isIncidentPage}
+        isPermissionLoading={isPermissionLoading}
+        pagingData={pagingData}
+        showPagination={showPagination}
+        tableDetails={tableDetails}
+        testCaseListData={testCaseListData}
+        testCasePermissions={testCasePermissions}
       />
     </div>
   );

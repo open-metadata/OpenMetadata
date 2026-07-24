@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { EntityTabs } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTagByFqn } from '../../rest/tagAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import tagClassBase from '../../utils/TagClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import TagPage from './TagPage';
+
+const render = renderWithQueryClient;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
@@ -185,8 +188,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
+jest.mock('../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
 jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
@@ -218,8 +221,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(() => <div>DeleteModal</div>);
 });
 
 jest.mock(
@@ -231,6 +234,10 @@ jest.mock(
 
 jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
+});
+
+jest.mock('../../components/Modals/IconColorModal', () => {
+  return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 
 jest.mock(

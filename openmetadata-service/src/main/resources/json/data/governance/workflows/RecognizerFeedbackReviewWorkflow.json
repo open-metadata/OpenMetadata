@@ -11,7 +11,7 @@
     "config": {
       "entityTypes": ["recognizerFeedback"],
       "events": ["Created", "Updated"],
-      "exclude": [],
+      "exclude": ["reviewers"],
       "include": [],
       "filter": {}
     },
@@ -32,8 +32,7 @@
       "config": {
         "assignees": {
           "addReviewers": true,
-          "addOwners": false,
-          "candidates": []
+          "addOwners": false
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1
@@ -54,7 +53,7 @@
       "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "global",
+        "updatedBy": "ReviewFeedback",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
       }
@@ -67,7 +66,7 @@
       "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "global",
+        "updatedBy": "ReviewFeedback",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
       }
@@ -93,12 +92,12 @@
     {
       "from": "ReviewFeedback",
       "to": "ApplyApprovedFeedback",
-      "condition": "true"
+      "condition": "approve"
     },
     {
       "from": "ReviewFeedback",
       "to": "RejectFeedback",
-      "condition": "false"
+      "condition": "reject"
     },
     {
       "from": "ApplyApprovedFeedback",

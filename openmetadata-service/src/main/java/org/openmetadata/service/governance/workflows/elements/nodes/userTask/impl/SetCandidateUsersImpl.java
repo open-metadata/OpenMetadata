@@ -31,6 +31,9 @@ public class SetCandidateUsersImpl implements TaskListener {
           delegateTask.getProcessInstanceId(),
           delegateTask.getId(),
           assignees);
+      if (assignees == null || assignees.isEmpty()) {
+        return;
+      }
       delegateTask.addCandidateUsers(assignees);
     } catch (Exception exc) {
       LOG.error(

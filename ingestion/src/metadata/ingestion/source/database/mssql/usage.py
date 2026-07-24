@@ -11,6 +11,7 @@
 """
 MSSQL usage module
 """
+
 from datetime import datetime
 
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -50,9 +51,7 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
 
         if self.engine:
             server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-            self.dt_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-                server_date_format, DEFAULT_DATETIME_FORMAT
-            )
+            self.dt_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
 
     def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
         """
@@ -60,9 +59,9 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
 
         Override if we have specific parameters
         """
-        return self.sql_stmt.format(
+        return self.resolve_query_log_statement().format(
             start_time=start_time.strftime(self.dt_format),
             end_time=end_time.strftime(self.dt_format),
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )

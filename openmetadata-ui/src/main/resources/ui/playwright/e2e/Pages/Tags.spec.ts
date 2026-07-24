@@ -29,6 +29,7 @@ import {
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addTagToTableColumn,
@@ -36,6 +37,10 @@ import {
   submitForm,
   validateForm,
 } from '../../utils/tag';
+import {
+  waitForTaskCreateResponse,
+  waitForTaskResolveResponse,
+} from '../../utils/task';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -53,17 +58,12 @@ const NEW_TAG = {
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
 const permanentDeleteModal = async (page: Page, entity: string) => {
-  await page.locator('.ant-modal-content').waitFor({
-    state: 'visible',
-  });
-
-  await expect(page.locator('.ant-modal-content')).toBeVisible();
+  await page.getByTestId('modal-footer').waitFor({ state: 'visible' });
 
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     `Delete ${entity}`
   );
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 };
 
@@ -258,11 +258,14 @@ test('Classification Page', async ({ page }) => {
 
     await validateForm(page);
 
-    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-    await page.fill(
-      '[data-testid="displayName"]',
-      NEW_CLASSIFICATION.displayName
-    );
+    await page
+      .getByTestId('name')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.displayName);
     await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
@@ -292,14 +295,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_TAG.name);
-    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+    await page.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
-    await page
-      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-      .click();
+    await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
       .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
       .click();
@@ -361,9 +364,9 @@ test('Classification Page', async ({ page }) => {
     const permissions = page.waitForResponse(
       'api/v1/permissions/databaseSchema/name/*'
     );
-    await page.click(
-      `[data-testid="breadcrumb-link"]:has-text("${entity.name}")`
-    );
+    // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+    // narrow viewports, so navigate through the overflow-aware helper.
+    await clickBreadcrumbAncestor(page, entity.name);
 
     await databaseSchemaPage;
     await permissions;
@@ -387,26 +390,14 @@ test('Classification Page', async ({ page }) => {
     await page.keyboard.type(tag);
     await suggestTag;
     await page.click('[data-testid="tag-PersonalData.Personal"]');
-
-    await page.click('[data-testid="tags-label"]');
-    const taskCreated = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        response.url().includes('api/v1/feed')
-    );
+    await clickOutside(page);
+    const taskCreated = waitForTaskCreateResponse(page);
     await page.click('[data-testid="submit-tag-request"]');
     await taskCreated;
 
-    const acceptSuggestion = page.waitForResponse(
-      (response) =>
-        response.request().method() === 'PUT' &&
-        response.url().includes('/api/v1/feed/tasks/') &&
-        response.url().includes('/resolve')
-    );
+    const acceptSuggestion = waitForTaskResolveResponse(page);
 
-    const acceptButton = page.locator(
-      '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
-    );
+    const acceptButton = page.getByTestId('approve-button').first();
     await acceptButton.waitFor({ state: 'visible' });
     await acceptButton.click();
     await acceptSuggestion;
@@ -459,7 +450,7 @@ test('Classification Page', async ({ page }) => {
     );
 
     await page.click('[data-testid="table"] [data-testid="delete-tag"]');
-    await page.locator('.ant-modal-content').waitFor({ state: 'visible' });
+    await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
     const deleteTag = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
@@ -500,9 +491,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="manage-button"]');
 
     await page.click('[data-testid="delete-button"]');
-
-    await page.click('[data-testid="hard-delete-option"]');
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     const deleteClassification = page.waitForResponse(
       (response) =>
@@ -697,6 +685,126 @@ test('Disabled tag should not allow adding assets from Assets tab', async ({
   } finally {
     // Re-enable the tag for cleanup
     await setTagDisabled(apiContext, tag1.responseData.id, false);
+    await afterAction();
+  }
+});
+
+test('Adds one tag and removes another in the same save preserves appliedBy on the kept tag', async ({
+  browser,
+  page,
+}) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  const fixtureTable = new TableClass();
+  const addedTag = new TagClass({ classification: classification.data.name });
+
+  try {
+    await fixtureTable.create(apiContext);
+    await addedTag.create(apiContext);
+
+    const keptTagFqn = tag.responseData.fullyQualifiedName;
+    const removedTagFqn = tag1.responseData.fullyQualifiedName;
+    const addedTagFqn = addedTag.responseData.fullyQualifiedName;
+
+    await fixtureTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags',
+          value: [
+            {
+              tagFQN: keptTagFqn,
+              source: 'Classification',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+            {
+              tagFQN: removedTagFqn,
+              source: 'Classification',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          ],
+        },
+      ],
+    });
+
+    const seededResponse = await apiContext.get(
+      `/api/v1/tables/${fixtureTable.entityResponseData?.id}?fields=tags`
+    );
+    const seededBody = await seededResponse.json();
+    const seededKept = (
+      seededBody.tags as { tagFQN: string; appliedBy?: string }[]
+    ).find((t) => t.tagFQN === keptTagFqn);
+
+    expect(seededKept?.appliedBy).toBeTruthy();
+
+    await fixtureTable.visitEntityPage(page);
+
+    const tagsPanel = page
+      .getByTestId('KnowledgePanel.Tags')
+      .getByTestId('tags-container');
+
+    await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
+    await expect(tagsPanel.getByTestId(`tag-${removedTagFqn}`)).toBeVisible();
+
+    await tagsPanel.getByTestId('edit-button').first().click();
+
+    await expect(page.locator('#tagsForm_tags')).toBeVisible();
+
+    await page
+      .getByTestId('tag-selector')
+      .getByTestId(`selected-tag-${removedTagFqn}`)
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    await page.locator('#tagsForm_tags').click();
+    await page.locator('#tagsForm_tags').fill(addedTag.data.name);
+
+    await expect(page.getByTestId(`tag-${addedTagFqn}`).first()).toBeVisible();
+    await page.getByTestId(`tag-${addedTagFqn}`).first().click();
+
+    await page
+      .locator('.ant-select-dropdown')
+      .getByTestId('saveAssociatedTag')
+      .waitFor({ state: 'visible' });
+
+    const patchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tables/') &&
+        response.request().method() === 'PATCH'
+    );
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    const response = await patchResponse;
+
+    expect(response.status()).toBe(200);
+
+    const patchedTable = await response.json();
+    const patchedTags = (patchedTable.tags ?? []) as {
+      tagFQN: string;
+      appliedBy?: string;
+    }[];
+    const patchedFqns = patchedTags.map((t) => t.tagFQN);
+
+    expect(patchedFqns).toContain(keptTagFqn);
+    expect(patchedFqns).toContain(addedTagFqn);
+    expect(patchedFqns).not.toContain(removedTagFqn);
+
+    const survivingTag = patchedTags.find((t) => t.tagFQN === keptTagFqn);
+
+    expect(survivingTag?.appliedBy).toBe(seededKept?.appliedBy);
+
+    await expect(tagsPanel.getByTestId(`tag-${keptTagFqn}`)).toBeVisible();
+    await expect(tagsPanel.getByTestId(`tag-${addedTagFqn}`)).toBeVisible();
+    await expect(
+      tagsPanel.getByTestId(`tag-${removedTagFqn}`)
+    ).not.toBeVisible();
+  } finally {
+    await addedTag.delete(apiContext);
+    await fixtureTable.delete(apiContext);
     await afterAction();
   }
 });

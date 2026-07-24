@@ -36,8 +36,7 @@ def test_analyzer_supports_all_expected_pii_entities():
     entities = set(PIITag.values())
     supported_entities = set(analyzer.get_supported_entities(SUPPORTED_LANG))
     assert entities <= supported_entities, (
-        f"Analyzer does not support all expected PII entities. "
-        f"{entities - supported_entities}"
+        f"Analyzer does not support all expected PII entities. {entities - supported_entities}"
     )
 
 
@@ -70,9 +69,7 @@ class TestApplyConfidenceThreshold:
 
         # Test the decorated analyze method
         nlp_artifacts = Mock(spec=NlpArtifacts)
-        results = decorated_recognizer.analyze(
-            "test text", ["TEST_ENTITY"], nlp_artifacts
-        )
+        results = decorated_recognizer.analyze("test text", ["TEST_ENTITY"], nlp_artifacts)
 
         # Should only return results with score >= 0.6
         assert len(results) == 1
@@ -93,9 +90,7 @@ class TestApplyConfidenceThreshold:
         decorated_recognizer = decorator(mock_recognizer)
 
         nlp_artifacts = Mock(spec=NlpArtifacts)
-        results = decorated_recognizer.analyze(
-            "test text", ["TEST_ENTITY"], nlp_artifacts
-        )
+        results = decorated_recognizer.analyze("test text", ["TEST_ENTITY"], nlp_artifacts)
 
         # All results should be above threshold
         assert len(results) == 3
@@ -115,9 +110,7 @@ class TestApplyConfidenceThreshold:
         decorated_recognizer = decorator(mock_recognizer)
 
         nlp_artifacts = Mock(spec=NlpArtifacts)
-        results = decorated_recognizer.analyze(
-            "test text", ["TEST_ENTITY"], nlp_artifacts
-        )
+        results = decorated_recognizer.analyze("test text", ["TEST_ENTITY"], nlp_artifacts)
 
         assert len(results) == 0
 
@@ -136,9 +129,7 @@ class TestApplyConfidenceThreshold:
         decorated_recognizer = decorator(mock_recognizer)
 
         nlp_artifacts = Mock(spec=NlpArtifacts)
-        results = decorated_recognizer.analyze(
-            "test text", ["TEST_ENTITY"], nlp_artifacts
-        )
+        results = decorated_recognizer.analyze("test text", ["TEST_ENTITY"], nlp_artifacts)
 
         assert len(results) == 3
 
@@ -156,9 +147,7 @@ class TestLoadNlpEngine:
         """Clear the cache after each test"""
         load_nlp_engine.cache_clear()
 
-    def test_returns_same_instance_for_same_parameters(
-        self, mock_spacy_engine_class, mock_load_spacy
-    ):
+    def test_returns_same_instance_for_same_parameters(self, mock_spacy_engine_class, mock_load_spacy):
         """Test that calling load_nlp_engine with same parameters returns same instance"""
         mock_engine = Mock()
         mock_spacy_engine_class.return_value = mock_engine
@@ -170,9 +159,7 @@ class TestLoadNlpEngine:
         assert mock_spacy_engine_class.call_count == 1
         assert mock_load_spacy.call_count == 1
 
-    def test_returns_different_instances_for_different_model_names(
-        self, mock_spacy_engine_class, mock_load_spacy
-    ):
+    def test_returns_different_instances_for_different_model_names(self, mock_spacy_engine_class, mock_load_spacy):
         """Test that different model names result in different instances"""
         mock_engine1 = Mock()
         mock_engine2 = Mock()
@@ -185,9 +172,7 @@ class TestLoadNlpEngine:
         assert mock_spacy_engine_class.call_count == 2
         assert mock_load_spacy.call_count == 2
 
-    def test_returns_different_instances_for_different_languages(
-        self, mock_spacy_engine_class, mock_load_spacy
-    ):
+    def test_returns_different_instances_for_different_languages(self, mock_spacy_engine_class, mock_load_spacy):
         """Test that different languages result in different instances"""
         mock_engine1 = Mock()
         mock_engine2 = Mock()
@@ -199,9 +184,7 @@ class TestLoadNlpEngine:
         assert engine1 is not engine2
         assert mock_spacy_engine_class.call_count == 2
 
-    def test_cache_persists_across_multiple_calls(
-        self, mock_spacy_engine_class, mock_load_spacy
-    ):
+    def test_cache_persists_across_multiple_calls(self, mock_spacy_engine_class, mock_load_spacy):
         """Test that cache works correctly across multiple calls"""
         mock_engine = Mock()
         mock_spacy_engine_class.return_value = mock_engine
@@ -214,9 +197,7 @@ class TestLoadNlpEngine:
         assert mock_spacy_engine_class.call_count == 1
         assert mock_load_spacy.call_count == 1
 
-    def test_uses_default_parameters_when_not_provided(
-        self, mock_spacy_engine_class, mock_load_spacy
-    ):
+    def test_uses_default_parameters_when_not_provided(self, mock_spacy_engine_class, mock_load_spacy):
         """Test that default parameters work correctly with caching"""
         mock_engine = Mock()
         mock_spacy_engine_class.return_value = mock_engine
@@ -247,9 +228,7 @@ class TestEnhanceUsingContext:
         assert result is mock_recognizer
         assert mock_recognizer.enhance_using_context is not original_method
 
-    def test_no_context_on_recognizer_returns_results_unchanged(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_no_context_on_recognizer_returns_results_unchanged(self, mock_recognizer, nlp_artifacts):
         mock_recognizer.context = []
         raw_results = [
             RecognizerResult(entity_type="EMAIL_ADDRESS", start=0, end=5, score=0.6),
@@ -269,9 +248,7 @@ class TestEnhanceUsingContext:
         assert len(results) == 1
         assert results[0].score == 0.6
 
-    def test_no_context_arg_returns_results_unchanged(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_no_context_arg_returns_results_unchanged(self, mock_recognizer, nlp_artifacts):
         raw_results = [
             RecognizerResult(entity_type="EMAIL_ADDRESS", start=0, end=5, score=0.6),
         ]
@@ -279,16 +256,12 @@ class TestEnhanceUsingContext:
 
         enhance_using_context(mock_recognizer)
 
-        results = mock_recognizer.enhance_using_context(
-            "test@example.com", raw_results, [], nlp_artifacts, None
-        )
+        results = mock_recognizer.enhance_using_context("test@example.com", raw_results, [], nlp_artifacts, None)
 
         assert len(results) == 1
         assert results[0].score == 0.6
 
-    def test_context_match_boosts_score_to_max_and_sets_metadata_flag(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_context_match_boosts_score_to_max_and_sets_metadata_flag(self, mock_recognizer, nlp_artifacts):
         raw_results = [
             RecognizerResult(
                 entity_type="EMAIL_ADDRESS",
@@ -312,16 +285,9 @@ class TestEnhanceUsingContext:
 
         assert len(results) == 1
         assert results[0].score == mock_recognizer.MAX_SCORE
-        assert (
-            results[0].recognition_metadata[
-                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-            ]
-            is True
-        )
+        assert results[0].recognition_metadata[RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY] is True
 
-    def test_context_mismatch_does_not_boost_score(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_context_mismatch_does_not_boost_score(self, mock_recognizer, nlp_artifacts):
         raw_results = [
             RecognizerResult(
                 entity_type="EMAIL_ADDRESS",
@@ -345,22 +311,15 @@ class TestEnhanceUsingContext:
 
         assert len(results) == 1
         assert results[0].score == 0.6
-        assert (
-            RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY
-            not in results[0].recognition_metadata
-        )
+        assert RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY not in results[0].recognition_metadata
 
-    def test_already_enhanced_results_are_not_boosted_again(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_already_enhanced_results_are_not_boosted_again(self, mock_recognizer, nlp_artifacts):
         already_enhanced_result = RecognizerResult(
             entity_type="EMAIL_ADDRESS",
             start=0,
             end=16,
             score=0.85,
-            recognition_metadata={
-                RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY: True
-            },
+            recognition_metadata={RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY: True},
         )
         raw_results = [already_enhanced_result]
         mock_recognizer.enhance_using_context = Mock(return_value=raw_results)
@@ -378,9 +337,7 @@ class TestEnhanceUsingContext:
         assert len(results) == 1
         assert results[0].score == 0.85
 
-    def test_calls_old_enhancing_function_with_correct_arguments(
-        self, mock_recognizer, nlp_artifacts
-    ):
+    def test_calls_old_enhancing_function_with_correct_arguments(self, mock_recognizer, nlp_artifacts):
         raw_results = [
             RecognizerResult(
                 entity_type="EMAIL_ADDRESS",
@@ -399,9 +356,7 @@ class TestEnhanceUsingContext:
 
         enhance_using_context(mock_recognizer)
 
-        mock_recognizer.enhance_using_context(
-            text, raw_results, other_results, nlp_artifacts, context
-        )
+        mock_recognizer.enhance_using_context(text, raw_results, other_results, nlp_artifacts, context)
 
         assert original_enhance.call_count == 1
         call_args = original_enhance.call_args

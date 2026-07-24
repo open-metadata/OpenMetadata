@@ -20,7 +20,7 @@ import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;
@@ -39,10 +39,10 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
 
   const { title, welcomeScreenImg } = useMemo(() => {
     return {
-      title: brandClassBase.getPageTitle(),
+      title: t('label.brand-name'),
       welcomeScreenImg: brandClassBase.getWelcomeScreenImg(),
     };
-  }, []);
+  }, [t]);
 
   return (
     <Card
@@ -60,7 +60,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       <Row className="p-md welcome-screen-full-height">
         <Col className="flex-center" span={12}>
           <img
-            alt="welcome screen image"
+            alt="welcome screen"
             className="welcome-screen-img"
             data-testid="welcome-screen-img"
             loading="lazy"

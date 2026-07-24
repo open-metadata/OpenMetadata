@@ -15,7 +15,7 @@ import { NodeViewProps } from '@tiptap/react';
 import { Button } from 'antd';
 import React from 'react';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
-import { bytesToSize } from '../../../../../utils/StringsUtils';
+import { bytesToSize } from '../../../../../utils/StringUtils';
 
 const FileAttachment = ({
   node,

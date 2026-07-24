@@ -41,6 +41,7 @@ export enum EntityTypeEndpoint {
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   TableColumn = 'tableColumn',
+  Task = 'tasks',
   Teams = 'teams',
   TestSuites = 'dataQuality/testSuites',
   Topic = 'topics',
@@ -70,7 +71,7 @@ export enum ENTITY_PATH {
   glossaries = 'glossary',
   searchIndexes = 'searchIndex',
   storedProcedures = 'storedProcedure',
-  glossaryTerm = 'glossaryTerm',
+  glossaryTerms = 'glossaryTerm',
   databases = 'database',
   databaseSchemas = 'databaseSchema',
   'dashboard/datamodels' = 'dashboardDataModel',
@@ -81,6 +82,11 @@ export enum ENTITY_PATH {
   charts = 'chart',
   'tableColumn' = 'tableColumn',
   dataProductsTab = 'dataProductsTab',
+  domains = 'domain',
+  'drives/directories' = 'directory',
+  'drives/files' = 'file',
+  'drives/spreadsheets' = 'spreadsheet',
+  'drives/worksheets' = 'worksheet',
 }
 
 export type ResponseDataType = {
@@ -90,6 +96,7 @@ export type ResponseDataType = {
   id: string;
   fullyQualifiedName: string;
   version?: number;
+  serviceType?: string;
 };
 export type TestCaseData = {
   parameterValues?: unknown[];

@@ -21,10 +21,10 @@ public final class AuditLogger {
   }
 
   public void log(final String message) {
-    logger.error(AUDIT_MARKER, message);
+    logger.info(AUDIT_MARKER, message);
   }
 
   public void log(final String format, final Object... arguments) {
-    logger.error(AUDIT_MARKER, format, arguments);
+    logger.info(AUDIT_MARKER, format, arguments);
   }
 }

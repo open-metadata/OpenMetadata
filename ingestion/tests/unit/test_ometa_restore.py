@@ -11,6 +11,7 @@
 """
 Unit tests for OpenMetadata restore functionality
 """
+
 from unittest import TestCase
 from unittest.mock import MagicMock
 
@@ -116,9 +117,7 @@ class OMetaRestoreTest(TestCase):
         metadata = OpenMetadata(self.server_config)
 
         entity_id = Uuid("b67eac63-9e43-41f5-afb9-387c85df1d8b")
-        metadata.client.put = MagicMock(
-            side_effect=APIError({"code": 404, "message": "Entity not found"})
-        )
+        metadata.client.put = MagicMock(side_effect=APIError({"code": 404, "message": "Entity not found"}))
 
         result = metadata.restore(entity=Table, entity_id=entity_id)
 
@@ -132,3 +131,42 @@ class OMetaRestoreTest(TestCase):
         suffix = metadata.get_suffix(Table)
         expected_restore_endpoint = f"{suffix}/restore"
         self.assertEqual(expected_restore_endpoint, "/tables/restore")
+
+    def test_restore_async_dispatches_with_async_query_param(self):
+        """restore_async should hit /restore?async=true and return the 202 payload."""
+        metadata = OpenMetadata(self.server_config)
+        entity_id = "b67eac63-9e43-41f5-afb9-387c85df1d8b"
+        mock_response = {"jobId": "job-42", "message": "Restore initiated successfully."}
+
+        metadata.client.put = MagicMock(return_value=mock_response)
+
+        result = metadata.restore_async(entity=Table, entity_id=entity_id)
+
+        self.assertEqual(result, mock_response)
+        metadata.client.put.assert_called_once()
+        call_args = metadata.client.put.call_args
+        self.assertEqual(call_args[0][0], "/tables/restore?async=true")
+        self.assertEqual(call_args[1]["json"], {"id": entity_id})
+
+    def test_delete_async_dispatches_with_async_query_param(self):
+        """delete_async should hit /async/{id}?recursive=...&hardDelete=... and return the
+        202 payload."""
+        metadata = OpenMetadata(self.server_config)
+        entity_id = "b67eac63-9e43-41f5-afb9-387c85df1d8b"
+        mock_response = {"jobId": "job-7", "message": "Delete initiated successfully."}
+
+        metadata.client.delete = MagicMock(return_value=mock_response)
+
+        result = metadata.delete_async(
+            entity=Table,
+            entity_id=entity_id,
+            recursive=True,
+            hard_delete=False,
+        )
+
+        self.assertEqual(result, mock_response)
+        metadata.client.delete.assert_called_once()
+        url = metadata.client.delete.call_args[0][0]
+        self.assertTrue(url.startswith(f"/tables/async/{entity_id}"))
+        self.assertIn("recursive=true", url)
+        self.assertIn("hardDelete=false", url)

@@ -102,7 +102,7 @@ public class CostAnalysisWorkflow {
 
   private void initialize() throws SearchIndexException {
     PaginatedEntitiesSource databaseServices =
-        new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of("*"));
+        new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of());
     int total = 0;
 
     String keysetCursor = null;
@@ -117,7 +117,8 @@ public class CostAnalysisWorkflow {
           filter.addQueryParam("database", databaseService.getFullyQualifiedName());
 
           sources.add(
-              new PaginatedEntitiesSource(Entity.TABLE, batchSize, List.of("*"), filter)
+              new PaginatedEntitiesSource(
+                      Entity.TABLE, batchSize, List.of(Entity.FIELD_LIFE_CYCLE), filter)
                   .withName(
                       String.format(
                           "[CostAnalysisWorkflow] %s", databaseService.getFullyQualifiedName())));

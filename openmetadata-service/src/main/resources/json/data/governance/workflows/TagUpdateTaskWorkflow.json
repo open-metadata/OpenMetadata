@@ -1,0 +1,92 @@
+{
+  "name": "TagUpdateTaskWorkflow",
+  "fullyQualifiedName": "TagUpdateTaskWorkflow",
+  "displayName": "Tag Update Task Workflow",
+  "description": "Default workflow-driven lifecycle for tag update tasks.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "noOp",
+    "config": {},
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "TaskStart",
+      "displayName": "Task Start"
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "TaskReview",
+      "displayName": "Review Task",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "Rejected"
+    }
+  ],
+  "edges": [
+    {
+      "from": "TaskStart",
+      "to": "TaskReview"
+    },
+    {
+      "from": "TaskReview",
+      "to": "ApprovedEnd",
+      "condition": "approve"
+    },
+    {
+      "from": "TaskReview",
+      "to": "RejectedEnd",
+      "condition": "reject"
+    }
+  ]
+}

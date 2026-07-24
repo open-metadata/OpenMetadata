@@ -144,9 +144,7 @@ class TestResolvePipelineServiceType:
         assert resolve_pipeline_service_type("dbt") == PipelineServiceType.DBTCloud
 
     def test_unknown_falls_back_to_openlineage(self):
-        assert (
-            resolve_pipeline_service_type("unknown") == PipelineServiceType.OpenLineage
-        )
+        assert resolve_pipeline_service_type("unknown") == PipelineServiceType.OpenLineage
 
     def test_none_falls_back_to_openlineage(self):
         assert resolve_pipeline_service_type(None) == PipelineServiceType.OpenLineage
@@ -171,9 +169,7 @@ class TestGetOrCreatePipelineService:
         metadata = MagicMock()
         cache = {"spark_openlineage": "spark_openlineage"}
 
-        result = get_or_create_pipeline_service(
-            metadata, "spark_openlineage", PipelineServiceType.Spark, cache
-        )
+        result = get_or_create_pipeline_service(metadata, "spark_openlineage", PipelineServiceType.Spark, cache)
 
         assert result == "spark_openlineage"
         metadata.get_by_name.assert_not_called()
@@ -183,9 +179,7 @@ class TestGetOrCreatePipelineService:
         metadata.get_by_name.return_value = MagicMock()
         cache = {}
 
-        result = get_or_create_pipeline_service(
-            metadata, "spark_openlineage", PipelineServiceType.Spark, cache
-        )
+        result = get_or_create_pipeline_service(metadata, "spark_openlineage", PipelineServiceType.Spark, cache)
 
         assert result == "spark_openlineage"
         assert "spark_openlineage" in cache
@@ -196,9 +190,7 @@ class TestGetOrCreatePipelineService:
         metadata.get_by_name.return_value = None
         cache = {}
 
-        result = get_or_create_pipeline_service(
-            metadata, "spark_openlineage", PipelineServiceType.Spark, cache
-        )
+        result = get_or_create_pipeline_service(metadata, "spark_openlineage", PipelineServiceType.Spark, cache)
 
         assert result == "spark_openlineage"
         assert "spark_openlineage" in cache
@@ -261,9 +253,7 @@ class TestFindPipelineByNamespace:
         metadata = MagicMock()
         metadata.get_by_name.return_value = None
 
-        find_pipeline_by_namespace(
-            metadata, self._make_event(namespace="my_airflow", name="etl_dag")
-        )
+        find_pipeline_by_namespace(metadata, self._make_event(namespace="my_airflow", name="etl_dag"))
 
         from metadata.generated.schema.entity.data.pipeline import Pipeline
 

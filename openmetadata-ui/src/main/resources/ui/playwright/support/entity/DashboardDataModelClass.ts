@@ -12,17 +12,32 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import {
-  Column,
-  DashboardDataModel,
-  DataType,
-} from '../../../src/generated/entity/data/dashboardDataModel';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
+import { visitEntityPageByFqn } from '../../utils/entity';
+import {
+  EntityReference,
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
+
+export interface DashboardDataModel extends ResponseDataWithServiceType {
+  columns: EntityReference[];
+  dataModelType: string;
+  project: string;
+}
+
+export interface Column {
+  name: string;
+  dataType: string;
+  dataLength?: number;
+  dataTypeDisplay: string;
+  description: string;
+  children?: Column[];
+}
 
 export class DashboardDataModelClass extends EntityClass {
   private readonly dashboardDataModelName: string;
@@ -85,35 +100,35 @@ export class DashboardDataModelClass extends EntityClass {
     this.children = [
       {
         name: 'country_name',
-        dataType: DataType.Varchar,
+        dataType: `VARCHAR`,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'Name of the country.',
       },
       {
         name: 'user_details',
-        dataType: DataType.Varchar,
+        dataType: `VARCHAR`,
         dataLength: 256,
         dataTypeDisplay: 'varchar',
         description: 'User details.',
         children: [
           {
             name: 'name',
-            dataType: DataType.Varchar,
+            dataType: `VARCHAR`,
             dataLength: 256,
             dataTypeDisplay: 'varchar',
             description: 'Name of the user.',
             children: [
               {
                 name: 'first_name',
-                dataType: DataType.Varchar,
+                dataType: `VARCHAR`,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'First name of the user.',
               },
               {
                 name: 'last_name',
-                dataType: DataType.Varchar,
+                dataType: `VARCHAR`,
                 dataLength: 256,
                 dataTypeDisplay: 'varchar',
                 description: 'Last name of the user.',
@@ -158,8 +173,15 @@ export class DashboardDataModelClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    const dataModelFqn = this.entityResponseData.fullyQualifiedName;
+    if (!dataModelFqn) {
+      throw new Error(
+        'Dashboard data model response is missing its fully qualified name'
+      );
+    }
     this.childrenSelectorId =
-      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
+      this.entityResponseData.columns?.[0]?.fullyQualifiedName ??
+      `${dataModelFqn}.${this.children[0].name}`;
 
     return {
       service: serviceResponse.body,
@@ -207,12 +229,10 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

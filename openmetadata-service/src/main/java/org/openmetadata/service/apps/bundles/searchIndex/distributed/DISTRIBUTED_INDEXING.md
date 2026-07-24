@@ -250,23 +250,23 @@ WHERE lockKey = ? AND jobId = ?
 
 ## Configuration
 
-Enable distributed indexing via the reindex API:
+Distributed indexing is always enabled. Tune the reindex API like so:
 
 ```json
 {
   "entities": ["table", "database", "topic", "dashboard"],
-  "recreateIndex": true,
   "batchSize": 100,
-  "consumerThreads": 4,
-  "useDistributedIndexing": true
+  "consumerThreads": 4
 }
 ```
+
+Search indexing always writes to staged indexes and promotes aliases after successful processing so
+live search indexes are not mutated during the bulk rebuild.
 
 ### Configuration Options
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| useDistributedIndexing | false | Enable distributed mode |
 | batchSize | 100 | Entities per batch |
 | consumerThreads | 4 | Worker threads per server |
 | maxConcurrentRequests | 100 | Concurrent ES/OS requests |

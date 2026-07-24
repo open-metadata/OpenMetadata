@@ -1,0 +1,404 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/domains/odps/odpsDataProduct.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ODPSDataProduct",
+  "description": "Open Data Product Standard (ODPS) v4.1 data product representation for import/export. See https://opendataproducts.org/v4.1/.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataProduct",
+  "definitions": {
+    "odpsApiVersion": {
+      "description": "ODPS specification version.",
+      "type": "string",
+      "enum": ["4.1", "4.0"],
+      "default": "4.1"
+    },
+    "odpsVisibility": {
+      "description": "Visibility level of the data product per ODPS v4.1.",
+      "type": "string",
+      "enum": ["private", "invitation", "organisation", "dataspace", "public"]
+    },
+    "odpsStatus": {
+      "description": "Lifecycle status of the data product per ODPS v4.1.",
+      "type": "string",
+      "enum": [
+        "announcement",
+        "draft",
+        "development",
+        "testing",
+        "acceptance",
+        "production",
+        "sunset",
+        "retired"
+      ]
+    },
+    "odpsType": {
+      "description": "Type of the data product per ODPS v4.1 taxonomy.",
+      "type": "string",
+      "enum": [
+        "raw data",
+        "derived data",
+        "dataset",
+        "reports",
+        "analytic view",
+        "3D visualisation",
+        "algorithm",
+        "decision support",
+        "automated decision-making",
+        "data-enhanced product",
+        "data-driven service",
+        "data-enabled performance",
+        "bi-directional"
+      ]
+    },
+    "odpsPortfolioPriority": {
+      "description": "Portfolio-level priority of the data product.",
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"]
+    },
+    "odpsGovernanceProfile": {
+      "description": "Governance maturity level of the data product per ODPS v4.1.",
+      "type": "string",
+      "enum": ["structured", "enforced", "automated", "audit_ready"]
+    },
+    "odpsProductDetails": {
+      "description": "Language-specific product details per ODPS v4.1.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSProductDetails",
+      "properties": {
+        "name": {
+          "description": "The name of the product (required per ODPS).",
+          "type": "string",
+          "maxLength": 256
+        },
+        "productID": {
+          "description": "Product identifier (required per ODPS).",
+          "type": "string",
+          "maxLength": 256
+        },
+        "visibility": {
+          "$ref": "#/definitions/odpsVisibility"
+        },
+        "status": {
+          "$ref": "#/definitions/odpsStatus"
+        },
+        "type": {
+          "$ref": "#/definitions/odpsType"
+        },
+        "description": {
+          "description": "Human-readable product overview.",
+          "type": "string"
+        },
+        "valueProposition": {
+          "description": "Product's value proposition — crystallizes the value for the customer.",
+          "type": "string",
+          "maxLength": 512
+        },
+        "productVersion": {
+          "description": "Semantic version per SemVer standard.",
+          "type": "string"
+        },
+        "categories": {
+          "description": "Comma-separated topic classifications.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "description": "Search and discovery keywords.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "portfolioPriority": {
+          "$ref": "#/definitions/odpsPortfolioPriority"
+        },
+        "governanceProfile": {
+          "$ref": "#/definitions/odpsGovernanceProfile"
+        },
+        "created": {
+          "description": "ISO 8601 creation timestamp.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated": {
+          "description": "ISO 8601 last-modified timestamp.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "standards": {
+          "description": "Related standards (e.g., ISO 8000, ISO 19131).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "logoURL": {
+          "description": "Optional logo URL for the product.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsDataHolder": {
+      "description": "Organization legally authorized to publish the product.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataHolder",
+      "properties": {
+        "legalName": {
+          "type": "string"
+        },
+        "businessDomain": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "contactEmail": {
+          "type": "string"
+        },
+        "contactURL": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsSLADimension": {
+      "description": "One SLA dimension with its target value and unit.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSSLADimension",
+      "properties": {
+        "dimension": {
+          "description": "Dimension name (uptime, responseTime, latency, errorRate, endOfSupport, endOfLife, updateFrequency, timeToDetect, timeToNotify, timeToRepair, emailResponseTime).",
+          "type": "string"
+        },
+        "displayTitle": {
+          "type": "string"
+        },
+        "objective": {
+          "description": "Target value for the dimension.",
+          "type": "number"
+        },
+        "unit": {
+          "description": "Unit of measurement (%, ms, seconds, minutes, hours, days, etc.).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsSLA": {
+      "description": "Service Level Agreement per ODPS v4.1.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSSLA",
+      "properties": {
+        "declarative": {
+          "description": "Human-readable SLA declarations.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odpsSLADimension"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsDataQualityDimension": {
+      "description": "One data quality dimension with its target value.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataQualityDimension",
+      "properties": {
+        "dimension": {
+          "description": "Quality dimension (accuracy, completeness, conformity, consistency, coverage, timeliness, uniqueness, validity).",
+          "type": "string"
+        },
+        "displayTitle": {
+          "type": "string"
+        },
+        "objective": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsDataQuality": {
+      "description": "Data quality targets per ODPS v4.1.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataQuality",
+      "properties": {
+        "declarative": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odpsDataQualityDimension"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsContract": {
+      "description": "Reference to a data contract (e.g., ODCS or DCS).",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSContract",
+      "properties": {
+        "type": {
+          "description": "Contract standard (odcs, dcs, custom).",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL or FQN pointing to the contract definition.",
+          "type": "string"
+        },
+        "contract": {
+          "description": "Inline contract object (opaque pass-through for round-trip).",
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsDataAccessMethod": {
+      "description": "One method by which consumers can access the data product.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataAccessMethod",
+      "properties": {
+        "type": {
+          "description": "Access method type (api, file, sql, mcp, ai, s3, kafka, etc.).",
+          "type": "string"
+        },
+        "displayTitle": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "format": {
+          "description": "Data format (JSON, CSV, PARQUET, AVRO, etc.).",
+          "type": "string"
+        },
+        "documentationURL": {
+          "type": "string"
+        },
+        "specification": {
+          "description": "Access method specification (e.g., OpenAPI URL, JDBC connection string).",
+          "type": "string"
+        },
+        "authentication": {
+          "description": "Authentication method (apiKey, oauth2, basic, none, etc.).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsDataAccess": {
+      "description": "All data access methods offered by this product.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSDataAccess",
+      "properties": {
+        "methods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odpsDataAccessMethod"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsProductStrategy": {
+      "description": "Business strategy alignment for the data product.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSProductStrategy",
+      "properties": {
+        "objectives": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "KPIs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsLicense": {
+      "description": "Licensing terms and governance conditions.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSLicense",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "odpsProduct": {
+      "description": "Root product container per ODPS v4.1.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.domains.odps.ODPSProduct",
+      "properties": {
+        "details": {
+          "description": "Language-keyed product details (ISO 639-1 keys like 'en', 'fr', 'de').",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/odpsProductDetails"
+          }
+        },
+        "productStrategy": {
+          "$ref": "#/definitions/odpsProductStrategy"
+        },
+        "contract": {
+          "$ref": "#/definitions/odpsContract"
+        },
+        "SLA": {
+          "$ref": "#/definitions/odpsSLA"
+        },
+        "dataQuality": {
+          "$ref": "#/definitions/odpsDataQuality"
+        },
+        "dataAccess": {
+          "$ref": "#/definitions/odpsDataAccess"
+        },
+        "dataHolder": {
+          "$ref": "#/definitions/odpsDataHolder"
+        },
+        "license": {
+          "$ref": "#/definitions/odpsLicense"
+        }
+      },
+      "required": ["details"],
+      "additionalProperties": true
+    }
+  },
+  "properties": {
+    "schema": {
+      "description": "URL of the ODPS schema (required per ODPS).",
+      "type": "string",
+      "default": "https://opendataproducts.org/v4.1/schema/odps.json"
+    },
+    "version": {
+      "description": "ODPS specification version (required per ODPS).",
+      "$ref": "#/definitions/odpsApiVersion"
+    },
+    "product": {
+      "description": "Product metadata container (required per ODPS).",
+      "$ref": "#/definitions/odpsProduct"
+    }
+  },
+  "required": ["version", "product"],
+  "additionalProperties": true
+}

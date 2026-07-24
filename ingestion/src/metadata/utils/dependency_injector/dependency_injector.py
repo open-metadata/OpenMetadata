@@ -33,9 +33,10 @@ Example:
         return db.query(f"SELECT * FROM users WHERE id = {user_id}")
     ```
 """
+
 from functools import wraps
 from threading import RLock
-from typing import (
+from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Annotated,
     Any,
@@ -61,23 +62,23 @@ T = TypeVar("T")
 class DependencyInjectionError(Exception):
     """Base exception for dependency injection errors."""
 
-    pass
+    pass  # noqa: PIE790
 
 
 class DependencyNotFoundError(DependencyInjectionError):
     """Raised when a required dependency is not found in the container."""
 
-    pass
+    pass  # noqa: PIE790
 
 
 class InvalidInjectionTypeError(DependencyInjectionError):
     """Raised when an invalid injection type is used."""
 
-    pass
+    pass  # noqa: PIE790
 
 
 if TYPE_CHECKING:
-    Inject = Annotated[Union[T, None], "Inject Marker"]
+    Inject = Annotated[Union[T, None], "Inject Marker"]  # noqa: UP007
 else:
 
     class Inject(Generic[T]):
@@ -122,8 +123,8 @@ class DependencyContainer:
 
     _instance: Optional["DependencyContainer"] = None
     _lock = RLock()
-    _dependencies: Dict[str, Callable[[], Any]] = {}
-    _overrides: Dict[str, Callable[[], Any]] = {}
+    _dependencies: Dict[str, Callable[[], Any]] = {}  # noqa: RUF012, UP006
+    _overrides: Dict[str, Callable[[], Any]] = {}  # noqa: RUF012, UP006
 
     def __new__(cls) -> "DependencyContainer":
         if cls._instance is None:
@@ -132,7 +133,7 @@ class DependencyContainer:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def get_key(self, dependency_type: Type[Any]) -> str:
+    def get_key(self, dependency_type: Type[Any]) -> str:  # noqa: UP006
         """
         Get the key for a dependency.
         """
@@ -141,9 +142,7 @@ class DependencyContainer:
             return f"Type[{inner_type.__name__}]"
         return dependency_type.__name__
 
-    def register(
-        self, dependency_type: Type[Any], dependency: Callable[[], Any]
-    ) -> None:
+    def register(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:  # noqa: UP006
         """
         Register a dependency with the container.
 
@@ -160,9 +159,7 @@ class DependencyContainer:
         with self._lock:
             self._dependencies[self.get_key(dependency_type)] = dependency
 
-    def override(
-        self, dependency_type: Type[Any], dependency: Callable[[], Any]
-    ) -> None:
+    def override(self, dependency_type: Type[Any], dependency: Callable[[], Any]) -> None:  # noqa: UP006
         """
         Override a dependency with a new implementation.
 
@@ -181,7 +178,7 @@ class DependencyContainer:
         with self._lock:
             self._overrides[self.get_key(dependency_type)] = dependency
 
-    def remove_override(self, dependency_type: Type[T]) -> None:
+    def remove_override(self, dependency_type: Type[T]) -> None:  # noqa: UP006
         """
         Remove an override for a dependency.
 
@@ -196,7 +193,7 @@ class DependencyContainer:
         with self._lock:
             self._overrides.pop(self.get_key(dependency_type), None)
 
-    def get(self, dependency_type: Type[Any]) -> Optional[Any]:
+    def get(self, dependency_type: Type[Any]) -> Optional[Any]:  # noqa: UP006, UP045
         """
         Get a dependency from the container.
 
@@ -216,9 +213,9 @@ class DependencyContainer:
             ```
         """
         with self._lock:
-            factory = self._overrides.get(
+            factory = self._overrides.get(self.get_key(dependency_type)) or self._dependencies.get(
                 self.get_key(dependency_type)
-            ) or self._dependencies.get(self.get_key(dependency_type))
+            )
             if factory is None:
                 return None
             return factory()
@@ -236,7 +233,7 @@ class DependencyContainer:
             self._dependencies.clear()
             self._overrides.clear()
 
-    def has(self, dependency_type: Type[T]) -> bool:
+    def has(self, dependency_type: Type[T]) -> bool:  # noqa: UP006
         """
         Check if a dependency exists in the container.
 
@@ -253,8 +250,7 @@ class DependencyContainer:
             ```"""
         with self._lock:
             return (
-                self.get_key(dependency_type) in self._overrides
-                or self.get_key(dependency_type) in self._dependencies
+                self.get_key(dependency_type) in self._overrides or self.get_key(dependency_type) in self._dependencies
             )
 
 
@@ -354,7 +350,7 @@ def extract_inject_arg(tp: Any) -> Any:
     )
 
 
-def inject_class_attributes(cls: Type[Any]) -> Type[Any]:
+def inject_class_attributes(cls: Type[Any]) -> Type[Any]:  # noqa: UP006
     """
     Decorator to inject dependencies into class-level (static) attributes based on type hints.
 

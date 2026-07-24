@@ -21,7 +21,9 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -48,23 +50,31 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
   @Override
   public Set<Recipient> resolve(
       ChangeEvent event, SubscriptionAction action, SubscriptionDestination destination) {
-
-    if (!Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
-      LOG.warn("MentionRecipientResolver called with non-thread entity: {}", event.getEntityType());
-      return Collections.emptySet();
-    }
-
     try {
-      Thread thread = AlertsRuleEvaluator.getThread(event);
-
-      if (thread == null) {
-        return Collections.emptySet();
+      if (Entity.THREAD.equalsIgnoreCase(event.getEntityType())) {
+        Thread thread = AlertsRuleEvaluator.getThread(event);
+        return thread == null ? Collections.emptySet() : resolveMentions(thread, destination);
       }
 
-      return resolveMentions(thread, destination);
+      if (Entity.ANNOUNCEMENT.equalsIgnoreCase(event.getEntityType())) {
+        Announcement announcement = (Announcement) AlertsRuleEvaluator.getEntity(event);
+        return announcement == null
+            ? Collections.emptySet()
+            : resolveAnnouncementMentions(announcement, destination);
+      }
+
+      if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
+        Task task = AlertsRuleEvaluator.getTask(event);
+        return resolveTaskMentions(task, destination);
+      }
+
+      LOG.warn(
+          "MentionRecipientResolver called with unsupported entity type: {}",
+          event.getEntityType());
+      return Collections.emptySet();
 
     } catch (Exception e) {
-      LOG.error("Failed to resolve mentions for thread {}", event.getEntityId(), e);
+      LOG.error("Failed to resolve mentions for entity {}", event.getEntityId(), e);
       return Collections.emptySet();
     }
   }
@@ -75,23 +85,30 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       String entityType,
       SubscriptionAction action,
       SubscriptionDestination destination) {
-
-    if (!Entity.THREAD.equalsIgnoreCase(entityType)) {
-      LOG.warn("MentionRecipientResolver called with non-thread entity: {}", entityType);
-      return Collections.emptySet();
-    }
-
     try {
-      Thread thread = Entity.getFeedRepository().get(entityId);
-
-      if (thread == null) {
-        return Collections.emptySet();
+      if (Entity.THREAD.equalsIgnoreCase(entityType)) {
+        Thread thread = Entity.getFeedRepository().get(entityId);
+        return thread == null ? Collections.emptySet() : resolveMentions(thread, destination);
       }
 
-      return resolveMentions(thread, destination);
+      if (Entity.ANNOUNCEMENT.equalsIgnoreCase(entityType)) {
+        Announcement announcement =
+            Entity.getEntity(Entity.ANNOUNCEMENT, entityId, "description", Include.NON_DELETED);
+        return announcement == null
+            ? Collections.emptySet()
+            : resolveAnnouncementMentions(announcement, destination);
+      }
+
+      if (Entity.TASK.equalsIgnoreCase(entityType)) {
+        Task task = Entity.getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED);
+        return resolveTaskMentions(task, destination);
+      }
+
+      LOG.warn("MentionRecipientResolver called with unsupported entity type: {}", entityType);
+      return Collections.emptySet();
 
     } catch (Exception e) {
-      LOG.error("Failed to resolve mentions for thread {}", entityId, e);
+      LOG.error("Failed to resolve mentions for entity {}", entityId, e);
       return Collections.emptySet();
     }
   }
@@ -101,13 +118,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
     Set<Recipient> recipients = new HashSet<>();
     SubscriptionDestination.SubscriptionType notificationType = destination.getType();
 
-    // Extract entity links from announcement description
-    if (thread.getType() != null && thread.getType() == ThreadType.Announcement) {
-      if (thread.getAnnouncement() != null && thread.getAnnouncement().getDescription() != null) {
-        List<MessageParser.EntityLink> announcementEntityLinks =
-            MessageParser.getEntityLinks(thread.getAnnouncement().getDescription());
-        recipients.addAll(resolveEntityLinks(announcementEntityLinks, notificationType));
-      }
+    if (thread.getType() != null
+        && thread.getType() == ThreadType.Announcement
+        && thread.getAnnouncement() != null) {
+      recipients.addAll(
+          resolveAnnouncementMentions(thread.getAnnouncement().getDescription(), destination));
     }
 
     // Extract entity links from task suggestion
@@ -153,6 +168,27 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
     }
 
     return recipients;
+  }
+
+  private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {
+    // Single source of truth with the filter side (AlertsRuleEvaluator.getTaskMentions): resolve
+    // only the latest comment's mentions so earlier comments aren't re-notified on each
+    // comment-add.
+    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination.getType());
+  }
+
+  private Set<Recipient> resolveAnnouncementMentions(
+      Announcement announcement, SubscriptionDestination destination) {
+    return resolveAnnouncementMentions(announcement.getDescription(), destination);
+  }
+
+  private Set<Recipient> resolveAnnouncementMentions(
+      String description, SubscriptionDestination destination) {
+    if (description == null) {
+      return Collections.emptySet();
+    }
+
+    return resolveEntityLinks(MessageParser.getEntityLinks(description), destination.getType());
   }
 
   private Set<Recipient> resolveEntityLinks(

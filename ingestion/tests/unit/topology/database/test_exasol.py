@@ -12,6 +12,9 @@
 """
 Test Exasol using the topology
 """
+
+from datetime import datetime
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -19,6 +22,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.source.database.exasol.metadata import ExasolSource
+from metadata.ingestion.source.database.exasol.queries import EXASOL_SQL_STATEMENT
+from metadata.ingestion.source.database.exasol.usage import ExasolUsageSource
 
 mock_exasol_config = {
     "source": {
@@ -54,10 +59,8 @@ mock_exasol_config = {
 
 
 class ExasolUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_exasol_config)
@@ -67,9 +70,27 @@ class ExasolUnitTest(TestCase):
         )
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.exasol_source.close()
+
+
+class ExasolUsageTest(TestCase):
+    def setUp(self):
+        self.usage_source = ExasolUsageSource.__new__(ExasolUsageSource)
+        self.usage_source.sql_stmt = EXASOL_SQL_STATEMENT
+        self.usage_source.filters = ""
+        self.usage_source.source_config = SimpleNamespace(resultLimit=250, filterCondition=None)
+
+    def test_get_sql_statement(self):
+        sql = self.usage_source.get_sql_statement(
+            start_time=datetime(2025, 1, 1, 0, 0, 0),
+            end_time=datetime(2025, 1, 2, 0, 0, 0),
+        )
+
+        assert "EXA_STATISTICS.EXA_DBA_AUDIT_SQL" in sql
+        assert '"aborted"' not in sql
+        assert "LIMIT 250" in sql
+        assert "CONVERT_TZ(TO_TIMESTAMP('2025-01-01 00:00:00'), 'UTC', DBTIMEZONE)" in sql
+        assert "CONVERT_TZ(TO_TIMESTAMP('2025-01-02 00:00:00'), 'UTC', DBTIMEZONE)" in sql

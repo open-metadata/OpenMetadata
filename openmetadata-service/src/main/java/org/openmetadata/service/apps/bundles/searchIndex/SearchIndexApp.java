@@ -1,22 +1,17 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
-import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
-import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexCoordinator;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -25,6 +20,12 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
+  private static final String REINDEX_LOCK_KEY = "SEARCH_REINDEX_LOCK";
+  private static final List<String> ACTIVE_DISTRIBUTED_JOB_STATUSES =
+      List.of(
+          IndexJobStatus.RUNNING.name(),
+          IndexJobStatus.READY.name(),
+          IndexJobStatus.INITIALIZING.name());
 
   public static class ReindexingException extends RuntimeException {
     public ReindexingException(String message) {
@@ -36,17 +37,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  public static final Set<String> TIME_SERIES_ENTITIES =
-      Set.of(
-          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
-
   @Getter private EventPublisherJob jobData;
   private volatile ReindexingOrchestrator orchestrator;
 
@@ -57,7 +47,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    jobData = JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class);
+    Map<String, Object> appConfig =
+        SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(
+            JsonUtils.getMap(app.getAppConfiguration()));
+    jobData = JsonUtils.convertValue(appConfig, EventPublisherJob.class);
   }
 
   @Override
@@ -115,6 +108,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               run -> {
                 run.withStatus(AppRunRecord.Status.STOPPED);
                 run.withEndTime(System.currentTimeMillis());
+                SearchIndexAppConfigSanitizer.removeRemovedOptions(run.getConfig());
                 appRepository.updateAppStatus(app.getId(), run);
                 LOG.info("Updated app run record to STOPPED for {}", app.getName());
               });
@@ -132,9 +126,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void purgeSearchIndexTables() {
     List<CollectionDAO.SearchIndexJobDAO.SearchIndexJobRecord> activeJobs =
-        collectionDAO
-            .searchIndexJobDAO()
-            .findByStatuses(List.of("RUNNING", "READY", "INITIALIZING"));
+        collectionDAO.searchIndexJobDAO().findByStatuses(ACTIVE_DISTRIBUTED_JOB_STATUSES);
     if (!activeJobs.isEmpty()) {
       LOG.warn(
           "Uninstalling SearchIndexApp while {} distributed job(s) are still active. "
@@ -147,7 +139,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               .searchIndexJobDAO()
               .update(
                   job.id(),
-                  "STOPPED",
+                  IndexJobStatus.STOPPED.name(),
                   job.processedRecords(),
                   job.successRecords(),
                   job.failedRecords(),
@@ -166,7 +158,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
             () -> collectionDAO.searchIndexPartitionDAO().deleteAll(),
             () -> collectionDAO.searchIndexServerStatsDAO().deleteAll(),
             () -> collectionDAO.searchIndexFailureDAO().deleteAll(),
-            () -> collectionDAO.searchReindexLockDAO().delete("SEARCH_REINDEX_LOCK"),
+            () -> collectionDAO.searchReindexLockDAO().delete(REINDEX_LOCK_KEY),
             () -> collectionDAO.searchIndexJobDAO().deleteAll(),
             () -> {
               App app = getApp();
@@ -185,7 +177,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   protected void validateConfig(Map<String, Object> appConfig) {
     try {
-      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+      JsonUtils.convertValue(
+          SearchIndexAppConfigSanitizer.copyWithoutRemovedOptions(appConfig),
+          EventPublisherJob.class);
     } catch (IllegalArgumentException e) {
       throw AppException.byMessage(
           Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());

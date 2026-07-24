@@ -25,20 +25,28 @@ import jakarta.ws.rs.core.Response;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.CspNonceHandler;
 
 class IndexResourceTest {
   private IndexResource resource;
-  private OpenMetadataApplicationConfig config;
+
+  @BeforeAll
+  static void initIndex() {
+    OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
+    SentryConfiguration sentryConfig = new SentryConfiguration();
+    when(config.getSentryConfiguration()).thenReturn(sentryConfig);
+    when(config.getClusterName()).thenReturn("test-cluster");
+    IndexResource.initialize(config);
+  }
 
   @BeforeEach
   void setUp() {
     resource = new IndexResource();
-    config = mock(OpenMetadataApplicationConfig.class);
-    when(config.getBasePath()).thenReturn("/");
   }
 
   @Test
@@ -76,8 +84,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithRequest() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     String testNonce = Base64.getEncoder().encodeToString("test-nonce-bytes".getBytes());
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn(testNonce);
@@ -97,8 +103,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithNullNonce() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn(null);
 
@@ -111,8 +115,6 @@ class IndexResourceTest {
 
   @Test
   void testGetIndexWithEmptyNonce() {
-    resource.initialize(config);
-
     HttpServletRequest mockRequest = mock(HttpServletRequest.class);
     when(mockRequest.getAttribute(CspNonceHandler.CSP_NONCE_ATTRIBUTE)).thenReturn("");
 
@@ -161,5 +163,35 @@ class IndexResourceTest {
     assertEquals(html1, html2, "Multiple calls should return the same HTML content");
     assertNotNull(html1);
     assertFalse(html1.isEmpty(), "HTML should not be empty");
+  }
+
+  @Test
+  void testEtagIsStableAcrossCalls() {
+    // The ETag describes the stable shell — it must not change across two calls for the same
+    // basePath unless something has actually re-initialized the template.
+    String etagA = IndexResource.getIndexEtag("/");
+    String etagB = IndexResource.getIndexEtag("/");
+    assertEquals(etagA, etagB);
+  }
+
+  @Test
+  void testEtagFormatIsStrongQuoted() {
+    // Strong ETag per RFC 7232: bare double-quoted token, no W/ prefix.
+    String etag = IndexResource.getIndexEtag("/");
+    assertNotNull(etag);
+    assertTrue(etag.startsWith("\""), "ETag should be quoted");
+    assertTrue(etag.endsWith("\""), "ETag should be quoted");
+    assertFalse(etag.startsWith("W/"), "ETag should be a strong (non-weak) validator");
+  }
+
+  @Test
+  void testEtagDiffersAcrossBasePaths() {
+    // The body bakes the basePath into multiple positions (window.BASE_PATH, favicon hrefs,
+    // etc.), so the ETag for two different basePaths must differ.
+    String etagRoot = IndexResource.getIndexEtag("/");
+    String etagCustom = IndexResource.getIndexEtag("/openmetadata/");
+    assertFalse(
+        etagRoot.equals(etagCustom),
+        "ETag for two different basePaths must differ — they produce different bodies");
   }
 }

@@ -29,13 +29,14 @@ $$section
 Username to connect to Trino. This user should have `SELECT` permission on the `SYSTEM.METADATA` and `INFORMATION_SCHEMA` - see the section above for more details.
 $$
 
+$$section
 ### Auth Config $(id="authType")
 There are 2 types of auth configs:
 - Basic Auth.
 - JWT Auth.
 
 User can authenticate the Trino Instance with auth type as `Basic Authentication` i.e. Password **or** by using `JWT Authentication`.
-
+$$
 
 ## Basic Auth
 

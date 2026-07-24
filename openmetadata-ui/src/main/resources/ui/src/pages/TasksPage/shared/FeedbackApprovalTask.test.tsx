@@ -94,8 +94,16 @@ const Wrapper = ({ children }: { children: ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
 );
 
+const baseTask = {
+  ...MOCK_TASK_RECOGNIZER_FEEDBACK,
+  payload: {
+    feedback: MOCK_TASK_RECOGNIZER_FEEDBACK.feedback,
+    recognizer: MOCK_TASK_RECOGNIZER_FEEDBACK.recognizer,
+  },
+} as any;
+
 const mockProps = {
-  task: MOCK_TASK_RECOGNIZER_FEEDBACK,
+  task: baseTask,
 };
 
 describe('FeedbackApprovalTask', () => {
@@ -158,7 +166,13 @@ describe('FeedbackApprovalTask', () => {
   it('should not render when feedback is undefined', () => {
     const { container } = render(
       <FeedbackApprovalTask
-        task={{ ...mockProps.task, feedback: undefined }}
+        task={{
+          ...mockProps.task,
+          payload: {
+            ...(mockProps.task.payload ?? {}),
+            feedback: undefined,
+          },
+        }}
       />,
       {
         wrapper: Wrapper,
@@ -171,11 +185,14 @@ describe('FeedbackApprovalTask', () => {
   it('should display correct feedback type label for IncorrectClassification', () => {
     const taskWithIncorrectClassification = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        feedbackType: FeedbackType.IncorrectClassification,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          feedbackType: FeedbackType.IncorrectClassification,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithIncorrectClassification} />, {
       wrapper: Wrapper,
@@ -189,11 +206,14 @@ describe('FeedbackApprovalTask', () => {
   it('should display correct feedback type label for OverlyBroad', () => {
     const taskWithOverlyBroad = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        feedbackType: FeedbackType.OverlyBroad,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          feedbackType: FeedbackType.OverlyBroad,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithOverlyBroad} />, {
       wrapper: Wrapper,
@@ -207,11 +227,14 @@ describe('FeedbackApprovalTask', () => {
   it('should display correct feedback type label for ContextSpecific', () => {
     const taskWithContextSpecific = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        feedbackType: FeedbackType.ContextSpecific,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          feedbackType: FeedbackType.ContextSpecific,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithContextSpecific} />, {
       wrapper: Wrapper,
@@ -225,11 +248,14 @@ describe('FeedbackApprovalTask', () => {
   it('should not display user comments when not available', () => {
     const taskWithoutComments = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        userComments: undefined,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          userComments: undefined,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithoutComments} />, {
       wrapper: Wrapper,
@@ -241,11 +267,14 @@ describe('FeedbackApprovalTask', () => {
   it('should not display created by when not available', () => {
     const taskWithoutCreatedBy = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        createdBy: undefined,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          createdBy: undefined,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedBy} />, {
       wrapper: Wrapper,
@@ -268,11 +297,14 @@ describe('FeedbackApprovalTask', () => {
   it('should not display submitted on date when createdAt is not available', () => {
     const taskWithoutCreatedAt = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        createdAt: undefined,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          createdAt: undefined,
+        },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithoutCreatedAt} />, {
       wrapper: Wrapper,
@@ -284,16 +316,19 @@ describe('FeedbackApprovalTask', () => {
   it('should use createdBy name when displayName is not available', () => {
     const taskWithoutDisplayName = {
       ...mockProps.task,
-      feedback: {
-        ...mockProps.task.feedback,
-        createdBy: {
-          id: 'd6764107-e8b4-4748-b256-c86fecc66064',
-          type: 'user',
-          name: 'admin',
-          deleted: false,
+      payload: {
+        ...(mockProps.task.payload ?? {}),
+        feedback: {
+          ...(mockProps.task.payload?.feedback ?? {}),
+          createdBy: {
+            id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+            type: 'user',
+            name: 'admin',
+            deleted: false,
+          },
         },
       },
-    };
+    } as any;
 
     render(<FeedbackApprovalTask task={taskWithoutDisplayName} />, {
       wrapper: Wrapper,

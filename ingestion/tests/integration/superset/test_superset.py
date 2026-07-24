@@ -76,7 +76,7 @@ from metadata.ingestion.source.dashboard.superset.models import (
 )
 
 mock_file_path = Path(__file__).parent / "resources/superset_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 MOCK_DASHBOARD_RESP = SupersetDashboardCount(**mock_data["dashboard"])
@@ -97,9 +97,7 @@ EXPECTED_DASH_SERVICE = DashboardService(
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
 )
-EXPECTED_USER = EntityReferenceList(
-    root=[EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")]
-)
+EXPECTED_USER = EntityReferenceList(root=[EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")])
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
@@ -160,9 +158,7 @@ EXPECTED_CHART_ENTITY = [
         id=uuid.uuid4(),
         name="37",
         fullyQualifiedName=FullyQualifiedEntityName("test_supserset.37"),
-        service=EntityReference(
-            id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
-        ),
+        service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
     )
 ]
 
@@ -201,11 +197,7 @@ EXPECTED_CHART_2 = CreateChartRequest(
     sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
     service=FullyQualifiedEntityName("test_supserset"),
 )
-MOCK_DATASOURCE = [
-    FetchColumn(
-        id=11, type="INT()", column_name="Population", table_name="sample_table"
-    )
-]
+MOCK_DATASOURCE = [FetchColumn(id=11, type="INT()", column_name="Population", table_name="sample_table")]
 
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
@@ -224,9 +216,7 @@ MOCK_DATASOURCE_RESPONSE = SupersetDatasource(
         }
     )
 )
-MOCK_DATABASE_RESPONSE = ListDatabaseResult(
-    result=DatabaseResult(database_name="examples", id=1, parameters=None)
-)
+MOCK_DATABASE_RESPONSE = ListDatabaseResult(result=DatabaseResult(database_name="examples", id=1, parameters=None))
 
 
 def setup_sample_data(postgres_container):
@@ -236,21 +226,21 @@ def setup_sample_data(postgres_container):
                 CREATE TABLE ab_user (
                 id INT PRIMARY KEY,
                 username VARCHAR(50));
-        """
+        """  # noqa: N806
         CREATE_TABLE_DASHBOARDS = """
             CREATE TABLE dashboards (
             id INT PRIMARY KEY,
             created_by_fk INT,
             FOREIGN KEY (created_by_fk) REFERENCES ab_user(id));
-        """
+        """  # noqa: N806
         INSERT_AB_USER_DATA = """
             INSERT INTO ab_user (id, username)
             VALUES (1, 'test_user');
-        """
+        """  # noqa: N806
         INSERT_DASHBOARDS_DATA = """
             INSERT INTO dashboards (id, created_by_fk)
             VALUES (1, 1);
-        """
+        """  # noqa: N806
         CREATE_SLICES_TABLE = """
             CREATE TABLE slices (
                 id INTEGER PRIMARY KEY,
@@ -260,22 +250,22 @@ def setup_sample_data(postgres_container):
                 viz_type VARCHAR(255),
                 datasource_type VARCHAR(255)
             )
-        """
+        """  # noqa: N806
         INSERT_SLICES_DATA = """
             INSERT INTO slices(id, slice_name, description, datasource_id, viz_type, datasource_type)
             VALUES (1, 'Rural', 'desc', 99, 'bar_chart', 'table');
-        """
+        """  # noqa: N806
         CREATE_DBS_TABLE = """
             CREATE TABLE dbs (
                 id INTEGER PRIMARY KEY,
                 database_name VARCHAR(255),
                 sqlalchemy_uri TEXT
             )
-        """
+        """  # noqa: N806
         INSERT_DBS_DATA = """
             INSERT INTO dbs(id, database_name, sqlalchemy_uri)
             VALUES (5, 'test_db', 'postgres://user:pass@localhost:5432/examples');
-        """
+        """  # noqa: N806
         CREATE_TABLES_TABLE = """
             CREATE TABLE tables (
                 id INTEGER PRIMARY KEY,
@@ -284,11 +274,11 @@ def setup_sample_data(postgres_container):
                 database_id INTEGER,
                 sql VARCHAR(4000)
             );
-        """
+        """  # noqa: N806
         INSERT_TABLES_DATA = """
             INSERT INTO tables(id, table_name, schema, database_id)
             VALUES (99, 'sample_table', 'main', 5);
-        """
+        """  # noqa: N806
         CREATE_TABLE_COLUMNS_TABLE = """
             CREATE TABLE table_columns (
                 id INTEGER PRIMARY KEY,
@@ -298,7 +288,7 @@ def setup_sample_data(postgres_container):
                 type VARCHAR(255),
                 description VARCHAR(255)
             );
-        """
+        """  # noqa: N806
         CREATE_TABLE_COLUMNS_DATA = """
             INSERT INTO 
                 table_columns(id, table_name, table_id, column_name, type, description)
@@ -306,7 +296,7 @@ def setup_sample_data(postgres_container):
                 (1099, 'sample_table', 99, 'id', 'VARCHAR', 'dummy description'), 
                 (1199, 'sample_table', 99, 'timestamp', 'VARCHAR', 'dummy description'),
                 (1299, 'sample_table', 99, 'price', 'VARCHAR', 'dummy description');
-        """
+        """  # noqa: N806, W291
 
         connection.execute(sqlalchemy.text(CREATE_TABLE_AB_USER))
         connection.execute(sqlalchemy.text(INSERT_AB_USER_DATA))
@@ -323,11 +313,11 @@ def setup_sample_data(postgres_container):
 
 
 INITIAL_SETUP = True
-superset_container = postgres_container = None
+superset_container = postgres_container = None  # noqa: F811
 
 
 def set_testcontainers():
-    global INITIAL_SETUP, superset_container, postgres_container
+    global INITIAL_SETUP, superset_container, postgres_container  # noqa: PLW0603
     if INITIAL_SETUP:
         # postgres test container
         postgres_container = PostgresContainer("postgres:16-alpine")
@@ -363,12 +353,12 @@ class SupersetUnitTest(TestCase):
         superset_container.stop()
         postgres_container.stop()
 
-    def __init__(self, methodName) -> None:
+    def __init__(self, methodName) -> None:  # noqa: N803
         super().__init__(methodName)
 
         superset_container, postgres_container = set_testcontainers()
 
-        MOCK_SUPERSET_API_CONFIG = {
+        MOCK_SUPERSET_API_CONFIG = {  # noqa: N806
             "source": {
                 "type": "superset",
                 "serviceName": "test_supserset",
@@ -401,7 +391,7 @@ class SupersetUnitTest(TestCase):
                 },
             },
         }
-        MOCK_SUPERSET_DB_CONFIG = {
+        MOCK_SUPERSET_DB_CONFIG = {  # noqa: N806
             "source": {
                 "type": "superset",
                 "serviceName": "test_supserset",
@@ -413,11 +403,7 @@ class SupersetUnitTest(TestCase):
                             "type": "Postgres",
                             "hostPort": f"{postgres_container.get_container_host_ip()}:{postgres_container.get_exposed_port(5432)}",
                             "username": postgres_container.env.get("POSTGRES_USER"),
-                            "authType": {
-                                "password": postgres_container.env.get(
-                                    "POSTGRES_PASSWORD"
-                                )
-                            },
+                            "authType": {"password": postgres_container.env.get("POSTGRES_PASSWORD")},
                             "database": postgres_container.env.get("POSTGRES_DB"),
                         },
                     }
@@ -437,27 +423,21 @@ class SupersetUnitTest(TestCase):
                 },
             },
         }
-        self.config = OpenMetadataWorkflowConfig.model_validate(
-            MOCK_SUPERSET_API_CONFIG
-        )
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_SUPERSET_API_CONFIG)
 
         self.superset_api: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_API_CONFIG["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertEqual(type(self.superset_api), SupersetAPISource)
-        self.superset_api.context.get().__dict__[
-            "dashboard_service"
-        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
+        self.superset_api.context.get().__dict__["dashboard_service"] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
         self.superset_db: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_DB_CONFIG["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.assertEqual(type(self.superset_db), SupersetDBSource)
-        self.superset_db.context.get().__dict__[
-            "dashboard_service"
-        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
+        self.superset_db.context.get().__dict__["dashboard_service"] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -545,9 +525,7 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(dashboard, EXPECTED_API_DASHBOARD)
 
         # TEST DB SOURCE
-        self.superset_db.context.get().__dict__["charts"] = [
-            chart.name.root for chart in EXPECTED_CHART_ENTITY
-        ]
+        self.superset_db.context.get().__dict__["charts"] = [chart.name.root for chart in EXPECTED_CHART_ENTITY]
         dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
         EXPECTED_DASH.sourceUrl = SourceUrl(
             f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
@@ -559,9 +537,7 @@ class SupersetUnitTest(TestCase):
     def x_test_yield_dashboard_chart(self):
         # TEST API SOURCE
         self.superset_api.prepare()
-        dashboard_chart = next(
-            self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
-        ).right
+        dashboard_chart = next(self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
             f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
         )
@@ -572,9 +548,7 @@ class SupersetUnitTest(TestCase):
 
         # TEST DB SOURCE
         self.superset_db.prepare()
-        dashboard_charts = next(
-            self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
-        ).right
+        dashboard_charts = next(self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)).right
         EXPECTED_CHART.sourceUrl = SourceUrl(
             f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
         )
@@ -584,16 +558,18 @@ class SupersetUnitTest(TestCase):
         """
         Test generated datasource fqn for api source
         """
-        with patch.object(
-            OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
-        ), patch.object(
-            self.superset_api.client,
-            "fetch_datasource",
-            return_value=MOCK_DATASOURCE_RESPONSE,
-        ), patch.object(
-            self.superset_api.client,
-            "fetch_database",
-            return_value=MOCK_DATABASE_RESPONSE,
+        with (
+            patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE),
+            patch.object(
+                self.superset_api.client,
+                "fetch_datasource",
+                return_value=MOCK_DATASOURCE_RESPONSE,
+            ),
+            patch.object(
+                self.superset_api.client,
+                "fetch_database",
+                return_value=MOCK_DATABASE_RESPONSE,
+            ),
         ):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
                 1, MOCK_DB_POSTGRES_SERVICE.name.root
@@ -601,9 +577,7 @@ class SupersetUnitTest(TestCase):
             self.assertEqual(fqn, EXPECTED_API_DATASET_FQN)
 
     def test_db_get_datasource_fqn_for_lineage(self):
-        with patch.object(
-            OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE
-        ):
+        with patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE):
             fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
                 MOCK_CHART_DB, MOCK_DB_POSTGRES_SERVICE.name.root
             )
@@ -711,9 +685,7 @@ class SupersetUnitTest(TestCase):
             column_to._parent.add(column_to_parent)
 
             columns = (column_from, column_to)
-            self.assertEqual(
-                self.superset_db._is_table_to_table_lineage(columns, table), expected
-            )
+            self.assertEqual(self.superset_db._is_table_to_table_lineage(columns, table), expected)
 
     def test_append_value_to_dict_list(self):
         init_dict = {1: [2]}
@@ -775,9 +747,7 @@ class SupersetUnitTest(TestCase):
 
     def test_get_input_tables_from_dataset_sql(self):
         sql = """SELECT id, timestamp FROM sample_table"""
-        chart = FetchChart(
-            sql=sql, table_name="sample_table", table_schema="main", table_id=99
-        )
+        chart = FetchChart(sql=sql, table_name="sample_table", table_schema="main", table_id=99)
 
         result = self.superset_db._get_input_tables(chart)[0]
 

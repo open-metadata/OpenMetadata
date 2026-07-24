@@ -35,6 +35,7 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.ElasticSearchReindex]: 'elastic-search-re-index',
   [PipelineType.Lineage]: 'lineage',
   [PipelineType.Metadata]: 'metadata',
+  [PipelineType.PolicyAgent]: 'policy-agent',
   [PipelineType.Profiler]: 'profiler',
   [PipelineType.TestSuite]: 'test-suite',
   [PipelineType.Usage]: 'usage',

@@ -14,6 +14,7 @@
 """
 Expand sqlalchemy types to map them to OpenMetadata DataType
 """
+
 from sqlalchemy.sql.sqltypes import ARRAY, TypeDecorator
 
 from metadata.utils.logger import profiler_logger
@@ -42,7 +43,7 @@ class CustomArray(TypeDecorator):
         Returns:
             python list conversion of ndarray
         """
-        import numpy as np  # pylint: disable=import-outside-toplevel
+        import numpy as np  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
 
         if isinstance(value, np.ndarray):
             return value.tolist()

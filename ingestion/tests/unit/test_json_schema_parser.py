@@ -12,6 +12,7 @@
 """
 Jsonschema parser tests
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.table import Column
@@ -178,21 +179,15 @@ class JsonSchemaParserTests(TestCase):
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
 
         # validate display names
-        field_display_names = {
-            str(field.displayName) for field in self.parsed_schema[0].children
-        }
+        field_display_names = {str(field.displayName) for field in self.parsed_schema[0].children}
         self.assertEqual(field_display_names, {"First Name", "Last Name", "Person Age"})
 
     def test_field_types(self):
-        field_types = {
-            str(field.dataType.name) for field in self.parsed_schema[0].children
-        }
+        field_types = {str(field.dataType.name) for field in self.parsed_schema[0].children}
         self.assertEqual(field_types, {"INT", "STRING"})
 
     def test_field_descriptions(self):
-        field_descriptions = {
-            str(field.description.root) for field in self.parsed_schema[0].children
-        }
+        field_descriptions = {str(field.description.root) for field in self.parsed_schema[0].children}
         self.assertEqual(
             field_descriptions,
             {
@@ -205,48 +200,28 @@ class JsonSchemaParserTests(TestCase):
     def test_parse_postgres_json_fields(self):
         self.assertEqual(self.parsed_postgres_schema[0].name.root, "review_details")
         self.assertEqual(self.parsed_postgres_schema[0].children[0].name.root, "staff")
-        self.assertEqual(
-            self.parsed_postgres_schema[0].children[1].name.root, "services"
-        )
-        self.assertEqual(
-            self.parsed_postgres_schema[0].children[1].children[0].name.root, "lunch"
-        )
-        self.assertEqual(
-            self.parsed_postgres_schema[0].children[1].dataType.name, "RECORD"
-        )
+        self.assertEqual(self.parsed_postgres_schema[0].children[1].name.root, "services")
+        self.assertEqual(self.parsed_postgres_schema[0].children[1].children[0].name.root, "lunch")
+        self.assertEqual(self.parsed_postgres_schema[0].children[1].dataType.name, "RECORD")
         self.assertEqual(len(self.parsed_postgres_schema[0].children), 3)
         self.assertEqual(len(self.parsed_postgres_schema[0].children[1].children), 4)
 
-    def test_parse_postgres_json_fields(self):
+    def test_parse_postgres_json_fields(self):  # noqa: F811
         self.assertEqual(self.parsed_array_schema[0].name.root, "default")
         self.assertEqual(len(self.parsed_array_schema[0].children), 6)
 
         # Validate the complex array datatype
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].name.root, "phoneNumbers"
-        )
+        self.assertEqual(self.parsed_array_schema[0].children[4].name.root, "phoneNumbers")
         self.assertEqual(self.parsed_array_schema[0].children[4].dataType.name, "ARRAY")
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].dataTypeDisplay, "ARRAY<RECORD>"
-        )
+        self.assertEqual(self.parsed_array_schema[0].children[4].dataTypeDisplay, "ARRAY<RECORD>")
         self.assertEqual(len(self.parsed_array_schema[0].children[4].children), 2)
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].children[0].name.root, "type"
-        )
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].children[0].dataType.name, "STRING"
-        )
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].children[1].name.root, "number"
-        )
-        self.assertEqual(
-            self.parsed_array_schema[0].children[4].children[1].dataType.name, "STRING"
-        )
+        self.assertEqual(self.parsed_array_schema[0].children[4].children[0].name.root, "type")
+        self.assertEqual(self.parsed_array_schema[0].children[4].children[0].dataType.name, "STRING")
+        self.assertEqual(self.parsed_array_schema[0].children[4].children[1].name.root, "number")
+        self.assertEqual(self.parsed_array_schema[0].children[4].children[1].dataType.name, "STRING")
 
         # Validate the primitive array datatype
         self.assertEqual(self.parsed_array_schema[0].children[5].name.root, "hobbies")
         self.assertEqual(self.parsed_array_schema[0].children[5].dataType.name, "ARRAY")
-        self.assertEqual(
-            self.parsed_array_schema[0].children[5].dataTypeDisplay, "ARRAY<STRING>"
-        )
+        self.assertEqual(self.parsed_array_schema[0].children[5].dataTypeDisplay, "ARRAY<STRING>")
         self.assertIsNone(self.parsed_array_schema[0].children[5].children)

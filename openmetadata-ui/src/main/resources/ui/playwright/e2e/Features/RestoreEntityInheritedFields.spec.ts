@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { ServiceTypes } from '../../constant/settings';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -29,12 +29,14 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
   assignSingleSelectDomain,
+  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
 import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -52,6 +54,258 @@ const SERVICE_ENTITY_TAB: Partial<Record<ServiceTypes, string>> = {
 
 let domain: Domain;
 let dataProduct: DataProduct;
+
+type RestorableEntityPage = {
+  endpoint: string;
+  entityResponseData: {
+    fullyQualifiedName?: string;
+  };
+  visitEntityPage: (page: Page) => Promise<void>;
+};
+
+const waitForInheritedDomainOnEntityApi = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domainDisplayName: string
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const entityFqn = entity.entityResponseData?.fullyQualifiedName;
+
+          if (!entityFqn) {
+            return false;
+          }
+
+          const response = await apiContext.get(
+            `/api/v1/${entity.endpoint}/name/${encodeURIComponent(entityFqn)}`,
+            {
+              params: {
+                fields: 'domains,dataProducts,owners',
+              },
+            }
+          );
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = await response.json();
+
+          return (body.domains ?? []).some(
+            (domain: { displayName?: string; inherited?: boolean }) =>
+              domain.displayName === domainDisplayName &&
+              domain.inherited !== false
+          );
+        },
+        {
+          message: `Wait for inherited domain in entity API for ${entity.entityResponseData?.fullyQualifiedName}`,
+          timeout: 90_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const selectDataProductsFromKnowledgePanel = async (
+  page: Page,
+  domain: {
+    name: string;
+    displayName: string;
+  },
+  dataProducts: {
+    displayName: string;
+    fullyQualifiedName?: string;
+  }[],
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId('add-data-product')
+    .click();
+
+  for (const dataProduct of dataProducts) {
+    const tagLocator = page.getByTestId(
+      `tag-${dataProduct.fullyQualifiedName}`
+    );
+
+    await expect(async () => {
+      const searchDataProduct = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(domain.name))
+      );
+      await page.locator('[data-testid="data-product-selector"] input').clear();
+      await page
+        .locator('[data-testid="data-product-selector"] input')
+        .fill(dataProduct.displayName);
+      await searchDataProduct;
+      await expect(tagLocator).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 5_000] });
+
+    await tagLocator.click();
+  }
+
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+};
+
+const waitForDataProductsOnEntityApi = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  dataProducts: {
+    fullyQualifiedName?: string;
+  }[]
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    await expect
+      .poll(
+        async () => {
+          const entityFqn = entity.entityResponseData?.fullyQualifiedName;
+
+          if (!entityFqn) {
+            return false;
+          }
+
+          const response = await apiContext.get(
+            `/api/v1/${entity.endpoint}/name/${encodeURIComponent(entityFqn)}`,
+            {
+              params: {
+                fields: 'domains,dataProducts,owners',
+              },
+            }
+          );
+
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = await response.json();
+          const entityDataProducts = new Set(
+            (body.dataProducts ?? []).map(
+              (dataProduct: { fullyQualifiedName?: string }) =>
+                dataProduct.fullyQualifiedName
+            )
+          );
+
+          return dataProducts.every((dataProduct) =>
+            entityDataProducts.has(dataProduct.fullyQualifiedName)
+          );
+        },
+        {
+          message: `Wait for inherited data products in entity API for ${entity.entityResponseData?.fullyQualifiedName}`,
+          timeout: 90_000,
+          intervals: [1_000, 2_000, 5_000],
+        }
+      )
+      .toBe(true);
+  } finally {
+    await afterAction();
+  }
+};
+
+const waitForDataProductsOnEntityPage = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  dataProducts: {
+    fullyQualifiedName?: string;
+  }[],
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await expect(async () => {
+    await entity.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    for (const dataProduct of dataProducts) {
+      await expect(
+        page
+          .getByTestId(parentId)
+          .getByTestId('data-products-list')
+          .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+      ).toBeVisible({ timeout: 3_000 });
+    }
+  }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+};
+
+const assignInheritedDataProducts = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domain: {
+    name: string;
+    displayName: string;
+  },
+  dataProducts: {
+    displayName: string;
+    fullyQualifiedName?: string;
+  }[]
+) => {
+  await selectDataProductsFromKnowledgePanel(page, domain, dataProducts);
+  await waitForDataProductsOnEntityApi(page, entity, dataProducts);
+  await waitForDataProductsOnEntityPage(page, entity, dataProducts);
+};
+
+const getInheritanceParentBreadcrumbIndex = (entityType: string) => {
+  if (entityType === 'ApiEndpoint') {
+    return 2;
+  }
+
+  if (['Table', 'Store Procedure'].includes(entityType)) {
+    return 1;
+  }
+
+  return 0;
+};
+
+const waitForInheritedDomainOnEntityPage = async (
+  page: Page,
+  entity: RestorableEntityPage,
+  domainDisplayName: string
+) => {
+  await waitForInheritedDomainOnEntityApi(page, entity, domainDisplayName);
+
+  await expect(async () => {
+    await entity.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
+
+    const domainCountButton = page.getByTestId('domain-count-button');
+    const hasMultipleDomains = await domainCountButton
+      .isVisible()
+      .catch(() => false);
+
+    if (hasMultipleDomains) {
+      await expect(domainCountButton).toBeVisible({
+        timeout: 2_000,
+      });
+    } else {
+      await expect(page.getByTestId('domain-link')).toContainText(
+        domainDisplayName,
+        { timeout: 2_000 }
+      );
+    }
+  }).toPass({ timeout: 60_000, intervals: [1_000, 2_000, 5_000] });
+};
 
 const entities = [
   ApiEndpointClass,
@@ -99,36 +353,38 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
-      // Table and StoredProcedure have 3 breadcrumbs; clicking index 1 lands
-      // on the Database entity page which already exposes KnowledgePanel.DataProducts.
-      // All other entities have 1 breadcrumb (service) or their intermediate
-      // breadcrumb resolves to the service management page.
-      const isDbEntity = ['Table', 'Store Procedure'].includes(
-        entity.getType()
-      );
-      const is3Breadcrumb = [
-        'Table',
-        'ApiEndpoint',
-        'Store Procedure',
-      ].includes(entity.getType());
+      // Navigate to the parent entity page (which already exposes
+      // KnowledgePanel.DataProducts) and assign a domain there. For
+      // Table/StoredProcedure that parent is the database, for ApiEndpoint the
+      // API collection; every other entity uses the service crumb (the first
+      // crumb, which always stays inline). The DataAssetsHeader breadcrumb
+      // auto-collapses on narrow viewports, so intermediate crumbs are reached
+      // via the overflow-aware helper rather than by inline-link position.
+      let parentCrumbName: string | undefined;
+      if (
+        entity instanceof TableClass ||
+        entity instanceof StoredProcedureClass
+      ) {
+        parentCrumbName = entity.database.name;
+      } else if (entity instanceof ApiEndpointClass) {
+        parentCrumbName = entity.apiCollection.name;
+      }
 
-      await expect(page.getByTestId('breadcrumb-link')).toHaveCount(
-        is3Breadcrumb ? 3 : 1
-      );
-
-      // Navigate to the parent and assign domain.
-      await page
-        .getByTestId('breadcrumb-link')
-        .nth(is3Breadcrumb ? 1 : 0)
-        .click();
+      if (parentCrumbName) {
+        await clickBreadcrumbAncestor(page, parentCrumbName);
+      } else {
+        await page.getByTestId('breadcrumb').getByRole('link').first().click();
+      }
 
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      // For service management pages KnowledgePanel.DataProducts is rendered
-      // inside ServiceMainTabContent, which lives in the entity-count tab
-      // (e.g. "ML Models", "Dashboards"). Click it so the panel becomes visible.
-      if (!isDbEntity && entity.serviceType) {
+      // Entities that navigate to a parent entity page (Table/StoredProcedure →
+      // database, ApiEndpoint → API collection) expose KnowledgePanel.DataProducts
+      // directly, so they skip this step. The rest land on the service crumb's
+      // management page, where the panel lives inside ServiceMainTabContent —
+      // reached via the entity-count tab (e.g. "Collections", "Dashboards").
+      if (!parentCrumbName && entity.serviceType) {
         const tabLabel = SERVICE_ENTITY_TAB[entity.serviceType];
 
         if (tabLabel) {

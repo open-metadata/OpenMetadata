@@ -13,7 +13,7 @@
 Validator Mixin for Pandas based tests cases
 """
 
-from typing import (
+from typing import (  # noqa: UP035
     TYPE_CHECKING,
     Any,
     Callable,
@@ -54,9 +54,7 @@ class PandasValidatorMixin:
 
     runner: "PandasRunner"
 
-    def get_column(
-        self: HasValidatorContext, column_name: Optional[str] = None
-    ) -> SQALikeColumn:
+    def get_column(self: HasValidatorContext, column_name: Optional[str] = None) -> SQALikeColumn:  # noqa: UP045
         """Get column object for the given column name
 
         If column_name is None, returns the main column being validated.
@@ -71,12 +69,12 @@ class PandasValidatorMixin:
         if column_name is None:
             return PandasValidatorMixin.get_column_from_list(
                 self.test_case.entityLink.root,
-                cast(List[pd.DataFrame], self.runner),
+                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
             )
-        else:
+        else:  # noqa: RET505
             return PandasValidatorMixin.get_column_from_list(
                 column_name,
-                cast(List[pd.DataFrame], self.runner),
+                cast(List[pd.DataFrame], self.runner),  # noqa: TC006, UP006
             )
 
     @staticmethod
@@ -92,22 +90,20 @@ class PandasValidatorMixin:
         """
         first_df = next(dfs())
         column = first_df[get_decoded_column(entity_link)]
-        _type = GenericDataFrameColumnParser.fetch_col_types(
-            first_df, get_decoded_column(entity_link)
-        )
+        _type = GenericDataFrameColumnParser.fetch_col_types(first_df, get_decoded_column(entity_link))
         sqa_like_column = SQALikeColumn(
             name=column.name,
             type=_type,
         )
-        return sqa_like_column
+        return sqa_like_column  # noqa: RET504
 
     def run_dataframe_results(
         self,
         runner: "PandasRunner",
         metric: Metrics,
-        column: Optional[SQALikeColumn] = None,
+        column: Optional[SQALikeColumn] = None,  # noqa: UP045
         **kwargs,
-    ) -> Optional[int]:
+    ) -> Optional[int]:  # noqa: UP045
         """Run the test case on a dataframe
 
         Args:
@@ -117,18 +113,14 @@ class PandasValidatorMixin:
         """
 
         metric_obj = add_props(**kwargs)(metric.value) if kwargs else metric.value
-        metric_fn = (
-            metric_obj(column).df_fn if column is not None else metric_obj().df_fn
-        )
+        metric_fn = metric_obj(column).df_fn if column is not None else metric_obj().df_fn
 
         try:
             return metric_fn(runner)
         except Exception as exc:
-            raise RuntimeError(exc)
+            raise RuntimeError(exc)  # noqa: B904
 
-    def _compute_row_count(
-        self, runner: "PandasRunner", column: SQALikeColumn, **kwargs
-    ):
+    def _compute_row_count(self, runner: "PandasRunner", column: SQALikeColumn, **kwargs):
         """compute row count
 
         Args:
@@ -194,9 +186,7 @@ def aggregate_others_pandas(
 
     top_dimensions = df_sorted.head(top_n)[dimension_column].tolist()
 
-    df["dimension_group"] = np.where(
-        df[dimension_column].isin(top_dimensions), df[dimension_column], others_label
-    )
+    df["dimension_group"] = np.where(df[dimension_column].isin(top_dimensions), df[dimension_column], others_label)
 
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     agg_dict = {col: "sum" for col in numeric_cols if col != impact_column}
@@ -206,10 +196,7 @@ def aggregate_others_pandas(
     # Recalculate impact score for "Others"
     if others_label in df_aggregated["dimension_group"].values:
         others_mask = df_aggregated["dimension_group"] == others_label
-        if (
-            "failed_count" in df_aggregated.columns
-            and "total_count" in df_aggregated.columns
-        ):
+        if "failed_count" in df_aggregated.columns and "total_count" in df_aggregated.columns:
             others_row = df_aggregated[others_mask]
             if not others_row.empty:
                 # Recalculate impact score using the pandas formula
@@ -242,19 +229,17 @@ def aggregate_others_pandas(
     return df_aggregated
 
 
-def aggregate_others_statistical_pandas(
+def aggregate_others_statistical_pandas(  # noqa: C901
     df,
     dimension_column: str,
-    final_metric_calculators: Optional[
-        Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]
-    ] = None,
+    final_metric_calculators: Optional[Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]] = None,  # noqa: UP006, UP045
     top_n: int = DEFAULT_TOP_DIMENSIONS,
     impact_column: str = "impact_score",
     others_label: str = DIMENSION_OTHERS_LABEL,
-    exclude_from_final: Optional[List[str]] = None,
-    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
-    violation_metrics: Optional[List[str]] = None,
-    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,
+    exclude_from_final: Optional[List[str]] = None,  # noqa: UP006, UP045
+    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,  # noqa: UP006, UP007, UP045
+    violation_metrics: Optional[List[str]] = None,  # noqa: UP006, UP045
+    violation_predicate: Optional[Callable[[Mapping[str, Any]], bool]] = None,  # noqa: UP045
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -318,15 +303,13 @@ def aggregate_others_statistical_pandas(
     # For top dimensions, preserve their original metric values
     # NOTE: While top dimensions are single-row groups (aggregation doesn't change them),
     # we explicitly restore original values for clarity and defensive programming
-    for metric_name, calculator in final_metric_calculators.items():
+    for metric_name, calculator in final_metric_calculators.items():  # noqa: B007
         if metric_name in df.columns:
             # For top dimensions, keep original values
             for top_dim in top_dimensions:
                 top_mask = df_aggregated["dimension_group"] == top_dim
                 if top_mask.any():
-                    original_value = df[df[dimension_column] == top_dim][
-                        metric_name
-                    ].iloc[0]
+                    original_value = df[df[dimension_column] == top_dim][metric_name].iloc[0]
                     df_aggregated.loc[top_mask, metric_name] = original_value
 
     # Apply final metric calculators for "Others"
@@ -335,9 +318,7 @@ def aggregate_others_statistical_pandas(
 
         for metric_name, calculator in final_metric_calculators.items():
             if metric_name in df_aggregated.columns:
-                df_aggregated.loc[others_mask, metric_name] = calculator(
-                    df_aggregated, others_mask, metric_name
-                )
+                df_aggregated.loc[others_mask, metric_name] = calculator(df_aggregated, others_mask, metric_name)
 
         # Recompute failed_count for Others if violation condition provided
         if (
@@ -348,22 +329,15 @@ def aggregate_others_statistical_pandas(
             metrics_df = df_aggregated.loc[others_mask, violation_metrics]
             total_series = df_aggregated.loc[others_mask, "total_count"]
             violation_mask = metrics_df.apply(
-                lambda row: violation_predicate(
-                    {name: row[name] for name in violation_metrics}
-                ),
+                lambda row: violation_predicate({name: row[name] for name in violation_metrics}),
                 axis=1,
             )
-            df_aggregated.loc[others_mask, "failed_count"] = np.where(
-                violation_mask, total_series, 0
-            )
+            df_aggregated.loc[others_mask, "failed_count"] = np.where(violation_mask, total_series, 0)
 
     # Recalculate impact score for "Others" (based on final failed_count and total_count)
     if others_label in df_aggregated["dimension_group"].values:
         others_mask = df_aggregated["dimension_group"] == others_label
-        if (
-            "failed_count" in df_aggregated.columns
-            and "total_count" in df_aggregated.columns
-        ):
+        if "failed_count" in df_aggregated.columns and "total_count" in df_aggregated.columns:
             others_row = df_aggregated[others_mask]
             if not others_row.empty:
                 # Recalculate impact score using the pandas formula

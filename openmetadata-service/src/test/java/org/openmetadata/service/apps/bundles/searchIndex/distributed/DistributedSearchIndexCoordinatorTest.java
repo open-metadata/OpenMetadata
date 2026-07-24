@@ -16,10 +16,12 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -33,6 +35,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -67,6 +70,7 @@ class DistributedSearchIndexCoordinatorTest {
   @Mock private SearchIndexJobDAO jobDAO;
   @Mock private SearchIndexPartitionDAO partitionDAO;
   @Mock private SearchReindexLockDAO lockDAO;
+  @Mock private CollectionDAO.SearchIndexServerStatsDAO serverStatsDAO;
   @Mock private PartitionCalculator partitionCalculator;
 
   private DistributedSearchIndexCoordinator coordinator;
@@ -90,6 +94,12 @@ class DistributedSearchIndexCoordinatorTest {
     when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
     when(collectionDAO.searchIndexPartitionDAO()).thenReturn(partitionDAO);
     when(collectionDAO.searchReindexLockDAO()).thenReturn(lockDAO);
+    // getJobWithAggregatedStats now joins partition stats with per-stage timing pulled
+    // from search_index_server_stats. Stub the DAO so the timing lookups return empty
+    // collections — tests focused on count semantics don't need to assert timing.
+    when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(serverStatsDAO);
+    when(serverStatsDAO.getStatsByEntityType(anyString())).thenReturn(java.util.List.of());
+    when(serverStatsDAO.getStatsByServer(anyString())).thenReturn(java.util.List.of());
 
     coordinator = new DistributedSearchIndexCoordinator(collectionDAO, partitionCalculator);
   }
@@ -527,6 +537,21 @@ class DistributedSearchIndexCoordinatorTest {
             0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
 
     // Mock that there are still pending partitions
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
@@ -534,9 +559,11 @@ class DistributedSearchIndexCoordinatorTest {
 
     coordinator.completePartition(partitionId, 4900, 100);
 
-    // Verify partition was updated to COMPLETED
+    // Verify partition was updated to COMPLETED via the status-guarded SQL — the unguarded
+    // update() must NOT be called, so a late completion write can no longer overwrite a
+    // CANCELLED row written by requestStop on another server.
     verify(partitionDAO)
-        .update(
+        .updateIfProcessing(
             eq(partitionId.toString()),
             eq(PartitionStatus.COMPLETED.name()),
             eq(5000L), // cursor = rangeEnd
@@ -550,6 +577,78 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             any(),
             anyInt());
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt());
+  }
+
+  @Test
+  void testCompletePartition_NoOpWhenAlreadyCancelled() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+    EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
+    coordinator.setEntityCompletionTracker(tracker);
+
+    SearchIndexPartitionRecord record =
+        new SearchIndexPartitionRecord(
+            partitionId.toString(),
+            jobId.toString(),
+            "table",
+            0,
+            0,
+            5000,
+            5000,
+            7500,
+            50,
+            PartitionStatus.PROCESSING.name(),
+            2500,
+            2500,
+            2400,
+            100,
+            TEST_SERVER_ID,
+            System.currentTimeMillis() - 10000,
+            System.currentTimeMillis() - 10000,
+            null,
+            System.currentTimeMillis() - 1000,
+            null,
+            0,
+            0L);
+
+    when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    // updateIfProcessing returns 0 — row is no longer PROCESSING (already CANCELLED by
+    // requestStop). The completion writer must not advance the tracker and must not
+    // touch job state, leaving STOPPED as the authoritative outcome.
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(0);
+
+    coordinator.completePartition(partitionId, 4900, 100);
+
+    verify(tracker, never()).recordPartitionComplete(anyString(), anyBoolean());
   }
 
   @Test
@@ -585,6 +684,21 @@ class DistributedSearchIndexCoordinatorTest {
             0L);
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(partitionDAO.updateIfProcessing(
+            eq(partitionId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyInt()))
+        .thenReturn(1);
     when(jobDAO.findById(jobId.toString()))
         .thenReturn(createJobRecord(jobId, IndexJobStatus.RUNNING, null, "{}"));
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
@@ -632,15 +746,31 @@ class DistributedSearchIndexCoordinatorTest {
             0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyInt()))
+        .thenReturn(1);
 
     coordinator.failPartition(partitionId, "Connection timeout");
 
-    // Verify partition was reset to PENDING for retry
+    // Verify partition was reset to PENDING for retry via the status-guarded SQL,
+    // and the unguarded update() is never called (Stop must remain authoritative).
     ArgumentCaptor<String> statusCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Integer> retryCaptor = ArgumentCaptor.forClass(Integer.class);
 
     verify(partitionDAO)
-        .update(
+        .updateIfProcessing(
             eq(partitionId.toString()),
             statusCaptor.capture(),
             anyLong(),
@@ -654,9 +784,106 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             eq("Connection timeout"),
             retryCaptor.capture());
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyInt());
 
     assertEquals(PartitionStatus.PENDING.name(), statusCaptor.getValue());
     assertEquals(1, retryCaptor.getValue()); // retryCount incremented
+  }
+
+  @Test
+  void testFailPartition_NoOpWhenAlreadyCancelled() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+
+    SearchIndexPartitionRecord record =
+        new SearchIndexPartitionRecord(
+            partitionId.toString(),
+            jobId.toString(),
+            "table",
+            0,
+            0,
+            5000,
+            5000,
+            7500,
+            50,
+            PartitionStatus.PROCESSING.name(),
+            2500,
+            2500,
+            2400,
+            100,
+            TEST_SERVER_ID,
+            System.currentTimeMillis() - 10000,
+            System.currentTimeMillis() - 10000,
+            null,
+            System.currentTimeMillis() - 1000,
+            null,
+            0,
+            0L);
+
+    when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+    // Simulate the row already being CANCELLED by requestStop on another server —
+    // the guarded SQL matches zero rows.
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyInt()))
+        .thenReturn(0);
+
+    coordinator.failPartition(partitionId, "Connection timeout");
+
+    // The unguarded update() must not be called — that's what would resurrect a CANCELLED row.
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyInt());
+    // No job-completion check should run — the cancellation already drove that path.
+    verify(jobDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
   }
 
   @Test
@@ -724,12 +951,28 @@ class DistributedSearchIndexCoordinatorTest {
     AggregatedStatsRecord aggregatedStats =
         new AggregatedStatsRecord(5000, 2500, 2400, 100, 1, 0, 1, 0, 0);
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(aggregatedStats);
+    when(partitionDAO.updateIfProcessing(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            anyInt()))
+        .thenReturn(1);
 
     coordinator.failPartition(partitionId, "Connection timeout");
 
-    // Verify partition was marked as FAILED (not retried)
+    // Verify partition was marked as FAILED via the status-guarded SQL,
+    // and the unguarded update() is never called.
     verify(partitionDAO)
-        .update(
+        .updateIfProcessing(
             eq(partitionId.toString()),
             eq(PartitionStatus.FAILED.name()),
             anyLong(),
@@ -743,6 +986,21 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             eq("Connection timeout"),
             eq(3));
+    verify(partitionDAO, never())
+        .update(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            anyString(),
+            anyInt());
   }
 
   @Test
@@ -864,8 +1122,176 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             any());
 
-    // Verify pending partitions were cancelled
-    verify(partitionDAO).cancelPendingPartitions(jobId.toString());
+    // Both PENDING and PROCESSING partitions must be cancelled — leaving PROCESSING orphaned
+    // means workerExecutor.shutdownNow() kills the threads but the rows stay PROCESSING in
+    // the DB, so checkAndUpdateJobCompletion (which requires processing.isEmpty()) never
+    // flips STOPPING → STOPPED and the strategy's monitor loop polls forever.
+    verify(partitionDAO).cancelInFlightPartitions(eq(jobId.toString()), anyLong());
+    verify(partitionDAO, never()).cancelPendingPartitions(jobId.toString());
+  }
+
+  /**
+   * Regression test for the user-visible "stop button does nothing" bug. Reproduces the exact
+   * production scenario: distributed reindex running with PROCESSING partitions, user clicks
+   * Stop. Without this fix the job would stay in STOPPING forever because
+   * checkAndUpdateJobCompletion requires processing.isEmpty() and PROCESSING rows were never
+   * cancelled. With the fix, requestStop cancels in-flight partitions AND drives the state
+   * machine forward in the same call, so the job transitions to STOPPED before requestStop
+   * returns.
+   */
+  @Test
+  void testRequestStop_ProcessingPartitionsTransitionToStopped() {
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
+
+    SearchIndexJobRecord runningJob =
+        new SearchIndexJobRecord(
+            jobId.toString(),
+            IndexJobStatus.RUNNING.name(),
+            JsonUtils.pojoToJson(jobConfig),
+            "staged_123_",
+            null,
+            10000,
+            5000,
+            4900,
+            100,
+            "{}",
+            "admin",
+            System.currentTimeMillis() - 60000,
+            System.currentTimeMillis() - 50000,
+            null,
+            System.currentTimeMillis(),
+            null,
+            System.currentTimeMillis() - 55000,
+            2);
+
+    SearchIndexJobRecord stoppingJob =
+        new SearchIndexJobRecord(
+            runningJob.id(),
+            IndexJobStatus.STOPPING.name(),
+            runningJob.jobConfiguration(),
+            runningJob.targetIndexPrefix(),
+            runningJob.stagedIndexMapping(),
+            runningJob.totalRecords(),
+            runningJob.processedRecords(),
+            runningJob.successRecords(),
+            runningJob.failedRecords(),
+            runningJob.stats(),
+            runningJob.createdBy(),
+            runningJob.createdAt(),
+            runningJob.startedAt(),
+            runningJob.completedAt(),
+            System.currentTimeMillis(),
+            runningJob.errorMessage(),
+            runningJob.registrationDeadline(),
+            runningJob.registeredServerCount());
+
+    // First findById returns RUNNING (entry into requestStop). After the STOPPING write,
+    // checkAndUpdateJobCompletion's findById should see STOPPING.
+    when(jobDAO.findById(jobId.toString())).thenReturn(runningJob, stoppingJob);
+
+    // Critical: cancelInFlightPartitions empties both PENDING and PROCESSING. The
+    // post-cancel partition lists are all empty, so checkAndUpdateJobCompletion's
+    // pending.isEmpty() && processing.isEmpty() check passes and STOPPING → STOPPED fires.
+    when(partitionDAO.cancelInFlightPartitions(eq(jobId.toString()), anyLong())).thenReturn(3);
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.FAILED.name()))
+        .thenReturn(List.of());
+    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.CANCELLED.name()))
+        .thenReturn(List.of());
+
+    coordinator.requestStop(jobId);
+
+    // STOPPING write happens first.
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.STOPPING.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+
+    // STOPPED write happens before requestStop returns — driven by the in-call
+    // checkAndUpdateJobCompletion. Without the fix this never fires because PROCESSING
+    // rows were never cleaned up and the state machine couldn't advance.
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.STOPPED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString(),
+            any(),
+            any(),
+            anyLong(),
+            any());
+  }
+
+  @Test
+  void testCheckAndUpdateJobCompletion_EvictsPartitionStartCursorsCache() throws Exception {
+    UUID jobId = UUID.randomUUID();
+
+    // Seed the per-jobId cursor cache directly. Going through precomputePartitionStartCursors
+    // would require real EntityRepository wiring — testing the eviction contract is the
+    // point here, not the population path.
+    java.lang.reflect.Field cacheField =
+        DistributedSearchIndexCoordinator.class.getDeclaredField("partitionStartCursors");
+    cacheField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<UUID, Map<String, Map<Long, String>>> cache =
+        (Map<UUID, Map<String, Map<Long, String>>>) cacheField.get(coordinator);
+    Map<String, Map<Long, String>> entityCursors = new HashMap<>();
+    entityCursors.put("table", Map.of(10000L, "encoded-cursor-blob"));
+    cache.put(jobId, entityCursors);
+
+    assertNotNull(
+        coordinator.getPartitionStartCursor(jobId, "table", 10000L),
+        "Cache should hold the seeded cursor before terminal transition");
+
+    // RUNNING job with no remaining partitions — checkAndUpdateJobCompletion should
+    // promote it to COMPLETED and evict the cache entry.
+    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
+    SearchIndexJobRecord runningJob =
+        new SearchIndexJobRecord(
+            jobId.toString(),
+            IndexJobStatus.RUNNING.name(),
+            JsonUtils.pojoToJson(jobConfig),
+            "staged_",
+            null,
+            100,
+            100,
+            100,
+            0,
+            "{}",
+            "admin",
+            System.currentTimeMillis() - 60000,
+            System.currentTimeMillis() - 50000,
+            null,
+            System.currentTimeMillis(),
+            null,
+            System.currentTimeMillis() - 55000,
+            1);
+    when(jobDAO.findById(jobId.toString())).thenReturn(runningJob);
+    when(partitionDAO.findByJobIdAndStatus(eq(jobId.toString()), anyString()))
+        .thenReturn(List.of());
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
+
+    coordinator.checkAndUpdateJobCompletion(jobId);
+
+    assertNull(
+        coordinator.getPartitionStartCursor(jobId, "table", 10000L),
+        "Cache should be evicted once the job reaches a terminal state — long-running"
+            + " servers must not retain cursor blobs across many reindex runs.");
   }
 
   @Test

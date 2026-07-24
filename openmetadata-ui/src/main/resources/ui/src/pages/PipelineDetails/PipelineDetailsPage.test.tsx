@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, findByText, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
-    pipelineFQN: 'sample_airflow.snowflake_etl',
+    fqn: 'sample_airflow.snowflake_etl',
     tab: 'details',
   }),
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
@@ -52,7 +52,7 @@ jest.mock(
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
-    getEntityPermission: jest.fn().mockResolvedValue({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
       Create: true,
       Delete: true,
       EditAll: true,
@@ -106,17 +106,10 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 
 describe('Test PipelineDetailsPage component', () => {
   it('PipelineDetailsPage component should render properly', async () => {
-    const { container } = render(<PipelineDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
+    renderWithQueryClient(<PipelineDetailsPage />);
 
-    await act(async () => {
-      const PipelineDetails = await findByText(
-        container,
-        /PipelineDetails.component/i
-      );
-
-      expect(PipelineDetails).toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(screen.getByText(/PipelineDetails.component/i)).toBeInTheDocument()
+    );
   });
 });

@@ -24,15 +24,11 @@ import {
 import { MY_TASK_WIDGET_FILTER_OPTIONS } from '../../../../constants/Widgets.constant';
 import { SIZE } from '../../../../enums/common.enum';
 import { FeedFilter, MyTaskFilter } from '../../../../enums/mydata.enum';
-import {
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import FeedPanelBodyV1New from '../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import TaskFeedCardFromTask from '../../../ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
 import { UserPageTabs } from '../../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
@@ -55,7 +51,7 @@ const MyTaskWidget = ({
     MyTaskFilter.OWNER_OR_FOLLOWS
   );
 
-  const { loading, entityThread, getFeedData } = useActivityFeedProvider();
+  const { loading, tasks, getTaskData } = useActivityFeedProvider();
 
   const myTaskData = useMemo(() => {
     return currentLayout?.find((layout) => layout.i === widgetKey);
@@ -66,36 +62,34 @@ const MyTaskWidget = ({
   }, []);
 
   useEffect(() => {
-    getFeedData(
+    getTaskData(
       selectedFilter as unknown as FeedFilter,
       undefined,
-      ThreadType.Task,
       undefined,
       undefined,
       undefined,
       PAGE_SIZE_MEDIUM
     );
-  }, [getFeedData, selectedFilter]);
+  }, [getTaskData, selectedFilter]);
 
   const handleFeedFetchFromFeedList = useCallback(() => {
-    getFeedData(
+    getTaskData(
       selectedFilter as unknown as FeedFilter,
       undefined,
-      ThreadType.Task,
       undefined,
       undefined,
-      ThreadTaskStatus.Open,
+      'open',
       PAGE_SIZE_MEDIUM
     );
-  }, [getFeedData, selectedFilter]);
+  }, [getTaskData, selectedFilter]);
 
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
   };
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && entityThread?.length > PAGE_SIZE_BASE,
-    [entityThread, loading]
+    () => Boolean(!loading) && tasks?.length > PAGE_SIZE_BASE,
+    [tasks, loading]
   );
 
   const translatedSortOptions = useMemo(
@@ -146,7 +140,7 @@ const MyTaskWidget = ({
     <div className="my-task-widget-container">
       {/* Widget Content */}
       <div className="widget-content flex-1">
-        {isEmpty(entityThread) ? (
+        {isEmpty(tasks) ? (
           <WidgetEmptyState
             dataTestId="my-task-empty-state"
             description={t('message.my-task-no-data-placeholder')}
@@ -162,16 +156,11 @@ const MyTaskWidget = ({
         ) : (
           <>
             <div className="entity-list-body">
-              {entityThread.slice(0, PAGE_SIZE_BASE).map((feed) => (
-                <FeedPanelBodyV1New
-                  isForFeedTab
-                  isFullWidth
-                  feed={feed}
-                  hideCardBorder={false}
-                  hidePopover={isEditView}
+              {tasks.slice(0, PAGE_SIZE_BASE).map((task) => (
+                <TaskFeedCardFromTask
                   isOpenInDrawer={myTaskData?.w === 1}
-                  key={feed.id}
-                  showThread={false}
+                  key={task.id}
+                  task={task}
                   onAfterClose={handleAfterTaskClose}
                 />
               ))}

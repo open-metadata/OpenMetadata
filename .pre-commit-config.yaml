@@ -2,28 +2,30 @@ default_language_version:
   python: python3
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v5.0.0
     hooks:
       - id: check-json
-        exclude: vscode
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.5.0
+        # TODO: investigate and fix or remove the excluded files. The first
+        # three carry real JSON issues (duplicate keys, malformed/empty
+        # content) that pre-commit-hooks v2.3.0 didn't catch; v5.0.0 does.
+        # The last is an intentionally malformed test fixture.
+        exclude: |
+          (?x)^(
+            .*vscode.*|
+            openmetadata-spec/src/main/resources/rdf/contexts/dataAsset\.jsonld|
+            ingestion/examples/sample_data/pipelines/tasks\.json|
+            openmetadata-service/src/main/resources/dataInsights/opensearch/indexSettingsTemplate\.json|
+            openmetadata-ui/src/main/resources/ui/playwright/test-data/odcs-examples/invalid-malformed\.json
+          )$
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
     hooks:
-      - id: pycln
+      - id: ruff-check
         files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--config", "ingestion/pyproject.toml" ]
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
+        args: ["--fix", "--config", "ingestion/pyproject.toml"]
+      - id: ruff-format
         files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--settings-file", "ingestion/pyproject.toml" ]
-  - repo: https://github.com/ambv/black
-    rev: 22.3.0
-    hooks:
-      - id: black
-        files: ^(ingestion|openmetadata-airflow-apis)/
-        args: [ "--config", "ingestion/pyproject.toml" ]
+        args: ["--config", "ingestion/pyproject.toml"]
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v2.5.1
     hooks:

@@ -123,6 +123,11 @@
       "type": "boolean",
       "default": false
     },
+    "autoCloseIncident": {
+      "description": "Automatically resolve an open incident when a subsequent test result succeeds.",
+      "type": "boolean",
+      "default": false
+    },
     "incidentId": {
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"

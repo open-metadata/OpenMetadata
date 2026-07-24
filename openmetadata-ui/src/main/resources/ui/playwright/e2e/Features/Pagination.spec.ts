@@ -30,6 +30,7 @@ import {
   createNewPage,
   testClientSidePaginationNavigation,
   testCompletePaginationWithSearch,
+  testMetricsPaginationNavigation,
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
@@ -273,7 +274,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'visible',
       });
 
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -344,8 +348,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Metrics page', async ({ page }) => {
-      await page.goto('/metrics');
-      await testPaginationNavigation(page, '/api/v1/metrics', 'table');
+      await testMetricsPaginationNavigation(page);
     });
   });
 
@@ -424,6 +427,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto('/observability/alerts?pageSize=15');
+
       await testPaginationNavigation(
         page,
         '/api/v1/events/subscriptions',
@@ -542,7 +546,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -681,7 +688,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -828,13 +838,19 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      let paginationText = page.locator('[data-testid="page-indicator"]');
+      let paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       let paginationTextContent = await paginationText.textContent();
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-      const nextButton = page.locator('[data-testid="next"]');
+      const nextButton = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('next');
       await expect(nextButton).toBeEnabled();
 
       const filesResponsePromise = page.waitForResponse((response) =>
@@ -868,7 +884,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(filesTabResponse.status()).toBe(200);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
@@ -910,7 +929,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
@@ -1113,6 +1135,72 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         .count();
       expect(page2RowCount).toBeLessThanOrEqual(15);
       expect(page1RowCount + page2RowCount).toBe(20);
+    });
+  });
+
+  test.describe('Table version page column pagination', () => {
+    let versionTableDb: DatabaseClass;
+    let versionTableFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      versionTableDb = new DatabaseClass();
+
+      const columns = [];
+      for (let i = 1; i <= 20; i++) {
+        columns.push({
+          name: `version_col_${String(i).padStart(2, '0')}`,
+          dataType: 'VARCHAR',
+          dataLength: 255,
+          dataTypeDisplay: 'varchar',
+          description: `Version test column ${i}`,
+        });
+      }
+
+      versionTableDb.table.columns = columns;
+
+      await versionTableDb.create(apiContext);
+      versionTableFqn =
+        versionTableDb.tableResponseData.fullyQualifiedName ?? '';
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await versionTableDb.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should test pagination on Table version page columns', async ({
+      page,
+    }) => {
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await testClientSidePaginationNavigation(
+        page,
+        '[data-testid="entity-table"]'
+      );
+    });
+
+    test('should test search on Table version page columns', async ({
+      page,
+    }) => {
+      await page.goto(`/table/${versionTableFqn}/versions/0.1?pageSize=15`);
+      await page.locator('[data-testid="entity-table"]').waitFor({
+        state: 'visible',
+      });
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('searchbar').fill('version_col_01');
+
+      // Search is client-side with a 500ms debounce — wait for the DOM to reflect
+      await expect(
+        page.getByTestId('entity-table').getByRole('row')
+      ).toHaveCount(2, { timeout: 3000 });
+      await expect(
+        page.getByTestId('entity-table').getByText('version_col_01')
+      ).toBeVisible();
     });
   });
 

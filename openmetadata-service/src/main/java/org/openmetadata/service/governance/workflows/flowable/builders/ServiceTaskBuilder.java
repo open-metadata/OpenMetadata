@@ -23,7 +23,9 @@ public class ServiceTaskBuilder extends FlowableElementBuilder<ServiceTaskBuilde
   }
 
   public ServiceTaskBuilder addFieldExtension(FieldExtension fieldExtension) {
-    this.fieldExtensions.add(fieldExtension);
+    if (fieldExtension != null) {
+      this.fieldExtensions.add(fieldExtension);
+    }
     return this;
   }
 

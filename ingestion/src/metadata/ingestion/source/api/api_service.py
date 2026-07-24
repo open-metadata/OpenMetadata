@@ -11,11 +11,12 @@
 """
 Base class for ingesting api services
 """
+
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Set
+from typing import Any, Iterable, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -47,7 +48,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -63,9 +70,7 @@ class ApiServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -74,15 +79,12 @@ class ApiServiceTopology(ServiceTopology):
                 processor="yield_create_request_api_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["api_collection"],
         post_process=["mark_api_collections_as_deleted"],
     )
-    api_collection: Annotated[
-        TopologyNode, Field(description="API Collection Processing Node")
-    ] = TopologyNode(
+    api_collection: Annotated[TopologyNode, Field(description="API Collection Processing Node")] = TopologyNode(
         producer="get_api_collections",
         stages=[
             NodeStage(
@@ -90,14 +92,12 @@ class ApiServiceTopology(ServiceTopology):
                 context="api_collections",
                 processor="yield_api_collection",
                 consumer=["api_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
                 processor="yield_api_endpoint",
                 consumer=["api_service"],
-                use_cache=True,
             ),
         ],
     )
@@ -112,12 +112,12 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: ApiServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: ApiConnection.model_fields["config"].annotation
+    service_connection: ApiConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = ApiServiceTopology()
     context = TopologyContextManager(topology)
-    api_collection_source_state: Set = set()
-    api_endpoint_source_state: Set = set()
+    api_collection_source_state: Set = set()  # noqa: RUF012, UP006
+    api_endpoint_source_state: Set = set()  # noqa: RUF012, UP006
 
     def __init__(
         self,
@@ -129,11 +129,13 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: ApiServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         self.client = self.connection
 
@@ -145,11 +147,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         yield self.config
 
     def yield_create_request_api_service(self, config: WorkflowSource):
-        yield Either(
-            right=self.metadata.get_create_service_from_source(
-                entity=ApiService, config=config
-            )
-        )
+        yield Either(right=self.metadata.get_create_service_from_source(entity=ApiService, config=config))
 
     @abstractmethod
     def get_api_collections(self, *args, **kwargs) -> Iterable[Any]:
@@ -159,24 +157,22 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def yield_api_collection(
-        self, *args, **kwargs
-    ) -> Iterable[Either[CreateAPICollectionRequest]]:
+    def yield_api_collection(self, *args, **kwargs) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
 
     @abstractmethod
-    def yield_api_endpoint(
-        self, *args, **kwargs
-    ) -> Iterable[Either[CreateAPIEndpointRequest]]:
+    def yield_api_endpoint(self, *args, **kwargs) -> Iterable[Either[CreateAPIEndpointRequest]]:
         """Method to return api endpoint Entities"""
 
     def close(self):
-        """By default, nothing to close"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(
-            self.metadata, self.connection_obj, self.service_connection
-        )
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_api_collections_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the api collection as deleted"""
@@ -185,7 +181,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=APICollection,
                 entity_source_state=self.api_collection_source_state,
-                mark_deleted_entity=self.source_config.markDeletedApiCollections,
+                recursive=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
 

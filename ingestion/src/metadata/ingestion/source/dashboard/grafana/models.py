@@ -11,8 +11,9 @@
 """
 Grafana API response models
 """
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
 
@@ -21,9 +22,9 @@ class GrafanaUser(BaseModel):
     """Grafana user model"""
 
     id: int
-    email: Optional[str] = None
-    name: Optional[str] = None
-    login: Optional[str] = None
+    email: Optional[str] = None  # noqa: UP045
+    name: Optional[str] = None  # noqa: UP045
+    login: Optional[str] = None  # noqa: UP045
 
 
 class GrafanaFolder(BaseModel):
@@ -32,39 +33,39 @@ class GrafanaFolder(BaseModel):
     id: int
     uid: str
     title: str
-    url: Optional[str] = None
-    type: Optional[str] = None
-    tags: Optional[List[str]] = None
-    created: Optional[datetime] = None
-    updated: Optional[datetime] = None
-    createdBy: Optional[str] = None
-    updatedBy: Optional[str] = None
-    version: Optional[int] = None
+    url: Optional[str] = None  # noqa: UP045
+    type: Optional[str] = None  # noqa: UP045
+    tags: Optional[List[str]] = None  # noqa: UP006, UP045
+    created: Optional[datetime] = None  # noqa: UP045
+    updated: Optional[datetime] = None  # noqa: UP045
+    createdBy: Optional[str] = None  # noqa: N815, UP045
+    updatedBy: Optional[str] = None  # noqa: N815, UP045
+    version: Optional[int] = None  # noqa: UP045
 
 
 class GrafanaDatasource(BaseModel):
     """Grafana datasource model"""
 
-    id: Optional[int] = None
-    uid: Optional[str] = None
+    id: Optional[int] = None  # noqa: UP045
+    uid: Optional[str] = None  # noqa: UP045
     name: str
     type: str
-    url: Optional[str] = None
-    database: Optional[str] = None
-    isDefault: Optional[bool] = None
-    jsonData: Optional[Dict[str, Any]] = None
+    url: Optional[str] = None  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
+    isDefault: Optional[bool] = None  # noqa: N815, UP045
+    jsonData: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
 
 
 class GrafanaTarget(BaseModel):
     """Grafana panel target/query model"""
 
-    refId: Optional[str] = None
-    datasource: Optional[Union[str, Dict[str, Any]]] = None
-    rawSql: Optional[str] = None
-    query: Optional[str] = None
-    expr: Optional[str] = None  # For Prometheus queries
-    format: Optional[Any] = None
-    hide: Optional[bool] = False
+    refId: Optional[str] = None  # noqa: N815, UP045
+    datasource: Optional[Union[str, Dict[str, Any]]] = None  # noqa: UP006, UP007, UP045
+    rawSql: Optional[str] = None  # noqa: N815, UP045
+    query: Optional[str] = None  # noqa: UP045
+    expr: Optional[str] = None  # For Prometheus queries  # noqa: UP045
+    format: Optional[Any] = None  # noqa: UP045
+    hide: Optional[bool] = False  # noqa: UP045
 
 
 class GrafanaPanel(BaseModel):
@@ -72,66 +73,66 @@ class GrafanaPanel(BaseModel):
 
     id: int
     type: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    datasource: Optional[Union[str, Dict[str, Any]]] = None
-    targets: Optional[List[GrafanaTarget]] = Field(default_factory=list)
-    gridPos: Optional[Dict[str, int]] = None
-    options: Optional[Dict[str, Any]] = None
-    fieldConfig: Optional[Dict[str, Any]] = None
-    transparent: Optional[bool] = None
-    pluginVersion: Optional[str] = None
+    title: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    datasource: Optional[Union[str, Dict[str, Any]]] = None  # noqa: UP006, UP007, UP045
+    targets: Optional[List[GrafanaTarget]] = Field(default_factory=list)  # noqa: UP006, UP045
+    gridPos: Optional[Dict[str, int]] = None  # noqa: N815, UP006, UP045
+    options: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    fieldConfig: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
+    transparent: Optional[bool] = None  # noqa: UP045
+    pluginVersion: Optional[str] = None  # noqa: N815, UP045
 
 
 class GrafanaDashboard(BaseModel):
     """Grafana dashboard model"""
 
-    id: Optional[int] = None
+    id: Optional[int] = None  # noqa: UP045
     uid: str
     title: str
-    tags: Optional[List[str]] = Field(default_factory=list)
-    style: Optional[str] = None
-    timezone: Optional[str] = None
-    panels: Optional[List[GrafanaPanel]] = Field(default_factory=list)
-    editable: Optional[bool] = None
-    time: Optional[Dict[str, Any]] = None
-    timepicker: Optional[Dict[str, Any]] = None
-    templating: Optional[Dict[str, Any]] = None
-    annotations: Optional[Dict[str, Any]] = None
-    refresh: Optional[Union[str, bool]] = None
-    schemaVersion: Optional[int] = None
-    version: Optional[int] = None
-    description: Optional[str] = None
-    gnetId: Optional[Any] = None
-    links: Optional[List[Dict[str, Any]]] = None
+    tags: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
+    style: Optional[str] = None  # noqa: UP045
+    timezone: Optional[str] = None  # noqa: UP045
+    panels: Optional[List[GrafanaPanel]] = Field(default_factory=list)  # noqa: UP006, UP045
+    editable: Optional[bool] = None  # noqa: UP045
+    time: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    timepicker: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    templating: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    annotations: Optional[Dict[str, Any]] = None  # noqa: UP006, UP045
+    refresh: Optional[Union[str, bool]] = None  # noqa: UP007, UP045
+    schemaVersion: Optional[int] = None  # noqa: N815, UP045
+    version: Optional[int] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    gnetId: Optional[Any] = None  # noqa: N815, UP045
+    links: Optional[List[Dict[str, Any]]] = None  # noqa: UP006, UP045
 
 
 class GrafanaDashboardMeta(BaseModel):
     """Grafana dashboard metadata model"""
 
     type: str
-    canSave: bool
-    canEdit: bool
-    canAdmin: bool
-    canStar: bool
-    canDelete: bool
+    canSave: bool  # noqa: N815
+    canEdit: bool  # noqa: N815
+    canAdmin: bool  # noqa: N815
+    canStar: bool  # noqa: N815
+    canDelete: bool  # noqa: N815
     slug: str
     url: str
-    expires: Optional[datetime] = None
-    created: Optional[datetime] = None
-    updated: Optional[datetime] = None
-    updatedBy: Optional[str] = None
-    createdBy: Optional[str] = None
-    version: Optional[int] = None
-    hasAcl: Optional[bool] = None
-    isFolder: Optional[bool] = None
-    folderId: Optional[int] = None
-    folderUid: Optional[str] = None
-    folderTitle: Optional[str] = None
-    folderUrl: Optional[str] = None
-    provisioned: Optional[bool] = None
-    provisionedExternalId: Optional[str] = None
-    annotationsPermissions: Optional[Dict[str, Any]] = None
+    expires: Optional[datetime] = None  # noqa: UP045
+    created: Optional[datetime] = None  # noqa: UP045
+    updated: Optional[datetime] = None  # noqa: UP045
+    updatedBy: Optional[str] = None  # noqa: N815, UP045
+    createdBy: Optional[str] = None  # noqa: N815, UP045
+    version: Optional[int] = None  # noqa: UP045
+    hasAcl: Optional[bool] = None  # noqa: N815, UP045
+    isFolder: Optional[bool] = None  # noqa: N815, UP045
+    folderId: Optional[int] = None  # noqa: N815, UP045
+    folderUid: Optional[str] = None  # noqa: N815, UP045
+    folderTitle: Optional[str] = None  # noqa: N815, UP045
+    folderUrl: Optional[str] = None  # noqa: N815, UP045
+    provisioned: Optional[bool] = None  # noqa: UP045
+    provisionedExternalId: Optional[str] = None  # noqa: N815, UP045
+    annotationsPermissions: Optional[Dict[str, Any]] = None  # noqa: N815, UP006, UP045
 
 
 class GrafanaDashboardResponse(BaseModel):
@@ -151,9 +152,9 @@ class GrafanaSearchResult(BaseModel):
     url: str
     slug: str
     type: str  # "dash-db" for dashboards, "dash-folder" for folders
-    tags: Optional[List[str]] = Field(default_factory=list)
-    isStarred: bool
-    folderId: Optional[int] = None
-    folderUid: Optional[str] = None
-    folderTitle: Optional[str] = None
-    folderUrl: Optional[str] = None
+    tags: Optional[List[str]] = Field(default_factory=list)  # noqa: UP006, UP045
+    isStarred: bool  # noqa: N815
+    folderId: Optional[int] = None  # noqa: N815, UP045
+    folderUid: Optional[str] = None  # noqa: N815, UP045
+    folderTitle: Optional[str] = None  # noqa: N815, UP045
+    folderUrl: Optional[str] = None  # noqa: N815, UP045

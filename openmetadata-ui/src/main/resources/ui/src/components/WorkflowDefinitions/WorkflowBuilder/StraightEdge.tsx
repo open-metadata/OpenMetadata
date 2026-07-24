@@ -11,10 +11,30 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
-import { ConditionValue } from '../../../constants/WorkflowBuilder.constants';
+import { capitalize, startCase } from 'lodash';
+import React, { useState } from 'react';
+import {
+  BaseEdge,
+  Edge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  Position,
+  ReactFlowState,
+  useStore,
+} from 'reactflow';
+import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
+
+const PARALLEL_LABEL_GAP = 44;
+
+const getSameDirectionEdges = (
+  edges: Edge[],
+  source: string,
+  target: string
+): Edge[] =>
+  edges.filter((edge) => edge.source === source && edge.target === target);
 
 const getCleanStraightPath = (
   sourceX: number,
@@ -62,9 +82,14 @@ const getCleanStraightPath = (
   return [path, labelX, labelY] as const;
 };
 
+const formatEdgeLabel = (label: string): string =>
+  startCase(label).split(' ').map(capitalize).join(' ');
+
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -78,6 +103,28 @@ export const StraightEdge = (props: EdgeProps) => {
     labelBgStyle,
   } = props;
 
+  const [isHovered, setIsHovered] = useState(false);
+
+  const { allowStructuralGraphEdits } = useWorkflowModeContext();
+  const onEdgeDelete = props.data?.onEdgeDelete as
+    | ((edgeId: string) => void)
+    | undefined;
+  const showDeleteButton =
+    isHovered && allowStructuralGraphEdits && !!onEdgeDelete;
+
+  const parallelCount = useStore(
+    (state: ReactFlowState) =>
+      getSameDirectionEdges(state.edges, source, target).length
+  );
+  const parallelIndex = useStore((state: ReactFlowState) => {
+    const siblings = getSameDirectionEdges(state.edges, source, target);
+    const index = siblings.findIndex((edge) => edge.id === id);
+
+    return index === -1 ? 0 : index;
+  });
+
+  const isHorizontalEdge = Math.abs(sourceY - targetY) < 10;
+
   const [path, labelX, labelY] = getCleanStraightPath(
     sourceX,
     sourceY,
@@ -86,13 +133,23 @@ export const StraightEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   );
-  const isConditionLabel =
-    label === ConditionValue.TRUE || label === ConditionValue.FALSE;
+
+  const labelOffsetY =
+    parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_LABEL_GAP
+      : 0;
+  const stackedLabelY = labelY + labelOffsetY;
+
+  const displayLabel =
+    typeof label === 'string' && label.length > 0
+      ? formatEdgeLabel(label)
+      : label;
+  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
-    { 'tw:cursor-pointer': isConditionLabel }
+    { 'tw:cursor-pointer': hasStyleOverrides }
   );
-  const labelStyleOverrides = isConditionLabel
+  const labelStyleOverrides = hasStyleOverrides
     ? {
         backgroundColor: labelBgStyle?.fill,
         borderColor: labelBgStyle?.stroke,
@@ -104,22 +161,57 @@ export const StraightEdge = (props: EdgeProps) => {
   return (
     <>
       <BaseEdge id={id} markerEnd={markerEnd} path={path} style={style} />
-      {label && (
-        <EdgeLabelRenderer>
+      <path
+        d={path}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        style={{ pointerEvents: 'all' }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      />
+      <EdgeLabelRenderer>
+        {label && (
           <div
             className={labelClassName}
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${stackedLabelY}px)`,
               pointerEvents: 'all',
               ...labelStyleOverrides,
-            }}>
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}>
             <Typography size="text-xs" weight="semibold">
-              {label}
+              {displayLabel}
             </Typography>
           </div>
-        </EdgeLabelRenderer>
-      )}
+        )}
+        {showDeleteButton && (
+          <div
+            className="tw:absolute tw:pointer-events-auto"
+            style={{
+              transform: `translate(-50%, -50%) translate(${
+                label && isHorizontalEdge ? labelX + 48 : labelX
+              }px, ${
+                label && !isHorizontalEdge ? stackedLabelY - 36 : stackedLabelY
+              }px)`,
+            }}>
+            <Button
+              className="tw:rounded-full tw:bg-primary tw:shadow-sm"
+              color="tertiary-destructive"
+              iconLeading={XClose}
+              size="sm"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation();
+                onEdgeDelete(id);
+              }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            />
+          </div>
+        )}
+      </EdgeLabelRenderer>
     </>
   );
 };

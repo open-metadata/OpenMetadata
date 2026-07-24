@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Node, Position } from 'reactflow';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { useWorkflowStore } from '../../useWorkflowStore';
 import './gateway-node.less';
 

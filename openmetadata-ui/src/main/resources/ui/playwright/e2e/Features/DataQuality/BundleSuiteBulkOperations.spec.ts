@@ -140,16 +140,14 @@ test('Bulk selection operations', async ({ page }) => {
   });
 
   await test.step('Select all and unselect all', async () => {
-    const selectAllCheckbox = page
-      .locator('thead input[type="checkbox"]')
-      .first();
-    await selectAllCheckbox.check();
+    const selectAllCheckbox = page.locator('thead label[slot="selection"]');
+    await selectAllCheckbox.click();
     await expect(page.getByText(/\d+ test case\(s\) selected/)).toBeVisible();
     await expect(
       page.getByTestId('add-selected-to-bundle-suite')
     ).toBeVisible();
 
-    await selectAllCheckbox.uncheck();
+    await selectAllCheckbox.click();
     await expect(
       page.getByTestId('add-selected-to-bundle-suite')
     ).not.toBeVisible();

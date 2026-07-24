@@ -44,6 +44,7 @@ export interface OntologyNode {
   group?: string;
   glossaryId?: string;
   entityRef?: EntityReference;
+  searchSource?: Record<string, unknown>;
   owners?: EntityReference[];
   termId?: string;
   originalGlossary?: string;
@@ -56,6 +57,7 @@ export interface OntologyEdge {
   to: string;
   label: string;
   relationType: string;
+  inverseRelationType?: string;
 }
 
 export interface OntologyGraphData {
@@ -109,12 +111,14 @@ export interface OntologyGraphProps {
   nodePositions?: Record<string, { x: number; y: number }>;
   selectedNodeId?: string | null;
   expandedTermIds?: Set<string>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   dataSignature?: string;
   explorationMode?: ExplorationMode;
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
@@ -124,10 +128,6 @@ export interface OntologyGraphProps {
     }
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
-  onNodeContextMenu: (
-    node: OntologyNode,
-    position: { x: number; y: number }
-  ) => void;
   onPaneClick: () => void;
   onScrollNearEdge?: () => void;
 }
@@ -139,21 +139,18 @@ export interface FilterToolbarProps {
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
   onClearAll?: () => void;
+  onLoadMore?: () => void;
   viewModeDisabled?: boolean;
+  isLoading?: boolean;
+  isLoadingMore?: boolean;
+  hasMoreTerms?: boolean;
+  loadedTermCount?: number;
+  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {
   settings: GraphSettings;
   onSettingsChange: (settings: GraphSettings) => void;
-}
-
-export interface NodeContextMenuProps {
-  node: OntologyNode;
-  position: { x: number; y: number };
-  onClose: () => void;
-  onFocus: (node: OntologyNode) => void;
-  onViewDetails: (node: OntologyNode) => void;
-  onOpenInNewTab: (node: OntologyNode) => void;
 }
 
 export interface OntologyControlButtonsProps {
@@ -195,6 +192,7 @@ export interface HierarchyEdge {
   from: string;
   to: string;
   relationType: string;
+  inverseRelationType?: string;
   color?: string;
 }
 
@@ -221,8 +219,10 @@ export interface BuildGraphDataProps {
   expandedTermIds?: Set<string>;
   clickedEdgeId: string | null;
   nodePositions?: Record<string, { x: number; y: number }>;
+  glossaries: Glossary[];
   glossaryColorMap: Record<string, string>;
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  relationTypes?: GlossaryTermRelationType[];
 }

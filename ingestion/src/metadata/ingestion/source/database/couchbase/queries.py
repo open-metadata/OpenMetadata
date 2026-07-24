@@ -14,9 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 
-COUCHBASE_GET_INDEX_KEYS = textwrap.dedent(
-    """ select * from system:indexes where {condition}"""
-)
+COUCHBASE_GET_INDEX_KEYS = textwrap.dedent(""" select * from system:indexes where {condition}""")
 
 
 COUCHBASE_GET_DATA = textwrap.dedent(

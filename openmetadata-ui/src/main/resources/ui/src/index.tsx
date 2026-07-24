@@ -16,20 +16,44 @@ import { createRoot } from 'react-dom/client';
 import AppRoot from './AppRoot';
 import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
+import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Failed to find the root element');
 }
-const root = createRoot(container);
 
-root.render(
-  <React.StrictMode>
-    <AppRoot />
-  </React.StrictMode>
-);
+// The SSO "Test Login" popup returns to the configured callback URL. When this
+// document is that isolated popup, handle the OIDC handshake separately and
+// NEVER mount the app, so the test can't touch the admin's real session. A real
+// login on the same callback URL is not diverted (see isSsoTestLoginPopup).
+if (isSsoTestLoginPopup()) {
+  import('./components/SettingsSso/SsoTestLogin/ssoTestCallbackBootstrap')
+    .then((module) => module.runSsoTestCallback())
+    // If the chunk fails to load, close the popup so the opener doesn't hang.
+    .catch(() => globalThis.close());
+} else {
+  const root = createRoot(container);
 
-if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
+  root.render(
+    <React.StrictMode>
+      <AppRoot />
+    </React.StrictMode>
+  );
+}
+
+// In dev (Vite) the asset-caching service worker only serves stale chunks and
+// fights HMR, so skip registration and proactively unregister any SW left over
+// from a previous production session.
+if (import.meta.env.DEV) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) =>
+        registrations.forEach((registration) => registration.unregister())
+      );
+  }
+} else if ('serviceWorker' in navigator && 'indexedDB' in globalThis) {
   window.addEventListener('load', () => {
     const basePath = getBasePath();
     const serviceWorkerPath = basePath

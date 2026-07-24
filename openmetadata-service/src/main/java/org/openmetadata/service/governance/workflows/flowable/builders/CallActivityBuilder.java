@@ -5,6 +5,7 @@ import org.flowable.bpmn.model.CallActivity;
 public class CallActivityBuilder extends FlowableElementBuilder<CallActivityBuilder> {
   private String calledElement;
   private boolean inheritBusinessKey;
+  private boolean inheritVariables;
 
   public CallActivityBuilder calledElement(String calledElement) {
     this.calledElement = calledElement;
@@ -16,6 +17,11 @@ public class CallActivityBuilder extends FlowableElementBuilder<CallActivityBuil
     return this;
   }
 
+  public CallActivityBuilder inheritVariables(boolean inheritVariables) {
+    this.inheritVariables = inheritVariables;
+    return this;
+  }
+
   @Override
   public CallActivity build() {
     CallActivity callActivity = new CallActivity();
@@ -23,6 +29,7 @@ public class CallActivityBuilder extends FlowableElementBuilder<CallActivityBuil
     callActivity.setName(id);
     callActivity.setCalledElement(calledElement);
     callActivity.setInheritBusinessKey(inheritBusinessKey);
+    callActivity.setInheritVariables(inheritVariables);
     return callActivity;
   }
 }

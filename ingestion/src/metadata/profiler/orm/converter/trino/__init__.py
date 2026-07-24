@@ -9,6 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .converter import TrinoMapTypes
+from .converter import TrinoMapTypes  # noqa: TID252
 
 __all__ = ("TrinoMapTypes",)
