@@ -14,7 +14,6 @@ Module to define overridden dialect methods
 """
 
 import operator  # noqa: I001
-import os
 from collections import OrderedDict, defaultdict
 from functools import reduce
 from typing import Dict, Optional  # noqa: UP035
