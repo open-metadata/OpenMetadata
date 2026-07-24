@@ -25,10 +25,8 @@ import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
-import {
-  asyncNoop,
-  getDummyDataByPage,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { asyncNoop } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './customize-details-page.less';

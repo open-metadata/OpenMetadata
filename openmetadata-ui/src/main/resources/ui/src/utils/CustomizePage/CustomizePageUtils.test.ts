@@ -14,15 +14,15 @@ import { TabsProps } from 'antd';
 import { EntityTabs } from '../../enums/entity.enum';
 import { PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePagePureUtils';
+import { getDefaultTabs } from './CustomizePageDispatchUtils';
 import {
   checkIfExpandViewSupported,
-  getDefaultTabs,
   getTabDisplayName,
   getTabLabelMapFromTabs,
   sortTabs,
-  updateWidgetHeightRecursively,
-} from './CustomizePageUtils';
+} from './CustomizePageEntityTabUtils';
+import { getTabLabelFromId } from './CustomizePagePureUtils';
+import { updateWidgetHeightRecursively } from './CustomizePageWidgetUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {
