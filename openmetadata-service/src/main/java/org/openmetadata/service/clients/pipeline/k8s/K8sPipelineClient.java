@@ -42,6 +42,7 @@ import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodTemplateSpec;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.util.ClientBuilder;
@@ -1596,16 +1597,43 @@ public class K8sPipelineClient extends PipelineServiceClient {
     if (k8sConfig.getFsGroup() != null) {
       context.setFsGroup(k8sConfig.getFsGroup());
     }
+    V1SeccompProfile seccompProfile = buildSeccompProfile();
+    if (seccompProfile != null) {
+      context.setSeccompProfile(seccompProfile);
+    }
     return context;
   }
 
   private V1SecurityContext buildContainerSecurityContext() {
-    return new V1SecurityContext()
-        .runAsNonRoot(k8sConfig.isRunAsNonRoot())
-        .runAsUser(k8sConfig.getRunAsUser())
-        .allowPrivilegeEscalation(false)
-        .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
-        .capabilities(new V1Capabilities().drop(List.of("ALL")));
+    V1SecurityContext context =
+        new V1SecurityContext()
+            .runAsNonRoot(k8sConfig.isRunAsNonRoot())
+            .runAsUser(k8sConfig.getRunAsUser())
+            .allowPrivilegeEscalation(false)
+            .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
+            .capabilities(new V1Capabilities().drop(List.of("ALL")));
+    V1SeccompProfile seccompProfile = buildSeccompProfile();
+    if (seccompProfile != null) {
+      context.setSeccompProfile(seccompProfile);
+    }
+    return context;
+  }
+
+  /**
+   * Build a {@link V1SeccompProfile} from the configured seccompProfileType, or {@code null} when
+   * unset. Setting this is required for namespaces enforcing the "restricted" Pod Security
+   * Standard, which mandates an explicit seccompProfile on every pod and container.
+   */
+  private V1SeccompProfile buildSeccompProfile() {
+    String type = k8sConfig.getSeccompProfileType();
+    if (StringUtils.isBlank(type)) {
+      return null;
+    }
+    V1SeccompProfile profile = new V1SeccompProfile().type(type);
+    if ("Localhost".equals(type)) {
+      profile.localhostProfile(k8sConfig.getSeccompLocalhostProfile());
+    }
+    return profile;
   }
 
   @VisibleForTesting
@@ -1717,6 +1745,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1727,6 +1756,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .name(CONTAINER_NAME_AUTOMATION)
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
+                                            .securityContext(buildContainerSecurityContext())
                                             .command(List.of(PYTHON_MAIN_PY, RUN_AUTOMATION_PY))
                                             .env(envVars)
                                             .resources(
@@ -1755,6 +1785,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                             new V1PodSpec()
                                 .serviceAccountName(k8sConfig.getServiceAccountName())
                                 .restartPolicy(RESTART_POLICY_NEVER)
+                                .securityContext(buildPodSecurityContext())
                                 .imagePullSecrets(
                                     k8sConfig.getImagePullSecrets().isEmpty()
                                         ? null
@@ -1765,6 +1796,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
                                             .name(CONTAINER_NAME_APPLICATION)
                                             .image(k8sConfig.getIngestionImage())
                                             .imagePullPolicy(k8sConfig.getImagePullPolicy())
+                                            .securityContext(buildContainerSecurityContext())
                                             .command(
                                                 List.of(
                                                     PYTHON_MAIN_PY,

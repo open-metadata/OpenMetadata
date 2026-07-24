@@ -730,11 +730,12 @@ pipelineServiceClientConfiguration:
     runAsGroup: ${K8S_RUN_AS_GROUP:-1000}
     fsGroup: ${K8S_FS_GROUP:-1000}
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
+    seccompProfileType: ${K8S_SECCOMP_PROFILE_TYPE:-""}
+    seccompLocalhostProfile: ${K8S_SECCOMP_LOCALHOST_PROFILE:-""}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
     tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
-
 
 # no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
 # to secure your instance of OpenMetadata with TLS and encryption at rest.

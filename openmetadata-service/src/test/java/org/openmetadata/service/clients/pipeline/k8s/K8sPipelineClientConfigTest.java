@@ -16,6 +16,7 @@ package org.openmetadata.service.clients.pipeline.k8s;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,6 +47,7 @@ class K8sPipelineClientConfigTest {
     assertEquals(Long.valueOf(1000), config.getRunAsGroup());
     assertEquals(Long.valueOf(1000), config.getFsGroup());
     assertTrue(config.isRunAsNonRoot());
+    assertNull(config.getSeccompProfileType());
     assertTrue(config.getImagePullSecrets().isEmpty());
     assertTrue(config.getNodeSelector().isEmpty());
     assertTrue(config.getExtraEnvVars().isEmpty());
@@ -75,6 +77,7 @@ class K8sPipelineClientConfigTest {
     params.put("runAsGroup", "2000");
     params.put("fsGroup", "2000");
     params.put("runAsNonRoot", "false");
+    params.put("seccompProfileType", "RuntimeDefault");
 
     K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
 
@@ -91,6 +94,63 @@ class K8sPipelineClientConfigTest {
     assertEquals(Long.valueOf(2000), config.getRunAsGroup());
     assertEquals(Long.valueOf(2000), config.getFsGroup());
     assertFalse(config.isRunAsNonRoot());
+    assertEquals("RuntimeDefault", config.getSeccompProfileType());
+  }
+
+  @Test
+  void testSeccompProfileTypeBlankIsTreatedAsUnset() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "   ");
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+
+    assertNull(config.getSeccompProfileType());
+  }
+
+  @Test
+  void testInvalidSeccompProfileTypeIsRejected() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "NotAValidProfile");
+
+    PipelineServiceClientException ex =
+        assertThrows(
+            PipelineServiceClientException.class, () -> new K8sPipelineClientConfig(params));
+    assertTrue(ex.getMessage().contains("seccompProfileType"));
+  }
+
+  @Test
+  void testLocalhostSeccompRequiresProfilePath() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "Localhost");
+
+    PipelineServiceClientException ex =
+        assertThrows(
+            PipelineServiceClientException.class, () -> new K8sPipelineClientConfig(params));
+    assertTrue(ex.getMessage().contains("seccompLocalhostProfile"));
+  }
+
+  @Test
+  void testLocalhostSeccompWithProfilePathIsAccepted() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "Localhost");
+    params.put("seccompLocalhostProfile", "profiles/audit.json");
+
+    K8sPipelineClientConfig config = new K8sPipelineClientConfig(params);
+
+    assertEquals("Localhost", config.getSeccompProfileType());
+    assertEquals("profiles/audit.json", config.getSeccompLocalhostProfile());
+  }
+
+  @Test
+  void testSeccompLocalhostProfileWithoutLocalhostTypeIsRejected() {
+    Map<String, Object> params = new HashMap<>();
+    params.put("seccompProfileType", "RuntimeDefault");
+    params.put("seccompLocalhostProfile", "profiles/audit.json");
+
+    PipelineServiceClientException ex =
+        assertThrows(
+            PipelineServiceClientException.class, () -> new K8sPipelineClientConfig(params));
+    assertTrue(ex.getMessage().contains("seccompLocalhostProfile"));
   }
 
   @Test
