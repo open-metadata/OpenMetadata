@@ -26,6 +26,7 @@ import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -184,6 +186,131 @@ public class ColumnCustomPropertiesIT {
           assertEquals("inline-on-create-name", ext.get(propName));
         }
       }
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_bulkCreatePersistsExtension(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("bulkCreateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+      Map<String, Object> idExtension = new HashMap<>();
+      idExtension.put(propName, "bulk-create-id");
+      Map<String, Object> nameExtension = new HashMap<>();
+      nameExtension.put(propName, "bulk-create-name");
+
+      Column idColumn =
+          new Column()
+              .withName("id")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(idExtension);
+      Column nameColumn =
+          new Column()
+              .withName("name")
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(255)
+              .withExtension(nameExtension);
+
+      String tableName = ns.prefix("bulkCreateCpTable");
+      CreateTable create =
+          new CreateTable()
+              .withName(tableName)
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(idColumn, nameColumn));
+
+      BulkOperationResult result = client.tables().bulkCreateOrUpdate(List.of(create));
+      assertEquals(
+          1,
+          result.getNumberOfRowsPassed(),
+          "bulk create of a single new table should succeed");
+
+      Table reloaded =
+          client
+              .tables()
+              .getByName(schema.getFullyQualifiedName() + "." + tableName, "columns,extension");
+      assertNotNull(reloaded.getColumns());
+      assertEquals(2, reloaded.getColumns().size());
+      for (Column c : reloaded.getColumns()) {
+        assertNotNull(
+            c.getExtension(),
+            "column " + c.getName() + " lost its inline extension on bulk PUT create");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> ext = (Map<String, Object>) c.getExtension();
+        if ("id".equals(c.getName())) {
+          assertEquals("bulk-create-id", ext.get(propName));
+        } else if ("name".equals(c.getName())) {
+          assertEquals("bulk-create-name", ext.get(propName));
+        }
+      }
+    } finally {
+      deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
+    }
+  }
+
+  @Test
+  void test_tableColumn_bulkUpdatePersistsExtension(TestNamespace ns) throws Exception {
+    String propName = ns.prefix("bulkUpdateProp");
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    try {
+      addCustomPropertyToColumnType(client, TABLE_COLUMN, propName, STRING_TYPE, null);
+
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      String tableName = ns.prefix("bulkUpdateCpTable");
+
+      Map<String, Object> initialExtension = new HashMap<>();
+      initialExtension.put(propName, "before-bulk-update");
+      Column initialIdColumn =
+          new Column()
+              .withName("id")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(initialExtension);
+      CreateTable initialCreate =
+          new CreateTable()
+              .withName(tableName)
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(initialIdColumn));
+      client.tables().create(initialCreate);
+
+      Map<String, Object> updatedExtension = new HashMap<>();
+      updatedExtension.put(propName, "after-bulk-update");
+      Column updatedIdColumn =
+          new Column()
+              .withName("id")
+              .withDataType(ColumnDataType.BIGINT)
+              .withExtension(updatedExtension);
+      CreateTable bulkUpdate =
+          new CreateTable()
+              .withName(tableName)
+              .withDatabaseSchema(schema.getFullyQualifiedName())
+              .withColumns(List.of(updatedIdColumn));
+
+      BulkOperationResult result = client.tables().bulkCreateOrUpdate(List.of(bulkUpdate));
+      assertEquals(
+          1,
+          result.getNumberOfRowsPassed(),
+          "bulk upsert of an existing table should succeed as an update");
+
+      Table reloaded =
+          client
+              .tables()
+              .getByName(schema.getFullyQualifiedName() + "." + tableName, "columns,extension");
+      assertNotNull(reloaded.getColumns());
+      Column idColumn = reloaded.getColumns().get(0);
+      assertNotNull(
+          idColumn.getExtension(), "column extension lost after bulk PUT update of existing table");
+      @SuppressWarnings("unchecked")
+      Map<String, Object> ext = (Map<String, Object>) idColumn.getExtension();
+      assertEquals("after-bulk-update", ext.get(propName));
     } finally {
       deleteCustomPropertyFromColumnType(client, TABLE_COLUMN, propName);
     }
