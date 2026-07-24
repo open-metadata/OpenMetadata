@@ -10380,8 +10380,6 @@ public interface CollectionDAO {
       deleteIncidents(entityFQNHash);
     }
 
-    // The record's chain state, projected at write time. `createdAt` only ever moves down
-    // (LEAST) so replays or out-of-order syncs cannot shrink an incident's lifetime.
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, "
@@ -10414,6 +10412,21 @@ public interface CollectionDAO {
         @Bind("severity") String severity,
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
+
+    @Transaction
+    default void insertRecordWithIncident(
+        String recordFQN,
+        String jsonSchema,
+        String json,
+        String stateId,
+        String statusType,
+        String assignee,
+        String severity,
+        long timestamp,
+        String recordId) {
+      insert(recordFQN, jsonSchema, json);
+      upsertIncident(stateId, recordFQN, statusType, assignee, severity, timestamp, recordId);
+    }
 
     @SqlQuery(
         "SELECT json FROM "
@@ -10541,9 +10554,6 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
-    // Groups are served from the write-time incident summary (one row per stateId chain),
-    // so the read is O(open incidents) regardless of history depth. Column names mirror the
-    // time-series table, letting ListFilter's incident conditions apply verbatim under alias i.
     String INCIDENT_GROUPS_FROM =
         """
         FROM test_case_incident i
@@ -10552,9 +10562,6 @@ public interface CollectionDAO {
         <cond> AND i.testCaseResolutionStatusType IN (<openStatuses>) AND tc.deleted = FALSE
         """;
 
-    // statusRank maps the triage order Assigned > Ack > New so MIN() yields the most
-    // actionable current status; severity strings sort Severity1 < ... < Severity5 with
-    // Severity1 most critical, so MIN() yields the group's most critical severity.
     @SqlQuery(
         "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
             + "MIN(i.severity) AS severity, "
@@ -10610,13 +10617,8 @@ public interface CollectionDAO {
     default IncidentGroupPage listIncidentGroups(
         IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
       IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
-      // getCondition() first: building conditions registers indexed bind params (e.g. the
-      // status IN placeholders) on the filter, which the params snapshot must include.
       String condition = filter.getCondition();
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
-      // Positive IN over the open statuses instead of `<> Resolved`: the negative predicate
-      // cannot drive idx_tci_status_fqn and degrades to a scan of every summary row ever
-      // created, defeating the O(open incidents) purpose of this table.
       List<String> openStatusBinds = new ArrayList<>();
       int openStatusIndex = 0;
       for (TestCaseResolutionStatusTypes status : TestCaseResolutionStatusTypes.values()) {

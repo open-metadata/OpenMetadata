@@ -297,20 +297,17 @@ public class TestCaseResolutionStatusRepository
     persistRecord(recordFQN, recordEntity);
   }
 
-  // Single persistence choke point for both write paths (legacy storeInternal and
-  // task-driven syncFromTask): the immutable log insert plus the write-time projection of the
-  // chain's current state into test_case_incident, in the same transaction. The summary upsert
-  // must live here and not in only one path — API-created records (incl. bulk) never pass
-  // through syncFromTask, and task-driven records never pass through storeInternal's insert.
   private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
     EntityReference testCaseReference = recordEntity.getTestCaseReference();
     recordEntity.withTestCaseReference(null);
-    timeSeriesDao.insert(recordFQN, entityType, JsonUtils.pojoToJson(recordEntity));
+    String recordJson = JsonUtils.pojoToJson(recordEntity);
     recordEntity.withTestCaseReference(testCaseReference);
     ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-        .upsertIncident(
-            recordEntity.getStateId().toString(),
+        .insertRecordWithIncident(
             recordFQN,
+            entityType,
+            recordJson,
+            recordEntity.getStateId().toString(),
             recordEntity.getTestCaseResolutionStatusType().value(),
             extractAssigneeName(recordEntity),
             recordEntity.getSeverity() != null ? recordEntity.getSeverity().value() : null,
@@ -318,8 +315,6 @@ public class TestCaseResolutionStatusRepository
             recordEntity.getId().toString());
   }
 
-  // Details arrive as a typed Assigned from internal callers but as a raw map from the API
-  // DTO (schema oneOf -> Object), so convert by declared status type instead of instanceof.
   private static String extractAssigneeName(TestCaseResolutionStatus recordEntity) {
     String result = null;
     if (recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Assigned
