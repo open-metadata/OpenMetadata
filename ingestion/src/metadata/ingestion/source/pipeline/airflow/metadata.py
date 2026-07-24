@@ -132,6 +132,8 @@ class AirflowSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
+    _status_cache_dag_id: str | None = None
+
     def __init__(
         self,
         config: WorkflowSource,
@@ -141,6 +143,11 @@ class AirflowSource(PipelineServiceSource):
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
         self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}  # noqa: UP006
+
+        # Status and lineage stages request the same DAG's runs back-to-back;
+        # cache the last DAG so we query once per DAG instead of twice.
+        self._status_cache_dag_id = None
+        self._status_cache_runs: list[DagRun] = []
 
         self._execution_date_column = None
         self._is_remote_airflow_3 = None
@@ -262,6 +269,8 @@ class AirflowSource(PipelineServiceSource):
         """
         Return the DagRuns of given dag
         """
+        if self._status_cache_dag_id == dag_id:
+            return self._status_cache_runs
         try:
             # The Airflow SDK is always v3.x (which has logical_date on the ORM model),
             # but we may connect to Airflow 2.x databases (which have execution_date column).
@@ -303,6 +312,8 @@ class AirflowSource(PipelineServiceSource):
 
                 dag_runs.append(DagRun(**kwargs))
 
+            self._status_cache_dag_id = dag_id
+            self._status_cache_runs = dag_runs
             return dag_runs  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -486,9 +497,9 @@ class AirflowSource(PipelineServiceSource):
             return None
         try:
             return json.loads(zlib.decompress(compressed_data))
-        except zlib.error as exc:
+        except (zlib.error, json.JSONDecodeError, ValueError, MemoryError) as exc:
             logger.warning(
-                f"Failed to decompress serialized DAG data for '{dag_id}'. "
+                f"Failed to read serialized DAG data for '{dag_id}'. "
                 f"Ensure COMPRESS_SERIALIZED_DAGS uses zlib compression (the Airflow default): {exc}"
             )
             return None
@@ -704,9 +715,12 @@ class AirflowSource(PipelineServiceSource):
         :return: List of tasks
         """
         return [
-            Task(
+            Task(  # pyright: ignore[reportCallIssue]
                 name=task.task_id,
-                description=task.doc_md,
+                description=next(
+                    (doc for doc in (task.doc_md, task.doc, task.doc_json, task.doc_yaml, task.doc_rst) if doc),
+                    None,
+                ),
                 sourceUrl=SourceUrl(
                     (  # noqa: UP034
                         f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
