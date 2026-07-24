@@ -661,11 +661,18 @@ export class OverviewPageObject extends RightPanelBase {
     };
 
     // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editOwnersIcon.click({ force: true });
+    await this.editOwnersIcon.click({ force: true, timeout: 30_000 });
 
-    await this.selectOwnerTabsRoleTab.waitFor({ state: 'visible' });
+    await this.selectOwnerTabsRoleTab.waitFor({
+      state: 'visible',
+      timeout: 30_000,
+    });
 
     if (type === 'Users') {
+      await this.selectOwnerUsersTab.waitFor({
+        state: 'visible',
+        timeout: 30_000,
+      });
       const isAlreadyActive = await this.selectOwnerUsersTab.getAttribute(
         'aria-selected'
       );
@@ -676,12 +683,13 @@ export class OverviewPageObject extends RightPanelBase {
 
     const searchBar =
       type === 'Users' ? this.userSearchBar : this.teamsSearchBar;
-    await searchBar.waitFor({ state: 'visible' });
+    await searchBar.waitFor({ state: 'visible', timeout: 30_000 });
 
     const searchResponsePromise = this.page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes(`index=${searchIndexMap[type]}`)
+        response.url().includes(`index=${searchIndexMap[type]}`),
+      { timeout: 30_000 }
     );
 
     await searchBar.fill(ownerName);

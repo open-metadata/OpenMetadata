@@ -27,6 +27,7 @@ import {
   removeOwner,
   updateOwner,
   visitEntityPage,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
@@ -262,6 +263,9 @@ export class DatabaseClass extends EntityClass {
 
   async verifyOwnerChangeInES(page: Page, owner: string) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
+    await page.goto('/explore/tables');
+    await waitForAllLoadersToDisappear(page);
+
     const ownerLink = page
       .getByTestId(`table-data-card_${searchTerm}`)
       .getByTestId('owner-label')
@@ -274,6 +278,9 @@ export class DatabaseClass extends EntityClass {
 
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
+    await page.goto('/explore/tables');
+    await waitForAllLoadersToDisappear(page);
+
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
 
     for (const domain of domains) {
