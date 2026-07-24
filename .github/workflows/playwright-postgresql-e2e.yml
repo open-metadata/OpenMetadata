@@ -92,9 +92,37 @@ jobs:
   #                                                the "safe to test" label
   gate:
     runs-on: ubuntu-latest
+    # write on pull-requests is only needed for the auto-strip-label step
+    # below (fork sync). All other jobs keep the workflow-level read scope.
+    permissions:
+      contents: read
+      pull-requests: write
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
     steps:
+      # SECURITY: "safe to test" persists on the PR after it's applied.
+      # If we accept it on later `synchronize` events, a fork author can
+      # push malicious commits AFTER a maintainer vouched for the earlier
+      # head, and those unreviewed commits execute with base-repo secrets.
+      # Strip the label whenever the fork syncs so it only ever vouches
+      # for the SHA the maintainer actually saw. Re-labelling is required
+      # before the next fork push can run CI.
+      - name: Invalidate safe-to-test on fork sync
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.action == 'synchronize' &&
+          github.event.pull_request.head.repo.full_name != github.repository &&
+          contains(github.event.pull_request.labels.*.name, 'safe to test')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "::warning::Fork sync detected; removing 'safe to test' label (re-apply after reviewing the new commits)."
+          gh api -X DELETE "/repos/${REPO}/issues/${PR_NUMBER}/labels/safe%20to%20test" \
+            || echo "Label already absent"
+
       - name: Compute gate decision
         id: gate
         env:
@@ -116,8 +144,11 @@ jobs:
           if [[ "$HEAD_REPO" == "$BASE_REPO" ]]; then
             [[ "$EVENT" == "pull_request" ]] && decide true || decide false
           fi
-          # Fork PR — pull_request_target must fire AND "safe to test" must be present
-          if [[ "$EVENT" == "pull_request_target" ]] && echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
+          # Fork PR — pull_request_target must fire AND "safe to test" must be present.
+          # For synchronize events the previous step already stripped the label, so
+          # this check will correctly reject the run (forcing a re-label after review).
+          if [[ "$EVENT" == "pull_request_target" && "$ACTION" != "synchronize" ]] && \
+             echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
             decide true
           fi
           decide false
@@ -1247,12 +1278,20 @@ jobs:
       actions: read
       contents: read
     steps:
+      # SECURITY: this job runs `require('./.github/scripts/render_playwright_summary.cjs')`
+      # via `actions/github-script` with GITHUB_TOKEN in scope, so whichever tree we
+      # check out here becomes trusted code executing with token access. For fork PRs
+      # (pull_request_target) we MUST NOT check out the fork's head — a malicious fork
+      # could otherwise edit render_playwright_summary.cjs to exfiltrate the token or
+      # rewrite the check result. Use the base branch's SHA on pull_request_target so
+      # only reviewed-and-merged versions of these scripts ever run. Everything else
+      # keeps github.sha (PR merge commit / merge-queue commit / dispatch ref).
       - name: Checkout
         id: checkout
         continue-on-error: true
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
