@@ -24,6 +24,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
@@ -38,6 +40,7 @@ import org.openmetadata.service.Entity;
  * ContextMemoryRepository#getReindexFilter} carries the same rule into the bulk reindex as a DB
  * query. These tests pin both halves across every visibility state.
  */
+@Execution(ExecutionMode.SAME_THREAD)
 class ContextMemoryRepositoryTest {
 
   private ContextMemoryRepository repository;
@@ -105,6 +108,12 @@ class ContextMemoryRepositoryTest {
         .thenReturn(new EntityReference().withType("typeWithoutRepository"));
 
     assertTrue(Entity.isSearchIndexable(repoLess));
+  }
+
+  @Test
+  void entityFacade_isSearchIndexable_falseForMissingEntityOrReference() {
+    assertFalse(Entity.isSearchIndexable(null));
+    assertFalse(Entity.isSearchIndexable(mock(EntityInterface.class)));
   }
 
   @Test

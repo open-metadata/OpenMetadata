@@ -1428,7 +1428,23 @@ public class SearchRepository {
    */
   public void createEntitiesIndex(List<EntityInterface> entities) throws IOException {
     if (!nullOrEmpty(entities)) {
-      String entityType = entities.getFirst().getEntityReference().getType();
+      String entityType = null;
+      for (EntityInterface entity : entities) {
+        try {
+          EntityReference entityReference = entity != null ? entity.getEntityReference() : null;
+          if (entityReference != null) {
+            entityType = entityReference.getType();
+            if (!nullOrEmpty(entityType)) {
+              break;
+            }
+          }
+        } catch (Exception ie) {
+          LOG.error("Issue resolving entity type for bulk search index create", ie);
+        }
+      }
+      if (nullOrEmpty(entityType)) {
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
@@ -1444,17 +1460,17 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
-          if (!Entity.isSearchIndexable(entity)) {
-            continue;
-          }
           try {
+            if (!Entity.isSearchIndexable(entity)) {
+              continue;
+            }
             SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
             docs.add(Collections.singletonMap(entity.getId().toString(), doc));
           } catch (Exception ie) {
             LOG.error(
                 "Issue in building search document for entity [{}] and entityType [{}]",
-                entity.getId(),
+                entity != null ? entity.getId() : null,
                 entityType,
                 ie);
           }

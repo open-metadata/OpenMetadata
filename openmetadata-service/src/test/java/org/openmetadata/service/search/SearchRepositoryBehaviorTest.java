@@ -596,6 +596,25 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
+    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    when(broken.getEntityReference())
+        .thenThrow(new IllegalStateException("cannot resolve entity reference"));
+    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
+        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
+
+    repository.createEntitiesIndex(List.of(broken, valid));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
+    assertEquals(1, docsCaptor.getValue().size());
+    assertEquals(
+        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
+  }
+
+  @Test
   void createEntitiesIndexSkipsBulkCreateWhenNoDocumentCanBeBuilt() throws IOException {
     EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
     EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");

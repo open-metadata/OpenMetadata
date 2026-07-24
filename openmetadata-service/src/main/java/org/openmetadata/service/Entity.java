@@ -744,10 +744,21 @@ public final class Entity {
    * EntityRepository#isSearchIndexable} policy (e.g. {@code ContextMemoryRepository} excludes
    * non-org-wide memories). Defaults to {@code true} for entity types with no regular entity
    * repository (index-only / time-series sub-entities), so the live index paths never throw on an
-   * indexable but repository-less type.
+   * indexable but repository-less type. Returns {@code false} when the entity or its reference is
+   * missing.
    */
   public static boolean isSearchIndexable(EntityInterface entity) {
-    String entityType = entity.getEntityReference().getType();
+    if (entity == null) {
+      return false;
+    }
+    EntityReference entityReference = entity.getEntityReference();
+    if (entityReference == null) {
+      return false;
+    }
+    String entityType = entityReference.getType();
+    if (entityType == null) {
+      return false;
+    }
     EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
     return repository == null || repository.isSearchIndexable(entity);
   }
