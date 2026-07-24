@@ -428,10 +428,9 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         createEntity(memoryWithVisibility(ns, "private-mem", MemoryVisibility.PRIVATE));
     ContextMemory sharedMemory =
         createEntity(memoryWithVisibility(ns, "shared-mem", MemoryVisibility.SHARED));
-    // Created last: once it is searchable the earlier two have had at least as long to be indexed,
-    // fencing against the asynchronous indexing pipeline so absence below means "excluded", not
-    // "not
-    // yet indexed".
+    // Create the ENTITY memory last. Once it is searchable, keep checking the earlier PRIVATE and
+    // SHARED memories across a stability window so delayed or out-of-order indexing cannot make the
+    // test pass before a leaked document appears.
     ContextMemory entityMemory =
         createEntity(memoryWithVisibility(ns, "entity-mem", MemoryVisibility.ENTITY));
 
@@ -447,13 +446,23 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
                         .contains(entityMemory.getId().toString()),
                     "ENTITY-visibility memory must be searchable"));
 
-    assertFalse(
-        searchForEntity(privateMemory.getId().toString())
-            .contains(privateMemory.getId().toString()),
-        "PRIVATE memory must not be in the search index");
-    assertFalse(
-        searchForEntity(sharedMemory.getId().toString()).contains(sharedMemory.getId().toString()),
-        "SHARED memory must not be in the search index");
+    Awaitility.await("PRIVATE and SHARED memories remain excluded")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .during(Duration.ofSeconds(10))
+        .atMost(Duration.ofSeconds(30))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertFalse(
+                  searchForEntity(privateMemory.getId().toString())
+                      .contains(privateMemory.getId().toString()),
+                  "PRIVATE memory must not be in the search index");
+              assertFalse(
+                  searchForEntity(sharedMemory.getId().toString())
+                      .contains(sharedMemory.getId().toString()),
+                  "SHARED memory must not be in the search index");
+            });
   }
 
   @Test

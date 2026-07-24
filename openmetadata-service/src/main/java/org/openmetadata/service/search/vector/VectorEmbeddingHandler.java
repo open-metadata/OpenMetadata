@@ -43,6 +43,10 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     if (entity.getDeleted() != null && entity.getDeleted()) {
       return;
     }
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteChunks(entity);
+      return;
+    }
     updateEmbedding(entity);
   }
 

@@ -54,6 +54,7 @@ class VectorEmbeddingHandlerTest {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -82,6 +83,7 @@ class VectorEmbeddingHandlerTest {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
@@ -89,6 +91,20 @@ class VectorEmbeddingHandlerTest {
       handler.onEntityUpdated(entity, null, subjectContext);
 
       verify(vectorIndexService).updateEntityEmbeddings(any(), anyString());
+    }
+  }
+
+  @Test
+  void testOnEntityUpdatedDeletesChunksForNonIndexableEntity() {
+    EntityInterface entity = createMockEntity("contextMemory");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.isSearchIndexable(entity)).thenReturn(false);
+
+      handler.onEntityUpdated(entity, null, subjectContext);
+
+      verify(vectorIndexService).deleteEntityChunks(entity.getId().toString());
+      verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
     }
   }
 
