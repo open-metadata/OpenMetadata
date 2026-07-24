@@ -216,12 +216,13 @@ test(
         .click();
       await confirmIngestionPipelineHardDelete(page);
 
-      await expect(
-        page.getByTestId('assign-error-placeholder-Pipeline')
-      ).toContainText(
+      const emptyPlaceholder = page.getByTestId('empty-placeholder');
+      await expect(emptyPlaceholder).toContainText(
         "Add a pipeline to automate the data quality tests at a regular schedule. It's advisable to align the schedule with the frequency of table loads for optimal results"
       );
-      await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
+      await expect(
+        emptyPlaceholder.getByRole('button', { name: /add pipeline/i })
+      ).toBeVisible();
     });
 
     await table.delete(apiContext);

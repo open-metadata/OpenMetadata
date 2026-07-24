@@ -285,9 +285,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.url().includes('fields=owners') &&
       res.status() === 200
   );
-  const addPlaceholderButton = page.getByTestId('add-placeholder-button');
+  const emptyStateAddButton = page
+    .getByTestId('empty-placeholder')
+    .getByRole('button', { name: /add pipeline/i });
   const addPipelineButton = page.getByTestId('add-pipeline-button');
-  const addButton = addPlaceholderButton.or(addPipelineButton);
+  const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
   await testSuiteByNameResponse;

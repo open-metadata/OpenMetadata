@@ -28,12 +28,14 @@ import {
   ForwardedRef,
   forwardRef,
   MouseEvent,
+  UIEvent,
   useCallback,
   useImperativeHandle,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
@@ -48,16 +50,23 @@ import {
   FolderFilesState,
 } from './DocumentsView.interface';
 
+const FOLDERS_SCROLL_THRESHOLD = 100;
+
 const DocumentFolderView = (
   {
     folders,
     isLoading,
     totalFileCount = 0,
+    totalFolderCount,
     selectedFolderId,
     canCreate = false,
     canDelete = false,
+    hasMoreFolders = false,
+    isLoadingMoreFolders = false,
     onSelectFolder,
     onFoldersChanged,
+    onUploadToFolder,
+    onLoadMoreFolders,
   }: DocumentFolderViewProps,
   ref: ForwardedRef<DocumentFolderViewHandle>
 ) => {
@@ -69,12 +78,27 @@ const DocumentFolderView = (
   const [folderFilesState, setFolderFilesState] = useState<
     Map<string, FolderFilesState>
   >(new Map());
+  const [fetchingFolderIds, setFetchingFolderIds] = useState<Set<string>>(
+    new Set()
+  );
+
+  const handleFoldersScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (
+      hasMoreFolders &&
+      !isLoadingMoreFolders &&
+      scrollHeight - scrollTop - clientHeight < FOLDERS_SCROLL_THRESHOLD
+    ) {
+      onLoadMoreFolders?.();
+    }
+  };
 
   const fetchFolderFilesIfNeeded = useCallback(
     async (folderId: string) => {
       if (folderFilesState.has(folderId)) {
         return;
       }
+      setFetchingFolderIds((prev) => new Set(prev).add(folderId));
       try {
         const response = await listContextFiles({
           folderId,
@@ -90,6 +114,13 @@ const DocumentFolderView = (
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
+      } finally {
+        setFetchingFolderIds((prev) => {
+          const next = new Set(prev);
+          next.delete(folderId);
+
+          return next;
+        });
       }
     },
     [folderFilesState]
@@ -290,7 +321,8 @@ const DocumentFolderView = (
                 className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 <span>
-                  {folders.length} {t('label.folder-plural')}
+                  {totalFolderCount ?? folders.length}{' '}
+                  {t('label.folder-plural')}
                 </span>
                 <Dot className="tw:text-quaternary" size="micro" />
                 <span data-testid="folder-view-file-count">
@@ -311,7 +343,9 @@ const DocumentFolderView = (
           )}
         </div>
 
-        <div className="tw:flex-1 tw:overflow-y-auto">
+        <div
+          className="tw:flex-1 tw:overflow-y-auto"
+          onScroll={handleFoldersScroll}>
           {isLoading ? (
             <div className="tw:flex tw:flex-col tw:gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -347,6 +381,13 @@ const DocumentFolderView = (
                   isFolderFilesExpanded && !hasMore
                     ? t('label.show-less')
                     : t('label.view-more');
+                const isFolderLoading =
+                  isExpanded && fetchingFolderIds.has(folder.id);
+                const isFolderEmpty =
+                  isExpanded &&
+                  !hasMore &&
+                  !isFolderLoading &&
+                  allFetchedFiles.length === 0;
 
                 return (
                   <Tree.Item
@@ -365,7 +406,7 @@ const DocumentFolderView = (
                           color="tertiary"
                           iconLeading={
                             <FolderIcon
-                              className="tw:text-quaternary"
+                              className="tw:text-quaternary tw:shrink-0"
                               height={14}
                               width={14}
                             />
@@ -408,6 +449,81 @@ const DocumentFolderView = (
                         </div>
                       </div>
                     </Tree.ItemContent>
+
+                    {isFolderLoading && (
+                      <Tree.Item
+                        id={`${folder.id}-loading`}
+                        key={`${folder.id}-loading`}
+                        textValue={t('label.loading')}>
+                        <Tree.ItemContent
+                          className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
+                          showExpandIcon={false}>
+                          <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
+                            {Array.from({ length: 2 }).map((_, i) => (
+                              <Skeleton
+                                height="20px"
+                                key={i}
+                                variant="rounded"
+                                width="100%"
+                              />
+                            ))}
+                          </div>
+                        </Tree.ItemContent>
+                      </Tree.Item>
+                    )}
+
+                    {isFolderEmpty && (
+                      <Tree.Item
+                        id={`${folder.id}-empty`}
+                        key={`${folder.id}-empty`}
+                        textValue={t('label.folder-name-is-empty', {
+                          folderName: getEntityName(folder),
+                        })}>
+                        <Tree.ItemContent
+                          className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
+                          showExpandIcon={false}>
+                          <div className="tw:flex tw:flex-1 tw:items-center tw:gap-3 tw:py-2">
+                            <div className="tw:p-2 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0 tw:shrink-0">
+                              <UploadIcon
+                                className="tw:text-quaternary"
+                                height={14}
+                                width={14}
+                              />
+                            </div>
+                            <div className="tw:min-w-0 tw:flex-1">
+                              <Typography
+                                ellipsis
+                                size="text-sm"
+                                weight="medium">
+                                {t('label.folder-name-is-empty', {
+                                  folderName: getEntityName(folder),
+                                })}
+                              </Typography>
+                              <Typography
+                                className="tw:text-quaternary"
+                                size="text-xs">
+                                {t(
+                                  'message.context-center-folder-empty-subtitle'
+                                )}
+                              </Typography>
+                            </div>
+                            {onUploadToFolder && (
+                              <Button
+                                className="tw:shrink-0"
+                                color="secondary"
+                                data-testid={`folder-upload-btn-${folder.id}`}
+                                size="sm"
+                                onClick={(e: MouseEvent) => {
+                                  e.stopPropagation();
+                                  onUploadToFolder(folder.id);
+                                }}>
+                                {t('label.upload-file')}
+                              </Button>
+                            )}
+                          </div>
+                        </Tree.ItemContent>
+                      </Tree.Item>
+                    )}
 
                     {visibleFiles.map((file) => (
                       <Tree.Item
@@ -461,6 +577,13 @@ const DocumentFolderView = (
                 );
               })}
             </Tree>
+          )}
+          {!isLoading && isLoadingMoreFolders && (
+            <div
+              className="tw:flex tw:flex-col tw:gap-2 tw:px-1 tw:py-2"
+              data-testid="folders-loading-more">
+              <Skeleton height="28px" variant="rounded" width="100%" />
+            </div>
           )}
         </div>
       </Card>

@@ -18,12 +18,16 @@ the intended diagnosis).
 from unittest.mock import MagicMock, patch
 
 import pytest
+from snowflake.connector.errorcode import (
+    ER_FAILED_TO_CONNECT_TO_DB,
+    ER_HTTP_GENERAL_ERROR,
+)
+from snowflake.connector.errors import ForbiddenError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
-    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
@@ -34,7 +38,6 @@ from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_ERRORS,
     SNOWFLAKE_PORT,
     SnowflakeChecks,
-    _count_summary,
 )
 
 
@@ -71,14 +74,40 @@ def test_auth_failure_message_is_classified():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Authentication failed"
 
 
-def test_bad_account_login_404_is_classified():
-    error = _SqlAlchemyError(
-        _SnowflakeError(
-            "None: 404 Not Found: post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request",
-            errno=290404,
-        )
+def _bad_account_error() -> ForbiddenError:
+    """A login-endpoint 403, reproducing snowflake/connector/auth/_auth.py's
+    `except ForbiddenError` re-raise verbatim (message + errno)."""
+    return ForbiddenError(
+        msg=(
+            "Failed to connect to DB. Verify the account name is correct: "
+            "nope99999.us-east-1.snowflakecomputing.com:443. 403 Forbidden: "
+            "post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request"
+        ),
+        errno=ER_FAILED_TO_CONNECT_TO_DB,
+        sqlstate="08001",
     )
-    assert SNOWFLAKE_ERRORS.classify(error).title == "Snowflake account not found"
+
+
+def test_a_login_endpoint_403_is_classified():
+    assert (
+        SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title
+        == "Snowflake rejected the login endpoint request"
+    )
+
+
+def test_the_bad_account_errno_is_not_290404():
+    """Pins why the rule is keyed on the message: 290404 appears nowhere in the
+    connector, and this path's errno is 540001 only because ForbiddenError.__init__
+    adds ER_HTTP_GENERAL_ERROR to the errno it is passed."""
+    error = _bad_account_error()
+    assert error.errno != 290404
+    assert error.errno == ER_HTTP_GENERAL_ERROR + ER_FAILED_TO_CONNECT_TO_DB == 540001
+
+
+def test_a_login_endpoint_403_is_not_read_as_a_generic_auth_failure():
+    """The 403 path carries errno 540001, not the overloaded 250001, but the
+    message rule must still win regardless of ordering."""
+    assert SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title != "Authentication failed"
 
 
 def test_mfa_required_beats_generic_auth():
@@ -175,21 +204,33 @@ def test_network_errors_classify_through_including():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Connection timed out"
 
 
-def test_count_summary_marks_empty_count_and_cap():
-    assert _count_summary([], "table") == "no tables enumerated"
-    assert _count_summary([object()] * 3, "database") == "3 databases enumerated"
-    assert _count_summary([object()] * 3, "view") == "3 views enumerated"
-    assert _count_summary([object()] * 1, "stream") == "1 stream enumerated"
-    assert _count_summary([object()] * 1, "table") == "1 table enumerated"
-    capped = _count_summary([object()] * DEFAULT_SAMPLE_ROWS, "table")
-    assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
-
-
 def _fake_run_sql(returned_rows):
     def fake(client, statement, summarize, *args, **kwargs):
         return Evidence(summary=summarize(returned_rows), command="cmd")
 
     return fake
+
+
+@pytest.mark.parametrize(
+    ("step", "noun"),
+    [
+        (DatabaseStep.GetDatabases, "database"),
+        (DatabaseStep.GetSchemas, "schema"),
+        (DatabaseStep.GetTables, "table"),
+        (DatabaseStep.GetViews, "view"),
+        (DatabaseStep.GetStreams, "stream"),
+    ],
+)
+def test_each_listing_step_reports_its_own_noun(step, noun):
+    # Each check hardcodes its noun, so bind them through the check itself: the
+    # shared summarizer's own tests cannot catch a transposed one.
+    checks = SnowflakeChecks(db=Borrowed.of(MagicMock()), service_connection=_config(database="MYDB"))
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        side_effect=_fake_run_sql([object()] * 3),
+    ):
+        evidence = collect_checks(checks)[step]()
+    assert evidence.summary == f"3 {noun}s enumerated"
 
 
 def test_get_tables_warns_when_no_user_tables():
@@ -269,7 +310,7 @@ def test_check_access_probes_account_host_and_reports_network_failure():
     probe_error.__cause__ = TimeoutError("timed out")
     with (
         patch(
-            "metadata.ingestion.source.database.snowflake.connection.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=probe_error,
         ) as mock_probe,
         pytest.raises(CheckError) as exc,
@@ -291,7 +332,7 @@ def test_check_access_prefers_explicit_connection_argument_host():
     probe_error = NetworkUnreachableError("proxy.internal:443 is not reachable")
     with (
         patch(
-            "metadata.ingestion.source.database.snowflake.connection.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=probe_error,
         ) as mock_probe,
         pytest.raises(CheckError),
@@ -309,7 +350,7 @@ def test_check_access_honors_explicit_connection_argument_port():
     )
     with (
         patch(
-            "metadata.ingestion.source.database.snowflake.connection.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=NetworkUnreachableError("proxy.internal:8443 is not reachable"),
         ) as mock_probe,
         pytest.raises(CheckError),

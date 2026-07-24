@@ -30,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
@@ -42,19 +43,31 @@ jobs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             e2e:
               - 'openmetadata-service/**'
               - 'openmetadata-ui/**'
               - 'openmetadata-spec/**'
               - 'openmetadata-integration-tests/**'
+              - 'openmetadata-dist/**'
               - 'ingestion/**'
               - 'bootstrap/**'
               - 'conf/**'
               - 'docker/development/**'
+              - 'docker/run_local_docker.sh'
+              - 'docker/run_local_docker_common.sh'
               - 'openmetadata-clients/**'
               - 'openmetadata-airflow-apis/**'
               - 'openmetadata-mcp/**'
@@ -66,6 +79,9 @@ jobs:
               - 'openspec/**'
               - 'pom.xml'
               - 'Makefile'
+              - '.github/actions/setup-openmetadata-test-environment/**'
+              - '.github/scripts/classify_playwright_outcome.py'
+              - '.github/workflows/playwright-postgresql-e2e.yml'
             docker-compose:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
@@ -75,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
@@ -101,7 +117,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup JDK 21
         uses: actions/setup-java@v4
         with:
@@ -126,6 +143,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: openmetadata-build
+          overwrite: true
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           retention-days: 1
 
@@ -134,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' ||
        needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
@@ -149,7 +167,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Get all changed files
         id: all-changes
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -180,14 +199,18 @@ jobs:
           SPEC_COUNT=$(echo "$SPEC_FILES" | wc -w)
 
           if [ "$SPEC_COUNT" -gt 0 ] && [ "$ALL_COUNT" -eq "$SPEC_COUNT" ]; then
-            echo "spec_only_mode=true" >> "$GITHUB_OUTPUT"
-            echo "changed_specs=$SPEC_FILES" >> "$GITHUB_OUTPUT"
-            echo "matrix=$SPEC_MATRIX" >> "$GITHUB_OUTPUT"
+            {
+              echo "spec_only_mode=true"
+              echo "changed_specs=$SPEC_FILES"
+              echo "matrix=$SPEC_MATRIX"
+            } >> "$GITHUB_OUTPUT"
             echo "Spec-only mode: ${SPEC_COUNT} spec(s) changed"
           else
-            echo "spec_only_mode=false" >> "$GITHUB_OUTPUT"
-            echo "changed_specs=" >> "$GITHUB_OUTPUT"
-            echo "matrix=$FULL_MATRIX" >> "$GITHUB_OUTPUT"
+            {
+              echo "spec_only_mode=false"
+              echo "changed_specs="
+              echo "matrix=$FULL_MATRIX"
+            } >> "$GITHUB_OUTPUT"
             echo "Full suite mode (total=${ALL_COUNT}, runnable-specs=${SPEC_COUNT})"
           fi
 
@@ -210,6 +233,7 @@ jobs:
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     steps:
       - name: Free Disk Space (Ubuntu)
+        id: free-disk
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: false
@@ -221,32 +245,40 @@ jobs:
           docker-images: false
 
       - name: Checkout
+        id: checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Download Maven build artifact
+        id: download-build
         uses: actions/download-artifact@v4
         with:
           name: openmetadata-build
           path: openmetadata-dist/target
 
       - name: Setup Openmetadata Test Environment
+        id: setup-environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
           args: "-d postgresql -s true"
           ingestion_dependency: "all"
+          install-test-dependencies: "false"
 
       - name: Setup Node.js
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Install dependencies
+        id: install-dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
+        id: install-browsers
         run: npx playwright@1.57.0 install chromium --with-deps
       - name: Run Playwright tests
         id: run-tests
@@ -286,9 +318,10 @@ jobs:
 
             [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium --project=Basic"
 
+            # shellcheck disable=SC2086
             npx playwright test $PROJECT_ARGS $CHANGED_SPECS
 
-          elif [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+          elif [ "${{ matrix.shardIndex }}" = "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
             # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
@@ -298,9 +331,9 @@ jobs:
               --project=DataAssetRulesDisabled \
               --project=Basic \
               --project=SearchRBAC \
-              --project=DomainIsolation \
+              --project=DomainIsolation
 
-          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+          elif [ "${{ matrix.shardIndex }}" = "2" ]; then
             echo "🔹 Running search relevance tests on shard 2"
 
             npx playwright test \
@@ -328,7 +361,6 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
-          PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
@@ -372,87 +404,259 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+      - name: Record shard execution status
+        if: always()
+        env:
+          FREE_DISK_OUTCOME: ${{ steps.free-disk.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          DOWNLOAD_BUILD_OUTCOME: ${{ steps.download-build.outcome }}
+          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
+          INSTALL_DEPENDENCIES_OUTCOME: ${{ steps.install-dependencies.outcome }}
+          INSTALL_BROWSERS_OUTCOME: ${{ steps.install-browsers.outcome }}
+          TEST_OUTCOME: ${{ steps.run-tests.outcome }}
+        run: |
+          STATUS_DIR="openmetadata-ui/src/main/resources/ui/playwright/output"
+          mkdir -p "$STATUS_DIR"
+          jq -n \
+            --arg shard "${{ matrix.shardIndex }}" \
+            --arg freeDisk "$FREE_DISK_OUTCOME" \
+            --arg checkout "$CHECKOUT_OUTCOME" \
+            --arg downloadBuild "$DOWNLOAD_BUILD_OUTCOME" \
+            --arg setupEnvironment "$SETUP_ENVIRONMENT_OUTCOME" \
+            --arg setupNode "$SETUP_NODE_OUTCOME" \
+            --arg installDependencies "$INSTALL_DEPENDENCIES_OUTCOME" \
+            --arg installBrowsers "$INSTALL_BROWSERS_OUTCOME" \
+            --arg tests "$TEST_OUTCOME" \
+            '{
+              shard: $shard,
+              steps: {
+                freeDisk: $freeDisk,
+                checkout: $checkout,
+                downloadBuild: $downloadBuild,
+                setupEnvironment: $setupEnvironment,
+                setupNode: $setupNode,
+                installDependencies: $installDependencies,
+                installBrowsers: $installBrowsers,
+                tests: $tests
+              }
+            }' > "$STATUS_DIR/ci-status.json"
+
+      # Only humans consume this artifact — nothing in .github/ downloads
+      # playwright-report-* — and they only look at it when debugging a
+      # failure. Skipping upload on success saves ~1 minute per green shard
+      # (report is 10-50MB after retries) without losing any programmatic
+      # data — results.json is uploaded unconditionally below for the
+      # summary job.
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        continue-on-error: true
         with:
           name: playwright-report-${{ matrix.shardIndex }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
+          if-no-files-found: ignore
 
       - name: Upload test results (screenshots, traces)
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: always()
+        continue-on-error: true
         with:
           name: playwright-test-results-${{ matrix.shardIndex }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results
           retention-days: 5
+          if-no-files-found: ignore
 
       - name: Upload results JSON for summary
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: always()
         with:
           name: playwright-results-json-${{ matrix.shardIndex }}
-          path: openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+          overwrite: true
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/results.json
+            openmetadata-ui/src/main/resources/ui/playwright/output/ci-status.json
           retention-days: 1
           if-no-files-found: ignore
 
+      - name: Collect failure diagnostics
+        if: failure() || cancelled()
+        continue-on-error: true
+        run: |
+          DIAGNOSTICS_DIR="${RUNNER_TEMP}/playwright-ci-diagnostics"
+          mkdir -p "$DIAGNOSTICS_DIR"
+          df -h > "$DIAGNOSTICS_DIR/disk-usage.txt" 2>&1 || true
+          docker system df > "$DIAGNOSTICS_DIR/docker-disk-usage.txt" 2>&1 || true
+          if [ -f docker/development/docker-compose-postgres.yml ]; then
+            docker compose -f docker/development/docker-compose-postgres.yml ps --all \
+              > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
+            docker compose -f docker/development/docker-compose-postgres.yml logs --no-color --tail 5000 \
+              > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
+            # The tailed all-services log above only covers the last ~minute of the
+            # chatty server on a multi-hour shard, which misses the failing test's
+            # window. Capture the full server log (untailed) so index/search
+            # behavior at the time of the failure is available.
+            docker compose -f docker/development/docker-compose-postgres.yml \
+              logs --no-color --no-log-prefix openmetadata-server \
+              > "$DIAGNOSTICS_DIR/openmetadata-server-full.log" 2>&1 || true
+            # OpenSearch thread-pool rejected/completed counters are cumulative over
+            # the whole run, so they reveal write/refresh/search rejections even when
+            # they happened before the tail window.
+            curl -s "http://localhost:9200/_cat/thread_pool/write,refresh,search,search_throttled?v&h=node_name,name,active,queue,rejected,completed" \
+              > "$DIAGNOSTICS_DIR/opensearch-thread-pool.txt" 2>&1 || true
+            curl -s "http://localhost:9200/_cat/indices?v&h=index,health,status,docs.count,store.size,refresh.total,refresh.total_time,search.query_total&s=index" \
+              > "$DIAGNOSTICS_DIR/opensearch-indices.txt" 2>&1 || true
+          fi
+
+      - name: Upload failure diagnostics
+        uses: actions/upload-artifact@v4
+        if: failure() || cancelled()
+        continue-on-error: true
+        with:
+          name: playwright-ci-diagnostics-${{ matrix.shardIndex }}
+          path: ${{ runner.temp }}/playwright-ci-diagnostics
+          retention-days: 5
+          if-no-files-found: ignore
+
       - name: Clean Up
+        if: always()
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
   playwright-summary:
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
     if: always()
-    needs: playwright-ci-postgresql
+    needs: [check-changes, build, detect-changes, playwright-ci-postgresql]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write # Posts the consolidated PR comment
     steps:
+      - name: Checkout trusted CI classifier
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+
       - name: Download all results JSON
         if: needs.playwright-ci-postgresql.result != 'skipped'
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           pattern: playwright-results-json-*
           path: results
 
+      - name: Evaluate zero-retry gate in shadow mode
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        env:
+          EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
+          MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+        run: |
+          python3 .github/scripts/classify_playwright_outcome.py \
+            --report-glob 'results/playwright-results-json-*/results.json' \
+            --status-glob 'results/playwright-results-json-*/ci-status.json' \
+            --matrix-outcome "$MATRIX_OUTCOME" \
+            --expected-matrix-json "$EXPECTED_MATRIX" \
+            --profile postgresql-pr \
+            --source-sha "$SOURCE_SHA" \
+            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
+
+      - name: Upload Playwright shadow-gate ledger
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-shadow-gate-postgresql-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Post consolidated PR comment and gate on results
+        if: always()
         uses: actions/github-script@v7
+        env:
+          CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          DETECT_CHANGES_RESULT: ${{ needs.detect-changes.result }}
+          PLAYWRIGHT_RESULT: ${{ needs.playwright-ci-postgresql.result }}
+          E2E_CHANGED: ${{ needs.check-changes.outputs.e2e }}
+          DOCKER_COMPOSE_CHANGED: ${{ needs.check-changes.outputs.docker-compose }}
+          EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const upstreamResult = '${{ needs.playwright-ci-postgresql.result }}';
-            if (upstreamResult === 'skipped') {
-              // Distinguish the two reasons build/playwright can be skipped:
-              // 1. A non-"safe to test" label was added — build skips intentionally for fork security.
-              //    Tests will run once "safe to test" is applied or code is pushed.
-              // 2. No relevant paths changed — nothing to test.
-              const eventAction = context.payload.action;
-              const labelName   = context.payload.label?.name ?? '';
-              if (eventAction === 'labeled' && labelName !== 'safe to test') {
-                console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
-              } else {
-                console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
-              }
-              return;
-            }
-            if (upstreamResult === 'cancelled') {
-              core.setFailed('Playwright E2E tests were cancelled.');
-              return;
-            }
-
             const fs = require('fs');
             const path = require('path');
+
+            const checkChangesResult = process.env.CHECK_CHANGES_RESULT;
+            const buildResult = process.env.BUILD_RESULT;
+            const detectChangesResult = process.env.DETECT_CHANGES_RESULT;
+            const upstreamResult = process.env.PLAYWRIGHT_RESULT;
+            const eventAction = context.payload.action;
+            const labelName = context.payload.label?.name ?? '';
+            const isDraft = context.payload.pull_request?.draft === true;
+            const isNonTestLabelEvent = eventAction === 'labeled' && labelName !== 'safe to test';
+            const testsRequired = context.eventName === 'workflow_dispatch' ||
+              process.env.E2E_CHANGED === 'true' ||
+              process.env.DOCKER_COMPOSE_CHANGED === 'true';
+
+            if (isDraft) {
+              console.log('Playwright E2E tests are not required while the PR is a draft.');
+              return;
+            }
+            if (isNonTestLabelEvent) {
+              console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
+              return;
+            }
+            if (checkChangesResult === 'success' && !testsRequired) {
+              console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
+              return;
+            }
 
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
             const prNumber = context.payload.pull_request?.number;
-
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
             const commentMarker = '<!-- playwright-summary -->';
+            const infrastructureIssues = [];
+            const addInfrastructureIssue = issue => {
+              if (!infrastructureIssues.includes(issue)) infrastructureIssues.push(issue);
+            };
 
-            // Collect results from all shards
+            if (checkChangesResult !== 'success') {
+              addInfrastructureIssue(`Change detection finished with status \`${checkChangesResult}\`.`);
+            }
+            if (buildResult !== 'success') {
+              addInfrastructureIssue(`The build job finished with status \`${buildResult}\`.`);
+            }
+            if (detectChangesResult !== 'success') {
+              addInfrastructureIssue(`Shard detection finished with status \`${detectChangesResult}\`.`);
+            }
+            if (upstreamResult === 'cancelled') {
+              addInfrastructureIssue('The Playwright shard matrix was cancelled.');
+            } else if (upstreamResult === 'skipped') {
+              addInfrastructureIssue('The Playwright shard matrix was unexpectedly skipped.');
+            }
+
+            let expectedShards = [];
+            try {
+              const matrix = JSON.parse(process.env.EXPECTED_MATRIX || '{}');
+              expectedShards = (matrix.shardIndex || []).map(String);
+              if (expectedShards.length === 0) {
+                addInfrastructureIssue('No expected Playwright shards were declared.');
+              }
+            } catch (error) {
+              addInfrastructureIssue(`The expected shard matrix was invalid: ${error.message}`);
+            }
+
             const shardResults = [];
             const resultsDir = 'results';
             if (fs.existsSync(resultsDir)) {
@@ -461,7 +665,13 @@ jobs:
                 if (!fs.existsSync(jsonPath)) continue;
 
                 const shardNum = dir.replace('playwright-results-json-', '');
-                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                let report;
+                try {
+                  report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+                } catch (error) {
+                  addInfrastructureIssue(`Shard ${shardNum} uploaded invalid results JSON: ${error.message}`);
+                  continue;
+                }
 
                 const allTests = [];
                 function collectTests(suite, filePath) {
@@ -488,6 +698,14 @@ jobs:
                   collectTests(suite, '');
                 }
 
+                const knownStatuses = new Set(['expected', 'unexpected', 'flaky', 'skipped']);
+                const unknownStatuses = allTests.filter(test => !knownStatuses.has(test.status));
+                if (allTests.length === 0) {
+                  addInfrastructureIssue(`Shard ${shardNum} reported zero tests.`);
+                }
+                if (unknownStatuses.length > 0) {
+                  addInfrastructureIssue(`Shard ${shardNum} reported ${unknownStatuses.length} test(s) with an unknown status.`);
+                }
                 shardResults.push({
                   shard: shardNum,
                   genuine: allTests.filter(t => t.status === 'unexpected'),
@@ -498,21 +716,69 @@ jobs:
               }
             }
 
-            if (shardResults.length === 0) {
-              core.setFailed('No Playwright results found — shards may have been cancelled or failed to upload artifacts.');
-              return;
+            const resultsByShard = new Map(shardResults.map(result => [result.shard, result]));
+            for (const shard of expectedShards) {
+              if (!resultsByShard.has(shard)) {
+                addInfrastructureIssue(`Shard ${shard} did not upload a usable Playwright results artifact.`);
+              }
+            }
+            for (const shard of resultsByShard.keys()) {
+              if (!expectedShards.includes(shard)) {
+                addInfrastructureIssue(`Unexpected shard ${shard} uploaded Playwright results.`);
+              }
             }
 
-            // Aggregate totals
+            const statusByShard = new Map();
+            if (fs.existsSync(resultsDir)) {
+              for (const dir of fs.readdirSync(resultsDir).sort()) {
+                const statusPath = path.join(resultsDir, dir, 'ci-status.json');
+                if (!fs.existsSync(statusPath)) continue;
+                const shardNum = dir.replace('playwright-results-json-', '');
+                try {
+                  const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+                  statusByShard.set(shardNum, status);
+                } catch (error) {
+                  addInfrastructureIssue(`Shard ${shardNum} uploaded invalid execution status JSON: ${error.message}`);
+                }
+              }
+            }
+
+            for (const shard of expectedShards) {
+              const status = statusByShard.get(shard);
+              if (!status) {
+                addInfrastructureIssue(`Shard ${shard} did not upload its execution status.`);
+                continue;
+              }
+
+              const steps = status.steps || {};
+              const setupFailure = Object.entries(steps).find(
+                ([name, outcome]) => name !== 'tests' && ['failure', 'cancelled'].includes(outcome)
+              );
+              if (setupFailure) {
+                addInfrastructureIssue(`Shard ${shard} failed during \`${setupFailure[0]}\` setup.`);
+              }
+
+              const shardResult = resultsByShard.get(shard);
+              const genuineFailures = shardResult?.genuine.length || 0;
+              if (steps.tests !== 'success' && !(steps.tests === 'failure' && genuineFailures > 0)) {
+                addInfrastructureIssue(`Shard ${shard} test execution finished with status \`${steps.tests || 'not-run'}\` without a reported test failure.`);
+              }
+            }
+
             const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
             const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
             const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
             const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
+            if (upstreamResult === 'failure' && totalFailed === 0 && infrastructureIssues.length === 0) {
+              addInfrastructureIssue('The Playwright shard matrix failed outside a reported test failure.');
+            }
 
             const lines = [commentMarker];
 
-            if (totalFailed > 0) {
-              lines.push(`## 🔴 Playwright Results — ${totalFailed} failure(s)${totalFlaky > 0 ? `, ${totalFlaky} flaky` : ''}`);
+            if (totalFailed > 0 || infrastructureIssues.length > 0) {
+              const testFailureText = totalFailed > 0 ? `${totalFailed} test failure(s)` : '';
+              const infrastructureText = infrastructureIssues.length > 0 ? `${infrastructureIssues.length} pipeline/setup failure(s)` : '';
+              lines.push(`## 🔴 Playwright Results — ${[testFailureText, infrastructureText].filter(Boolean).join(', ')}`);
             } else if (totalFlaky > 0) {
               lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
             } else {
@@ -522,16 +788,26 @@ jobs:
             lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
             lines.push('');
 
-            // Per-shard summary table
+            if (infrastructureIssues.length > 0) {
+              lines.push('### Pipeline and setup failures');
+              lines.push('');
+              for (const issue of infrastructureIssues) lines.push(`- ${issue}`);
+              lines.push('');
+            }
+
             lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
             lines.push('|-------|--------|--------|-------|---------|');
-            for (const r of shardResults) {
+            for (const shard of expectedShards) {
+              const r = resultsByShard.get(shard);
+              if (!r) {
+                lines.push(`| ⛔ Shard ${shard} | — | — | — | — |`);
+                continue;
+              }
               const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
               lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
             }
             lines.push('');
 
-            // Genuine failures detail
             const allGenuine = shardResults.flatMap(r => r.genuine.map(t => ({ ...t, shard: r.shard })));
             if (allGenuine.length > 0) {
               lines.push('### Genuine Failures (failed on all attempts)');
@@ -552,7 +828,6 @@ jobs:
               }
             }
 
-            // Flaky tests
             const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
             if (allFlaky.length > 0) {
               lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
@@ -581,40 +856,47 @@ jobs:
 
             const body = lines.join('\n');
 
-            // Post PR comment only for pull_request_target events
-            if (prNumber) {
-              let existingComment = null;
-              for await (const response of github.paginate.iterator(
-                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-              )) {
-                const found = response.data.find(c =>
-                  c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-                );
-                if (found) { existingComment = found; break; }
-              }
+            try {
+              await core.summary.addRaw(body).write();
+            } catch (error) {
+              core.warning(`Could not write the Playwright job summary: ${error.message}`);
+            }
 
-              // Also clean up any old per-shard comments from previous runs
-              for await (const response of github.paginate.iterator(
-                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-              )) {
-                for (const c of response.data) {
-                  if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                    await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                    console.log(`Deleted old per-shard comment ${c.id}`);
+            if (prNumber) {
+              try {
+                let existingComment = null;
+                for await (const response of github.paginate.iterator(
+                  github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+                )) {
+                  const found = response.data.find(c =>
+                    c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+                  );
+                  if (found) { existingComment = found; break; }
+                }
+
+                for await (const response of github.paginate.iterator(
+                  github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+                )) {
+                  for (const c of response.data) {
+                    if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
+                      await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
+                      console.log(`Deleted old per-shard comment ${c.id}`);
+                    }
                   }
                 }
-              }
 
-              if (existingComment) {
-                await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-              } else {
-                await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+                if (existingComment) {
+                  await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+                } else {
+                  await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+                }
+              } catch (error) {
+                core.warning(`Could not publish the Playwright PR comment: ${error.message}`);
               }
             }
 
-            // Gate: fail the step (and therefore the job) when genuine test failures exist.
-            // This is the single source of truth — the same parsed results that drive the
-            // PR comment also determine whether playwright-summary passes or fails.
-            if (totalFailed > 0) {
-              core.setFailed(`${totalFailed} Playwright test(s) failed.`);
+            if (totalFailed > 0 || infrastructureIssues.length > 0) {
+              core.setFailed(
+                `${totalFailed} Playwright test failure(s); ${infrastructureIssues.length} pipeline/setup failure(s).`
+              );
             }

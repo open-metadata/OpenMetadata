@@ -13,12 +13,15 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
@@ -29,8 +32,14 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntityLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableJoins;
@@ -42,8 +51,10 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 
 /**
  * Unit tests for the pure structural transforms of {@link AIContextBuilder}. These verify that the
@@ -231,6 +242,151 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void edgeContexts_capturesColumnMappingsAndFunctions() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    UUID targetId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    ColumnLineage mapping =
+        new ColumnLineage()
+            .withFromColumns(List.of("svc.db.raw.orders.balance"))
+            .withToColumn("svc.db.analytics.orders.amount")
+            .withFunction("SUM");
+    Edge edge =
+        new Edge()
+            .withFromEntity(sourceId)
+            .withToEntity(targetId)
+            .withLineageDetails(new LineageDetails().withColumnsLineage(List.of(mapping)));
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(List.of(edge));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertEquals(1, contexts.size());
+    assertEquals("svc.db.raw.orders", contexts.getFirst().getFullyQualifiedName());
+    assertEquals(List.of(mapping), contexts.getFirst().getColumns());
+    assertEquals("SUM", contexts.getFirst().getColumns().getFirst().getFunction());
+  }
+
+  @Test
+  void edgeContexts_capsColumnMappingsAtThePerEdgeLimit() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    List<ColumnLineage> mappings = new ArrayList<>();
+    for (int index = 0; index < 30; index++) {
+      mappings.add(
+          new ColumnLineage()
+              .withFromColumns(List.of("source.column_" + index))
+              .withToColumn("target.column_" + index));
+    }
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(mappings))));
+
+    LineageEdgeContext context = AIContextBuilder.edgeContexts(lineage, true).getFirst();
+    List<ColumnLineage> columns = context.getColumns();
+
+    assertEquals(AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE, columns.size());
+    assertEquals("target.column_24", columns.getLast().getToColumn());
+    assertTrue(Boolean.TRUE.equals(context.getColumnsTruncated()));
+  }
+
+  @Test
+  void edgeContexts_doesNotMarkMappingsAtTheCapAsTruncated() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    List<ColumnLineage> mappings = new ArrayList<>();
+    for (int index = 0; index < AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE; index++) {
+      mappings.add(
+          new ColumnLineage()
+              .withFromColumns(List.of("source.column_" + index))
+              .withToColumn("target.column_" + index));
+    }
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(mappings))));
+
+    LineageEdgeContext context = AIContextBuilder.edgeContexts(lineage, true).getFirst();
+
+    assertEquals(AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE, context.getColumns().size());
+    assertNull(context.getColumnsTruncated());
+  }
+
+  @Test
+  void edgeContexts_leavesColumnsNullWhenLineageDetailsAreAbsent() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(new Edge().withFromEntity(sourceId).withToEntity(UUID.randomUUID())));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertNull(contexts.getFirst().getColumns());
+  }
+
+  @Test
+  void edgeContexts_leavesColumnsNullWhenColumnMappingsAreEmpty() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(List.of()))));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertNull(contexts.getFirst().getColumns());
+  }
+
+  @Test
+  void edgeContexts_dropsEdgesWhoseNeighborNodeCannotBeResolved() {
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(List.of())
+            .withUpstreamEdges(
+                List.of(
+                    new Edge().withFromEntity(UUID.randomUUID()).withToEntity(UUID.randomUUID())));
+
+    assertTrue(AIContextBuilder.edgeContexts(lineage, true).isEmpty());
+  }
+
+  @Test
   void metricContent_combinesDescriptionAndExpressionCode() {
     Metric metric =
         new Metric()
@@ -242,6 +398,109 @@ class AIContextBuilderTest {
     assertTrue(content.contains("Total revenue from completed orders."), "missing description");
     assertTrue(
         content.contains("SUM(amount) WHERE status = 'completed'"), "missing expression code");
+  }
+
+  @Test
+  void unescapeRichText_decodesHtmlEntitiesFromBlockEditorContent() {
+    assertEquals(
+        "```\ncode\n```",
+        AIContextBuilder.unescapeRichText("&#96;&#96;&#96;\ncode\n&#96;&#96;&#96;"),
+        "backtick entities must decode to a real markdown code fence");
+    assertEquals(
+        "aum >= 250k for the bank's clients",
+        AIContextBuilder.unescapeRichText("aum &gt;&#61; 250k for the bank&#39;s clients"),
+        "operator and apostrophe entities must decode");
+  }
+
+  @Test
+  void unescapeRichText_leavesPlainTextNullAndBareAmpersandUntouched() {
+    assertEquals("R&D spend", AIContextBuilder.unescapeRichText("R&D spend"));
+    assertEquals("", AIContextBuilder.unescapeRichText(""));
+    assertNull(AIContextBuilder.unescapeRichText(null));
+  }
+
+  @Test
+  void metricContent_unescapesDescriptionAndPreservesExpressionCode() {
+    Metric metric =
+        new Metric()
+            .withName("HighValue")
+            .withDescription("Flag when deposits &gt;&#61; 50k for the bank&#39;s book.")
+            .withMetricExpression(new MetricExpression().withCode("SUM(deposit) >= 50000"));
+    String content = AIContextBuilder.metricContent(metric);
+    assertTrue(
+        content.contains("deposits >= 50k for the bank's book."),
+        "metric description entities must be unescaped");
+    assertTrue(content.contains("SUM(deposit) >= 50000"), "expression code must pass through raw");
+  }
+
+  @Test
+  void toFieldContexts_unescapesColumnDescriptionEntities() {
+    Column column =
+        new Column()
+            .withName("value_segment")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDescription(
+                "private_banking when aum &gt;&#61; 250k, else the bank&#39;s default");
+    FieldContext field = AIContextBuilder.toFieldContexts(List.of(column)).getFirst();
+    assertEquals(
+        "private_banking when aum >= 250k, else the bank's default", field.getDescription());
+  }
+
+  @Test
+  void toDataModelContext_prefersCompiledSqlAndMapsMeta() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withPath("models/marts/core/dim_customers.sql")
+            .withDbtSourceProject("banking_redshift")
+            .withSql("SELECT * FROM staging.customers")
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    TableDataModel context = AIContextBuilder.toDataModelContext(dataModel);
+    assertEquals("DBT", context.getModelType());
+    assertEquals("models/marts/core/dim_customers.sql", context.getPath());
+    assertEquals("banking_redshift", context.getSourceProject());
+    assertEquals("SELECT * FROM staging.customers", context.getSql(), "compiled SQL must win");
+  }
+
+  @Test
+  void toDataModelContext_fallsBackToRawSqlWhenCompiledAbsent() {
+    DataModel dataModel =
+        new DataModel()
+            .withModelType(DataModel.ModelType.DBT)
+            .withRawSql("SELECT * FROM {{ ref('customers') }}");
+    assertEquals(
+        "SELECT * FROM {{ ref('customers') }}",
+        AIContextBuilder.toDataModelContext(dataModel).getSql());
+  }
+
+  @Test
+  void toDataModelContext_nullWhenAbsentOrEmpty() {
+    assertNull(AIContextBuilder.toDataModelContext(null));
+    assertNull(AIContextBuilder.toDataModelContext(new DataModel()), "empty model must be dropped");
+  }
+
+  @Test
+  void toDataModelContext_boundsOversizedSql() {
+    DataModel dataModel =
+        new DataModel().withModelType(DataModel.ModelType.DDL).withSql("SELECT 1 ".repeat(2000));
+    String sql = AIContextBuilder.toDataModelContext(dataModel).getSql();
+    assertTrue(
+        sql.length() <= AIContextBuilder.MAX_DATA_MODEL_SQL_CHARS + 20,
+        "model SQL must be bounded");
+    assertTrue(sql.endsWith("(truncated)"), "bounded SQL must be marked truncated");
+  }
+
+  @Test
+  void buildTableContext_includesDataModelWhenPresent() {
+    Table table =
+        new Table()
+            .withName("orders")
+            .withColumns(List.of())
+            .withDataModel(
+                new DataModel().withModelType(DataModel.ModelType.DBT).withSql("SELECT 1"));
+    TableDataModel dataModel = AIContextBuilder.buildTableContext(table).getDataModel();
+    assertEquals("DBT", dataModel.getModelType());
+    assertEquals("SELECT 1", dataModel.getSql());
   }
 
   @Test

@@ -64,10 +64,39 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
+// Pages that already have the network strip installed, so redirectToHomePage
+// (called many times per spec) does not stack duplicate routes.
+const etagStripInstalled = new WeakSet<Page>();
+
+/**
+ * Strip the client `If-None-Match` header from `/api/v1/**` requests at the
+ * Playwright network layer.
+ *
+ * The UI attaches an ETag conditional-GET interceptor; the server ETag only
+ * covers version/updatedAt, so a refetch racing a relationship-only or child
+ * mutation (followers, votes, customMetrics, testSuite) is answered 304 and the
+ * UI renders a stale body — a flaky-assertion source across the suite. Removing
+ * the header here forces the server to always return the current body, and it
+ * works regardless of the deployed bundle (unlike the localStorage opt-out,
+ * which depends on the bundle carrying the interceptor guard).
+ */
+export const stripEtagConditionalReads = async (page: Page) => {
+  if (etagStripInstalled.has(page)) {
+    return;
+  }
+  etagStripInstalled.add(page);
+  await page.route('**/api/v1/**', async (route) => {
+    const headers = route.request().headers();
+    delete headers['if-none-match'];
+    await route.continue({ headers });
+  });
+};
+
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
+  await stripEtagConditionalReads(page);
   await page.goto('/', {
     waitUntil: 'domcontentloaded',
   });
@@ -702,21 +731,52 @@ export const verifyDomainLinkInCard = async (
   await expect(domainLink).toBeEnabled();
 };
 
+export const waitForSearchResult = async (
+  page: Page,
+  searchTerm: string,
+  result: Locator
+) => {
+  let hasSubmittedSearch = false;
+
+  await expect
+    .poll(
+      async () => {
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.request().method() === 'GET',
+          { timeout: 15_000 }
+        );
+
+        if (hasSubmittedSearch) {
+          await Promise.all([searchResponse, page.reload()]);
+        } else {
+          await page.getByTestId('searchBox').fill(searchTerm);
+          await Promise.all([
+            searchResponse,
+            page.getByTestId('searchBox').press('Enter'),
+          ]);
+          hasSubmittedSearch = true;
+        }
+        await waitForAllLoadersToDisappear(page);
+
+        return result.isVisible();
+      },
+      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
-  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
-  await page.getByTestId('searchBox').press('Enter');
-  await page.locator('[data-testid*="table-data-card"]').first().waitFor();
-
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-
-  await expect(entityCard).toBeVisible();
-
   const domainLink = entityCard.getByTestId('domain-link').first();
 
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
+  await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
 };

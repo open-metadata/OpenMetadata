@@ -38,7 +38,8 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
@@ -94,8 +95,25 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
     return host.split(".")[0]  # noqa: PLC0207
 
 
+def _non_standard_host_hint(host: str) -> str:
+    """
+    Actionable guidance when the identifier was parsed from a hostname that
+    does not look like a standard Redshift endpoint, e.g. a PrivateLink/VPC
+    endpoint or a custom DNS name.
+    """
+    hint = ""
+    if not host.endswith(".redshift.amazonaws.com") and not host.endswith(".redshift-serverless.amazonaws.com"):
+        hint = (
+            " [Hint: the identifier was derived from your hostname, which does not look"
+            " like a standard Redshift endpoint. If you connect via a PrivateLink/VPC"
+            " endpoint or a custom DNS name, set 'clusterIdentifier', or 'workgroupName'"
+            " for Serverless, in the connection settings.]"
+        )
+    return hint
+
+
 def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
-    workgroup = _get_serverless_workgroup(host)
+    workgroup = connection.workgroupName or _get_serverless_workgroup(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
 
@@ -104,13 +122,14 @@ def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: 
         response = aws_client.get_credentials(**kwargs)
         return response["dbUser"], response["dbPassword"]
     except Exception as exc:
+        hint = "" if connection.workgroupName else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}{hint}"
         ) from exc
 
 
 def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
-    cluster_identifier = _get_provisioned_cluster_identifier(host)
+    cluster_identifier = connection.clusterIdentifier or _get_provisioned_cluster_identifier(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
 
@@ -125,18 +144,32 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host:
         response = aws_client.get_cluster_credentials(**kwargs)
         return response["DbUser"], response["DbPassword"]
     except Exception as exc:
+        hint = "" if connection.clusterIdentifier else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}{hint}"
         ) from exc
 
 
 def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> tuple:
     """
     Get temporary credentials for Redshift using IAM authentication.
-    Detects Serverless vs Provisioned from the host and uses the appropriate API.
+    An explicit clusterIdentifier or workgroupName on the connection takes
+    precedence over hostname parsing, which cannot work for PrivateLink/VPC
+    endpoint or custom DNS hostnames. Otherwise detects Serverless vs
+    Provisioned from the host and uses the appropriate API.
     """
     host = connection.hostPort.split(":")[0]
 
+    if connection.clusterIdentifier and connection.workgroupName:
+        raise SourceConnectionException(
+            "Both 'clusterIdentifier' and 'workgroupName' are set on the connection."
+            " Set only one: 'clusterIdentifier' for a provisioned cluster or"
+            " 'workgroupName' for Redshift Serverless."
+        )
+    if connection.workgroupName:
+        return _get_serverless_iam_credentials(connection, host)
+    if connection.clusterIdentifier:
+        return _get_provisioned_iam_credentials(connection, host)
     if _is_serverless_host(host):
         return _get_serverless_iam_credentials(connection, host)
     return _get_provisioned_iam_credentials(connection, host)
@@ -227,17 +260,12 @@ def _sqlstate(*codes: str) -> Matcher:
     return lambda error: _pgcode(error) in wanted
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _database_not_found(error: BaseException) -> bool:
     """Redshift reports a missing database at connect time as
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text_ = _message(error)
+    text_ = chain_text(error)
     return 'database "' in text_ and "does not exist" in text_
 
 
@@ -256,10 +284,9 @@ REDSHIFT_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",
     ),
-    when(_sqlstate("28000", "28P01")).diagnose(  # invalid_authorization / invalid_password
-        "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
-    ),
+    # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
+    # reports a failed connection with no PGresult, so .pgcode is None (verified on
+    # PostgreSQL 15). The message rule above is what catches auth failures.
     when(_database_not_found).diagnose(
         "Database not found",
         fix="Verify the configured database exists and the user is allowed to connect to it.",
@@ -303,11 +330,13 @@ def _summarize_queries(instance_type: RedshiftInstanceType, rows: Sequence[Row])
 
 
 def _summarize_databases(rows: Sequence[Row]) -> str:
-    """``N databases reachable`` - suffixed ``+`` when the row sample is capped, so a
-    cluster with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an
-    exact total (``run_sql`` only fetches up to that many rows)."""
-    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} databases reachable"
+    """``N databases reachable`` - ``N+`` when the row sample is capped, so a cluster
+    with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an exact
+    total (``run_sql`` only fetches up to that many rows).
+
+    Redshift says "reachable" rather than "enumerated": the probe proves the
+    cluster answers for each database, which is the thing in doubt here."""
+    return f"{count(len(rows), 'database', DEFAULT_SAMPLE_ROWS)} reachable"
 
 
 class RedshiftChecks:

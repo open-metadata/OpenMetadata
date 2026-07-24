@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import quote_plus
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import (
@@ -41,8 +40,7 @@ from metadata.core.connections.test_connection.checks.database import DatabaseSt
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
     AzureAdSetup,
@@ -64,11 +62,20 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.databricks.auth import (
+    catalog_url,
     get_auth_config,
     normalize_host_port,
+    probe_target,
+)
+from metadata.ingestion.source.database.databricks.connection import (
+    DatabricksApiConnection,
 )
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
+)
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_product,
+    get_databricks_user_agent,
 )
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 from metadata.ingestion.source.database.unitycatalog.queries import (
@@ -91,7 +98,6 @@ suppress_user_agent_entry_deprecation_log()
 INTERNAL_CATALOG = "__databricks_internal"
 VIEW_TABLE_TYPES = {TableType.VIEW, TableType.MATERIALIZED_VIEW}
 VIEW_LISTING_SCAN_LIMIT = 100
-DEFAULT_UNITY_CATALOG_PORT = 443
 LINEAGE_PROBE_COMMAND = (
     "SELECT COUNT(*) FROM system.access.table_lineage; SELECT COUNT(*) FROM system.access.column_lineage"
 )
@@ -112,17 +118,13 @@ UNITY_CATALOG_ERRORS = ErrorPack(
         "Access token expired",
         fix="The access token has expired. Generate a new token and update the connection.",
     ),
-    when(Matchers.exception(PermissionDenied)).diagnose(
-        "Insufficient privileges",
-        fix="Grant the connection's principal the privileges the failing step needs: USE CATALOG "
-        "on the catalog, USE SCHEMA on the schema, and SELECT on its tables.",
-    ),
-    when(Matchers.contains("permission_denied")).diagnose(
-        "Insufficient privileges",
-        fix="Grant the connection's principal the privileges the failing step needs: USE CATALOG "
-        "on the catalog, USE SCHEMA on the schema, and SELECT on its tables.",
-    ),
-    when(Matchers.contains("insufficient_permissions")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.exception(PermissionDenied),
+            Matchers.contains("permission_denied"),
+            Matchers.contains("insufficient_permissions"),
+        )
+    ).diagnose(
         "Insufficient privileges",
         fix="Grant the connection's principal the privileges the failing step needs: USE CATALOG "
         "on the catalog, USE SCHEMA on the schema, and SELECT on its tables.",
@@ -288,10 +290,7 @@ def read_lineage_tables(engine: Engine) -> None:
 
 
 def get_connection_url(connection: UnityCatalogConnectionConfig) -> str:
-    url = f"{connection.scheme.value}://{normalize_host_port(connection.hostPort)}"
-    if connection.catalog:
-        url = f"{url}?catalog={quote_plus(connection.catalog)}"
-    return url
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
@@ -309,7 +308,13 @@ def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
         client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(host=normalize_host_port(connection.hostPort), **client_params)
+    product, product_version = get_databricks_product()
+    return WorkspaceClient(
+        host=normalize_host_port(connection.hostPort),
+        product=product,
+        product_version=product_version,
+        **client_params,
+    )
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engine:
@@ -319,9 +324,15 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engin
 
     if not connection.connectionArguments:
         connection.connectionArguments = init_empty_connection_arguments()
+    connection_arguments = connection.connectionArguments.root
+    if connection_arguments is None:
+        connection_arguments = {}
+        connection.connectionArguments.root = connection_arguments
 
     if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
+        connection_arguments["http_path"] = connection.httpPath
+
+    connection_arguments["user_agent_entry"] = get_databricks_user_agent()
 
     auth_args = get_auth_config(connection)
 
@@ -359,12 +370,7 @@ class UnityCatalogChecks:
         self.table_obj = DatabricksTable()
 
     def _probe_target(self) -> tuple[str, int]:
-        # Same normalization the client uses, so the probe targets the host it connects to.
-        host_port = normalize_host_port(self.service_connection.hostPort)
-        host, _, port = host_port.rpartition(":")
-        if host and port.isdigit():
-            return host, int(port)
-        return host_port, DEFAULT_UNITY_CATALOG_PORT
+        return probe_target(self.service_connection.hostPort)
 
     @staticmethod
     def _probe(operation: Callable[[], None], command: str, summarize: Callable[[], str]) -> Evidence:
@@ -378,11 +384,7 @@ class UnityCatalogChecks:
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        host, port = self._probe_target()
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+        probe_or_fail(*self._probe_target())
         return self._probe(self._list_first_catalog, "catalogs.list()", lambda: "connection established")
 
     def _list_first_catalog(self) -> None:
@@ -452,8 +454,7 @@ class UnityCatalogChecks:
 
 
 class UnityCatalogSqlConnection(BaseConnection[UnityCatalogConnectionConfig, Engine]):
-    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client,
-    reached only by the lineage and tag steps and never built without an httpPath."""
+    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client."""
 
     def _get_client(self) -> Engine:
         engine = get_sqlalchemy_connection(self.service_connection)
@@ -467,8 +468,9 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
         # Honor the user-facing connectionTimeout as the per-step budget; a cold
         # serverless warehouse can exceed the framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
-        # A sub-owner, not a client: constructing it opens nothing.
+        # Sub-owners, not clients: constructing them opens nothing.
         self.sql = UnityCatalogSqlConnection(service_connection)
+        self.api = DatabricksApiConnection(service_connection)
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
@@ -476,6 +478,7 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner
         # registered once would not be released on a later reuse cycle.
+        self.api.close()
         self.sql.close()
         super().close()
 

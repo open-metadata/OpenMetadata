@@ -13,7 +13,10 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import {
+  createNewPage,
+  stripEtagConditionalReads,
+} from '../../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -307,6 +310,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await stripEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
     await page

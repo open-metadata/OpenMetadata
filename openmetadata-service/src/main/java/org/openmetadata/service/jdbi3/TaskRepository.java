@@ -78,6 +78,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -102,6 +103,10 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
+
+  // Stage a workflow-managed task holds after being persisted but before its Flowable instance
+  // starts.
+  public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
 
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
@@ -353,11 +358,15 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
+    // A reference is only required to carry id and type, so populate the rest before the updater
+    // diffs these lists — it sorts them by name.
+    task.setAssignees(EntityUtil.populateEntityReferences(task.getAssignees()));
+    task.setReviewers(EntityUtil.populateEntityReferences(task.getReviewers()));
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
     if (!update) {
-      TaskFieldValidator.validateDataAccessRequestDuration(task);
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
       validateNoDuplicateActiveDataAccessRequest(task);
     }
 
@@ -458,28 +467,40 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
-    List<EntityReference> result = new ArrayList<>();
+    List<EntityReference> expanded = new ArrayList<>();
     for (EntityReference ref : refs) {
-      if (!Entity.TEAM.equals(ref.getType())) {
-        result.add(ref);
-        continue;
-      }
-      try {
-        Team team = Entity.getEntity(Entity.TEAM, ref.getId(), "users", Include.NON_DELETED);
-        if (!nullOrEmpty(team.getUsers())) {
-          result.addAll(team.getUsers());
-        }
-        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
-        // (e.g. Data Access Requests) an empty assignee list triggers the node's
-        // emptyAssigneeStrategy
-        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
-        // being pinned to a member-less team.
-      } catch (Exception e) {
-        LOG.debug(
-            "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());
+      if (Entity.TEAM.equals(ref.getType())) {
+        appendTeamMembers(ref, expanded);
+      } else {
+        expanded.add(ref);
       }
     }
-    return result;
+    return dedupById(expanded);
+  }
+
+  private void appendTeamMembers(EntityReference teamRef, List<EntityReference> expanded) {
+    try {
+      Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "users", Include.NON_DELETED);
+      if (!nullOrEmpty(team.getUsers())) {
+        expanded.addAll(team.getUsers());
+      }
+      // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+      // (e.g. Data Access Requests) an empty assignee list triggers the node's
+      // emptyAssigneeStrategy (assignAdmins) in SetApprovalAssigneesImpl, so it routes to
+      // platform admins rather than being pinned to a member-less team.
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to expand team {} to users: {}", teamRef.getFullyQualifiedName(), e.getMessage());
+    }
+  }
+
+  // Dedup by id so a user who is both a direct owner and a member of an owning team — or a member
+  // of two owning teams — appears once in the task's assignees. LinkedHashMap preserves insertion
+  // order so the original owner-list order carries through.
+  static List<EntityReference> dedupById(List<EntityReference> refs) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
+    return new ArrayList<>(byId.values());
   }
 
   /**
@@ -852,6 +873,56 @@ public class TaskRepository extends EntityRepository<Task> {
    */
   public Task reopenTask(Task task, String user) {
     return TaskWorkflowHandler.getInstance().reopenTask(task, user);
+  }
+
+  /**
+   * Reopen a resolved workflow-managed task and restart its governance workflow. The prior Flowable
+   * instance ended at the workflow's end event and can't be resumed, so it is re-triggered from
+   * scratch on the same task.
+   */
+  public Task reopenTaskWithWorkflow(Task task, String user) {
+    Task terminalSnapshot = JsonUtils.deepCopy(task, Task.class);
+    Task reopened = reopenTask(task, user);
+    if (reopened.getWorkflowDefinitionId() == null) {
+      return reopened;
+    }
+
+    Task openSnapshot = JsonUtils.deepCopy(reopened, Task.class);
+    reopened.setWorkflowInstanceId(null);
+    reopened.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
+    reopened.setWorkflowStageDisplayName("Starting");
+    reopened.setAvailableTransitions(List.of());
+    reopened.setUpdatedBy(user);
+    reopened.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(reopened, true);
+    postUpdate(openSnapshot, reopened);
+
+    boolean started = triggerWorkflowManagedTask(reopened);
+
+    Task refreshed =
+        get(
+            null,
+            reopened.getId(),
+            getFields(
+                "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"));
+    // Use the trigger's own success signal: a null workflowInstanceId would also appear if the
+    // workflow started then immediately completed, and the failure-marker stage is brittle to
+    // match.
+    if (!started) {
+      // Roll back to the prior terminal state so no Open task is left without a live workflow.
+      restoreTerminalTask(terminalSnapshot, refreshed, user);
+      throw new IllegalStateException(
+          String.format("Workflow restart failed for reopened task %s", reopened.getId()));
+    }
+    return refreshed;
+  }
+
+  private void restoreTerminalTask(Task terminalSnapshot, Task current, String user) {
+    Task restored = JsonUtils.deepCopy(terminalSnapshot, Task.class);
+    restored.setUpdatedBy(user);
+    restored.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(restored, true);
+    postUpdate(current, restored);
   }
 
   /**
@@ -1359,15 +1430,16 @@ public class TaskRepository extends EntityRepository<Task> {
               task.setTaskFormSchemaVersion(
                   binding.schema() != null ? binding.schema().getVersion() : null);
               task.setWorkflowDefinitionId(workflowDefinition.getId());
-              task.setWorkflowStageId("pending-workflow-start");
+              task.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
               task.setWorkflowStageDisplayName("Starting");
               task.setAvailableTransitions(List.of());
             });
   }
 
-  private void triggerWorkflowManagedTask(Task task) {
+  /** Returns true only if the Flowable workflow instance was started successfully. */
+  private boolean triggerWorkflowManagedTask(Task task) {
     if (!isPendingWorkflowManagedTask(task)) {
-      return;
+      return false;
     }
 
     try {
@@ -1397,16 +1469,19 @@ public class TaskRepository extends EntityRepository<Task> {
       variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
       variables.put(
-          "taskFormSchemaId",
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           task.getTaskFormSchemaId() != null ? task.getTaskFormSchemaId().toString() : null);
-      variables.put("taskFormSchemaVersion", task.getTaskFormSchemaVersion());
-      variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
+      variables.put(
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
 
       WorkflowHandler.getInstance()
           .triggerByKey(
               getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
               task.getId().toString(),
               variables);
+      return true;
     } catch (Exception e) {
       LOG.error(
           "Failed to trigger workflow-managed task {} using workflow definition {}",
@@ -1414,6 +1489,7 @@ public class TaskRepository extends EntityRepository<Task> {
           task.getWorkflowDefinitionId(),
           e);
       markWorkflowTriggerFailure(task);
+      return false;
     }
   }
 
@@ -1443,7 +1519,7 @@ public class TaskRepository extends EntityRepository<Task> {
   private boolean isPendingWorkflowManagedTask(Task task) {
     return shouldCreateWorkflowManagedTask(task)
         && task.getWorkflowDefinitionId() != null
-        && "pending-workflow-start".equals(task.getWorkflowStageId());
+        && PENDING_WORKFLOW_START_STAGE_ID.equals(task.getWorkflowStageId());
   }
 
   /**

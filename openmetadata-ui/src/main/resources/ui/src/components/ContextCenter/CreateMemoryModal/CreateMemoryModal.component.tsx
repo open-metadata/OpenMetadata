@@ -100,7 +100,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
-import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import {
   CreateMemoryModalProps,
   MemoryFormValues,
@@ -254,6 +253,20 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       t('label.edit-entity', { entity: t('label.memory') });
   }
 
+  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
+
+  const memorySourceLink = useMemo(() => {
+    if (!memorySource) {
+      return undefined;
+    }
+
+    return memorySource.type === EntityType.KNOWLEDGE_PAGE
+      ? contextCenterClassBase.getArticlePath(
+          memorySource.fullyQualifiedName ?? ''
+        )
+      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+  }, [memorySource]);
+
   const submitLabel = isEditMode
     ? t('label.save-entity', { entity: t('label.change-plural') })
     : t('label.create-entity', { entity: t('label.memory') });
@@ -284,20 +297,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
-
-  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
-
-  const memorySourceLink = useMemo(() => {
-    if (!memorySource) {
-      return undefined;
-    }
-
-    return memorySource.type === EntityType.KNOWLEDGE_PAGE
-      ? contextCenterClassBase.getArticlePath(
-          memorySource.fullyQualifiedName ?? ''
-        )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
-  }, [memorySource]);
 
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
@@ -798,8 +797,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         {!isViewOnly && (
                           <DataAssetSelectList
                             placeholder={t('label.search-assets-to-link')}
-                            popoverAlign="right"
                             popoverClassName="tw:h-100"
+                            popoverPlacement="bottom end"
                             renderTrigger={({ open }) => (
                               <Button
                                 className="tw:px-2.5 tw:py-1.5"
@@ -1087,9 +1086,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             ))}
                       </Card>
                     </div>
-                    {isViewOnly && memoryToEdit?.id && (
-                      <DerivedOntologyCard memoryId={memoryToEdit.id} />
-                    )}
                   </div>
 
                   {/* Sticky footer */}

@@ -12,13 +12,17 @@
  */
 package org.openmetadata.service.aicontext;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -26,9 +30,12 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.type.personaContext.ContextSection;
+import org.openmetadata.service.Entity;
 
 /**
  * Renders an {@link AIContext} as a self-describing markdown document for consumption by LLM agents,
@@ -38,14 +45,23 @@ import org.openmetadata.schema.type.personaContext.ContextSection;
  * Structural markdown is preferred over prose because it aids both human reading and agent retrieval.
  */
 public final class AIContextMarkdown {
-  /** Media type of the OKF-style markdown document produced by {@link #render}. */
-  public static final String TEXT_MARKDOWN = "text/markdown";
+  /**
+   * Media type of the OKF-style markdown document produced by {@link #render}. The {@code
+   * charset=UTF-8} parameter is required: the document embeds non-ASCII glyphs (em dashes, arrows,
+   * the section sign) and, without an explicit charset, clients default {@code text/*} to
+   * ISO-8859-1 (RFC 2616) and mojibake the UTF-8 bytes.
+   */
+  public static final String TEXT_MARKDOWN = "text/markdown; charset=UTF-8";
 
   /** {@code ?format=} value that selects the structured AIContext JSON over markdown. */
   public static final String FORMAT_JSON = "json";
 
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
+  private static final String ABSENT_CONSTRAINT_CELL = "--";
+  private static final String COLUMN_MAPPING_CAP_NOTE =
+      "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
+          + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
   private static final Set<ContextSection> LEGACY_RENDER_SECTIONS =
       EnumSet.complementOf(EnumSet.of(ContextSection.TAGS));
 
@@ -305,6 +321,7 @@ public final class AIContextMarkdown {
       String headingPrefix) {
     if (sections.contains(ContextSection.SCHEMA)) {
       appendSchemaTable(markdown, table.getColumns(), headingPrefix);
+      appendDataModel(markdown, table.getDataModel(), headingPrefix);
     }
     if (sections.contains(ContextSection.CONSTRAINTS)) {
       appendPrimaryKey(markdown, table);
@@ -352,10 +369,44 @@ public final class AIContextMarkdown {
           .append(" | ")
           .append(cell(column.getDataType()))
           .append(" | ")
-          .append(cell(column.getConstraint()))
+          .append(constraintCell(column.getConstraint()))
           .append(" | ")
           .append(cell(column.getDescription()))
           .append(" |\n");
+    }
+  }
+
+  private static void appendDataModel(
+      StringBuilder markdown, TableDataModel dataModel, String headingPrefix) {
+    if (dataModel != null) {
+      appendHeading(markdown, headingPrefix, "Data Model");
+      appendDataModelMeta(markdown, dataModel);
+      appendSqlBlock(markdown, dataModel.getSql());
+    }
+  }
+
+  private static void appendDataModelMeta(StringBuilder markdown, TableDataModel dataModel) {
+    StringBuilder meta = new StringBuilder();
+    appendMetaPart(meta, "Type", dataModel.getModelType());
+    appendMetaPart(meta, "Path", dataModel.getPath());
+    appendMetaPart(meta, "Project", dataModel.getSourceProject());
+    if (meta.length() > 0) {
+      markdown.append('\n').append(meta).append('\n');
+    }
+  }
+
+  private static void appendMetaPart(StringBuilder meta, String label, String value) {
+    if (!nullOrEmpty(value)) {
+      if (meta.length() > 0) {
+        meta.append(" · ");
+      }
+      meta.append("**").append(label).append(":** `").append(inlineCodeValue(value)).append('`');
+    }
+  }
+
+  private static void appendSqlBlock(StringBuilder markdown, String sql) {
+    if (!nullOrEmpty(sql)) {
+      markdown.append("\n```sql\n").append(sql.strip()).append("\n```\n");
     }
   }
 
@@ -466,17 +517,111 @@ public final class AIContextMarkdown {
   private static void appendLineage(
       StringBuilder markdown, AIContext context, String headingPrefix) {
     boolean hasLineage =
-        !nullOrEmpty(context.getUpstream()) || !nullOrEmpty(context.getDownstream());
+        !nullOrEmpty(context.getUpstream())
+            || !nullOrEmpty(context.getDownstream())
+            || !nullOrEmpty(context.getUpstreamEdges())
+            || !nullOrEmpty(context.getDownstreamEdges());
     if (hasLineage) {
       appendHeading(markdown, headingPrefix, "Lineage");
       markdown.append('\n');
-      if (!nullOrEmpty(context.getUpstream())) {
-        markdown.append("**Upstream:** ").append(codeJoin(context.getUpstream())).append('\n');
-      }
-      if (!nullOrEmpty(context.getDownstream())) {
-        markdown.append("**Downstream:** ").append(codeJoin(context.getDownstream())).append('\n');
-      }
+      appendLineageDirection(
+          markdown,
+          "Upstream",
+          context.getUpstream(),
+          context.getUpstreamEdges(),
+          context.getFullyQualifiedName(),
+          true);
+      appendLineageDirection(
+          markdown,
+          "Downstream",
+          context.getDownstream(),
+          context.getDownstreamEdges(),
+          context.getFullyQualifiedName(),
+          false);
+      appendMappingCapNote(markdown, context);
     }
+  }
+
+  private static void appendLineageDirection(
+      StringBuilder markdown,
+      String label,
+      List<String> fqns,
+      List<LineageEdgeContext> edges,
+      String assetFqn,
+      boolean upstream) {
+    if (hasColumnMappings(edges)) {
+      markdown.append("**").append(label).append(":**\n");
+      listOrEmpty(edges).forEach(edge -> appendLineageEdge(markdown, edge, assetFqn, upstream));
+      markdown.append('\n');
+    } else if (!nullOrEmpty(fqns)) {
+      markdown.append("**").append(label).append(":** ").append(codeJoin(fqns)).append('\n');
+    }
+  }
+
+  private static boolean hasColumnMappings(List<LineageEdgeContext> edges) {
+    return listOrEmpty(edges).stream().anyMatch(edge -> !nullOrEmpty(edge.getColumns()));
+  }
+
+  private static void appendLineageEdge(
+      StringBuilder markdown, LineageEdgeContext edge, String assetFqn, boolean upstream) {
+    markdown.append("- `").append(inlineCodeValue(edge.getFullyQualifiedName())).append("`\n");
+    String sourcePrefix = upstream ? edge.getFullyQualifiedName() : assetFqn;
+    String targetPrefix = upstream ? assetFqn : edge.getFullyQualifiedName();
+    listOrEmpty(edge.getColumns())
+        .forEach(mapping -> appendColumnMapping(markdown, mapping, sourcePrefix, targetPrefix));
+  }
+
+  private static void appendColumnMapping(
+      StringBuilder markdown, ColumnLineage mapping, String sourcePrefix, String targetPrefix) {
+    String toColumn = mapping.getToColumn();
+    if (!nullOrEmpty(toColumn) && !toColumn.isBlank()) {
+      String sourceColumns = shortNames(mapping.getFromColumns(), sourcePrefix);
+      markdown
+          .append("  - `")
+          .append(sourceColumns.isEmpty() ? "→ " : sourceColumns + " → ")
+          .append(inlineCodeValue(shortName(toColumn, targetPrefix)))
+          .append(functionSuffix(mapping.getFunction()))
+          .append("`\n");
+    }
+  }
+
+  private static String shortNames(List<String> fqns, String prefix) {
+    return String.join(
+        ", ",
+        listOrEmpty(fqns).stream()
+            .filter(fqn -> !nullOrEmpty(fqn) && !fqn.isBlank())
+            .map(fqn -> inlineCodeValue(shortName(fqn, prefix)))
+            .toList());
+  }
+
+  static String shortName(String fqn, String prefix) {
+    String result = fqn == null ? "" : fqn;
+    if (fqn != null && prefix != null && fqn.startsWith(prefix + Entity.SEPARATOR)) {
+      result = fqn.substring(prefix.length() + Entity.SEPARATOR.length());
+    }
+    return result;
+  }
+
+  private static String functionSuffix(String function) {
+    String safeFunction = inlineCodeValue(function);
+    return safeFunction.isEmpty() ? "" : " (" + safeFunction + ")";
+  }
+
+  private static void appendMappingCapNote(StringBuilder markdown, AIContext context) {
+    if (hasCappedMappings(context)) {
+      markdown.append(
+          COLUMN_MAPPING_CAP_NOTE.formatted(
+              AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE,
+              inlineCodeValue(Objects.toString(context.getEntityType(), "")),
+              inlineCodeValue(Objects.toString(context.getFullyQualifiedName(), ""))));
+    }
+  }
+
+  private static boolean hasCappedMappings(AIContext context) {
+    return Stream.concat(
+            listOrEmpty(context.getUpstreamEdges()).stream(),
+            listOrEmpty(context.getDownstreamEdges()).stream())
+        .anyMatch(edge -> Boolean.TRUE.equals(edge.getColumnsTruncated()));
   }
 
   private static String codeJoin(List<String> values) {
@@ -485,9 +630,13 @@ public final class AIContextMarkdown {
       if (i > 0) {
         joined.append(", ");
       }
-      joined.append('`').append(values.get(i)).append('`');
+      joined.append('`').append(inlineCodeValue(values.get(i))).append('`');
     }
     return joined.toString();
+  }
+
+  static String inlineCodeValue(String value) {
+    return nullOrEmpty(value) ? "" : value.replace("`", "").replaceAll("\\R+", " ").strip();
   }
 
   private static void appendTags(StringBuilder markdown, List<String> tags, String headingPrefix) {
@@ -503,6 +652,10 @@ public final class AIContextMarkdown {
 
   private static String cell(String value) {
     return nullOrEmpty(value) ? "" : value.replace("|", "\\|").replace("\n", " ").strip();
+  }
+
+  private static String constraintCell(String constraint) {
+    return nullOrEmpty(constraint) ? ABSENT_CONSTRAINT_CELL : cell(constraint);
   }
 
   private static String truncate(String value) {
