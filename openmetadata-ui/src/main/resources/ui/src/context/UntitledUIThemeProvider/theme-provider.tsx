@@ -111,6 +111,10 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-ring-color-brand_alt', primaryColor);
     root.style.setProperty('--tw-ring-color-bg-brand-solid', primaryColor);
     root.style.setProperty('--tw-outline-color-brand-solid', primaryColor);
+    // Borders are drawn with `outline` now, so each themed ring colour needs an outline
+    // counterpart or the border ignores custom branding. `bg-brand-solid` needs no entry:
+    // `tw:outline-bg-brand-solid` resolves to `--tw-color-bg-brand-solid`, set above.
+    root.style.setProperty('--tw-outline-color-brand_alt', primaryColor);
   }
 
   if (selectedColor) {
