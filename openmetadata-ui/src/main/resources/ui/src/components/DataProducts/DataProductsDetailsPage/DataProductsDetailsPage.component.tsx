@@ -819,7 +819,7 @@ const DataProductsDetailsPage = ({
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-start tw:justify-between">
-            <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
+            <div className="tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
                 badge={statusBadge}
                 breadcrumb={[]}
