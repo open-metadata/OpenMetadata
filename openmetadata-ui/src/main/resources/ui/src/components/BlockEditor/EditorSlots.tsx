@@ -17,6 +17,7 @@ import tippy, { Instance, Props } from 'tippy.js';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
+import { getDialogContainer } from './Extensions/getDialogContainer';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
@@ -77,18 +78,8 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       handleLinkToggle();
     };
 
-    // Mount the link modal and popup inside the editor's nearest focus-trapping
-    // dialog (e.g. React Aria's SlideoutMenu) so it does not steal focus or
-    // swallow their clicks. antd modals/drawers don't trap focus from a
-    // body-portalled modal, and their transforms would misposition it, so fall
-    // back to document.body for those (and when not inside a dialog at all).
-    const getDialogContainer = (): HTMLElement => {
-      const dialog = editor?.view.dom.closest('[role="dialog"]');
-
-      return dialog && !dialog.closest('.ant-modal, .ant-drawer')
-        ? (dialog as HTMLElement)
-        : document.body;
-    };
+    const getContainer = (): HTMLElement =>
+      editor ? getDialogContainer(editor.view) : document.body;
 
     const handleUnlink = () => {
       if (isNil(editor)) {
@@ -152,7 +143,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         popup = tippy('body', {
           getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => getDialogContainer(),
+          appendTo: getContainer,
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -190,7 +181,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         {isLinkModalOpen && (
           <LinkModal
             data={{ href: editor?.getAttributes('link').href }}
-            getContainer={getDialogContainer}
+            getContainer={getContainer}
             isOpen={isLinkModalOpen}
             onCancel={handleLinkCancel}
             onSave={(values) =>

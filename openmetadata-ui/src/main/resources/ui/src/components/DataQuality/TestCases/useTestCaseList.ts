@@ -112,6 +112,7 @@ export const useTestCaseList = ({
             TabSpecificField.TEST_CASE_RESULT,
             TabSpecificField.TESTSUITE,
             TabSpecificField.INCIDENT_ID,
+            TabSpecificField.INCIDENT_STATUS,
           ],
           q: searchValue ? `*${searchValue}*` : undefined,
           offset: (page - 1) * pageSize,
