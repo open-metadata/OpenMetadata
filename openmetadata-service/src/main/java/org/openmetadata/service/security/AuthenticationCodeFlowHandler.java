@@ -128,14 +128,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
 
-  // For the MCP OAuth flow, handleLogin() exposes the state/nonce/PKCE-verifier it generated for
-  // the provider round-trip as request attributes so UserSSOOAuthProvider can persist them against
-  // the MCP pending request (updatePac4jSession). Without this link the returning
-  // /callback?state=... cannot be matched back to the pending MCP request.
-  public static final String MCP_OIDC_STATE = "mcpOidcState";
-  public static final String MCP_OIDC_NONCE = "mcpOidcNonce";
-  public static final String MCP_OIDC_CODE_VERIFIER = "mcpOidcCodeVerifier";
-
   private static volatile AuthenticationCodeFlowHandler latestInstance;
 
   private OidcClient client;
@@ -169,6 +161,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug("MCP state check failed: {}", e.getMessage());
       return false;
     }
+  }
+
+  // Persists the OIDC round-trip state/nonce/PKCE-verifier against the MCP pending request. It runs
+  // inside handleLogin() before the provider redirect is issued, so the returning /callback?state=
+  // is always resolvable (isMcpState -> findByPac4jState) even on a very fast round-trip. The MCP
+  // module owns the pending-request store, so it registers the implementation here.
+  @FunctionalInterface
+  public interface McpPendingStatePersister {
+    void persist(HttpServletRequest request, String state, String nonce, String codeVerifier);
+  }
+
+  private static volatile McpPendingStatePersister mcpPendingStatePersister;
+
+  public static void setMcpPendingStatePersister(McpPendingStatePersister persister) {
+    mcpPendingStatePersister = persister;
   }
 
   public AuthenticationCodeFlowHandler(
@@ -395,9 +402,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       PendingLoginContext pendingLoginContext = addStateAndNonceParameters(params);
       if (isMcpFlow) {
-        req.setAttribute(MCP_OIDC_STATE, pendingLoginContext.state());
-        req.setAttribute(MCP_OIDC_NONCE, pendingLoginContext.nonce());
-        req.setAttribute(MCP_OIDC_CODE_VERIFIER, pendingLoginContext.pkceVerifier());
+        persistMcpPendingState(req, pendingLoginContext);
       }
       sessionService.createPendingSession(
           req,
@@ -428,6 +433,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
     } catch (Exception e) {
       getErrorMessage(resp, new TechnicalException(e));
+    }
+  }
+
+  private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
+    McpPendingStatePersister persister = mcpPendingStatePersister;
+    if (persister != null) {
+      persister.persist(req, context.state(), context.nonce(), context.pkceVerifier());
     }
   }
 

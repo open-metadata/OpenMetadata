@@ -85,6 +85,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // is revoked. Since JWTs are stateless and cannot be individually invalidated, a shorter
   // TTL ensures that a revoked session loses access within 10 minutes. MCP clients handle
   // automatic token refresh seamlessly using the long-lived refresh token.
+  // HttpSession attribute that carries the MCP authorization-request id across handleLogin() into
+  // the registered pending-state persister so it can be linked to the returning provider callback.
+  public static final String MCP_AUTH_REQUEST_ID = "mcp.auth.request.id";
+
   private static final long JWT_EXPIRY_SECONDS = 600L;
 
   private static final long REFRESH_TOKEN_EXPIRY_DAYS = 30L;
@@ -339,34 +343,18 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           };
 
       HttpSession session = getHttpSession(currentRequest.get(), true);
-      session.setAttribute("mcp.auth.request.id", authRequestId);
+      session.setAttribute(MCP_AUTH_REQUEST_ID, authRequestId);
 
+      // For the MCP flow, handleLogin() persists the OIDC round-trip state/nonce/PKCE-verifier
+      // against this pending request (via the registered McpPendingStatePersister) before it issues
+      // the provider redirect, so the returning /callback?state=... is always resolvable
+      // (isMcpState -> findByPac4jState) and its pac4j session can be restored for the exchange.
       ssoHandler.handleLogin(wrappedRequest, currentResponse.get());
 
       LOG.debug(
           "handleLogin() completed for auth request {}; response committed: {}",
           authRequestId,
           currentResponse.get() != null && currentResponse.get().isCommitted());
-
-      // For the MCP flow, handleLogin() ran the full authorization-code round-trip and exposed
-      // the state/nonce/PKCE-verifier it sent to the OIDC provider as request attributes. Persist
-      // them against this pending request so the returning /callback?state=... can be matched back
-      // (isMcpState -> findByPac4jState) and its pac4j session restored for the token exchange.
-      String mcpOidcState =
-          (String) wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_STATE);
-      if (mcpOidcState != null) {
-        String mcpOidcNonce =
-            (String) wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_NONCE);
-        String mcpOidcCodeVerifier =
-            (String)
-                wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_CODE_VERIFIER);
-        pendingAuthRepository.updatePac4jSession(
-            authRequestId, mcpOidcState, mcpOidcNonce, mcpOidcCodeVerifier);
-        LOG.info(
-            "Linked OIDC round-trip state to MCP pending request {} for provider callback",
-            authRequestId);
-        return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
-      }
 
       // After handleLogin(), pac4j has stored its state in the session
       // Extract pac4j session attributes and store in database

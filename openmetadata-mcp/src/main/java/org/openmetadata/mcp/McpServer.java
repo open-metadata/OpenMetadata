@@ -189,6 +189,23 @@ public class McpServer implements McpServerProvider {
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
 
+      // Register the persister so handleLogin() links the OIDC round-trip state to the MCP pending
+      // request before it redirects to the provider, keeping the returning /callback resolvable.
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+          (request, state, nonce, codeVerifier) -> {
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            Object authRequestId =
+                session == null
+                    ? null
+                    : session.getAttribute(
+                        org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                            .MCP_AUTH_REQUEST_ID);
+            if (authRequestId instanceof String id) {
+              pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+            }
+          });
+      LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
+
       // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
