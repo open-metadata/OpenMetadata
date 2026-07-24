@@ -93,8 +93,10 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
-        except Exception as warn:
-            logger.warning(f"Error reading Avro schema: {warn}")
+        except Exception as exc:  # pylint: disable=broad-except
+            # Only the exception type is safe at WARNING: decoder errors can quote the file
+            # payload. See issue #24798.
+            logger.warning("Error reading Avro schema: %s", type(exc).__name__)
             logger.debug(traceback.format_exc())
         return None
 
