@@ -1313,6 +1313,7 @@ jobs:
     if: ${{ always() && !cancelled() }}
     needs:
       [
+        gate,
         check-changes,
         cache-keys,
         build,
@@ -1380,6 +1381,36 @@ jobs:
         with:
           pattern: playwright-results-json-*
           path: results
+          # Pin the per-artifact subdirectory layout the renderer expects
+          # (results/playwright-results-json-<shardId>/results.json). When
+          # only one artifact matches the pattern — typical for spec-only
+          # single-shard PR runs — some download-artifact configurations
+          # flatten the contents directly into `path:`, which breaks the
+          # readdirSync-based shard discovery in render_playwright_summary.cjs
+          # and reports the shard as "did not upload a usable Playwright
+          # results artifact". Explicitly locking merge-multiple=false keeps
+          # the layout consistent across single-shard and multi-shard runs.
+          # See run 30088248354 for the failure this addresses.
+          merge-multiple: false
+
+      # Diagnostic: log the actual on-disk layout the renderer sees. The
+      # explicit merge-multiple pin above matches the documented default,
+      # so if single-shard runs still fail the same way we need this
+      # trace to see whether download-artifact placed files at
+      # `results/playwright-results-json-<shardId>/results.json` (expected)
+      # or somewhere else. Remove once single-shard runs are consistently
+      # green.
+      - name: Diagnose downloaded results layout
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          echo "=== results/ tree ==="
+          ls -laR results 2>&1 || echo "(results/ does not exist)"
+          echo
+          echo "=== expected shardIds (from plan-playwright.matrix) ==="
+          echo '${{ needs.plan-playwright.outputs.matrix }}' \
+            | jq -r '.include[].shardId' \
+            || echo "(jq parse failed)"
 
       - name: Setup Node.js
         id: setup-node
@@ -1544,8 +1575,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green below.
+      # Without this guard, the "should_run != 'true'" branch (or any
+      # negative match) would treat an unset gate output the same as an
+      # explicit skip decision — hiding the gate failure and letting a
+      # required check pass on an invalid pipeline state.
+      # (Per @greptile-apps P1 review on this PR.)
+      - name: Guard against missing gate decision
+        if: ${{ needs.gate.result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
+          exit 1
+
+      # Short-circuit when gate explicitly decided should_run=false —
+      # every upstream job is legitimately `skipped` in that case
+      # (redundant pull_request_target for a same-repo PR, or fork PR
+      # without safe-to-test), and the renderer below counts each
+      # skipped upstream as a "CI/reporting failure" and fails the whole
+      # check. That's what turned run 30090391086 red on PR #30454 despite
+      # the pipeline correctly opting out. Match on the exact "false"
+      # string (not != 'true') so unset outputs never fall through here.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
+          echo "Exiting 0 so this check does not block branch protection."
+
       - name: Render consolidated job summary and gate on results
-        if: always()
+        if: ${{ always() && needs.gate.outputs.should_run == 'true' }}
         uses: actions/github-script@v8
         env:
           CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
