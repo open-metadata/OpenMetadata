@@ -946,6 +946,7 @@ describe('TestSuiteDetailsPage component', () => {
             'testDefinition',
             'testSuite',
             'incidentId',
+            'incidentStatus',
           ],
           testSuiteId: 'test-suite-id',
         })
