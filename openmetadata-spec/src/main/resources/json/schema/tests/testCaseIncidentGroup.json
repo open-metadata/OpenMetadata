@@ -1,0 +1,98 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testCaseIncidentGroup.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestCaseIncidentGroup",
+  "description": "Aggregated count of open test case incidents for a given grouping dimension.",
+  "javaType": "org.openmetadata.schema.tests.type.TestCaseIncidentGroup",
+  "type": "object",
+  "definitions": {
+    "incidentGroupBy": {
+      "description": "Dimension used to group test case incidents.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentGroupBy",
+      "type": "string",
+      "enum": ["table", "testDefinition", "owner"],
+      "javaEnums": [
+        {"name": "Table"},
+        {"name": "TestDefinition"},
+        {"name": "Owner"}
+      ]
+    },
+    "incidentTrendDirection": {
+      "description": "Direction of the group's incident-creation trend, comparing the second half of the `trend` buckets against the first half.",
+      "javaType": "org.openmetadata.schema.tests.type.IncidentTrendDirection",
+      "type": "string",
+      "enum": ["Rising", "Falling", "Steady"],
+      "javaEnums": [
+        {"name": "Rising"},
+        {"name": "Falling"},
+        {"name": "Steady"}
+      ]
+    }
+  },
+  "properties": {
+    "groupBy": {
+      "description": "Dimension the incidents are grouped by.",
+      "$ref": "#/definitions/incidentGroupBy"
+    },
+    "id": {
+      "description": "Unique identifier of the entity the group represents.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the entity the group represents.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display name of the entity the group represents.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the entity the group represents.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "incidentCount": {
+      "description": "Number of distinct open incidents in the group.",
+      "type": "integer"
+    },
+    "severity": {
+      "description": "Most critical severity across the group's open incidents (Severity1 is the most critical). Absent when no incident in the group has a severity.",
+      "$ref": "./testCaseResolutionStatus.json#/definitions/severities"
+    },
+    "status": {
+      "description": "Most actionable current status across the group's open incidents, in the order Assigned > Ack > New.",
+      "$ref": "./testCaseResolutionStatus.json#/definitions/testCaseResolutionStatusTypes"
+    },
+    "assignees": {
+      "description": "Distinct names of the current assignees of the group's open incidents.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assigneeCount": {
+      "description": "Number of distinct current assignees across the group's open incidents.",
+      "type": "integer"
+    },
+    "firstSeen": {
+      "description": "Timestamp at which the earliest open incident in the group was opened.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "lastSeen": {
+      "description": "Timestamp of the most recent status change across the group's open incidents.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "trend": {
+      "description": "Number of incidents opened in each of 8 equal time buckets spanning `firstSeen` to `lastSeen`.",
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "trendDirection": {
+      "description": "Direction of the incident-creation trend for the group.",
+      "$ref": "#/definitions/incidentTrendDirection"
+    }
+  },
+  "required": ["groupBy", "name", "incidentCount"],
+  "additionalProperties": false
+}
