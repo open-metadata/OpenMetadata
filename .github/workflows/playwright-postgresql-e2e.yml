@@ -241,6 +241,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Calculate cache fingerprints
@@ -298,6 +306,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Initialize distribution cache path
@@ -412,6 +428,8 @@ jobs:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           filter: blob:none
+          # See allow-unsafe-pr-checkout rationale on other checkouts above.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Get all changed files
@@ -456,6 +474,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Download selection
@@ -571,6 +597,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Initialize fixture cache paths
@@ -666,6 +700,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Initialize generated fixture paths
@@ -857,6 +899,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # unless the workflow opts in. The gate job already restricts this event to
+          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
+          # tree run in docker containers — not directly in the workflow context — so
+          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
+          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
+          # deliberately checks out base.sha instead, closing the pwn-request path there.
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Download OpenMetadata distribution
