@@ -348,6 +348,26 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           authRequestId,
           currentResponse.get() != null && currentResponse.get().isCommitted());
 
+      // For the MCP flow, handleLogin() ran the full authorization-code round-trip and exposed
+      // the state/nonce/PKCE-verifier it sent to the OIDC provider as request attributes. Persist
+      // them against this pending request so the returning /callback?state=... can be matched back
+      // (isMcpState -> findByPac4jState) and its pac4j session restored for the token exchange.
+      String mcpOidcState =
+          (String) wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_STATE);
+      if (mcpOidcState != null) {
+        String mcpOidcNonce =
+            (String) wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_NONCE);
+        String mcpOidcCodeVerifier =
+            (String)
+                wrappedRequest.getAttribute(AuthenticationCodeFlowHandler.MCP_OIDC_CODE_VERIFIER);
+        pendingAuthRepository.updatePac4jSession(
+            authRequestId, mcpOidcState, mcpOidcNonce, mcpOidcCodeVerifier);
+        LOG.info(
+            "Linked OIDC round-trip state to MCP pending request {} for provider callback",
+            authRequestId);
+        return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");
+      }
+
       // After handleLogin(), pac4j has stored its state in the session
       // Extract pac4j session attributes and store in database
       // Note: pac4j stores State and CodeVerifier as objects, not strings
