@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 import {
+  Atom01,
   ClipboardMinus,
   CodeSquare01,
+  CpuChip01,
   File02,
   File05,
   FileCheck02,
+  Server04,
   Settings02,
   SlashCircle01,
 } from '@untitledui/icons';
@@ -255,6 +258,9 @@ export const NON_SERVICE_TYPE_ASSETS = [
   'dataObservability',
   'report',
   'testDefinition',
+  EntityType.AI_APPLICATION,
+  EntityType.LLM_MODEL,
+  EntityType.MCP_SERVER,
 ];
 
 export const ENTITY_ICON_MAPPER: Record<
@@ -565,6 +571,24 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-utility-fuchsia-50',
     borderClass: 'tw:border-utility-fuchsia-200',
     icon: DynamicAgent,
+  },
+  [EntityType.AI_APPLICATION]: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: CpuChip01,
+  },
+  [EntityType.LLM_MODEL]: {
+    iconClass: 'tw:text-utility-purple-700',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: Atom01,
+  },
+  [EntityType.MCP_SERVER]: {
+    iconClass: 'tw:text-utility-indigo-700',
+    bgClass: 'tw:bg-utility-indigo-50',
+    borderClass: 'tw:border-utility-indigo-200',
+    icon: Server04,
   },
   [EntityType.TEST_SUITE]: {
     iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
