@@ -695,6 +695,30 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' && (needs.plan-playwright.outputs.requires_airflow != 'true' || needs.restore-playwright-fixture.outputs.ingestion_cache_hit == 'true') }}
         run: echo "The golden fixture and optional ingestion image were restored while the distribution was prepared."
 
+      # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
+      # any docker work runs. `create_playwright_fixture.sh` does a
+      # `docker image save <ingestion>` after packing the fixture tar, which
+      # streams multi-GB blobs through /var/lib/docker/tmp/. On a fresh
+      # ubuntu-latest that partition has ~14 GB free after all the OM images
+      # (server, ingestion, postgres, opensearch, airflow) and their seeded
+      # volumes are loaded — not enough headroom for the docker export tmp,
+      # so the save fails with:
+      #   Error response from daemon: write /var/lib/docker/tmp/...: no space left on device
+      # (See failure on https://github.com/open-metadata/OpenMetadata/actions/runs/30097915650)
+      # docker-images:false is deliberate — the OM images are exactly what
+      # this job needs to snapshot, so we can't prune them here.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
       - name: Checkout
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         uses: actions/checkout@v5
