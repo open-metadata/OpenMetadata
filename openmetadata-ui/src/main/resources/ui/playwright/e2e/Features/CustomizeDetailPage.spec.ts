@@ -943,9 +943,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   });
 
   // Regression: cancel button used to trigger both CustomizablePageHeader's
-  // local modal AND (on wrapped pages) NavigationBlocker's modal, forcing
-  // users to click Discard twice. On CustomizeDetailsPage (no blocker) the
-  // local modal is the only guard and a single Discard must exit the page.
+  // local modal AND NavigationBlocker's modal, forcing users to click
+  // Discard twice. Now CustomizeDetailsPage wraps in NavigationBlocker and
+  // the header's local close modal is gone, so a single Discard on the
+  // blocker's modal must exit the page.
   test('cancel button on customize detail page shows confirmation modal and Discard exits the page', async ({
     adminPage,
   }) => {
