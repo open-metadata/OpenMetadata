@@ -49,21 +49,11 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
-              - 'openmetadata-service/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - 'openmetadata-dist/**'
-              - 'bootstrap/**'
-              - 'conf/**'
-              - 'docker/run_local_docker.sh'
-              - 'docker/run_local_docker_common.sh'
-              - 'docker/development/docker-compose.yml'
-              - 'docker/development/docker-compose-postgres.yml'
-              - '.github/actions/setup-openmetadata-test-environment/**'
-              - '.github/scripts/configure_docker_storage.sh'
-              - '.github/scripts/classify_test_outcome.py'
-              - '.github/workflows/py-tests-postgres.yml'
-              - 'pom.xml'
-              - 'Makefile'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -123,10 +113,9 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'
@@ -185,7 +174,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-postgres-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: |
@@ -225,7 +214,7 @@ jobs:
       - name: Upload runner and service diagnostics
         if: ${{ failure() || cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-postgres-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: ${{ runner.temp }}/python-ci-diagnostics/
