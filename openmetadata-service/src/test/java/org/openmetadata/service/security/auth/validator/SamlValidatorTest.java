@@ -12,11 +12,14 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.List;
@@ -30,6 +33,7 @@ import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.system.FieldError;
+import org.openmetadata.service.security.auth.validator.protocol.mock.Handler;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
@@ -909,6 +913,50 @@ class SamlValidatorTest {
   }
 
   @Test
+  void readResponseSnippetClosesReadableStreams() throws Exception {
+    TrackingInputStream inputStream = new TrackingInputStream("from-error".getBytes());
+    HttpURLConnection connection = mock(HttpURLConnection.class);
+    when(connection.getErrorStream()).thenReturn(inputStream);
+
+    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+
+    assertEquals("from-error", snippet);
+    assertTrue(inputStream.isClosed());
+  }
+
+  @Test
+  void validateIdpConnectivityDisconnectsConnections() throws Exception {
+    String originalHandlerPkgs = System.getProperty("java.protocol.handler.pkgs");
+    String handlerPkgs = "org.openmetadata.service.security.auth.validator.protocol";
+    TrackingHttpURLConnection connection = new TrackingHttpURLConnection(400, "plain client error");
+
+    Handler.setConnectionFactory(url -> connection);
+    System.setProperty(
+        "java.protocol.handler.pkgs",
+        originalHandlerPkgs == null || originalHandlerPkgs.isBlank()
+            ? handlerPkgs
+            : originalHandlerPkgs + "|" + handlerPkgs);
+
+    try {
+      FieldError error =
+          invokePrivate(
+              "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig("mock://sso"));
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertTrue(connection.isDisconnected());
+      assertTrue(connection.getBodyStream().isClosed());
+    } finally {
+      Handler.clearConnectionFactory();
+      if (originalHandlerPkgs == null) {
+        System.clearProperty("java.protocol.handler.pkgs");
+      } else {
+        System.setProperty("java.protocol.handler.pkgs", originalHandlerPkgs);
+      }
+    }
+  }
+
+  @Test
   void createTestSamlRequestFallsBackWhenConfigIsIncomplete() throws Exception {
     String request =
         invokePrivate(
@@ -1133,6 +1181,97 @@ class SamlValidatorTest {
     @Override
     public void close() {
       server.stop(0);
+    }
+  }
+
+  private static final class TrackingInputStream extends InputStream {
+    private final byte[] data;
+    private int index;
+    private boolean closed;
+
+    private TrackingInputStream(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public int read() {
+      if (index >= data.length) {
+        return -1;
+      }
+      return data[index++];
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) {
+      if (index >= data.length) {
+        return -1;
+      }
+      int bytesToRead = Math.min(length, data.length - index);
+      System.arraycopy(data, index, buffer, offset, bytesToRead);
+      index += bytesToRead;
+      return bytesToRead;
+    }
+
+    @Override
+    public void close() {
+      closed = true;
+    }
+
+    private boolean isClosed() {
+      return closed;
+    }
+  }
+
+  private static final class TrackingHttpURLConnection extends HttpURLConnection {
+    private final int responseCode;
+    private final TrackingInputStream bodyStream;
+    private boolean disconnected;
+
+    private TrackingHttpURLConnection(int responseCode, String body) throws Exception {
+      super(new URL("http://localhost"));
+      this.responseCode = responseCode;
+      this.bodyStream = new TrackingInputStream(body.getBytes());
+    }
+
+    @Override
+    public void disconnect() {
+      disconnected = true;
+    }
+
+    @Override
+    public boolean usingProxy() {
+      return false;
+    }
+
+    @Override
+    public void connect() {}
+
+    @Override
+    public int getResponseCode() {
+      return responseCode;
+    }
+
+    @Override
+    public InputStream getErrorStream() {
+      return bodyStream;
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+      throw new IOException("not used");
+    }
+
+    @Override
+    public void setRequestMethod(String method) throws ProtocolException {
+      this.method = method;
+    }
+
+    private boolean isDisconnected() {
+      return disconnected;
+    }
+
+    private TrackingInputStream getBodyStream() {
+      return bodyStream;
     }
   }
 }
