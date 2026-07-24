@@ -113,15 +113,26 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
-      <Box direction="col" gap={3}>
+    <PageLayoutV1
+      className="ontology-explorer-page"
+      fullHeight={isAiMode}
+      mainContainerClassName="ontology-explorer-page-layout"
+      pageTitle={t('label.ontology-explorer')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <Box
+        className={
+          isAiMode ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col' : undefined
+        }
+        direction="col"
+        gap={4}>
         {isAiMode ? (
           <HeaderShell
             hasStats
             badge={betaBadge}
             breadcrumb={breadcrumb}
-            className="tw:mb-5"
+            className="tw:mb-0!"
             meta={statsRow}
+            padding="comfortable"
             title={heading}
             variant="gradient"
           />
@@ -138,12 +149,23 @@ const OntologyExplorerPage: React.FC = () => {
           </>
         )}
 
-        <OntologyExplorer
-          height="calc(100vh - 230px)"
-          scope="global"
-          onLoadingChange={handleLoadingChange}
-          onStatsChange={handleStatsChange}
-        />
+        {isAiMode ? (
+          <div className="tw:min-h-0 tw:flex-1">
+            <OntologyExplorer
+              height="100%"
+              scope="global"
+              onLoadingChange={handleLoadingChange}
+              onStatsChange={handleStatsChange}
+            />
+          </div>
+        ) : (
+          <OntologyExplorer
+            height="calc(100vh - 230px)"
+            scope="global"
+            onLoadingChange={handleLoadingChange}
+            onStatsChange={handleStatsChange}
+          />
+        )}
       </Box>
     </PageLayoutV1>
   );

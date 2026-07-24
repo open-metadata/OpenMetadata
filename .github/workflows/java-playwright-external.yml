@@ -125,6 +125,15 @@ permissions:
   contents: read
   checks: write
 
+# All jobs hit ONE shared external cluster, and every job's purge-it step hard-deletes each
+# test-namespace root by the generic __<32hex>__ signature (ClusterPurgeIT) — NOT scoped to this
+# run. Two overlapping runs therefore delete each other's live data mid-seed (observed: a
+# concurrent run's purge 404'd a scale seed's schema). Serialize to at most one external run at a
+# time; a new run queues behind the current one rather than cancelling a multi-hour scale run.
+concurrency:
+  group: java-it-external-cluster
+  cancel-in-progress: false
+
 jobs:
   ui-it-external:
     if: ${{ github.event.inputs.runUiIt != 'false' }}
@@ -143,18 +152,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -251,7 +260,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-traces-external-${{ github.run_id }}
           overwrite: true
@@ -261,7 +270,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-videos-external-${{ github.run_id }}
           overwrite: true
@@ -271,7 +280,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: failsafe-reports-ui-it-external-${{ github.run_id }}
           overwrite: true
@@ -289,7 +298,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
@@ -301,10 +310,12 @@ jobs:
   search-it-external:
     # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
     # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
-    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
-    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    # serially or they collide with "Job is already running". `needs` enforces ordering;
+    # `!cancelled()` keeps each job's own toggle independent (so it still runs if ui-it was
+    # skipped/failed) while STILL honoring a manual cancel — plain `always()` forces the job to
+    # start even when you cancel the run, which is why cancelling never stopped search-it/scale-it.
     needs: [ui-it-external]
-    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runSearchIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -320,18 +331,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -403,7 +414,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: failsafe-reports-search-it-external-${{ github.run_id }}
           overwrite: true
@@ -421,7 +432,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
@@ -437,7 +448,7 @@ jobs:
     # cancelled every night without ever completing. Larger sizes can still be requested on demand
     # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    if: ${{ !cancelled() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:
@@ -458,18 +469,18 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.ref }}
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -545,7 +556,7 @@ jobs:
 
       - name: Upload scale metrics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: scale-metrics-${{ matrix.seed }}-${{ github.run_id }}
           overwrite: true
@@ -555,7 +566,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: failsafe-reports-scale-${{ matrix.seed }}-${{ github.run_id }}
           overwrite: true
@@ -573,7 +584,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v2.0.0
+        uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook

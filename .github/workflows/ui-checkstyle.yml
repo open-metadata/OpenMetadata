@@ -42,9 +42,17 @@ jobs:
     outputs:
       ui-changed: ${{ steps.filter.outputs.ui }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
               - 'openmetadata-ui/src/main/resources/ui/**'
@@ -55,9 +63,9 @@ jobs:
   authorize:
     needs: check-changes
     if: |
-      github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request_target' && needs.check-changes.outputs.ui-changed == 'true' &&
-      (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
+      needs.check-changes.outputs.ui-changed == 'true' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
     steps:
       - name: Wait for the labeler
@@ -97,13 +105,14 @@ jobs:
       lint_core_components_result: ${{ steps.lint_core_components.outcome }}
       lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
-
-      - uses: actions/setup-node@v4
+          persist-credentials: false
+      - uses: actions/setup-node@v5
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
           cache: yarn
@@ -296,7 +305,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Find existing summary comment
-        uses: peter-evans/find-comment@v3
+        uses: peter-evans/find-comment@v4
         id: fc
         if: ${{ github.event_name == 'pull_request_target' }}
         continue-on-error: true
@@ -306,7 +315,7 @@ jobs:
           body-includes: '<!-- check:ui-checkstyle-summary -->'
 
       - name: Post or update summary comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: ${{ github.event_name == 'pull_request_target' && steps.fc.outcome == 'success' }}
         continue-on-error: true
         with:

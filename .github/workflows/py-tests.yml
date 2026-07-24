@@ -42,30 +42,28 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
-      python: ${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.python }}
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             python:
               - 'ingestion/**'
-              - 'openmetadata-service/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - 'openmetadata-dist/**'
-              - 'bootstrap/**'
-              - 'conf/**'
-              - 'docker/run_local_docker.sh'
-              - 'docker/run_local_docker_common.sh'
-              - 'docker/development/docker-compose.yml'
-              - 'docker/development/docker-compose-postgres.yml'
-              - '.github/actions/setup-openmetadata-test-environment/**'
-              - '.github/scripts/configure_docker_storage.sh'
-              - '.github/scripts/classify_test_outcome.py'
-              - '.github/workflows/py-tests.yml'
-              - 'pom.xml'
-              - 'Makefile'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -85,12 +83,6 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true
 
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.python == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
   py-unit-tests:
     name: Unit Tests & Static Checks
     needs: changes
@@ -103,10 +95,11 @@ jobs:
         py-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -152,7 +145,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-unit-test-results-${{ matrix.py-version }}
           path: |
@@ -167,7 +160,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-unit
           path: ingestion/.coverage
@@ -213,10 +206,11 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'
         run: bash .github/scripts/configure_docker_storage.sh
@@ -274,7 +268,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
@@ -283,7 +277,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: |
@@ -323,7 +317,7 @@ jobs:
       - name: Upload runner and service diagnostics
         if: ${{ failure() || cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: py-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -382,14 +376,15 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
-
+          persist-credentials: false
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
 
@@ -405,7 +400,7 @@ jobs:
         shell: bash
 
       - name: Download coverage artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: coverage-*
           path: ingestion/coverage-data/

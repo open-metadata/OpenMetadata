@@ -1500,6 +1500,20 @@ public interface TimeSeriesDAOs {
       return "test_case_resolution_status_time_series";
     }
 
+    @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
+    @SqlQuery(
+        "SELECT t1.entityFQNHash, t1.json FROM test_case_resolution_status_time_series t1 "
+            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
+            + "FROM test_case_resolution_status_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
+            + "GROUP BY entityFQNHash) t2 "
+            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
+    List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
+        @BindListFQN("entityFQNHashes") List<String> entityFQNs);
+
+    default List<LatestRecordWithFQNHash> getLatestRecordBatch(List<String> entityFQNs) {
+      return EntityDAO.queryInChunks(entityFQNs, this::getLatestRecordBatchInternal);
+    }
+
     @SqlQuery(
         value =
             "SELECT json FROM test_case_resolution_status_time_series "

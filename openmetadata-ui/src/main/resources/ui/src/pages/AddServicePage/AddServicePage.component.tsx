@@ -451,6 +451,7 @@ const AddServicePage = () => {
                           : 0
                       }
                       data={serviceConfig as ServicesType}
+                      isAdditionalValidationPending={isServiceNameChecking}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}

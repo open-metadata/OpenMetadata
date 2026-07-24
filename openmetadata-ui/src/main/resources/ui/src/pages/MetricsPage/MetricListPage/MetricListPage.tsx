@@ -26,7 +26,6 @@ import {
 } from '@tanstack/react-query';
 import {
   AlertCircle,
-  BarChartSquare02,
   Check,
   ChevronDown,
   CursorClick01,
@@ -34,7 +33,7 @@ import {
   Edit03,
   Eye,
   EyeOff,
-  FileCheck02,
+  FileCheck03,
   Plus,
   SearchLg,
   Settings01,
@@ -465,9 +464,6 @@ const MetricListPage = () => {
 
         return (
           <Box align="center" gap={3}>
-            <div className="metric-list-icon">
-              <BarChartSquare02 />
-            </div>
             <div className="metric-list-cell">
               <Link
                 className="metric-list-name"
@@ -736,7 +732,7 @@ const MetricListPage = () => {
         features={[
           {
             key: 'define',
-            icon: <FileCheck02 className="tw:text-fg-brand-primary" />,
+            icon: <FileCheck03 className="tw:text-fg-brand-primary" />,
             title: t('label.define-it'),
             description: t('message.metric-define-it-description'),
           },
@@ -760,8 +756,11 @@ const MetricListPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <div className="p-b-md m-t-xs metric-list-page-stack">
+    <PageLayoutV1
+      pageTitle={t('label.metric-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
         <div>
           {isAiMode ? (
             <HeaderShell
@@ -777,6 +776,8 @@ const MetricListPage = () => {
                   showHome={false}
                 />
               }
+              className="tw:mb-0!"
+              padding="comfortable"
               subtitle={t('message.metric-description')}
               title={t('label.metric-plural')}
               variant="gradient"

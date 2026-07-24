@@ -52,16 +52,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    # pull_request_target uses the GitHub API and does not require a checkout. Pushes are
-    # already scoped by the trigger paths above; merge queue and manual runs exercise the
-    # full suite. Keep the trigger paths and filter list in sync.
+    # pull_request_target uses the GitHub API and does not require a checkout. Merge
+    # queue runs check out the merge-queue commit so dorny can diff against
+    # merge_group.base_sha and skip the heavy work when nothing backend-relevant
+    # changed. Push and workflow_dispatch remain force-true — push is already
+    # gated by the trigger paths above, and workflow_dispatch is an explicit
+    # "run the full suite" request. Keep the trigger paths and filter list in sync.
     outputs:
-      backend: ${{ github.event_name != 'pull_request_target' && 'true' || steps.filter.outputs.backend }}
+      backend: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.backend }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             backend:
               - 'openmetadata-service/**'
@@ -78,12 +89,6 @@ jobs:
               - 'bootstrap/**'
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-postgres-opensearch.yml'
-
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && steps.filter.outputs.backend == 'true' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
 
   integration-test-build:
     name: Build Integration Test Runtime
@@ -111,12 +116,13 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -124,7 +130,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -178,7 +184,7 @@ jobs:
           du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Integration Test Runtime
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: java-it-build-postgres-opensearch-${{ github.run_id }}
           overwrite: true
@@ -215,12 +221,13 @@ jobs:
 
       # The required build job verifies `safe to test` before this fan-out can run.
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -228,7 +235,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -241,7 +248,7 @@ jobs:
           sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: java-it-build-postgres-opensearch-${{ github.run_id }}
           path: ${{ runner.temp }}/java-it-build
@@ -376,7 +383,7 @@ jobs:
       - name: Upload Integration Test Diagnostics
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: java-it-postgres-opensearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -389,7 +396,7 @@ jobs:
       - name: Upload Integration Test Reports
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: java-it-reports-postgres-opensearch-${{ matrix.lane.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml

@@ -25,6 +25,7 @@ import {
   ArrowRight,
   ChevronRight,
   SearchLg,
+  Table as TableIcon,
   Tag01 as TagIcon,
   XClose,
 } from '@untitledui/icons';
@@ -54,7 +55,11 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import {
+  NoDataPlaceholder,
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../../../components/common/EmptyPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
@@ -66,7 +71,6 @@ import {
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import {
   BulkColumnUpdateRequest,
@@ -1813,7 +1817,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   // Set up filter selection display
-  const { filterSelectionDisplay } = useFilterSelection({
+  const { filterSelectionDisplay, handleClearAll } = useFilterSelection({
     urlState: columnGridListing.urlState,
     filterConfigs: defaultFilters,
     parsedFilters: columnGridListing.parsedFilters,
@@ -1993,14 +1997,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.selectedEntities,
   ]);
 
-  const hasActiveFiltersOrSearch = Boolean(
-    columnGridListing.urlState?.searchQuery?.trim() ||
-      (columnGridListing.urlState?.filters &&
-        Object.values(columnGridListing.urlState.filters).some(
-          (filterValues: unknown) =>
-            Array.isArray(filterValues) && filterValues.length > 0
-        ))
+  const hasActiveSearch = Boolean(
+    columnGridListing.urlState?.searchQuery?.trim()
   );
+
+  const hasActiveFilters = Boolean(
+    columnGridListing.urlState?.filters &&
+      Object.values(columnGridListing.urlState.filters).some(
+        (filterValues: unknown) =>
+          Array.isArray(filterValues) && filterValues.length > 0
+      )
+  );
+
+  const hasActiveFiltersOrSearch = hasActiveSearch || hasActiveFilters;
 
   const tableColumns = useMemo(
     () => columns.map((c) => ({ id: c.key, labelKey: c.labelKey })),
@@ -2378,18 +2387,44 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }
   }, [hasSelection, viewSelectedOnly]);
 
+  // Single source of truth for the empty state: no columns to show and not
+  // mid-load. Drives both the placeholder and hiding the search/filter toolbar.
+  const isColumnDataEmpty =
+    !columnGridListing.loading && isEmpty(filteredEntities);
+
+  // Pick the empty state that matches why the list is empty: an active search
+  // shows the "no matching results" hint, active filters show the filter
+  // placeholder with a clear action, and a genuinely empty workspace shows the
+  // onboarding placeholder.
+  const emptyPlaceholder = useMemo(() => {
+    if (hasActiveSearch) {
+      return <NoSearchResultsPlaceholder />;
+    }
+
+    if (hasActiveFilters) {
+      return <NoFilteredResultsPlaceholder onClearFilters={handleClearAll} />;
+    }
+
+    return (
+      <NoDataPlaceholder
+        description={t('message.column-bulk-empty-description')}
+        icon={<TableIcon className="tw:text-secondary" />}
+        title={t('message.no-columns-to-work-with')}
+      />
+    );
+  }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);
+
   // Content similar to DomainListPage
   const content = useMemo(() => {
-    // Show no data placeholder when no data and not loading
-    if (!columnGridListing.loading && isEmpty(filteredEntities)) {
+    // Show no data placeholder when no data and not loading.
+    // To preview locally with data present, flip `isColumnDataEmpty` above.
+    if (isColumnDataEmpty) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          heading={t('message.no-data-message', {
-            entity: t('label.column-lowercase-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}
-        />
+        <div
+          className="tw:relative tw:min-h-[calc(100vh-16rem)] tw:bg-primary"
+          data-testid="column-grid-empty-placeholder">
+          {emptyPlaceholder}
+        </div>
       );
     }
 
@@ -2406,13 +2441,18 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </>
     );
   }, [
-    columnGridListing.loading,
+    isColumnDataEmpty,
     columnGridListing.totalEntities,
-    filteredEntities,
+    emptyPlaceholder,
     dataTable,
     paginationData,
-    t,
   ]);
+
+  // When the workspace is genuinely empty (no columns, no active filters) the
+  // onboarding placeholder stands in for the whole table, so the search/filter
+  // toolbar has nothing to act on and is hidden. It stays visible when filters
+  // or a search reduced a non-empty set to zero, so the user can clear them.
+  const showEmptyOnboarding = isColumnDataEmpty && !hasActiveFiltersOrSearch;
 
   return (
     <div data-testid="column-grid-container">
@@ -2501,86 +2541,88 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
 
       {/* Table Container - Same structure as DomainListPage */}
-      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary">
-        <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
-          <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
-            {/* Search */}
-            <div className="tw:shrink-0">
-              <Input
-                className="tw:max-w-86"
-                icon={SearchLg}
-                placeholder={t('label.search-columns')}
-                value={searchInputValue}
-                onChange={(value) => {
-                  setSearchInputValue(value);
-                  debouncedSearch(value);
-                }}
-              />
-            </div>
-            <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">
-              {/* Filters + Add Filter */}
-              <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">
-                {filterSection}
+      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
+        {!showEmptyOnboarding && (
+          <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
+            <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
+              {/* Search */}
+              <div className="tw:shrink-0">
+                <Input
+                  className="tw:max-w-86"
+                  icon={SearchLg}
+                  placeholder={t('label.search-columns')}
+                  value={searchInputValue}
+                  onChange={(value) => {
+                    setSearchInputValue(value);
+                    debouncedSearch(value);
+                  }}
+                />
               </div>
-              {/* Actions - right aligned */}
-              <div className="tw:flex tw:items-center tw:shrink-0 tw:gap-1 tw:ml-auto">
-                {hasSelection && (
-                  <>
-                    <Typography
-                      as="span"
-                      className="tw:text-sm tw:text-primary tw:whitespace-nowrap">
-                      {t('label.view-selected')} ({selectedCount})
-                    </Typography>
-                    <Toggle
-                      isSelected={viewSelectedOnly}
-                      size="sm"
-                      onChange={(checked: boolean) =>
-                        setViewSelectedOnly(!!checked)
-                      }
-                    />
-                  </>
-                )}
-                {hasSelection ? (
-                  <>
+              <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">
+                {/* Filters + Add Filter */}
+                <div className="tw:flex tw:items-center tw:flex-wrap tw:gap-1 tw:flex-1 tw:min-w-0">
+                  {filterSection}
+                </div>
+                {/* Actions - right aligned */}
+                <div className="tw:flex tw:items-center tw:shrink-0 tw:gap-1 tw:ml-auto">
+                  {hasSelection && (
+                    <>
+                      <Typography
+                        as="span"
+                        className="tw:text-sm tw:text-primary tw:whitespace-nowrap">
+                        {t('label.view-selected')} ({selectedCount})
+                      </Typography>
+                      <Toggle
+                        isSelected={viewSelectedOnly}
+                        size="sm"
+                        onChange={(checked: boolean) =>
+                          setViewSelectedOnly(!!checked)
+                        }
+                      />
+                    </>
+                  )}
+                  {hasSelection ? (
+                    <>
+                      <Button
+                        className="tw:ml-2.5"
+                        color="primary"
+                        data-testid="edit-button"
+                        iconLeading={<EditIcon height={14} width={14} />}
+                        isDisabled={isUpdating}
+                        size="sm"
+                        onPress={openDrawer}>
+                        {t('label.edit')}
+                      </Button>
+                      <Button
+                        className="tw:text-secondary"
+                        color="tertiary"
+                        data-testid="cancel-selection-button"
+                        size="sm"
+                        onPress={() => {
+                          columnGridListing.clearSelection();
+                          setViewSelectedOnly(false);
+                        }}>
+                        <XClose height={16} width={16} />
+                      </Button>
+                    </>
+                  ) : (
                     <Button
-                      className="tw:ml-2.5"
-                      color="primary"
-                      data-testid="edit-button"
+                      isDisabled
+                      className="tw:text-tertiary"
+                      color="tertiary"
+                      data-testid="edit-button-disabled"
                       iconLeading={<EditIcon height={14} width={14} />}
-                      isDisabled={isUpdating}
                       size="sm"
                       onPress={openDrawer}>
                       {t('label.edit')}
                     </Button>
-                    <Button
-                      className="tw:text-secondary"
-                      color="tertiary"
-                      data-testid="cancel-selection-button"
-                      size="sm"
-                      onPress={() => {
-                        columnGridListing.clearSelection();
-                        setViewSelectedOnly(false);
-                      }}>
-                      <XClose height={16} width={16} />
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    isDisabled
-                    className="tw:text-tertiary"
-                    color="tertiary"
-                    data-testid="edit-button-disabled"
-                    iconLeading={<EditIcon height={14} width={14} />}
-                    size="sm"
-                    onPress={openDrawer}>
-                    {t('label.edit')}
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
+            {filterSelectionDisplay}
           </div>
-          {filterSelectionDisplay}
-        </div>
+        )}
         {content}
       </div>
 

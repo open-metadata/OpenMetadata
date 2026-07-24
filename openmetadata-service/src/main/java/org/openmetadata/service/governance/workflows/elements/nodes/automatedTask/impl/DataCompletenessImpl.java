@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
@@ -35,8 +36,7 @@ public class DataCompletenessImpl implements JavaDelegate {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       // Get configuration
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       List<String> fieldsToCheck =
           JsonUtils.readOrConvertValue(fieldsToCheckExpr.getValue(execution), List.class);
       List<Map<String, Object>> qualityBandMaps =
@@ -53,7 +53,8 @@ public class DataCompletenessImpl implements JavaDelegate {
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
 
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
       Map<String, Object> entityMap = JsonUtils.getMap(entity);

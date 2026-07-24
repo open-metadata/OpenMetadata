@@ -44,7 +44,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
@@ -100,7 +99,6 @@ class ServiceDeleteSearchCleanupScaleIT {
   void recursiveServiceHardDelete_clearsTableAndColumnDocsAtScale(final TestNamespace ns)
       throws Exception {
     final int tableCount = Integer.getInteger("scale.tables", DEFAULT_TABLES);
-    final OpenMetadataClient client = SdkClients.adminClient();
 
     final DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -114,7 +112,7 @@ class ServiceDeleteSearchCleanupScaleIT {
     final String columnIndex = indexAliases.indexNameFor(Entity.TABLE_COLUMN);
 
     final long seedStart = System.currentTimeMillis();
-    seedTables(ns, client, schema.getFullyQualifiedName(), tableCount);
+    seedTables(ns, schema.getFullyQualifiedName(), tableCount);
     LOG.info(
         "Seeded {} tables ({} columns each) in {} ms",
         tableCount,
@@ -131,7 +129,7 @@ class ServiceDeleteSearchCleanupScaleIT {
         expectedColumns);
 
     final long deleteStart = System.currentTimeMillis();
-    recursiveHardDelete(client, serviceId);
+    recursiveHardDelete(serviceId);
     awaitCount(tableIndex, serviceId, 0);
     awaitCount(columnIndex, serviceId, 0);
     final long deleteMs = System.currentTimeMillis() - deleteStart;
@@ -142,11 +140,7 @@ class ServiceDeleteSearchCleanupScaleIT {
         deleteMs);
   }
 
-  private void seedTables(
-      final TestNamespace ns,
-      final OpenMetadataClient client,
-      final String schemaFqn,
-      final int count) {
+  private void seedTables(final TestNamespace ns, final String schemaFqn, final int count) {
     final String namePrefix = ns.prefix("scale_tbl") + "_";
     final ExecutorService executor = Executors.newFixedThreadPool(LOAD_WORKERS);
     try {
@@ -156,7 +150,11 @@ class ServiceDeleteSearchCleanupScaleIT {
         futures.add(
             executor.submit(
                 () -> {
-                  client
+                  // Fetch the admin client fresh per task: a 100k seed outlives the operator
+                  // token's ~1h TTL, and ExternalTokenRefresher rebuilds SdkClients' cached client
+                  // on re-login. A captured reference would pin the pre-refresh (expired) token and
+                  // fail mid-seed with "401 Expired token!".
+                  SdkClients.adminClient()
                       .tables()
                       .create(
                           new CreateTable()
@@ -184,13 +182,14 @@ class ServiceDeleteSearchCleanupScaleIT {
     return columns;
   }
 
-  private void recursiveHardDelete(final OpenMetadataClient client, final String serviceId) {
+  private void recursiveHardDelete(final String serviceId) {
     // Mirror the UI's service delete: hit the async endpoint (DELETE /databaseServices/async/{id})
     // so the recursive hard delete runs on the server's background executor instead of blocking the
     // request thread — a synchronous 100k-table delete can exceed a proxied cluster's gateway
     // timeout. The endpoint returns 202 immediately; the awaitCount(...) assertions confirm the
-    // delete's search cascade actually cleared both indexes.
-    client
+    // delete's search cascade actually cleared both indexes. Fetch the admin client fresh (not a
+    // captured reference) so the refreshed token is used after a long-running seed.
+    SdkClients.adminClient()
         .getHttpClient()
         .execute(
             HttpMethod.DELETE,

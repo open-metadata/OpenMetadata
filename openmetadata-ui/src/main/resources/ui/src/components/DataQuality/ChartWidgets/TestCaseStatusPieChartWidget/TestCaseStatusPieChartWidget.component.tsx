@@ -35,9 +35,12 @@ import { TEST_CASE_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
 const TestCaseStatusPieChartWidget = ({
   className = '',
   chartFilter,
+  navigate: navigateProp,
+  redirectPath: testCasesPath,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const navigate = navigateProp ?? routerNavigate;
 
   const [testCaseSummary, setTestCaseSummary] = useState(INITIAL_TEST_SUMMARY);
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
@@ -64,10 +67,14 @@ const TestCaseStatusPieChartWidget = ({
     (_entry: CustomPieChartData, index: number) => {
       const status = TEST_CASE_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        navigate(getTestCaseTabPath(status));
+        const redirectPath = getTestCaseTabPath(status);
+        navigate({
+          ...redirectPath,
+          pathname: testCasesPath ?? redirectPath.pathname,
+        });
       }
     },
-    [navigate]
+    [navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(
