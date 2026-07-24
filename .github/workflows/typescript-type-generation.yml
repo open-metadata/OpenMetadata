@@ -121,7 +121,7 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
           ref: ${{ steps.checkout-ref.outputs.ref }}
