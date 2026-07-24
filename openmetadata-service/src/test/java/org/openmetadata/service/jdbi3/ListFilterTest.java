@@ -129,13 +129,13 @@ class ListFilterTest {
   @Test
   void test_getMemorySearchVisibilityCondition() {
     ListFilter filter = new ListFilter();
-    String condition = filter.getCondition("context_memory_entity");
+    String condition = filter.getCondition("context_memory");
     assertFalse(condition.contains("shareConfig.visibility"));
     assertFalse(condition.contains("shareConfig'->>'visibility"));
 
     filter = new ListFilter();
     filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
-    condition = filter.getCondition("context_memory_entity");
+    condition = filter.getCondition("context_memory");
     String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
     assertTrue(
         condition.contains(
