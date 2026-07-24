@@ -1979,7 +1979,10 @@ test.describe('Context Center Permissions', () => {
     test('admin user can edit and save a memory owned by another user', async ({
       browser,
     }) => {
-      const { page: adminPage, afterAction } = await performAdminLogin(browser);
+      const { page: adminPage, afterAction } = await performAdminLogin(
+        browser,
+        { navigate: true }
+      );
 
       await navigateToMemories(adminPage);
 
@@ -2266,7 +2269,10 @@ test.describe('Context Center Permissions', () => {
     test('selecting "Updated By" actually reorders rows by updatedBy', async ({
       browser,
     }) => {
-      const { page: adminPage, afterAction } = await performAdminLogin(browser);
+      const { page: adminPage, afterAction } = await performAdminLogin(
+        browser,
+        { navigate: true }
+      );
 
       await navigateToMemories(adminPage);
       await adminPage.getByRole('button', { name: /sort/i }).click();

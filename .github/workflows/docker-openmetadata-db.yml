@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Check out the Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare for Docker Build&Push
         id: prepare
@@ -40,9 +40,9 @@ jobs:
 
 
       - name: Build and push if event is workflow_dispatch and input is checked
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
-          DOCKER_BUILD_NO_SUMMARY: true
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: .
           platforms: linux/amd64,linux/arm64
