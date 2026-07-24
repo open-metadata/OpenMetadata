@@ -505,7 +505,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         <div
           className={classNames(
             'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
-            'tw:border tw:border-utility-gray-blue-100',
+            !showOnboardingEmptyState &&
+              'tw:border tw:border-utility-gray-blue-100',
             scope === 'global' && !showOnboardingEmptyState
               ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
               : 'tw:rounded-lg'
