@@ -1313,6 +1313,7 @@ jobs:
     if: ${{ always() && !cancelled() }}
     needs:
       [
+        gate,
         check-changes,
         cache-keys,
         build,
@@ -1544,8 +1545,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green below.
+      # Without this guard, the "should_run != 'true'" branch (or any
+      # negative match) would treat an unset gate output the same as an
+      # explicit skip decision — hiding the gate failure and letting a
+      # required check pass on an invalid pipeline state.
+      # (Per @greptile-apps P1 review on this PR.)
+      - name: Guard against missing gate decision
+        if: ${{ needs.gate.result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
+          exit 1
+
+      # Short-circuit when gate explicitly decided should_run=false —
+      # every upstream job is legitimately `skipped` in that case
+      # (redundant pull_request_target for a same-repo PR, or fork PR
+      # without safe-to-test), and the renderer below counts each
+      # skipped upstream as a "CI/reporting failure" and fails the whole
+      # check. That's what turned run 30090391086 red on PR #30454 despite
+      # the pipeline correctly opting out. Match on the exact "false"
+      # string (not != 'true') so unset outputs never fall through here.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative playwright-summary comes from the sibling event's run."
+          echo "Exiting 0 so this check does not block branch protection."
+
       - name: Render consolidated job summary and gate on results
-        if: always()
+        if: ${{ always() && needs.gate.outputs.should_run == 'true' }}
         uses: actions/github-script@v8
         env:
           CHECK_CHANGES_RESULT: ${{ needs.check-changes.result }}
