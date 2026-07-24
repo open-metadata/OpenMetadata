@@ -136,14 +136,14 @@ def update_column_tags(
     Inplace update for the incoming column list
     """
     for col in columns:
-        if str(col.fullyQualifiedName.root).lower() == column_tag.column_fqn.lower():
+        if str(col.fullyQualifiedName.root) == column_tag.column_fqn:
             if operation == PatchOperation.REMOVE:
                 for tag in col.tags:
                     if tag.tagFQN == column_tag.tag_label.tagFQN:
                         col.tags.remove(tag)
             else:
                 col.tags.append(column_tag.tag_label)
-            break
+            return
 
         if col.children:
             update_column_tags(col.children, column_tag, operation)
