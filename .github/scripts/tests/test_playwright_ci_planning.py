@@ -1346,7 +1346,8 @@ def test_h2_browser_launch_accepts_self_signed_service_worker_certificate():
 
     assert "ignoreHTTPSErrors: isH2Mode" in playwright_config
     assert "launchOptions: isH2Mode" in playwright_config
-    assert "args: ['--ignore-certificate-errors']" in playwright_config
+    assert "--ignore-certificate-errors-spki-list=" in playwright_config
+    assert "--ignore-certificate-errors']" not in playwright_config
 
 
 def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():

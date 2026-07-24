@@ -31,6 +31,7 @@ dotenv.config();
  * `yarn playwright:run` flow is unaffected and still targets HTTP/1.1.
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+const h2TestCertificateSpki = '/hlfPr1ztWbZeqPD3s1UITRBMp54ik8XOpHkRvnFau4=';
 const defaultBaseURL = isH2Mode
   ? 'https://localhost:8585'
   : 'http://localhost:8585';
@@ -141,7 +142,9 @@ export default defineConfig({
     ignoreHTTPSErrors: isH2Mode,
     launchOptions: isH2Mode
       ? {
-          args: ['--ignore-certificate-errors'],
+          args: [
+            `--ignore-certificate-errors-spki-list=${h2TestCertificateSpki}`,
+          ],
         }
       : undefined,
 
