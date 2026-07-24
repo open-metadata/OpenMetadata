@@ -776,7 +776,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         // (FIELDS_STORED_AS_RELATIONSHIPS) and re-derived from entity_relationship on read.
         // Drop every cached variant of the asset so the next read rebuilds it from the
         // freshly-written relationships.
-        invalidateCacheForEntity(ref.getType(), ref.getId(), ref.getFullyQualifiedName());
+        EntityRepository.invalidateCacheForEntity(
+            ref.getType(), ref.getId(), ref.getFullyQualifiedName());
 
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -1104,7 +1105,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       // asset FQN from the relationship record's JSON so the by-name cache variant is evicted
       // too; otherwise GET-by-name would keep serving stale domain references until TTL.
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 
@@ -1147,7 +1148,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               .relationshipDAO()
               .findTo(updated.getId(), DATA_PRODUCT, Relationship.HAS.ordinal());
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
-        invalidateCacheForReferencedEntity(record);
+        EntityRepository.invalidateCacheForReferencedEntity(record);
       }
     }
 

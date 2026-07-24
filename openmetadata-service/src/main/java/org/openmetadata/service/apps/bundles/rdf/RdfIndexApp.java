@@ -48,7 +48,7 @@ import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobSt
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfIndexJob;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;

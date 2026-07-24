@@ -34,13 +34,13 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.PartitionStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexJobDAO.RdfIndexJobRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfEntityStatsRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.RdfIndexPartitionDAO.RdfServerPartitionStatsRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexJobDAO.RdfIndexJobRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfAggregatedStatsRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfEntityStatsRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfIndexPartitionDAO.RdfServerPartitionStatsRecord;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 

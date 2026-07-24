@@ -98,6 +98,7 @@ import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
@@ -670,21 +671,30 @@ public class FeedRepository {
     // Create relationship for users, teams, and other entities that are mentioned in the post
     // Multiple mentions of the same entity is handled by taking distinct mentions
     List<EntityLink> mentions = MessageParser.getEntityLinks(message);
+    String threadId = thread.getId().toString();
+    String threadIdHash = FullyQualifiedName.buildHash(threadId);
 
-    mentions.stream()
-        .distinct()
-        .forEach(
-            mention ->
-                dao.fieldRelationshipDAO()
-                    .insert(
-                        mention.getFullyQualifiedFieldValue(),
-                        thread.getId().toString(),
-                        mention.getFullyQualifiedFieldValue(),
-                        thread.getId().toString(),
-                        mention.getFullyQualifiedFieldType(),
-                        Entity.THREAD,
-                        Relationship.MENTIONED_IN.ordinal(),
-                        null));
+    List<FieldRelationship> relationships =
+        mentions.stream()
+            .distinct()
+            .map(
+                mention -> {
+                  FieldRelationship relationship = new FieldRelationship();
+                  relationship.setFromFQNHash(
+                      FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()));
+                  relationship.setToFQNHash(threadIdHash);
+                  relationship.setFromFQN(mention.getFullyQualifiedFieldValue());
+                  relationship.setToFQN(threadId);
+                  relationship.setFromType(mention.getFullyQualifiedFieldType());
+                  relationship.setToType(Entity.THREAD);
+                  relationship.setRelation(Relationship.MENTIONED_IN.ordinal());
+                  return relationship;
+                })
+            .toList();
+
+    if (!relationships.isEmpty()) {
+      dao.fieldRelationshipDAO().insertMany(relationships);
+    }
   }
 
   @Transaction

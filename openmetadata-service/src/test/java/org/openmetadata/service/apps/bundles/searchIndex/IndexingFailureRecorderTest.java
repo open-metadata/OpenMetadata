@@ -20,8 +20,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexFailureDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexFailureDAO.SearchIndexFailureRecord;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexFailureDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexFailureDAO.SearchIndexFailureRecord;
 
 @ExtendWith(MockitoExtension.class)
 class IndexingFailureRecorderTest {
