@@ -130,6 +130,8 @@ const GlossaryHeader = ({
 
   const importExportPermissions = useMemo(
     () =>
+      permissions.All ||
+      permissions.EditAll ||
       checkPermission(
         Operation.All,
         ResourceEntity.GLOSSARY_TERM,
