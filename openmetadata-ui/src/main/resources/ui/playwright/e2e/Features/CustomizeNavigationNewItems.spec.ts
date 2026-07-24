@@ -279,5 +279,52 @@ test.describe(
         await userPage.click('[data-testid="governance"]');
       });
     });
+
+    // Regression: cancel button used to trigger both CustomizablePageHeader's
+    // local modal AND NavigationBlocker's modal, forcing users to click
+    // Discard twice. A single Discard click must exit the customize page.
+    test('cancel button on customize navigation shows a single confirmation modal and Discard exits the page', async ({
+      adminPage,
+    }) => {
+      test.slow();
+
+      await redirectToHomePage(adminPage);
+
+      const personaListResponse =
+        adminPage.waitForResponse('/api/v1/personas?*');
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.getByTestId('navigation').click();
+
+      // Toggle Glossary to create an unsaved change (enables the blocker)
+      await adminPage
+        .getByTestId('page-layout-v1')
+        .getByText('Glossary')
+        .first()
+        .getByRole('switch')
+        .click();
+
+      await expect(adminPage.getByTestId('save-button')).toBeEnabled();
+
+      await adminPage.getByTestId('cancel-button').click();
+
+      // Assert on -title (inside the visible .ant-modal) rather than the
+      // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeVisible();
+
+      await adminPage.getByTestId('unsaved-changes-modal-discard').click();
+
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeHidden();
+      await expect(
+        adminPage.getByTestId('customize-landing-page-header')
+      ).toBeHidden();
+    });
   }
 );

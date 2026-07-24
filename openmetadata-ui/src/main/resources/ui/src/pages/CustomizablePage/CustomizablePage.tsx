@@ -396,7 +396,12 @@ export const CustomizablePage = () => {
 
   switch (pageFqn) {
     case 'navigation':
-      return <SettingsNavigationPage onSave={handleNavigationSave} />;
+      return (
+        <SettingsNavigationPage
+          persona={personaDetails}
+          onSave={handleNavigationSave}
+        />
+      );
 
     case 'app-mode':
       return (

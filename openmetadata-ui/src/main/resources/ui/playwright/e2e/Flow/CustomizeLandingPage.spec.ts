@@ -303,5 +303,39 @@ test.describe(
         }
       }
     });
+
+    // Regression: cancel button used to trigger both CustomizablePageHeader's
+    // local modal AND NavigationBlocker's modal, forcing users to click
+    // Discard twice. A single Discard click must exit the customize page.
+    test('Cancel button should show a single confirmation modal and Discard should exit the customize landing page', async ({
+      adminPage,
+    }) => {
+      test.slow();
+
+      await navigateToCustomizeLandingPage(adminPage, {
+        personaName: persona.responseData.name,
+      });
+
+      await removeAndCheckWidget(adminPage, {
+        widgetKey: 'KnowledgePanel.MyData',
+      });
+
+      await adminPage.getByTestId('cancel-button').click();
+
+      // Assert on -title (inside the visible .ant-modal) rather than the
+      // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeVisible();
+
+      await adminPage.getByTestId('unsaved-changes-modal-discard').click();
+
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeHidden();
+      await expect(
+        adminPage.getByTestId('customize-landing-page-header')
+      ).toBeHidden();
+    });
   }
 );
