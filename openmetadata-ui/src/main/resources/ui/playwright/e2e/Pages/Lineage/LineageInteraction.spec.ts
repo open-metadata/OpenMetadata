@@ -34,6 +34,7 @@ import {
   connectEdgeBetweenNodesViaAPI,
   editLineage,
   editLineageClick,
+  fitToScreen,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -550,7 +551,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }) => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         await clickLineageNode(page, table3Fqn);
 
@@ -576,7 +577,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         const columnEdge = page.locator(
           `[data-testid="column-edge-${table1Col}-${table2Col}"]`
@@ -593,7 +594,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }) => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         await clickLineageNode(page, table3Fqn);
 
@@ -614,7 +615,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         const table1Column = page.locator(
           `[data-testid="column-${table1Col}"]`
@@ -638,7 +639,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         const table3Column = page.locator(
           `[data-testid="column-${table3Col}"]`
@@ -661,7 +662,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         await table2.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         const table3Column = page.locator(
           `[data-testid="column-${table3Col}"]`
