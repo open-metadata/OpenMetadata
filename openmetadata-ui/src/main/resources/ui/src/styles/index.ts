@@ -47,4 +47,6 @@ import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
 import './temp.css';
+// Design tokens (Layer 1 --ds-* / Layer 2 --om-*). See ./tokens.css and ./specs/.
+import './tokens.css';
 import './tree.less';

@@ -23,7 +23,7 @@
   }
 
   .ant-drawer-body {
-    padding: 20px;
+    padding: var(--om-space-20);
     background-color: var(--tw-color-bg-primary);
   }
 
@@ -34,18 +34,18 @@
     width: 100%;
 
     .drawer-title {
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
       font-weight: @font-semibold;
       color: @grey-900;
     }
 
     .drawer-close {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       color: @grey-500;
       cursor: pointer;
       padding: @padding-xs;
       border-radius: @border-rad-base;
-      transition: all 0.2s ease;
+      transition: all var(--om-duration-200) ease;
 
       &:hover {
         color: @grey-700;
@@ -68,7 +68,7 @@
 
 .learning-resource-form {
   .ant-form-item {
-    margin-bottom: 20px;
+    margin-bottom: var(--om-space-20);
 
     &:last-child {
       margin-bottom: 0;
@@ -83,7 +83,7 @@
     > label {
       color: @grey-700;
       font-family: @font-family;
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       font-style: normal;
       font-weight: @font-medium;
       line-height: 20px;
@@ -95,7 +95,7 @@
       > label::after {
         content: '*';
         color: @error-color;
-        margin-left: 2px;
+        margin-left: var(--om-space-2);
       }
     }
   }
@@ -105,7 +105,7 @@
   .ant-input-textarea,
   .ant-select-selector,
   .ant-picker {
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     border: 1px solid @grey-300;
     background: var(--tw-color-bg-primary);
     box-shadow: @button-box-shadow-default;
@@ -120,7 +120,7 @@
 
   .ant-select-single .ant-select-selector,
   .ant-select-multiple .ant-select-selector {
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     border: 1px solid @grey-300;
     background: var(--tw-color-bg-primary);
     box-shadow: @button-box-shadow-default;
@@ -157,7 +157,7 @@
 
   .ant-select-multiple .ant-select-selector {
     min-height: 44px;
-    padding: 4px @padding-md;
+    padding: var(--om-space-4) @padding-md;
     align-items: center;
   }
 
@@ -187,7 +187,7 @@
     min-height: 77px;
     height: 77px;
     padding: @padding-sm;
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     box-shadow: @button-box-shadow-default;
   }
 

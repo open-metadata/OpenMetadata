@@ -13,8 +13,8 @@
 
 @import '../../styles/variables.less';
 
-@box-shadow-color: rgba(0, 0, 0, 0.06);
-@left-panel-border-color: rgb(229, 231, 235);
+@box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
+@left-panel-border-color: var(--om-color-gray-neutral-200);
 
 .display-name {
   .ant-typography {
@@ -22,7 +22,7 @@
   }
 
   .ant-btn {
-    padding: 0px;
+    padding: 0;
   }
 }
 
@@ -31,13 +31,13 @@
 }
 
 .edit-input {
-  padding: 0 0 8px;
+  padding: 0 0 var(--om-space-8);
 }
 
 .icon-buttons {
-  padding: 0.2rem 0.2rem;
-  border-radius: 0.2rem;
-  margin-right: 0.3rem;
+  padding: var(--om-space-3_2) var(--om-space-3_2);
+  border-radius: var(--om-radius-3_2);
+  margin-right: var(--om-space-4_8);
 }
 
 .manage-button {
@@ -49,14 +49,14 @@
 
 .glossary-manage-dropdown-list-container {
   .ant-dropdown-menu {
-    padding: 8px 0px;
+    padding: var(--om-space-8) 0;
     background: var(--tw-color-bg-primary);
-    border: 1px solid #dde3ea;
-    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
-    border-radius: 4px;
+    border: 1px solid var(--om-legacy-color-dde3ea);
+    box-shadow: 1px 1px 3px var(--om-legacy-color-0-0-0-0-12);
+    border-radius: var(--om-radius-sm);
 
     .ant-dropdown-menu-item {
-      padding: 5px 16px;
+      padding: var(--om-space-5) var(--om-space-16);
     }
   }
 }
@@ -65,7 +65,7 @@
   .ant-tree-node-content-wrapper {
     overflow: hidden;
     white-space: nowrap;
-    gap: 4px;
+    gap: var(--om-space-4);
   }
 
   .ant-tree-title {
@@ -85,8 +85,8 @@
   }
 
   .ant-dropdown-menu-item {
-    padding-left: 0px;
-    padding-right: 0px;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   .ant-dropdown-menu-item:hover {
@@ -232,7 +232,7 @@
     .ant-table-header {
       position: sticky;
       top: 0;
-      z-index: 2;
+      z-index: var(--om-z-2);
     }
   }
 }
@@ -263,10 +263,10 @@
 .warning-icon {
   background-color: @alert-warning-icon-bg-1;
   border: 6px solid @alert-warning-icon-bg-2;
-  font-size: 20px;
+  font-size: var(--om-font-size-xl);
   border-radius: 50%;
-  padding: 8px;
-  color: #dc6803;
+  padding: var(--om-space-8);
+  color: var(--om-color-warning-600);
 }
 
 .glossary-page-tabs .left-panel-content.ant-row {

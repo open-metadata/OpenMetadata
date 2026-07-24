@@ -17,11 +17,11 @@
   display: flex;
   flex-direction: column;
   font-family: @font-family;
-  gap: 24px;
+  gap: var(--om-space-24);
 
   .page-header h1,
   h1 {
-    font-size: 20px;
+    font-size: var(--om-font-size-xl);
     font-weight: @font-bold;
     letter-spacing: -0.01em;
     line-height: 28px;
@@ -36,7 +36,7 @@
   align-items: center;
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   display: inline-flex;
   height: 38px;
   justify-content: center;
@@ -50,19 +50,19 @@
 .metric-actions-menu-content {
   display: flex;
   flex-direction: column;
-  padding: 6px;
+  padding: var(--om-space-6);
 }
 
 .metric-actions-menu-item {
   align-items: flex-start;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   color: @grey-900;
   cursor: pointer;
   display: flex;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: var(--om-space-14);
+  padding: var(--om-space-12) var(--om-space-14);
   text-align: left;
   width: 100%;
 
@@ -74,7 +74,7 @@
 .metric-actions-icon {
   align-items: center;
   background: @primary-50;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   color: @primary-6;
   display: inline-flex;
   flex: 0 0 auto;
@@ -97,16 +97,16 @@
 
 .metric-actions-description {
   color: @grey-600;
-  font-size: 12.5px;
+  font-size: var(--om-font-size-12_5);
   font-weight: @font-regular;
   line-height: 18px;
-  margin-top: 2px;
+  margin-top: var(--om-space-2);
 }
 
 .metric-actions-separator {
   background: @grey-15;
   height: 1px;
-  margin: 6px 0;
+  margin: var(--om-space-6) 0;
 }
 
 .metric-actions-menu-item-danger {
@@ -119,7 +119,7 @@
 .metric-list-table-card {
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   box-shadow: @box-shadow-card-subtle;
   overflow: hidden;
 }
@@ -128,9 +128,9 @@
   align-items: center;
   border-bottom: 1px solid @grey-15;
   display: flex;
-  gap: 10px;
+  gap: var(--om-space-10);
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: var(--om-space-12) var(--om-space-16);
 }
 
 .metric-list-search {
@@ -143,7 +143,7 @@
   min-height: 34px;
 
   input {
-    font-size: 13px !important;
+    font-size: var(--om-font-size-13) !important;
     height: 34px !important;
     line-height: 18px !important;
   }
@@ -158,7 +158,7 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--om-space-4);
   justify-content: flex-end;
 }
 
@@ -168,13 +168,13 @@
 
 .metric-list-toolbar-link {
   color: @primary-6 !important;
-  font-size: 13px !important;
+  font-size: var(--om-font-size-13) !important;
   font-weight: @font-medium !important;
   height: 34px !important;
   line-height: 18px !important;
   min-height: 34px;
-  padding: 0 10px !important;
-  border-radius: 6px !important;
+  padding: 0 var(--om-space-10) !important;
+  border-radius: var(--om-radius-md) !important;
 
   &:hover {
     background: @primary-50 !important;
@@ -210,7 +210,7 @@
   background: @grey-15;
   display: inline-flex;
   height: 18px;
-  margin: 0 4px;
+  margin: 0 var(--om-space-4);
   width: 1px;
 }
 
@@ -221,19 +221,19 @@
   display: flex;
   justify-content: space-between;
   min-height: 51px;
-  padding: 10px 16px;
+  padding: var(--om-space-10) var(--om-space-16);
 }
 
 .metric-list-selection-left,
 .metric-list-selection-actions {
   align-items: center;
   display: flex;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .metric-list-selection-left {
   color: @primary-7;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-medium;
 }
 
@@ -246,13 +246,13 @@
 
 .metric-list-selection-clear,
 .metric-list-selection-action {
-  font-size: 13px !important;
+  font-size: var(--om-font-size-13) !important;
   min-height: 30px !important;
-  padding: 0 12px !important;
-  border-radius: 6px !important;
+  padding: 0 var(--om-space-12) !important;
+  border-radius: var(--om-radius-md) !important;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.7) !important;
+    background: var(--om-legacy-color-255-255-255-0-7) !important;
   }
 
   [data-text] {
@@ -277,13 +277,13 @@
 .metric-list-identity {
   align-items: flex-start;
   display: flex;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .metric-list-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--om-space-4);
   min-width: 0;
 }
 
@@ -291,10 +291,10 @@
   align-items: center;
   background: linear-gradient(180deg, @primary-50 0%, @white 100%);
   border: 1px solid @primary-2;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   color: @primary-6;
   display: flex;
-  font-size: 16px;
+  font-size: var(--om-font-size-md);
   height: 30px;
   justify-content: center;
   width: 30px;
@@ -323,17 +323,17 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--om-space-6);
 }
 
 .metric-list-meta {
-  margin-top: 4px;
+  margin-top: var(--om-space-4);
 }
 
 .metric-list-granularity {
   color: @grey-600;
   font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--om-font-size-11);
   font-weight: @font-medium;
   letter-spacing: 0.02em;
   line-height: 16px;
@@ -345,7 +345,7 @@
     content: '';
     display: inline-block;
     height: 3px;
-    margin: 0 8px 2px 2px;
+    margin: 0 var(--om-space-8) var(--om-space-2) var(--om-space-2);
     width: 3px;
   }
 }
@@ -363,7 +363,7 @@
 
 .metric-list-empty-dash {
   color: @grey-7;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-medium;
   letter-spacing: 0.02em;
 }
@@ -372,14 +372,14 @@
 .metric-list-glossary-pill,
 .metric-list-tag-pill {
   border: none !important;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   box-shadow: none !important;
   font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace !important;
-  font-size: 10px !important;
+  font-size: var(--om-font-size-10) !important;
   font-weight: @font-semibold !important;
   letter-spacing: 0.04em;
   line-height: 14px !important;
-  padding: 1px 6px !important;
+  padding: var(--om-space-1) var(--om-space-6) !important;
   text-transform: uppercase;
 }
 
@@ -391,12 +391,12 @@
 .metric-list-type-ratio,
 .metric-list-type-percentage,
 .metric-list-type-dax {
-  background: #f4f3ff;
-  color: #5925dc;
+  background: var(--om-color-purple-50);
+  color: var(--om-color-purple-700);
 }
 
 .metric-list-type-sum {
-  background: #eff8ff;
+  background: var(--om-color-brand-50);
   color: @primary-7;
 }
 
@@ -407,13 +407,13 @@
 .metric-list-type-mode,
 .metric-list-type-standard_deviation,
 .metric-list-type-variance {
-  background: #eef4ff;
-  color: #3538cd;
+  background: var(--om-color-indigo-50);
+  color: var(--om-color-indigo-700);
 }
 
 .metric-list-type-count {
-  background: #fdf2fa;
-  color: #c11574;
+  background: var(--om-color-pink-50);
+  color: var(--om-color-pink-700);
 }
 
 .metric-list-type-other {
@@ -434,18 +434,18 @@
 .metric-status-pill {
   align-items: center;
   border-width: 1px !important;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   display: inline-flex;
-  font-size: 11.5px !important;
+  font-size: var(--om-font-size-11_5) !important;
   font-weight: @font-medium !important;
   line-height: 16px !important;
-  padding: 2px 8px !important;
+  padding: var(--om-space-2) var(--om-space-8) !important;
 }
 
 .metric-status-content {
   align-items: center;
   display: inline-flex;
-  gap: 4px;
+  gap: var(--om-space-4);
 }
 
 .metric-status-icon {
@@ -474,7 +474,7 @@
 .metric-owner-avatar {
   background: @green-100;
   color: @green-17;
-  font-size: 11px !important;
+  font-size: var(--om-font-size-11) !important;
   font-weight: @font-semibold;
   height: 26px !important;
   width: 26px !important;
@@ -486,23 +486,23 @@
 }
 
 .metric-owner-group .metric-owner-avatar:not(:first-child) {
-  margin-left: -6px;
+  margin-left: calc(-1 * var(--om-space-6));
 }
 
 .metric-owner-extra {
   align-items: center;
   background: @grey-36;
   border: 1px solid @grey-22;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   color: @grey-700;
   display: inline-flex;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-weight: @font-medium;
   height: 24px;
   justify-content: center;
-  margin-left: -6px;
+  margin-left: calc(-1 * var(--om-space-6));
   min-width: 24px;
-  padding: 0 6px;
+  padding: 0 var(--om-space-6);
 }
 
 .metric-list-table-card {
@@ -515,20 +515,20 @@
   .pagination-container {
     background: @grey-26;
     border-top: 1px solid @grey-15;
-    font-size: 12.5px;
-    padding: 10px 16px;
+    font-size: var(--om-font-size-12_5);
+    padding: var(--om-space-10) var(--om-space-16);
   }
 
   .pagination-button {
-    border-radius: 6px !important;
-    font-size: 12.5px !important;
+    border-radius: var(--om-radius-md) !important;
+    font-size: var(--om-font-size-12_5) !important;
     min-height: 28px !important;
-    padding: 0 8px !important;
+    padding: 0 var(--om-space-8) !important;
   }
 
   .pagination-indicator {
     color: @grey-600;
-    font-size: 12.5px;
+    font-size: var(--om-font-size-12_5);
     font-variant-numeric: tabular-nums;
   }
 
@@ -542,10 +542,10 @@
 
   th {
     color: @grey-600;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     font-weight: @font-medium !important;
     line-height: 20px;
-    padding: 12px 16px !important;
+    padding: var(--om-space-12) var(--om-space-16) !important;
     vertical-align: middle;
   }
 
@@ -553,7 +553,7 @@
     color: @grey-900;
     font-size: @font-size-base;
     line-height: 20px;
-    padding: 16px !important;
+    padding: var(--om-space-16) !important;
     vertical-align: middle;
   }
 
@@ -568,7 +568,7 @@
   th:first-child,
   td:first-child {
     min-width: 48px !important;
-    padding-left: 16px !important;
+    padding-left: var(--om-space-16) !important;
     padding-right: 0 !important;
     width: 48px !important;
   }
@@ -592,7 +592,7 @@
     width: 16px;
 
     > div {
-      border-radius: 4px !important;
+      border-radius: var(--om-radius-sm) !important;
       height: 16px !important;
       width: 16px !important;
     }
@@ -601,7 +601,7 @@
 
 .metric-list-muted {
   color: @grey-600;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
 }
 
 .metric-customize-menu {
@@ -613,11 +613,11 @@
   border-bottom: 1px solid @grey-15;
   color: @grey-600;
   display: flex;
-  font-size: 11px;
+  font-size: var(--om-font-size-11);
   font-weight: @font-semibold;
   justify-content: space-between;
   letter-spacing: 0.04em;
-  padding: 10px 12px;
+  padding: var(--om-space-10) var(--om-space-12);
   text-transform: uppercase;
 }
 
@@ -626,7 +626,7 @@
   border: 0;
   color: @primary-6;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-weight: @font-medium;
   letter-spacing: 0;
   padding: 0;
@@ -636,21 +636,21 @@
 .metric-customize-list {
   display: flex;
   flex-direction: column;
-  padding: 6px;
+  padding: var(--om-space-6);
 }
 
 .metric-customize-row {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   color: @grey-800;
   cursor: pointer;
   display: grid;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   grid-template-columns: 24px 1fr 20px;
   line-height: 18px;
-  padding: 8px;
+  padding: var(--om-space-8);
   text-align: left;
 
   &:hover {

@@ -26,14 +26,14 @@
 .domain-link-container {
   max-width: 100%;
   border: 1px solid @grey-200;
-  background-color: #f9fafc;
-  border-radius: 6px;
-  padding: 2px 8px;
+  background-color: var(--om-legacy-color-f9fafc);
+  border-radius: var(--om-radius-md);
+  padding: var(--om-space-2) var(--om-space-8);
   .domain-link-text {
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     text-overflow: ellipsis;
     overflow: hidden;
-    color: #21263c;
+    color: var(--om-legacy-color-21263c);
     white-space: nowrap;
   }
 }
@@ -41,7 +41,7 @@
 .domain-tooltip-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--om-space-8);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -50,8 +50,8 @@
   background-color: @primary-button-background;
   height: auto;
   width: auto;
-  padding: 0 4px;
-  border-radius: 200px;
+  padding: 0 var(--om-space-4);
+  border-radius: var(--om-radius-200);
   text-align: center;
   text-decoration: none;
   display: flex;
@@ -61,9 +61,9 @@
     color: @blue-24;
   }
   border: 1px solid @blue-24;
-  margin-left: -4px;
+  margin-left: calc(-1 * var(--om-space-4));
 }
 
 .domain-count-label {
-  font-size: 10px;
+  font-size: var(--om-font-size-10);
 }

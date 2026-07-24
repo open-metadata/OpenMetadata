@@ -23,13 +23,13 @@
   border: none;
   background-color: @primary-1;
   padding: 0;
-  border-radius: 4px;
+  border-radius: var(--om-radius-sm);
   width: 24px;
   display: flex;
   justify-content: center;
 
   .ant-btn {
-    padding: 0 4px;
+    padding: 0 var(--om-space-4);
   }
 }
 
@@ -43,20 +43,20 @@
   }
   .manage-dropdown-icon {
     color: var(--tw-color-text-white);
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
   background-color: @primary-color;
 }
 
 .manage-dropdown-list-container {
   .ant-dropdown-menu {
-    padding: 8px 0px;
+    padding: var(--om-space-8) 0;
     background: var(--tw-color-bg-primary);
-    border: 1px solid #dde3ea;
-    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
-    border-radius: 4px;
+    border: 1px solid var(--om-legacy-color-dde3ea);
+    box-shadow: 1px 1px 3px var(--om-legacy-color-0-0-0-0-12);
+    border-radius: var(--om-radius-sm);
     .ant-dropdown-menu-item {
-      padding: 5px 16px;
+      padding: var(--om-space-5) var(--om-space-16);
     }
   }
 }

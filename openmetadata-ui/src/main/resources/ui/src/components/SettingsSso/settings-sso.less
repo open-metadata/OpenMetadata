@@ -17,7 +17,7 @@
   border-radius: @size-sm;
   border: 1px solid @grey-15;
   .ant-card-body {
-    padding: 0px;
+    padding: 0;
   }
   .ant-input-affix-wrapper {
     border-radius: @size-xs;
@@ -25,7 +25,7 @@
   .card-title {
     color: @grey-700;
     font-style: normal;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     line-height: @size-lg;
     margin-bottom: @size-xs;
     font-size: @font-size-base;
@@ -40,19 +40,19 @@
   }
   .token-label {
     color: @text-color-tertiary;
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
     margin-bottom: @size-md;
   }
   .created-by-label,
   .created-on-label {
     color: @grey-400;
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
     margin-right: @size-3xl;
   }
 
   .created-by-value,
   .created-on-value {
-    font-weight: 500;
+    font-weight: var(--om-font-weight-medium);
   }
   .generate-scim-token-btn {
     width: @size-3xl * 2 + @size-lg;
@@ -92,7 +92,7 @@
   }
 
   .scim-modal-delete-title {
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .scim-modal-delete-desc {
@@ -189,7 +189,7 @@
       left: @size-xxs / 2;
       border: none;
       position: absolute;
-      transition: all 0.2s ease;
+      transition: all var(--om-duration-200) ease;
 
       &::before {
         display: none;
@@ -228,13 +228,13 @@
   padding: @size-lg;
   height: calc(100vh - (@om-navbar-height + @size-2xl));
   margin-top: @size-xs;
-  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: height var(--om-duration-500) cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   // Tab styling for configured SSO
   .ant-tabs .ant-tabs-tab {
     .ant-tabs-tab-btn {
       color: @grey-700;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       font-size: @font-size-base;
     }
   }
@@ -242,11 +242,11 @@
   // Active tab styling for configured SSO
   .ant-tabs .ant-tabs-tab.ant-tabs-tab-active {
     color: @blue-34;
-    padding: 0px;
+    padding: 0;
 
     .ant-tabs-tab-btn {
       color: @blue-34;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
       font-size: @font-size-base;
     }
   }
@@ -327,7 +327,7 @@
       }
 
       span.text-sm.font-regular.p-x-xs.text-grey-muted {
-        font-size: 12px;
+        font-size: var(--om-font-size-xs);
         line-height: 18px;
       }
 

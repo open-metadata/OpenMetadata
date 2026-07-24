@@ -31,7 +31,7 @@
     position: absolute;
     right: 0;
     &.ant-btn-icon-only.ant-btn-sm {
-      padding: 10px 0px;
+      padding: var(--om-space-10) 0;
       text-align: center;
       &:hover,
       &:focus,
@@ -52,13 +52,13 @@
 }
 .custom-tooltip {
   .ant-tooltip-inner {
-    padding: 4px 8px;
-    font-size: 12px;
+    padding: var(--om-space-4) var(--om-space-8);
+    font-size: var(--om-font-size-xs);
     min-height: auto;
     background-color: @grey-900;
     color: var(--tw-color-text-white);
-    font-weight: 600;
-    margin-top: -8px;
+    font-weight: var(--om-font-weight-semibold);
+    margin-top: calc(-1 * var(--om-space-8));
   }
 
   &.ant-tooltip {

@@ -22,14 +22,14 @@
 .task-action-button {
   button {
     height: 32px;
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
     span {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       font-style: normal;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
       line-height: 20px;
       color: @grey-700;
     }
@@ -40,7 +40,7 @@
     svg {
       width: 12px;
       height: 12px;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
     &:first-child {
       border-right: none;
@@ -62,14 +62,14 @@
     height: 16px;
   }
   ul {
-    padding: 4px 0;
-    border-radius: 8px;
+    padding: var(--om-space-4) 0;
+    border-radius: var(--om-radius-lg);
 
     li {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
       line-height: 20px;
-      padding: 10px 16px;
+      padding: var(--om-space-10) var(--om-space-16);
       cursor: pointer;
       border-bottom: none;
       &:hover {
@@ -90,9 +90,9 @@
 }
 
 .task-details-id {
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   .ant-typography,
   .ant-typography a,
@@ -105,70 +105,70 @@
 }
 .task-details-entity-link {
   color: @text-color-tertiary;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
 }
 
 //user profile page
 .action-required-card {
-  border-radius: 12px;
-  border: 0.5px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  border: 0.5px solid var(--om-color-gray-blue-100);
   background: linear-gradient(
     270deg,
-    rgba(85, 155, 238, 0.2) 0.56%,
-    rgba(96, 167, 251, 0.2) 16.47%,
-    rgba(245, 245, 245, 0.2) 99.98%
+    var(--om-legacy-color-85-155-238-0-2) 0.56%,
+    var(--om-legacy-color-96-167-251-0-2) 16.47%,
+    var(--om-legacy-color-245-245-245-0-2) 99.98%
   );
-  padding: 16px;
-  margin: 24px 0px;
+  padding: var(--om-space-16);
+  margin: var(--om-space-24) 0;
   box-shadow: none;
 }
 
 .action-required-text {
   flex-grow: 1;
-  font-weight: 400;
-  color: #414651;
-  font-weight: 500;
+  font-weight: var(--om-font-weight-regular);
+  color: var(--om-color-gray-700);
+  font-weight: var(--om-font-weight-medium);
   line-height: 20px;
 }
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .approve-button {
-  background-color: #2f74eb;
-  border-color: #2f74eb;
-  border-radius: 8px;
-  font-weight: 500;
+  background-color: var(--om-legacy-color-2f74eb);
+  border-color: var(--om-legacy-color-2f74eb);
+  border-radius: var(--om-radius-lg);
+  font-weight: var(--om-font-weight-medium);
 }
 
 .approve-button:hover {
-  background-color: #1f67e9;
-  border-color: #1f67e9;
+  background-color: var(--om-legacy-color-1f67e9);
+  border-color: var(--om-legacy-color-1f67e9);
 }
 
 .reject-button {
-  background-color: #d93025;
-  border-color: #d93025;
+  background-color: var(--om-legacy-color-d93025);
+  border-color: var(--om-legacy-color-d93025);
   color: white;
-  border-radius: 8px;
-  font-weight: 500;
+  border-radius: var(--om-radius-lg);
+  font-weight: var(--om-font-weight-medium);
 }
 
 .reject-button:hover {
-  background-color: #b1271c;
-  border-color: #b1271c;
+  background-color: var(--om-legacy-color-b1271c);
+  border-color: var(--om-legacy-color-b1271c);
 }
 .profile-picture {
   width: 32px;
   height: 32px;
 }
 .task-feed-message {
-  margin-top: -8px;
+  margin-top: calc(-1 * var(--om-space-8));
   width: 90%;
   height: 100%;
   display: flex;
@@ -176,12 +176,12 @@
   flex-wrap: wrap;
 }
 .task-details-panel {
-  padding: 20px;
+  padding: var(--om-space-20);
 }
 .task-id,
 .entity-type {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-semibold);
   color: @primary-heading-color;
   line-height: 20px;
   &.ant-typography {
@@ -192,101 +192,101 @@
   color: @primary-heading-color;
 }
 .entity-link {
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
   color: @primary-heading-color;
 }
 .task-details {
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   color: @text-color;
   line-height: 20px;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
 }
 
 .diff-view-container-card {
   max-height: 200px;
-  border: 0.5px solid #eaecf5;
+  border: 0.5px solid var(--om-color-gray-blue-100);
   background: var(--tw-color-bg-primary);
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
 }
 .diff-view-container-card-right-panel {
   max-height: 400px;
   background: @grey-9;
-  border-radius: 12px;
-  border: 0.5px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  border: 0.5px solid var(--om-color-gray-blue-100);
 }
 .task-tab-description-header {
   color: @text-color;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
 }
 .tags-details-contianer {
-  border-radius: 12px;
-  border: 0.5px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  border: 0.5px solid var(--om-color-gray-blue-100);
   background: @grey-9;
-  padding: 16px;
+  padding: var(--om-space-16);
 }
 .task-proposed-changes {
-  border-radius: 12px;
-  border: 0.5px solid #eaecf5;
+  border-radius: var(--om-radius-xl);
+  border: 0.5px solid var(--om-color-gray-blue-100);
   background: @grey-9;
-  padding: 16px;
+  padding: var(--om-space-16);
 
   .task-proposed-changes-title {
     display: block;
     color: @text-color;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-semibold);
     line-height: 20px;
-    margin-bottom: 8px;
+    margin-bottom: var(--om-space-8);
   }
 
   .task-proposed-changes-fields {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--om-space-8);
   }
 
   .task-proposed-changes-field-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--om-space-8);
   }
 
   .task-proposed-changes-field-name {
     min-width: 100px;
     color: @text-color-tertiary;
-    font-size: 12px;
-    font-weight: 500;
-    padding-top: 2px;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-medium);
+    padding-top: var(--om-space-2);
   }
 
   .task-proposed-changes-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--om-space-4);
   }
 
   .task-proposed-changes-chip {
     display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: var(--om-space-2) var(--om-space-8);
+    border-radius: var(--om-radius-sm);
+    font-size: var(--om-font-size-xs);
     line-height: 18px;
     text-decoration: none;
 
     &--added {
-      background-color: #ecfdf3;
-      color: #027a48;
-      border: 1px solid #a9efc5;
+      background-color: var(--om-color-success-50);
+      color: var(--om-legacy-color-027a48);
+      border: 1px solid var(--om-legacy-color-a9efc5);
     }
 
     &--removed {
-      background-color: #fff1f3;
-      color: #c01048;
-      border: 1px solid #fea3b4;
+      background-color: var(--om-color-rose-50);
+      color: var(--om-color-rose-700);
+      border: 1px solid var(--om-color-rose-300);
       text-decoration: line-through;
     }
 
