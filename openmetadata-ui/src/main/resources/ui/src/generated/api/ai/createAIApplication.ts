@@ -75,6 +75,10 @@ export interface CreateAIApplication {
      */
     knowledgeBases?: EntityReference[];
     /**
+     * MCP servers this application connects to for tools, resources, and prompts
+     */
+    mcpServers?: EntityReference[];
+    /**
      * Multiple LLM models this application can use for different purposes
      */
     modelConfigurations?: ModelConfiguration[];

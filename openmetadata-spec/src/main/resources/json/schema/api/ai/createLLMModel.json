@@ -24,6 +24,21 @@
       "description": "Base model name",
       "type": "string"
     },
+    "modelType": {
+      "description": "Type of LLM model",
+      "$ref": "../../entity/ai/llmModel.json#/definitions/modelType"
+    },
+    "providerModelId": {
+      "description": "Provider's internal model ID",
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "Capabilities of this model",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/ai/llmModel.json#/definitions/modelCapability"
+      }
+    },
     "modelVersion": {
       "description": "Version of the model",
       "type": "string"
