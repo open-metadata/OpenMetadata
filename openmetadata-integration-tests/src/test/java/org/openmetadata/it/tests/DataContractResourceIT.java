@@ -6804,4 +6804,70 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         result.getContractExecutionStatus(),
         "Empty rule should be treated as a failed semantics check");
   }
+
+  @Test
+  void testContractLatestResultTracksSemanticsFailureAfterEntityChange(TestNamespace ns) {
+    // Regression test for https://github.com/open-metadata/OpenMetadata/issues/30179
+    // When an entity change flips a semantic rule from passing to failing, the contract's
+    // aggregate latestResult (rendered by the entity header + Explore listing) must reflect
+    // the new Failed status — not stay stuck on the previous run's Success.
+    org.openmetadata.it.bootstrap.SharedEntities shared =
+        org.openmetadata.it.bootstrap.SharedEntities.get();
+
+    Table table = createTestTable(ns);
+    table.setOwners(List.of(shared.USER1_REF));
+    table = SdkClients.adminClient().tables().update(table.getId().toString(), table);
+
+    SemanticsRule ownerIsUser1 =
+        new SemanticsRule()
+            .withName("OwnerIsUser1")
+            .withDescription("Owner must be user1")
+            .withRule(
+                "{ \"some\": [ { \"var\": \"owners\" }, { \"==\": [ { \"var\": \"id\" }, \""
+                    + shared.USER1_REF.getId()
+                    + "\" ] } ] }")
+            .withEnabled(true);
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("latest_result_regression"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withSemantics(List.of(ownerIsUser1));
+    DataContract contract = createEntity(request);
+
+    DataContractResult firstResult =
+        SdkClients.adminClient().dataContracts().validate(contract.getId());
+    assertEquals(ContractExecutionStatus.Success, firstResult.getContractExecutionStatus());
+
+    DataContract afterFirstRun =
+        SdkClients.adminClient().dataContracts().get(contract.getId().toString());
+    assertNotNull(afterFirstRun.getLatestResult());
+    assertEquals(
+        ContractExecutionStatus.Success,
+        afterFirstRun.getLatestResult().getStatus(),
+        "latestResult should reflect the passing run");
+
+    Table refreshed = SdkClients.adminClient().tables().get(table.getId().toString(), "owners");
+    refreshed.setOwners(java.util.Collections.emptyList());
+    SdkClients.adminClient().tables().update(refreshed.getId().toString(), refreshed);
+
+    DataContractResult secondResult =
+        SdkClients.adminClient().dataContracts().validate(contract.getId());
+    assertEquals(ContractExecutionStatus.Failed, secondResult.getContractExecutionStatus());
+    assertEquals(1, secondResult.getSemanticsValidation().getFailed());
+
+    DataContract afterSecondRun =
+        SdkClients.adminClient().dataContracts().get(contract.getId().toString());
+    assertNotNull(afterSecondRun.getLatestResult());
+    assertEquals(
+        ContractExecutionStatus.Failed,
+        afterSecondRun.getLatestResult().getStatus(),
+        "Contract latestResult.status must be Failed after the semantics-failing re-run "
+            + "(regression: #30179 — stuck on prior Success while time-series row shows Failed)");
+    assertEquals(
+        secondResult.getId(),
+        afterSecondRun.getLatestResult().getResultId(),
+        "latestResult.resultId must point at the second run's result");
+  }
 }

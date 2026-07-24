@@ -1471,22 +1471,47 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  /**
+   * Persist the aggregate {@code latestResult} on the DataContract row.
+   *
+   * <p>Called twice per validation run (once with {@code Running}, once with the final
+   * {@code Success}/{@code Failed}). The caller's {@code dataContract} reference is <b>not</b>
+   * refreshed between the two calls, so its in-memory state (version, {@code changeDescription},
+   * {@code latestResult}) becomes stale immediately after the first write. Going through
+   * {@link EntityRepository.EntityUpdater} on the second call replayed a stale baseline through
+   * session-consolidation and could silently drop the terminal-status write — leaving
+   * {@code latestResult} stuck on {@code Running} (or on the previous run's status) while the
+   * per-run time-series row was written correctly (see #30179).
+   *
+   * <p>{@code latestResult} is a read-only status stamp; it doesn't participate in entity
+   * versioning or approval workflows (see ETagResponseFilter which documents that
+   * {@code updateLatestResult} intentionally does not bump entity {@code version} or
+   * {@code updatedAt}). We write it via a targeted DAO update instead of the full
+   * {@link EntityRepository.EntityUpdater} path: read the current stored contract, set the
+   * new {@code latestResult}, and rewrite the row. This bypasses consolidation entirely and
+   * cannot silently drop the write; the caller's reference is updated so the follow-up
+   * comparison in {@link #addContractResult} sees fresh state.
+   */
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
+    LatestResult newLatestResult =
+        new LatestResult()
+            .withTimestamp(result.getTimestamp())
+            .withStatus(result.getContractExecutionStatus())
+            .withMessage(result.getResult())
+            .withResultId(result.getId());
     try {
-      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
-      updated.setLatestResult(
-          new LatestResult()
-              .withTimestamp(result.getTimestamp())
-              .withStatus(result.getContractExecutionStatus())
-              .withMessage(result.getResult())
-              .withResultId(result.getId()));
-      EntityRepository.EntityUpdater entityUpdater =
-          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
-      entityUpdater.update();
+      DataContract current = dao.findEntityById(dataContract.getId(), Include.NON_DELETED);
+      current.setLatestResult(newLatestResult);
+      dao.update(current);
+      // Direct dao.update skips invalidateCachesAfterStore, so drop cached variants explicitly.
+      invalidateCacheForEntity(
+          Entity.DATA_CONTRACT, current.getId(), current.getFullyQualifiedName());
+      dataContract.setLatestResult(newLatestResult);
     } catch (Exception e) {
       LOG.error(
-          "Failed to update latest result for data contract {}",
+          "Failed to update latest result for data contract {}: {}",
           dataContract.getFullyQualifiedName(),
+          e.getMessage(),
           e);
     }
   }
