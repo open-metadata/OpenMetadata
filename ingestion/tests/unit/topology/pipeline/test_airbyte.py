@@ -342,6 +342,7 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
 
+    @patch.object(AirbyteSource, "_get_table_fqn", mock_get_table_fqn)
     def test_yield_pipeline_lineage_details_public_api(self):
         """Lineage must also work with the public-API response shape.
 
@@ -397,6 +398,116 @@ class AirbyteUnitTest(TestCase):
             assert lineage.edge.toEntity.id == MOCK_POSTGRES_DESTINATION_TABLE.id
             assert lineage.edge.lineageDetails.pipeline.id.root == MOCK_PIPELINE.id.root
             assert lineage.edge.lineageDetails.source == LineageSource.PipelineLineage
+
+    def test_get_source_table_details_public_api_slugs(self):
+        """Public-API slugs must resolve for every supported source connector.
+
+        Each connector maps its configuration keys differently, so exercise the
+        distinct branches (not just Postgres) to lock in database/schema handling.
+        """
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+
+        # Postgres: database from config, schema from the stream namespace
+        postgres = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(
+                sourceType="postgres",
+                configuration={"database": "pg_db", "schema": "pg_schema"},
+            ),
+        )
+        assert postgres.database == "pg_db"
+        assert postgres.schema == "mock_namespace"
+
+        # MySQL: no database concept -> config database becomes the schema
+        mysql = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mysql", configuration={"database": "mysql_db"}),
+        )
+        assert mysql.database is None
+        assert mysql.schema == "mysql_db"
+
+        # MSSQL: database from config, schema from the stream namespace
+        mssql = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mssql", configuration={"database": "mssql_db"}),
+        )
+        assert mssql.database == "mssql_db"
+        assert mssql.schema == "mock_namespace"
+
+        # MongoDB: schema comes from the nested database_config, no database
+        mongodb = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(
+                sourceType="mongodb-v2",
+                configuration={"database_config": {"database": "mongo_db"}},
+            ),
+        )
+        assert mongodb.database is None
+        assert mongodb.schema == "mongo_db"
+
+        # MongoDB with database_config explicitly None must not raise
+        mongodb_null = get_source_table_details(
+            stream,
+            AirbyteSourceResponse(sourceType="mongodb", configuration={"database_config": None}),
+        )
+        assert mongodb_null.database is None
+        assert mongodb_null.schema is None
+
+    def test_get_source_table_details_unsupported_type_returns_none(self):
+        """An unrecognized connector slug yields no table details (lineage skipped)."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+        assert (
+            get_source_table_details(
+                stream,
+                AirbyteSourceResponse(sourceType="snowflake", configuration={"database": "x"}),
+            )
+            is None
+        )
+
+    def test_get_destination_table_details_public_api_slugs(self):
+        """Public-API slugs must resolve for every supported destination connector."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+
+        # Postgres: database and schema both taken from config
+        postgres = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="postgres",
+                configuration={"database": "pg_db", "schema": "pg_schema"},
+            ),
+        )
+        assert postgres.database == "pg_db"
+        assert postgres.schema == "pg_schema"
+
+        # MySQL: no database concept -> config database becomes the schema
+        mysql = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(destinationType="mysql", configuration={"database": "mysql_db"}),
+        )
+        assert mysql.database is None
+        assert mysql.schema == "mysql_db"
+
+        # MSSQL: database and schema both taken from config
+        mssql = get_destination_table_details(
+            stream,
+            AirbyteDestinationResponse(
+                destinationType="mssql",
+                configuration={"database": "mssql_db", "schema": "mssql_schema"},
+            ),
+        )
+        assert mssql.database == "mssql_db"
+        assert mssql.schema == "mssql_schema"
+
+    def test_get_destination_table_details_unsupported_type_returns_none(self):
+        """An unrecognized destination slug yields no table details (lineage skipped)."""
+        stream = AirbyteStream(name="mock_table_name", namespace="mock_namespace")
+        assert (
+            get_destination_table_details(
+                stream,
+                AirbyteDestinationResponse(destinationType="bigquery", configuration={"database": "x"}),
+            )
+            is None
+        )
 
 
 # ================= Airbyte Cloud Test Setup =================
