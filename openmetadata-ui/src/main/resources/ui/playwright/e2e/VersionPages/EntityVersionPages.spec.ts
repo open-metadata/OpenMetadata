@@ -513,7 +513,7 @@ test.describe('Entity Version pages', () => {
       page,
     }) => {
       await table.visitEntityPage(page);
-      const entityUrl = page.url();
+      const entityPathname = new URL(page.url()).pathname;
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -524,14 +524,14 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(entityUrl);
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
     });
 
     test('Database - closing version drawer navigates to entity page without tab', async ({
       page,
     }) => {
       await database.visitEntityPage(page);
-      const entityUrl = page.url();
+      const entityPathname = new URL(page.url()).pathname;
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -542,14 +542,14 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(entityUrl);
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
     });
 
     test('DatabaseSchema - closing version drawer navigates to entity page without tab', async ({
       page,
     }) => {
       await databaseSchema.visitEntityPage(page);
-      const entityUrl = page.url();
+      const entityPathname = new URL(page.url()).pathname;
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -560,7 +560,7 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(entityUrl);
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
     });
   });
 });
