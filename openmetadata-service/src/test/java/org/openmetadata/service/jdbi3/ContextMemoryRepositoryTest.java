@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -103,6 +105,29 @@ class ContextMemoryRepositoryTest {
         .thenReturn(new EntityReference().withType("typeWithoutRepository"));
 
     assertTrue(Entity.isSearchIndexable(repoLess));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void entityFacade_isSearchIndexable_defaultsTrueWhenOnlyTimeSeriesRepositoryExists()
+      throws ReflectiveOperationException {
+    String entityType = "testTimeSeries";
+    Field repositoriesField = Entity.class.getDeclaredField("ENTITY_TS_REPOSITORY_MAP");
+    repositoriesField.setAccessible(true);
+    Map<String, EntityTimeSeriesRepository<?>> repositories =
+        (Map<String, EntityTimeSeriesRepository<?>>) repositoriesField.get(null);
+    repositories.put(entityType, mock(EntityTimeSeriesRepository.class));
+
+    try {
+      EntityInterface timeSeriesEntity = mock(EntityInterface.class);
+      when(timeSeriesEntity.getEntityReference())
+          .thenReturn(new EntityReference().withType(entityType));
+
+      assertTrue(Entity.hasEntityRepository(entityType));
+      assertTrue(Entity.isSearchIndexable(timeSeriesEntity));
+    } finally {
+      repositories.remove(entityType);
+    }
   }
 
   private ContextMemory memory(MemoryVisibility visibility) {
