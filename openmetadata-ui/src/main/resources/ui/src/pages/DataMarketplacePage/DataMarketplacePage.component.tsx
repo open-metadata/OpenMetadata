@@ -144,7 +144,7 @@ const DataMarketplacePage = ({
       <div className="tw:mb-8">
         {renderPageHeader ? (
           <div className={gridWrapperClassName} dir="ltr">
-            <div className="p-x-box tw:pt-4">{renderPageHeader()}</div>
+            <div className="tw:p-2">{renderPageHeader()}</div>
           </div>
         ) : (
           <div
