@@ -14,17 +14,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { MemoryRouter } from 'react-router-dom';
-import {
-  ingestionDataName,
-  mockPipelineActionsProps,
-} from '../../../../../../mocks/IngestionListTable.mock';
+import { mockPipelineActionsProps } from '../../../../../../mocks/IngestionListTable.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
-const mockNavigate = jest.fn();
+const mockOpenLogs = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+jest.mock('../../../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
 }));
 
 jest.mock('./PipelineActionsDropdown', () =>
@@ -38,10 +35,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditAll: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: true,
           }}
         />,
         {
@@ -59,10 +54,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              Delete: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            Delete: true,
           }}
         />,
         {
@@ -79,9 +72,7 @@ describe('PipelineAction', () => {
       render(
         <PipelineActions
           {...mockPipelineActionsProps}
-          ingestionPipelinePermissions={{
-            [ingestionDataName]: DEFAULT_ENTITY_PERMISSION,
-          }}
+          ingestionPipelinePermissions={DEFAULT_ENTITY_PERMISSION}
         />,
         {
           wrapper: MemoryRouter,
@@ -98,9 +89,7 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
           }}
         />,
         {
@@ -119,10 +108,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditIngestionPipelineStatus: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditIngestionPipelineStatus: true,
           }}
         />,
         {
@@ -150,7 +137,7 @@ describe('PipelineAction', () => {
     expect(screen.getByText('label.pause')).toBeInTheDocument();
   });
 
-  it('should redirect to logs page when clicked on logs button', async () => {
+  it('should open the logs modal when clicked on logs button', async () => {
     await act(async () => {
       render(<PipelineActions {...mockPipelineActionsProps} />, {
         wrapper: MemoryRouter,
@@ -161,9 +148,10 @@ describe('PipelineAction', () => {
 
     fireEvent.click(logsButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/searchServices/OpenMetadata.OpenMetadata_elasticSearchReIndex/logs'
-    );
+    expect(mockOpenLogs).toHaveBeenCalledWith({
+      logEntityType: 'searchServices',
+      fqn: 'OpenMetadata.OpenMetadata_elasticSearchReIndex',
+    });
   });
 
   it('should call handleEnableDisableIngestion when clicked on pause or resume click', async () => {

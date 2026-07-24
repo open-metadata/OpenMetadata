@@ -100,6 +100,19 @@ class TableDetails:
 
 
 @dataclass
+class ResolvedTable:
+    """
+    An OpenLineage dataset resolved to an existing OpenMetadata table.
+
+    The fqn is the matched Table FQN; the details field holds the identity
+    candidate (top-level or symlink) that produced the match.
+    """
+
+    fqn: str
+    details: TableDetails
+
+
+@dataclass
 class TopicDetails:
     """
     Minimal topic information extracted from OpenLineage events.
@@ -133,3 +146,19 @@ class EventType(str, Enum):
     ABORT = "ABORT"
     FAIL = "FAIL"
     OTHER = "OTHER"
+
+
+class SymlinkType(str, Enum):
+    """
+    OpenLineage symlink identifier types.
+
+    TABLE is a logical/catalog identity (Hive, Glue catalog) and is what
+    OpenMetadata database services hold. LOCATION is a physical path
+    (S3, HDFS) which this connector cannot resolve to a table or topic.
+
+    Source: https://github.com/OpenLineage/OpenLineage/blob/main/client/java/
+            src/main/java/io/openlineage/client/utils/DatasetIdentifier.java
+    """
+
+    TABLE = "TABLE"
+    LOCATION = "LOCATION"

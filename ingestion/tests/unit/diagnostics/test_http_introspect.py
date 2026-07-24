@@ -12,7 +12,7 @@
 
 from contextlib import suppress
 
-from metadata.ingestion.diagnostics.http_introspect import HttpTracker, get_global_tracker
+from metadata.ingestion.diagnostics.collectors.http import HttpTracker, get_global_tracker
 
 
 def test_request_appears_in_snapshot_while_in_flight():

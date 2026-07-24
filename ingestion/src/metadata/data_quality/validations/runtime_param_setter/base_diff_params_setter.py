@@ -1,6 +1,14 @@
 """Base class for param setter logic for table data diff"""
 
-from typing import List, Optional, Set, Type, Union  # noqa: UP035
+from typing import (  # noqa: UP035
+    List,
+    Optional,
+    Protocol,
+    Set,
+    Type,
+    Union,
+    runtime_checkable,
+)
 
 from sqlalchemy.engine import make_url
 
@@ -54,6 +62,13 @@ class ServiceSpecPatch:
         if self.service_spec.connection_class:
             return import_from_module(self.service_spec.connection_class)
         return None
+
+
+@runtime_checkable
+class SupportsConnectionDict(Protocol):
+    """A connection that can expose its config as a data-diff connection dict."""
+
+    def get_connection_dict(self) -> dict: ...
 
 
 class BaseTableParameter:
@@ -123,9 +138,7 @@ class BaseTableParameter:
         cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:  # noqa: UP007, UP045
-        """
-        Get the connection dictionary for the service.
-        """
+        """Return the service connection for data diff, as a dict or URL string."""
         if not service_connection_config:
             return None
 
@@ -133,20 +146,17 @@ class BaseTableParameter:
 
         try:
             connection_class = service_spec_patch.get_connection_class()
-            if not connection_class:
-                return (
-                    get_connection(service_connection_config).url.render_as_string(hide_password=False)
-                    if service_connection_config
-                    else None
-                )
-            connection = connection_class(service_connection_config)
-            return connection.get_connection_dict()
+            if connection_class is not None:
+                connection = connection_class(service_connection_config)
+                if isinstance(connection, SupportsConnectionDict):
+                    return connection.get_connection_dict()
         except (ValueError, AttributeError, NotImplementedError):
-            return (
-                get_connection(service_connection_config).url.render_as_string(hide_password=False)
-                if service_connection_config
-                else None
+            logger.debug(
+                f"[Data Diff]: Could not build a connection dict for "
+                f"{service_connection_config.type.value}; falling back to the connection URL",
+                exc_info=True,
             )
+        return get_connection(service_connection_config).url.render_as_string(hide_password=False)
 
     @classmethod
     def get_service_connection_config(

@@ -25,7 +25,6 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TableData } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
@@ -33,16 +32,16 @@ import {
   deleteTestCaseFailedSampleData,
   getTestCaseFailedSampleData,
 } from '../../../../rest/testAPI';
-import { getEntityDeleteMessage } from '../../../../utils/CommonUtils';
-import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
+import { getEntityDeleteMessage } from '../../../../utils/EntityDisplayPureUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { RowData } from '../../../Database/SampleDataTable/RowData';
 import { SampleDataType } from '../../../Database/SampleDataTable/SampleData.interface';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { FailedTestCaseSampleDataProps } from './FailedTestCaseSampleData.interface';
 
 const DIFF_TYPE = 'diffType';
@@ -71,6 +70,7 @@ const FailedTestCaseSampleData = ({
   const [sampleData, setSampleData] = useState<LocalSampleData>();
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const { permissions } = usePermissionProvider();
   const { version } = useParams<{ version: string }>();
@@ -167,6 +167,7 @@ const FailedTestCaseSampleData = ({
   const handleDeleteSampleData = async () => {
     if (testCaseData?.id) {
       try {
+        setIsDeleting(true);
         await deleteTestCaseFailedSampleData(testCaseData.id);
         handleDeleteModal();
         fetchFailedTestCaseSampleData();
@@ -177,6 +178,8 @@ const FailedTestCaseSampleData = ({
             entity: t('label.sample-data'),
           })
         );
+      } finally {
+        setIsDeleting(false);
       }
     }
 
@@ -323,13 +326,13 @@ const FailedTestCaseSampleData = ({
         </Table>
       </div>
       {isDeleteModalOpen && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(t('label.sample-data'), '')}
-          entityName={t('label.sample-data')}
-          entityType={EntityType.SAMPLE_DATA}
-          visible={isDeleteModalOpen}
+        <DeleteModal
+          entityTitle={t('label.sample-data')}
+          isDeleting={isDeleting}
+          message={getEntityDeleteMessage(t('label.sample-data'), '')}
+          open={isDeleteModalOpen}
           onCancel={handleDeleteModal}
-          onConfirm={handleDeleteSampleData}
+          onDelete={handleDeleteSampleData}
         />
       )}
     </div>

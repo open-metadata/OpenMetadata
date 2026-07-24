@@ -61,6 +61,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },
+    "recursive": {
+      "description": "True when this change event represents a recursive (cascade) delete of the entity together with its children. A single event is recorded for the deleted root entity; cascaded descendants do not produce individual change events.",
+      "type": "boolean"
+    },
     "entity": {
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."
     }

@@ -1,0 +1,35 @@
+{
+  "name": "TaskAuthorPolicy",
+  "displayName": "Task Author Policy",
+  "fullyQualifiedName": "TaskAuthorPolicy",
+  "description": "Authorization rules for Task entities. The user who filed a task (creator) can edit, close, and delete their own task but cannot approve or reject it. Users assigned to a task (assignees) and task reviewers can resolve (approve/reject) the task and add comments. Owners of the entity the task is about have full control over the task including reassignment.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "TaskAuthorPolicy-FilerCannotResolveOwnTask",
+      "description": "Deny task filers from resolving (approving/rejecting/granting/revoking) their own task.",
+      "resources": ["task"],
+      "operations": ["ResolveTask"],
+      "effect": "deny",
+      "condition": "isTaskFiler()"
+    },
+    {
+      "name": "TaskAuthorPolicy-FilerEditCloseDeleteOwnTask",
+      "description": "Allow task filers to edit, close, and delete their own task.",
+      "resources": ["task"],
+      "operations": ["EditAll", "Delete", "CloseTask"],
+      "effect": "allow",
+      "condition": "isTaskFiler()"
+    },
+    {
+      "name": "TaskAuthorPolicy-ApproverResolveTask",
+      "description": "Allow task assignees and reviewers to resolve (approve/reject) and close the task. Adding comments goes through the dedicated /v1/tasks/{id}/comments endpoint, so EditAll is intentionally not granted here — keeping the allow list narrow prevents assignees from gaining Delete, ReassignTask, or other operations via subsumption.",
+      "resources": ["task"],
+      "operations": ["ResolveTask", "CloseTask"],
+      "effect": "allow",
+      "condition": "isTaskAssignee() || isTaskReviewer()"
+    }
+  ]
+}

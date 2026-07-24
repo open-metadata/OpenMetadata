@@ -1,6 +1,12 @@
+import { Avatar } from '@/components/base/avatar/avatar';
+import { HintText } from '@/components/base/input/hint-text';
+import { Label } from '@/components/base/input/label';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
+import { fontSizeClass } from '@/utils/tailwindClasses';
+import { ChevronDown } from '@untitledui/icons';
 import type { FC, ReactNode, Ref, RefAttributes } from 'react';
 import { createContext, isValidElement } from 'react';
-import { ChevronDown } from '@untitledui/icons';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';
 import {
   Button as AriaButton,
@@ -8,12 +14,6 @@ import {
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
 } from 'react-aria-components';
-import { Avatar } from '@/components/base/avatar/avatar';
-import { HintText } from '@/components/base/input/hint-text';
-import { Label } from '@/components/base/input/label';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
-import { fontSizeClass } from '@/utils/tailwindClasses';
 import { ComboBox } from './combobox';
 import { Popover } from './popover';
 import { SelectItem } from './select-item';
@@ -34,7 +34,18 @@ export interface SelectCommonProps {
   size?: 'sm' | 'md';
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   placeholder?: string;
+  emptyState?: ReactNode;
 }
+
+export const SelectEmptyState = ({
+  emptyState,
+}: {
+  emptyState?: ReactNode;
+}) => (
+  <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+    {emptyState ?? 'No data'}
+  </div>
+);
 
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
@@ -42,7 +53,7 @@ interface SelectProps
     SelectCommonProps {
   items?: SelectItemType[];
   popoverClassName?: string;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
 }
 
@@ -54,7 +65,7 @@ interface SelectValueProps {
   isDisabled: boolean;
   placeholder?: string;
   ref?: Ref<HTMLButtonElement>;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
 }
 
 export const sizes = {
@@ -69,14 +80,18 @@ const SelectValue = ({
   size,
   fontSize,
   placeholder,
-  placeholderIcon,
+  icon,
   ref,
 }: SelectValueProps) => {
   return (
     <AriaButton
       className={cx(
-        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-        (isFocused || isOpen) && 'tw:ring-2 tw:ring-brand',
+        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
+        // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
+        // outline IS the border and focus indicator here, as in input.tsx.
+        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+        (isFocused || isOpen) &&
+          'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled'
       )}
@@ -91,7 +106,7 @@ const SelectValue = ({
           sizes[size].root
         )}>
         {(state) => {
-          const Icon = state.selectedItem?.icon || placeholderIcon;
+          const Icon = state.selectedItem?.icon || icon;
 
           return (
             <>
@@ -111,7 +126,7 @@ const SelectValue = ({
                 <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
                   <p
                     className={cx(
-                      'tw:truncate tw:font-medium tw:text-primary',
+                      'tw:truncate tw:text-primary',
                       fontSizeClass[fontSize]
                     )}>
                     {state.selectedItem?.label}
@@ -156,20 +171,21 @@ export const SelectContext = createContext<{
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }>({
-  fontSize: 'md',
+  fontSize: 'sm',
   size: 'sm',
 });
 
 const Select = ({
   placeholder = 'Select',
-  placeholderIcon,
+  icon,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   children,
   items,
   label,
   hint,
   tooltip,
+  emptyState,
   className,
   ...rest
 }: SelectProps) => {
@@ -194,13 +210,16 @@ const Select = ({
             <SelectValue
               {...state}
               {...{ size, fontSize, placeholder }}
-              placeholderIcon={placeholderIcon}
+              icon={icon}
             />
 
             <Popover className={rest.popoverClassName} size={size}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
-                items={items}>
+                items={items}
+                renderEmptyState={() => (
+                  <SelectEmptyState emptyState={emptyState} />
+                )}>
                 {children}
               </AriaListBox>
             </Popover>

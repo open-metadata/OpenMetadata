@@ -15,6 +15,12 @@
  */
 export interface FilterResourceDescriptor {
     /**
+     * Ancestor entity types whose fully qualified name is a prefix of this resource's FQN (e.g.
+     * a databaseSchema is contained by databaseService and database). Lets an Entity FQN filter
+     * scope an alert to all descendants of a parent.
+     */
+    containerEntities?: string[];
+    /**
      * Name of the resource. For entity related resources, resource name is same as the entity
      * name. Some resources such as lineage are not entities but are resources.
      */

@@ -1751,6 +1751,142 @@ public class ColumnResourceIT {
   }
 
   // ========================================================================
+  // GET COLUMN BY FQN TESTS
+  // ========================================================================
+
+  @Test
+  void test_getTableColumnByFQN_returnsColumn(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTableForUpdate(ns);
+    Column idCol = table.getColumns().get(0);
+
+    Column fetched = getColumnByFQN(client, idCol.getFullyQualifiedName(), TABLE);
+
+    assertNotNull(fetched);
+    assertEquals(idCol.getName(), fetched.getName());
+    assertEquals(idCol.getFullyQualifiedName(), fetched.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_getTableColumnByFQN_withTagsField_returnsTags(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTableForUpdate(ns);
+    Column idCol = table.getColumns().get(0);
+    Tag tag = createClassificationAndTag(ns, "GetTestClass", "GetTag");
+
+    updateColumn(
+        client,
+        idCol.getFullyQualifiedName(),
+        TABLE,
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tag.getFullyQualifiedName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION))));
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(idCol.getFullyQualifiedName())
+                    + "?entityType=table&fields=tags",
+                null);
+    Column fetched = OBJECT_MAPPER.readValue(response, Column.class);
+
+    assertNotNull(fetched.getTags());
+    assertFalse(fetched.getTags().isEmpty());
+
+    String duplicateFieldsResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(idCol.getFullyQualifiedName())
+                    + "?entityType=table&fields=tags,tags",
+                null);
+    Column fetchedWithDuplicate = OBJECT_MAPPER.readValue(duplicateFieldsResponse, Column.class);
+    assertNotNull(fetchedWithDuplicate.getTags());
+    assertFalse(fetchedWithDuplicate.getTags().isEmpty());
+  }
+
+  @Test
+  void test_getTableColumnByFQN_nonExistent_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> getColumnByFQN(client, "nonexistent.db.schema.table.col", TABLE));
+    assertTrue(
+        ex.getMessage().contains("404") || ex.getMessage().toLowerCase().contains("not found"));
+  }
+
+  @Test
+  void test_getTableColumnByFQN_softDeletedParent_includeAll(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTableForUpdate(ns);
+    Column idCol = table.getColumns().get(0);
+
+    client.tables().delete(table.getId());
+
+    assertThrows(
+        Exception.class, () -> getColumnByFQN(client, idCol.getFullyQualifiedName(), TABLE));
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(idCol.getFullyQualifiedName())
+                    + "?entityType=table&include=all",
+                null);
+    Column fetched = OBJECT_MAPPER.readValue(response, Column.class);
+    assertNotNull(fetched);
+    assertEquals(idCol.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_getDashboardDataModelColumnByFQN_returnsColumn(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardDataModel dataModel = createTestDashboardDataModel(ns);
+    Column col = dataModel.getColumns().get(0);
+
+    Column fetched = getColumnByFQN(client, col.getFullyQualifiedName(), DASHBOARD_DATA_MODEL);
+
+    assertNotNull(fetched);
+    assertEquals(col.getName(), fetched.getName());
+
+    Tag tag = createClassificationAndTag(ns, "GetDataModelTestClass", "GetDataModelTag");
+    updateColumn(
+        client,
+        col.getFullyQualifiedName(),
+        DASHBOARD_DATA_MODEL,
+        new UpdateColumn()
+            .withTags(
+                List.of(
+                    new TagLabel()
+                        .withTagFQN(tag.getFullyQualifiedName())
+                        .withSource(TagLabel.TagSource.CLASSIFICATION))));
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/"
+                    + encodeURIComponent(col.getFullyQualifiedName())
+                    + "?entityType=dashboardDataModel&fields=tags",
+                null);
+    Column fetchedWithTags = OBJECT_MAPPER.readValue(response, Column.class);
+    assertNotNull(fetchedWithTags.getTags());
+    assertFalse(fetchedWithTags.getTags().isEmpty());
+  }
+
+  // ========================================================================
   // HELPER METHODS
   // ========================================================================
 
@@ -1860,6 +1996,19 @@ public class ColumnResourceIT {
                 HttpMethod.PUT,
                 "/v1/columns/name/" + encodeURIComponent(columnFQN) + "?entityType=" + entityType,
                 updateColumn);
+
+    return OBJECT_MAPPER.readValue(response, Column.class);
+  }
+
+  private Column getColumnByFQN(OpenMetadataClient client, String columnFQN, String entityType)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/columns/name/" + encodeURIComponent(columnFQN) + "?entityType=" + entityType,
+                null);
 
     return OBJECT_MAPPER.readValue(response, Column.class);
   }

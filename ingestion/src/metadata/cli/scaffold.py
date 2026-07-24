@@ -931,11 +931,6 @@ class {camel}Connection(BaseConnection[{camel}ConnectionConfig, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
-    def get_connection_dict(self) -> dict:
-        raise NotImplementedError(
-            "get_connection_dict is not implemented for {camel}"
-        )
-
     def test_connection(
         self,
         metadata: OpenMetadata,

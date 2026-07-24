@@ -29,6 +29,7 @@ import {
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addTagToTableColumn,
@@ -57,17 +58,12 @@ const NEW_TAG = {
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
 const permanentDeleteModal = async (page: Page, entity: string) => {
-  await page.locator('.ant-modal-content').waitFor({
-    state: 'visible',
-  });
-
-  await expect(page.locator('.ant-modal-content')).toBeVisible();
+  await page.getByTestId('modal-footer').waitFor({ state: 'visible' });
 
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     `Delete ${entity}`
   );
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 };
 
@@ -171,7 +167,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
+    const tagDetailResponseDisable = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponseDisable;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).toBeVisible();
@@ -234,7 +237,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).toBeVisible();
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
+    const tagDetailResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponse;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();
@@ -262,11 +272,14 @@ test('Classification Page', async ({ page }) => {
 
     await validateForm(page);
 
-    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-    await page.fill(
-      '[data-testid="displayName"]',
-      NEW_CLASSIFICATION.displayName
-    );
+    await page
+      .getByTestId('name')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.displayName);
     await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
@@ -296,14 +309,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_TAG.name);
-    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+    await page.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
-    await page
-      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-      .click();
+    await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
       .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
       .click();
@@ -365,9 +378,9 @@ test('Classification Page', async ({ page }) => {
     const permissions = page.waitForResponse(
       'api/v1/permissions/databaseSchema/name/*'
     );
-    await page.click(
-      `[data-testid="breadcrumb-link"]:has-text("${entity.name}")`
-    );
+    // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+    // narrow viewports, so navigate through the overflow-aware helper.
+    await clickBreadcrumbAncestor(page, entity.name);
 
     await databaseSchemaPage;
     await permissions;
@@ -451,7 +464,7 @@ test('Classification Page', async ({ page }) => {
     );
 
     await page.click('[data-testid="table"] [data-testid="delete-tag"]');
-    await page.locator('.ant-modal-content').waitFor({ state: 'visible' });
+    await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
     const deleteTag = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
@@ -492,9 +505,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="manage-button"]');
 
     await page.click('[data-testid="delete-button"]');
-
-    await page.click('[data-testid="hard-delete-option"]');
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     const deleteClassification = page.waitForResponse(
       (response) =>

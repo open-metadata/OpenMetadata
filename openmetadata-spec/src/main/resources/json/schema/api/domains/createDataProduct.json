@@ -68,6 +68,18 @@
       },
       "default": null
     },
+    "dataProductType": {
+      "description": "Type of the data product (ODPS-aligned taxonomy).",
+      "$ref": "../../entity/domains/dataProduct.json#/definitions/dataProductType"
+    },
+    "visibility": {
+      "description": "Visibility level of the data product in the marketplace.",
+      "$ref": "../../entity/domains/dataProduct.json#/definitions/visibility"
+    },
+    "portfolioPriority": {
+      "description": "Portfolio-level priority of this data product.",
+      "$ref": "../../entity/domains/dataProduct.json#/definitions/portfolioPriority"
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"

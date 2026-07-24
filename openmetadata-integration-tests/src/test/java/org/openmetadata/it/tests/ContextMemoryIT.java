@@ -476,6 +476,54 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
   // ===================================================================
 
   @Test
+  void list_contextMemoryRelationshipFields_populated(TestNamespace ns) {
+    EntityReference primaryRef =
+        new EntityReference()
+            .withId(testUser1().getId())
+            .withType("user")
+            .withName(testUser1().getName());
+    EntityReference relatedRef =
+        new EntityReference()
+            .withId(testUser2().getId())
+            .withType("user")
+            .withName(testUser2().getName());
+
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("rel-fields"))
+            .withDescription("Relationship fields populate on list")
+            .withQuestion("Which entity does this memory apply to?")
+            .withAnswer("The primaryEntity, plus the relatedEntities.")
+            .withPrimaryEntity(primaryRef)
+            .withRelatedEntities(List.of(relatedRef));
+
+    ContextMemory created = createEntity(request);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.setFields("primaryEntity,relatedEntities");
+    ListResponse<ContextMemory> response = listEntities(params);
+
+    ContextMemory listed =
+        response.getData().stream()
+            .filter(memory -> memory.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("Created memory not found in list response"));
+
+    assertNotNull(
+        listed.getPrimaryEntity(), "primaryEntity must populate on the list path (bulk fetch)");
+    assertEquals(testUser1().getId(), listed.getPrimaryEntity().getId());
+
+    assertNotNull(
+        listed.getRelatedEntities(), "relatedEntities must populate on the list path (bulk fetch)");
+    assertFalse(listed.getRelatedEntities().isEmpty(), "relatedEntities must not be empty");
+    assertTrue(
+        listed.getRelatedEntities().stream()
+            .anyMatch(ref -> ref.getId().equals(testUser2().getId())),
+        "relatedEntities must contain the related user reference");
+  }
+
+  @Test
   void test_listContextMemories(TestNamespace ns) {
     CreateContextMemory request1 =
         new CreateContextMemory()

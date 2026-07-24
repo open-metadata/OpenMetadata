@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.1.7-python3.10
+FROM apache/airflow:3.2.1-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -9,7 +9,6 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
 RUN dpkg --configure -a \
   && apt-get -qq update \
   && apt-get -qq install -y \
-  alien \
   build-essential \
   default-libmysqlclient-dev \
   freetds-bin \
@@ -28,7 +27,7 @@ RUN dpkg --configure -a \
   libssl-dev \
   libxml2 \
   libkrb5-dev \
-  default-jdk \
+  default-jre-headless \
   openssl \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
@@ -38,11 +37,20 @@ RUN dpkg --configure -a \
   unixodbc=2.3.11-2+deb12u1 \
   unixodbc-dev=2.3.11-2+deb12u1 \
   unzip \
-  vim \
   git \
   wget --no-install-recommends \
   # Accept MSSQL ODBC License
   && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+  # Pull bookworm-security fixes for known-vulnerable packages
+  # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
+  # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
+  # wget -> tracked; upstream fix pending, no-op until Debian ships it).
+  # --only-upgrade is a no-op for packages not present in the base image.
+  && apt-get -qq install -y --only-upgrade \
+       libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
+       libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+       curl libcurl4 libcurl3-gnutls libmariadb3 wget \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \
@@ -85,7 +93,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-3.1.7.txt /home/airflow/airflow-constraints-3.1.7.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.2.1.txt /home/airflow/airflow-constraints-3.2.1.txt
 
 USER airflow
 
@@ -103,11 +111,11 @@ RUN pip install --upgrade pip "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 # Install FAB provider for Airflow 3.x Flask Blueprint compatibility
-RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.1.7.txt" || true
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.2.1.txt" || true
 
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.1.7.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.2.1.txt"
 
 WORKDIR /home/airflow/ingestion
 
@@ -117,6 +125,14 @@ RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.25.6"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
+RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
+  && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
+  && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \
+  && java -jar /tmp/antlr.jar -Dlanguage=Python3 -Xexact-output-dir \
+    -o /home/airflow/ingestion/src/metadata/generated/antlr \
+    /home/airflow/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4 \
+  && touch /home/airflow/ingestion/src/metadata/generated/antlr/__init__.py \
+  && rm -f /tmp/antlr.jar
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
@@ -142,5 +158,10 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 RUN mkdir -p /opt/airflow/dag_generated_configs
 
 EXPOSE 8080
+# Airflow 3.2.1 requires universal-pathlib>=0.3.8, but prior installs in this image
+# can leave stale 0.2.6 `upath` module files in site-packages that cause import
+# errors at runtime. Force-remove the stale registration then pin to the required version.
+RUN pip uninstall upath -y && pip install "universal-pathlib==0.3.10"
+
 # This is required as it's responsible to create airflow.cfg file
 RUN airflow db migrate && rm -f /opt/airflow/airflow.db

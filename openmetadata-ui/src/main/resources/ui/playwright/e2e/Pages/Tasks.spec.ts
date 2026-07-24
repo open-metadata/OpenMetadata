@@ -15,13 +15,17 @@ import { TaskClass } from '../../support/entity/TaskClass';
 import { UserClass } from '../../support/user/UserClass';
 import { authenticateAdminPage } from '../../utils/admin';
 import { getApiContext } from '../../utils/common';
+import { findTaskInList } from '../../utils/taskAPI';
 
 test.describe('Task Entity API Tests', () => {
+  const DAR_EXPIRATION_MS = 14 * 24 * 60 * 60 * 1000;
   const user1 = new UserClass();
   const user2 = new UserClass();
   let task1: TaskClass;
   let task2: TaskClass;
   let task3: TaskClass;
+
+  const futureDarExpirationDate = () => Date.now() + DAR_EXPIRATION_MS;
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
@@ -159,6 +163,7 @@ test.describe('Task Entity API Tests', () => {
       payload: {
         accessType: 'FullAccess',
         reason: 'Playwright test access request',
+        expirationDate: futureDarExpirationDate(),
       },
     });
 
@@ -212,25 +217,14 @@ test.describe('Task Entity API Tests', () => {
     // Verify the task was created
     expect(openTask.responseData?.id).toBeDefined();
 
-    // Poll until task appears in the list (may take time for indexing)
-    let foundTask: { id: string } | undefined;
-    for (let i = 0; i < 15; i++) {
-      // Try without status filter first since tasks might use different status values
-      const response = await apiContext.get('/api/v1/tasks', {
-        params: { limit: 100 },
-      });
-      const data = await response.json();
-
-      expect(data.data).toBeDefined();
-      expect(Array.isArray(data.data)).toBe(true);
-
-      foundTask = data.data.find(
-        (t: { id: string }) => t.id === openTask.responseData?.id
-      );
-      if (foundTask) break;
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+    const foundTask = await findTaskInList(
+      apiContext,
+      openTask.responseData?.id ?? '',
+      {
+        status: 'Open',
+        createdById: openTask.responseData?.createdById,
+      }
+    );
 
     expect(foundTask).toBeDefined();
 
@@ -286,6 +280,7 @@ test.describe('Task Entity API Tests', () => {
         payload: {
           accessType: 'FullAccess',
           reason: 'Playwright test access request',
+          expirationDate: futureDarExpirationDate(),
         },
       },
       { category: 'MetadataUpdate', type: 'DescriptionUpdate' },

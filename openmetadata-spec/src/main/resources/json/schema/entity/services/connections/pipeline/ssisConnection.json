@@ -27,7 +27,7 @@
       },
       "databaseConnection": {
         "title": "Metadata Database Connection",
-        "description": "Underlying database connection",
+        "description": "Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only mode and run history is not extracted.",
         "$ref": "../database/mssqlConnection.json"
       },
       "packageConnection": {
@@ -48,6 +48,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["databaseConnection", "packageConnection"]
+    "required": ["packageConnection"]
   }
   

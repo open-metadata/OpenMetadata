@@ -14,7 +14,7 @@ Base class for ingesting Object Storage services
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
 
 from pydantic import Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -54,7 +54,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
@@ -64,6 +70,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
 )
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.path_pattern import (
@@ -117,7 +124,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -140,7 +146,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
-                use_cache=True,
             ),
         ],
     )
@@ -175,11 +180,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         # Try to get the global manifest
         self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()  # noqa: UP045
@@ -301,7 +308,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """Generate the create container requests based on the received details"""
 
     def close(self):
-        """By default, nothing needs to be closed"""
+        if self._connection is not None:
+            self._connection.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -326,11 +334,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Mark the container record as scanned and update
         the storage_source_state
         """
-        parent_container = (
-            self.metadata.get_by_id(entity=Container, entity_id=container_request.parent.id).fullyQualifiedName.root
-            if container_request.parent
-            else None
-        )
+        parent_container = None
+        if container_request.parent:
+            parent_id = require_entity_reference_id(container_request.parent, "Parent container")
+            parent = cast(
+                "Container",
+                self.metadata.get_by_id(entity=Container, entity_id=parent_id, nullable=False),
+            )
+            if parent.fullyQualifiedName is None:
+                raise ValueError(f"Parent container {parent_id.root} must include fullyQualifiedName")
+            parent_container = parent.fullyQualifiedName.root
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
@@ -342,7 +355,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""
@@ -351,7 +367,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                mark_deleted_entity=self.source_config.markDeletedContainers,
+                recursive=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 

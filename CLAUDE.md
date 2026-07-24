@@ -211,9 +211,13 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Keep component state local when possible with `useState`
 - Use context providers for feature-specific shared state (e.g., `ApplicationsProvider`)
 
+### Forms
+
+- **Building forms**: New forms use the `react-hook-form` + `react-aria` stack from `@openmetadata/ui-core-components` (`getField`/`FieldProp`/`FieldTypes`/`HookForm`/`FormFields`). A form is `FieldProp[]` config objects + RHF state + a pure values→payload transform. The full reference is [`openmetadata-ui/src/main/resources/ui/docs/formutils.md`](openmetadata-ui/src/main/resources/ui/docs/formutils.md). Do not use the legacy Ant Design `getField`/`generateFormFields` from `@utils/formUtils` for new forms.
+
 ### Styling
 
-- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use MUI or introduce new MUI dependencies.
+- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use Ant Design or introduce new UI component library dependencies.
 - **Available Components**: Button, Input, Select, Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle, Slider, Textarea, Tags, and more — all in `openmetadata-ui-core-components/src/main/resources/ui/src/components/`
 - **Tailwind Classes**: All Tailwind utility classes must use the `tw:` prefix (e.g., `tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to avoid conflicts with existing Ant Design/Less styles
 - **Design Tokens**: Use CSS custom properties defined in `openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css`. Never use hardcoded color or spacing values. Semantic tokens include:
@@ -222,7 +226,8 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   - Background: `--color-bg-primary`, `--color-bg-secondary`, `--color-bg-error-primary`, `--color-bg-brand-solid`, etc.
   - Shadows: `--shadow-xs` through `--shadow-3xl`
   - Border radius: `--radius-none` through `--radius-full`
-- **MUI**: Do not use MUI — we are actively removing MUI from the codebase. Do not import from `@mui/*` or `@emotion/*`
+- **Color Usage**: Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
+- **Borders — never use `tw:ring-*` to draw an edge.** Rings compile to `box-shadow`, which WebKit does not pixel-snap, so they thin out and can vanish in Safari at non-100% zoom. Use `tw:border-*` where the edge may take layout space, or `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` where it must not. On focusable elements the `outline` is already the focus ring — draw the border on `::after` via `borderAfter` from `@openmetadata/ui-core-components`. Rules, ring→outline translation table, and gotchas (`outline-hidden` erases outline borders; `transition-shadow` won't animate them): [`colors.md` §2.3.1](openmetadata-ui/src/main/resources/ui/docs/colors.md).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
@@ -293,8 +298,32 @@ checkstyle" / "fix Java formatting" / "apply spotless", invoke the
 hand-editing formatting.
 
 #### Method Size and Complexity (Kafka-Grade Standards)
-- **Methods must be 15 lines or fewer** (excluding blank lines and braces). If a method is longer, break it into smaller focused methods with descriptive names.
-- **Maximum 3 levels of nesting.** Use early returns to reduce nesting:
+- **Methods must be small and focused — aim for 15 lines or fewer** (excluding blank lines and braces). A method longer than that is almost always hiding multiple responsibilities; break it into smaller methods with descriptive names. "Meaningful" means each method does one nameable thing — if you can't fit the body comfortably on a screen, it's too big.
+- **One return statement per method, placed at the end.** No early-return guard clauses, no scattered returns in the middle. Initialize a `result` variable, structure the work as `if/else`, or extract a helper — the control flow then stays linear and easy to reason about. (Returns inside `lambda` bodies, `switch` expressions, and anonymous classes are scoped to those constructs and don't count against the outer method.)
+  ```java
+  // BAD: four scattered early returns
+  Map<UUID, X> compute(List<EntityInterface> entities) {
+    if (entities == null) return Collections.emptyMap();
+    if (entities.isEmpty()) return Collections.emptyMap();
+    if (!supportsX(entities.get(0))) return null;
+    Map<UUID, X> prefetched = doWork(entities);
+    if (prefetched.isEmpty()) return null;
+    return prefetched;
+  }
+
+  // GOOD: single trailing return; guards become extracted helpers + a result variable
+  Map<UUID, X> compute(List<EntityInterface> entities) {
+    Map<UUID, X> result = null;
+    if (entities != null && !entities.isEmpty() && supportsX(entities.get(0))) {
+      Map<UUID, X> prefetched = doWork(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+  ```
+- **Maximum 3 levels of nesting.** Don't flatten by sprinkling early returns — extract a named helper or combine conditions into a single boolean:
   ```java
   // BAD: deeply nested
   if (entity != null) {
@@ -305,11 +334,14 @@ hand-editing formatting.
       }
   }
 
-  // GOOD: early returns, flat
-  if (entity == null) return;
-  if (!entity.isActive()) return;
-  if (!hasPermission(entity)) return;
-  process(entity);
+  // GOOD: extract the eligibility check
+  if (isEligibleForProcessing(entity)) {
+    process(entity);
+  }
+
+  private boolean isEligibleForProcessing(Entity entity) {
+    return entity != null && entity.isActive() && hasPermission(entity);
+  }
   ```
 - **Maximum 10 cyclomatic complexity.** Extract complex conditions into named methods:
   ```java
@@ -402,6 +434,19 @@ hand-editing formatting.
 - Use `List.of()`, `Map.of()`, `Set.of()` for immutable collection literals
 - Use `Optional` correctly: never as a field type, never as a parameter, never assign `null` to it
 - Use text blocks `"""` for multi-line strings
+- **Use `SequencedCollection` accessors on Lists/Deques** — `list.getFirst()` / `list.getLast()` (Java 21) instead of `list.get(0)` / `list.get(list.size() - 1)`. Same for `removeFirst()` / `removeLast()`. Reads more clearly and avoids off-by-one indexing.
+- **Collection emptiness: use the project's `nullOrEmpty(...)` helper** from `org.openmetadata.common.utils.CommonUtil` instead of hand-rolling `coll != null && !coll.isEmpty()` (or its negation). It's the established idiom across this codebase, handles `null` correctly, and reads as a single semantic check. Same applies to `String` checks — use `nullOrEmpty(str)` not `str != null && !str.isEmpty()`.
+  ```java
+  // BAD
+  if (entities != null && !entities.isEmpty()) {
+    process(entities.get(0));
+  }
+
+  // GOOD
+  if (!nullOrEmpty(entities)) {
+    process(entities.getFirst());
+  }
+  ```
 
 #### Common Bug Patterns to Avoid
 - `equals()` without `hashCode()` (or vice versa)
@@ -465,7 +510,7 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - **Blank lines around `describe`, `it`, `beforeEach`** in test files
 - **JSON keys sorted alphabetically** in locale files (`src/locale/**/*.json`)
 - **Apache 2.0 license header** on every new source file — run `yarn license-header-fix`
-- **i18n keys synced** — after adding keys to `en-us.json`, run `yarn i18n` to sync all 17 locales
+- **i18n keys synced AND translated** — after adding keys to `en-us.json`, run `yarn i18n` to propagate them into every locale file. `yarn i18n` copies the English string verbatim into each locale as a placeholder — **you MUST then replace those placeholders with real translations in every non-en-us file**. Shipping English text under a non-English locale key is a defect (reviewers will flag it). If a term is intentionally left in English (e.g. an acronym like "AI" in Chinese, or a product name), keep it — but that has to be a translation decision, not a "yarn i18n did it" default.
 - **Prettier formatting** — 2-space indent, single quotes, strict HTML whitespace
 
 #### Playwright Test Rules (lint-playwright)

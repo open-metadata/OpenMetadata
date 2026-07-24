@@ -7,6 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -837,6 +844,55 @@ public class IngestionPipelineResourceIT
     for (int i = 1; i < actualTimestamps.size(); i++) {
       assertTrue(actualTimestamps.get(i - 1) >= actualTimestamps.get(i));
     }
+  }
+
+  @Test
+  void test_pipelineStatusesFieldReturnsRecentRunsNewestFirst(TestNamespace ns)
+      throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("statuses_field_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String statusPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    long baseTimestamp = System.currentTimeMillis() - (48L * 60 * 60 * 1000);
+    List<String> runIdsInAscendingTimestamp = new ArrayList<>();
+    for (int i = 0; i < 7; i++) {
+      String runId = UUID.randomUUID().toString();
+      runIdsInAscendingTimestamp.add(runId);
+      PipelineStatus status =
+          new PipelineStatus()
+              .withPipelineState(PipelineStatusType.SUCCESS)
+              .withRunId(runId)
+              .withTimestamp(baseTimestamp + (i * 1000L));
+      client.getHttpClient().execute(HttpMethod.PUT, statusPath, status, PipelineStatus.class);
+    }
+
+    String entityPath =
+        "/v1/services/ingestionPipelines/" + pipeline.getId() + "?fields=pipelineStatuses";
+    IngestionPipeline withStatuses =
+        client.getHttpClient().execute(HttpMethod.GET, entityPath, null, IngestionPipeline.class);
+
+    List<PipelineStatus> statuses = withStatuses.getPipelineStatuses();
+    assertNotNull(statuses);
+    assertEquals(5, statuses.size());
+
+    List<String> expectedNewestFirst = new ArrayList<>(runIdsInAscendingTimestamp.subList(2, 7));
+    Collections.reverse(expectedNewestFirst);
+    List<String> actualRunIds = statuses.stream().map(PipelineStatus::getRunId).toList();
+    assertEquals(expectedNewestFirst, actualRunIds);
   }
 
   @Test
@@ -1684,5 +1740,60 @@ public class IngestionPipelineResourceIT
     List<Object> data = (List<Object>) response.get("data");
     assertNotNull(data, "Data array should not be null");
     assertEquals(statusCount, data.size(), "Should return all " + statusCount + " status records");
+  }
+
+  @Test
+  void get_ingestionLogs_acceptsIdOrFqn(TestNamespace ns) throws Exception {
+    // The log endpoints accept either the pipeline Id (UUID) or its fullyQualifiedName. Create a
+    // pipeline, then confirm both forms resolve to the same pipeline (not 404) while unknown
+    // identifiers 404 — exercising the id-vs-fqn dispatch through the real endpoint.
+    IngestionPipeline pipeline = createEntity(createMinimalRequest(ns));
+
+    int byId = logsLastStatus(pipeline.getId().toString());
+    int byFqn = logsLastStatus(pipeline.getFullyQualifiedName());
+    assertNotEquals(404, byId, "a real Id must resolve the pipeline (not 404)");
+    assertNotEquals(404, byFqn, "a real fqn must resolve the pipeline (not 404)");
+    assertEquals(byId, byFqn, "Id and fqn must resolve to the same pipeline");
+
+    assertEquals(404, logsLastStatus(UUID.randomUUID().toString()), "an unknown Id must 404");
+    assertEquals(
+        404, logsLastStatus(ns.prefix("missing") + ".no_such_pipeline"), "an unknown fqn must 404");
+
+    // The download endpoint takes the same id-or-fqn path segment.
+    assertNotEquals(
+        404,
+        logsLastDownloadStatus(pipeline.getFullyQualifiedName()),
+        "download by fqn must resolve the pipeline (not 404)");
+    assertEquals(
+        404,
+        logsLastDownloadStatus(ns.prefix("missing") + ".no_such_pipeline"),
+        "download by unknown fqn must 404");
+  }
+
+  private static int logsLastStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last");
+  }
+
+  private static int logsLastDownloadStatus(String idOrFqn) throws Exception {
+    return logEndpointStatus(
+        "/v1/services/ingestionPipelines/logs/" + encodeSegment(idOrFqn) + "/last/download");
+  }
+
+  private static int logEndpointStatus(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HttpClient.newHttpClient()
+        .send(request, HttpResponse.BodyHandlers.ofString())
+        .statusCode();
+  }
+
+  private static String encodeSegment(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
   }
 }

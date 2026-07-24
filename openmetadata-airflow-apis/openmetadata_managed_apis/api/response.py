@@ -8,11 +8,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 from typing import Optional, Union
 
 from airflow.models import DagRun
-from flask import Response
+from flask import Response, jsonify, make_response
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineStatus,
@@ -32,10 +31,11 @@ class ApiResponse:
     STATUS_SERVER_ERROR = 500
 
     @staticmethod
-    def standard_response(status, response_obj):
-        json_data = json.dumps(response_obj)
-        resp = Response(json_data, status=status, mimetype="application/json")
-        return resp  # noqa: RET504
+    def standard_response(status, response_obj) -> Response:
+        # jsonify pins Content-Type to application/json so callers that
+        # interpolate user-controlled values into the payload cannot have
+        # their response rendered as HTML.
+        return make_response(jsonify(response_obj), status)
 
     @staticmethod
     def success(response_obj: Union[Optional[dict], Optional[list]] = None):  # noqa: UP007, UP045

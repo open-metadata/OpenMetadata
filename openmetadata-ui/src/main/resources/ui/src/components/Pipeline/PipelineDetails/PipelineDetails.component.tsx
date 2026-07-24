@@ -30,13 +30,17 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -44,12 +48,12 @@ import {
 } from '../../../utils/PermissionsUtils';
 import pipelineClassBase from '../../../utils/PipelineClassBase';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -61,7 +65,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './pipeline-details.style.less';
 import { PipeLineDetailsProp } from './PipelineDetails.interface';
-
 const PipelineDetails = ({
   updatePipelineDetailsState,
   pipelineDetails,
@@ -118,6 +121,22 @@ const PipelineDetails = ({
 
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.PIPELINE, pipelineFQN, handleFeedCount);
+
+  const fetchTaskCounts = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityTaskCountsInto(pipelineFQN, setFeedCount);
+    }
+  }, [pipelineFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (pipelineFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.PIPELINE,
+        pipelineFQN,
+        setFeedCount
+      );
+    }
+  }, [pipelineFQN]);
 
   const fetchResourcePermission = useCallback(async () => {
     try {
@@ -286,8 +305,9 @@ const PipelineDetails = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    fetchTaskCounts();
+    fetchActivityCount();
+  }, [pipelineFQN]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

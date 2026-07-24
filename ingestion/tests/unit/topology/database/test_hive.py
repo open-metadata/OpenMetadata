@@ -59,11 +59,7 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
-    get_connection,
-    get_connection_url,
-)
-from metadata.ingestion.source.database.hive.connection import (
-    test_connection as hive_test_connection,
+    HiveConnection as HiveConnectionHandler,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
 
@@ -383,18 +379,20 @@ class HiveUnitTest(TestCase):
             ("data", "struct<a:struct<b:decimal(20,0)>>", ""),
             ("data2", "struct<colll:decimal(20,0)>", ""),
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = list(
-            hive_dialect.get_columns(
-                self=hive_dialect,
-                connection=mock_hive_config["source"],
-                table_name="sample_table",
-                schema="sample_schema",
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = list(
+                hive_dialect.get_columns(
+                    self=hive_dialect,
+                    connection=mock_hive_config["source"],
+                    table_name="sample_table",
+                    schema="sample_schema",
+                )
             )
-        )
         for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):  # noqa: B905
 
             def custom_eq(self, __value: object) -> bool:
@@ -402,6 +400,64 @@ class HiveUnitTest(TestCase):
 
             String.__eq__ = custom_eq
             self.assertEqual(expected, original)
+
+    def test_get_columns_nested_decimal_in_complex_types(self):
+        """
+        A DECIMAL(p,s) nested inside a complex type must not be mistaken for the
+        parameters of the complex type itself. Issue #30061: `array<struct<a:decimal(16,4)>>`
+        and `map<string,decimal(10,2)>` used to raise
+        `ValueError: invalid literal for int() with base 10: '16,4'`, which callers
+        swallow, so the whole table was ingested without any column.
+        """
+        table_columns = [
+            ("id", "string", None),
+            ("plain", "decimal(16,4)", None),
+            ("name", "varchar(255)", None),
+            ("nested_struct", "struct<fee:decimal(16,4),amount:bigint>", None),
+            ("nested_array", "array<struct<fee:decimal(16,4),amount:bigint>>", None),
+            ("nested_map", "map<string,decimal(10,2)>", None),
+            ("nested_union", "uniontype<int,decimal(10,2)>", None),
+        ]
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="nested_types_table",
+                schema="test_schema",
+            )
+
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            [
+                "id",
+                "plain",
+                "name",
+                "nested_struct",
+                "nested_array",
+                "nested_map",
+                "nested_union",
+            ],
+        )
+
+        columns = {col["name"]: col for col in col_list}
+
+        # The raw type is what the nested fields are resolved from downstream
+        self.assertEqual(
+            columns["nested_array"]["system_data_type"],
+            "array<struct<fee:decimal(16,4),amount:bigint>>",
+        )
+        for name in ("nested_struct", "nested_array", "nested_map"):
+            self.assertTrue(columns[name]["is_complex"], f"{name} should be complex")
+
+        # Parameters of top-level types are still picked up
+        self.assertEqual(columns["plain"]["type"].precision, 16)
+        self.assertEqual(columns["plain"]["type"].scale, 4)
+        self.assertEqual(columns["name"]["type"].length, 255)
 
     def test_get_columns_deduplicates_partition_column_no_sentinel(self):
         """
@@ -420,16 +476,18 @@ class HiveUnitTest(TestCase):
             ("streaming", "boolean", None),
             ("process_date", "string", None),  # partition key repeated, no sentinel
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = hive_dialect.get_columns(
-            self=hive_dialect,
-            connection=mock_hive_config["source"],
-            table_name="partitioned_table",
-            schema="test_schema",
-        )
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
 
         col_names = [col["name"] for col in col_list]
 
@@ -465,16 +523,18 @@ class HiveUnitTest(TestCase):
             ("# col_name", "data_type", "comment"),
             ("dt", "string", None),  # partition key repeated after sentinel
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = hive_dialect.get_columns(
-            self=hive_dialect,
-            connection=mock_hive_config["source"],
-            table_name="partitioned_table",
-            schema="test_schema",
-        )
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
 
         col_names = [col["name"] for col in col_list]
 
@@ -551,7 +611,7 @@ class HiveUnitTest(TestCase):
         mock_create_connection.return_value = mock_engine
 
         # Test SSL connection
-        result = get_connection(mock_hive_connection_ssl)
+        result = HiveConnectionHandler(mock_hive_connection_ssl).client
 
         # Verify SSL manager was called
         mock_ssl_manager.assert_called_once()
@@ -585,7 +645,7 @@ class HiveUnitTest(TestCase):
             useSSL=False,
         )
 
-        result = get_connection(non_ssl_connection)
+        result = HiveConnectionHandler(non_ssl_connection).client
 
         # Verify SSL manager was called but returned None
         mock_ssl_manager.assert_called_once()
@@ -609,7 +669,7 @@ class HiveUnitTest(TestCase):
             useSSL=True,
         )
 
-        url = get_connection_url(ssl_connection)
+        url = HiveConnectionHandler.get_connection_url(ssl_connection)
         self.assertEqual(url, "hive://username@localhost:1466")
 
         # Test HTTPS scheme connection
@@ -622,7 +682,7 @@ class HiveUnitTest(TestCase):
             auth=Auth.BASIC,
         )
 
-        url = get_connection_url(https_connection)
+        url = HiveConnectionHandler.get_connection_url(https_connection)
         self.assertEqual(url, "hive+https://username:password@localhost:1000")
 
     def test_custom_hive_connection_ssl_initialization(self):
@@ -904,7 +964,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_conn,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once_with(postgres_conn)
         mock_test_db_schema.assert_called_once()
@@ -935,7 +997,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_conn,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once_with(mysql_conn)
         mock_test_db_schema.assert_called_once()
@@ -967,7 +1031,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_dict,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, PostgresConnection)
@@ -997,7 +1063,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_dict,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
@@ -1021,8 +1089,10 @@ class HiveUnitTest(TestCase):
             metastoreConnection=invalid_dict,
         )
 
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
         with self.assertRaises(ValueError) as context:
-            hive_test_connection(mock_metadata, mock_engine, hive_conn)
+            handler.test_connection(mock_metadata)
 
         self.assertEqual(str(context.exception), "Invalid metastore connection")
 
@@ -1042,7 +1112,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection={},
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
@@ -1065,7 +1137,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=None,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()

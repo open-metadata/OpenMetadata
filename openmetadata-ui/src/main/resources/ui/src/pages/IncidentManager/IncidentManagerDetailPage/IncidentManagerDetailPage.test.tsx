@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
@@ -20,8 +21,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
-
-const theme = createTheme();
 
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
@@ -129,9 +128,15 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
       <div data-testid="page-layout-v1">{children}</div>
     ))
 );
-jest.mock('../../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('../../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 jest.mock(
   '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
   () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)
@@ -144,12 +149,8 @@ jest.mock(
       .mockImplementation(({ type }) => <div>ErrorPlaceHolder {type}</div>)
 );
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
-);
-jest.mock(
-  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
-  () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
+  '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
+  () => jest.fn().mockImplementation(() => <div>HeaderBreadcrumb</div>)
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
@@ -173,20 +174,20 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  Box: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-}));
+const Wrapper = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+      mutations: { retry: false },
+    },
+  });
 
-const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <MemoryRouter>
-    <ThemeProvider theme={theme}>{children}</ThemeProvider>
-  </MemoryRouter>
-);
+  return (
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </MemoryRouter>
+  );
+};
 
 describe('IncidentManagerDetailPage', () => {
   it('should render component', async () => {
@@ -198,8 +199,10 @@ describe('IncidentManagerDetailPage', () => {
       await screen.findByTestId('incident-manager-details-page-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
-    expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
-    expect(await screen.findByText('EntityHeaderTitle')).toBeInTheDocument();
+    expect(await screen.findByText('HeaderBreadcrumb')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('entity-header-title')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('IncidentManagerPageHeader')
     ).toBeInTheDocument();

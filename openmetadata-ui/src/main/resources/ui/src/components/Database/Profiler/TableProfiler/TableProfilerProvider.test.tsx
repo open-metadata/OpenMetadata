@@ -65,7 +65,7 @@ jest.mock('../../../../rest/testAPI', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('entityLink'),
 }));
 jest.mock('../../../../constants/mockTourData.constants', () => ({
@@ -94,6 +94,10 @@ jest.mock('../../../../constants/DataInsight.constants', () => ({
 }));
 jest.mock('./ProfilerSettingsModal/ProfilerSettingsModal', () =>
   jest.fn().mockReturnValue(<div>ProfilerSettingsModal.component</div>)
+);
+jest.mock(
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
+  () => jest.fn().mockReturnValue(null)
 );
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
@@ -171,7 +175,7 @@ describe('TableProfilerProvider', () => {
       expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
       expect(mockGetListTestCase).toHaveBeenCalledWith({
         entityLink: 'entityLink',
-        fields: ['testCaseResult', 'incidentId'],
+        fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
         limit: 10,
         include: 'non-deleted',
@@ -196,7 +200,7 @@ describe('TableProfilerProvider', () => {
       expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
       expect(mockGetListTestCase).toHaveBeenCalledWith({
         entityLink: 'entityLink',
-        fields: ['testCaseResult', 'incidentId'],
+        fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
         limit: 10,
         include: 'deleted',

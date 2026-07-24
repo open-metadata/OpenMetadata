@@ -340,4 +340,14 @@ public final class AIGovernancePolicies {
       return new AIGovernancePolicyDeleter(client, entity.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().aiGovernancePolicies().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().aiGovernancePolicies().getContextByName(fqn);
+  }
 }

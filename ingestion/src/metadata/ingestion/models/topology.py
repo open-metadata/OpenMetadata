@@ -77,16 +77,6 @@ class NodeStage(BaseModel, Generic[T]):
         description="If true, store the entity FQN in the context instead of just the name",
     )
 
-    # Used to compute the fingerprint
-    cache_entities: bool = Field(
-        False,
-        description="Cache all the entities which have use_cache set as True. Used for fingerprint comparison.",
-    )
-    use_cache: bool = Field(
-        False,
-        description="Enable this to get the entity from cached state in the context",
-    )
-
 
 class TopologyNode(BaseModel):
     """
@@ -304,7 +294,7 @@ class Queue:
 
     Inter-stage buffer used by `TopologyRunnerMixin`. When the diagnostics
     subsystem is installed, every put/process call is reported to
-    `metadata.ingestion.diagnostics.stage_progress` so heartbeats can
+    `metadata.ingestion.diagnostics.collectors.stage_progress` so heartbeats can
     render queue depth and source-vs-sink throughput. The hook calls are
     no-ops with a single attribute load when diagnostics is off.
     """
@@ -315,7 +305,7 @@ class Queue:
         # Lazy import — keeps the topology module importable even if the
         # diagnostics package is not on the path (rare, but defensive).
         try:
-            from metadata.ingestion.diagnostics import stage_progress  # noqa: PLC0415
+            from metadata.ingestion.diagnostics.collectors import stage_progress  # noqa: PLC0415
 
             stage_progress.register_queue(name, self)
             self._stage_progress = stage_progress
@@ -391,11 +381,28 @@ def get_topology_node(name: str, topology: ServiceTopology) -> TopologyNode:
     return node
 
 
+# Multiplier applied to a node's tree depth so that the stage's position within
+# the node can be encoded in the lower digits. Must stay larger than the maximum
+# number of stages any single TopologyNode declares so that a deeper node always
+# outranks every stage of its parent. The deepest node today has 6 stages.
+HIERARCHY_BASE = 100
+
+# Sentinel returned for entity types that are not part of any topology. Kept well
+# above any real depth produced by HIERARCHY_BASE so unknown types always sort last.
+_UNKNOWN_DEPTH = 10**6
+
+
 def _build_hierarchy_from_topology(
     topology: "ServiceTopology", node_name: str, current_depth: int = 0
 ) -> Dict[Type[BaseModel], int]:  # noqa: UP006
     """
     Recursively build entity hierarchy from a topology node.
+
+    The depth encodes both the node's position in the tree and the stage's order
+    within the node (``current_depth * HIERARCHY_BASE + stage_index``). This keeps
+    parents ahead of children while ensuring entities referenced by a later stage
+    (e.g. Chart, DashboardDataModel) sort ahead of the stage that references them
+    (e.g. Dashboard), which the bulk sink relies on for create ordering.
 
     Args:
         topology: ServiceTopology instance
@@ -409,9 +416,11 @@ def _build_hierarchy_from_topology(
     hierarchy = {}
     node = get_topology_node(node_name, topology)
 
-    for stage in node.stages:
-        if stage.type_ not in hierarchy:
-            hierarchy[stage.type_] = current_depth
+    node_base = current_depth * HIERARCHY_BASE
+    for stage_index, stage in enumerate(node.stages):
+        depth = node_base + stage_index
+        if stage.type_ not in hierarchy or depth < hierarchy[stage.type_]:
+            hierarchy[stage.type_] = depth
 
     if node.children:
         for child_name in node.children:
@@ -433,13 +442,15 @@ def get_entity_hierarchy() -> Dict[Type[BaseModel], int]:  # noqa: UP006
 
     Returns:
         Dictionary mapping entity types to their depth in the hierarchy
-        (lower number = higher in hierarchy, e.g., Service=0, Database=1, Table=2)
+        (lower number = higher in hierarchy / created earlier). Depth encodes the
+        node's tree level scaled by HIERARCHY_BASE plus the stage index within the
+        node, e.g. DatabaseService=0, Database=101, DatabaseSchema=201, Table=301.
 
     Example:
         >>> hierarchy = get_entity_hierarchy()
         >>> hierarchy[DatabaseService]  # Returns 0
-        >>> hierarchy[Database]  # Returns 1
-        >>> hierarchy[Table]  # Returns 3
+        >>> hierarchy[Database]  # Returns 101
+        >>> hierarchy[Table]  # Returns 301
     """
     from metadata.ingestion.source.api.api_service import ApiServiceTopology  # noqa: PLC0415
     from metadata.ingestion.source.dashboard.dashboard_service import (  # noqa: PLC0415
@@ -500,7 +511,7 @@ def get_entity_hierarchy_depth(entity_type: Type[BaseModel]) -> int:  # noqa: UP
         entity_type: The entity type to get depth for
 
     Returns:
-        Hierarchy depth (lower = higher in hierarchy), or 999 if not found
+        Hierarchy depth (lower = higher in hierarchy), or _UNKNOWN_DEPTH if not found
     """
     hierarchy = get_entity_hierarchy()
-    return hierarchy.get(entity_type, 999)
+    return hierarchy.get(entity_type, _UNKNOWN_DEPTH)

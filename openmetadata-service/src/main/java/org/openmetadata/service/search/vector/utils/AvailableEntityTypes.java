@@ -29,7 +29,9 @@ public final class AvailableEntityTypes {
           "searchIndex",
           "topic",
           "contextMemory",
-          "container");
+          "container",
+          "testSuite",
+          "testCase");
 
   public static final Set<String> SET =
       LIST.stream().map(s -> s.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());

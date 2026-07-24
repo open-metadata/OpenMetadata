@@ -14,7 +14,7 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -60,6 +60,7 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -71,7 +72,14 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
@@ -113,7 +121,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_create_request_dashboard_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
             NodeStage(
                 type_=OMetaTagAndClassification,
@@ -142,7 +149,6 @@ class DashboardServiceTopology(ServiceTopology):
                 processor="yield_bulk_datamodel",
                 consumer=["dashboard_service"],
                 nullable=True,
-                use_cache=True,
             )
         ],
     )
@@ -162,7 +168,6 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=DashboardDataModel,
@@ -172,14 +177,12 @@ class DashboardServiceTopology(ServiceTopology):
                 nullable=True,
                 store_all_in_context=True,
                 clear_context=True,
-                use_cache=True,
             ),
             NodeStage(
                 type_=Dashboard,
                 context="dashboard",
                 processor="yield_dashboard",
                 consumer=["dashboard_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -219,6 +222,28 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     datamodel_source_state: Set = set()  # noqa: RUF012, UP006
     chart_source_state: Set = set()  # noqa: RUF012, UP006
 
+    def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare the grouping axis (e.g. workspaces) as a global counter.
+
+        These group helpers drive ``self.progress_tracking.manual`` and therefore require
+        the connector to set ``progress_mode = ProgressMode.MANUAL`` (as PowerBI
+        does); calling them from a default AUTO source raises ``ProgressModeError``
+        and would double-count against the runner's own tracking."""
+        self.progress_tracking.manual.declare_groups(label, total)
+
+    def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
+        """Open one child node per asset type under ``group`` so each type renders
+        as its own line; ``expected`` may be None for lazy (running) counts."""
+        self.progress_tracking.manual.open_group(group, expected_by_type)
+
+    def _advance_group_progress(self, group: str, asset_type: str) -> None:
+        """Record one processed asset of ``asset_type`` under ``group``."""
+        self.progress_tracking.manual.advance(group, asset_type)
+
+    def _close_group_progress(self, group: str) -> None:
+        """Count the finished group on its global counter and prune its subtree."""
+        self.progress_tracking.manual.close_group(group)
+
     @retry_with_docker_host()
     def __init__(
         self,
@@ -230,11 +255,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
-        self.client = get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.client
-        self.test_connection()
+        self._connection = create_connection(self.service_connection)
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -372,6 +396,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         We will look for the data in all the services
         we have informed.
         """
+        # Flush the sink buffer so charts, datamodels and dashboards created in this
+        # stage are persisted before lineage resolution looks them up via get_by_name.
+        yield Either(right=Barrier(reason="dashboard_lineage_flush"))  # pyright: ignore[reportCallIssue]
+
         # yield datamodel dashboard lineage
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
             yield from self.yield_lineage_request(lineage)
@@ -418,6 +446,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
 
     def close(self):
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -438,7 +468,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Dashboard,
                 entity_source_state=self.dashboard_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDashboards,
+                recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -452,7 +482,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=DashboardDataModel,
                 entity_source_state=self.datamodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedDataModels,
+                recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -466,7 +496,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Chart,
                 entity_source_state=self.chart_source_state,
-                mark_deleted_entity=self.source_config.markDeletedCharts,
+                recursive=self.source_config.markDeletedCharts,
                 params={"service": self.context.get().dashboard_service},
             )
 
@@ -526,16 +556,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         sql: Optional[str] = None,  # noqa: UP045
     ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         if from_entity and to_entity:
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
                         ),
-                        toEntity=EntityReference(
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
@@ -608,7 +646,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield dashboard_details
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.client, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""

@@ -21,6 +21,11 @@ on:
         required: true
         type: string
         default: "main"
+      send_slack_notification:
+        description: "Send Slack notification with test results"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -33,11 +38,17 @@ jobs:
   pw-ci-postgresql-branch:
     runs-on: ubuntu-latest
     environment: test
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7]
+        shardTotal: [7]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -79,7 +90,7 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+          if [ "${{ matrix.shardIndex }}" = "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
             # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
@@ -88,9 +99,17 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
+          elif [ "${{ matrix.shardIndex }}" = "2" ]; then
+            echo "🔹 Running search relevance tests on shard 2"
+
+            npx playwright test \
+              --project=search-nightly \
+              playwright/e2e/Search/SearchRelevance.spec.ts \
+              --workers=1
+
           else
-            # Shards 2-5 handle chromium tests (5 shards total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            # Shards 3-7 handle chromium tests (5 shards total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
             echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
             npx playwright test \
               --project=chromium \
@@ -105,7 +124,6 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-          PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
@@ -154,6 +172,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shardIndex }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/blob-report
           retention-days: 1
 
@@ -162,20 +181,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-HTML-report-${{ matrix.shardIndex }}
+          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 1
           compression-level: 9
 
       - name: Clean Up
+        if: always()
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
   merge-reports:
     needs: pw-ci-postgresql-branch
     runs-on: ubuntu-latest
-    if: ${{ !failure() || !cancelled() }}
+    if: ${{ always() }}
     env:
       # Recommended: pass the GitHub token lets this action correctly
       # determine the unique run id necessary to re-run the checks
@@ -199,12 +221,39 @@ jobs:
           pattern: blob-report-*
           merge-multiple: true
 
-      - name: Merge Reports and Generate Slack Notification
+      - name: Merge Reports
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
+
+      - name: Evaluate zero-retry gate in shadow mode
+        if: always()
+        continue-on-error: true
+        env:
+          MATRIX_OUTCOME: ${{ needs.pw-ci-postgresql-branch.result }}
+        run: |
+          python3 .github/scripts/classify_playwright_outcome.py \
+            --report-glob 'openmetadata-ui/src/main/resources/ui/merged_tests_results.json' \
+            --matrix-outcome "$MATRIX_OUTCOME" \
+            --profile postgresql-nightly \
+            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
+
+      - name: Upload Playwright shadow-gate ledger
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-shadow-gate-postgresql-nightly-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Generate Slack Notification
+        if: ${{ inputs.send_slack_notification }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           RUN_TITLE: "PostgreSQL Test for OSS Release: ${{ inputs.branch }}"
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           SLACK_BOT_USER_OAUTH_TOKEN: ${{ secrets.E2E_SLACK_BOT_OAUTH_TOKEN }}
         run: |
-          npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
           npx playwright-slack-report -c playwright/slack-cli.config.json -j merged_tests_results.json > slack_report.json

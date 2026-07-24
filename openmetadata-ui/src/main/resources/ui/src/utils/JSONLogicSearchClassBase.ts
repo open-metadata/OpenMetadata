@@ -45,10 +45,8 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
-} from './QueryBuilderUtils';
+import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -323,6 +321,28 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.COLUMN_TAG]: {
+        label: t('label.column-tag-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.TIER]: {
         label: t('label.tier'),
         type: '!group',
@@ -450,6 +470,13 @@ class JSONLogicSearchClassBase {
           showSearch: true,
           useAsyncSearch: false,
         },
+      },
+
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['is_null', 'is_not_null'],
       },
 
       [EntityReferenceFields.REVIEWERS]: {
@@ -758,25 +785,24 @@ class JSONLogicSearchClassBase {
           Record<string, unknown>
         ];
 
-        // Check if the condition has a negated contains (indicating array_not_contains was used)
-        if (
-          condition &&
-          condition['!'] &&
-          typeof condition['!'] === 'object' &&
-          (condition['!'] as Record<string, unknown>).contains
-        ) {
-          // Transform to NOT around the entire some operation
-          return {
-            '!': {
-              some: [
-                variable,
-                {
-                  contains: (condition['!'] as Record<string, unknown>)
-                    .contains,
-                },
-              ],
-            },
-          };
+        if (condition && condition['!'] && typeof condition['!'] === 'object') {
+          const negated = condition['!'] as Record<string, unknown>;
+
+          if (negated.contains) {
+            return {
+              '!': {
+                some: [variable, { contains: negated.contains }],
+              },
+            };
+          }
+
+          if (negated.in) {
+            return {
+              '!': {
+                some: [variable, { in: negated.in }],
+              },
+            };
+          }
         }
       }
 

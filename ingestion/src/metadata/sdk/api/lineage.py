@@ -10,7 +10,11 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type import basic
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, EntityLineage
+from metadata.generated.schema.type.entityLineage import (
+    EntitiesEdge,
+    EntityLineage,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import JsonDict, OMetaClient, UuidLike, ensure_uuid
@@ -139,6 +143,32 @@ class Lineage:
         return cast(JsonDict, client.add_lineage(request))  # noqa: TC006
 
     @classmethod
+    def add_lineage_by_name(
+        cls,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+        description: Optional[str] = None,  # noqa: UP045
+    ) -> JsonDict:
+        """Create a lineage edge between two entities identified by FQN."""
+        client = cast(Any, cls._get_client())  # noqa: TC006
+
+        lineage_details = (
+            LineageDetails.model_validate({"description": basic.Markdown(description)}) if description else None
+        )
+        return cast(
+            "JsonDict",
+            client.add_lineage_by_name(
+                from_entity_fqn=from_entity_fqn,
+                from_entity_type=from_entity_type,
+                to_entity_fqn=to_entity_fqn,
+                to_entity_type=to_entity_type,
+                lineage_details=lineage_details,
+            ),
+        )
+
+    @classmethod
     def add_lineage_request(cls, lineage_request: AddLineageRequest) -> JsonDict:
         """Submit a pre-built lineage request."""
         return cast(JsonDict, cast(Any, cls._get_client()).add_lineage(lineage_request))  # noqa: TC006
@@ -179,6 +209,33 @@ class Lineage:
             lineageDetails=None,
         )
         client.delete_lineage_edge(edge)
+
+    @classmethod
+    def delete_lineage_by_name(
+        cls,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+    ) -> None:
+        """Remove a lineage edge between two entities identified by FQN."""
+        client = cast(Any, cls._get_client())  # noqa: TC006
+        client.delete_lineage_by_name(
+            from_entity_fqn=from_entity_fqn,
+            from_entity_type=from_entity_type,
+            to_entity_fqn=to_entity_fqn,
+            to_entity_type=to_entity_type,
+        )
+
+    @classmethod
+    def delete_lineage_by_source_by_name(
+        cls,
+        entity_type: str,
+        entity_fqn: str,
+        source: str,
+    ) -> None:
+        """Remove lineage edges by source for the entity identified by FQN."""
+        cast(Any, cls._get_client()).delete_lineage_by_source_by_name(entity_type, entity_fqn, source)  # noqa: TC006
 
     @classmethod
     def export_lineage(
@@ -264,6 +321,29 @@ class Lineage:
         return result  # noqa: RET504
 
     @classmethod
+    async def add_lineage_by_name_async(
+        cls,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+        description: Optional[str] = None,  # noqa: UP045
+    ) -> JsonDict:
+        """Async variant of :meth:`add_lineage_by_name`."""
+
+        result = await _run_async(
+            partial(
+                cls.add_lineage_by_name,
+                from_entity_fqn,
+                from_entity_type,
+                to_entity_fqn,
+                to_entity_type,
+                description,
+            )
+        )
+        return result  # noqa: RET504
+
+    @classmethod
     async def delete_lineage_async(
         cls,
         from_entity: str,
@@ -279,6 +359,26 @@ class Lineage:
                 from_entity,
                 from_entity_type,
                 to_entity,
+                to_entity_type,
+            )
+        )
+
+    @classmethod
+    async def delete_lineage_by_name_async(
+        cls,
+        from_entity_fqn: str,
+        from_entity_type: str,
+        to_entity_fqn: str,
+        to_entity_type: str,
+    ) -> None:
+        """Async variant of :meth:`delete_lineage_by_name`."""
+
+        await _run_async(
+            partial(
+                cls.delete_lineage_by_name,
+                from_entity_fqn,
+                from_entity_type,
+                to_entity_fqn,
                 to_entity_type,
             )
         )

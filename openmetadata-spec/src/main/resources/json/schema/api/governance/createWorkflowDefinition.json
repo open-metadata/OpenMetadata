@@ -77,6 +77,12 @@
           },
           {
             "$ref": "../../governance/workflows/elements/nodes/userTask/userApprovalTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/policyAgentTaskDefinition.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/createAndRunAIAutomationTask.json"
           }
         ]
       }

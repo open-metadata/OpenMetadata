@@ -45,10 +45,11 @@ public class JsonPatchUtils {
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
     EntityInterface originalEntity = resourceContextInterface.getEntity();
+    String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
-      MetadataOperation metadataOperation = getMetadataOperation(jsonValue);
+      MetadataOperation metadataOperation = getMetadataOperation(jsonValue, resourceType);
       if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
         return Collections.singleton(MetadataOperation.EDIT_ALL);
       }
@@ -158,6 +159,11 @@ public class JsonPatchUtils {
   }
 
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
+    return getMetadataOperation(jsonPatchObject, null);
+  }
+
+  public static MetadataOperation getMetadataOperation(
+      Object jsonPatchObject, String resourceType) {
     String path;
 
     // Handle jakarta JSON patch objects efficiently
@@ -174,14 +180,19 @@ public class JsonPatchUtils {
       path = jsonPatchMap.get("path").toString();
     }
 
-    return getMetadataOperation(path);
+    return getMetadataOperation(path, resourceType);
   }
 
   public static MetadataOperation getMetadataOperation(String path) {
+    return getMetadataOperation(path, null);
+  }
+
+  public static MetadataOperation getMetadataOperation(String path, String resourceType) {
     String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
     for (String p : paths) {
-      if (ResourceRegistry.hasEditOperation(p)) {
-        return ResourceRegistry.getEditOperation(p);
+      MetadataOperation perEntity = ResourceRegistry.getEntityEditOperation(resourceType, p);
+      if (perEntity != null) {
+        return perEntity;
       }
     }
     LOG.warn("Failed to find specific operation for patch path {}", path);

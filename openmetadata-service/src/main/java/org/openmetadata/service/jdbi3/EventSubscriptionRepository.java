@@ -154,6 +154,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         AlertUtil.validateExpression(rule.getCondition(), Boolean.class);
       }
       rules.sort(Comparator.comparing(EventFilterRule::getName));
+      if (!rules.isEmpty()) {
+        // Validate the combined condition too (each rule is validated above), so a bad
+        // combination is caught here instead of when it is first compiled at runtime.
+        AlertUtil.validateExpression(AlertUtil.buildCompleteCondition(rules), Boolean.class);
+      }
     }
   }
 

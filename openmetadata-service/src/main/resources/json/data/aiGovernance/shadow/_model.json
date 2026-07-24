@@ -1,0 +1,7 @@
+{
+  "name": "unknown-external",
+  "displayName": "Unknown external model",
+  "description": "Stand-in LLM model used to satisfy modelConfigurations on Shadow AI fixtures. The actual model used by these auto-detected assets is unknown until they are registered.",
+  "modelType": "Chat",
+  "baseModel": "external-unknown"
+}

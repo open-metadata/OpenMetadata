@@ -21,6 +21,10 @@ export const DEFAULT_POLICIES = {
   teamOnlyAccessPolicy: 'Team only access Policy',
 };
 
+export const SYSTEM_POLICY_NAMES = {
+  taskAuthorPolicy: 'TaskAuthorPolicy',
+};
+
 export const RULE_DETAILS = {
   resources: 'All',
   operations: 'All',
@@ -77,6 +81,22 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
       'EditTier',
       'ViewAll',
     ],
+    effect: 'allow',
+  },
+  {
+    name: 'DataConsumerPolicy-CreateTask-Rule',
+    description:
+      'Allow authenticated users to create tasks (data access requests, suggestions, etc.).',
+    resources: ['task'],
+    operations: ['Create'],
+    effect: 'allow',
+  },
+  {
+    name: 'DataConsumerPolicy-TaskRule',
+    description:
+      'Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.',
+    resources: ['All'],
+    operations: ['CreateTask', 'EditTask'],
     effect: 'allow',
   },
 ];

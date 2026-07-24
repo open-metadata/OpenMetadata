@@ -13,6 +13,7 @@
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
 
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, lowerCase } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -23,25 +24,14 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
+import { TASK_TYPES } from '../../../constants/Task.constant';
+import { TaskType } from '../../../generated/api/feed/createThread';
+import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   TaskDetails,
   Thread,
   ThreadTaskStatus,
 } from '../../../generated/entity/feed/thread';
-import {
-  formatDateTime,
-  getRelativeTime,
-} from '../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../utils/EntityLink';
-import {
-  getEntityFQNFromAbout,
-  getEntityTypeFromAbout,
-} from '../../../utils/FeedUtils';
-
-import { AxiosError } from 'axios';
-import { TASK_TYPES } from '../../../constants/Task.constant';
-import { TaskType } from '../../../generated/api/feed/createThread';
-import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -51,15 +41,23 @@ import {
   resolveTask as resolveTaskAPI,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
-import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getEntityFQNFromAbout,
+  getEntityTypeFromAbout,
+} from '../../../utils/FeedUtilsPure';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
+import { getErrorText } from '../../../utils/StringUtils';
+import { isDescriptionTask, isTagsTask } from '../../../utils/TaskActionUtils';
 import {
   getTaskDetailPath,
-  isDescriptionTask,
-  isTagsTask,
   isTaskPendingFurtherApproval,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';

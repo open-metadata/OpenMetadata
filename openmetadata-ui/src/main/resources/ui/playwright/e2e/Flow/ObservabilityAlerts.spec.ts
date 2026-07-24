@@ -12,6 +12,7 @@
  */
 
 import { Page } from '@playwright/test';
+import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
   INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
@@ -34,7 +35,7 @@ import {
   verifyAlertDetails,
   visitAlertDetailsPage,
 } from '../../utils/alert';
-import { getApiContext } from '../../utils/common';
+import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
@@ -48,12 +49,12 @@ import {
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
-const table1 = new TableClass();
-const table2 = new TableClass();
-const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const domain = new Domain();
+let table1: TableClass;
+let table2: TableClass;
+let pipeline: PipelineClass;
+let domain: Domain;
 
 const SOURCE_NAME_1 = 'container';
 const SOURCE_DISPLAY_NAME_1 = 'Container';
@@ -93,6 +94,10 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
+  table1 = new TableClass();
+  table2 = new TableClass();
+  pipeline = new PipelineClass();
+  domain = new Domain();
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await commonPrerequisites({
     apiContext,
@@ -274,6 +279,7 @@ const observabilityDetailsBySource = new Map<
 
 for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
+    test.slow();
     const alertDetails = observabilityDetailsBySource.get(source);
     if (!alertDetails) {
       throw new Error(
@@ -312,6 +318,88 @@ for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
     });
   });
 }
+
+test('Data Contract Name filter lists matching data contracts', async ({
+  page,
+}) => {
+  test.slow();
+  const { afterAction, apiContext } = await getApiContext(page);
+  let dataContract: DataContract | undefined;
+
+  try {
+    const dataContractName = `0-playwright-data-contract-${uuid()}`;
+    const createResponse = await apiContext.post('/api/v1/dataContracts', {
+      data: {
+        name: dataContractName,
+        description: 'Data contract for the observability alert filter test',
+        entity: {
+          id: table1.entityResponseData.id,
+          type: 'table',
+        },
+      },
+    });
+
+    test.expect(createResponse.ok()).toBeTruthy();
+    const createdDataContract: DataContract = await createResponse.json();
+    dataContract = createdDataContract;
+
+    if (!createdDataContract.fullyQualifiedName) {
+      throw new Error(
+        'Created data contract is missing its fully qualified name'
+      );
+    }
+    const dataContractFqn = createdDataContract.fullyQualifiedName;
+
+    await inputBasicAlertInformation({
+      page,
+      name: generateAlertName(),
+      sourceName: 'dataContract',
+      sourceDisplayName: 'Data Contract',
+      createButtonId: 'create-observability',
+    });
+
+    await page.getByTestId('add-filters').click();
+    await page.getByTestId('filter-select-0').click();
+    await page
+      .locator('.ant-select-dropdown:visible')
+      .getByTestId('Data Contract Name-filter-option')
+      .click();
+
+    const fqnInput = page.getByTestId('fqn-list-select').getByRole('combobox');
+    await fqnInput.click();
+    await fqnInput.fill(dataContractName);
+
+    const dataContractOption = page
+      .locator('.ant-select-dropdown:visible')
+      .getByTitle(dataContractFqn);
+    const searchFailureAlert = page
+      .getByTestId('alert-bar')
+      .filter({ hasText: 'Search failed' })
+      .first();
+
+    await test.expect
+      .poll(async () => {
+        if (await dataContractOption.isVisible()) {
+          return 'data-contract-option';
+        }
+
+        if (await searchFailureAlert.isVisible()) {
+          return (await searchFailureAlert.textContent())?.trim();
+        }
+
+        return 'waiting-for-data-contract-option';
+      })
+      .toBe('data-contract-option');
+  } finally {
+    if (dataContract) {
+      await apiContext.delete(
+        `/api/v1/dataContracts/${dataContract.id}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
+});
+
 test('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,

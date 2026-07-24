@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/type/bulkDeleteStaleRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BulkDeleteStaleRequest",
+  "description": "Request to soft-delete entities within a scope that were not reported by the ingestion connector in the current run (stale entities).",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.api.BulkDeleteStaleRequest",
+  "properties": {
+    "scopeFqn": {
+      "description": "Fully qualified name of the scope (service, database, or databaseSchema) within which stale entities are detected.",
+      "type": "string"
+    },
+    "scopeEntityType": {
+      "description": "Entity type of the scope FQN, for example service, database, or databaseSchema.",
+      "type": "string"
+    },
+    "seenFqns": {
+      "description": "Fully qualified names of entities reported by the connector in the current run. Entities in the scope not present in this list are considered stale.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dryRun": {
+      "description": "When true, the response lists entities that would be deleted without performing the deletion.",
+      "type": "boolean",
+      "default": false
+    },
+    "hardDelete": {
+      "description": "When true, stale entities are hard-deleted. When false (default), they are soft-deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "recursive": {
+      "description": "When true (default), deleting a stale entity also deletes its children.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["scopeFqn", "scopeEntityType", "seenFqns"],
+  "additionalProperties": false
+}

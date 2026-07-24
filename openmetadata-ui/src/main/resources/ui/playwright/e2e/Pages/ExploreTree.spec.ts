@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -31,6 +32,7 @@ import {
   validateBucketsForIndex,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -46,7 +48,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   let table1: TableClass;
   let table2: TableClass;
 
@@ -133,23 +135,32 @@ test.describe('Explore Tree scenarios', () => {
     await test.step('Click on tree item and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Glossaries').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryterm');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'glossaryterm' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('glossaryterm-checkbox')).toBeChecked();
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: tag');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'tag' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('tag-checkbox')).toBeChecked();
     });
 
     await test.step('Click on tree item metrics and check quick filter', async () => {
       await page.getByTestId('explore-tree-title-Metrics').click();
 
-      await expect(
-        page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: metric');
+      // Click on filter dropdown
+      await page.getByTestId('search-dropdown-Data Assets').click();
+      // assert on dropdown item visibility
+      await page.getByRole('menuitem', { name: 'metric' }).waitFor();
+      // assert on checkbox state
+      await expect(page.getByTestId('metric-checkbox')).toBeChecked();
     });
   });
 
@@ -185,8 +196,12 @@ test.describe('Explore Tree scenarios', () => {
 
     await test.step('Click parent classification breadcrumb from a tag result', async () => {
       await waitForAllLoadersToDisappear(page);
+      // The result-card breadcrumb migrated to the core Breadcrumbs component,
+      // which renders plain anchors (no breadcrumb-link testid). The parent
+      // classification link is the plural /tags/ path (a tag entity is /tag/).
       const classificationBreadcrumb = page
-        .locator('[data-testid="breadcrumb-link"] a[href*="/tags/"]')
+        .getByTestId('search-container')
+        .locator('a[href*="/tags/"]')
         .first();
 
       await expect(classificationBreadcrumb).toBeVisible();
@@ -291,7 +306,9 @@ test.describe('Explore Tree scenarios', () => {
       await table1.visitEntityPage(page);
 
       const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-      await page.getByRole('link', { name: schemaName }).click();
+      // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+      // narrow viewports, so navigate through the overflow-aware helper.
+      await clickBreadcrumbAncestor(page, schemaName);
       // Rename Schema Page
       await schemaRes;
       await waitForAllLoadersToDisappear(page);
@@ -346,8 +363,13 @@ test.describe('Explore page', () => {
     await expect(page.getByRole('tree')).toContainText('Glossaries');
     await expect(page.getByRole('tree')).toContainText('Tags');
 
+    // The tree fires size=0 count queries on the dataAsset index alongside the
+    // main results query; match the results query (non-zero size) so the hits
+    // assertion sees the actual documents, not an aggregation-only response.
     const res = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*'
+      (response) =>
+        response.url().includes('index=dataAsset') &&
+        !response.url().includes('size=0')
     );
     // click on tags
     await page.getByTestId('explore-tree-title-Tags').click();
@@ -616,7 +638,12 @@ test.describe('Explore page', () => {
     await page.getByTestId('explore-tree-title-tableColumn').click();
     await filterRes;
 
-    const quickFilter = page.getByTestId('search-dropdown-Data Assets');
-    await expect(quickFilter).toContainText('tablecolumn');
+    // Click on filter dropdown
+    await page.getByTestId('search-dropdown-Data Assets').click();
+    // The option renders a human-readable label ("Column") with the raw type as
+    // a tooltip, so assert on the stable testid instead of the menuitem name.
+    await page.getByTestId('tablecolumn-checkbox').waitFor();
+    // assert on checkbox state
+    await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   });
 });

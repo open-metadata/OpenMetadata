@@ -26,6 +26,7 @@ import './title-component.less';
 interface Props {
   value: string;
   autoFocus?: boolean;
+  placeholder?: string;
   readOnly?: boolean;
   onChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent) => void;
@@ -33,11 +34,29 @@ interface Props {
 
 export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
   (
-    { value, onChange, onKeyDown, autoFocus = false, readOnly = false },
+    {
+      value,
+      onChange,
+      onKeyDown,
+      autoFocus = false,
+      placeholder,
+      readOnly = false,
+    },
     ref
   ) => {
     const [titleValue, setTitleValue] = useState<string>(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
+    const prevValueRef = useRef<string>(value);
+
+    // Only sync from prop when the user has not diverged from the last known
+    // saved value. If titleValue !== prevValueRef.current, the user has typed
+    // ahead of the save and we must not clobber their in-progress edit.
+    useEffect(() => {
+      if (titleValue === prevValueRef.current) {
+        setTitleValue(value);
+      }
+      prevValueRef.current = value;
+    }, [value]);
 
     useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);
 
@@ -73,7 +92,7 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
         className="knowledge-page-title-input"
         data-testid="entity-header-display-name"
         id="title-input"
-        placeholder={i18n.t('label.untitled')}
+        placeholder={placeholder || i18n.t('label.untitled')}
         readOnly={readOnly}
         ref={setRef}
         rows={1}

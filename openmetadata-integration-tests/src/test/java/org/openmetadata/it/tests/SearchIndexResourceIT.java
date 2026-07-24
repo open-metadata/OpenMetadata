@@ -43,6 +43,8 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
 
+  private String defaultListService;
+
   {
     supportsSearchIndex = false;
     supportsDomains = false;
@@ -106,7 +108,11 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected SearchIndex createEntity(CreateSearchIndex createRequest) {
-    return SdkClients.adminClient().searchIndexes().create(createRequest);
+    SearchIndex searchIndex = SdkClients.adminClient().searchIndexes().create(createRequest);
+    if (defaultListService == null && searchIndex.getService() != null) {
+      defaultListService = searchIndex.getService().getFullyQualifiedName();
+    }
+    return searchIndex;
   }
 
   @Override
@@ -162,6 +168,10 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected ListResponse<SearchIndex> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().searchIndexes().list(params);
   }
 
@@ -232,6 +242,25 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     assertNotNull(searchIndex);
     assertNotNull(searchIndex.getFields());
     assertEquals(2, searchIndex.getFields().size());
+  }
+
+  @Test
+  void post_searchIndexWithInvalidFieldName_4xx(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
+
+    CreateSearchIndex request = new CreateSearchIndex();
+    request.setName(ns.prefix("searchindex_invalid_field"));
+    request.setService(service.getFullyQualifiedName());
+    request.setFields(
+        List.of(
+            new SearchIndexField()
+                .withName("title>invalid")
+                .withDataType(SearchIndexDataType.TEXT)));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating search index with invalid field name should fail");
   }
 
   @Test

@@ -22,7 +22,7 @@ import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
-import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import './draggable-tabs.less';
 
 type TargetKey = React.MouseEvent | React.KeyboardEvent | string;

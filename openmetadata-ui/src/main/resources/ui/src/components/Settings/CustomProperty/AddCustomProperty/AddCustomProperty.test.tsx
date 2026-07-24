@@ -195,9 +195,20 @@ jest.mock('../../../../rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  errorMsg: jest.fn(),
-  requiredField: jest.fn(),
+jest.mock('../../../../utils/formUtils', () => ({
+  generateFormFields: jest.fn((fields) =>
+    fields.map((field: any) => {
+      const testId =
+        field.type === 'description' ? 'editor' : field.props?.['data-testid'];
+
+      return (
+        <div key={field.name}>
+          <label>{field.label}</label>
+          <input data-testid={testId} name={field.name} />
+        </div>
+      );
+    })
+  ),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -219,15 +230,6 @@ jest.mock('../../../common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn().mockImplementation(() => <div>ServiceDocPanel.component</div>)
-);
-
-jest.mock('../../../common/MUISelect/MUISelect', () =>
-  jest.fn(({ label }) => (
-    <div data-testid="propertyType">
-      <label>{label}</label>
-      <select />
-    </div>
-  ))
 );
 
 describe('Test Add Custom Property Component', () => {

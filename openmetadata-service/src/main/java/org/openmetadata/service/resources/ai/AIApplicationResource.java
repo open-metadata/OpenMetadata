@@ -31,6 +31,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIApplication;
@@ -42,6 +43,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -60,7 +62,7 @@ import org.openmetadata.service.security.Authorizer;
 public class AIApplicationResource extends EntityResource<AIApplication, AIApplicationRepository> {
   public static final String COLLECTION_PATH = "/v1/aiApplications/";
   private final AIApplicationMapper mapper = new AIApplicationMapper();
-  static final String FIELDS = "owners,followers,tags,extension,domains";
+  static final String FIELDS = "owners,followers,tags,extension,domains,reviewers";
 
   @Override
   public AIApplication addHref(UriInfo uriInfo, AIApplication aiApplication) {
@@ -72,6 +74,14 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
 
   public AIApplicationResource(Authorizer authorizer, Limits limits) {
     super(Entity.AI_APPLICATION, authorizer, limits);
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    AIGovernanceAssetSeedLoader.loadFromResources();
+    AIGovernanceDemoSeedLoader.loadFromResources();
+    AIGovernanceLineageSeedLoader.loadFromResources();
+    ShadowAISeedLoader.loadFromResources();
   }
 
   @Override
@@ -479,10 +489,15 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the AI Application", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, false, hardDelete);
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -504,10 +519,15 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
       @Parameter(description = "Id of the AI Application", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -537,7 +557,7 @@ public class AIApplicationResource extends EntityResource<AIApplication, AIAppli
       @Parameter(description = "Name of the AI Application", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, false, hardDelete);
+    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
   @PUT
