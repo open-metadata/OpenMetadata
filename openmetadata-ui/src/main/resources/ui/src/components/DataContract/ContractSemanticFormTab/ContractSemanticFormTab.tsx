@@ -150,8 +150,24 @@ export const ContractSemanticFormTab: React.FC<{
         ],
       });
     } else {
+      // Normalize persisted rules so contracts saved before the negation-lift rewrite don't stay broken on validation.
+      const normalizedSemantics = initialValues?.semantics?.map((item) => {
+        if (!item.rule) {
+          return item;
+        }
+        try {
+          const normalized =
+            jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+              JSON.parse(item.rule)
+            );
+
+          return { ...item, rule: JSON.stringify(normalized) };
+        } catch {
+          return item;
+        }
+      });
       form.setFieldsValue({
-        semantics: initialValues?.semantics,
+        semantics: normalizedSemantics,
       });
     }
     setEditingKey(0);
