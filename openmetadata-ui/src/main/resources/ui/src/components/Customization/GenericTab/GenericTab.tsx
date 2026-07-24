@@ -30,11 +30,16 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 
+export type GenericTabVariant = 'default' | 'flat';
+
 interface GenericTabProps {
   type: PageType;
+  // 'flat' drops the left-panel frame card so the sole widget (e.g. the
+  // Description on Domain/Data Product) stands on its own. Defaults to 'default'.
+  variant?: GenericTabVariant;
 }
 
-export const GenericTab = ({ type }: GenericTabProps) => {
+export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
   const { layout, updateWidgetHeight } = useGenericContext();
 
   const handleHeightChange = useCallback(
@@ -86,6 +91,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
         'height-auto': type === PageType.Glossary,
+        'flat-left-panel': variant === 'flat',
       })}
       cols={8}
       containerPadding={[0, 0]}
