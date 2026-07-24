@@ -323,7 +323,11 @@ export interface PipelineContext {
  * generation.
  */
 export interface TableContext {
-    columns?:       FieldContext[];
+    columns?: FieldContext[];
+    /**
+     * The dbt/DDL model that produces this table (type, path, and defining SQL), when available.
+     */
+    dataModel?:     TableDataModel;
     foreignKeys?:   ForeignKey[];
     frequentJoins?: JoinHint[];
     /**
@@ -338,6 +342,34 @@ export interface TableContext {
      * DDL for tables and views, when available.
      */
     schemaDefinition?: string;
+}
+
+/**
+ * The dbt/DDL model that produces this table (type, path, and defining SQL), when
+ * available.
+ *
+ * The data model that produces a table — the dbt (or DDL) model behind it: its type, where
+ * the model file lives, and the SQL that defines the table. A strong signal for how the
+ * table is built and what logic it encodes.
+ */
+export interface TableDataModel {
+    /**
+     * Model type that produced the table (e.g. DBT or DDL).
+     */
+    modelType?: string;
+    /**
+     * Path to the model definition file (e.g. the dbt `.sql` model path).
+     */
+    path?: string;
+    /**
+     * The dbt project the model belongs to, when applicable.
+     */
+    sourceProject?: string;
+    /**
+     * SQL that defines the table: the compiled dbt/DDL model SQL when available, otherwise the
+     * raw templated model SQL. May be bounded server-side.
+     */
+    sql?: string;
 }
 
 /**

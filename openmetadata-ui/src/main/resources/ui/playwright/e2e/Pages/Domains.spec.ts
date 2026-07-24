@@ -103,9 +103,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -2736,7 +2738,9 @@ test.describe.fixme('Domains Rbac', () => {
     user1 = new UserClass();
     test.slow();
 
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -2800,7 +2804,9 @@ test.describe.fixme('Domains Rbac', () => {
   test('Domain Rbac', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
@@ -3721,3 +3727,66 @@ test.describe.fixme(
     });
   }
 );
+
+test.describe('Domain description editor popups', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('slash, mention, and hashtag popups are usable inside the Add Domain drawer', async ({
+    page,
+  }) => {
+    const entityName = table.entityResponseData.name ?? table.entity.name;
+    const displayName =
+      table.entityResponseData.displayName ??
+      table.entity.displayName ??
+      entityName;
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByTestId('add-domain').click();
+    await page.getByTestId('add-domain-form').waitFor();
+
+    const description = page.locator(descriptionBox);
+    await description.click();
+
+    await test.step('Slash command inserts an image block', async () => {
+      await description.pressSequentially('/image');
+      await page.locator('#editor-command-Image').click();
+
+      await expect(
+        description.locator('[data-testid="add-image-container"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Mention popup inserts a user mention', async () => {
+      await description.pressSequentially(' @admin');
+      await page
+        .locator('.mention-item')
+        .filter({ hasText: 'admin' })
+        .first()
+        .click();
+
+      await expect(description.locator('a[data-type="mention"]')).toBeVisible();
+    });
+
+    await test.step('Hashtag popup inserts an entity link', async () => {
+      const searchResponse = page.waitForResponse('/api/v1/search/query?**');
+      await description.pressSequentially(` #${entityName}`);
+      await searchResponse;
+
+      await page.getByTestId(`hash-mention-${displayName}`).click();
+
+      await expect(description.locator('a[data-type="hashtag"]')).toBeVisible();
+    });
+  });
+});

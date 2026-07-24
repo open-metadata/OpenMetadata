@@ -59,7 +59,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
       # workers, retries). The production default of 5 active sessions per user would evict the
@@ -101,10 +100,9 @@ jobs:
           disable-reviews: true # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Detect ingestion-only changes
         id: changes
@@ -121,7 +119,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -134,9 +132,10 @@ jobs:
           python-version: "3.10"
           args: "-d mysql"
           ingestion_dependency: "all"
+          install-test-dependencies: "false"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
@@ -204,9 +203,14 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Only humans consume this artifact — nothing in .github/ downloads
+      # playwright-report-*, and they only look at it when debugging a
+      # failure. Skipping upload on success saves ~1 minute per green shard
+      # (report + traces run 50-100MB after retries) without losing any
+      # programmatic data.
       - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v4
-        if: always()
+        uses: actions/upload-artifact@v6
+        if: failure() || cancelled()
         continue-on-error: true
         with:
           name: playwright-report--${{ matrix.shardIndex }}
@@ -232,7 +236,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure() || cancelled()
         continue-on-error: true
         with:
