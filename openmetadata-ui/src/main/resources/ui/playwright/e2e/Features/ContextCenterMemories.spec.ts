@@ -615,7 +615,7 @@ test.describe(
         await page
           .getByText('No matching results')
           .waitFor({ state: 'visible' });
-        
+
         const restoreResPromise = page.waitForResponse((res) => {
           const url = new URL(res.url());
 
