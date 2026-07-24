@@ -79,3 +79,22 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Incident summary table: one row per incident (stateId chain), maintained at write time so
+-- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
+-- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
+CREATE TABLE IF NOT EXISTS test_case_incident (
+    stateId varchar(36) NOT NULL,
+    entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    testCaseResolutionStatusType varchar(36) NOT NULL,
+    assignee varchar(256) DEFAULT NULL,
+    severity varchar(36) DEFAULT NULL,
+    createdAt bigint unsigned NOT NULL,
+    updatedAt bigint unsigned NOT NULL,
+    latestRecordId varchar(36) NOT NULL,
+    PRIMARY KEY (stateId),
+    INDEX idx_tci_status_fqn (testCaseResolutionStatusType, entityFQNHash),
+    INDEX idx_tci_fqn (entityFQNHash),
+    INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
+    INDEX idx_tci_updated (updatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

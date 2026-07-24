@@ -939,6 +939,46 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
+      syncIncidentSummary(connection, postgres, fqnHash);
+    }
+  }
+
+  // Direct SQL seeding bypasses the repository's write path, so the summary projection the
+  // groups endpoint reads must be synced the same way the 2.1.0 backfill migration does —
+  // including its MAX(id) tie-break, which testDuplicateMaxTimestampTieBreak pins.
+  private void syncIncidentSummary(Connection connection, boolean postgres, String fqnHash)
+      throws Exception {
+    String severityExpr =
+        postgres ? "t.json ->> 'severity'" : "JSON_UNQUOTE(JSON_EXTRACT(t.json, '$.severity'))";
+    String upsertTail =
+        postgres
+            ? "ON CONFLICT (stateId) DO UPDATE SET "
+                + "testCaseResolutionStatusType = EXCLUDED.testCaseResolutionStatusType, "
+                + "assignee = EXCLUDED.assignee, severity = EXCLUDED.severity, "
+                + "createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt), "
+                + "updatedAt = EXCLUDED.updatedAt, latestRecordId = EXCLUDED.latestRecordId"
+            : "ON DUPLICATE KEY UPDATE "
+                + "testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType), "
+                + "assignee = VALUES(assignee), severity = VALUES(severity), "
+                + "test_case_incident.createdAt = LEAST(test_case_incident.createdAt, VALUES(createdAt)), "
+                + "updatedAt = VALUES(updatedAt), latestRecordId = VALUES(latestRecordId)";
+    String backfill =
+        "INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, "
+            + "assignee, severity, createdAt, updatedAt, latestRecordId) "
+            + "WITH chain AS (SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt "
+            + "  FROM test_case_resolution_status_time_series WHERE entityFQNHash = ? GROUP BY stateId), "
+            + "latestRecord AS (SELECT c.stateId, c.createdAt, c.updatedAt, MAX(t.id) AS latestId "
+            + "  FROM chain c INNER JOIN test_case_resolution_status_time_series t "
+            + "  ON t.stateId = c.stateId AND t.timestamp = c.updatedAt "
+            + "  GROUP BY c.stateId, c.createdAt, c.updatedAt) "
+            + "SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee, "
+            + severityExpr
+            + ", l.createdAt, l.updatedAt, t.id "
+            + "FROM latestRecord l INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId "
+            + upsertTail;
+    try (PreparedStatement statement = connection.prepareStatement(backfill)) {
+      statement.setString(1, fqnHash);
+      statement.executeUpdate();
     }
   }
 

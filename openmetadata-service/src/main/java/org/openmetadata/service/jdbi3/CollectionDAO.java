@@ -10370,7 +10370,50 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "DELETE FROM test_case_resolution_status_time_series WHERE entityFQNHash = :entityFQNHash")
-    void delete(@BindFQN("entityFQNHash") String entityFQNHash);
+    void deleteRecords(@BindFQN("entityFQNHash") String entityFQNHash);
+
+    @SqlUpdate("DELETE FROM test_case_incident WHERE entityFQNHash = :entityFQNHash")
+    void deleteIncidents(@BindFQN("entityFQNHash") String entityFQNHash);
+
+    default void delete(String entityFQNHash) {
+      deleteRecords(entityFQNHash);
+      deleteIncidents(entityFQNHash);
+    }
+
+    // The record's chain state, projected at write time. `createdAt` only ever moves down
+    // (LEAST) so replays or out-of-order syncs cannot shrink an incident's lifetime.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, "
+                + "assignee, severity, createdAt, updatedAt, latestRecordId) "
+                + "VALUES (:stateId, :entityFQNHash, :statusType, :assignee, :severity, "
+                + ":timestamp, :timestamp, :recordId) "
+                + "ON DUPLICATE KEY UPDATE "
+                + "testCaseResolutionStatusType = VALUES(testCaseResolutionStatusType), "
+                + "assignee = VALUES(assignee), severity = VALUES(severity), "
+                + "createdAt = LEAST(createdAt, VALUES(createdAt)), "
+                + "updatedAt = VALUES(updatedAt), latestRecordId = VALUES(latestRecordId)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, "
+                + "assignee, severity, createdAt, updatedAt, latestRecordId) "
+                + "VALUES (:stateId, :entityFQNHash, :statusType, :assignee, :severity, "
+                + ":timestamp, :timestamp, :recordId) "
+                + "ON CONFLICT (stateId) DO UPDATE SET "
+                + "testCaseResolutionStatusType = EXCLUDED.testCaseResolutionStatusType, "
+                + "assignee = EXCLUDED.assignee, severity = EXCLUDED.severity, "
+                + "createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt), "
+                + "updatedAt = EXCLUDED.updatedAt, latestRecordId = EXCLUDED.latestRecordId",
+        connectionType = POSTGRES)
+    void upsertIncident(
+        @Bind("stateId") String stateId,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("statusType") String statusType,
+        @Bind("assignee") String assignee,
+        @Bind("severity") String severity,
+        @Bind("timestamp") long timestamp,
+        @Bind("recordId") String recordId);
 
     @SqlQuery(
         "SELECT json FROM "
@@ -10498,59 +10541,37 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
-    // An incident is a stateId chain. `chain` folds each stateId to its first/last timestamps
-    // over the (stateId, timestamp) index, `latestRecord` picks exactly one record per chain at
-    // the last timestamp — MAX(id) is an arbitrary but deterministic tie-breaker, without which
-    // two records sharing the chain's max timestamp would both enter the aggregates (stale
-    // assignees, double-counted trend points) — and `incident` loads that record's current
-    // status/assignee/severity.
-    String INCIDENT_GROUPS_CTE =
+    // Groups are served from the write-time incident summary (one row per stateId chain),
+    // so the read is O(open incidents) regardless of history depth. Column names mirror the
+    // time-series table, letting ListFilter's incident conditions apply verbatim under alias i.
+    String INCIDENT_GROUPS_FROM =
         """
-        WITH chain AS (
-          SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
-          FROM test_case_resolution_status_time_series
-          <incidentCond>
-          GROUP BY stateId
-        ),
-        latestRecord AS (
-          SELECT c.stateId, c.createdAt, c.updatedAt, MAX(t.id) AS latestId
-          FROM chain c
-          INNER JOIN test_case_resolution_status_time_series t
-            ON t.stateId = c.stateId AND t.timestamp = c.updatedAt
-          GROUP BY c.stateId, c.createdAt, c.updatedAt
-        ),
-        incident AS (
-          SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
-                 <severityExpr> AS severity, l.createdAt, l.updatedAt
-          FROM latestRecord l
-          INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
-        )
+        FROM test_case_incident i
+        INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+        <dimensionJoin>
+        <cond> AND i.testCaseResolutionStatusType IN (<openStatuses>) AND tc.deleted = FALSE
         """;
 
+    // statusRank maps the triage order Assigned > Ack > New so MIN() yields the most
+    // actionable current status; severity strings sort Severity1 < ... < Severity5 with
+    // Severity1 most critical, so MIN() yields the group's most critical severity.
     @SqlQuery(
-        INCIDENT_GROUPS_CTE
-            + """
-            SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount,
-                   MIN(i.severity) AS severity,
-                   MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank,
-                   <assigneesExpr> AS assignees,
-                   COUNT(DISTINCT i.assignee) AS assigneeCount,
-                   MIN(i.createdAt) AS firstSeen,
-                   MAX(i.updatedAt) AS lastSeen,
-                   <createdAtAgg> AS incidentCreatedAt,
-                   COUNT(*) OVER () AS totalGroups
-            FROM incident i
-            INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
-            <dimensionJoin>
-            <cond> AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
-            GROUP BY <groupByCols>
-            ORDER BY incidentCount <sortOrder>, groupKey
-            LIMIT :limit OFFSET :offset
-            """)
+        "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
+            + "MIN(i.severity) AS severity, "
+            + "MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank, "
+            + "<assigneesExpr> AS assignees, "
+            + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
+            + "MIN(i.createdAt) AS firstSeen, "
+            + "MAX(i.updatedAt) AS lastSeen, "
+            + "<createdAtAgg> AS incidentCreatedAt, "
+            + "COUNT(*) OVER () AS totalGroups "
+            + INCIDENT_GROUPS_FROM
+            + "GROUP BY <groupByCols> "
+            + "ORDER BY incidentCount <sortOrder>, groupKey "
+            + "LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
-        @Define("incidentCond") String incidentCond,
-        @Define("severityExpr") String severityExpr,
+        @Define("openStatuses") String openStatuses,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
         @Define("groupKey") String groupKey,
@@ -10563,18 +10584,9 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("offset") int offset);
 
-    @SqlQuery(
-        INCIDENT_GROUPS_CTE
-            + """
-            SELECT COUNT(DISTINCT <groupKey>)
-            FROM incident i
-            INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
-            <dimensionJoin>
-            <cond> AND i.testCaseResolutionStatusType <> :resolvedStatus AND tc.deleted = FALSE
-            """)
+    @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
-        @Define("incidentCond") String incidentCond,
-        @Define("severityExpr") String severityExpr,
+        @Define("openStatuses") String openStatuses,
         @Define("groupKey") String groupKey,
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String cond,
@@ -10597,21 +10609,36 @@ public interface CollectionDAO {
 
     default IncidentGroupPage listIncidentGroups(
         IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
-      IncidentGroupSqlParts sqlParts = buildIncidentGroupSqlParts(groupBy, filter);
-      IncidentGroupDimension dimension = sqlParts.dimension();
+      IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
+      // getCondition() first: building conditions registers indexed bind params (e.g. the
+      // status IN placeholders) on the filter, which the params snapshot must include.
+      String condition = filter.getCondition();
+      Map<String, Object> params = new HashMap<>(filter.getQueryParams());
+      // Positive IN over the open statuses instead of `<> Resolved`: the negative predicate
+      // cannot drive idx_tci_status_fqn and degrades to a scan of every summary row ever
+      // created, defeating the O(open incidents) purpose of this table.
+      List<String> openStatusBinds = new ArrayList<>();
+      int openStatusIndex = 0;
+      for (TestCaseResolutionStatusTypes status : TestCaseResolutionStatusTypes.values()) {
+        if (status != TestCaseResolutionStatusTypes.Resolved) {
+          String bind = "openStatus" + openStatusIndex++;
+          params.put(bind, status.value());
+          openStatusBinds.add(":" + bind);
+        }
+      }
+      String openStatuses = String.join(", ", openStatusBinds);
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
-              sqlParts.scopeCondition(),
-              severityExpr(),
+              openStatuses,
               assigneesExpr(),
               createdAtAggExpr(),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
               dimension.join(),
-              sqlParts.condition(),
+              condition,
               sortOrder,
-              sqlParts.params(),
+              params,
               limit,
               offset);
       // The page query carries the group total via COUNT(*) OVER (); the standalone count only
@@ -10624,20 +10651,9 @@ public interface CollectionDAO {
       } else {
         total =
             countIncidentGroups(
-                sqlParts.scopeCondition(),
-                severityExpr(),
-                dimension.groupKey(),
-                dimension.join(),
-                sqlParts.condition(),
-                sqlParts.params());
+                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
       }
       return new IncidentGroupPage(counts, total);
-    }
-
-    private static String severityExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "json_unquote(json_extract(json, '$.severity'))"
-          : "json ->> 'severity'";
     }
 
     // JSON aggregates instead of GROUP_CONCAT/STRING_AGG: the 1024-char group_concat_max_len
@@ -10655,39 +10671,7 @@ public interface CollectionDAO {
           : "JSON_AGG(i.createdAt)";
     }
 
-    private static IncidentGroupSqlParts buildIncidentGroupSqlParts(
-        IncidentGroupBy groupBy, ListFilter filter) {
-      Map<String, Object> params = new HashMap<>();
-      String scopeCondition = buildIncidentGroupScopeCondition(filter, params);
-      String condition = filter.getCondition();
-      params.putAll(filter.getQueryParams());
-      params.put("resolvedStatus", TestCaseResolutionStatusTypes.Resolved.value());
-      return new IncidentGroupSqlParts(
-          scopeCondition, condition, IncidentGroupDimension.from(groupBy), params);
-    }
-
-    // Pushes the test case scope into the CTE so incidents are ranked over a single FQN's
-    // records, and removes it from the filter so ListFilter does not re-apply it in the outer
-    // condition.
-    private static String buildIncidentGroupScopeCondition(
-        ListFilter filter, Map<String, Object> params) {
-      String result = "";
-      String testCaseFQNHash = filter.getQueryParam("entityFQNHash");
-      if (!nullOrEmpty(testCaseFQNHash)) {
-        filter.removeQueryParam("entityFQNHash");
-        params.put("testCaseFQNHash", testCaseFQNHash);
-        result = "WHERE entityFQNHash = :testCaseFQNHash";
-      }
-      return result;
-    }
-
     record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
-
-    record IncidentGroupSqlParts(
-        String scopeCondition,
-        String condition,
-        IncidentGroupDimension dimension,
-        Map<String, Object> params) {}
 
     record IncidentGroupDimension(
         String groupKey, String groupType, String groupByCols, String join) {

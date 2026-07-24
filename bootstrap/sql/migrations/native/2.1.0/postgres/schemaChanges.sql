@@ -16,3 +16,22 @@ CREATE INDEX IF NOT EXISTS idx_test_case_id ON test_case (id);
 -- The incident list's assignee filter compares the generated assignee column, which had no
 -- index and full-scanned the timeline at scale.
 CREATE INDEX IF NOT EXISTS idx_test_case_resolution_status_assignee ON test_case_resolution_status_time_series (assignee, timestamp);
+
+-- Incident summary table: one row per incident (stateId chain), maintained at write time so
+-- state-shaped reads (incidentGroups) are O(open incidents) instead of folding full history.
+-- Column names deliberately mirror the time-series table so ListFilter conditions apply verbatim.
+CREATE TABLE IF NOT EXISTS test_case_incident (
+    stateId varchar(36) NOT NULL,
+    entityFQNHash varchar(768) NOT NULL,
+    testCaseResolutionStatusType varchar(36) NOT NULL,
+    assignee varchar(256) DEFAULT NULL,
+    severity varchar(36) DEFAULT NULL,
+    createdAt bigint NOT NULL,
+    updatedAt bigint NOT NULL,
+    latestRecordId varchar(36) NOT NULL,
+    PRIMARY KEY (stateId)
+);
+CREATE INDEX IF NOT EXISTS idx_tci_status_fqn ON test_case_incident (testCaseResolutionStatusType, entityFQNHash);
+CREATE INDEX IF NOT EXISTS idx_tci_fqn ON test_case_incident (entityFQNHash);
+CREATE INDEX IF NOT EXISTS idx_tci_assignee ON test_case_incident (assignee, testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS idx_tci_updated ON test_case_incident (updatedAt);
