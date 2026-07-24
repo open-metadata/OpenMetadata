@@ -384,6 +384,10 @@ test.describe('Explore Assets Discovery', () => {
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
     await page.click('[data-testid="search-dropdown-Data Assets"]');
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
 
     await expect(
       page.getByTestId('drop-down-menu').getByTestId('table')
