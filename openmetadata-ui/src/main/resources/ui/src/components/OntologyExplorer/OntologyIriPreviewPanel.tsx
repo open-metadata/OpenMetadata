@@ -63,7 +63,7 @@ const OntologyIriPreviewPanel = ({
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(submit)}>
-      <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5 tw:ring-0">
+      <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5">
         <div>
           <Typography as="h3" size="text-lg" weight="semibold">
             {t('label.concept-iri')}

@@ -162,8 +162,15 @@ describe('OntologyConceptAttributes', () => {
 
     const [, patch] = mockPatchGlossaryTerm.mock.calls[0];
 
-    expect(patch[0]).toMatchObject({ op: 'add', path: '/attributes' });
-    expect(patch[0].value).toHaveLength(ATTRIBUTES.length + 1);
+    const operation = patch[0];
+
+    expect(operation).toMatchObject({ op: 'add', path: '/attributes' });
+
+    if (operation.op !== 'add') {
+      throw new Error(`Expected add operation, received ${operation.op}`);
+    }
+
+    expect(operation.value).toHaveLength(ATTRIBUTES.length + 1);
   });
 
   it('rejects a duplicate attribute name without patching', async () => {

@@ -128,7 +128,7 @@ const ExplanationResult = ({
         {explanation.explanations.length ? (
           explanation.explanations.map((item) => (
             <Card
-              className="tw:flex tw:flex-col tw:gap-1 tw:border tw:border-secondary tw:p-3 tw:ring-0"
+              className="tw:flex tw:flex-col tw:gap-1 tw:border tw:border-secondary tw:p-3"
               key={item.graphUri}>
               <Typography size="text-sm" weight="semibold">
                 {item.rule.displayName ?? item.rule.name}

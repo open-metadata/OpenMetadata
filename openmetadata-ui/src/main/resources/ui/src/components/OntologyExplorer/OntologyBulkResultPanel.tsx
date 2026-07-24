@@ -55,7 +55,7 @@ const OntologyBulkResultPanel = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5 tw:ring-0"
+      className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5"
       data-testid="ontology-bulk-result">
       <div className="tw:flex tw:flex-wrap tw:items-start tw:justify-between tw:gap-3">
         <div>

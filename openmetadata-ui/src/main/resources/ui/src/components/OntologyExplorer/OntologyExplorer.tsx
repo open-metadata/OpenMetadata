@@ -85,7 +85,7 @@ const STUDIO_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,var(--color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
-  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
 interface GraphEmptyStateProps {
   readonly message: string;
@@ -804,7 +804,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                         selectedKey={explorationMode}
                         onSelectionChange={handleExplorationModeSelection}>
                         <Tabs.List
-                          className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:ring-1 tw:ring-secondary! tw:shadow-xs"
+                          className="tw:gap-0! tw:rounded-[9px]! tw:bg-primary! tw:p-[3px]! tw:shadow-xs tw:outline-1 tw:outline-secondary!"
                           size="sm"
                           type="button-border">
                           <Tabs.Item

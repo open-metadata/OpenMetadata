@@ -18,10 +18,11 @@ be self-sufficient with only pydantic at import time.
 
 import json
 import logging
+import os
 from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import WrapSerializer, model_validator
+from pydantic import ConfigDict, WrapSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from pydantic_core.core_schema import SerializationInfo
@@ -40,6 +41,16 @@ class BaseModel(PydanticBaseModel):
     Base model for OpenMetadata generated models.
     Specified as `--base-class BASE_CLASS` in the generator.
     """
+
+    # Lazy per-model schema build (~200MB less import RSS). Guarded by
+    # tests/unit/test_generated_models_defer_build.py. Env override is an ops
+    # kill-switch (redeploy-free), mirroring openai/anthropic's DEFER_PYDANTIC_BUILD.
+    # Read the env directly, NOT via metadata.config.settings: this base class must
+    # import only pydantic — routing it through a metadata package would risk a
+    # circular import at the root of the generated-model hierarchy.
+    model_config = ConfigDict(
+        defer_build=os.environ.get("OM_PYDANTIC_DEFER_BUILD", "true").lower() not in ("0", "false", "no", "off")
+    )
 
     def model_post_init(self, context: Any, /):
         """

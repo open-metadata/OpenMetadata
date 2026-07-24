@@ -369,7 +369,7 @@ const OntologyVisualQueryBuilder = ({
             </span>
             <Select
               aria-label={t('label.relationship-type')}
-              className="tw:w-52 [&_button]:tw:bg-warning-primary [&_button]:tw:ring-utility-warning-200 [&_button_p]:tw:text-warning-primary"
+              className="tw:w-52 [&_button]:tw:bg-warning-primary [&_button]:tw:outline-utility-warning-200 [&_button_p]:tw:text-warning-primary"
               data-testid="ontology-builder-relation"
               fontSize="xs"
               isDisabled={isLoading}

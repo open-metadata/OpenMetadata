@@ -75,20 +75,23 @@ jobs:
           disable-reviews: true # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Trigger Collate build & wait
-        uses: the-actions-org/workflow-dispatch@v4
+        uses: benc-uk/workflow-dispatch@v1.3.2
+        timeout-minutes: 60
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
+          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha || github.sha }}
         with:
           workflow: OpenMetadata Collate Test
           ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
+          sync-status: true
+          wait-timeout-seconds: 3660
+          wait-interval-seconds: 60
           inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'

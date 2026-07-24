@@ -142,7 +142,7 @@ describe('stripNodePositionsForDataMode', () => {
   });
 
   it('returns the same node reference when the node has no style', () => {
-    const node = { id: 'n1' };
+    const node: { id: string; style?: unknown } = { id: 'n1' };
 
     const [result] = stripNodePositionsForDataMode([node]);
 

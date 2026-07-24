@@ -244,7 +244,7 @@ const OntologyLibrary = ({
         </span>
         <Button
           aria-label={t('label.close')}
-          className="tw:size-8! tw:rounded-lg! tw:border tw:border-secondary tw:p-0! tw:shadow-none! tw:ring-0! tw:before:hidden"
+          className="tw:size-8! tw:rounded-lg! tw:border tw:border-secondary tw:p-0! tw:shadow-none! tw:before:hidden tw:after:outline-0!"
           color="secondary"
           data-testid="ontology-library-close"
           iconLeading={

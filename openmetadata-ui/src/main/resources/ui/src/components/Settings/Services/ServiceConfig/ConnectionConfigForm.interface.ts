@@ -40,6 +40,7 @@ export interface ConnectionConfigFormProps {
   disableTestConnection?: boolean;
   isSubmitDisabled?: boolean;
   additionalMissingFieldsCount?: number;
+  isAdditionalValidationPending?: boolean;
   onCancel?: () => void;
   onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
   onValidateAdditionalRequiredFields?: () => boolean;

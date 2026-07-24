@@ -128,10 +128,45 @@
   align-items: center;
 }
 
+.glossary-details.ant-row {
+  height: 100%;
+  flex-direction: column;
+  flex-wrap: nowrap;
+
+  > .ant-col {
+    flex: 0 0 auto;
+    max-width: 100%;
+    margin-bottom: 0;
+
+    &.glossary-page-tabs {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+}
+
 .glossary-page-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  .tabs-new,
+  .tabs-new > .ant-tabs-content-holder,
+  .tabs-new > .ant-tabs-content-holder > .ant-tabs-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
   .ant-tabs-tabpane {
     height: @glossary-page-height;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: @glossary-page-height;
+    display: flex;
+    flex-direction: column;
+    // Inner columns own the scroll (internal scroll for tables), not the pane.
+    overflow: hidden;
 
     .activity-feed-tab {
       height: 100%;
@@ -140,6 +175,64 @@
       .center-container {
         height: 100%;
       }
+    }
+  }
+
+  .ant-tabs-tabpane-hidden {
+    display: none;
+  }
+
+  .grid-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100% !important;
+    margin-bottom: 0;
+  }
+
+  .ant-tabs.ant-tabs-top.tabs-new .grid-container > #KnowledgePanel\.LeftPanel {
+    height: 100% !important;
+
+    > .dynamic-height-widget {
+      height: 100% !important;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .left-panel-content {
+      height: 100%;
+      min-height: 0;
+    }
+  }
+
+  .left-panel-content > .ant-col:last-child > .ant-row {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-flow: column nowrap;
+
+    > .ant-col {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .glossary-terms-scroll-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .glossary-terms-table {
+    .ant-table-body {
+      max-height: none !important;
+    }
+
+    .ant-table-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
   }
 }
@@ -176,9 +269,27 @@
   color: #dc6803;
 }
 
+.glossary-page-tabs .left-panel-content.ant-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: stretch;
+
+  > .ant-col {
+    flex: 0 0 auto;
+    max-width: 100%;
+
+    &:last-child {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+}
+
 .glossary-terms-empty-container {
-  height: calc(100vh - 480px);
-  min-height: 370px;
+  flex: 1 1 auto;
+  min-height: 300px;
   overflow: auto;
 }
 

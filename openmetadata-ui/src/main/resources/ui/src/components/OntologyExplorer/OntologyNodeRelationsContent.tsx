@@ -318,7 +318,7 @@ export const OntologyNodeRelationsContent: React.FC<
     <div className="tw:flex tw:flex-col tw:gap-4">
       {parentCount > 1 ? (
         <Card
-          className="tw:flex tw:items-center tw:justify-between tw:rounded-xl tw:border tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:p-3 tw:ring-0 tw:shadow-sm"
+          className="tw:flex tw:items-center tw:justify-between tw:rounded-xl tw:border tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:p-3 tw:shadow-sm"
           data-testid="ontology-polyhierarchy">
           <div>
             <Typography as="p" size="text-sm" weight="semibold">
@@ -383,7 +383,7 @@ export const OntologyNodeRelationsContent: React.FC<
         </div>
         {conceptMappings.map((mapping) => (
           <Card
-            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:ring-0 tw:shadow-sm"
+            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:shadow-sm"
             key={`${mapping.mappingType}-${mapping.conceptIri}`}>
             <Badge
               color={mappingBadgeColors[mapping.mappingType]}
@@ -401,7 +401,7 @@ export const OntologyNodeRelationsContent: React.FC<
         ))}
         {isEditMode && isValidUUID(termId) ? (
           isAddingMapping ? (
-            <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:ring-0 tw:shadow-sm">
+            <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:shadow-sm">
               <Select
                 aria-label={t('label.mapping-type')}
                 items={Object.values(ConceptMappingType).map((type) => ({

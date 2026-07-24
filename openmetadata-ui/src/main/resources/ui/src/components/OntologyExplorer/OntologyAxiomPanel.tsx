@@ -182,7 +182,7 @@ const OntologyAxiomPanel = ({ glossary }: OntologyAxiomPanelProps) => {
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(submit)}>
       <Card
-        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5 tw:ring-0"
+        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
         data-testid="ontology-axiom-panel">
         <Typography as="h3" size="text-lg" weight="semibold">
           {t('label.ontology')} {t('label.constraint-plural')}

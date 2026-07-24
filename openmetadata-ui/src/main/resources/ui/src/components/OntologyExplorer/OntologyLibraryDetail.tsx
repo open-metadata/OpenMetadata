@@ -160,7 +160,7 @@ const OntologyLibraryDetail = ({
                       className={
                         selectedModuleIds.includes(module.id)
                           ? 'tw:rounded-full tw:bg-brand-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-brand-secondary'
-                          : 'tw:rounded-full tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-disabled tw:ring-1 tw:ring-disabled tw:ring-inset'
+                          : 'tw:rounded-full tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-disabled tw:outline-1 tw:-outline-offset-1 tw:outline-disabled'
                       }
                       key={module.id}>
                       {module.name}

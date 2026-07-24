@@ -116,7 +116,7 @@ const OntologyExpressionEditor = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4 tw:ring-0"
+      className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4"
       data-testid={`ontology-expression-${depth}`}>
       <div className="tw:flex tw:items-end tw:gap-2">
         <div className="tw:min-w-0 tw:flex-1">

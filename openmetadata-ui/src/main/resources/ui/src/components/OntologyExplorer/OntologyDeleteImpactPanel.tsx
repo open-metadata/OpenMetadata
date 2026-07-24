@@ -105,7 +105,7 @@ const OntologyDeleteImpactPanel = ({
   }
 
   return (
-    <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-utility-error-300 tw:bg-error-primary tw:p-4 tw:ring-0">
+    <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-utility-error-300 tw:bg-error-primary tw:p-4">
       <div>
         <Typography as="h3" size="text-sm" weight="semibold">
           {t('label.delete-entity', { entity: t('label.term') })}

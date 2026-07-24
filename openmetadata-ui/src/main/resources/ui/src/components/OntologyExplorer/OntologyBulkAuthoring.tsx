@@ -217,7 +217,7 @@ const OntologyBulkAuthoring = ({
         <HookForm
           form={hookForm}
           onSubmit={hookForm.handleSubmit(handleSubmit)}>
-          <Card className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5 tw:ring-0">
+          <Card className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5">
             <OntologyBulkOperationFields
               fileInputRef={fileInputRef}
               form={form}

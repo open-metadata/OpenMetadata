@@ -83,7 +83,7 @@ async function expectFixtureGraph(
   ).toBe(true);
 }
 
-test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () => {
+test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML) @ontology-rdf', () => {
   test('SKOS / Turtle option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
@@ -220,7 +220,7 @@ test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML)', () => {
   });
 });
 
-test.describe('Ontology Explorer — relational graph data loading', () => {
+test.describe('Ontology Explorer — relational graph data loading @ontology-rdf', () => {
   test('term Relations Graph remains database-authoritative when RDF is enabled', async ({
     browser,
   }) => {

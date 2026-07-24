@@ -232,7 +232,7 @@ export const OntologyConceptAttributes: React.FC<
 
     return (
       <Card
-        className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:ring-0 tw:shadow-sm"
+        className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:shadow-sm"
         data-testid={`ontology-attribute-${attribute.name}`}
         key={attribute.id}>
         <Typography
@@ -275,7 +275,7 @@ export const OntologyConceptAttributes: React.FC<
   const renderAddForm = () => (
     <Card
       className={classNames(
-        'tw:flex tw:flex-col tw:gap-3 tw:border tw:border-dashed tw:ring-0 tw:shadow-none',
+        'tw:flex tw:flex-col tw:gap-3 tw:border tw:border-dashed tw:shadow-none',
         isInspector
           ? 'tw:rounded-[9px] tw:border-primary tw:bg-secondary tw:p-[11px]'
           : 'tw:rounded-xl tw:border-utility-gray-blue-200 tw:p-3'

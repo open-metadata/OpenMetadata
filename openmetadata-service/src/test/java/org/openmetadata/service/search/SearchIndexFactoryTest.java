@@ -285,16 +285,15 @@ class SearchIndexFactoryTest {
 
   @Test
   void testCaseReindexFieldsIncludeSuiteDefinitionAndResult() {
-    // testCaseResult/incidentId are stripped from storage JSON and only fetched by setFieldsInBulk
-    // when requested. Reindex without them produces docs missing testCaseStatus, blanking statuses
-    // in the UI.
+    // testCaseResult is stripped from storage JSON and only fetched by setFieldsInBulk when
+    // requested. Reindex without it produces docs missing testCaseStatus, blanking statuses in
+    // the UI. incidentId is no longer required here: it is derived at index time.
     assertReindexFields(
         Entity.TEST_CASE,
         TestCaseRepository.TEST_SUITE_FIELD,
         Entity.FIELD_TEST_SUITES,
         TestCaseRepository.TEST_DEFINITION_FIELD,
-        Entity.TEST_CASE_RESULT,
-        TestCaseRepository.INCIDENTS_FIELD);
+        Entity.TEST_CASE_RESULT);
   }
 
   @Test

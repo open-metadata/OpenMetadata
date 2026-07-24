@@ -199,7 +199,7 @@ const OntologyStructurePanel = ({
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(handleMerge)}>
       <Card
-        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5 tw:ring-0"
+        className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
         data-testid="ontology-structure-panel">
         <Typography as="h3" size="text-lg" weight="semibold">
           {t('label.merge')}
@@ -308,7 +308,7 @@ const DiffSelection = ({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4 tw:ring-0">
+    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
       <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
         <Typography size="text-sm" weight="semibold">
           {termDiff.subsetTerm.displayName ?? termDiff.subsetTerm.name}

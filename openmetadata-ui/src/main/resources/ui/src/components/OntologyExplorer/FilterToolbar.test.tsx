@@ -93,8 +93,18 @@ const buildRelationType = (
   } as unknown as RelationshipType);
 
 const glossaries: Glossary[] = [
-  { displayName: 'Sales', id: 'g1', name: 'sales' },
-  { displayName: 'Finance', id: 'g2', name: 'finance' },
+  {
+    description: 'Sales glossary',
+    displayName: 'Sales',
+    id: 'g1',
+    name: 'sales',
+  },
+  {
+    description: 'Finance glossary',
+    displayName: 'Finance',
+    id: 'g2',
+    name: 'finance',
+  },
 ];
 
 const relationTypes: RelationshipType[] = [

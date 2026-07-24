@@ -117,7 +117,7 @@ const OntologyTermEditor = ({
             <Button
               className={classNames(
                 selectedRelationType === relationType.name &&
-                  'tw:bg-brand-primary_alt! tw:ring-brand!'
+                  'tw:bg-brand-primary_alt! tw:after:outline-brand!'
               )}
               color="secondary"
               data-testid={`term-editor-relation-${relationType.name}`}
@@ -212,7 +212,7 @@ const OntologyTermEditor = ({
             relationTypes={relationTypes}
           />
         </div>
-        <Card className="tw:flex tw:flex-col tw:gap-[13px] tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-[13px] tw:ring-0 tw:shadow-none">
+        <Card className="tw:flex tw:flex-col tw:gap-[13px] tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-[13px] tw:shadow-none">
           <Typography as="h3" size="text-sm" weight="semibold">
             {t('label.add-entity', { entity: t('label.relationship') })}
           </Typography>

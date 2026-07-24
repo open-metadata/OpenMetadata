@@ -87,7 +87,7 @@ const ZOOM_MAX = 2;
 const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
 const TOOLBAR_CARD_CLASS =
-  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));

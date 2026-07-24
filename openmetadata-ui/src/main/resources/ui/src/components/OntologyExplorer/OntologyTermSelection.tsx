@@ -56,7 +56,7 @@ const OntologyTermSelection = ({
   };
 
   return (
-    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4 tw:ring-0">
+    <Card className="tw:flex tw:flex-col tw:gap-3 tw:border tw:border-secondary tw:p-4">
       <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
         <Typography size="text-sm" weight="semibold">
           {label}

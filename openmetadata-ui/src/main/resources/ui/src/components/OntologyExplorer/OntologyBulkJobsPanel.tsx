@@ -100,7 +100,7 @@ const OntologyBulkJobsPanel = ({
   };
 
   return (
-    <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5 tw:ring-0">
+    <Card className="tw:flex tw:flex-col tw:gap-4 tw:border tw:border-secondary tw:p-5">
       <div className="tw:flex tw:items-center tw:justify-between tw:gap-3">
         <Typography as="h3" size="text-md" weight="semibold">
           {t('label.background-job-plural')}

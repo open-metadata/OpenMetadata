@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { defineConfig, devices } from '@playwright/test';
+import {
+  defineConfig,
+  devices,
+  type ReporterDescription,
+} from '@playwright/test';
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
 
 /**
  * Read environment variables from file.
@@ -31,6 +36,75 @@ const defaultBaseURL = isH2Mode
   ? 'https://localhost:8585'
   : 'http://localhost:8585';
 
+const shardPlan = process.env.PW_SHARD_PLAN
+  ? JSON.parse(readFileSync(process.env.PW_SHARD_PLAN, 'utf8'))
+  : undefined;
+const hasDedicatedIngestionLane =
+  Boolean(shardPlan) || process.env.PW_DEDICATED_INGESTION === 'true';
+const isPlannedShard = Boolean(shardPlan);
+const hasPreseededState = process.env.PW_PRESEEDED_STATE === 'true';
+const authDependencies = hasPreseededState ? [] : ['setup'];
+const entityDependencies = hasPreseededState
+  ? []
+  : ['setup', 'entity-data-setup'];
+const entityTeardown = hasPreseededState ? undefined : 'entity-data-teardown';
+const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
+const dedicatedStateTestIgnore = hasDedicatedIngestionLane
+  ? [
+      '**/SearchSettings.spec.ts',
+      '**/SearchSeparation/**',
+      '**/*AfterReindex.spec.ts',
+    ]
+  : [];
+const combineGrep = (base?: RegExp) => {
+  if (!base) {
+    return shardGrep;
+  }
+  if (!shardGrep) {
+    return base;
+  }
+
+  return new RegExp(
+    `(?=.*(?:${base.source}))(?=.*(?:${shardGrep.source}))`,
+    [...new Set(`${base.flags}${shardGrep.flags}`)].join('')
+  );
+};
+const reporters: ReporterDescription[] = [
+  ['list'],
+  ...(!isPlannedShard
+    ? [['html', { outputFolder: './playwright/output/playwright-report' }]]
+    : []),
+  [
+    '@estruyf/github-actions-reporter',
+    {
+      useDetails: true,
+      showError: true,
+      includeResults: ['skipped', 'fail', 'flaky'],
+      showArtifactsLink: true,
+    },
+  ],
+  ...(isPlannedShard
+    ? [
+        [
+          'blob',
+          {
+            outputDir: './playwright/output/blob-report',
+            fileName: `report-${process.env.PW_SHARD_ID ?? 'local'}.zip`,
+          },
+        ],
+      ]
+    : [['blob']]),
+  ['json', { outputFile: './playwright/output/results.json' }],
+  ...(isPlannedShard
+    ? [
+        [
+          './playwright/reporters/PerformanceReporter.ts',
+          { outputFile: './playwright/output/playwright-timings.json' },
+        ],
+      ]
+    : []),
+];
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -49,30 +123,16 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 3 : undefined,
-  maxFailures: 500,
+  workers: process.env.CI
+    ? Number(process.env.PW_WORKERS ?? shardPlan?.workers ?? 3)
+    : undefined,
+  // Stop catastrophically broken shards after enough failures to establish
+  // that the run cannot be useful. Healthy runs never approach this limit.
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [
-    ['list'],
-    ['html', { outputFolder: './playwright/output/playwright-report' }],
-    [
-      '@estruyf/github-actions-reporter',
-      {
-        useDetails: true,
-        showError: true,
-        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
-        showArtifactsLink: true,
-      },
-    ],
-    ['blob'],
-    ['json', { outputFile: './playwright/output/results.json' }],
-    [
-      '@flakiness/playwright',
-      { flakinessProject: 'OpenMetadata/OpenMetadata' },
-    ],
-  ],
+  reporter: reporters,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -93,6 +153,15 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    {
+      name: 'bundle-smoke',
+      testMatch: '**/bundle.smoke.ts',
+      dependencies: authDependencies,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin.json',
+      },
+    },
     // Admin authentication setup doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
     {
       name: 'setup',
@@ -111,15 +180,17 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      grep: shardGrep,
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: entityDependencies,
       grepInvert: [
         /@data-insight/,
         /@basic/,
+        ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
         /@knowledge-graph/,
         /@ontology-rdf/,
       ],
-      teardown: 'entity-data-teardown',
+      teardown: entityTeardown,
       testIgnore: [
         '**/nightly/**',
         '**/Search/**',
@@ -131,6 +202,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        ...dedicatedStateTestIgnore,
         '**/DomainIsolation/**',
       ],
     },
@@ -161,11 +233,12 @@ export default defineConfig({
     {
       name: 'search-nightly',
       testMatch: ['**/Search/**'],
+      grep: shardGrep,
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/admin.json',
       },
-      dependencies: ['setup'],
+      dependencies: authDependencies,
     },
     {
       name: 'entity-data-teardown',
@@ -202,30 +275,59 @@ export default defineConfig({
     {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
+      grep: shardGrep,
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: authDependencies,
       fullyParallel: true,
     },
     {
       name: 'DataAssetRulesDisabled',
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
+      grep: shardGrep,
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
     },
     {
+      name: 'search-rbac-setup',
+      testMatch: '**/search-rbac.setup.ts',
+      dependencies: authDependencies,
+      teardown: 'search-rbac-teardown',
+    },
+    {
+      name: 'search-rbac-teardown',
+      testMatch: '**/search-rbac.teardown.ts',
+    },
+    {
       name: 'Basic',
-      grep: [/@basic/],
+      grep: combineGrep(/@basic/),
+      testIgnore: dedicatedStateTestIgnore,
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: entityDependencies,
       fullyParallel: true,
     },
+    ...(hasDedicatedIngestionLane
+      ? [
+          {
+            name: 'Ingestion',
+            grep: combineGrep(/@ingestion/),
+            testIgnore: '**/nightly/**',
+            use: { ...devices['Desktop Chrome'] },
+            dependencies: entityDependencies,
+            fullyParallel: false,
+            workers: 1,
+            teardown: entityTeardown,
+          },
+        ]
+      : []),
     {
       name: 'SearchRBAC',
       testMatch: '**/SearchRBAC.spec.ts',
-      dependencies: ['DataAssetRulesDisabled'],
+      grep: shardGrep,
+      dependencies: ['search-rbac-setup'],
       use: { ...devices['Desktop Chrome'] },
-      teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
     },
     // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
     // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
@@ -233,25 +335,54 @@ export default defineConfig({
     {
       name: 'DomainIsolation',
       testMatch: '**/DomainIsolation/**',
+      grep: shardGrep,
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: authDependencies,
       fullyParallel: false,
       workers: 1,
     },
-    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
-    // They must run in isolation after the main chromium project to avoid flakiness
+    ...(hasDedicatedIngestionLane
+      ? [
+          {
+            name: 'Reindex',
+            testMatch: [
+              '**/SearchSeparation/*.spec.ts',
+              '**/*AfterReindex.spec.ts',
+            ],
+            grep: shardGrep,
+            use: { ...devices['Desktop Chrome'] },
+            dependencies: authDependencies,
+            fullyParallel: false,
+            workers: 1,
+          },
+          {
+            name: 'GlobalSettings',
+            testMatch: '**/SearchSettings.spec.ts',
+            grep: shardGrep,
+            use: { ...devices['Desktop Chrome'] },
+            dependencies: authDependencies,
+            fullyParallel: false,
+            workers: 1,
+          },
+        ]
+      : []),
+    // Each planned matrix job restores its own database/search clone. These projects
+    // share one single-worker job, while legacy runs retain the Chromium dependency
+    // because they share one mutable environment.
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'chromium'],
+      dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
+      grep: shardGrep,
       fullyParallel: false,
     },
     {
       name: 'IntakeForm',
       testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'chromium'],
+      dependencies: isPlannedShard ? authDependencies : ['setup', 'chromium'],
+      grep: shardGrep,
       fullyParallel: false,
     },
   ],
