@@ -113,6 +113,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
       "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+  private static final String TOTAL_COUNT_HEADER = "X-Total-Count";
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
@@ -435,7 +436,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       operationId = "getAllGlossaryTermsWithAssetsCount",
       summary = "Get all glossary terms with their asset counts",
       description =
-          "Get a map of glossary term fully qualified names to their asset counts using search aggregation.",
+          "Get a map of glossary term fully qualified names to their asset counts using search aggregation. "
+              + "Supports pagination via `limit` and `offset` query parameters. The total number of "
+              + "glossary terms (the full count, independent of any slicing) is always returned in the "
+              + "`X-Total-Count` response header so callers can drive paged loading.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -450,12 +454,24 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                   "Filter by parent glossary or glossary term FQN. "
                       + "When provided, only returns asset counts for children whose FQN starts with this value.")
           @QueryParam("parent")
-          String parent) {
+          String parent,
+      @Parameter(
+              description =
+                  "Maximum number of glossary terms to return. When omitted, all matching terms are returned.")
+          @QueryParam("limit")
+          @Min(value = 0, message = "limit must be >= 0")
+          @Max(value = 10000, message = "limit must be <= 10000")
+          Integer limit,
+      @Parameter(description = "Offset into the ordered list of glossary terms to start from.")
+          @QueryParam("offset")
+          @Min(value = 0, message = "offset must be >= 0")
+          Integer offset) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
-    return Response.ok(result).build();
+    GlossaryTermRepository.GlossaryTermAssetCountResult result =
+        repository.getGlossaryTermsAssetsCount(parent, limit, offset);
+    return Response.ok(result.counts()).header(TOTAL_COUNT_HEADER, result.total()).build();
   }
 
   @GET

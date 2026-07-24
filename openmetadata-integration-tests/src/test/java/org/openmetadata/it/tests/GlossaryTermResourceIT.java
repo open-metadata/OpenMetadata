@@ -10,7 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +60,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.test.util.RestClient;
 
 /**
  * Integration tests for GlossaryTerm entity operations.
@@ -3252,6 +3256,130 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void get_assetsCountsPaginationSlicesAndPreservesTotal(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_pagination_glossary"))
+            .withDescription("Glossary for asset count pagination test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    int termCount = 5;
+    java.util.List<String> createdTermFqns = new java.util.ArrayList<>();
+    for (int i = 0; i < termCount; i++) {
+      CreateGlossaryTerm req =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("count_pagination_term_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Pagination term " + i);
+      createdTermFqns.add(createEntity(req).getFullyQualifiedName());
+    }
+
+    String fullCounts = getAssetCounts(client, glossary.getFullyQualifiedName());
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode unpaged = mapper.readTree(fullCounts);
+    for (String fqn : createdTermFqns) {
+      assertTrue(unpaged.has(fqn), "Unpaged response should contain term " + fqn);
+    }
+
+    try (Response pagedResponse = rawGetAssetCounts(glossary.getFullyQualifiedName(), 2, 0)) {
+      assertEquals(200, pagedResponse.getStatus());
+      assertEquals(
+          String.valueOf(unpaged.size()),
+          pagedResponse.getHeaderString("X-Total-Count"),
+          "X-Total-Count header should report the pre-slice total term count");
+    }
+
+    String firstPageBody = getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 2, 0);
+    JsonNode firstPage = mapper.readTree(firstPageBody);
+    assertEquals(
+        2,
+        firstPage.size(),
+        "First page should contain at most `limit` glossary terms when limit=2");
+
+    String secondPageBody =
+        getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 2, 2);
+    JsonNode secondPage = mapper.readTree(secondPageBody);
+    assertTrue(
+        secondPage.size() <= 2,
+        "Second page should contain at most `limit` glossary terms when limit=2");
+
+    java.util.Set<String> firstPageKeys = new java.util.HashSet<>();
+    firstPage.fieldNames().forEachRemaining(firstPageKeys::add);
+    secondPage
+        .fieldNames()
+        .forEachRemaining(
+            key ->
+                assertFalse(
+                    firstPageKeys.contains(key),
+                    "Pages should not overlap: " + key + " appeared on both pages"));
+
+    String beyondEndBody =
+        getAssetCountsWithPaging(client, glossary.getFullyQualifiedName(), 5, 10000);
+    JsonNode beyondEnd = mapper.readTree(beyondEndBody);
+    assertEquals(0, beyondEnd.size(), "Offset past the end should return an empty asset-count map");
+  }
+
+  @Test
+  void get_assetsCountsExcludeSoftDeletedTerms(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_soft_delete_glossary"))
+            .withDescription("Glossary for soft-deleted term exclusion test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    int termCount = 3;
+    java.util.List<String> createdTermFqns = new java.util.ArrayList<>();
+    String deletedTermId = null;
+    String deletedTermFqn = null;
+    for (int i = 0; i < termCount; i++) {
+      CreateGlossaryTerm req =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("soft_delete_term_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Soft delete term " + i);
+      GlossaryTerm term = createEntity(req);
+      createdTermFqns.add(term.getFullyQualifiedName());
+      if (i == 0) {
+        deletedTermId = term.getId().toString();
+        deletedTermFqn = term.getFullyQualifiedName();
+      }
+    }
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode beforeDelete =
+        mapper.readTree(getAssetCounts(client, glossary.getFullyQualifiedName()));
+    for (String fqn : createdTermFqns) {
+      assertTrue(beforeDelete.has(fqn), "Response should contain term " + fqn + " before delete");
+    }
+    try (Response response = rawGetAssetCounts(glossary.getFullyQualifiedName(), 100, 0)) {
+      assertEquals(
+          String.valueOf(termCount),
+          response.getHeaderString("X-Total-Count"),
+          "X-Total-Count should equal the number of live terms before delete");
+    }
+
+    deleteEntity(deletedTermId);
+
+    JsonNode afterDelete =
+        mapper.readTree(getAssetCounts(client, glossary.getFullyQualifiedName()));
+    assertFalse(
+        afterDelete.has(deletedTermFqn),
+        "Soft-deleted term " + deletedTermFqn + " should be excluded from asset counts");
+    assertEquals(
+        termCount - 1, afterDelete.size(), "Soft-deleted term should drop out of the count map");
+    try (Response response = rawGetAssetCounts(glossary.getFullyQualifiedName(), 100, 0)) {
+      assertEquals(
+          String.valueOf(termCount - 1),
+          response.getHeaderString("X-Total-Count"),
+          "X-Total-Count should drop by one after a term is soft-deleted");
+    }
+  }
+
+  @Test
   void get_termAssetsById(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -3415,6 +3543,29 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         .getHttpClient()
         .executeForString(
             HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
+  }
+
+  private String getAssetCountsWithPaging(
+      OpenMetadataClient client, String parent, int limit, int offset) {
+    RequestOptions.Builder optionsBuilder =
+        RequestOptions.builder()
+            .queryParam("limit", String.valueOf(limit))
+            .queryParam("offset", String.valueOf(offset));
+    if (parent != null) {
+      optionsBuilder.queryParam("parent", parent);
+    }
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET, "/v1/glossaryTerms/assets/counts", null, optionsBuilder.build());
+  }
+
+  private Response rawGetAssetCounts(String parent, int limit, int offset) {
+    String path =
+        String.format(
+            "/v1/glossaryTerms/assets/counts?parent=%s&limit=%d&offset=%d",
+            URLEncoder.encode(parent, StandardCharsets.UTF_8), limit, offset);
+    return RestClient.admin().rawGet(path);
   }
 
   private String getTermAssetsById(OpenMetadataClient client, String id) {

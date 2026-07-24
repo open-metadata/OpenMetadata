@@ -1,5 +1,7 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,9 +42,20 @@ public class SearchAggregation {
    * Static builder method for terms aggregation with explicit size.
    */
   public static SearchAggregationNode terms(String name, String field, int size) {
+    return terms(name, field, size, null);
+  }
+
+  /**
+   * Static builder for a terms aggregation restricted to an explicit set of values. {@code include}
+   * is a comma-separated list of exact bucket keys; when present, only those buckets are returned.
+   */
+  public static SearchAggregationNode terms(String name, String field, int size, String include) {
     Map<String, String> value = new HashMap<>();
     value.put("field", field);
     value.put("size", String.valueOf(size));
+    if (!nullOrEmpty(include)) {
+      value.put("include", include);
+    }
     return new SearchAggregationNode("terms", name, value);
   }
 
