@@ -255,6 +255,7 @@ class SearchRepositoryBehaviorTest {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
+        doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
