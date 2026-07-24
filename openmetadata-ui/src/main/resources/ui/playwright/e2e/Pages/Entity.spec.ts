@@ -244,7 +244,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * and verifying the owner list maintains proper state
      */
     test('User as Owner with unsorted list', async ({ page }) => {
-      test.slow(true);
+      // Cap at 120s instead of test.slow()'s 180s — see rationale on the
+      // Roles spec: hitting the slow ceiling on a hung wait burns 3
+      // minutes before retry kicks in. The warmup below eliminates the
+      // main hang source (search-index freshness), but keep a tighter
+      // ceiling as insurance.
+      test.setTimeout(120_000);
 
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
@@ -253,6 +258,38 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const OWNER2 = new UserClass(owner2Data);
       await OWNER1.create(apiContext);
       await OWNER2.create(apiContext);
+
+      // Wait for the freshly created users to land in user_search_index
+      // before we open the owner picker. Under CI load the async indexer
+      // can lag creation by several seconds; when addMultiOwner's search
+      // returns empty each ownerItem.waitFor({visible}) hangs the default
+      // 30s. Two adds + a remove = up to 90s of waste from one cold index.
+      // Poll the search API up-front so the UI dropdown finds them on
+      // the first search.
+      // Poll with getUserDisplayName() — this is the term addMultiOwner
+      // types into the picker (line ~292). If displayName ever diverges
+      // from name, polling by name would silently pass while the UI
+      // search still misses (per @gitar-bot review on PR #30390).
+      await expect
+        .poll(
+          async () => {
+            const [r1, r2] = await Promise.all([
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER1.getUserDisplayName()}&index=user_search_index`
+              ),
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER2.getUserDisplayName()}&index=user_search_index`
+              ),
+            ]);
+            const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+            return (
+              (d1.hits?.total?.value ?? 0) > 0 &&
+              (d2.hits?.total?.value ?? 0) > 0
+            );
+          },
+          { timeout: 15_000, intervals: [500, 1000, 2000] }
+        )
+        .toBeTruthy();
 
       await addMultiOwner({
         page,
