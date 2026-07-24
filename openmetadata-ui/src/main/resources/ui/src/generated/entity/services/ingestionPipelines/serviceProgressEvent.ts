@@ -1068,7 +1068,7 @@ export enum ProviderType {
  * Additional connection configuration.
  */
 export interface SourceConfig {
-    config?: Pipeline;
+    config: ConfigClass;
 }
 
 /**
@@ -1116,7 +1116,11 @@ export interface SourceConfig {
  *
  * Policy Agent Pipeline Configuration. Applies access grants against the source system.
  */
-export interface Pipeline {
+export interface ConfigClass {
+    /**
+     * Pipeline type
+     */
+    type: FluffyType;
     /**
      * Regex to only include/exclude databases that matches the pattern.
      *
@@ -1258,10 +1262,6 @@ export interface Pipeline {
      * Number of Threads to use in order to parallelize Drive ingestion.
      */
     threads?: number;
-    /**
-     * Pipeline type
-     */
-    type?: FluffyType;
     /**
      * Regex will be applied on fully qualified name (e.g
      * service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)
@@ -3683,14 +3683,14 @@ export interface ProcessingEngine {
      * The type of the engine configuration
      */
     type:    ProcessingEngineType;
-    config?: Config;
+    config?: ConfigObject;
     /**
      * Spark Connect Remote URL.
      */
     remote?: string;
 }
 
-export interface Config {
+export interface ConfigObject {
     /**
      * Additional Spark configuration properties as key-value pairs.
      */
@@ -3860,7 +3860,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: ConfigObject;
+    config?: ServiceConnectionConfig;
 }
 
 /**
@@ -4140,7 +4140,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface ServiceConnectionConfig {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
