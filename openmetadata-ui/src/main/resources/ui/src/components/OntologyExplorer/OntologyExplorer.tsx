@@ -572,10 +572,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       }
 
       return (
-        <GraphEmptyState
-          message={t('message.no-glossary-terms-found')}
-          testId="ontology-graph-empty"
-        />
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+          data-testid="ontology-graph-empty">
+          <EmptyPlaceholder
+            description={t('message.no-glossary-terms-found')}
+            icon={<Cube02 className="tw:text-fg-brand-primary" />}
+            title={t('message.ontology-empty-title')}
+          />
+        </div>
       );
     }
 
@@ -715,7 +720,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   }
 
   const showOnboardingEmptyState =
-    scope === 'global' &&
     !loading &&
     graphDataToShow !== null &&
     graphDataToShow.nodes.length === 0 &&
@@ -735,7 +739,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
+      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden tw:p-px">
         <div
           className={classNames(
             'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
