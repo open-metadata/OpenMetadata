@@ -276,6 +276,53 @@ class TestBuildObservabilityFromDagRun:
         assert observability.lastRunStatus.value == "Successful"
 
 
+class TestGetTablePipelineObservability:
+    """Test get_table_pipeline_observability respects includePipelineObservability flag."""
+
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.metadata.AirflowSource.__init__",
+        return_value=None,
+    )
+    def test_disabled_when_include_pipeline_observability_false(self, mock_init):
+        """Should yield nothing when includePipelineObservability is False."""
+        from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+
+        source = AirflowSource.__new__(AirflowSource)
+        source.source_config = MagicMock()
+        source.source_config.includePipelineObservability = False
+
+        mock_details = MagicMock()
+        result = list(source.get_table_pipeline_observability(mock_details))
+
+        assert result == []
+
+    @patch(
+        "metadata.ingestion.source.pipeline.airflow.metadata.AirflowSource.__init__",
+        return_value=None,
+    )
+    def test_enabled_by_default(self, mock_init):
+        """Should proceed past the guard clause when includePipelineObservability is True (default)."""
+        from metadata.ingestion.source.pipeline.airflow.metadata import AirflowSource
+
+        source = AirflowSource.__new__(AirflowSource)
+        source.source_config = MagicMock()
+        source.source_config.includePipelineObservability = True
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(
+            current_table_fqns=None,
+            current_dag_runs=None,
+            current_pipeline_entity=None,
+        )
+        source.observability_cache = {}
+
+        mock_details = MagicMock()
+        mock_details.dag_id = "test_dag"
+
+        result = list(source.get_table_pipeline_observability(mock_details))
+
+        assert result == [{}]
+
+
 class TestTaskDetailAccess:
     """Test _test_task_detail_access across Airflow versions."""
 
