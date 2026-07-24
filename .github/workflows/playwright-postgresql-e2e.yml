@@ -1333,7 +1333,61 @@ jobs:
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
   playwright-summary:
-    name: ${{ contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    # Publish the required check name `playwright-summary` ONLY when this
+    # run is going to do real work. Every other case (redundant sibling
+    # event for a same-repo PR / fork PR without safe-to-test / draft /
+    # spurious label event) publishes a differently-named check so branch
+    # protection can distinguish "authoritative for this PR shape" from
+    # "synthetic green / skipped". Without this, GitHub's protection UI
+    # picks the most-recently-completed run of `playwright-summary` — and
+    # the synthetic-green from the redundant event finishes in ~15s while
+    # the real pipeline is still running, making the PR appear mergeable
+    # before tests finish. See run 30097914955 for the failure this
+    # addresses.
+    #
+    # Decision tree (mirrors the gate job):
+    #   merge_group / schedule / workflow_dispatch      → 'playwright-summary'
+    #   same-repo PR + pull_request (not draft, no bad label)
+    #                                                    → 'playwright-summary'
+    #   fork PR + pull_request_target + 'safe to test'
+    #     (not draft, not synchronize, no bad label)      → 'playwright-summary'
+    #     synchronize events are rejected here to match the gate — the
+    #     pre-gate step strips the label mid-run but the event payload
+    #     still shows it as present, so we must ignore synchronize
+    #     explicitly to avoid publishing a synthetic green under the
+    #     required check name for unreviewed new commits.
+    #   labeled event with non-'safe to test' label     → 'playwright-summary (label ignored)'
+    #   everything else (redundant events, drafts, fork
+    #     PRs without label)                             → 'playwright-summary (skipped)'
+    name: >-
+      ${{
+        (
+          github.event_name == 'merge_group'
+          || github.event_name == 'workflow_dispatch'
+          || github.event_name == 'schedule'
+          || (
+            github.event_name == 'pull_request'
+            && github.event.pull_request.head.repo.full_name == github.repository
+            && !github.event.pull_request.draft
+            && !(github.event.action == 'labeled' && github.event.label.name != 'safe to test')
+          )
+          || (
+            github.event_name == 'pull_request_target'
+            && github.event.pull_request.head.repo.full_name != github.repository
+            && !github.event.pull_request.draft
+            && github.event.action != 'synchronize'
+            && contains(github.event.pull_request.labels.*.name, 'safe to test')
+            && !(github.event.action == 'labeled' && github.event.label.name != 'safe to test')
+          )
+        )
+        && 'playwright-summary'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'playwright-summary (label ignored)'
+          || 'playwright-summary (skipped)'
+        )
+      }}
     if: ${{ always() && !cancelled() }}
     needs:
       [
