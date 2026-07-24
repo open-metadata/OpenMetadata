@@ -75,13 +75,11 @@ const mockToggleFlow = async (page: Page, initialEnabled: boolean) => {
   );
 };
 
-const openCloseAgentActions = async (page: Page, isOpen = true) => {
+const openAgentActions = async (page: Page) => {
   const agentCard = getAgentCard(page, pipelineName);
 
   await agentCard.getByTestId('more-actions').click();
-  if (isOpen) {
-    await page.getByTestId('actions-dropdown').waitFor();
-  }
+  await page.getByTestId('actions-dropdown').waitFor();
 };
 
 const visitAgentsTab = async (page: Page, serviceFQN: string) => {
@@ -128,7 +126,7 @@ test.describe('Service Agents pause and resume', () => {
     await mockToggleFlow(page, true);
     await visitAgentsTab(page, service.entityResponseData.fullyQualifiedName);
 
-    await openCloseAgentActions(page);
+    await openAgentActions(page);
 
     await expect(page.getByTestId('pause-button')).toBeVisible();
     await expect(page.getByTestId('resume-button')).toBeHidden();
@@ -147,7 +145,7 @@ test.describe('Service Agents pause and resume', () => {
 
     await page.getByTestId('actions-dropdown').waitFor({ state: 'hidden' });
 
-    await openCloseAgentActions(page);
+    await openAgentActions(page);
 
     await expect(page.getByTestId('resume-button')).toBeVisible();
     await expect(page.getByTestId('pause-button')).toBeHidden();
