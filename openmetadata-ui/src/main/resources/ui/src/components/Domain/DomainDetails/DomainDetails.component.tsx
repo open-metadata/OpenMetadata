@@ -91,7 +91,10 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import {
+  setCreateEntityFieldError,
+  submitAndClose,
+} from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -397,7 +400,22 @@ const DomainDetails = ({
             dataProductForm.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          dataProductForm,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.data-product'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.data-product').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsDataProductLoading(false);
       }
@@ -556,7 +574,22 @@ const DomainDetails = ({
             subDomainForm.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          subDomainForm,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.sub-domain'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.sub-domain').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsSubDomainLoading(false);
       }
@@ -958,7 +991,7 @@ const DomainDetails = ({
           className="entity-header tw:mx-5 tw:gap-y-3"
           justify="between"
           wrap="wrap">
-          <div className="entity-header-title-top tw:max-w-full tw:lg:max-w-[60%]">
+          <div className="tw:max-w-full tw:lg:max-w-[60%]">
             <EntityHeader
               breadcrumb={[]}
               displayNameClassName="entity-header-title-wrap"

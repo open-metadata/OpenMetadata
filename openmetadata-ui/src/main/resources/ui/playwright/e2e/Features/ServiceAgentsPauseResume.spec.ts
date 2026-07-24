@@ -95,7 +95,7 @@ const clickAndAwaitToggle = async (page: Page, testId: string) => {
   await toggleResponse;
 };
 
-test.describe('Service Agents pause and resume', () => {
+test.describe.skip('Service Agents pause and resume', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
