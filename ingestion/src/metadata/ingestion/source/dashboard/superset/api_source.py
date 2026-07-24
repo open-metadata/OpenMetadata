@@ -31,6 +31,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
@@ -228,11 +229,19 @@ class SupersetAPISource(SupersetSourceMixin):
                             datasource_json.result.table_name,
                             "Data model filtered out.",
                         )
-                    data_model_request = CreateDashboardDataModelRequest(
+                    result = datasource_json.result
+                    data_model_request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
                         name=EntityName(str(datasource_json.id)),
-                        displayName=datasource_json.result.table_name,
+                        displayName=result.table_name,
+                        description=Markdown(result.description) if result.description else None,
+                        sql=SqlQuery(result.sql) if result.sql else None,
+                        sourceUrl=(
+                            SourceUrl(f"{clean_uri(str(self.service_connection.hostPort))}{result.url}")
+                            if result.url
+                            else None
+                        ),
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                        columns=self.get_column_info(datasource_json.result.columns),
+                        columns=self.get_column_info(result.columns),
                         dataModelType=DataModelType.SupersetDataModel.value,
                     )
                     yield Either(right=data_model_request)
