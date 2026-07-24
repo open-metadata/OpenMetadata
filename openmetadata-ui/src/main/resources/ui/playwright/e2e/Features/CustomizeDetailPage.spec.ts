@@ -974,11 +974,17 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await adminPage.getByTestId('cancel-button').click();
 
-    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeVisible();
+    // Assert on -title (inside the visible .ant-modal) rather than the
+    // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal-title')
+    ).toBeVisible();
 
     await adminPage.getByTestId('unsaved-changes-modal-discard').click();
 
-    await expect(adminPage.getByTestId('unsaved-changes-modal')).toBeHidden();
+    await expect(
+      adminPage.getByTestId('unsaved-changes-modal-title')
+    ).toBeHidden();
     await expect(
       adminPage.getByTestId('customize-landing-page-header')
     ).toBeHidden();

@@ -62,13 +62,14 @@ export const CustomizablePageHeader = ({
   const isNavigationPage = pageFqn === PersonaCustomizePageFqn.Navigation;
   const isAppModePage = pageFqn === PersonaCustomizePageFqn.AppMode;
 
-  // The cancel (×) button just triggers back-navigation. The parent page's
-  // NavigationBlocker (enabled while there are unsaved changes) intercepts
-  // this and renders the single unsaved-changes confirmation modal, so this
-  // component no longer needs to render its own "close" modal.
+  // Navigate to an explicit URL (not navigate(-1)) so the parent's
+  // NavigationBlocker can intercept the pushState and reliably land on the
+  // persona page on Discard. navigate(-1) goes through popstate, whose
+  // history.go(-N) discard path stalls on the same URL when extra guard
+  // entries pile up from re-renders.
   const handleClose = useCallback(() => {
-    navigate(-1);
-  }, [navigate]);
+    navigate(getPersonaDetailsPath(personaFqn));
+  }, [navigate, personaFqn]);
 
   const handleOpenResetModal = useCallback(() => {
     setResetModalOpen(true);
