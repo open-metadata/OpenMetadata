@@ -160,7 +160,7 @@ class WorkflowStatusMixin:
             return WorkflowResultStatus.FAILURE
         return WorkflowResultStatus.SUCCESS
 
-    def build_ingestion_status(self) -> Optional[IngestionStatus]:  # noqa: UP045
+    def build_ingestion_status(self) -> IngestionStatus:
         """
         Get the results from the steps and prep the payload
         we'll send to the API

@@ -25,6 +25,7 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
+from metadata.cli.common import execute_workflow
 from metadata.ingestion.ometa.credentials import URL
 from metadata.utils.logger import cli_logger
 from metadata.workflow.metadata import MetadataWorkflow
@@ -291,7 +292,7 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
     return config  # noqa: RET504
 
 
-def run_ingest_dbt(dbt_project_path: Path) -> None:
+def run_ingest_dbt(dbt_project_path: Path, status_file: Path | None = None) -> None:
     """
     Run the dbt artifacts ingestion workflow from a dbt project path
 
@@ -321,13 +322,13 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("Creating workflow configuration...")
         workflow_config = create_dbt_workflow_config(dbt_project_path, om_config)
 
-        # Create and execute the MetadataWorkflow (reusing existing infrastructure)
         logger.info("Starting OpenMetadata ingestion workflow...")
         workflow = MetadataWorkflow.create(workflow_config)
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
+        execute_workflow(
+            workflow=workflow,
+            config_dict=workflow_config,
+            status_file=status_file,
+        )
 
         logger.info("DBT artifacts ingestion completed successfully")
 
