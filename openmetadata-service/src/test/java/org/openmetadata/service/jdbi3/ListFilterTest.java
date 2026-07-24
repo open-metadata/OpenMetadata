@@ -136,10 +136,11 @@ class ListFilterTest {
     filter = new ListFilter();
     filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
     condition = filter.getCondition("context_memory_entity");
+    String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
     assertTrue(
         condition.contains(
-                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = :memorySearchVisibility")
-            || condition.contains("json->'shareConfig'->>'visibility' = :memorySearchVisibility"));
+                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder)
+            || condition.contains("json->'shareConfig'->>'visibility' = " + bindPlaceholder));
   }
 
   @Test

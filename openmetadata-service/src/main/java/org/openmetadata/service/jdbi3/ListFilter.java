@@ -414,10 +414,11 @@ public class ListFilter extends Filter<ListFilter> {
     String visibility = queryParams.get(MEMORY_SEARCH_VISIBILITY_PARAM);
     String condition = "";
     if (!nullOrEmpty(visibility)) {
+      String bindPlaceholder = ":" + MEMORY_SEARCH_VISIBILITY_PARAM;
       condition =
           Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-              ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = :memorySearchVisibility"
-              : "json->'shareConfig'->>'visibility' = :memorySearchVisibility";
+              ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder
+              : "json->'shareConfig'->>'visibility' = " + bindPlaceholder;
     }
     return condition;
   }
