@@ -107,7 +107,7 @@ jobs:
         if: |
           github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name != github.repository
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -125,8 +125,8 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          labels=$(gh api "/repos/${REPO}/issues/${PR_NUMBER}" \
-            --jq '[.labels[].name]')
+          labels=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}" \
+            --jq '[.labels[].name] | @json')
           echo "labels=$labels" >> "$GITHUB_OUTPUT"
 
       - name: Compute gate decision
@@ -290,7 +290,7 @@ jobs:
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

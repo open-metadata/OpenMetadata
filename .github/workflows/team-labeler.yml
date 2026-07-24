@@ -26,8 +26,14 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          gh api -X DELETE \
-            "/repos/${REPO}/issues/${PR_NUMBER}/labels/safe%20to%20test"
+          if ! response=$(gh api --silent -X DELETE \
+            "/repos/${REPO}/issues/${PR_NUMBER}/labels/safe%20to%20test" 2>&1); then
+            if [[ "$response" != *"HTTP 404"* ]]; then
+              echo "$response" >&2
+              exit 1
+            fi
+            echo "safe to test label already absent"
+          fi
 
       - uses: JulienKode/team-labeler-action@v3.0.0
         with:
