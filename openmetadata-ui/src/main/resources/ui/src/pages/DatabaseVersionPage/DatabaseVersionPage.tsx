@@ -175,12 +175,10 @@ function DatabaseVersionPage() {
         );
       },
       backHandler: () => {
-        navigate(
-          getEntityDetailsPath(EntityType.DATABASE, decodedEntityFQN, tab)
-        );
+        navigate(getEntityDetailsPath(EntityType.DATABASE, decodedEntityFQN));
       },
     }),
-    [decodedEntityFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN]
   );
 
   const handleTabChange = (activeKey: string) => {

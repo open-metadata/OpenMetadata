@@ -17,6 +17,8 @@ import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { FileClass } from '../../support/entity/FileClass';
@@ -480,6 +482,103 @@ test.describe('Entity Version pages', () => {
           `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
         )
       ).not.toContainText(col0UpdatedDesc);
+    });
+  });
+
+  test.describe('Version drawer close should restore default tab', () => {
+    let table: TableClass;
+    let database: DatabaseClass;
+    let databaseSchema: DatabaseSchemaClass;
+
+    test.beforeAll('Setup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      table = new TableClass();
+      database = new DatabaseClass();
+      databaseSchema = new DatabaseSchemaClass();
+      await table.create(apiContext);
+      await database.create(apiContext);
+      await databaseSchema.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.delete(apiContext);
+      await database.delete(apiContext);
+      await databaseSchema.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await table.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('Database - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await database.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('DatabaseSchema - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await databaseSchema.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
     });
   });
 });
