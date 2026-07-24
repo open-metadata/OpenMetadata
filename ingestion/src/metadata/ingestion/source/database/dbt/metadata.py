@@ -637,7 +637,10 @@ class DbtSource(DbtServiceSource):
                         try:
                             return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                         except ValueError:
-                            return None
+                            dot = completed.rfind(".")
+                            if dot != -1:
+                                completed = completed[: dot + 7] + "Z"
+                            return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                     return completed
             return None
 
@@ -1912,7 +1915,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def add_dbt_test_result(self, dbt_test: dict):
+    def add_dbt_test_result(self, dbt_test: dict):  # noqa: C901
         """
         After test cases has been processed, add the tests results info
         """
@@ -1959,7 +1962,16 @@ class DbtSource(DbtServiceSource):
 
                 # check if the timestamp is a str type and convert accordingly
                 if isinstance(dbt_timestamp, str):
-                    dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                    try:
+                        dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                    except ValueError:
+                        # dbt-fusion outputs 9-digit nanosecond timestamps like
+                        # 2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+                        # Strip trailing digits to 6-digit precision.
+                        dot = dbt_timestamp.rfind(".")
+                        if dot != -1:
+                            dbt_timestamp = dbt_timestamp[: dot + 7] + "Z"
+                        dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(

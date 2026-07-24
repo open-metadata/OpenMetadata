@@ -2967,6 +2967,15 @@ class TestGetLatestResult(TestCase):
         got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
         self.assertIs(got, new_result)
 
+    def test_nanosecond_timestamp_parsed(self):
+        from metadata.ingestion.source.database.dbt.metadata import DbtSource
+
+        nano_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.979492347Z", "pass")
+        dbt_objects = self._make_dbt_objects([[nano_result]])
+
+        got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
+        self.assertIs(got, nano_result)
+
 
 class TestGetBlobsGroupedByDir(TestCase):
     """
@@ -3544,6 +3553,35 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
         source.metadata.add_test_case_results.assert_called_once()
         test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
         self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+
+    def test_nanosecond_timestamp_is_parsed(self):
+        """
+        dbt-fusion outputs 9-digit nanosecond timestamps like
+        2026-07-22T09:27:12.979492347Z which don't match %f (6-digit).
+        The fix strips trailing digits to 6-digit precision.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-07-22T09:27:12.979492347Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass",
+                message="Pass",
+                timing=[timing],
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):
