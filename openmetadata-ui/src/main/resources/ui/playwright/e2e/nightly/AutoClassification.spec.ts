@@ -35,15 +35,17 @@ test.use({
 });
 
 test.describe.configure({
-  // 11 minutes max for ingestion tests
-  timeout: 11 * 60 * 1000,
+  // 5 minutes max for ingestion tests
+  timeout: 5 * 60 * 1000,
 });
 
 test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
   test.beforeAll(async ({ browser }) => {
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
-      const { page, afterAction } = await createNewPage(browser);
+      const { page, afterAction } = await createNewPage(browser, {
+        navigate: true,
+      });
       await resetTokenFromBotPage(page, 'autoClassification-bot');
       await afterAction();
     }

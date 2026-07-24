@@ -131,7 +131,11 @@ export const softDeleteTeam = async (page: Page) => {
   expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page, teamName: string) => {
+export const hardDeleteTeam = async (
+  page: Page,
+  teamName: string,
+  isSoftDeleted = false
+) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
@@ -140,7 +144,12 @@ export const hardDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.getByTestId('delete-modal').waitFor();
 
-  await page.click('[data-testid="hard-delete"]');
+  // A live team shows the radio-based modal (defaults to soft delete), so the
+  // hard-delete option must be selected. An already soft-deleted team shows the
+  // hard-delete-only modal where the radio is absent.
+  if (!isSoftDeleted) {
+    await page.click('[data-testid="hard-delete"]');
+  }
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'
@@ -283,9 +292,19 @@ export const addTeamHierarchy = async (
       response.request().method() === 'POST' &&
       response.ok()
   );
+  const teamsListResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams?parentTeam=') &&
+      response.url().includes('fields=') &&
+      response.request().method() === 'GET'
+  );
   await page.click('[form="add-team-form"]');
   await saveTeamResponse;
+  const teamsListResponseResult = await teamsListResponse;
+
+  expect(teamsListResponseResult.status()).toBe(200);
   await expect(addTeamModal).toBeHidden({ timeout: 60000 });
+  await waitForAllLoadersToDisappear(page);
   await expect(
     page.locator(`[data-row-key="${teamDetails.name}"]`)
   ).toBeVisible({

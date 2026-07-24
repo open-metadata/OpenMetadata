@@ -260,17 +260,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           });
         }
 
-        if (columnSource.constraint) {
-          columnDetails.push({
-            key: t('label.constraint'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.constraint}
-              </Typography.Text>
-            ),
-          });
-        }
-
         columnDetails.push({
           key: 'Owner',
           value: (
@@ -493,7 +482,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {!isEmpty(
                   (source as Table)?.certification?.tagLabel?.tagFQN
                 ) && (
-                  <div className="p-l-sm">
+                  <div className="tw:ml-1.5">
                     <CertificationTag
                       certification={
                         (source as Table).certification as AssetCertification

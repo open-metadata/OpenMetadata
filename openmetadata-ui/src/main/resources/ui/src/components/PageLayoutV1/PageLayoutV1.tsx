@@ -26,6 +26,8 @@ import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
+export type PageLayoutVariant = 'default' | 'compact';
+
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
   rightPanel?: ReactNode;
@@ -36,6 +38,7 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   rightPanelWidth?: number;
   leftPanelWidth?: number;
   fullHeight?: boolean;
+  variant?: PageLayoutVariant;
 }
 
 export const pageContainerStyles: CSSProperties = {
@@ -100,8 +103,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
   fullHeight = false,
+  variant = 'default',
 }: PageLayoutProp) => {
   const location = useLocation();
+
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'p-x-box';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -137,8 +143,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('p-x-box', className)}
+        className={classNames(paddingClassName, className)}
         data-testid="page-layout-v1"
+        data-variant={variant}
         style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
         wrap={false}>
         {leftPanel && (

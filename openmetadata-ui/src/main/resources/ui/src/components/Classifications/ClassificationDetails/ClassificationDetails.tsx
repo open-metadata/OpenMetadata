@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Plus, Tag01 } from '@untitledui/icons';
 import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
@@ -58,9 +60,8 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
@@ -387,7 +388,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="h-full overflow-y-auto" data-testid="tags-container">
+      <div
+        className="h-full classification-details-container"
+        data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">
@@ -485,11 +488,11 @@ const ClassificationDetails = forwardRef(
             onUpdate={(updatedData: Classification) =>
               Promise.resolve(handleUpdateClassification?.(updatedData))
             }>
-            <Row className="m-t-md" gutter={16}>
+            <Row className="m-t-md classification-details-content" gutter={16}>
               <Col span={18}>
                 <Card className="classification-details-card">
                   <div className="m-b-sm" data-testid="description-container">
-                    <DescriptionV1
+                    <Description
                       wrapInCard
                       description={description}
                       entityName={getEntityName(currentClassification)}
@@ -501,33 +504,49 @@ const ClassificationDetails = forwardRef(
                     />
                   </div>
 
-                  <Table
-                    columns={tableColumn}
-                    customPaginationProps={{
-                      currentPage,
-                      isLoading,
-                      pageSize,
-                      paging,
-                      showPagination,
-                      pagingHandler: handleTagsPageChange,
-                      onShowSizeChange: handlePageSizeChange,
-                    }}
-                    data-testid="table"
-                    dataSource={tags}
-                    loading={isLoading}
-                    locale={{
-                      emptyText: (
-                        <ErrorPlaceHolder
-                          className="m-y-md"
-                          placeholderText={t('message.no-tags-description')}
-                        />
-                      ),
-                    }}
-                    pagination={false}
-                    rowKey="id"
-                    scroll={{ x: true }}
-                    size="small"
-                  />
+                  {isEmpty(tags) && !isLoading ? (
+                    <Box className="tw:relative tw:min-h-[360px]">
+                      <EmptyPlaceholder
+                        actions={
+                          createPermission
+                            ? [
+                                {
+                                  key: 'new-tag',
+                                  label: t('label.new-tag'),
+                                  color: 'primary',
+                                  iconLeading: Plus,
+                                  isDisabled: isClassificationDisabled,
+                                  onPress: handleAddNewTagClick,
+                                },
+                              ]
+                            : undefined
+                        }
+                        description={t('message.add-first-tag-description')}
+                        icon={<Tag01 className="tw:text-fg-warning-primary" />}
+                        title={t('label.add-the-first-tag')}
+                      />
+                    </Box>
+                  ) : (
+                    <Table
+                      columns={tableColumn}
+                      customPaginationProps={{
+                        currentPage,
+                        isLoading,
+                        pageSize,
+                        paging,
+                        showPagination,
+                        pagingHandler: handleTagsPageChange,
+                        onShowSizeChange: handlePageSizeChange,
+                      }}
+                      data-testid="table"
+                      dataSource={tags}
+                      loading={isLoading}
+                      pagination={false}
+                      rowKey="id"
+                      scroll={{ x: true, y: 'calc(100vh - 460px)' }}
+                      size="small"
+                    />
+                  )}
                 </Card>
               </Col>
               <Col span={6}>

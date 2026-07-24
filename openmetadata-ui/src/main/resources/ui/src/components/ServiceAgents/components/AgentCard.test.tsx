@@ -16,9 +16,16 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
-jest.mock('./AgentOverflowMenu.component', () =>
-  jest.fn().mockImplementation(() => <p>AgentOverflowMenu</p>)
-);
+const mockAgentOverflowMenu = jest.fn();
+
+jest.mock('./AgentOverflowMenu.component', () => ({
+  __esModule: true,
+  default: (props: { enabled?: boolean }) => {
+    mockAgentOverflowMenu(props);
+
+    return <p>AgentOverflowMenu</p>;
+  },
+}));
 
 jest.mock('./shared/StatusPill.component', () =>
   jest.fn().mockImplementation(() => <p>StatusPill</p>)
@@ -31,6 +38,12 @@ jest.mock('./shared/ProgressBar.component', () =>
 jest.mock('./shared/Metric.component', () =>
   jest.fn().mockImplementation(() => <p>Metric</p>)
 );
+
+const mockScheduleTexts = jest.fn();
+
+jest.mock('../../../hooks/useScheduleDescriptionTexts', () => ({
+  useScheduleDescriptionTexts: () => mockScheduleTexts(),
+}));
 
 const mockOnAction = jest.fn();
 const mockOnLogs = jest.fn();
@@ -75,6 +88,60 @@ const renderCard = (agent: Agent, permissions?: AgentActionPermissions) =>
 describe('AgentCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockScheduleTexts.mockReturnValue({
+      descriptionFirstPart: '',
+      descriptionSecondPart: '',
+    });
+  });
+
+  it('should forward the enabled agent flag to the overflow menu', () => {
+    renderCard({ ...baseAgent, enabled: true });
+
+    expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  it('should forward a paused agent flag to the overflow menu', () => {
+    renderCard({ ...baseAgent, enabled: false });
+
+    expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
+  });
+
+  it('should show the paused badge instead of the status zone for a paused agent', () => {
+    renderCard({ ...baseAgent, enabled: false });
+
+    expect(screen.getByTestId('paused-pipeline-badge')).toBeInTheDocument();
+    expect(screen.queryByText('StatusPill')).not.toBeInTheDocument();
+  });
+
+  it('should treat an absent enabled flag as enabled, since the schema defaults it to true', () => {
+    renderCard(baseAgent);
+
+    expect(
+      screen.queryByTestId('paused-pipeline-badge')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('StatusPill')).toBeInTheDocument();
+  });
+
+  it('should show both schedule parts comma-separated when scheduled', () => {
+    mockScheduleTexts.mockReturnValue({
+      descriptionFirstPart: 'At 02:00 AM',
+      descriptionSecondPart: 'Every day',
+    });
+    renderCard({ ...baseAgent, schedule: '0 2 * * *' });
+
+    expect(screen.getByTestId('agent-schedule')).toHaveTextContent(
+      'At 02:00 AM, Every day'
+    );
+  });
+
+  it('should hide the schedule line for an unscheduled agent', () => {
+    renderCard({ ...baseAgent, schedule: undefined });
+
+    expect(screen.queryByTestId('agent-schedule')).not.toBeInTheDocument();
   });
 
   it('should render one dot per recent run', () => {
@@ -169,5 +236,23 @@ describe('AgentCard', () => {
     renderCard(baseAgent, { trigger: true, edit: false, delete: false });
 
     expect(screen.getByTestId('run-agent-button')).toBeInTheDocument();
+  });
+
+  it('should hide the run button for a running agent', () => {
+    renderCard(
+      { ...baseAgent, status: 'running' },
+      { trigger: true, edit: false, delete: false }
+    );
+
+    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+  });
+
+  it('should hide the run button for a queued agent to avoid a duplicate run', () => {
+    renderCard(
+      { ...baseAgent, status: 'queued' },
+      { trigger: true, edit: false, delete: false }
+    );
+
+    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
   });
 });

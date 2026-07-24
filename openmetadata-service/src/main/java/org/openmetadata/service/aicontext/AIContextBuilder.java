@@ -27,6 +27,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -39,13 +40,16 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.Relationship;
@@ -61,8 +65,10 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -90,8 +96,13 @@ public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
   private static final int MAX_JOIN_HINTS = 25;
+  static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
+
+  /** Upper bound on the model SQL inlined into a table's data-model context, in characters. */
+  static final int MAX_DATA_MODEL_SQL_CHARS = 4000;
+
   private static final String TABLE_FIELDS =
-      "columns,tableConstraints,joins,tablePartition,tags,testSuite";
+      "columns,tableConstraints,joins,tablePartition,tags,testSuite,dataModel";
   private static final String DEFAULT_FIELDS = "tags";
 
   /** Total characters of knowledge-item content allowed in one bundle before degradation. */
@@ -164,19 +175,24 @@ public class AIContextBuilder {
 
   AIContext buildForEntity(EntityInterface entity) {
     EntityLineage lineage = fetchLineage(entity);
+    List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
+    List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
     AIContext context =
         new AIContext()
+            .withId(entity.getId())
             .withFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
             .withDisplayName(entity.getDisplayName())
-            .withDescription(entity.getDescription())
+            .withDescription(unescapeRichText(entity.getDescription()))
             .withResource(entity.getHref())
             .withTags(extractClassificationTags(entity))
             .withGlossaryTerms(resolveGlossaryTerms(entity))
             .withArticles(resolveArticles(entity))
             .withMetrics(resolveMetrics(entity))
-            .withUpstream(edgeFqns(lineage, true))
-            .withDownstream(edgeFqns(lineage, false))
+            .withUpstream(edgeFqns(upstreamEdges))
+            .withUpstreamEdges(upstreamEdges)
+            .withDownstream(edgeFqns(downstreamEdges))
+            .withDownstreamEdges(downstreamEdges)
             .withAssetContext(buildAssetContext(entity))
             .withObservability(resolveObservability(entity))
             .withGeneratedAt(System.currentTimeMillis());
@@ -433,8 +449,8 @@ public class AIContextBuilder {
     return lineage;
   }
 
-  private static List<String> edgeFqns(EntityLineage lineage, boolean upstream) {
-    List<String> fqns = new ArrayList<>();
+  static List<LineageEdgeContext> edgeContexts(EntityLineage lineage, boolean upstream) {
+    List<LineageEdgeContext> contexts = new ArrayList<>();
     if (lineage != null) {
       Map<UUID, String> nodeFqn = nodeFqnMap(lineage);
       List<Edge> edges = upstream ? lineage.getUpstreamEdges() : lineage.getDownstreamEdges();
@@ -442,11 +458,33 @@ public class AIContextBuilder {
         String nodeFullyQualifiedName =
             nodeFqn.get(upstream ? edge.getFromEntity() : edge.getToEntity());
         if (nodeFullyQualifiedName != null) {
-          fqns.add(nodeFullyQualifiedName);
+          contexts.add(edgeContext(nodeFullyQualifiedName, edge));
         }
       }
     }
-    return fqns;
+    return contexts;
+  }
+
+  private static LineageEdgeContext edgeContext(String fullyQualifiedName, Edge edge) {
+    List<ColumnLineage> columns = edgeColumns(edge);
+    boolean columnsTruncated = columns != null && columns.size() > MAX_COLUMN_MAPPINGS_PER_EDGE;
+    return new LineageEdgeContext()
+        .withFullyQualifiedName(fullyQualifiedName)
+        .withColumns(columns == null ? null : capList(columns, MAX_COLUMN_MAPPINGS_PER_EDGE))
+        .withColumnsTruncated(columnsTruncated ? Boolean.TRUE : null);
+  }
+
+  private static List<String> edgeFqns(List<LineageEdgeContext> edges) {
+    return listOrEmpty(edges).stream().map(LineageEdgeContext::getFullyQualifiedName).toList();
+  }
+
+  private static List<ColumnLineage> edgeColumns(Edge edge) {
+    List<ColumnLineage> columns = null;
+    LineageDetails lineageDetails = edge.getLineageDetails();
+    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getColumnsLineage())) {
+      columns = lineageDetails.getColumnsLineage();
+    }
+    return columns;
   }
 
   private static Map<UUID, String> nodeFqnMap(EntityLineage lineage) {
@@ -575,11 +613,12 @@ public class AIContextBuilder {
       if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         item =
             new KnowledgeItem()
+                .withId(term.getId())
                 .withType(KnowledgeItem.Type.GLOSSARY_TERM)
                 .withName(term.getName())
                 .withDisplayName(term.getDisplayName())
                 .withFullyQualifiedName(term.getFullyQualifiedName())
-                .withContent(term.getDescription());
+                .withContent(unescapeRichText(term.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to resolve glossary term {}: {}", termFqn, e.getMessage());
@@ -638,6 +677,7 @@ public class AIContextBuilder {
       if (canViewPill(pill)) {
         item =
             new KnowledgeItem()
+                .withId(pill.getId())
                 .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
                 .withName(pill.getName())
                 .withDisplayName(pill.getDisplayName())
@@ -657,7 +697,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return content;
+    return unescapeRichText(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
@@ -688,6 +728,7 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(metric.getId())
                 .withType(KnowledgeItem.Type.METRIC)
                 .withName(metric.getName())
                 .withDisplayName(metric.getDisplayName())
@@ -712,15 +753,24 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = entity.getDescription();
+      content = unescapeRichText(entity.getDescription());
     }
     return content;
+  }
+
+  /**
+   * Block-editor rich text is persisted HTML-entity-escaped (e.g. {@code &#96;} for a backtick,
+   * {@code &gt;&#61;} for {@code >=}). Un-escape it before it enters the AIContext so the markdown an
+   * LLM consumes carries real code fences and operators, not their entity references.
+   */
+  static String unescapeRichText(String value) {
+    return nullOrEmpty(value) ? value : StringEscapeUtils.unescapeHtml4(value);
   }
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
     if (!nullOrEmpty(metric.getDescription())) {
-      content.append(metric.getDescription());
+      content.append(unescapeRichText(metric.getDescription()));
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {
@@ -751,11 +801,12 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.PAGE, page.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(page.getId())
                 .withType(KnowledgeItem.Type.PAGE)
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
                 .withFullyQualifiedName(page.getFullyQualifiedName())
-                .withContent(page.getDescription());
+                .withContent(unescapeRichText(page.getDescription()));
       }
     } catch (Exception e) {
       LOG.warn(
@@ -804,7 +855,52 @@ public class AIContextBuilder {
         .withForeignKeys(extractForeignKeys(table))
         .withFrequentJoins(extractJoins(table))
         .withPartitionColumns(extractPartitionColumns(table))
-        .withSchemaDefinition(table.getSchemaDefinition());
+        .withSchemaDefinition(table.getSchemaDefinition())
+        .withDataModel(toDataModelContext(table.getDataModel()));
+  }
+
+  /**
+   * Projects the table's dbt/DDL {@link DataModel} into the AI context: its type, model-file path,
+   * source project, and the SQL that defines it — the compiled SQL when present, else the raw
+   * (templated) SQL. Returns null when the table carries no model, so the section is skipped.
+   */
+  static TableDataModel toDataModelContext(DataModel dataModel) {
+    TableDataModel context = null;
+    if (dataModel != null) {
+      context =
+          new TableDataModel()
+              .withModelType(modelTypeValue(dataModel))
+              .withPath(dataModel.getPath())
+              .withSourceProject(dataModel.getDbtSourceProject())
+              .withSql(boundedSql(definingSql(dataModel)));
+      if (isEmptyDataModel(context)) {
+        context = null;
+      }
+    }
+    return context;
+  }
+
+  private static String definingSql(DataModel dataModel) {
+    return nullOrEmpty(dataModel.getSql()) ? dataModel.getRawSql() : dataModel.getSql();
+  }
+
+  private static String modelTypeValue(DataModel dataModel) {
+    return dataModel.getModelType() == null ? null : dataModel.getModelType().value();
+  }
+
+  private static String boundedSql(String sql) {
+    String result = sql;
+    if (!nullOrEmpty(sql) && sql.length() > MAX_DATA_MODEL_SQL_CHARS) {
+      result = sql.substring(0, MAX_DATA_MODEL_SQL_CHARS) + "\n… (truncated)";
+    }
+    return result;
+  }
+
+  private static boolean isEmptyDataModel(TableDataModel model) {
+    return nullOrEmpty(model.getModelType())
+        && nullOrEmpty(model.getPath())
+        && nullOrEmpty(model.getSourceProject())
+        && nullOrEmpty(model.getSql());
   }
 
   static List<FieldContext> toFieldContexts(List<Column> columns) {
@@ -816,7 +912,7 @@ public class AIContextBuilder {
               .withDataType(columnType(column))
               .withConstraint(
                   column.getConstraint() == null ? null : column.getConstraint().value())
-              .withDescription(column.getDescription()));
+              .withDescription(unescapeRichText(column.getDescription())));
     }
     return fields;
   }

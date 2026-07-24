@@ -29,9 +29,17 @@ jobs:
     outputs:
       ui-changed: ${{ steps.filter.outputs.ui }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
               - 'openmetadata-ui/src/main/resources/ui/src/**'
@@ -48,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
+      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Wait for the labeler
@@ -69,17 +77,18 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           # Disabling shallow clone is recommended for improving relevancy of reporting.
           # Use partial clone (blob:none) to avoid downloading every blob in history —
           # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
           fetch-depth: 0
           filter: blob:none
-
+          persist-credentials: false
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
@@ -88,7 +97,7 @@ jobs:
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
       - name: Caching NPM dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -102,7 +111,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Caching NPM dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: npm-cache
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -121,7 +130,7 @@ jobs:
         run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest coverage comment
-        uses: MishaKav/jest-coverage-comment@v1.0.22
+        uses: MishaKav/jest-coverage-comment@v1.0.34
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage
@@ -129,7 +138,7 @@ jobs:
           badge-title: Coverage
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: npm install -g sonarqube-scanner
+        run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'

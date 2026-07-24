@@ -44,6 +44,75 @@ const test = base.extend<{ page: Page }>({
   },
 });
 
+// A minimal, valid /search/preview response with a single marker hit, used to
+// make preview responses deterministic and distinguishable in the ordering test.
+const buildDatabasePreviewResponse = (marker: 'fresh' | 'stale') => {
+  const name = `${marker}_result`;
+  const fullyQualifiedName = `pw_race_service.${name}`;
+
+  return {
+    took: 1,
+    timed_out: false,
+    _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+    hits: {
+      total: { relation: 'eq', value: 1 },
+      max_score: 1,
+      hits: [
+        {
+          _id: `pw-race-${marker}`,
+          _index: 'database_search_index',
+          _score: 1,
+          sort: [1, name],
+          _source: {
+            id: `00000000-0000-0000-0000-0000000000${
+              marker === 'fresh' ? '01' : '02'
+            }`,
+            name,
+            fullyQualifiedName,
+            displayName: `${marker.toUpperCase()}-RESULT`,
+            description: `${marker} marker`,
+            entityType: 'database',
+            serviceType: 'Mysql',
+            deleted: false,
+            service: {
+              id: '00000000-0000-0000-0000-0000000000aa',
+              type: 'databaseService',
+              name: 'pw_race_service',
+              fullyQualifiedName: 'pw_race_service',
+              displayName: 'pw_race_service',
+              deleted: false,
+            },
+            fqnParts: [fullyQualifiedName, 'pw_race_service'],
+            owners: [],
+            domains: [],
+            followers: [],
+            tags: [],
+            entityStatus: 'Unprocessed',
+          },
+        },
+      ],
+    },
+    aggregations: {},
+  };
+};
+
+const getDatabaseNgramBoost = (request: { postDataJSON: () => unknown }) => {
+  const body = request.postDataJSON() as {
+    searchSettings?: {
+      assetTypeConfigurations?: {
+        assetType: string;
+        searchFields?: { field: string; boost: number }[];
+      }[];
+    };
+  };
+
+  return (
+    body?.searchSettings?.assetTypeConfigurations
+      ?.find((config) => config.assetType === 'database')
+      ?.searchFields?.find((field) => field.field === 'name.ngram')?.boost ?? 0
+  );
+};
+
 test.describe('Search Settings', () => {
   test.beforeAll(async ({ browser }) => {
     adminUser = new AdminClass();
@@ -473,12 +542,115 @@ test.describe('Search Settings', () => {
     }
   );
 
+  test.describe(
+    'Search Preview Ordering',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      test.beforeEach(async ({ page }) => {
+        await redirectToHomePage(page);
+      });
+
+      // A slow, superseded preview request (high n-gram) must NOT overwrite the
+      // latest one (n-gram reverted to 0). Without a latest-wins guard in
+      // SearchPreview.fetchAssets the last-resolved response wins instead of the
+      // last-issued one, and the preview shows a stale ranking while the slider
+      // reads a different weight.
+      test('Latest preview config wins when a superseded request resolves late', async ({
+        page,
+      }) => {
+        const STALE_BOOST_THRESHOLD = 50;
+        const STALE_DELAY_MS = 2000;
+
+        // The high-n-gram request is delayed so it resolves after the reverted
+        // one. Every non-stale request is served immediately. Bodies are marked so
+        // the test can assert exactly which response the preview rendered.
+        await page.route('**/api/v1/search/preview', async (route) => {
+          const isStale =
+            getDatabaseNgramBoost(route.request()) >= STALE_BOOST_THRESHOLD;
+
+          if (isStale) {
+            await new Promise((resolve) => setTimeout(resolve, STALE_DELAY_MS));
+          }
+
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(
+              buildDatabasePreviewResponse(isStale ? 'stale' : 'fresh')
+            ),
+          });
+        });
+
+        await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+        await page.getByTestId('preferences.search-settings.databases').click();
+
+        await expect(page).toHaveURL(
+          /settings\/preferences\/search-settings\/databases$/
+        );
+        await waitForAllLoadersToDisappear(page);
+
+        await page.getByTestId('searchbar').fill('test');
+
+        const freshCard = page.getByTestId(
+          'table-data-card_pw_race_service.fresh_result'
+        );
+        const staleCard = page.getByTestId(
+          'table-data-card_pw_race_service.stale_result'
+        );
+
+        // Baseline: the fresh (current-config) response is what the preview shows.
+        await expect(freshCard).toBeVisible();
+
+        await openMatchingFieldsPanel(page);
+        await page.getByTestId('field-configuration-panel-name.ngram').click();
+
+        const ngramSliderHandle = page
+          .getByTestId('field-configuration-panel-name.ngram')
+          .getByTestId('field-weight-slider')
+          .locator('.ant-slider-handle');
+
+        // Register before triggering so the delayed stale request and response
+        // are both observed.
+        const stalePreviewRequest = page.waitForRequest(
+          (request) =>
+            request.url().includes('/api/v1/search/preview') &&
+            getDatabaseNgramBoost(request) >= STALE_BOOST_THRESHOLD
+        );
+        const stalePreviewResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/preview') &&
+            getDatabaseNgramBoost(response.request()) >= STALE_BOOST_THRESHOLD
+        );
+
+        // End -> max weight fires the slow "stale" request (delayed by the route);
+        // Home -> 0 weight fires the fast "fresh" request, issued last.
+        await ngramSliderHandle.focus();
+        await page.keyboard.press('End');
+        await stalePreviewRequest;
+        await page.keyboard.press('Home');
+
+        // Wait until the delayed stale response has been delivered, then give the
+        // app a bounded moment to commit it. Without the fix the stale results
+        // would have replaced the fresh ones by now; with the fix the response is
+        // dropped and produces no observable change, so there is no positive
+        // signal to await instead — a short, bounded settle is required here.
+        await stalePreviewResponse;
+        // eslint-disable-next-line playwright/no-wait-for-timeout
+        await page.waitForTimeout(1000);
+
+        // The latest (reverted) config must win: fresh stays, stale never renders.
+        await expect(freshCard).toBeVisible();
+        await expect(staleCard).toHaveCount(0);
+      });
+    }
+  );
+
   test.describe('Column Search Settings Tests', () => {
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
     });
 
-    test.fixme('Configure column search field settings', async ({ page }) => {
+    test('Configure column search field settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
       const columnCard = page.getByTestId('preferences.search-settings.column');
@@ -521,6 +693,9 @@ test.describe('Search Settings', () => {
       await page.reload();
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
+      await openMatchingFieldsPanel(page);
+
+      await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
       await expect(highlightToggle).toHaveAttribute(

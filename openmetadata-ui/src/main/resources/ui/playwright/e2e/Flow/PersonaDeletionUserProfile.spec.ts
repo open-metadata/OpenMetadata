@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, uuid } from '../../utils/common';
+import { uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { validateFormNameFieldInput } from '../../utils/form';
 import {
   navigateToPersonaSettings,
   navigateToPersonaWithPagination,
 } from '../../utils/persona';
-import { visitUserProfilePage } from '../../utils/user';
 import { test } from '../fixtures/pages';
 
 const PERSONA_DETAILS = {
@@ -30,17 +29,37 @@ const PERSONA_DETAILS = {
   description: `Test persona for deletion ${uuid()}.`,
 };
 
+const visitUserProfileDirectly = async (page: Page, userName: string) => {
+  const userDetailsResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`) &&
+      response.request().method() === 'GET'
+  );
+
+  await page.goto(`/users/${encodeURIComponent(userName)}`);
+  expect((await userDetailsResponse).ok()).toBeTruthy();
+  await waitForAllLoadersToDisappear(page);
+};
+
 test.describe.serial('User profile works after persona deletion', () => {
   const user = new UserClass();
+  const persona = new PersonaClass(PERSONA_DETAILS);
+  let personaDeleted = false;
 
   test.beforeAll('Create user', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
+    await persona.create(apiContext, [user.responseData.id]);
     await afterAction();
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    if (!personaDeleted) {
+      await persona.delete(apiContext);
+    }
     await user.delete(apiContext);
     await afterAction();
   });
@@ -48,57 +67,9 @@ test.describe.serial('User profile works after persona deletion', () => {
   test('User profile loads correctly before and after persona deletion', async ({
     page,
   }) => {
-    // Step 1: Create persona and add user
-    await test.step('Create persona with user', async () => {
+    await test.step('Verify persona with user', async () => {
       await navigateToPersonaSettings(page);
-
-      // Create persona
-      await page.getByTestId('add-persona-button').click();
-
-      await validateFormNameFieldInput({
-        page,
-        value: PERSONA_DETAILS.name,
-        fieldName: 'Name',
-        fieldSelector: '[data-testid="name"]',
-        errorDivSelector: '#name_help',
-      });
-
-      await page.getByTestId('displayName').fill(PERSONA_DETAILS.displayName);
-      await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
-
-      // Add user to persona during creation
-      const userListResponse = page.waitForResponse(
-        '/api/v1/users?limit=*&isBot=false*'
-      );
-      await page.getByTestId('add-users').click();
-      await userListResponse;
-
       await waitForAllLoadersToDisappear(page);
-
-      const searchUser = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          user.responseData.displayName
-        )}*`
-      );
-      await page.getByTestId('searchbar').fill(user.responseData.displayName);
-      await searchUser;
-
-      await page
-        .getByRole('listitem', { name: user.responseData.displayName })
-        .click();
-      await page.getByTestId('selectable-list-update-btn').click();
-
-      const createPersona = page.waitForResponse('/api/v1/personas');
-      const listPersonas = page.waitForResponse('/api/v1/personas?*');
-
-      await page.getByRole('button', { name: 'Create' }).click();
-
-      await createPersona;
-      await listPersonas;
-
-      await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
-
-      // Verify persona was created
       await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, false);
 
       await expect(
@@ -108,8 +79,7 @@ test.describe.serial('User profile works after persona deletion', () => {
 
     // Step 2: Navigate directly to user profile and verify persona is shown
     await test.step('Verify persona appears on user profile', async () => {
-      await visitUserProfilePage(page, user.responseData.name);
-      await waitForAllLoadersToDisappear(page);
+      await visitUserProfileDirectly(page, user.responseData.name);
 
       // Check if persona appears on the user profile
       const personaCard = page.getByTestId('persona-details-card');
@@ -138,8 +108,6 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await page.getByTestId('hard-delete').click();
-
       const confirmButton = page.getByTestId('confirm-button');
 
       const deleteResponse = page.waitForResponse(
@@ -147,15 +115,15 @@ test.describe.serial('User profile works after persona deletion', () => {
       );
 
       await confirmButton.click();
-      await deleteResponse;
+      expect((await deleteResponse).ok()).toBeTruthy();
+      personaDeleted = true;
 
       await page.waitForURL('**/settings/persona');
     });
 
     // Step 4: Go back to user profile and verify it still loads
     await test.step('Verify user profile still loads after persona deletion', async () => {
-      await visitUserProfilePage(page, user.responseData.name);
-      await waitForAllLoadersToDisappear(page);
+      await visitUserProfileDirectly(page, user.responseData.name);
 
       // User profile should load without errors
       // Check if the user name is displayed (this means the page loaded)
@@ -167,9 +135,27 @@ test.describe.serial('User profile works after persona deletion', () => {
       await expect(personaCard).toBeVisible();
 
       // Check if deleted persona still appears (this would be the bug)
-      await expect(personaCard).not.toContainText(PERSONA_DETAILS.displayName);
-
+      // Retry up to 3 times with page reload to handle eventual consistency
+      const deletedPersonaLink = page.getByTestId(
+        `${PERSONA_DETAILS.name}-link`
+      );
       const noPersonaText = personaCard.getByText('No persona assigned');
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (
+          !(await deletedPersonaLink.isVisible()) &&
+          (await noPersonaText.isVisible())
+        ) {
+          break;
+        }
+
+        if (attempt < 3) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+      }
+
+      await expect(deletedPersonaLink).not.toBeVisible();
       await expect(noPersonaText).toBeVisible();
     });
   });

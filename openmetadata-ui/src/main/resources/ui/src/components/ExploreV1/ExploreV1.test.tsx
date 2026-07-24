@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import {
   fireEvent,
   render,
@@ -143,15 +142,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Divider = () => <hr />;
 
   const Toggle = ({
+    excludeFromTabOrder,
     isSelected,
+    isReadOnly,
     onChange,
     ...props
   }: {
+    excludeFromTabOrder?: boolean;
     isSelected?: boolean;
+    isReadOnly?: boolean;
     onChange?: (value: boolean) => void;
   } & Record<string, unknown>) => (
     <input
       checked={isSelected}
+      readOnly={isReadOnly}
+      tabIndex={excludeFromTabOrder ? -1 : undefined}
       type="checkbox"
       onChange={(e) => onChange?.(e.target.checked)}
       {...props}
@@ -419,35 +424,8 @@ const props = {
   },
 };
 
-const mockThemeColors = {
-  white: '#FFFFFF',
-  blue: {
-    50: '#E6F4FF',
-    100: '#BAE0FF',
-    600: '#1677FF',
-    700: '#0958D9',
-  },
-  blueGray: {
-    50: '#F8FAFC',
-  },
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-};
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-    background: {
-      paper: '#FFFFFF',
-    },
-  },
-} as Parameters<typeof createTheme>[0]);
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 describe('ExploreV1', () => {

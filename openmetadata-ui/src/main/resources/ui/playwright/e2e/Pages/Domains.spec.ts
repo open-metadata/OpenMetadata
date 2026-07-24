@@ -103,9 +103,11 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
@@ -849,12 +851,10 @@ test.describe.fixme('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
         const totalCount = domainAssets.length + subDomainAssets.length;
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(totalCount);
-        expect(assetCards).toBe(totalCount);
+        await expect(assetCards).toHaveCount(totalCount);
       });
 
       await test.step('Verify subdomain asset count matches displayed cards', async () => {
@@ -889,12 +889,10 @@ test.describe.fixme('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(subDomainAssets.length);
-        expect(assetCards).toBe(subDomainAssets.length);
+        await expect(assetCards).toHaveCount(subDomainAssets.length);
       });
     } finally {
       await subDomain?.delete(apiContext);
@@ -2740,7 +2738,9 @@ test.describe.fixme('Domains Rbac', () => {
     user1 = new UserClass();
     test.slow();
 
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),
@@ -2804,7 +2804,9 @@ test.describe.fixme('Domains Rbac', () => {
   test('Domain Rbac', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
@@ -3171,7 +3173,7 @@ test.describe.fixme('Domain Tree View Functionality', () => {
 
     await expect(
       page
-        .getByRole('treeitem', {
+        .getByRole('row', {
           name: domainDisplayName,
         })
         .locator('div')
@@ -3179,14 +3181,14 @@ test.describe.fixme('Domain Tree View Functionality', () => {
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domainDisplayName })
+      .getByRole('row', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
 
     await expect(
       page
-        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .getByRole('row', { name: subDomain.data.displayName })
         .locator('div')
         .nth(2)
     ).toBeVisible();
@@ -3653,49 +3655,85 @@ test.describe.fixme('Domain asset dryRun — add confirmation', () => {
   });
 });
 
-test.describe.fixme('Domain assets — glossary and inherited glossary term', () => {
-  test.slow(true);
+test.describe.fixme(
+  'Domain assets — glossary and inherited glossary term',
+  () => {
+    test.slow(true);
 
-  let assetDomain: Domain;
-  let assetGlossary: Glossary;
-  let inheritedTerm: GlossaryTerm;
+    let assetDomain: Domain;
+    let assetGlossary: Glossary;
+    let inheritedTerm: GlossaryTerm;
 
-  test.beforeAll(
-    'Setup domain with glossary and inherited term',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Setup domain with glossary and inherited term',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      assetDomain = new Domain();
-      assetGlossary = new Glossary();
+        assetDomain = new Domain();
+        assetGlossary = new Glossary();
 
-      await assetDomain.create(apiContext);
-      await assetGlossary.create(apiContext);
+        await assetDomain.create(apiContext);
+        await assetGlossary.create(apiContext);
 
-      await assetGlossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/domains/0',
-          value: {
-            id: assetDomain.responseData.id,
-            type: 'domain',
-            name: assetDomain.responseData.name,
-            displayName: assetDomain.responseData.displayName,
+        await assetGlossary.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: assetDomain.responseData.id,
+              type: 'domain',
+              name: assetDomain.responseData.name,
+              displayName: assetDomain.responseData.displayName,
+            },
           },
-        },
-      ]);
+        ]);
 
-      inheritedTerm = new GlossaryTerm(assetGlossary);
-      await inheritedTerm.create(apiContext);
+        inheritedTerm = new GlossaryTerm(assetGlossary);
+        await inheritedTerm.create(apiContext);
 
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await inheritedTerm.delete(apiContext);
+      await assetGlossary.delete(apiContext);
+      await assetDomain.delete(apiContext);
       await afterAction();
-    }
-  );
+    });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
+    test.beforeEach('Visit home page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    test('Assets tab lists the assigned glossary and its inherited term', async ({
+      page,
+    }) => {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+
+      await goToAssetsTab(page, assetDomain.data);
+
+      const glossaryCard = page.getByTestId(
+        `table-data-card_${assetGlossary.responseData.fullyQualifiedName}`
+      );
+      const inheritedTermCard = page.getByTestId(
+        `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
+      );
+
+      await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
+      await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+    });
+  }
+);
+
+test.describe('Domain description editor popups', () => {
+  const table = new TableClass();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await inheritedTerm.delete(apiContext);
-    await assetGlossary.delete(apiContext);
-    await assetDomain.delete(apiContext);
+    await table.create(apiContext);
     await afterAction();
   });
 
@@ -3703,22 +3741,52 @@ test.describe.fixme('Domain assets — glossary and inherited glossary term', ()
     await redirectToHomePage(page);
   });
 
-  test('Assets tab lists the assigned glossary and its inherited term', async ({
+  test('slash, mention, and hashtag popups are usable inside the Add Domain drawer', async ({
     page,
   }) => {
+    const entityName = table.entityResponseData.name ?? table.entity.name;
+    const displayName =
+      table.entityResponseData.displayName ??
+      table.entity.displayName ??
+      entityName;
+
     await sidebarClick(page, SidebarItem.DOMAIN);
     await waitForAllLoadersToDisappear(page);
 
-    await goToAssetsTab(page, assetDomain.data);
+    await page.getByTestId('add-domain').click();
+    await page.getByTestId('add-domain-form').waitFor();
 
-    const glossaryCard = page.getByTestId(
-      `table-data-card_${assetGlossary.responseData.fullyQualifiedName}`
-    );
-    const inheritedTermCard = page.getByTestId(
-      `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
-    );
+    const description = page.locator(descriptionBox);
+    await description.click();
 
-    await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
-    await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+    await test.step('Slash command inserts an image block', async () => {
+      await description.pressSequentially('/image');
+      await page.locator('#editor-command-Image').click();
+
+      await expect(
+        description.locator('[data-testid="add-image-container"]')
+      ).toBeVisible();
+    });
+
+    await test.step('Mention popup inserts a user mention', async () => {
+      await description.pressSequentially(' @admin');
+      await page
+        .locator('.mention-item')
+        .filter({ hasText: 'admin' })
+        .first()
+        .click();
+
+      await expect(description.locator('a[data-type="mention"]')).toBeVisible();
+    });
+
+    await test.step('Hashtag popup inserts an entity link', async () => {
+      const searchResponse = page.waitForResponse('/api/v1/search/query?**');
+      await description.pressSequentially(` #${entityName}`);
+      await searchResponse;
+
+      await page.getByTestId(`hash-mention-${displayName}`).click();
+
+      await expect(description.locator('a[data-type="hashtag"]')).toBeVisible();
+    });
   });
 });

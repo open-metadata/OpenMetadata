@@ -68,6 +68,14 @@ class ManualProgress(TotalsDeclarer):
     def track(self, entity_type: Optional[str], n: int = 1) -> None:  # noqa: UP045
         self._registry.track(entity_type, n)
 
+    def track_asset(self, entity_type: Optional[str], n: int = 1) -> None:  # noqa: UP045
+        """Track ``n`` completed units of ``entity_type`` that are also catalog
+        assets, so they count toward both the type's progress bar and the run's
+        ``assets_ingested`` total (the flat-source equivalent of a topology
+        ``advance()``)."""
+        self._registry.track(entity_type, n)
+        self._registry.record_asset(n)
+
     def reconcile_scope_total(self, entity_type: Optional[str], scope: str, observed: int) -> None:  # noqa: UP045
         self._registry.reconcile_scope_total(entity_type, scope, observed)
 

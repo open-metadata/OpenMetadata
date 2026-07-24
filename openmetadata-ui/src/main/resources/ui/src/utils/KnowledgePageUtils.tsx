@@ -20,10 +20,10 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Box } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
+import { ReactComponent as QuickLinkIcon } from '../assets/svg/quick-link.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import contextCenterClassBase from './ContextCenterClassBase';
@@ -117,13 +117,14 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
       to={path}>
       <Box align="center" gap={2}>
         {isQuickLink ? (
-          <ExternalLinkIcon
+          <QuickLinkIcon
+            className="tw:shrink-0"
             height={16}
             style={{ verticalAlign: 'middle' }}
             width={16}
           />
         ) : (
-          <File06 size={16} strokeWidth={1.5} />
+          <FileIcon className="tw:shrink-0" height={16} width={16} />
         )}
 
         <span className="tw:truncate">

@@ -53,9 +53,11 @@ export interface Agent {
   errors: number;
   warnings: number;
   recentRuns: AgentRecentRun[];
+  schedule?: string;
   after?: string;
   finishedAt?: string;
   failStep?: string;
+  enabled?: boolean;
 }
 
 export interface AgentsState {

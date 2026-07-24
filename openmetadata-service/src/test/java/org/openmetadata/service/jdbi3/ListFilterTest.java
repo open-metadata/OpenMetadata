@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
   @Test
@@ -139,7 +140,6 @@ class ListFilterTest {
         condition.contains(
                 "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = :memorySearchVisibility")
             || condition.contains("json->'shareConfig'->>'visibility' = :memorySearchVisibility"));
-
   }
 
   @Test
@@ -157,6 +157,27 @@ class ListFilterTest {
     assertEquals(
         "11111111-1111-1111-1111-111111111111",
         filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getAssignee_dottedUsername_hashesNameAsSingleFqnComponent() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "john.doe");
+    filter.getCondition("task");
+
+    String actual = filter.getQueryParams().get("assigneeFqnHash_0");
+    assertEquals(FullyQualifiedName.buildHash(FullyQualifiedName.quoteName("john.doe")), actual);
+    assertNotEquals(FullyQualifiedName.buildHash("john.doe"), actual);
+  }
+
+  @Test
+  void getAssignee_plainUsername_hashUnchanged() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "admin");
+    filter.getCondition("task");
+
+    assertEquals(
+        FullyQualifiedName.buildHash("admin"), filter.getQueryParams().get("assigneeFqnHash_0"));
   }
 
   @Test
@@ -420,6 +441,72 @@ class ListFilterTest {
 
     assertEquals(expected, filter.getFolderCondition());
     assertEquals("folder-123", filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_taskStatusGroup_openIncludesGrantedManualRevokeUniversallyAndDarApproved() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    String condition = filter.getCondition("task_entity");
+
+    // Shared open statuses (Granted/ManualRevoke included so any hypothetical future task type
+    // reaching those statuses still lands in a bucket rather than silently breaking the invariant).
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke')"),
+        condition);
+    // DAR-only bump: Approved only counts as open for DataAccessRequest rows.
+    assertTrue(
+        condition.contains(
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_closedExcludesApprovedForDarRows() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+        condition);
+    assertTrue(
+        condition.contains(
+            "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_openAndClosedAreDisjoint() {
+    // Row-aware buckets: every (type, status) combination lands in exactly one of
+    // open/closed so All = Open + Closed for both DAR and non-DAR task types.
+    ListFilter openFilter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    ListFilter closedFilter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+
+    String openCond = openFilter.getCondition("task_entity");
+    String closedCond = closedFilter.getCondition("task_entity");
+
+    // Non-DAR Approved lives in closed, never in open.
+    assertFalse(
+        openCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "Non-DAR Approved must not appear in the open bucket: " + openCond);
+    // DAR Approved lives in open, never in closed.
+    assertFalse(
+        closedCond.contains(
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "DAR Approved must not appear in the closed bucket: " + closedCond);
+  }
+
+  @Test
+  void test_taskStatusGroup_activeIsUnchanged() {
+    // Preserves the existing 'active' definition used by DAR-scoped callers.
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "active");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')"),
+        condition);
   }
 
   @Test

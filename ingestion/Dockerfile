@@ -10,7 +10,6 @@ RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update \
   && apt-get -qq install -y \
-  alien \
   build-essential \
   default-libmysqlclient-dev \
   freetds-bin \
@@ -29,7 +28,7 @@ RUN apt-get -qq update \
   libssl-dev \
   libxml2 \
   libkrb5-dev \
-  default-jdk \
+  default-jre-headless \
   openssl \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
@@ -45,11 +44,15 @@ RUN apt-get -qq update \
   && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
   # Pull bookworm-security fixes for known-vulnerable packages
   # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
-  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+  # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
+  # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
+  # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
   # --only-upgrade is a no-op for packages not present in the base image.
   && apt-get -qq install -y --only-upgrade \
        libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
        libpam0g libpam-modules libpam-modules-bin libpam-runtime \
+       curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+       perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
   && apt-get -qq purge -y \
        'imagemagick*' 'libmagick*' 'graphicsmagick*' \
   && apt-get -qq autoremove -y --purge \

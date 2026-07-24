@@ -19,7 +19,7 @@ import {
   PipelineType,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { IngestionPipelineLogByIdInterface } from '../../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
 import { getAgentStatusLabelFromStatus } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   customFormatDateTime,
@@ -282,9 +282,11 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     unit,
     verb,
     status: uiStatus,
+    enabled: pipeline.enabled,
     errors,
     warnings,
     failStep,
+    schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     ...progressFields,
   };
@@ -406,6 +408,10 @@ export const getLogTaskFieldForType = (
   log: IngestionPipelineLogByIdInterface,
   pipelineType: PipelineType
 ): string => {
+  // A by-fqn fetch returns the logs under a generic `logs` key; prefer it, else the *_task field.
+  if (log.logs) {
+    return log.logs;
+  }
   const fieldKey =
     PIPELINE_TYPE_TO_LOG_TASK_FIELD[pipelineType] ?? 'ingestion_task';
 

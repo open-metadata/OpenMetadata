@@ -61,6 +61,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -97,6 +98,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -104,6 +106,7 @@ import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interfac
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
+import IconColorModal from '../../Modals/IconColorModal';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -146,6 +149,7 @@ export const DataAssetsHeader = ({
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
   onCertificationUpdate,
+  onStyleUpdate,
   disableRunAgentsButtonMessage,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useRequiredParams<{
@@ -167,6 +171,7 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const [upVoteLoading, setUpVoteLoading] = useState(false);
   const [downVoteLoading, setDownVoteLoading] = useState(false);
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
@@ -428,6 +433,7 @@ export const DataAssetsHeader = ({
     editOwnerPermission,
     editTierPermission,
     editCertificationPermission,
+    editStylePermission,
   } = useMemo(
     () => ({
       editDomainPermission: permissions.EditAll && !dataAsset.deleted,
@@ -442,15 +448,41 @@ export const DataAssetsHeader = ({
           permissions,
           Operation.EditCertification
         ) && !dataAsset.deleted,
+      editStylePermission:
+        Boolean(onStyleUpdate) && permissions.EditAll && !dataAsset.deleted,
     }),
-    [permissions, dataAsset]
+    [permissions, dataAsset, onStyleUpdate]
   );
 
   const hasEditableMetadata =
     editDomainPermission ||
     editOwnerPermission ||
     editTierPermission ||
-    editCertificationPermission;
+    editCertificationPermission ||
+    editStylePermission;
+
+  const currentStyle = useMemo<Style | undefined>(
+    () => ('style' in dataAsset ? dataAsset.style : undefined),
+    [dataAsset]
+  );
+
+  const handleStyleUpdate = useCallback(
+    async (style: Style) => {
+      const updatedStyle: Style = {
+        ...currentStyle,
+        ...style,
+        color: style.color?.trim() ?? '',
+        iconURL: style.iconURL?.trim() ?? '',
+      };
+      const hasStyleValue = Boolean(
+        updatedStyle.color || updatedStyle.iconURL || updatedStyle.coverImage
+      );
+
+      await onStyleUpdate?.(hasStyleValue ? updatedStyle : null);
+      setIsStyleEditing(false);
+    },
+    [currentStyle, onStyleUpdate]
+  );
 
   const tierSuggestionRender = useMemo(() => {
     if (entityType === EntityType.TABLE) {
@@ -655,8 +687,12 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
               <HeaderBreadcrumb
+                autoCollapse
                 className="tw:mb-0"
                 items={[
+                  ...(entityType === EntityType.METRIC
+                    ? [getGlossaryHomeCrumb(t)]
+                    : []),
                   ...breadcrumbs.map((link) => ({
                     label: link.name,
                     href:
@@ -667,7 +703,7 @@ export const DataAssetsHeader = ({
                   { label: entityName },
                 ]}
                 showHome={false}
-                size="sm"
+                size="xs"
               />
             </TitleBreadcrumbSkeleton>
           </div>
@@ -740,17 +776,31 @@ export const DataAssetsHeader = ({
         <div className="tw:flex tw:items-center tw:gap-4 tw:flex-wrap">
           <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
             {serviceLogoUrl && (
-              <div
-                className={classNames(
-                  'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
-                  'tw:justify-center tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}>
-                <img
-                  alt={get(dataAsset, 'service.displayName', '')}
-                  className="tw:size-5 tw:object-contain"
-                  src={serviceLogoUrl}
-                />
+              <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
+                <div
+                  className={classNames(
+                    'tw:relative tw:flex tw:size-9 tw:shrink-0 tw:items-center',
+                    'tw:justify-center tw:overflow-hidden tw:rounded-full',
+                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                  )}>
+                  <img
+                    alt={get(dataAsset, 'service.displayName', '')}
+                    className="tw:size-5 tw:object-contain"
+                    src={serviceLogoUrl}
+                  />
+                </div>
+                {editStylePermission && (
+                  <EditIconButton
+                    newLook
+                    className="tw:size-6 tw:p-0"
+                    data-testid="edit-service-style"
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.style'),
+                    })}
+                    onClick={() => setIsStyleEditing(true)}
+                  />
+                )}
               </div>
             )}
             <div
@@ -1065,6 +1115,15 @@ export const DataAssetsHeader = ({
           entityType={entityType}
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
+        />
+      )}
+
+      {onStyleUpdate && (
+        <IconColorModal
+          open={isStyleEditing}
+          style={currentStyle}
+          onCancel={() => setIsStyleEditing(false)}
+          onSubmit={handleStyleUpdate}
         />
       )}
     </>

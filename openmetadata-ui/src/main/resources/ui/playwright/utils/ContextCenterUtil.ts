@@ -18,11 +18,13 @@ import {
   Page,
   Response,
 } from '@playwright/test';
+import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { executeSlashCommand } from './KnowledgeCenter';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -242,19 +244,79 @@ export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
   getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
 
+/**
+ * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
+ * created earlier in a test/suite run may not be on the currently loaded
+ * page. Callers that need to interact with a folder row (expand it, hover
+ * it, etc.) should go through this instead of `getFolderTreeItem` directly,
+ * which only returns a locator without ensuring the row has been paginated
+ * into view. Tests asserting a folder is NOT yet present (e.g. before a
+ * scroll) should keep using `getFolderTreeItem` + `toHaveCount(0)` directly.
+ */
+export const revealFolderRow = async (
+  page: Page,
+  folderName: string
+): Promise<Locator> => {
+  const target = getFolderTreeItem(page, folderName);
+  if (!(await target.isVisible())) {
+    const tree = page.getByRole('treegrid', { name: 'Folders' });
+    await scrollUntilResponse(
+      page,
+      tree,
+      target,
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/folders') &&
+        res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
+  }
+
+  return target;
+};
+
 export const getDocumentSearchInput = (page: Page): Locator =>
   page.getByTestId('search-input').getByLabel('Search Documents');
+
+/**
+ * Searches for a document by name and returns its row locator.
+ * The document list is paginated, so a document created earlier in the
+ * suite may not be on the currently loaded page — searching re-queries
+ * page 1 and guarantees the row is present if it matches.
+ */
+export const searchAndGetDocumentRow = async (
+  page: Page,
+  fileName: string
+): Promise<Locator> => {
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.url().includes('index=contextFile') &&
+      res.request().method() === 'GET'
+  );
+  await getDocumentSearchInput(page).fill(fileName);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  return page
+    .getByTestId('documents-view')
+    .locator('[data-testid^="document-row-"]')
+    .filter({ hasText: fileName });
+};
 
 export const selectFolderInSidebar = async (
   page: Page,
   folderName: string
 ): Promise<void> => {
-  await getFolderTreeItem(page, folderName).click();
+  const target = await revealFolderRow(page, folderName);
+  await target.click();
   await waitForAllLoadersToDisappear(page);
 };
 
 export const openUploadModal = async (page: Page): Promise<void> => {
-  await page.getByRole('button', { name: /upload file/i }).click();
+  await page
+    .getByTestId('header-shell')
+    .getByRole('button', { name: /upload file/i })
+    .click();
   await expect(
     page.getByRole('dialog', { name: /upload documents/i })
   ).toBeVisible();
@@ -296,7 +358,7 @@ export const softDeleteDocument = async (
 ): Promise<void> => {
   const docRow = page.getByTestId(docRowId);
   await expect(docRow).toBeVisible();
-  await docRow.locator('button[aria-label="Open menu"]').click();
+  await docRow.getByTestId('manage-button').click();
   await page.getByTestId('delete-btn').click();
 
   const deleteResPromise = page.waitForResponse(
@@ -352,11 +414,83 @@ export const uploadDisposableDocument = async (
   return { id: data.id, name };
 };
 
+export async function waitForDocumentInFileList(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: { orderBy: 'DESC', limit: 100 },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the file list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the file list after ${timeout}ms`
+  );
+}
+
+const NON_TERMINAL_PROCESSING_STATUSES = new Set([
+  'Uploaded',
+  'Analyzing',
+  'ExtractingContext',
+]);
+
+export async function waitForDocumentProcessingComplete(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 90_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      `/api/v1/contextCenter/drive/files/${documentId}`
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling processing status for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const data = await response.json();
+    if (!NON_TERMINAL_PROCESSING_STATUSES.has(data.processingStatus)) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}
+
 export const createDisposableArchivedDocument = async (
   apiContext: APIRequestContext,
   namePrefix = 'cc-disposable-archived-doc'
 ): Promise<{ id: string; name: string }> => {
   const { id, name } = await uploadDisposableDocument(apiContext, namePrefix);
+  await waitForDocumentInFileList(apiContext, id);
+  await waitForDocumentProcessingComplete(apiContext, id);
   await apiContext.delete(
     `/api/v1/contextCenter/drive/files/${id}?hardDelete=false`
   );
@@ -364,7 +498,7 @@ export const createDisposableArchivedDocument = async (
   return { id, name };
 };
 
-export async function waitForDocumentInArchive(
+export async function waitForDocumentPermanentlyDeleted(
   apiContext: APIRequestContext,
   documentId: string,
   timeout = 60_000,
@@ -374,63 +508,18 @@ export async function waitForDocumentInArchive(
 
   while (Date.now() - start < timeout) {
     const response = await apiContext.get(
-      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
     );
 
-    expect(response.ok()).toBeTruthy();
-
-    const files = await response.json();
-
-    const found = (files?.data ?? []).some(
-      (file: { id: string; deleted: boolean }) =>
-        file.id === documentId && file.deleted === true
-    );
-
-    if (found) {
+    if (response.status() === 404) {
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, interval));
-  }
-
-  throw new Error(
-    `Document ${documentId} did not appear in archive API within ${timeout}ms`
-  );
-}
-
-export async function waitForDocumentPermanentlyDeleted(
-  apiContext: APIRequestContext,
-  documentId: string,
-  timeout = 60_000,
-  interval = 2_000
-) {
-  const start = Date.now();
-  const pageSize = 200;
-
-  while (Date.now() - start < timeout) {
-    let after: string | undefined;
-    let foundInArchive = false;
-
-    do {
-      const response = await apiContext.get(
-        `/api/v1/contextCenter/drive/files?include=deleted&limit=${pageSize}${
-          after ? `&after=${after}` : ''
-        }`
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for permanent deletion of document ${documentId}: ${response.status()} ${body}`
       );
-
-      expect(response.ok()).toBeTruthy();
-
-      const files = await response.json();
-
-      foundInArchive = (files?.data ?? []).some(
-        (file: { id: string }) => file.id === documentId
-      );
-
-      after = files?.paging?.after;
-    } while (!foundInArchive && after);
-
-    if (!foundInArchive) {
-      return;
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -440,6 +529,58 @@ export async function waitForDocumentPermanentlyDeleted(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
   );
 }
+
+interface WaitForDocumentInArchiveOptions {
+  updatedBy?: string;
+  timeout?: number;
+  interval?: number;
+  limit?: number;
+}
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  {
+    updatedBy,
+    timeout = 60_000,
+    interval = 2_000,
+    limit = 100,
+  }: WaitForDocumentInArchiveOptions = {}
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: {
+        include: 'deleted',
+        orderBy: 'DESC',
+        limit,
+        ...(updatedBy ? { updatedBy } : {}),
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the archive list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the archive list (limit=${limit}) after ${timeout}ms`
+  );
+}
+
 export const ARTICLE_DESCRIPTION =
   'Playwright article description for card detail check';
 export const QUICK_LINK_URL = 'https://example.com';
@@ -516,6 +657,55 @@ export const createQuickLinkViaApi = async (
   return body;
 };
 
+/**
+ * Both the knowledge-pages hierarchy and the article listing sit inside two
+ * nested scrollable ancestors (.center-panel with overflow-y: scroll, and an
+ * inner Box with overflow-auto that actually grows with content). A synthetic
+ * `page.mouse.wheel` on the listing/hierarchy locator is ambiguous about which
+ * ancestor consumes the delta, and once the outer one's small scroll range is
+ * exhausted the inner container stops receiving scroll input — so infinite
+ * scroll silently stalls partway through the list. Scrolling the real
+ * scrollable ancestor's scrollTop directly removes that ambiguity.
+ */
+const scrollNearestScrollableAncestor = async (locator: Locator) => {
+  await locator.evaluate((element) => {
+    let current: HTMLElement | null = element as HTMLElement;
+    while (current && current.scrollHeight <= current.clientHeight) {
+      current = current.parentElement;
+    }
+    current?.scrollBy({ top: 3000 });
+  });
+};
+
+/**
+ * Scrolls the nearest scrollable ancestor of `containerLocator` until
+ * `targetLocator` becomes visible, waiting on `responseMatcher` after each
+ * scroll to give the pagination fetch a render+network tick to land. Mirrors
+ * `scrollHierarchyToNode`'s stale-tolerant retry loop so callers don't have
+ * to hand-roll scroll-then-waitForResponse races for every dropdown/list.
+ */
+export const scrollUntilResponse = async (
+  page: Page,
+  containerLocator: Locator,
+  targetLocator: Locator,
+  responseMatcher: (response: Response) => boolean,
+  maxAttempts = 10
+) => {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts && !(await targetLocator.isVisible());
+    attempt++
+  ) {
+    const responsePromise = page
+      .waitForResponse(responseMatcher, { timeout: 5000 })
+      .catch(() => null);
+    await scrollNearestScrollableAncestor(containerLocator);
+    await responsePromise;
+  }
+
+  await expect(targetLocator).toBeVisible();
+};
+
 export const scrollHierarchyToNode = async (
   page: Page,
   displayName: string
@@ -538,16 +728,7 @@ export const scrollHierarchyToNode = async (
   let staleCount = 0;
 
   for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
-    // Registered before the scroll so it can observe any fetch the scroll
-    // triggers; only awaited below if the node list looks unchanged.
-    const hierarchyResPromise = page
-      .waitForResponse((res) => res.url().includes('/hierarchy'), {
-        timeout: 5000,
-      })
-      .catch(() => null);
-
-    await hierarchy.hover();
-    await page.mouse.wheel(0, 3000);
+    await scrollNearestScrollableAncestor(hierarchy);
     await expect(
       hierarchy.locator('[data-testid^="page-node-"]').first()
     ).toBeVisible();
@@ -555,14 +736,24 @@ export const scrollHierarchyToNode = async (
     let lastNode = await getLastNode();
 
     if (lastNode === previousLastNode) {
-      // Wait for any in-flight hierarchy fetch to settle before re-reading.
-      await hierarchyResPromise;
+      // The last node may look unchanged because the scroll has only just
+      // flipped the observer element into view — the component still needs
+      // a render tick before its effect fires and issues the pagination
+      // fetch. Register the response wait now (not before the scroll) so
+      // its timeout window covers that render+effect+network latency
+      // instead of racing against it.
+      await page
+        .waitForResponse((res) => res.url().includes('/hierarchy'), {
+          timeout: 5000,
+        })
+        .catch(() => null);
 
       lastNode = await getLastNode();
 
       if (lastNode === previousLastNode) {
         staleCount += 1;
-        if (staleCount >= 3) {
+        await page.waitForTimeout(1000);
+        if (staleCount >= 5) {
           break;
         }
       } else {
@@ -638,18 +829,13 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       .getAttribute('data-testid');
 
   let previousLastCard = '';
-  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
-    // Registered before the scroll so it can observe the fetch the scroll
-    // triggers; only awaited below if the card list looks unchanged.
-    const pagesResPromise = page
-      .waitForResponse(
-        (res) => res.url().includes('/api/v1/contextCenter/pages'),
-        { timeout: 2000 }
-      )
-      .catch(() => null);
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
 
-    await listing.hover();
-    await page.mouse.wheel(0, 3000);
+  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
+    await scrollNearestScrollableAncestor(listing);
     await expect(
       listing.locator('[data-testid^="knowledge-card-"]').first()
     ).toBeVisible();
@@ -657,17 +843,34 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
     let lastCard = await getLastCard();
 
     if (lastCard === previousLastCard) {
-      // The last card may be unchanged because a page fetch triggered by
-      // this scroll is still in flight rather than the list truly ending.
-      // Give it a short window to resolve before trusting the comparison.
-      await pagesResPromise;
+      // The last card may look unchanged because the scroll has only just
+      // flipped the observer element into view — the component still needs
+      // a render tick before its effect fires and issues the pagination
+      // fetch. Register the response wait now (not before the scroll) so
+      // its timeout window covers that render+effect+network latency
+      // instead of racing against it.
+      await page
+        .waitForResponse(
+          (res) => res.url().includes('/api/v1/contextCenter/pages'),
+          { timeout: 5000 }
+        )
+        .catch(() => null);
 
       lastCard = await getLastCard();
 
       if (lastCard === previousLastCard) {
-        break;
+        staleCount += 1;
+        await page.waitForTimeout(1000);
+        if (staleCount >= 5) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastCard = lastCard ?? '';
   }
 
@@ -677,6 +880,53 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 };
 
 const ARTICLE_DETAIL_ROUTE = `${ARTICLES_URL}/:fqn`;
+
+/**
+ * The right-panel BookMarkWidget fetches GET /users/{id}?fields=follows once
+ * on mount and renders whatever that single response contains — it never
+ * refetches while the /articles page is open. So if the follow relationship
+ * hasn't propagated to that endpoint yet, waiting on the DOM afterwards can't
+ * help: the widget has already rendered its (stale) final state. Poll the API
+ * directly until the article shows up in `follows`, then navigate — by the
+ * time the widget mounts and fetches, the relationship is guaranteed present.
+ */
+export const waitForArticleInFollows = async (
+  apiContext: APIRequestContext,
+  userId: string,
+  articleId: string,
+  timeout = 30_000,
+  interval = 1_000
+) => {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(`/api/v1/users/${userId}`, {
+      params: { fields: 'follows' },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling follows for user ${userId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { follows } = await response.json();
+    if (
+      (follows as Array<{ id: string }> | undefined)?.some(
+        (reference) => reference.id === articleId
+      )
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Article ${articleId} did not appear in user ${userId}'s follows after ${timeout}ms`
+  );
+};
 
 export const navigateToArticle = async (page: Page, articleFqn: string) => {
   const getArticleResponse = page.waitForResponse(
@@ -762,12 +1012,15 @@ export const searchAndGetMemoryRow = async (
   query: string,
   memoryId: string
 ) => {
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes(MEMORIES_API) &&
-      res.url().includes('q=') &&
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname === MEMORIES_API &&
+      url.searchParams.get('q') === query &&
       res.request().method() === 'GET'
-  );
+    );
+  });
   await page.getByTestId('search-input').locator('input').fill(query);
   await searchResPromise;
   await waitForAllLoadersToDisappear(page);
@@ -795,4 +1048,49 @@ export const readDraftStore = async (
   } catch {
     return {};
   }
+};
+
+/**
+ * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
+ * since this repo has no binary image fixtures under playwright/test-data/.
+ */
+const ONE_PIXEL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+export const insertImageViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertImageViaUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
 };

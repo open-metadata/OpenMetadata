@@ -36,7 +36,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
   descriptionBox,
@@ -94,21 +94,21 @@ const test = base.extend<{
   dataConsumerPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
+    const adminPage = await browser.newPage({ storageState: undefined });
     await adminUser.login(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
+    const page = await browser.newPage({ storageState: undefined });
     await dataConsumerUser.login(page);
     await use(page);
     await page.close();
   },
 });
 
-test.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll('Setup pre-requests', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await dataConsumerUser.create(apiContext);
@@ -117,8 +117,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-test.afterAll('Cleanup shared entities', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.afterAll('Cleanup shared entities', async () => {
+  const { apiContext, afterAction } = await createAdminApiContext();
   await tableEntity.delete(apiContext);
   await user.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
@@ -132,18 +132,20 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
   const entityName = entity.getType();
 
   test.describe(key, () => {
+    test.describe.configure({ mode: 'default' });
+
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('Setup pre-requests', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
 
       await entity.create(apiContext);
       await afterAction();
     });
 
-    test.afterAll('Cleanup entity', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.afterAll('Cleanup entity', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
       await entity.delete(apiContext);
       await afterAction();
     });
@@ -242,7 +244,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * and verifying the owner list maintains proper state
      */
     test('User as Owner with unsorted list', async ({ page }) => {
-      test.slow(true);
+      // Cap at 120s instead of test.slow()'s 180s — see rationale on the
+      // Roles spec: hitting the slow ceiling on a hung wait burns 3
+      // minutes before retry kicks in. The warmup below eliminates the
+      // main hang source (search-index freshness), but keep a tighter
+      // ceiling as insurance.
+      test.setTimeout(120_000);
 
       const { afterAction, apiContext } = await getApiContext(page);
       const owner1Data = generateRandomUsername('PW_A_');
@@ -251,6 +258,38 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const OWNER2 = new UserClass(owner2Data);
       await OWNER1.create(apiContext);
       await OWNER2.create(apiContext);
+
+      // Wait for the freshly created users to land in user_search_index
+      // before we open the owner picker. Under CI load the async indexer
+      // can lag creation by several seconds; when addMultiOwner's search
+      // returns empty each ownerItem.waitFor({visible}) hangs the default
+      // 30s. Two adds + a remove = up to 90s of waste from one cold index.
+      // Poll the search API up-front so the UI dropdown finds them on
+      // the first search.
+      // Poll with getUserDisplayName() — this is the term addMultiOwner
+      // types into the picker (line ~292). If displayName ever diverges
+      // from name, polling by name would silently pass while the UI
+      // search still misses (per @gitar-bot review on PR #30390).
+      await expect
+        .poll(
+          async () => {
+            const [r1, r2] = await Promise.all([
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER1.getUserDisplayName()}&index=user_search_index`
+              ),
+              apiContext.get(
+                `/api/v1/search/query?q=${OWNER2.getUserDisplayName()}&index=user_search_index`
+              ),
+            ]);
+            const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+            return (
+              (d1.hits?.total?.value ?? 0) > 0 &&
+              (d2.hits?.total?.value ?? 0) > 0
+            );
+          },
+          { timeout: 15_000, intervals: [500, 1000, 2000] }
+        )
+        .toBeTruthy();
 
       await addMultiOwner({
         page,
@@ -2136,8 +2175,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const customPolicy = new PolicyClass();
       const customRole = new RolesClass();
 
-      test.beforeAll(async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
+      test.beforeAll(async () => {
+        const { apiContext, afterAction } = await createAdminApiContext();
 
         await customPolicy.create(apiContext, [
           ...DATA_CONSUMER_RULES,
@@ -2271,8 +2310,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,
@@ -2346,8 +2385,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         const customPolicy = new PolicyClass();
         const customRole = new RolesClass();
 
-        test.beforeAll(async ({ browser }) => {
-          const { apiContext, afterAction } = await performAdminLogin(browser);
+        test.beforeAll(async () => {
+          const { apiContext, afterAction } = await createAdminApiContext();
 
           await customPolicy.create(apiContext, [
             ...DATA_CONSUMER_RULES,

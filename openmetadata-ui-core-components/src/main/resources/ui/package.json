@@ -12,11 +12,6 @@
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
     },
-    "./theme": {
-      "types": "./dist/types/src/theme/index.d.ts",
-      "import": "./dist/theme/index.es.js",
-      "require": "./dist/theme/index.cjs.js"
-    },
     "./colors": {
       "types": "./dist/types/src/colors/index.d.ts",
       "import": "./dist/colors/index.es.js",
@@ -46,8 +41,6 @@
   ],
   "keywords": [
     "theme",
-    "mui",
-    "material-ui",
     "design-system",
     "core-components",
     "react",
@@ -75,16 +68,10 @@
   "author": "OpenMetadata",
   "license": "Apache-2.0",
   "dependencies": {
-    "@material/material-color-utilities": "^0.3.0",
     "@untitledui/file-icons": "^0.0.9"
   },
   "peerDependencies": {
-    "@emotion/react": ">=11.0.0",
-    "@emotion/styled": ">=11.0.0",
     "@internationalized/date": "^3.11.0",
-    "@mui/material": ">=7.0.0",
-    "@mui/system": ">=7.0.0",
-    "@mui/x-date-pickers": ">=8.0.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",
     "@tailwindcss/typography": ">=0.5.0",
@@ -102,14 +89,8 @@
     "tailwindcss-react-aria-components": ">=2.0.0"
   },
   "devDependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.1",
     "@fontsource/inter": "^5.2.8",
     "@internationalized/date": "^3.11.0",
-    "@mui/icons-material": "^7.3.4",
-    "@mui/material": "^7.3.1",
-    "@mui/system": "^7.3.1",
-    "@mui/x-date-pickers": "^8.11.0",
     "@react-aria/utils": "^3.33.0",
     "@react-stately/utils": "^3.11.0",
     "@storybook/addon-essentials": "^8.6.18",
@@ -151,13 +132,16 @@
     "prettier": "2.8.8"
   },
   "resolutions": {
-    "fast-uri": "3.1.2",
+    "brace-expansion": "5.0.7",
+    "fast-uri": "3.1.4",
     "lodash": "4.18.1",
     "minimatch": "10.2.3",
     "postcss": "8.5.10",
     "rollup": "4.59.0",
     "uuid": "^14.0.0",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "ws": "8.21.1",
+    "js-yaml": "4.3.0"
   },
   "publishConfig": {
     "access": "restricted",

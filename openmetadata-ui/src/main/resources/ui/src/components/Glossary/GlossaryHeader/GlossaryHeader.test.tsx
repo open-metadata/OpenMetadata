@@ -65,7 +65,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
@@ -84,13 +84,6 @@ jest.mock(
         <button onClick={onCancel}>Cancel_Button</button>
       </div>
     ));
-  }
-);
-
-jest.mock(
-  '../../../components/Modals/EntityDeleteModal/EntityDeleteModal',
-  () => {
-    return jest.fn().mockImplementation(() => <p>EntityDeleteModal</p>);
   }
 );
 

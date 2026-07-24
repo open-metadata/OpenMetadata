@@ -74,6 +74,7 @@ import {
   deselectColumns,
   dragAndDropColumn,
   dragAndDropTerm,
+  ensureColumnsVisible,
   fillGlossaryTermDetails,
   filterStatus,
   goToAssetsTab,
@@ -128,7 +129,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user3);
     const glossary1 = new Glossary();
@@ -196,7 +199,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);
 
@@ -249,7 +254,9 @@ test.describe('Glossary tests', () => {
   test('Update Glossary and Glossary Term', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -350,7 +357,9 @@ test.describe('Glossary tests', () => {
   test('Add, Update and Verify Data Glossary Term', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const owner1 = new UserClass();
@@ -380,9 +389,8 @@ test.describe('Glossary tests', () => {
       ]);
 
       await openColumnDropdown(page);
-      const checkboxLabels = ['Reviewer'];
-      await selectColumns(page, checkboxLabels);
-      await verifyColumnsVisibility(page, checkboxLabels, true);
+      await selectColumns(page, ['reviewers']);
+      await verifyColumnsVisibility(page, ['Reviewer'], true);
 
       // Verify the Reviewer
       await expect(
@@ -414,7 +422,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user3);
     const glossary1 = new Glossary();
@@ -466,6 +476,11 @@ test.describe('Glossary tests', () => {
         'Approved'
       );
 
+      await clickOutside(page1);
+      await expect(
+        page1.locator('.ant-popover:not(.ant-popover-hidden)')
+      ).toHaveCount(0);
+
       const taskResolve2 = page1.waitForResponse('/api/v1/tasks/*/resolve');
       await page1
         .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
@@ -486,7 +501,9 @@ test.describe('Glossary tests', () => {
   test('Add and Remove Assets', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -732,7 +749,9 @@ test.describe('Glossary tests', () => {
   test('Rename Glossary Term and verify assets', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const table = new TableClass();
     const table1 = new TableClass();
     const topic = new TopicClass();
@@ -877,7 +896,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -901,7 +922,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Drag and Drop Glossary Term', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -928,7 +951,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -936,7 +959,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -963,7 +986,7 @@ test.describe('Glossary tests', () => {
 
         // verify the term is moved back at parent level
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -977,7 +1000,9 @@ test.describe('Glossary tests', () => {
   test('Drag and Drop Glossary Term Approved Terms having reviewer', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -1014,7 +1039,7 @@ test.describe('Glossary tests', () => {
         );
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).not.toBeVisible();
@@ -1022,7 +1047,7 @@ test.describe('Glossary tests', () => {
         await performExpandAll(page);
 
         await expect(
-          page.getByRole('cell', {
+          page.getByRole('rowheader', {
             name: glossaryTerm1.responseData.displayName,
           })
         ).toBeVisible();
@@ -1037,7 +1062,9 @@ test.describe('Glossary tests', () => {
   test('Change glossary term hierarchy using menu options', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -1061,7 +1088,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1069,7 +1096,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1082,7 +1109,9 @@ test.describe('Glossary tests', () => {
   test('Change glossary term hierarchy using menu options across glossary', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossary2 = new Glossary();
@@ -1111,7 +1140,7 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).not.toBeVisible();
@@ -1121,7 +1150,7 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', {
+        page.getByRole('rowheader', {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
@@ -1146,7 +1175,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const table = new TableClass();
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -1181,7 +1212,9 @@ test.describe('Glossary tests', () => {
   test('Request description task for Glossary', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const user1 = new UserClass();
 
@@ -1221,7 +1254,8 @@ test.describe('Glossary tests', () => {
     'Request description task for Glossary Term',
     async ({ browser }) => {
       const { page, afterAction, apiContext } = await performAdminLogin(
-        browser
+        browser,
+        { navigate: true }
       );
       const glossary1 = new Glossary();
       const user1 = new UserClass();
@@ -1275,7 +1309,9 @@ test.describe('Glossary tests', () => {
   test('Request tags for Glossary', async ({ browser }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);
 
@@ -1304,7 +1340,9 @@ test.describe('Glossary tests', () => {
   test('Delete Glossary and Glossary Term using Delete Modal', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -1323,7 +1361,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - single delete success', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
 
     try {
@@ -1387,7 +1427,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Async Delete - multiple deletes all succeed', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossaryA = new Glossary();
     const glossaryB = new Glossary();
     const glossaryC = new Glossary();
@@ -1489,7 +1531,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Verify Expand All For Nested Glossary Terms', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     await glossary1.create(apiContext);
@@ -1516,10 +1560,10 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
     } finally {
       await glossaryTerm3.delete(apiContext);
@@ -1534,7 +1578,9 @@ test.describe('Glossary tests', () => {
     browser,
   }) => {
     test.slow(true);
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -1549,24 +1595,26 @@ test.describe('Glossary tests', () => {
 
       await test.step('Open column dropdown and select columns and check if they are visible', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Synonyms'];
-        await selectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        const columnKeys = ['reviewers', 'synonyms'];
+        const columnLabels = ['Reviewer', 'Synonyms'];
+        await selectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, true);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        await verifyColumnsVisibility(page, columnLabels, true);
       });
 
       await test.step('Open column dropdown and deselect columns and check if they are hidden', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Owners'];
-        await deselectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        const columnKeys = ['reviewers', 'owners'];
+        const columnLabels = ['Reviewer', 'Owners'];
+        await deselectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, false);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        await verifyColumnsVisibility(page, columnLabels, false);
       });
 
       await test.step('View All columns selection', async () => {
@@ -1611,7 +1659,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Glossary Terms Table Status filtering', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -1642,7 +1692,9 @@ test.describe('Glossary tests', () => {
   test('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     glossary1.data.terms = [glossaryTerm1];
@@ -1652,9 +1704,13 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
-      const dragColumn = 'Status';
-      const dropColumn = 'Owners';
-      await dragAndDropColumn(page, dragColumn, dropColumn);
+      await ensureColumnsVisible(page, [
+        { key: 'owners', label: 'Owners' },
+        { key: 'status', label: 'Status' },
+      ]);
+      const dragColumnKey = 'status';
+      const dropColumnKey = 'owners';
+      await dragAndDropColumn(page, dragColumnKey, dropColumnKey);
       await page.locator('thead th').first().waitFor({ state: 'visible' });
       const columnHeaders = page.locator('thead th');
       // eslint-disable-next-line playwright/prefer-web-first-assertions
@@ -1675,7 +1731,9 @@ test.describe('Glossary tests', () => {
   test('Glossary Term Update in Glossary Page should persist tree', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     await glossary1.create(apiContext);
@@ -1698,15 +1756,15 @@ test.describe('Glossary tests', () => {
       await performExpandAll(page);
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm1.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm1.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm2.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm2.data.displayName })
       ).toBeVisible();
 
       await expect(
-        page.getByRole('cell', { name: glossaryTerm3.data.displayName })
+        page.getByRole('rowheader', { name: glossaryTerm3.data.displayName })
       ).toBeVisible();
 
       await updateGlossaryTermDataFromTree(
@@ -1723,7 +1781,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Add Glossary Term inside another Term', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossary2 = new Glossary();
@@ -1755,7 +1815,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Check for duplicate Glossary Term', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary('PW_TEST_GLOSSARY');
     const glossaryTerm1 = new GlossaryTerm(
       glossary1,
@@ -1805,7 +1867,9 @@ test.describe('Glossary tests', () => {
   test('Check for duplicate Glossary Term with Glossary having dot in name', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(
       glossary1,
@@ -1925,7 +1989,9 @@ test.describe('Glossary tests', () => {
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const { page: reviewerPage, afterAction: reviewerAfterAction } =
       await performUserLogin(browser, user4);
 
@@ -2092,7 +2158,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -2179,7 +2247,9 @@ test.describe('Glossary tests', () => {
   test('should handle glossary after description is deleted', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -2220,7 +2290,9 @@ test.describe('Glossary tests', () => {
   test('should handle glossary term after description is deleted', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
 
@@ -2283,7 +2355,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const domain = new Domain();
     const glossary = new Glossary();
     const tagFqn = 'PersonalData.Personal';
@@ -2382,7 +2456,9 @@ test.describe('Glossary tests', () => {
   test('Create glossary term via row action (+) button', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
 
@@ -2432,7 +2508,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Create term with synonyms during creation', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     let createdTermFqn: string | undefined;
@@ -2499,7 +2577,9 @@ test.describe('Glossary tests', () => {
   });
 
   test('Create term with references during creation', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     let createdTermFqn: string | undefined;
@@ -2576,7 +2656,9 @@ test.describe('Glossary tests', () => {
   }) => {
     test.slow(true);
 
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
     const glossaryId = uuid();
     glossary.data.name = `PW_GLOSSARY_P1_${glossaryId}`;
@@ -2708,7 +2790,9 @@ test.describe('Glossary tests', () => {
   test('Update glossary term display name via edit modal', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
 
@@ -2754,7 +2838,9 @@ test.describe('Glossary tests', () => {
 
   // G-U02: Update glossary display name via rename modal
   test('Update glossary display name via rename modal', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -2795,7 +2881,9 @@ test.describe('Glossary tests', () => {
 
   // G-D04: Cancel glossary delete operation
   test('Cancel glossary delete operation', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
 
     try {
@@ -2833,7 +2921,9 @@ test.describe('Glossary tests', () => {
 
   // T-D04: Cancel term delete operation
   test('Cancel glossary term delete operation', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
 

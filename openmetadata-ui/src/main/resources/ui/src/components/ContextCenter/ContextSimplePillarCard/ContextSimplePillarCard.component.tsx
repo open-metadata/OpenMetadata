@@ -13,6 +13,7 @@
 import {
   Box,
   Card,
+  EmptyPlaceholder,
   FeaturedIcon,
   Skeleton,
   Typography,
@@ -25,17 +26,21 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
   isLoading = false,
   isEmpty = false,
   emptyMessage,
+  emptyAction,
   dataTestId,
   children,
   icon: Icon,
 }) => {
   return (
     <Card className="tw:h-full tw:flex tw:flex-col" data-testid={dataTestId}>
-      <Box align="center" className="tw:mb-3.5 tw:p-5 tw:pb-0" gap={3}>
+      <Box
+        align="center"
+        className="tw:mb-3.5 tw:px-4 tw:py-3  tw:pb-0"
+        gap={3}>
         <FeaturedIcon
           className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
           color="brand"
-          icon={Icon}
+          icon={<Icon className="tw:size-5" />}
           size="sm"
           theme="light"
         />
@@ -50,7 +55,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
         </div>
       </Box>
 
-      <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
+      <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         {isLoading ? (
           <Box direction="col" gap={2}>
             <Skeleton height="14px" variant="rounded" width="80%" />
@@ -58,9 +63,27 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
             <Skeleton height="14px" variant="rounded" width="70%" />
           </Box>
         ) : isEmpty ? (
-          <Typography className="tw:text-quaternary" size="text-sm">
-            {emptyMessage}
-          </Typography>
+          <EmptyPlaceholder
+            actions={
+              emptyAction
+                ? [
+                    {
+                      key: 'empty-action',
+                      label: emptyAction.label,
+                      color: 'link-color',
+                      iconLeading: emptyAction.icon,
+                      size: 'xs',
+                      onClick: emptyAction.onClick,
+                    },
+                  ]
+                : undefined
+            }
+            className="tw:justify-start tw:pt-6 tw:[&_:has(>[data-icon='true'])]:size-12.5 tw:**:data-[icon='true']:size-5 tw:[&>*:first-child]:gap-3"
+            description={emptyMessage}
+            icon={<Icon className="tw:text-fg-brand-primary" />}
+            variant="blank"
+            width={200}
+          />
         ) : (
           children
         )}

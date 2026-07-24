@@ -731,7 +731,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </Col>
           <Col className="d-flex items-center justify-end gap-3" flex={410}>
             <Button
-              aria-label="Sort order"
+              aria-label={t('label.sort-order')}
               className="tw:p-0"
               color="tertiary"
               data-testid="sort-order-button"
@@ -769,7 +769,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>
-                <Dropdown.Menu aria-label="Actions">
+                <Dropdown.Menu aria-label={t('label.action-plural')}>
                   <Dropdown.Item
                     icon={Download01}
                     label={t('label.export')}
@@ -781,8 +781,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     id="show-deleted"
                     onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
-                      {t('label.deleted')}
-                      <Toggle isSelected={showDeleted} />
+                      {t('label.show-deleted')}
+                      <Toggle
+                        excludeFromTabOrder
+                        isReadOnly
+                        aria-label={t('label.show-deleted')}
+                        className="tw:pointer-events-none"
+                        isSelected={showDeleted}
+                      />
                     </Box>
                   </Dropdown.Item>
 
@@ -800,7 +806,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     }>
                     <Box justify="between">
                       {t('label.ranking-detail-plural')}
-                      <Toggle isSelected={showRankingDetails} />
+                      <Toggle
+                        excludeFromTabOrder
+                        isReadOnly
+                        aria-label={t('label.ranking-detail-plural')}
+                        className="tw:pointer-events-none"
+                        isSelected={showRankingDetails}
+                      />
                     </Box>
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -856,10 +868,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
         secondPanel={{
           flex: 0.8,
-          minWidth: 812,
+          minWidth: 800,
           children: (
-            <Box className="tw:h-full" colGap={3}>
-              <div className="h-full tw:flex tw:min-w-[400px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+            <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+              <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
                 <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
                   {!loading && !isElasticSearchIssue ? (
                     <SearchedData

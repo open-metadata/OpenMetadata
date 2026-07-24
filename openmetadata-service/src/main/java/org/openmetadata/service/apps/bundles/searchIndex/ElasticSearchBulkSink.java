@@ -1,22 +1,30 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY;
+import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
+import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +65,9 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -177,6 +188,10 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
 
+  // Vector embedding stats (incremented inline during addEntity)
+  private final AtomicLong vectorSuccess = new AtomicLong(0);
+  private final AtomicLong vectorFailed = new AtomicLong(0);
+
   /**
    * Process-wide upper bound on in-flight table column-index tasks. Each queued/running task retains
    * its full {@link Table} (with every column) until it runs, so unbounded fire-and-forget
@@ -274,6 +289,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         contextData.containsKey(RECREATE_CONTEXT)
             ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
             : null;
+    boolean scriptedPartialUpdates =
+        Boolean.TRUE.equals(contextData.get(SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
@@ -315,6 +332,28 @@ public class ElasticSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
 
+        boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
+
+        // Pre-fetch cached embeddings for entities whose state is unchanged so we can splice them
+        // into the staged doc instead of regenerating (avoids expensive embedding-provider calls).
+        // The doc is always re-indexed via a full index op, so the embedding must be carried on it
+        // —
+        // skipping it would strip the stored vector.
+        Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
+        if (embeddingsEnabled) {
+          Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById =
+              new HashMap<>(entityInterfaces.size());
+          for (EntityInterface e : entityInterfaces) {
+            currentById.put(
+                e.getId().toString(),
+                new ElasticSearchVectorService.EntityFingerprintInput(
+                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
+          }
+          existingEmbeddingsById =
+              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
+        }
+        Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
+
         // Per-entity DocBuildContext is prepared by the upstream processor stage (see
         // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
         // transport-only: it just looks up each entity's context by id and hands it to
@@ -323,6 +362,10 @@ public class ElasticSearchBulkSink implements BulkSink {
         Map<UUID, DocBuildContext> docBuildContexts =
             (Map<UUID, DocBuildContext>)
                 contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+        Map<UUID, Long> relationshipRevisions =
+            (Map<UUID, Long>)
+                contextData.getOrDefault(
+                    RELATIONSHIP_REVISIONS_CONTEXT_KEY, Collections.emptyMap());
 
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
@@ -330,7 +373,17 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .map(
                     entity ->
                         CompletableFuture.runAsync(
-                            () -> addEntity(entity, indexName, tracker, docBuildContexts),
+                            () ->
+                                addEntity(
+                                    entity,
+                                    indexName,
+                                    reindexContext,
+                                    tracker,
+                                    embeddingsEnabled,
+                                    finalEmbeddingsById,
+                                    docBuildContexts,
+                                    scriptedPartialUpdates,
+                                    relationshipRevisions),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -379,14 +432,27 @@ public class ElasticSearchBulkSink implements BulkSink {
   private void addEntity(
       EntityInterface entity,
       String indexName,
+      ReindexContext reindexContext,
       StageStatsTracker tracker,
-      Map<UUID, DocBuildContext> docBuildContexts) {
+      boolean embeddingsEnabled,
+      Map<String, JsonNode> existingEmbeddingsById,
+      Map<UUID, DocBuildContext> docBuildContexts,
+      boolean scriptedPartialUpdates,
+      Map<UUID, Long> relationshipRevisions) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
-      String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
+      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      Map<String, Object> searchIndexDoc =
+          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+      Long relationshipRevision = relationshipRevisions.get(entity.getId());
+      SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
+      String json = JsonUtils.pojoToJson(searchIndexDoc);
+
+      if (embeddingsEnabled) {
+        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+      }
+
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
@@ -403,6 +469,36 @@ public class ElasticSearchBulkSink implements BulkSink {
         json = SearchIndexUtils.stripLineageForSize(json, sizeLimit, docId, entityType);
         rawDocSize = json.getBytes(StandardCharsets.UTF_8).length;
         estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (scriptedPartialUpdates) {
+        SearchRepository.ScriptedPartialUpdate partialUpdate =
+            searchRepository.buildBulkScriptedPartialUpdate(entity, relationshipRevision);
+        if (relationshipRevision != null && partialUpdate == null) {
+          throw new IllegalStateException(
+              "Missing fenced relationship update for " + entityType + " " + docId);
+        }
+        if (partialUpdate != null) {
+          addScriptedPartialUpdate(indexName, docId, entityType, partialUpdate, json, tracker);
+          processSuccess.incrementAndGet();
+          if (tracker != null) {
+            tracker.recordProcess(StatsResult.SUCCESS);
+          }
+          return;
+        }
+      }
+
+      SearchRepository.ScriptedPartialUpdate relationshipDocumentUpdate =
+          searchRepository.buildRelationshipDocumentUpdate(
+              entity, JsonUtils.readValue(json, new TypeReference<Map<String, Object>>() {}));
+      if (relationshipDocumentUpdate != null) {
+        addScriptedPartialUpdate(
+            indexName, docId, entityType, relationshipDocumentUpdate, json, tracker);
+        processSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordProcess(StatsResult.SUCCESS);
+        }
+        return;
       }
 
       if (estimatedSize > maxPayloadSizeBytes) {
@@ -463,6 +559,137 @@ public class ElasticSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
+      }
+    }
+  }
+
+  private void addScriptedPartialUpdate(
+      String indexName,
+      String docId,
+      String entityType,
+      SearchRepository.ScriptedPartialUpdate partialUpdate,
+      String upsertDocument,
+      StageStatsTracker tracker) {
+    String effectiveUpsertDocument = partialUpdate.scriptedUpsert() ? "{}" : upsertDocument;
+    Map<String, Object> scriptParameters = partialUpdate.parametersForIndexing();
+    long estimatedSize =
+        (long) effectiveUpsertDocument.getBytes(StandardCharsets.UTF_8).length
+            + JsonUtils.pojoToJson(scriptParameters).getBytes(StandardCharsets.UTF_8).length
+            + partialUpdate.script().getBytes(StandardCharsets.UTF_8).length
+            + BULK_OPERATION_METADATA_OVERHEAD;
+    Map<String, JsonData> params = new HashMap<>();
+    scriptParameters.forEach(
+        (key, value) -> {
+          if (value != null) {
+            params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
+          }
+        });
+    if (estimatedSize > maxPayloadSizeBytes) {
+      LOG.warn(
+          "Scripted update {} of type {} is too large for bulk ({} bytes), sending directly",
+          docId,
+          entityType,
+          estimatedSize);
+      totalSubmitted.incrementAndGet();
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
+      updateScriptedDocumentDirectly(
+          indexName,
+          docId,
+          entityType,
+          partialUpdate,
+          effectiveUpsertDocument,
+          params,
+          tracker,
+          estimatedSize);
+      return;
+    }
+    BulkOperation operation =
+        BulkOperation.of(
+            op ->
+                op.update(
+                    update ->
+                        update
+                            .index(indexName)
+                            .id(docId)
+                            .retryOnConflict(3)
+                            .action(
+                                action ->
+                                    action
+                                        .scriptedUpsert(partialUpdate.scriptedUpsert())
+                                        .upsert(EsUtils.toJsonData(effectiveUpsertDocument))
+                                        .script(
+                                            script ->
+                                                script
+                                                    .source(
+                                                        source ->
+                                                            source.scriptString(
+                                                                partialUpdate.script()))
+                                                    .lang(ScriptLanguage.Painless)
+                                                    .params(params)))));
+    if (tracker != null) {
+      tracker.incrementPendingSink();
+    }
+    bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+  }
+
+  private void updateScriptedDocumentDirectly(
+      String indexName,
+      String docId,
+      String entityType,
+      SearchRepository.ScriptedPartialUpdate partialUpdate,
+      String upsertDocument,
+      Map<String, JsonData> params,
+      StageStatsTracker tracker,
+      long estimatedSize) {
+    try {
+      Map<String, Object> upsert =
+          JsonUtils.readValue(upsertDocument, new TypeReference<Map<String, Object>>() {});
+      searchClient
+          .getNewClient()
+          .update(
+              update ->
+                  update
+                      .index(indexName)
+                      .id(docId)
+                      .refresh(Refresh.False)
+                      .retryOnConflict(3)
+                      .scriptedUpsert(partialUpdate.scriptedUpsert())
+                      .upsert(upsert)
+                      .script(
+                          script ->
+                              script
+                                  .source(source -> source.scriptString(partialUpdate.script()))
+                                  .lang(ScriptLanguage.Painless)
+                                  .params(params)),
+              Map.class);
+      totalSuccess.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Direct scripted update failed for document {} of type {}: {}",
+          docId,
+          entityType,
+          e.getMessage(),
+          e);
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            docId,
+            null,
+            String.format(
+                "Scripted update too large for bulk (%d bytes); direct update failed: %s",
+                estimatedSize, e.getMessage()),
+            IndexingFailureRecorder.FailureStage.SINK);
       }
     }
   }
@@ -866,6 +1093,106 @@ public class ElasticSearchBulkSink implements BulkSink {
     LOG.info("Concurrent requests updated to: {}", concurrentRequests);
   }
 
+  boolean isVectorEmbeddingEnabledForEntity(String entityType) {
+    return searchRepository.isVectorEmbeddingEnabled()
+        && ElasticSearchVectorService.getInstance() != null
+        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && searchRepository.getIndexMapping(entityType) != null;
+  }
+
+  private String enrichWithEmbedding(
+      EntityInterface entity,
+      String json,
+      Map<String, JsonNode> existingEmbeddingsById,
+      StageStatsTracker tracker) {
+    try {
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return json;
+      }
+      JsonNode parsed = OBJECT_MAPPER.readTree(json);
+      if (!(parsed instanceof ObjectNode doc)) {
+        LOG.warn(
+            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
+            entity.getId());
+        return json;
+      }
+      int expectedDimension =
+          vectorService.getEmbeddingClient() != null
+              ? vectorService.getEmbeddingClient().getDimension()
+              : -1;
+      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
+      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+        // Splice the cached embedding so the full index op carries the vector instead of stripping
+        // it; the service-layer pre-filter only admits state-matched entries.
+        doc.setAll((ObjectNode) cached);
+      } else {
+        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+      }
+      vectorSuccess.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.SUCCESS);
+      }
+      return OBJECT_MAPPER.writeValueAsString(doc);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+      vectorFailed.incrementAndGet();
+      if (tracker != null) {
+        tracker.recordVector(StatsResult.FAILED);
+      }
+      return json;
+    }
+  }
+
+  private Map<String, JsonNode> fetchExistingEmbeddings(
+      List<EntityInterface> entities,
+      Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById,
+      String indexName,
+      ReindexContext reindexContext) {
+    try {
+      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
+      if (vectorService == null || entities.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      String entityType = entities.getFirst().getEntityReference().getType();
+      // During a recreate, read from the pre-recreate live (original) index — the staged index is
+      // empty by definition. Otherwise read the canonical index passed in.
+      String sourceIndex =
+          reindexContext != null
+              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
+              : indexName;
+      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
+      return Collections.emptyMap();
+    }
+  }
+
+  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
+  }
+
+  @Override
+  public StepStats getVectorStats() {
+    return new StepStats()
+        .withTotalRecords((int) (vectorSuccess.get() + vectorFailed.get()))
+        .withSuccessRecords((int) vectorSuccess.get())
+        .withFailedRecords((int) vectorFailed.get());
+  }
+
   public static class CustomBulkProcessor {
     /**
      * Cap on how long a flush will wait for a permit before declaring the bulk failed. Mirror
@@ -1055,6 +1382,11 @@ public class ElasticSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }
@@ -1125,8 +1457,23 @@ public class ElasticSearchBulkSink implements BulkSink {
       long bulkStartNanos = System.nanoTime();
       Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
 
-      CompletableFuture<BulkResponse> future =
-          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      CompletableFuture<BulkResponse> future;
+      try {
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      } catch (Exception e) {
+        // A synchronous throw here (e.g., dead transport) means the completion handler below
+        // never runs. Without this catch the semaphore permit and activeBulkRequests slot leak,
+        // eventually starving the pipeline and hanging close(). Mirror OpenSearchBulkSink so both
+        // backends clean up identically.
+        circuitBreaker.recordFailure();
+        boolean retryScheduled =
+            handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        if (!retryScheduled) {
+          activeBulkRequests.decrementAndGet();
+          concurrentRequestSemaphore.release();
+        }
+        return;
+      }
 
       future.whenComplete(
           (response, error) -> {

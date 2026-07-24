@@ -29,6 +29,15 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import {
+  selectOnDemandSchedule,
+  selectScheduleDayOfWeek,
+  selectScheduleFrequency,
+  selectScheduleMinute,
+  selectScheduleType,
+  setCustomCron,
+  setScheduleTime,
+} from '../../../utils/scheduleInterval';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   advanceToServiceConnectionStep,
@@ -100,20 +109,14 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="add-service-button"]');
 
-    const ipPromise = page
-      .waitForRequest('/api/v1/services/ingestionPipelines/ip', {
-        timeout: 30_000,
-      })
-      .catch(() => null);
-
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
+    await waitForAllLoadersToDisappear(page);
 
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
     await advanceToServiceConnectionStep(page);
-    await ipPromise;
     await waitForServiceConnectionForm(page);
 
     await page.click('[data-testid="service-requirements"]');
@@ -159,7 +162,21 @@ class ServiceBaseClass {
   async serviceStep2(serviceName: string, page: Page) {
     // Service name + connection details now share the Configure & Connect step;
     // the connection form's submit button advances to the next step.
+    const encodedServiceName = encodeURIComponent(serviceName);
+    const serviceNameValidationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes(`/name/${encodedServiceName}`)
+    );
+
     await page.fill('#service-name', serviceName);
+
+    const response = await serviceNameValidationResponse;
+
+    expect(
+      response.status(),
+      `Expected "${serviceName}" to be available, but service-name validation returned ${response.status()}`
+    ).toBe(404);
   }
 
   async fillConnectionDetails(_page: Page) {
@@ -227,8 +244,6 @@ class ServiceBaseClass {
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
 
-    await page.getByTestId('more-actions').first().click();
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
@@ -236,7 +251,7 @@ class ServiceBaseClass {
           .includes('/api/v1/services/ingestionPipelines/trigger/') &&
         response.status() === 200
     );
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
 
     await triggerPipeline;
 
@@ -277,11 +292,10 @@ class ServiceBaseClass {
   }
 
   async scheduleIngestion(page: Page) {
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    await selectScheduleFrequency(page, 'custom');
     // Check validation error thrown for a cron that is too frequent
     // i.e. having interval less than 1 hour
-    await page.locator('#schedular-form_cron').fill('* * * 2 6');
+    await setCustomCron(page, '* * * 2 6');
     await page.click('[data-testid="next-button"]');
 
     await expect(
@@ -291,9 +305,7 @@ class ServiceBaseClass {
     ).toBeAttached();
 
     // Check validation error thrown for a cron that is invalid
-    await page.locator('#schedular-form_cron').clear();
-    await page.click('[data-testid="next-button"]');
-    await page.locator('#schedular-form_cron').fill('* * * 2 ');
+    await setCustomCron(page, '* * * 2 ');
 
     await expect(
       page.getByText(
@@ -301,27 +313,12 @@ class ServiceBaseClass {
       )
     ).toBeAttached();
 
-    await page.locator('#schedular-form_cron').clear();
+    await selectOnDemandSchedule(page);
 
-    await page.getByTestId('schedular-card-container').waitFor();
-    await page
-      .getByTestId('schedular-card-container')
-      .getByText('On Demand')
-      .click();
+    await expect(page.getByLabel('Raise on Error')).toBeChecked();
+    await page.getByTestId('raise-on-error').click();
 
-    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
-
-    await page.click('#root\\/raiseOnError');
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    await expect(page.getByLabel('Raise on Error')).not.toBeChecked();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -465,19 +462,9 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
 
     // select schedule
-    await page.getByTestId('schedular-card-container').waitFor();
-    await page
-      .getByTestId('schedular-card-container')
-      .getByText('Schedule', { exact: true })
-      .click();
-    await page.click('[data-testid="cron-type"]');
-    await page
-      .locator('.ant-select-item-option-content', { hasText: 'Hour' })
-      .click();
-    await page.getByTestId('minute-options').click();
-    await page
-      .locator('#minute-select_list + .rc-virtual-list [title="05"]')
-      .click();
+    await selectScheduleType(page);
+    await selectScheduleFrequency(page, 'hour');
+    await selectScheduleMinute(page, '05');
 
     // Deploy with schedule
     await page.click('[data-testid="next-button"]');
@@ -494,14 +481,8 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="next-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Day")');
-
-    await page.click('[data-testid="hour-options"]');
-    await page.click('#hour-select_list + .rc-virtual-list [title="04"]');
-
-    await page.click('[data-testid="minute-options"]');
-    await page.click('#minute-select_list + .rc-virtual-list [title="04"]');
+    await selectScheduleFrequency(page, 'day');
+    await setScheduleTime(page, { hour: '04', minute: '04', period: 'AM' });
 
     // Deploy with schedule
     await page.click('[data-testid="next-button"]');
@@ -525,16 +506,9 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="next-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Week")');
-    await page
-      .locator('#schedular-form_dow .week-selector-buttons')
-      .getByText('W')
-      .click();
-    await page.click('[data-testid="hour-options"]');
-    await page.click('#hour-select_list + .rc-virtual-list [title="05"]');
-    await page.click('[data-testid="minute-options"]');
-    await page.click('#minute-select_list + .rc-virtual-list [title="05"]');
+    await selectScheduleFrequency(page, 'week');
+    await selectScheduleDayOfWeek(page, 'Wednesday');
+    await setScheduleTime(page, { hour: '05', minute: '05', period: 'AM' });
 
     // Deploy with schedule
     await page.click('[data-testid="next-button"]');
@@ -551,11 +525,10 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="next-button"]');
-    await page.click('[data-testid="cron-type"]');
-    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    await selectScheduleFrequency(page, 'custom');
 
     // Schedule & Deploy
-    await page.locator('#schedular-form_cron').fill('0 * * 2 6');
+    await setCustomCron(page, '0 * * 2 6');
 
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="view-service-button"]');
@@ -623,8 +596,6 @@ class ServiceBaseClass {
     // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
     await page.waitForTimeout(3000);
 
-    await page.getByTestId('more-actions').first().click();
-
     const triggerPipeline = page.waitForResponse(
       (response) =>
         response
@@ -633,7 +604,7 @@ class ServiceBaseClass {
         response.status() === 200
     );
 
-    await page.getByTestId('run-button').click();
+    await page.getByTestId('run-agent-button').first().click();
     await triggerPipeline;
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results

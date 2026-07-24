@@ -13,8 +13,10 @@
 Test KafkaConnect client and models
 """
 
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
@@ -1171,3 +1173,414 @@ class TestGetDatasetEntityContainerSearch:
                     source.get_dataset_entity(pipeline, dataset)
 
         mock_search.assert_not_called()
+
+
+class TestKafkaConnectTopicRoutingTransforms(TestCase):
+    """
+    Tests for topic-routing SMTs (RegexRouter / TopicRegexRouter and Debezium
+    outbox EventRouter) that rewrite the destination topic name.
+
+    Regression coverage for the case where a statically-constructed CDC topic
+    name never matches the real post-transform topic, so lineage is skipped.
+    See https://github.com/open-metadata/OpenMetadata/issues/27901.
+    """
+
+    def _make_source(self):
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        source = object.__new__(KafkaconnectSource)
+        source._topics_cache = {}
+        source.metadata = MagicMock()
+        return source
+
+    @staticmethod
+    def _topic(name):
+        topic = SimpleNamespace()
+        topic.name = SimpleNamespace(root=name)
+        topic.fullyQualifiedName = SimpleNamespace(root=f'Kafka."{name}"')
+        return topic
+
+    def test_apply_regex_router_rewrites_topic_name(self):
+        """RegexRouter must rewrite the constructed topic name deterministically."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        config = {
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"ecommerce\.sales\.prod\.sales\.(.*)",
+            "transforms.route.replacement": "prod.global.sales.$1",
+        }
+
+        result = apply_topic_routing_transforms("ecommerce.sales.prod.sales.outbox", config)
+
+        assert result == "prod.global.sales.outbox"
+
+    def test_apply_confluent_topic_regex_router(self):
+        """The Confluent Cloud TopicRegexRouter class must be identified and applied."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        config = {
+            "transforms": "route",
+            "transforms.route.type": "io.confluent.connect.cloud.transforms.TopicRegexRouter",
+            "transforms.route.regex": r"outbox\.event\.(.*)",
+            "transforms.route.replacement": "prod.global.sales.$1",
+        }
+
+        result = apply_topic_routing_transforms("outbox.event.orderCreated", config)
+
+        assert result == "prod.global.sales.orderCreated"
+
+    def test_apply_topic_routing_transforms_noop_without_transforms(self):
+        """With no transforms configured the name is returned unchanged."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        assert apply_topic_routing_transforms("a.b.c", {}) == "a.b.c"
+
+    def test_apply_regex_router_invalid_regex_returns_original(self):
+        """An invalid regex must not raise; the original name is preserved."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        config = {
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"([",  # unbalanced group
+            "transforms.route.replacement": "x",
+        }
+
+        assert apply_topic_routing_transforms("a.b.c", config) == "a.b.c"
+
+    def test_parse_cdc_topics_applies_regex_router(self):
+        """CDC topics constructed from table.include.list must have SMTs applied."""
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox",
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"ecommerce\.sales\.prod\.sales\.(.*)",
+            "transforms.route.replacement": "prod.global.sales.$1",
+        }
+        details = KafkaConnectPipelineDetails(name="outbox-connector", type="source", config=config)
+        source = self._make_source()
+
+        topics = source._parse_cdc_topics_from_config(details, "ecommerce.sales")
+
+        assert [t.name for t in topics] == ["prod.global.sales.outbox"]
+
+    def test_resolve_outbox_topics_matches_ingested_topic(self):
+        """
+        EventRouter routes by a row value (${routedByValue}) unknowable at
+        ingestion time, so the outbox topic must be matched by pattern against
+        topics already ingested in the messaging service.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        source = self._make_source()
+        source.metadata.list_all_entities.return_value = [
+            self._topic("prod.global.sales.orderCreated_v1"),
+            self._topic("prod.global.sales.orderCancelled_v1"),
+            self._topic("unrelated.topic"),
+        ]
+
+        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka")
+
+        names = sorted(t.name for t in topics)
+        assert names == [
+            "prod.global.sales.orderCancelled_v1",
+            "prod.global.sales.orderCreated_v1",
+        ]
+        assert all(t.fqn for t in topics)
+
+    def test_resolve_outbox_topics_no_messaging_service_returns_empty(self):
+        """Without a messaging service the outbox topics cannot be matched."""
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        source = self._make_source()
+
+        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name=None)
+
+        assert topics == []
+
+    def test_resolve_outbox_topics_composes_following_regex_router(self):
+        """An EventRouter followed by a RegexRouter must compose into one pattern."""
+        config = {
+            "transforms": "outbox,route",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "outbox.event.${routedByValue}",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"outbox\.event\.(.*)",
+            "transforms.route.replacement": "prod.global.sales.$1_v1",
+        }
+        source = self._make_source()
+        source.metadata.list_all_entities.return_value = [
+            self._topic("prod.global.sales.orderCreated_v1"),
+            self._topic("prod.global.other.thing"),
+        ]
+
+        topics = source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka")
+
+        assert [t.name for t in topics] == ["prod.global.sales.orderCreated_v1"]
+
+    def test_apply_regex_router_named_group(self):
+        """Java named groups (?<name>...) with ${name} replacement convert and apply."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        config = {
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"outbox\.event\.(?<agg>.*)",
+            "transforms.route.replacement": "prod.global.${agg}_v1",
+        }
+
+        assert apply_topic_routing_transforms("outbox.event.orderCreated", config) == "prod.global.orderCreated_v1"
+
+    def test_outbox_bare_replacement_is_not_catch_all(self):
+        """A replacement with no static part must NOT match every topic in the service."""
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "${routedByValue}",
+        }
+        source = self._make_source()
+        source.metadata.list_all_entities.return_value = [
+            self._topic("some.unrelated.topic"),
+            self._topic("another.domain.topic"),
+        ]
+
+        assert source._build_outbox_topic_pattern(config) is None
+        assert source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka") == []
+
+    def test_outbox_fanout_identifies_outbox_table_by_event_columns(self):
+        """In a multi-table connector only the table with the full outbox schema fans out."""
+        from metadata.generated.schema.entity.data.table import Column, DataType, Table
+
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+        }
+        source = self._make_source()
+        pipeline = SimpleNamespace(config=config)
+        outbox = Table.model_construct(
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="aggregatetype", dataType=DataType.VARCHAR),
+                Column(name="aggregateid", dataType=DataType.VARCHAR),
+                Column(name="payload", dataType=DataType.JSON),
+            ]
+        )
+        # A normal table that happens to share one outbox column must NOT be treated as outbox.
+        orders = Table.model_construct(
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="aggregatetype", dataType=DataType.VARCHAR),
+                Column(name="total", dataType=DataType.BIGINT),
+            ]
+        )
+        topics = {"prod.global.sales.orderCreated_v1": object()}
+
+        # Multi-table: only the table with the full outbox schema fans out.
+        assert source._is_outbox_fanout(pipeline, outbox, topics, single_dataset=False) is True
+        assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=False) is False
+        # Single-table connector is unambiguously the outbox.
+        assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=True) is True
+
+    def test_outbox_separator_only_replacement_is_not_a_pattern(self):
+        """A replacement whose static part is only separators must not build a near-catch-all pattern."""
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "${routedByValue}.${aggregateid}",
+        }
+        source = self._make_source()
+
+        assert source._build_outbox_topic_pattern(config) is None
+
+
+class TestKafkaConnectTransformLineageEdges(TestCase):
+    """
+    End-to-end coverage that transformed topics actually produce lineage edges
+    (AddLineageRequest) from the source table, not just resolve to Topic entities.
+
+    Drives ``yield_pipeline_lineage_details`` with only the OpenMetadata REST
+    client and ingestion context mocked; topic resolution, topic-to-dataset
+    matching, and edge construction all run for real.
+    See https://github.com/open-metadata/OpenMetadata/issues/27901.
+    """
+
+    @staticmethod
+    def _entity(entity_cls, fqn):
+        return entity_cls.model_construct(
+            id=uuid4(),
+            name=fqn.split(".")[-1].strip('"'),
+            fullyQualifiedName=fqn,
+            service=None,
+        )
+
+    @staticmethod
+    def _ingested_topic(name):
+        return SimpleNamespace(
+            name=SimpleNamespace(root=name),
+            fullyQualifiedName=SimpleNamespace(root=f'Kafka."{name}"'),
+        )
+
+    def _run_lineage(self, config, ingested_topic_names, pipeline_topics=None):
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        source = object.__new__(KafkaconnectSource)
+        source._topics_cache = {}
+        source.lineage_results = []
+        source.context = MagicMock()
+        source.context.get.return_value = SimpleNamespace(
+            pipeline_service="KafkaConnectSvc", pipeline="outbox-connector"
+        )
+        source._resolve_messaging_service = lambda pipeline_details: "Kafka"
+        table_entity = self._entity(Table, "PG.db.prod.sales.outbox")
+        source.get_dataset_entity = lambda **kwargs: table_entity
+        source.build_column_lineage = lambda **kwargs: None
+
+        pipeline_entity = SimpleNamespace(id=SimpleNamespace(root=uuid4()))
+        topics_by_fqn = {f'Kafka."{name}"': self._entity(Topic, f'Kafka."{name}"') for name in ingested_topic_names}
+
+        def _get_by_name(entity=None, fqn=None, **kwargs):
+            entity_name = getattr(entity, "__name__", "")
+            if entity_name == "Pipeline":
+                return pipeline_entity
+            if entity_name == "Topic":
+                return topics_by_fqn.get(fqn)
+            return None
+
+        def _fqn_build(entity_type=None, service_name=None, topic_name=None, **kwargs):
+            entity_name = getattr(entity_type, "__name__", "")
+            if entity_name == "Topic":
+                return f'{service_name}."{topic_name}"'
+            return "KafkaConnectSvc.outbox-connector"
+
+        source.metadata = MagicMock()
+        source.metadata.get_by_name.side_effect = _get_by_name
+        source.metadata.list_all_entities.return_value = [self._ingested_topic(name) for name in ingested_topic_names]
+
+        details = KafkaConnectPipelineDetails(
+            name="outbox-connector",
+            type="source",
+            config=config,
+            topics=[KafkaConnectTopics(name=name) for name in (pipeline_topics or [])],
+        )
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.metadata.fqn.build",
+            side_effect=_fqn_build,
+        ):
+            results = list(source.yield_pipeline_lineage_details(details))
+
+        errors = [r.left for r in results if r.left is not None]
+        assert not errors, f"lineage yielded errors: {errors}"
+        return table_entity, [r.right for r in results if r.right is not None]
+
+    def test_outbox_event_router_yields_lineage_edges(self):
+        """Outbox EventRouter must emit table -> topic edges for every routed topic."""
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        ingested = [
+            "prod.global.sales.orderCreated_v1",
+            "prod.global.sales.orderCancelled_v1",
+            "unrelated.topic",
+        ]
+
+        table_entity, edges = self._run_lineage(config, ingested)
+
+        assert len(edges) == 2
+        for edge in edges:
+            assert edge.edge.fromEntity.type == "table"
+            assert edge.edge.fromEntity.id.root == table_entity.id
+            assert edge.edge.toEntity.type == "topic"
+
+    def test_outbox_event_router_yields_edges_from_connector_topics(self):
+        """
+        Live path: Kafka Connect's /topics reports the post-transform topics, so
+        they arrive pre-populated on the connector rather than via pattern search.
+        The outbox fan-out must still emit an edge per topic.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        routed = ["prod.global.sales.orderCreated_v1", "prod.global.sales.orderCancelled_v1"]
+
+        table_entity, edges = self._run_lineage(config, routed, pipeline_topics=routed)
+
+        assert len(edges) == 2
+        for edge in edges:
+            assert edge.edge.fromEntity.id.root == table_entity.id
+            assert edge.edge.toEntity.type == "topic"
+
+    def test_multi_table_outbox_connector_does_not_fan_out(self):
+        """
+        A connector capturing several tables cannot attribute routed topics to a
+        specific table, so it must NOT fan the outbox topics out to every table.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox,prod.sales.orders",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        routed = ["prod.global.sales.orderCreated_v1"]
+
+        _table_entity, edges = self._run_lineage(config, routed)
+
+        assert edges == []
+
+    def test_regex_router_yields_lineage_edge(self):
+        """A RegexRouter-renamed CDC topic must still match its table and emit an edge."""
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox",
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"ecommerce\.sales\.prod\.sales\.(.*)",
+            "transforms.route.replacement": "prod.global.sales.$1",
+        }
+        ingested = ["prod.global.sales.outbox"]
+
+        _table_entity, edges = self._run_lineage(config, ingested)
+
+        assert len(edges) == 1
+        assert edges[0].edge.fromEntity.type == "table"
+        assert edges[0].edge.toEntity.type == "topic"

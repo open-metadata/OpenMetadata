@@ -72,7 +72,14 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
@@ -248,11 +255,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
-        self.client = get_connection(self.service_connection)
-
-        # Flag the connection for the test connection
-        self.connection_obj = self.client
-        self.test_connection()
+        self._connection = create_connection(self.service_connection)
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def name(self) -> str:
@@ -440,6 +446,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
 
     def close(self):
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -548,16 +556,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         sql: Optional[str] = None,  # noqa: UP045
     ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         if from_entity and to_entity:
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
                         ),
-                        toEntity=EntityReference(
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
@@ -630,7 +646,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield dashboard_details
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.client, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""
