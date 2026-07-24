@@ -154,14 +154,15 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
 
     Section detailsSection = new Section(createEventDetailsWidgets(eventDetails));
     Section messageSection = new Section(additionalMessageWidgets);
+    
+    String fqn = String.valueOf(eventDetails.getOrDefault(EventDetailsKeys.ENTITY_FQN, "-"));
+    String entityType = String.valueOf(eventDetails.getOrDefault(EventDetailsKeys.ENTITY_TYPE, "-"));
+    String entityUrl = fqn.equals("-") ? fqn : getEntityUrl(entityType, fqn, "");
+
     Section fqnSection =
         new Section(
             List.of(
-                createWidget(
-                    "FQN:",
-                    String.valueOf(eventDetails.getOrDefault(EventDetailsKeys.ENTITY_FQN, "-")))));
-
-    // todo create clickable entity link in the message
+                createWidget("FQN:", entityUrl)));
 
     Section footerSection = createFooterSection();
 
@@ -232,8 +233,6 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
             .map(message -> new Widget(new TextParagraph(message)))
             .toList();
     sections.add(new Section(additionalMessageWidgets));
-
-    // todo create clickable entity link in the message
 
     addTestCaseDetailsSection(templateData, sections);
     addTestCaseFQNSection(templateData, sections);
@@ -344,11 +343,13 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       return;
     }
 
+    String fqn = String.valueOf(testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-"));
+    String entityUrl = fqn.equals("-") ? fqn : getEntityUrl(Entity.TEST_CASE, fqn, "");
+
     Widget testCaseFQNWidget =
         createWidget(
             "Test Case FQN:",
-            String.valueOf(
-                testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.TEST_CASE_FQN, "-")));
+            entityUrl);
 
     sections.add(new Section(List.of(testCaseFQNWidget)));
   }
