@@ -38,7 +38,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
   const position = getAbsolutePosition(
     hoveredButton.x - hoveredButton.width / 2,
     hoveredButton.y - hoveredButton.height / 2,
-    viewport
+    viewport,
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -59,9 +59,10 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         ...position,
         pointerEvents: 'all',
         zIndex: 1000,
-        background: 'none',
+        background: 'transparent',
         border: 'none',
         padding: 0,
+        cursor: 'default',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}>
@@ -73,7 +74,7 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
           pipelineStatus && (
             <Tag
               className={getPipelineStatusClass(
-                pipelineStatus.executionStatus
+                pipelineStatus.executionStatus,
               )}>
               {pipelineStatus.executionStatus}
             </Tag>
