@@ -121,10 +121,11 @@ test.describe(
       await page.click('[data-testid="test-cases"]');
 
       await listTestCasesResponse;
-      await page.waitForSelector(
-        '[data-testid="test-case-container"] [data-testid="loader"]',
-        { state: 'detached' }
-      );
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await page.getByText('Name', { exact: true }).click();
 
@@ -137,10 +138,32 @@ test.describe(
       await page.getByTitle('Queued').locator('div').click();
 
       await filteredResults;
-      await page.waitForSelector(
-        '[data-testid="test-case-container"] [data-testid="loader"]',
-        { state: 'detached' }
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
+
+      // Migration static data seeds test cases across every status (including
+      // Queued), so the status filter alone no longer yields an empty list.
+      // Combine it with a search term that matches nothing to deterministically
+      // land on the empty-state placeholder.
+      const noMatchSearch = `no-match-${uuid()}`;
+      const emptySearchResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+          response.url().includes(noMatchSearch)
       );
+      await page.locator('[data-testid="searchbar"]').click();
+      await page
+        .locator('[data-testid="searchbar"]')
+        .fill(noMatchSearch);
+      await emptySearchResponse;
+      await page
+        .getByTestId('test-case-container')
+        .getByTestId('loader')
+        .first()
+        .waitFor({ state: 'detached' });
 
       await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
     });
