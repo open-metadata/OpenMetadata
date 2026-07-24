@@ -165,4 +165,37 @@ describe('DataAssetsCoveragePieChartWidget', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/explore');
   });
+
+  it('should use the supplied navigate function and test suites path', async () => {
+    const navigate = jest.fn();
+
+    render(
+      <DataAssetsCoveragePieChartWidget
+        navigate={navigate}
+        redirectPath="/observability/data-quality/test-suites"
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const coveredSegment = await screen.findByTestId('segment-covered');
+    await act(async () => {
+      coveredSegment.click();
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      '/observability/data-quality/test-suites'
+    );
+
+    navigate.mockClear();
+
+    const notCoveredSegment = await screen.findByTestId('segment-not-covered');
+    await act(async () => {
+      notCoveredSegment.click();
+    });
+
+    expect(navigate).toHaveBeenCalledWith('/explore');
+  });
 });
