@@ -13,6 +13,7 @@
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
 
+import traceback
 from functools import singledispatchmethod
 from typing import Iterator, List, Optional  # noqa: UP035
 
@@ -92,8 +93,11 @@ class AvroDataFrameReader(DataFrameReader):
                     writer_schema = json.dumps(reader.writer_schema)
 
                 return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
-        except Exception:
-            logger.warning("Error reading Avro schema")
+        except Exception as exc:  # pylint: disable=broad-except
+            # Only the exception type is safe at WARNING: decoder errors can quote the file
+            # payload. See issue #24798.
+            logger.warning("Error reading Avro schema: %s", type(exc).__name__)
+            logger.debug(traceback.format_exc())
         return None
 
     @singledispatchmethod
