@@ -124,6 +124,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String REDIRECT_URI_KEY = "redirectUri";
 
+  private static final String MCP_CALLBACK_PATH = "/mcp/callback";
+
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
@@ -161,6 +163,21 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       LOG.debug("MCP state check failed: {}", e.getMessage());
       return false;
     }
+  }
+
+  // Persists the OIDC round-trip state/nonce/PKCE-verifier against the MCP pending request. It runs
+  // inside handleLogin() before the provider redirect is issued, so the returning /callback?state=
+  // is always resolvable (isMcpState -> findByPac4jState) even on a very fast round-trip. The MCP
+  // module owns the pending-request store, so it registers the implementation here.
+  @FunctionalInterface
+  public interface McpPendingStatePersister {
+    void persist(HttpServletRequest request, String state, String nonce, String codeVerifier);
+  }
+
+  private static volatile McpPendingStatePersister mcpPendingStatePersister;
+
+  public static void setMcpPendingStatePersister(McpPendingStatePersister persister) {
+    mcpPendingStatePersister = persister;
   }
 
   public AuthenticationCodeFlowHandler(
@@ -352,8 +369,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       //    - MCP handles its own final redirect
       // 2. Web login flow: any other redirect URI
       String redirectUri;
-      String expectedMcpCallback = serverUrl + "/mcp/callback";
-      if (requestedRedirectUri != null && requestedRedirectUri.equals(expectedMcpCallback)) {
+      boolean isMcpFlow = isMcpRedirectUri(requestedRedirectUri);
+      if (isMcpFlow) {
         redirectUri = requestedRedirectUri;
         LOG.debug(
             "MCP OAuth flow detected - using registered callback URL, final redirect: {}",
@@ -362,21 +379,31 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         redirectUri = requireRedirectUri(requestedRedirectUri);
       }
 
-      Optional<UserSession> activeSession = sessionService.getActiveSession(req, resp);
-      if (activeSession.isPresent()) {
-        User user = getSessionUser(activeSession.get());
-        if (user != null) {
-          JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession.get());
-          sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
-          return;
+      // The active-session shortcut mints an OpenMetadata-internal JWT (issuer = deployment
+      // authority) and returns it directly. That is fine for web login, but the MCP callback
+      // validates the id_token against the external OIDC provider's issuer/JWKS and rejects an
+      // OpenMetadata-issued token as an issuer mismatch. For MCP, always run the full
+      // authorization-code round-trip so the id_token comes from the provider itself.
+      if (!isMcpFlow) {
+        Optional<UserSession> activeSession = sessionService.getActiveSession(req, resp);
+        if (activeSession.isPresent()) {
+          User user = getSessionUser(activeSession.get());
+          if (user != null) {
+            JWTAuthMechanism jwtAuthMechanism = generateJwtToken(user, activeSession.get());
+            sendRedirectWithToken(resp, redirectUri, user, jwtAuthMechanism.getJWTToken());
+            return;
+          }
+          sessionService.revokeSession(req, resp);
         }
-        sessionService.revokeSession(req, resp);
       }
 
       Map<String, String> params = buildLoginParams();
       params.put(OidcConfiguration.REDIRECT_URI, client.getCallbackUrl());
 
       PendingLoginContext pendingLoginContext = addStateAndNonceParameters(params);
+      if (isMcpFlow) {
+        persistMcpPendingState(req, pendingLoginContext);
+      }
       sessionService.createPendingSession(
           req,
           resp,
@@ -406,6 +433,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
     } catch (Exception e) {
       getErrorMessage(resp, new TechnicalException(e));
+    }
+  }
+
+  private boolean isMcpRedirectUri(String redirectUri) {
+    return (serverUrl + MCP_CALLBACK_PATH).equals(redirectUri);
+  }
+
+  private void persistMcpPendingState(HttpServletRequest req, PendingLoginContext context) {
+    McpPendingStatePersister persister = mcpPendingStatePersister;
+    if (persister != null) {
+      persister.persist(req, context.state(), context.nonce(), context.pkceVerifier());
     }
   }
 
@@ -454,6 +492,14 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
 
       validateNonceIfRequired(pendingSession, credentials.getIdToken().getJWTClaimsSet());
+
+      // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
+      // is only available here. Hand the validated credentials over on the session for it to pick
+      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
+        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+      }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(credentials.getIdToken().getJWTClaimsSet().getClaims());
