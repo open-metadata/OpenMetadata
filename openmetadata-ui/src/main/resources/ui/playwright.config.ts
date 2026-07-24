@@ -139,6 +139,11 @@ export default defineConfig({
 
     /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
     ignoreHTTPSErrors: isH2Mode,
+    launchOptions: isH2Mode
+      ? {
+          args: ['--ignore-certificate-errors'],
+        }
+      : undefined,
 
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',

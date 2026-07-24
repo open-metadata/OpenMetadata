@@ -1338,6 +1338,17 @@ def test_h2_config_generation_fails_when_server_markers_drift():
         generator.render_h2_config(config_without_admin_connector)
 
 
+def test_h2_browser_launch_accepts_self_signed_service_worker_certificate():
+    playwright_config = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+    ).read_text()
+
+    assert "ignoreHTTPSErrors: isH2Mode" in playwright_config
+    assert "launchOptions: isH2Mode" in playwright_config
+    assert "args: ['--ignore-certificate-errors']" in playwright_config
+
+
 def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
