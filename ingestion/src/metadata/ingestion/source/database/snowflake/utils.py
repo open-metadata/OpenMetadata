@@ -14,7 +14,7 @@ Module to define overridden dialect methods
 """
 
 import operator  # noqa: I001
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from functools import reduce
 from typing import Dict, Optional  # noqa: UP035
 
@@ -649,6 +649,35 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     return self._get_schema_unique_constraints(connection, self.denormalize_name(full_schema_name), **kw).get(
         table_name, []
     )
+
+
+@reflection.cache
+def _get_schema_unique_constraints(self, connection, schema, **kw):
+    result = connection.execute(
+        text(f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ UNIQUE KEYS IN SCHEMA {schema}")
+    )
+    unique_constraints = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["constraint_name"])
+        table_name = self.normalize_name(row._mapping["table_name"])
+
+        constraint_key = (name, table_name)
+
+        if constraint_key not in unique_constraints:
+            unique_constraints[constraint_key] = {
+                "column_names": [self.normalize_name(row._mapping["column_name"])],
+                "name": name,
+                "table_name": table_name,
+            }
+        else:
+            unique_constraints[constraint_key]["column_names"].append(self.normalize_name(row._mapping["column_name"]))
+
+    ans = defaultdict(list)
+    for constraint in unique_constraints.values():
+        t_name = constraint.pop("table_name")
+        ans[t_name].append(constraint)
+
+    return ans
 
 
 @reflection.cache
