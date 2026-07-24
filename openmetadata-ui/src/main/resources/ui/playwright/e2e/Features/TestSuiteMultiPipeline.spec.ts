@@ -53,7 +53,7 @@ test(
      * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
      */
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Data Observability').click();
+      await page.getByTestId('profiler').getByText('Data Observability').click();
       await page
         .getByRole('tab', {
           name: 'Table Profile',
@@ -257,7 +257,7 @@ test(
       testCaseNames
     );
     await table.visitEntityPage(page, table.entity.displayName);
-    await page.getByText('Data Observability').click();
+    await page.getByTestId('profiler').getByText('Data Observability').click();
     await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     const ingestionPipelinesListResponse =
