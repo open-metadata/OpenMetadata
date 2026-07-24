@@ -105,9 +105,10 @@ jobs:
       lint_core_components_result: ${{ steps.lint_core_components.outcome }}
       lint_core_components_changed_files: ${{ steps.lint_core_components.outputs.changed_files }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
