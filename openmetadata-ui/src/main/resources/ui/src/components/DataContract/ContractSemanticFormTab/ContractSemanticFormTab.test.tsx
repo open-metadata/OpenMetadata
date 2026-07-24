@@ -30,6 +30,7 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
     },
   })),
   getNormalizedContractSemantics: jest.fn((semantics) => semantics),
+  isFieldUsingIsNullOperator: jest.fn(() => true),
   semanticRuleValidator: jest.fn(() => Promise.resolve()),
 }));
 

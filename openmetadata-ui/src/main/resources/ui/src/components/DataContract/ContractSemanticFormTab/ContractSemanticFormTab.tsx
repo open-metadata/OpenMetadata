@@ -42,6 +42,7 @@ import {
 import {
   getNormalizedContractSemantics,
   getSematicRuleFields,
+  isFieldUsingIsNullOperator,
   semanticRuleValidator,
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
@@ -112,9 +113,11 @@ export const ContractSemanticFormTab: React.FC<{
     let modifyRule = '';
     if (rule) {
       try {
+        const treeString = tree ? JSON.stringify(tree) : undefined;
         modifyRule = JSON.stringify(
           jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
-            JSON.parse(rule)
+            JSON.parse(rule),
+            (ruleField) => isFieldUsingIsNullOperator(treeString, ruleField)
           )
         );
       } catch {
