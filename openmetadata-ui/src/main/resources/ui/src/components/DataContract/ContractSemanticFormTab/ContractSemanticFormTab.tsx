@@ -40,9 +40,9 @@ import {
   SemanticsRule,
 } from '../../../generated/entity/data/dataContract';
 import {
+  createIsNullFieldConfirmation,
   getNormalizedContractSemantics,
   getSematicRuleFields,
-  isFieldUsingIsNullOperator,
   semanticRuleValidator,
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
@@ -117,7 +117,7 @@ export const ContractSemanticFormTab: React.FC<{
         modifyRule = JSON.stringify(
           jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
             JSON.parse(rule),
-            (ruleField) => isFieldUsingIsNullOperator(treeString, ruleField)
+            createIsNullFieldConfirmation(treeString)
           )
         );
       } catch {

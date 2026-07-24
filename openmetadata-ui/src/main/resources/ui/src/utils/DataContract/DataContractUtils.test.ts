@@ -50,6 +50,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { ContractExecutionStatus } from '../../generated/type/contractExecutionStatus';
 import {
   createContractExecutionCustomScale,
+  createIsNullFieldConfirmation,
   downloadContractYamlFile,
   formatContractExecutionTick,
   generateMonthTickPositions,
@@ -662,6 +663,75 @@ describe('DataContractUtils', () => {
 
     it('should return undefined when semantics is undefined', () => {
       expect(getNormalizedContractSemantics(undefined)).toBeUndefined();
+    });
+
+    it('should only rewrite as many same-field occurrences as the tree confirms are is_null', () => {
+      const siblingRule = JSON.stringify({
+        or: [
+          { some: ['owners', { '==': ['owners.fullyQualifiedName', null] }] },
+          { some: ['owners', { '==': ['owners.fullyQualifiedName', null] }] },
+        ],
+      });
+      const singleIsNullTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'rule',
+            properties: {
+              field: 'owners.fullyQualifiedName',
+              operator: 'is_null',
+            },
+          },
+        ],
+      });
+
+      const result = getNormalizedContractSemantics([
+        {
+          description: 'test',
+          enabled: true,
+          rule: siblingRule,
+          jsonTree: singleIsNullTree,
+        },
+      ]);
+
+      expect(JSON.parse(result?.[0].rule ?? '')).toEqual({
+        or: [
+          {
+            '!': {
+              some: ['owners', { '!=': ['owners.fullyQualifiedName', null] }],
+            },
+          },
+          { some: ['owners', { '==': ['owners.fullyQualifiedName', null] }] },
+        ],
+      });
+    });
+  });
+
+  describe('createIsNullFieldConfirmation', () => {
+    it('should confirm a field once per is_null node found in the tree', () => {
+      const jsonTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'rule',
+            properties: {
+              field: 'owners.fullyQualifiedName',
+              operator: 'is_null',
+            },
+          },
+        ],
+      });
+
+      const confirm = createIsNullFieldConfirmation(jsonTree);
+
+      expect(confirm('owners.fullyQualifiedName')).toBe(true);
+      expect(confirm('owners.fullyQualifiedName')).toBe(false);
+    });
+
+    it('should never confirm when jsonTree is undefined', () => {
+      const confirm = createIsNullFieldConfirmation(undefined);
+
+      expect(confirm('owners.fullyQualifiedName')).toBe(false);
     });
   });
 });

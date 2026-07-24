@@ -89,6 +89,62 @@ export const isFieldUsingIsNullOperator = (
   return found;
 };
 
+// Counts, per field, how many "Is Not Set" (is_null) nodes the persisted
+// query-builder tree actually has. Used to build a one-shot confirmation
+// callback below: a field name alone can't disambiguate two sibling
+// conditions on the same field (e.g. an "Is Not Set" rule alongside an
+// unrelated hand-authored `==null` rule on that same field), but consuming
+// one is_null occurrence per rewrite keeps the rewrite count from exceeding
+// the number of confirmed is_null nodes in the tree.
+const countIsNullNodesByField = (
+  jsonTree: string | undefined
+): Map<string, number> => {
+  const counts = new Map<string, number>();
+  if (!jsonTree) {
+    return counts;
+  }
+  try {
+    const nodes: QueryBuilderTreeNode[] = [JSON.parse(jsonTree)];
+    while (nodes.length > 0) {
+      const node = nodes.pop();
+      const field = node?.properties?.field;
+      if (field && node?.properties?.operator === 'is_null') {
+        counts.set(field, (counts.get(field) ?? 0) + 1);
+      }
+      const children = node?.children1;
+      if (Array.isArray(children)) {
+        nodes.push(...children);
+      } else if (children && typeof children === 'object') {
+        nodes.push(...Object.values(children));
+      }
+    }
+  } catch {
+    // Malformed tree: treat as no confirmed is_null nodes.
+  }
+
+  return counts;
+};
+
+// Builds a confirmation callback for getNegativeQueryForNotContainsReverserOperation
+// that consumes one is_null occurrence per field as it confirms rewrites,
+// so at most as many `==null` nodes are rewritten per field as the tree
+// actually confirms came from the "Is Not Set" operator.
+export const createIsNullFieldConfirmation = (
+  jsonTree: string | undefined
+): ((field: string) => boolean) => {
+  const remainingByField = countIsNullNodesByField(jsonTree);
+
+  return (field: string): boolean => {
+    const remaining = remainingByField.get(field) ?? 0;
+    if (remaining <= 0) {
+      return false;
+    }
+    remainingByField.set(field, remaining - 1);
+
+    return true;
+  };
+};
+
 // Normalizes persisted semantic rules so contracts saved before the
 // negation-lift rewrite don't stay broken on validation. Only rewrites a
 // field's `==null` shape when the persisted tree confirms it came from the
@@ -105,7 +161,7 @@ export const getNormalizedContractSemantics = (
       const normalized =
         jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
           JSON.parse(item.rule),
-          (field) => isFieldUsingIsNullOperator(item.jsonTree, field)
+          createIsNullFieldConfirmation(item.jsonTree)
         );
 
       return { ...item, rule: JSON.stringify(normalized) };
