@@ -96,7 +96,11 @@ const mapOwnerToSelectItem = (ref: EntityReference): TagFormSelectItem => {
     icon: isTeam ? (
       <Avatar placeholderIcon={Users01} size="xs" />
     ) : (
-      <Avatar initials={character} size="xs" style={{ color, backgroundColor }} />
+      <Avatar
+        initials={character}
+        size="xs"
+        style={{ color, backgroundColor }}
+      />
     ),
     value: ref,
   };
