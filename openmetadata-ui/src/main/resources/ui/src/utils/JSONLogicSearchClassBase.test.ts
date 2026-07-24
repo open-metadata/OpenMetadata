@@ -359,6 +359,78 @@ describe('JSONLogicSearchClassBase', () => {
 
       expect(result).toEqual(logic);
     });
+
+    it('should lift negation out of some for is_null (Is Not Set) on a group field', () => {
+      const logic = {
+        some: [
+          { var: 'owners' },
+          { '==': [{ var: 'fullyQualifiedName' }, null] },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual({
+        '!': {
+          some: [
+            { var: 'owners' },
+            { '!=': [{ var: 'fullyQualifiedName' }, null] },
+          ],
+        },
+      });
+    });
+
+    it('should handle and-combined rules where one uses is_null on a group field', () => {
+      const logic = {
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            some: [
+              { var: 'domain' },
+              { '==': [{ var: 'fullyQualifiedName' }, null] },
+            ],
+          },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual({
+        and: [
+          { '==': [{ var: 'name' }, 'foo'] },
+          {
+            '!': {
+              some: [
+                { var: 'domain' },
+                { '!=': [{ var: 'fullyQualifiedName' }, null] },
+              ],
+            },
+          },
+        ],
+      });
+    });
+
+    it('should not alter a "some" whose condition compares to a non-null value', () => {
+      const logic = {
+        some: [
+          { var: 'owners' },
+          { '==': [{ var: 'fullyQualifiedName' }, 'x'] },
+        ],
+      };
+
+      const result =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          logic
+        );
+
+      expect(result).toEqual(logic);
+    });
   });
 
   describe('mainWidgetProps', () => {
