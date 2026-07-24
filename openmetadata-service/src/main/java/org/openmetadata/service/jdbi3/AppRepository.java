@@ -316,6 +316,25 @@ public class AppRepository extends EntityRepository<App> {
         app, startTime, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
   }
 
+  /**
+   * Deserializes a stored app-extension payload, ignoring fields the running schema does not know
+   * about.
+   *
+   * <p>Extension rows outlive the code that wrote them. When a newer build adds a field and is then
+   * rolled back, or a branch cut before that field runs against the same database, a strict read
+   * cannot parse the rows the newer build already wrote. The bulk {@code listAppExtension*} callers
+   * aggregate rows, so one unparseable row fails the entire scan instead of being skipped; the
+   * {@code getLatestExtension*} callers read the newest row, which is the one most likely to have
+   * been written by that newer build. Either way a single such write can make an app's history — or
+   * its latest run / credit status — unreadable until the row is deleted by hand. Ignoring unknown
+   * fields keeps adding a field backward compatible for readers.
+   *
+   * <p>Package-private for unit testing.
+   */
+  static <T> T readExtension(String json, Class<T> clazz) {
+    return JsonUtils.readValueLenient(json, clazz);
+  }
+
   public <T> ResultList<T> listAppExtensionByName(
       App app,
       int limitParam,
@@ -333,7 +352,7 @@ public class AppRepository extends EntityRepository<App> {
               .appExtensionTimeSeriesDao()
               .listAppExtensionByName(app.getName(), limitParam, offset, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
 
@@ -373,7 +392,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtension(
                   app.getId().toString(), limitParam, offset, extensionType.toString(), service);
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
       return new ResultList<>(entities, offset, total);
@@ -403,7 +422,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtensionAfterTimeByName(
                   app.getName(), limitParam, offset, startTime, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
 
@@ -445,7 +464,7 @@ public class AppRepository extends EntityRepository<App> {
                 app.getName(), limitParam, offset, startTime, endTime, extensionType.toString());
     List<T> entities = new ArrayList<>(jsons.size());
     for (String json : jsons) {
-      entities.add(JsonUtils.readValue(json, clazz));
+      entities.add(readExtension(json, clazz));
     }
     return entities;
   }
@@ -471,7 +490,7 @@ public class AppRepository extends EntityRepository<App> {
               .listAppExtensionAfterTime(
                   app.getId().toString(), limitParam, offset, startTime, extensionType.toString());
       for (String json : jsons) {
-        T entity = JsonUtils.readValue(json, clazz);
+        T entity = readExtension(json, clazz);
         entities.add(entity);
       }
       return new ResultList<>(entities, offset, total);
@@ -490,7 +509,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionById(
@@ -508,7 +527,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       return Optional.empty();
     }
-    return Optional.of(JsonUtils.readValue(result.get(0), clazz));
+    return Optional.of(readExtension(result.getFirst(), clazz));
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(
@@ -521,7 +540,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeById(
@@ -534,7 +553,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   @Override
