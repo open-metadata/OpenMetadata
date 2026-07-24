@@ -44,9 +44,14 @@ import org.openmetadata.service.util.Utilities;
 @Slf4j
 public final class SearchIndexUtils {
 
-  // Keeping the bots list static so we can call this from anywhere in the codebase
+  // Keeping the bots list static so we can call this from anywhere in the codebase.
+  // Bots whose changes count as AI-generated. The agent-app bots are still listed because
+  // fields they changed carry their name.
   public static final List<String> AI_BOTS =
-      List.of("collateaiapplicationbot", "collateaiqualityagentapplicationbot");
+      List.of(
+          "aiautomationapplicationbot",
+          "collateaiapplicationbot",
+          "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
 
