@@ -61,7 +61,7 @@ const performIncidentAdminLogin = async (browser: Browser) => {
 
     return { page, apiContext, afterAction };
   } catch {
-    return performAdminLogin(browser);
+    return performAdminLogin(browser, { navigate: true });
   }
 };
 
@@ -493,9 +493,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performIncidentAdminLogin(
-      browser
-    );
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     for (const entity of [...users, table1].filter(Boolean)) {
       await entity.delete(apiContext);
     }
@@ -1147,7 +1145,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     test.beforeAll(async ({ browser }) => {
       test.slow();
       const { afterAction, apiContext, page } = await performAdminLogin(
-        browser
+        browser,
+        { navigate: true }
       );
 
       if (!process.env.PLAYWRIGHT_IS_OSS) {

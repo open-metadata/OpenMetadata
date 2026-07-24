@@ -88,33 +88,45 @@ test.describe('Table Search', () => {
       page,
     }) => {
       const { afterAction, apiContext } = await getApiContext(page);
-      const table1 = EntityDataClass.table1.get();
+      const table1 = new TableClass();
       const table2 = new TableClass();
 
-      table2.service.name = table1.service.name;
-      table2.database.name = table1.database.name;
-      table2.database.service = table1.service.name;
-      table2.schema.name = table1.schema.name;
-      table2.schema.database = `${table1.service.name}.${table1.database.name}`;
-      table2.entity.databaseSchema = table1.schema.fullyQualifiedName;
+      try {
+        await table1.create(apiContext);
 
-      const response = await apiContext.post(
-        `/api/v1/${EntityTypeEndpoint.Table}`,
-        {
-          data: table2.entity,
+        table2.service.name = table1.serviceResponseData.name;
+        table2.database.name = table1.databaseResponseData.name;
+        table2.database.service = table1.serviceResponseData.name;
+        table2.schema.name = table1.schemaResponseData.name;
+        table2.schema.database =
+          table1.databaseResponseData.fullyQualifiedName ?? '';
+        table2.entity.databaseSchema =
+          table1.schemaResponseData.fullyQualifiedName ?? '';
+
+        const response = await apiContext.post(
+          `/api/v1/${EntityTypeEndpoint.Table}`,
+          {
+            data: table2.entity,
+          }
+        );
+        table2.entityResponseData = await response.json();
+
+        await page.goto(
+          `/databaseSchema/${table1.schemaResponseData.fullyQualifiedName}`
+        );
+        await testTableSearch(
+          page,
+          'table',
+          table1.entity.name,
+          table2.entity.name
+        );
+      } finally {
+        try {
+          await table1.delete(apiContext);
+        } finally {
+          await afterAction();
         }
-      );
-      table2.entityResponseData = await response.json();
-
-      await page.goto(`/databaseSchema/${table1.schema.fullyQualifiedName}`);
-      await testTableSearch(
-        page,
-        'table',
-        table1.entity.name,
-        table2.entity.name
-      );
-
-      await afterAction();
+      }
     });
   });
 
