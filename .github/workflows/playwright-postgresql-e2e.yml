@@ -192,7 +192,7 @@ jobs:
           ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
           SPEC_FILES: ${{ steps.changed-specs.outputs.all_changed_files }}
         run: |
-          FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6,7],"shardTotal":[7]}'
+          FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32],"shardTotal":[32]}'
           SPEC_MATRIX='{"shardIndex":[1],"shardTotal":[1]}'
 
           ALL_COUNT=$(echo "$ALL_FILES" | wc -w)
@@ -342,13 +342,13 @@ jobs:
               --workers=1
 
           else
-            # Shards 3-7 run common chromium tests equally distributed (5-way sharding)
+            # Shards 3-32 run common chromium tests equally distributed (30-way sharding)
             CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
-            echo "🔹 Running common chromium tests on shard ${CHROMIUM_SHARD}/5"
+            echo "🔹 Running common chromium tests on shard ${CHROMIUM_SHARD}/30"
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+              --shard=${CHROMIUM_SHARD}/30
           fi
 
         env:
