@@ -460,3 +460,13 @@ SET json = jsonb_set(
 WHERE serviceType = 'DatabricksPipeline'
   AND json #> '{connection,config,token}' IS NOT NULL
   AND NOT jsonb_exists(json #> '{connection,config}', 'authType');
+
+-- Fixes #29493: expand entity_extension.extension from VARCHAR(256) to VARCHAR(512).
+-- FullyQualifiedName.buildHash joins one MD5 hash (32 chars) per FQN segment with dots.
+-- 8 nesting levels produce 8*32 + 7 = 263 chars, exceeding the old limit.
+-- VARCHAR(512) safely covers up to 15 nesting levels (15*32 + 14 = 494 chars).
+-- TEXT is not used here: extension is part of the primary key (id, extension), and while
+-- Postgres itself has no restriction on TEXT in a btree primary key, this column is kept
+-- as VARCHAR(512) to stay identical to the MySQL migration, where TEXT cannot be used as a
+-- PK component without a prefix index.
+ALTER TABLE entity_extension ALTER COLUMN extension TYPE VARCHAR(512);
