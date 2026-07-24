@@ -36,6 +36,7 @@
     "token-audit:report": "node scripts/token-audit.js --report",
     "token-migrate": "node scripts/token-migrate.js --write",
     "token-gen": "node scripts/design-tokens/gen-tokens.js && node scripts/design-tokens/gen-token-reference.js",
+    "token-drift": "node scripts/design-tokens/check-drift.js",
     "token-test": "node scripts/design-tokens/scanner.test.js",
     "lint:playwright": "yarn lint:base './playwright/**/*.{ts,tsx,js,jsx}'",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",

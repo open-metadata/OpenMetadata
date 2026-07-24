@@ -40,3 +40,18 @@ repos:
         language: script
         files: \.java$
         require_serial: true
+      - id: token-audit
+        name: Design token audit (no hardcoded CSS values)
+        description: Fails if committed UI CSS/LESS contains hardcoded colors or spacing instead of design tokens. See openmetadata-ui/src/main/resources/ui/specs/.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/token-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(less|css)$
+        require_serial: true
+      - id: token-drift
+        name: Design token drift (generated files, token refs, spec links)
+        description: Fails if tokens.css / token-reference.md are stale (run yarn token-gen), a referenced token is undefined, or a component spec links to a missing file.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/design-tokens/check-drift.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/(src/styles/tokens\.css|src/.*\.(less|css)|specs/.*\.md)$
+        pass_filenames: false
+        require_serial: true

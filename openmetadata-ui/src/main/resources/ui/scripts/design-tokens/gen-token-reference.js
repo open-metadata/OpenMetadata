@@ -130,6 +130,19 @@ function main() {
     }
   });
 
+  if (process.argv.includes('--check')) {
+    const current = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
+    if (current !== md) {
+      process.stderr.write(
+        '\x1b[31m✖ token-reference.md is stale.\x1b[0m ' +
+          'Run: node scripts/design-tokens/gen-token-reference.js\n'
+      );
+      process.exit(1);
+    }
+    process.stdout.write('✔ token-reference.md is up to date.\n');
+    return;
+  }
+
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, md);
   process.stdout.write(

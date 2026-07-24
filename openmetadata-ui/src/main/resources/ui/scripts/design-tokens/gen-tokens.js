@@ -117,6 +117,7 @@ function inject(css, block) {
 }
 
 function main() {
+  const check = process.argv.includes('--check');
   populateRegistry();
   if (map.registry.collisions.length) {
     process.stderr.write(
@@ -127,7 +128,21 @@ function main() {
     process.exit(2);
   }
   const css = fs.readFileSync(TOKENS_CSS, 'utf8');
-  fs.writeFileSync(TOKENS_CSS, inject(css, buildGeneratedBlock()));
+  const next = inject(css, buildGeneratedBlock());
+
+  if (check) {
+    if (next !== css) {
+      process.stderr.write(
+        '\x1b[31m✖ tokens.css generated block is stale.\x1b[0m ' +
+          'Run: node scripts/design-tokens/gen-tokens.js\n'
+      );
+      process.exit(1);
+    }
+    process.stdout.write('✔ tokens.css generated block is up to date.\n');
+    return;
+  }
+
+  fs.writeFileSync(TOKENS_CSS, next);
 
   const r = map.registry;
   process.stdout.write(
