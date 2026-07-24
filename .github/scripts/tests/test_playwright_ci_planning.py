@@ -95,6 +95,46 @@ def test_common_assignment_stays_within_the_execution_ceiling():
     )
 
 
+def test_common_assignment_may_use_reserve_at_the_maximum_shard_count():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            f"{index}.spec.ts",
+            str(index),
+            weight_ms=19 * 60 * 1000 + 30_000,
+        )
+        for index in range(24)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "chromium", "full")
+    predictions = [
+        planner.predicted_execution_ms(shard, 3) for shard in shards
+    ]
+
+    assert len(shards) == planner.COMMON_MAX_SHARDS
+    assert all(
+        planner.COMMON_SHARD_BUDGET_MS < prediction <= planner.TARGET_MS
+        for prediction in predictions
+    )
+
+
+def test_common_assignment_rejects_a_capped_lane_above_the_hard_ceiling():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "chromium",
+            f"{index}.spec.ts",
+            str(index),
+            weight_ms=14 * 60 * 1000,
+        )
+        for index in range(73)
+    ]
+
+    with pytest.raises(SystemExit, match="20-minute execution ceiling"):
+        planner.assign_lane_within_budget(units, "chromium", "full")
+
+
 def test_shard_pattern_includes_project_and_file():
     planner = load_script("build_playwright_shards")
     unit = planner.Unit(
@@ -311,7 +351,7 @@ def test_ingestion_plans_request_airflow(tmp_path):
     assert plan["requiresAirflow"] is True
 
 
-def test_planner_rejects_a_shard_above_the_execution_budget(tmp_path):
+def test_planner_rejects_a_shard_above_the_execution_ceiling(tmp_path):
     planner = load_script("build_playwright_shards")
     units = [
         planner.Unit(
@@ -331,7 +371,7 @@ def test_planner_rejects_a_shard_above_the_execution_budget(tmp_path):
         for index in range(2)
     ]
 
-    with pytest.raises(SystemExit, match="above the 20-minute plan budget"):
+    with pytest.raises(SystemExit, match="above the 20-minute execution ceiling"):
         planner.write_plan(tmp_path, "ingestion", 0, units)
 
 
@@ -449,28 +489,28 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
     ]
 
 
-def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
+def test_common_shard_writer_enforces_the_hard_twenty_minute_ceiling(tmp_path):
     planner = load_script("build_playwright_shards")
-    within_budget = planner.Unit(
+    reserve_budget = planner.Unit(
         "chromium",
-        "within.spec.ts",
-        "within",
-        grep_titles={("chromium", "within.spec.ts", "within")},
-        test_ids={"within"},
-        weight_ms=19 * 60 * 1000,
-    )
-    above_budget = planner.Unit(
-        "chromium",
-        "above.spec.ts",
-        "above",
-        grep_titles={("chromium", "above.spec.ts", "above")},
-        test_ids={"above"},
+        "reserve.spec.ts",
+        "reserve",
+        grep_titles={("chromium", "reserve.spec.ts", "reserve")},
+        test_ids={"reserve"},
         weight_ms=19 * 60 * 1000 + 1,
     )
+    above_ceiling = planner.Unit(
+        "chromium",
+        "above-ceiling.spec.ts",
+        "above ceiling",
+        grep_titles={("chromium", "above-ceiling.spec.ts", "above ceiling")},
+        test_ids={"above-ceiling"},
+        weight_ms=20 * 60 * 1000 + 1,
+    )
 
-    planner.write_plan(tmp_path, "chromium", 0, [within_budget])
-    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
-        planner.write_plan(tmp_path, "chromium", 1, [above_budget])
+    planner.write_plan(tmp_path, "chromium", 0, [reserve_budget])
+    with pytest.raises(SystemExit, match="above the 20-minute execution ceiling"):
+        planner.write_plan(tmp_path, "chromium", 1, [above_ceiling])
 
 
 def test_data_asset_rule_dependencies_are_added_to_targeted_plans():
