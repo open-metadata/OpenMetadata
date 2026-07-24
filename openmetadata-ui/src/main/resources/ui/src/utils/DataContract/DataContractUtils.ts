@@ -29,6 +29,7 @@ import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
   ContractExecutionStatus,
   DataContract,
+  SemanticsRule,
 } from '../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { formatMonth } from '../date-time/DateTimeUtils';
@@ -48,6 +49,70 @@ export const semanticRuleValidator = (_: RuleObject, value: string) => {
   }
 
   return Promise.resolve();
+};
+
+interface QueryBuilderTreeNode {
+  properties?: { field?: string; operator?: string };
+  children1?: QueryBuilderTreeNode[] | Record<string, QueryBuilderTreeNode>;
+}
+
+// Confirms, from the persisted query-builder tree, that a field's `==null`
+// JsonLogic condition really came from the "Is Not Set" operator rather than
+// a hand-authored rule using the same shape with different intent.
+export const isFieldUsingIsNullOperator = (
+  jsonTree: string | undefined,
+  field: string
+): boolean => {
+  if (!jsonTree) {
+    return false;
+  }
+
+  let found = false;
+  try {
+    const nodes: QueryBuilderTreeNode[] = [JSON.parse(jsonTree)];
+    while (nodes.length > 0 && !found) {
+      const node = nodes.pop();
+      const children = node?.children1;
+      found =
+        node?.properties?.field === field &&
+        node?.properties?.operator === 'is_null';
+      if (Array.isArray(children)) {
+        nodes.push(...children);
+      } else if (children && typeof children === 'object') {
+        nodes.push(...Object.values(children));
+      }
+    }
+  } catch {
+    found = false;
+  }
+
+  return found;
+};
+
+// Normalizes persisted semantic rules so contracts saved before the
+// negation-lift rewrite don't stay broken on validation. Only rewrites a
+// field's `==null` shape when the persisted tree confirms it came from the
+// "Is Not Set" operator, to avoid corrupting a differently-intended rule
+// that happens to share the same JsonLogic AST shape.
+export const getNormalizedContractSemantics = (
+  semantics?: SemanticsRule[]
+): SemanticsRule[] | undefined => {
+  return semantics?.map((item) => {
+    if (!item.rule) {
+      return item;
+    }
+    try {
+      const normalized =
+        jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+          JSON.parse(item.rule),
+          (field) => isFieldUsingIsNullOperator(item.jsonTree, field)
+        );
+
+      return { ...item, rule: JSON.stringify(normalized) };
+    } catch {
+      return item;
+    }
+  });
 };
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {

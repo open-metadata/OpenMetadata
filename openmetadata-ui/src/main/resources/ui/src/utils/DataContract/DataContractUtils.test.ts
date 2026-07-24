@@ -58,7 +58,9 @@ import {
   getContractStatusLabelBasedOnFailedResult,
   getContractStatusType,
   getDataContractStatusIcon,
+  getNormalizedContractSemantics,
   getUpdatedContractDetails,
+  isFieldUsingIsNullOperator,
   processContractExecutionData,
 } from './DataContractUtils';
 
@@ -495,6 +497,171 @@ describe('DataContractUtils', () => {
       const result = generateSelectOptionsFromString([]);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('isFieldUsingIsNullOperator', () => {
+    it('should return true when the tree has a matching field with the is_null operator', () => {
+      const jsonTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'rule',
+            properties: {
+              field: 'owners.fullyQualifiedName',
+              operator: 'is_null',
+            },
+          },
+        ],
+      });
+
+      expect(
+        isFieldUsingIsNullOperator(jsonTree, 'owners.fullyQualifiedName')
+      ).toBe(true);
+    });
+
+    it('should return true for a matching field nested inside multiple groups', () => {
+      const jsonTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'group',
+            children1: [
+              {
+                type: 'rule',
+                properties: {
+                  field: 'domain.fullyQualifiedName',
+                  operator: 'is_null',
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(
+        isFieldUsingIsNullOperator(jsonTree, 'domain.fullyQualifiedName')
+      ).toBe(true);
+    });
+
+    it('should return false when the field matches but the operator is different', () => {
+      const jsonTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'rule',
+            properties: {
+              field: 'owners.fullyQualifiedName',
+              operator: 'is_not_null',
+            },
+          },
+        ],
+      });
+
+      expect(
+        isFieldUsingIsNullOperator(jsonTree, 'owners.fullyQualifiedName')
+      ).toBe(false);
+    });
+
+    it('should return false when no node matches the given field', () => {
+      const jsonTree = JSON.stringify({
+        type: 'group',
+        children1: [
+          {
+            type: 'rule',
+            properties: {
+              field: 'domain.fullyQualifiedName',
+              operator: 'is_null',
+            },
+          },
+        ],
+      });
+
+      expect(
+        isFieldUsingIsNullOperator(jsonTree, 'owners.fullyQualifiedName')
+      ).toBe(false);
+    });
+
+    it('should return false when jsonTree is undefined', () => {
+      expect(
+        isFieldUsingIsNullOperator(undefined, 'owners.fullyQualifiedName')
+      ).toBe(false);
+    });
+
+    it('should return false when jsonTree is not valid JSON', () => {
+      expect(
+        isFieldUsingIsNullOperator('not-json', 'owners.fullyQualifiedName')
+      ).toBe(false);
+    });
+  });
+
+  describe('getNormalizedContractSemantics', () => {
+    const isNotSetRule = JSON.stringify({
+      some: ['owners', { '==': ['owners.fullyQualifiedName', null] }],
+    });
+    const isNotSetTree = JSON.stringify({
+      type: 'group',
+      children1: [
+        {
+          type: 'rule',
+          properties: {
+            field: 'owners.fullyQualifiedName',
+            operator: 'is_null',
+          },
+        },
+      ],
+    });
+
+    it('should rewrite the vacuous is_null pattern when the tree confirms the is_null operator', () => {
+      const result = getNormalizedContractSemantics([
+        {
+          description: 'test',
+          enabled: true,
+          rule: isNotSetRule,
+          jsonTree: isNotSetTree,
+        },
+      ]);
+
+      expect(JSON.parse(result?.[0].rule ?? '')).toEqual({
+        '!': {
+          some: ['owners', { '!=': ['owners.fullyQualifiedName', null] }],
+        },
+      });
+    });
+
+    it('should leave the rule unchanged when the tree does not confirm the is_null operator', () => {
+      const result = getNormalizedContractSemantics([
+        {
+          description: 'test',
+          enabled: true,
+          rule: isNotSetRule,
+          jsonTree: undefined,
+        },
+      ]);
+
+      expect(JSON.parse(result?.[0].rule ?? '')).toEqual(
+        JSON.parse(isNotSetRule)
+      );
+    });
+
+    it('should return the item unchanged when rule is empty', () => {
+      const item = { description: 'test', enabled: true, rule: '' };
+
+      expect(getNormalizedContractSemantics([item])).toEqual([item]);
+    });
+
+    it('should return the item unchanged when rule is not valid JSON', () => {
+      const item = {
+        description: 'test',
+        enabled: true,
+        rule: 'not-json',
+      };
+
+      expect(getNormalizedContractSemantics([item])).toEqual([item]);
+    });
+
+    it('should return undefined when semantics is undefined', () => {
+      expect(getNormalizedContractSemantics(undefined)).toBeUndefined();
     });
   });
 });
