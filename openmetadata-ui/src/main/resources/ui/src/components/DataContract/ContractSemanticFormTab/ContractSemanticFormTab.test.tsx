@@ -29,6 +29,8 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
       type: 'text',
     },
   })),
+  getNormalizedContractSemantics: jest.fn((semantics) => semantics),
+  semanticRuleValidator: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
