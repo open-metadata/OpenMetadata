@@ -795,3 +795,128 @@ class TestLoadMetadataFile:
         assert result.entries[0].dataPath == "data/events"
         # Happy path — no warnings.
         source.status.warning.assert_not_called()
+
+
+class TestFetchS3Tags:
+    """S3Source._fetch_s3_tags — object tags for leaf files, bucket tags for the bucket."""
+
+    def _bind(self, object_tags=None, bucket_tags=None):
+        source = _make_s3_source()
+        source.s3_client = Mock()
+        source.s3_client.get_object_tagging.return_value = {"TagSet": object_tags or []}
+        source.s3_client.get_bucket_tagging.return_value = {"TagSet": bucket_tags or []}
+        source._get_bucket_name_and_key = S3Source._get_bucket_name_and_key.__get__(source)
+        source._get_root_bucket_name = S3Source._get_root_bucket_name.__get__(source)
+        source._fetch_s3_tags = S3Source._fetch_s3_tags.__get__(source)
+        return source
+
+    @staticmethod
+    def _cd(full_path, leaf):
+        return S3ContainerDetails(name="x", prefix="/", container_fqn="svc.x", fullPath=full_path, leaf_container=leaf)
+
+    def test_bucket_container_fetches_bucket_tags(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "data-eng"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket", leaf=False))
+
+        assert [(t.Key, t.Value) for t in tags] == [("team", "data-eng")]
+        source.s3_client.get_bucket_tagging.assert_called_once_with(Bucket="my-bucket")
+        source.s3_client.get_object_tagging.assert_not_called()
+
+    def test_root_level_leaf_fetches_object_tags(self):
+        source = self._bind(object_tags=[{"Key": "pii", "Value": "true"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket/file.csv", leaf=True))
+
+        assert [(t.Key, t.Value) for t in tags] == [("pii", "true")]
+        source.s3_client.get_object_tagging.assert_called_once_with(Bucket="my-bucket", Key="file.csv")
+        source.s3_client.get_bucket_tagging.assert_not_called()
+
+    def test_nested_leaf_fetches_object_tags(self):
+        source = self._bind(object_tags=[{"Key": "tier", "Value": "gold"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket/a/b/file.csv", leaf=True))
+
+        assert [(t.Key, t.Value) for t in tags] == [("tier", "gold")]
+        source.s3_client.get_object_tagging.assert_called_once_with(Bucket="my-bucket", Key="a/b/file.csv")
+
+    def test_folder_container_yields_no_tags(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "data-eng"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket/folder", leaf=False))
+
+        assert tags == []
+        source.s3_client.get_bucket_tagging.assert_not_called()
+        source.s3_client.get_object_tagging.assert_not_called()
+
+    def test_deep_folder_container_yields_no_tags(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "data-eng"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket/a/b/c", leaf=False))
+
+        assert tags == []
+        source.s3_client.get_bucket_tagging.assert_not_called()
+
+    def test_bucket_with_no_tags_returns_empty(self):
+        source = self._bind(bucket_tags=[])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket", leaf=False))
+
+        assert tags == []
+        source.s3_client.get_bucket_tagging.assert_called_once_with(Bucket="my-bucket")
+
+    def test_leaf_at_bucket_root_falls_back_to_bucket_tags(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "data-eng"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket", leaf=True))
+
+        assert [(t.Key, t.Value) for t in tags] == [("team", "data-eng")]
+        source.s3_client.get_object_tagging.assert_not_called()
+        source.s3_client.get_bucket_tagging.assert_called_once_with(Bucket="my-bucket")
+
+    def test_none_path_yields_no_tags(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "data-eng"}])
+
+        tags = source._fetch_s3_tags(self._cd(None, leaf=False))
+
+        assert tags == []
+        source.s3_client.get_bucket_tagging.assert_not_called()
+        source.s3_client.get_object_tagging.assert_not_called()
+
+    def test_multiple_bucket_tags_all_returned(self):
+        source = self._bind(bucket_tags=[{"Key": "team", "Value": "eng"}, {"Key": "env", "Value": "prod"}])
+
+        tags = source._fetch_s3_tags(self._cd("s3://my-bucket", leaf=False))
+
+        assert [(t.Key, t.Value) for t in tags] == [("team", "eng"), ("env", "prod")]
+
+
+class TestYieldContainerTags:
+    """S3Source.yield_container_tags — end-to-end guard + exception behavior."""
+
+    def _bind(self):
+        source = _make_s3_source()
+        source.s3_client = Mock()
+        source._get_bucket_name_and_key = S3Source._get_bucket_name_and_key.__get__(source)
+        source._get_root_bucket_name = S3Source._get_root_bucket_name.__get__(source)
+        source._fetch_s3_tags = S3Source._fetch_s3_tags.__get__(source)
+        source.yield_container_tags = S3Source.yield_container_tags.__get__(source)
+        return source
+
+    def test_container_without_fqn_yields_nothing(self):
+        source = self._bind()
+        cd = S3ContainerDetails(name="x", prefix="/", container_fqn=None, fullPath="s3://b/f.csv", leaf_container=True)
+
+        result = list(source.yield_container_tags(cd))
+
+        assert result == []
+        source.s3_client.get_object_tagging.assert_not_called()
+
+    def test_s3_exception_is_swallowed(self):
+        source = self._bind()
+        source.s3_client.get_bucket_tagging.side_effect = Exception("AccessDenied")
+        cd = S3ContainerDetails(name="x", prefix="/", container_fqn="svc.b", fullPath="s3://b", leaf_container=False)
+
+        result = list(source.yield_container_tags(cd))
+
+        assert result == []
