@@ -453,6 +453,9 @@ public class OpenLineageEntityResolver {
         newTable.setOwners(owners);
       }
 
+      newTable.setUpdatedBy(updatedBy);
+      newTable.setUpdatedAt(System.currentTimeMillis());
+
       Table created = tableRepository.create(null, newTable);
       LOG.info("Created table from OpenLineage event: {}", created.getFullyQualifiedName());
 
@@ -641,6 +644,9 @@ public class OpenLineageEntityResolver {
       newPipeline.setFullyQualifiedName(buildPipelineFqn(pipelineName));
       newPipeline.setService(serviceRef);
       newPipeline.setDescription("Pipeline created from OpenLineage event");
+
+      newPipeline.setUpdatedBy(updatedBy);
+      newPipeline.setUpdatedAt(System.currentTimeMillis());
 
       Pipeline created = pipelineRepository.create(null, newPipeline);
       LOG.info("Created pipeline from OpenLineage event: {}", created.getFullyQualifiedName());
