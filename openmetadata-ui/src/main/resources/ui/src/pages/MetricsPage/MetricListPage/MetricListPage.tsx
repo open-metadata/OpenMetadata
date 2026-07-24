@@ -757,10 +757,8 @@ const MetricListPage = () => {
 
   return (
     <PageLayoutV1
-      pageContainerStyle={
-        isAiMode ? { padding: 8, paddingBottom: 16 } : undefined
-      }
-      pageTitle={t('label.metric-plural')}>
+      pageTitle={t('label.metric-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
       <div
         className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
         <div>
