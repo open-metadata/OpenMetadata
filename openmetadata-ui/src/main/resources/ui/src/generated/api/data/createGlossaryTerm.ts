@@ -15,6 +15,10 @@
  */
 export interface CreateGlossaryTerm {
     /**
+     * Typed properties governed by this ontology concept.
+     */
+    attributes?: OntologyAttribute[];
+    /**
      * Optional mappings to external concepts (e.g., SKOS alignments).
      */
     conceptMappings?: ConceptMapping[];
@@ -87,11 +91,62 @@ export interface CreateGlossaryTerm {
 }
 
 /**
- * Mapping to an external concept (e.g., SKOS concept IRI).
+ * A typed attribute governed by an ontology concept.
+ */
+export interface OntologyAttribute {
+    dataType: DataType;
+    /**
+     * Exact RDF datatype IRI preserved for ontology round trips.
+     */
+    datatypeIri?: string;
+    /**
+     * Human-readable meaning of the attribute.
+     */
+    description?: string;
+    /**
+     * Allowed values when dataType is ENUM.
+     */
+    enumValues?: string[];
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id: string;
+    /**
+     * Canonical IRI of the OWL datatype property.
+     */
+    iri?: string;
+    /**
+     * Whether the attribute identifies instances of the concept.
+     */
+    isIdentifier: boolean;
+    /**
+     * Name of the attribute within its concept.
+     */
+    name: string;
+    /**
+     * Optional unit IRI or display symbol.
+     */
+    unit?: string;
+}
+
+/**
+ * Supported value type for an ontology attribute.
+ */
+export enum DataType {
+    Boolean = "BOOLEAN",
+    Date = "DATE",
+    Decimal = "DECIMAL",
+    Enum = "ENUM",
+    Integer = "INTEGER",
+    String = "STRING",
+}
+
+/**
+ * Mapping from an ontology term to an external concept.
  */
 export interface ConceptMapping {
     /**
-     * External concept IRI to map this glossary term to.
+     * External concept IRI to map this ontology term to.
      */
     conceptIri: string;
     /**

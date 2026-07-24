@@ -1,0 +1,17 @@
+@prefix fibo: <https://open-metadata.org/library/fibo/foundations/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+fibo:FinancialConcept a skos:Concept ;
+  skos:prefLabel "Financial Concept" .
+
+fibo:FinancialInstrument a skos:Concept ;
+  skos:prefLabel "Financial Instrument" ;
+  skos:broader fibo:FinancialConcept .
+
+fibo:FinancialContract a skos:Concept ;
+  skos:prefLabel "Financial Contract" ;
+  skos:broader fibo:FinancialConcept .
+
+fibo:FinancialMarket a skos:Concept ;
+  skos:prefLabel "Financial Market" ;
+  skos:broader fibo:FinancialConcept .

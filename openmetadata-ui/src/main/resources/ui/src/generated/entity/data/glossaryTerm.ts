@@ -15,6 +15,10 @@
  */
 export interface GlossaryTerm {
     /**
+     * Typed properties governed by this ontology concept.
+     */
+    attributes?: OntologyAttribute[];
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -111,6 +115,10 @@ export interface GlossaryTerm {
      */
     name: string;
     /**
+     * Pinned source provenance when this term belongs to an application ontology subset.
+     */
+    ontologySource?: OntologySourceProvenance;
+    /**
      * Owners of this glossary term.
      */
     owners?: EntityReference[];
@@ -166,6 +174,57 @@ export interface GlossaryTerm {
      * Votes on the entity.
      */
     votes?: Votes;
+}
+
+/**
+ * A typed attribute governed by an ontology concept.
+ */
+export interface OntologyAttribute {
+    dataType: DataType;
+    /**
+     * Exact RDF datatype IRI preserved for ontology round trips.
+     */
+    datatypeIri?: string;
+    /**
+     * Human-readable meaning of the attribute.
+     */
+    description?: string;
+    /**
+     * Allowed values when dataType is ENUM.
+     */
+    enumValues?: string[];
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id: string;
+    /**
+     * Canonical IRI of the OWL datatype property.
+     */
+    iri?: string;
+    /**
+     * Whether the attribute identifies instances of the concept.
+     */
+    isIdentifier: boolean;
+    /**
+     * Name of the attribute within its concept.
+     */
+    name: string;
+    /**
+     * Optional unit IRI or display symbol.
+     */
+    unit?: string;
+}
+
+/**
+ * Supported value type for an ontology attribute.
+ */
+export enum DataType {
+    Boolean = "BOOLEAN",
+    Date = "DATE",
+    Decimal = "DECIMAL",
+    Enum = "ENUM",
+    Integer = "INTEGER",
+    String = "STRING",
 }
 
 /**
@@ -253,6 +312,8 @@ export interface FieldChange {
  * Parent glossary term that this term is child of. When `null` this term is the root term
  * of the glossary.
  *
+ * Resolved first-class relationship type.
+ *
  * Reference to the related glossary term.
  */
 export interface EntityReference {
@@ -299,11 +360,11 @@ export interface EntityReference {
 }
 
 /**
- * Mapping to an external concept (e.g., SKOS concept IRI).
+ * Mapping from an ontology term to an external concept.
  */
 export interface ConceptMapping {
     /**
-     * External concept IRI to map this glossary term to.
+     * External concept IRI to map this ontology term to.
      */
     conceptIri: string;
     /**
@@ -339,6 +400,8 @@ export enum ConceptMappingType {
  *
  * Status of an entity. It is used for governance and is applied to all the entities in the
  * catalog.
+ *
+ * Approval status of this relation edge.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -348,6 +411,54 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * Pinned source provenance when this term belongs to an application ontology subset.
+ *
+ * Pinned source identity and versions for a concept materialized into an application
+ * ontology subset.
+ */
+export interface OntologySourceProvenance {
+    capturedAt: number;
+    capturedBy: string;
+    /**
+     * Whether the modeler selected this term or it was included as a descendant.
+     */
+    selectedDirectly:      boolean;
+    sourceGlossary:        EntityReference;
+    sourceGlossaryVersion: number;
+    /**
+     * Canonical source concept IRI used for exact-match traceability.
+     */
+    sourceIri?: string;
+    /**
+     * Structural merge base captured at sourceTermVersion.
+     */
+    sourceSnapshot:    OntologyTermStructure;
+    sourceTerm:        EntityReference;
+    sourceTermVersion: number;
+}
+
+/**
+ * Structural merge base captured at sourceTermVersion.
+ *
+ * Typed structural state used for application ontology three-way comparison.
+ */
+export interface OntologyTermStructure {
+    attributes:          OntologyAttribute[];
+    conceptMappings:     ConceptMapping[];
+    description:         string;
+    displayName?:        string;
+    entityStatus?:       EntityStatus;
+    name:                string;
+    parentSourceTermId?: string;
+    relationships:       Relationship[];
+}
+
+export interface Relationship {
+    relationshipType:   EntityReference;
+    targetSourceTermId: string;
 }
 
 /**
@@ -379,14 +490,50 @@ export interface TermReference {
  */
 export interface TermRelation {
     /**
+     * Time the relationship was first persisted.
+     */
+    createdAt?: number;
+    /**
+     * User who first authored or imported the relationship.
+     */
+    createdBy?: string;
+    /**
+     * Unique identifier of this relation edge.
+     */
+    id?: string;
+    /**
+     * How this relation edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    /**
+     * Resolved first-class relationship type.
+     */
+    relationshipType?: EntityReference;
+    /**
      * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
      * 'relatedTo' for backward compatibility.
      */
     relationType?: string;
     /**
+     * Approval status of this relation edge.
+     */
+    status?: EntityStatus;
+    /**
      * Reference to the related glossary term.
      */
     term: EntityReference;
+}
+
+/**
+ * How this relation edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
 }
 
 /**

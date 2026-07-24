@@ -76,7 +76,7 @@ on:
         type: string
         default: ''
       scaleSeeds:
-        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 500000].'
+        description: 'JSON array of table and ontology concept cohort sizes. Use [1000000] for the Ontology Studio release benchmark.'
         required: false
         type: string
         default: '[100000]'
@@ -537,7 +537,7 @@ jobs:
         run: |
           mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
 
-      - name: Run scale test (${{ matrix.seed }} tables, external cluster)
+      - name: Run scale tests (${{ matrix.seed }} tables and concepts, external cluster)
         # Self-contained: ingest mode creates the cohort and cleans it up afterwards
         # (TestNamespaceExtension), so the cluster returns to clean for the next run.
         env:
@@ -550,6 +550,7 @@ jobs:
         run: |
           mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
             -Djpw.scale.tables=${{ matrix.seed }} \
+            -Djpw.ontology.concepts=${{ matrix.seed }} \
             -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }} \
             -Djpw.data.mode=ingest \
             -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}

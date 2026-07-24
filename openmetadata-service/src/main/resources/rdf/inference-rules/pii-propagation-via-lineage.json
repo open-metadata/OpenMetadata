@@ -1,0 +1,10 @@
+{
+  "name": "pii-propagation-via-lineage",
+  "displayName": "PII propagation through lineage",
+  "description": "If a column is tagged with a PII classification AND another column receives data from it via column-level lineage, propagate the same PII tag to the downstream column. The propagated tag is marked om:inferred so admins can distinguish derived tags from manually applied ones.",
+  "ruleType": "CONSTRUCT",
+  "priority": 200,
+  "enabled": true,
+  "tags": ["security", "lineage"],
+  "ruleBody": "PREFIX om: <https://open-metadata.org/ontology/>\nCONSTRUCT {\n  ?downstream om:hasTag ?piiTag .\n  ?downstream om:inferredTagSource ?upstream\n}\nWHERE {\n  ?upstream om:hasTag ?piiTag .\n  ?piiTag om:tagFQN ?fqn .\n  FILTER(STRSTARTS(?fqn, \"PII.\"))\n  ?colLineage om:fromColumn ?upstream ;\n              om:toColumn ?downstream .\n}"
+}

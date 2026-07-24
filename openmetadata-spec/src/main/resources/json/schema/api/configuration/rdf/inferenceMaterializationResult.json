@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdf/inferenceMaterializationResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InferenceMaterializationResult",
+  "description": "Result of materializing enabled RDF inference rules inside the triplestore.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.InferenceMaterializationResult",
+  "properties": {
+    "completedAt": {
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "failedRules": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "processedRules": {
+      "type": "array",
+      "items": {
+        "$ref": "inferenceRuleStatus.json"
+      },
+      "default": []
+    },
+    "startedAt": {
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "successfulRules": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "completedAt",
+    "failedRules",
+    "processedRules",
+    "startedAt",
+    "successfulRules"
+  ],
+  "additionalProperties": false
+}

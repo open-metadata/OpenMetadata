@@ -173,6 +173,11 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'ontology-rdf-setup',
+      testMatch: '**/ontology-rdf.setup.ts',
+      dependencies: ['entity-data-setup'],
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -261,9 +266,11 @@ export default defineConfig({
     {
       name: 'Ontology RDF',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup', 'entity-data-setup'],
+      dependencies: ['ontology-rdf-setup'],
       grep: /ontology-rdf/,
       teardown: 'entity-data-teardown',
+      fullyParallel: false,
+      workers: 1,
     },
     {
       name: 'DataAssetRulesEnabled',

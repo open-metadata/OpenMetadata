@@ -1,0 +1,202 @@
+[
+  {
+    "category": "CORE",
+    "characteristics": ["SYMMETRIC"],
+    "crossGlossaryAllowed": true,
+    "description": "General association between concepts that are semantically connected.",
+    "displayName": "Related To",
+    "fullyQualifiedName": "relatedTo",
+    "id": "0f17685e-9744-3be2-a1f1-1a2843ee14d4",
+    "inverse": {
+      "fullyQualifiedName": "relatedTo",
+      "id": "0f17685e-9744-3be2-a1f1-1a2843ee14d4",
+      "name": "relatedTo",
+      "type": "relationshipType"
+    },
+    "name": "relatedTo",
+    "paletteKey": "BLUE",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/relatedTo",
+    "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["SYMMETRIC"],
+    "crossGlossaryAllowed": true,
+    "description": "Concepts that have the same meaning and can be used interchangeably.",
+    "displayName": "Synonym",
+    "fullyQualifiedName": "synonym",
+    "id": "807f209f-beb2-3ac0-9e0c-2cd746e420d7",
+    "inverse": {
+      "fullyQualifiedName": "synonym",
+      "id": "807f209f-beb2-3ac0-9e0c-2cd746e420d7",
+      "name": "synonym",
+      "type": "relationshipType"
+    },
+    "name": "synonym",
+    "paletteKey": "ROSE",
+    "provider": "system",
+    "rdfPredicate": "http://www.w3.org/2004/02/skos/core#exactMatch",
+    "systemDefined": true
+  },
+  {
+    "category": "CORE",
+    "characteristics": ["SYMMETRIC"],
+    "crossGlossaryAllowed": true,
+    "description": "Concepts that have opposite meanings.",
+    "displayName": "Antonym",
+    "fullyQualifiedName": "antonym",
+    "id": "e363cf38-d331-3cf3-a533-80ca3f9beae7",
+    "inverse": {
+      "fullyQualifiedName": "antonym",
+      "id": "e363cf38-d331-3cf3-a533-80ca3f9beae7",
+      "name": "antonym",
+      "type": "relationshipType"
+    },
+    "name": "antonym",
+    "paletteKey": "AMBER",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/antonym",
+    "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["TRANSITIVE"],
+    "crossGlossaryAllowed": true,
+    "description": "A more general concept.",
+    "displayName": "Broader",
+    "fullyQualifiedName": "broader",
+    "id": "c43deddd-eb71-3731-80cd-b65a8bf2a0bf",
+    "inverse": {
+      "fullyQualifiedName": "narrower",
+      "id": "f9ae791f-8e28-31e3-9f01-5185faaff2e8",
+      "name": "narrower",
+      "type": "relationshipType"
+    },
+    "name": "broader",
+    "paletteKey": "GREEN",
+    "provider": "system",
+    "rdfPredicate": "http://www.w3.org/2004/02/skos/core#broader",
+    "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["TRANSITIVE"],
+    "crossGlossaryAllowed": true,
+    "description": "A more specific concept.",
+    "displayName": "Narrower",
+    "fullyQualifiedName": "narrower",
+    "id": "f9ae791f-8e28-31e3-9f01-5185faaff2e8",
+    "inverse": {
+      "fullyQualifiedName": "broader",
+      "id": "c43deddd-eb71-3731-80cd-b65a8bf2a0bf",
+      "name": "broader",
+      "type": "relationshipType"
+    },
+    "name": "narrower",
+    "paletteKey": "INDIGO",
+    "provider": "system",
+    "rdfPredicate": "http://www.w3.org/2004/02/skos/core#narrower",
+    "systemDefined": true
+  },
+  {
+    "category": "CORE",
+    "characteristics": [],
+    "crossGlossaryAllowed": true,
+    "description": "This concept is a part or component of another concept.",
+    "displayName": "Part Of",
+    "fullyQualifiedName": "partOf",
+    "id": "2da507cb-eee1-39bd-b594-867f5670e0e1",
+    "inverse": {
+      "fullyQualifiedName": "hasPart",
+      "id": "95cd3beb-5a93-353f-abc7-ca1067a6869e",
+      "name": "hasPart",
+      "type": "relationshipType"
+    },
+    "name": "partOf",
+    "paletteKey": "TEAL",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/partOf",
+    "systemDefined": true
+  },
+  {
+    "category": "CORE",
+    "characteristics": [],
+    "crossGlossaryAllowed": true,
+    "description": "This concept contains another concept as a part or component.",
+    "displayName": "Has Part",
+    "fullyQualifiedName": "hasPart",
+    "id": "95cd3beb-5a93-353f-abc7-ca1067a6869e",
+    "inverse": {
+      "fullyQualifiedName": "partOf",
+      "id": "2da507cb-eee1-39bd-b594-867f5670e0e1",
+      "name": "partOf",
+      "type": "relationshipType"
+    },
+    "name": "hasPart",
+    "paletteKey": "BLUE",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/hasPart",
+    "systemDefined": true
+  },
+  {
+    "category": "CORE",
+    "characteristics": [],
+    "crossGlossaryAllowed": true,
+    "description": "This concept or metric is calculated or derived from another concept.",
+    "displayName": "Calculated From",
+    "fullyQualifiedName": "calculatedFrom",
+    "id": "3224c331-65ac-3094-8801-4e15cfd07a03",
+    "inverse": {
+      "fullyQualifiedName": "usedToCalculate",
+      "id": "42363b4a-8e7a-3347-bfef-a49df8b35902",
+      "name": "usedToCalculate",
+      "type": "relationshipType"
+    },
+    "name": "calculatedFrom",
+    "paletteKey": "PURPLE",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/calculatedFrom",
+    "systemDefined": true
+  },
+  {
+    "category": "CORE",
+    "characteristics": [],
+    "crossGlossaryAllowed": true,
+    "description": "This concept is used in the calculation of another concept or metric.",
+    "displayName": "Used To Calculate",
+    "fullyQualifiedName": "usedToCalculate",
+    "id": "42363b4a-8e7a-3347-bfef-a49df8b35902",
+    "inverse": {
+      "fullyQualifiedName": "calculatedFrom",
+      "id": "3224c331-65ac-3094-8801-4e15cfd07a03",
+      "name": "calculatedFrom",
+      "type": "relationshipType"
+    },
+    "name": "usedToCalculate",
+    "paletteKey": "PINK",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/usedToCalculate",
+    "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["SYMMETRIC"],
+    "crossGlossaryAllowed": true,
+    "description": "A related concept that may provide additional context.",
+    "displayName": "See Also",
+    "fullyQualifiedName": "seeAlso",
+    "id": "0a7eaeaa-3ed5-3d71-afd3-e4a43677a6a3",
+    "inverse": {
+      "fullyQualifiedName": "seeAlso",
+      "id": "0a7eaeaa-3ed5-3d71-afd3-e4a43677a6a3",
+      "name": "seeAlso",
+      "type": "relationshipType"
+    },
+    "name": "seeAlso",
+    "paletteKey": "GRAY",
+    "provider": "system",
+    "rdfPredicate": "http://www.w3.org/2000/01/rdf-schema#seeAlso",
+    "systemDefined": true
+  }
+]

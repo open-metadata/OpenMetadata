@@ -52,8 +52,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfIndexingFields;
+import org.openmetadata.service.rdf.RdfProjectionHealth;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -78,7 +80,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final Set<String> EXCLUDED_ENTITY_TYPES =
       RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
-  private final RdfRepository rdfRepository;
+  private RdfRepository rdfRepository;
   private RdfBatchProcessor batchProcessor;
   private volatile boolean stopped = false;
   private volatile long lastWebSocketUpdate = 0;
@@ -106,8 +108,19 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   public RdfIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
-    this.rdfRepository = RdfRepository.getInstance();
-    this.batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    this.rdfRepository = RdfRepository.getInstanceOrNull();
+    this.batchProcessor =
+        this.rdfRepository == null
+            ? null
+            : new RdfBatchProcessor(collectionDAO, this.rdfRepository);
+  }
+
+  private RdfRepository rdf() {
+    if (rdfRepository == null) {
+      rdfRepository = RdfRepository.getInstance();
+      batchProcessor = new RdfBatchProcessor(collectionDAO, rdfRepository);
+    }
+    return rdfRepository;
   }
 
   @Override
@@ -135,7 +148,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdfRepository.isEnabled()) {
+    if (!rdf().isEnabled()) {
       LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
       updateJobStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(
@@ -147,7 +160,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
 
     try {
-      rdfRepository.ensureStorageReady();
+      rdf().ensureStorageReady();
     } catch (Exception e) {
       LOG.error("RDF storage is not ready; aborting indexing job", e);
       updateJobStatus(EventPublisherJob.Status.FAILED);
@@ -229,7 +242,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         // can NEVER demote a job that's already COMPLETED to FAILED via
         // the outer catch's handleJobFailure().
         try {
-          rdfRepository.compactStorage();
+          rdf().compactStorage();
         } catch (RuntimeException compactFailure) {
           LOG.warn(
               "Post-run compaction failed for this RDF reindex job; disk reclamation "
@@ -274,7 +287,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
         && jobData.getEntities() != null
         && jobData.getEntities().contains(Entity.GLOSSARY_TERM)) {
       LOG.info("Clearing existing glossary term relations before re-indexing");
-      rdfRepository.clearAllGlossaryTermRelations();
+      rdf().clearAllGlossaryTermRelations();
     }
 
     if (Boolean.TRUE.equals(jobData.getUseDistributedIndexing())) {
@@ -302,7 +315,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   private void clearRdfData() {
     try {
-      rdfRepository.clearAll();
+      rdf().clearAll();
       LOG.info("Cleared all RDF data");
       // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
       // on-disk dataset and journal keep growing across runs. Compact NOW while
@@ -311,11 +324,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // accumulates ~1x the dataset size on disk and the PVC eventually fills.
       // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
       // copied through compaction unnecessarily.
-      rdfRepository.compactStorage();
+      rdf().compactStorage();
       // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.
-      rdfRepository.reloadOntologies();
+      rdf().reloadOntologies();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);
@@ -762,17 +775,33 @@ public class RdfIndexApp extends AbstractNativeApplication {
   }
 
   private void updateJobStatus(EventPublisherJob.Status newStatus) {
-    EventPublisherJob.Status currentStatus = jobData.getStatus();
-
-    if (stopped
-        && newStatus != EventPublisherJob.Status.STOP_IN_PROGRESS
-        && newStatus != EventPublisherJob.Status.STOPPED) {
+    final EventPublisherJob.Status currentStatus = jobData.getStatus();
+    final boolean canUpdate =
+        !stopped
+            || newStatus == EventPublisherJob.Status.STOP_IN_PROGRESS
+            || newStatus == EventPublisherJob.Status.STOPPED;
+    if (canUpdate) {
+      LOG.info("Updating job status from {} to {}", currentStatus, newStatus);
+      recordRebuildTransition(currentStatus, newStatus);
+      jobData.setStatus(newStatus);
+    } else {
       LOG.info("Skipping status update to {} because stop has been initiated", newStatus);
-      return;
     }
+  }
 
-    LOG.info("Updating job status from {} to {}", currentStatus, newStatus);
-    jobData.setStatus(newStatus);
+  private static void recordRebuildTransition(
+      final EventPublisherJob.Status currentStatus, final EventPublisherJob.Status newStatus) {
+    if (currentStatus != newStatus) {
+      switch (newStatus) {
+        case RUNNING -> OntologyMetrics.recordGraphRebuildStarted();
+        case COMPLETED, SUCCESS -> {
+          OntologyMetrics.recordGraphRebuildCompleted();
+          RdfProjectionHealth.markReady();
+        }
+        case FAILED, ACTIVE_ERROR, STOPPED -> OntologyMetrics.recordGraphRebuildFailed();
+        case STARTED, ACTIVE, STOP_IN_PROGRESS -> {}
+      }
+    }
   }
 
   private void sendUpdates(JobExecutionContext jobExecutionContext, boolean forceUpdate) {

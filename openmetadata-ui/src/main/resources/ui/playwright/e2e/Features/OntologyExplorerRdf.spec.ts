@@ -20,9 +20,6 @@ import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addTermRelation,
-  buildMalformedRdfGraphJson,
-  buildRdfGraphJson,
-  DANGLING_GRAPH_NODE_ID,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
@@ -33,19 +30,7 @@ const rdfGlossary = new Glossary();
 const rdfTerm1 = new GlossaryTerm(rdfGlossary);
 const rdfTerm2 = new GlossaryTerm(rdfGlossary);
 
-const graphJson = () =>
-  buildRdfGraphJson(
-    rdfGlossary.responseData.id,
-    { id: rdfTerm1.responseData.id, name: rdfTerm1.data.name },
-    { id: rdfTerm2.responseData.id, name: rdfTerm2.data.name }
-  );
-
-const malformedGraphJson = () =>
-  buildMalformedRdfGraphJson(
-    rdfGlossary.responseData.id,
-    { id: rdfTerm1.responseData.id, name: rdfTerm1.data.name },
-    { id: rdfTerm2.responseData.id, name: rdfTerm2.data.name }
-  );
+test.describe.configure({ mode: 'serial' });
 
 test.beforeAll('Seed test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -79,8 +64,27 @@ async function navigateToGlossaryRelationsGraph(
   await waitForGraphLoaded(page);
 }
 
-test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
-  test('Turtle (.ttl) option appears in the export menu when RDF is enabled', async ({
+async function expectFixtureGraph(
+  page: Parameters<typeof waitForGraphLoaded>[0]
+): Promise<void> {
+  const positions = await readNodePositions(page);
+  expect(positions[rdfTerm1.responseData.id]).toBeDefined();
+  expect(positions[rdfTerm2.responseData.id]).toBeDefined();
+
+  const edges = await readGraphEdges(page);
+  expect(
+    edges.some(
+      (edge) =>
+        (edge.from === rdfTerm1.responseData.id &&
+          edge.to === rdfTerm2.responseData.id) ||
+        (edge.from === rdfTerm2.responseData.id &&
+          edge.to === rdfTerm1.responseData.id)
+    )
+  ).toBe(true);
+}
+
+test.describe('Ontology Explorer — RDF exports (Turtle and RDF/XML) @ontology-rdf', () => {
+  test('SKOS / Turtle option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
@@ -95,13 +99,13 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
 
     await page.getByTestId('ontology-export-graph').click();
     await expect(
-      page.getByText('Turtle (.ttl)', { exact: true })
+      page.getByRole('menuitemradio', { name: 'SKOS / Turtle' })
     ).toBeVisible();
 
     await page.close();
   });
 
-  test('RDF/XML (.rdf) option appears in the export menu when RDF is enabled', async ({
+  test('OWL / RDF-XML option appears in the export menu when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
@@ -115,7 +119,7 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
 
     await page.getByTestId('ontology-export-graph').click();
     await expect(
-      page.getByText('RDF/XML (.rdf)', { exact: true })
+      page.getByRole('menuitemradio', { name: 'OWL / RDF-XML' })
     ).toBeVisible();
 
     await page.close();
@@ -144,7 +148,9 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
       page.waitForEvent('download'),
       (async () => {
         await page.getByTestId('ontology-export-graph').click();
-        await page.getByText('Turtle (.ttl)', { exact: true }).click();
+        await page
+          .getByRole('menuitemradio', { name: 'SKOS / Turtle' })
+          .click();
       })(),
     ]);
 
@@ -175,7 +181,9 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
       page.waitForEvent('download'),
       (async () => {
         await page.getByTestId('ontology-export-graph').click();
-        await page.getByText('RDF/XML (.rdf)', { exact: true }).click();
+        await page
+          .getByRole('menuitemradio', { name: 'OWL / RDF-XML' })
+          .click();
       })(),
     ]);
 
@@ -199,10 +207,10 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
 
     await page.getByTestId('ontology-export-graph').click();
     await expect(
-      page.getByText('Turtle (.ttl)', { exact: true })
+      page.getByRole('menuitemradio', { name: 'SKOS / Turtle' })
     ).not.toBeVisible();
     await expect(
-      page.getByText('RDF/XML (.rdf)', { exact: true })
+      page.getByRole('menuitemradio', { name: 'OWL / RDF-XML' })
     ).not.toBeVisible();
 
     // PNG (always present) still shows.
@@ -212,188 +220,56 @@ test.describe('Ontology Explorer — RDF exports @ontology-rdf', () => {
   });
 });
 
-test.describe('Ontology Explorer — RDF graph data loading @ontology-rdf', () => {
-  test('term Relations Graph requests /rdf/glossary/graph scoped to the selected term (glossaryTermId) when RDF is enabled', async ({
+test.describe('Ontology Explorer — relational graph data loading @ontology-rdf', () => {
+  test('term Relations Graph remains database-authoritative when RDF is enabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    let rdfGraphRequestCount = 0;
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
     );
-    await page.route('**/api/v1/rdf/glossary/graph**', (route) =>
-      route.fulfill({ json: graphJson() })
-    );
+    await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
+      rdfGraphRequestCount += 1;
+
+      return route.fulfill({ json: { edges: [], nodes: [] } });
+    });
 
     await redirectToHomePage(page);
     await rdfTerm1.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
-
-    const graphResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/rdf/glossary/graph') &&
-        new URL(response.url()).searchParams.get('glossaryTermId') ===
-          rdfTerm1.responseData.id
-    );
-
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
-
-    const response = await graphResponse;
-    expect(response.status()).toBe(200);
-    expect(
-      new URL(response.url()).searchParams.get('glossaryId'),
-      'the term view must still pass its parent glossaryId'
-    ).toBe(rdfGlossary.responseData.id);
-
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     await waitForGraphLoaded(page);
 
-    const positions = await readNodePositions(page);
-    expect(positions[rdfTerm1.responseData.id]).toBeDefined();
-    expect(positions[rdfTerm2.responseData.id]).toBeDefined();
-
-    const edges = await readGraphEdges(page);
-    expect(
-      edges.some(
-        (edge) =>
-          (edge.from === rdfTerm1.responseData.id &&
-            edge.to === rdfTerm2.responseData.id) ||
-          (edge.from === rdfTerm2.responseData.id &&
-            edge.to === rdfTerm1.responseData.id)
-      ),
-      'the related-term edge between the term and its neighbor must render'
-    ).toBe(true);
+    expect(rdfGraphRequestCount).toBe(0);
+    await expectFixtureGraph(page);
 
     await page.close();
   });
 
-  test('glossary Relations Graph calls /rdf/glossary/graph when RDF is enabled and renders nodes from the response', async ({
+  test('glossary Relations Graph remains available when RDF is disabled', async ({
     browser,
   }) => {
     const page = await browser.newPage();
     await adminUser.login(page);
+    let rdfGraphRequestCount = 0;
 
     await page.route('**/api/v1/rdf/status**', (route) =>
-      route.fulfill({ json: { enabled: true } })
+      route.fulfill({ json: { enabled: false } })
     );
-
-    let graphApiCalled = false;
     await page.route('**/api/v1/rdf/glossary/graph**', (route) => {
-      graphApiCalled = true;
+      rdfGraphRequestCount += 1;
 
-      return route.fulfill({ json: graphJson() });
+      return route.fulfill({ json: { edges: [], nodes: [] } });
     });
 
     await navigateToGlossaryRelationsGraph(page);
 
-    expect(
-      graphApiCalled,
-      'GET /rdf/glossary/graph must be called on the glossary Relations Graph when RDF is enabled'
-    ).toBe(true);
-
-    const positions = await readNodePositions(page);
-    expect(
-      positions[rdfTerm1.responseData.id],
-      'rdfTerm1 must appear as a node (from RDF graph response)'
-    ).toBeDefined();
-    expect(
-      positions[rdfTerm2.responseData.id],
-      'rdfTerm2 must appear as a node (from RDF graph response)'
-    ).toBeDefined();
-
-    await page.close();
-  });
-
-  test('renders without crashing when /rdf/glossary/graph returns duplicate nodes and dangling edges', async ({
-    browser,
-  }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
-    const pageErrors: string[] = [];
-    page.on('pageerror', (error) => pageErrors.push(error.message));
-
-    await page.route('**/api/v1/rdf/status**', (route) =>
-      route.fulfill({ json: { enabled: true } })
-    );
-    await page.route('**/api/v1/rdf/glossary/graph**', (route) =>
-      route.fulfill({ json: malformedGraphJson() })
-    );
-
-    await navigateToGlossaryRelationsGraph(page);
-
-    // The graph must render — not the fetch-error / render-error empty states.
-    await expect(page.getByTestId('ontology-graph-error')).toHaveCount(0);
-    await expect(page.getByTestId('ontology-graph-render-error')).toHaveCount(
-      0
-    );
-
-    // Both real terms render despite the duplicate node and dangling edge.
-    const positions = await readNodePositions(page);
-    expect(
-      positions[rdfTerm1.responseData.id],
-      'rdfTerm1 must render even though its id was duplicated in the payload'
-    ).toBeDefined();
-    expect(
-      positions[rdfTerm2.responseData.id],
-      'rdfTerm2 must render'
-    ).toBeDefined();
-
-    // The valid edge is drawn; the dangling edge is dropped, not rendered.
-    const edges = await readGraphEdges(page);
-    expect(
-      edges.some(
-        (e) =>
-          e.from === rdfTerm1.responseData.id &&
-          e.to === rdfTerm2.responseData.id
-      ),
-      'the valid term-to-term edge must be rendered'
-    ).toBe(true);
-    expect(
-      edges.some(
-        (e) =>
-          e.from === DANGLING_GRAPH_NODE_ID || e.to === DANGLING_GRAPH_NODE_ID
-      ),
-      'the dangling edge must be dropped, never handed to G6'
-    ).toBe(false);
-
-    expect(
-      pageErrors.filter(
-        (m) => m.includes('Node already exists') || m.includes('Node not found')
-      )
-    ).toEqual([]);
-
-    await page.close();
-  });
-
-  test('graph falls back to database when RDF is enabled but /rdf/glossary/graph returns empty', async ({
-    browser,
-  }) => {
-    test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
-    await page.route('**/api/v1/rdf/status**', (route) =>
-      route.fulfill({ json: { enabled: true } })
-    );
-
-    // RDF endpoint returns empty — component must fall back to the database path.
-    await page.route('**/api/v1/rdf/glossary/graph**', (route) =>
-      route.fulfill({ json: { nodes: [], edges: [] } })
-    );
-
-    await navigateToGlossaryRelationsGraph(page);
-
-    const positions = await readNodePositions(page);
-    expect(
-      positions[rdfTerm1.responseData.id],
-      'rdfTerm1 must appear via the database fallback when RDF returns empty'
-    ).toBeDefined();
-    expect(
-      positions[rdfTerm2.responseData.id],
-      'rdfTerm2 must appear via the database fallback when RDF returns empty'
-    ).toBeDefined();
+    expect(rdfGraphRequestCount).toBe(0);
+    await expectFixtureGraph(page);
 
     await page.close();
   });

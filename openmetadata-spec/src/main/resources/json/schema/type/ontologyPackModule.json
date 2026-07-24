@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPackModule.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPackModule",
+  "description": "One independently selectable module in an ontology library pack.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPackModule",
+  "properties": {
+    "id": {
+      "description": "Stable module key within the pack.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2048
+    },
+    "format": {
+      "type": "string",
+      "enum": ["turtle", "rdfxml", "ntriples", "jsonld"]
+    },
+    "resourcePath": {
+      "description": "Classpath resource used for redistributable bundled modules.",
+      "type": "string",
+      "pattern": "^rdf/ontology-packs/[a-z0-9/_-]+\\.(ttl|rdf|nt|jsonld)$"
+    },
+    "sourceUrl": {
+      "description": "Authoritative external source for catalogue-only modules.",
+      "type": "string",
+      "format": "uri"
+    },
+    "sha256": {
+      "description": "Lowercase SHA-256 of the exact bundled payload.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "conceptCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "relationshipCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "selectedByDefault": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "description",
+    "format",
+    "conceptCount",
+    "relationshipCount",
+    "dependencies",
+    "selectedByDefault"
+  ],
+  "additionalProperties": false
+}

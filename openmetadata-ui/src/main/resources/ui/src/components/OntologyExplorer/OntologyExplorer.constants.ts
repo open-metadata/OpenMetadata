@@ -13,9 +13,11 @@
 
 import { Graph } from '@antv/g6';
 import {
-  GlossaryTermRelationType,
-  RelationCategory,
-} from '../../generated/configuration/glossaryTermRelationSettings';
+  Category,
+  Characteristic,
+  PaletteKey,
+  RelationshipType,
+} from '../../generated/entity/data/relationshipType';
 
 /** Synthetic id for the glossary/relation "All" option in ontology filter autocompletes */
 export const ONTOLOGY_AUTOCOMPLETE_ALL_ID = '__all__';
@@ -26,16 +28,23 @@ export const GLOSSARY_TERM_ASSET_COUNT_FETCH_CONCURRENCY = 4;
 export const withoutOntologyAutocompleteAll = (ids: string[]): string[] =>
   ids.filter((id) => id !== ONTOLOGY_AUTOCOMPLETE_ALL_ID);
 
-export const DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK: GlossaryTermRelationType[] =
-  [
-    {
-      name: 'relatedTo',
-      displayName: 'Related To',
-      description: 'General associative relationship',
-      isSymmetric: true,
-      category: RelationCategory.Associative,
-    },
-  ];
+export const DEFAULT_RELATIONSHIP_TYPE: RelationshipType = {
+  id: '00000000-0000-0000-0000-000000000001',
+  name: 'relatedTo',
+  fullyQualifiedName: 'relatedTo',
+  displayName: 'Related To',
+  description: 'General associative relationship',
+  rdfPredicate: 'https://open-metadata.org/ontology/relatedTo',
+  category: Category.Core,
+  characteristics: [Characteristic.Symmetric],
+  crossGlossaryAllowed: true,
+  paletteKey: PaletteKey.Blue,
+  systemDefined: true,
+};
+
+export const DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK = [
+  DEFAULT_RELATIONSHIP_TYPE,
+];
 
 export const RELATION_META: Record<
   string,
@@ -335,18 +344,19 @@ export const COLOR_META_BY_HEX: Record<
 
 export const EDGE_STROKE_COLOR = '#9196B1';
 export const DATA_MODE_ASSET_EDGE_STROKE_COLOR = '#D9DEED';
-export const DIMMED_NODE_OPACITY = 0.35;
-export const DIMMED_EDGE_OPACITY = 0.25;
+export const DIMMED_NODE_OPACITY = 0.32;
+export const DIMMED_EDGE_OPACITY = 0.12;
+export const DIMMED_EDGE_LABEL_OPACITY = 0.16;
 
 export const NODE_FILL_DEFAULT = '#ffffff';
-export const NODE_BORDER_COLOR = '#D5D9EB';
+export const NODE_BORDER_COLOR = '#E9EAEB';
 export const NODE_SELECTED_STROKE = '#1570ef';
 export const NODE_SELECTED_LINE_WIDTH = 2.5;
-export const NODE_SELECTED_HALO_LINE_WIDTH = 8;
+export const NODE_SELECTED_HALO_LINE_WIDTH = 4;
 export const NODE_SELECTED_HALO_FILL = 'rgba(21, 112, 239, 0.06)';
-export const NODE_BORDER_RADIUS = 6;
+export const NODE_BORDER_RADIUS = 9;
 export const NODE_PADDING_V = 9;
-export const NODE_PADDING_H = 10;
+export const NODE_PADDING_H = 12;
 /** Node label padding [top, right, bottom, left] – 12px top/bottom, 6px left/right. */
 export const NODE_LABEL_PADDING: [number, number, number, number] = [
   NODE_PADDING_V,
@@ -357,18 +367,18 @@ export const NODE_LABEL_PADDING: [number, number, number, number] = [
 export const COMBO_FILL_DEFAULT = NODE_FILL_DEFAULT;
 export const COMBO_BODY_FILL_OPACITY = '22';
 export const COMBO_LABEL_BG_OPACITY = '40';
-export const NODE_LABEL_FILL = '#000000';
+export const NODE_LABEL_FILL = '#181D27';
 export const BRAND_BLUE_FALLBACK = '#3b82f6';
 export const COMBO_COLOR_FALLBACK = '#94a3b8';
 export const DATA_MODE_LOAD_MORE_BADGE_BG = '#155EEF';
-export const NODE_LABEL_FONT_SIZE = 14;
-export const NODE_LABEL_FONT_WEIGHT = 500;
-export const NODE_SHADOW_COLOR = 'rgba(0, 0, 0, 0.12)';
-export const NODE_SHADOW_BLUR = 8;
-export const NODE_SHADOW_OFFSET_Y = 2;
+export const NODE_LABEL_FONT_SIZE = 11;
+export const NODE_LABEL_FONT_WEIGHT = 600;
+export const NODE_SHADOW_COLOR = 'rgba(10, 13, 18, 0.05)';
+export const NODE_SHADOW_BLUR = 2;
+export const NODE_SHADOW_OFFSET_Y = 1;
 
 export const EDGE_LABEL_FILL = '#8C93AE';
-export const EDGE_LABEL_FONT_SIZE = 12;
+export const EDGE_LABEL_FONT_SIZE = 10;
 export const EDGE_LABEL_FONT_WEIGHT = 600;
 export const EDGE_LABEL_FONT_FAMILY = 'Inter';
 export const EDGE_LABEL_LINE_HEIGHT = 16;
@@ -394,7 +404,7 @@ export const FIT_VIEW_ZOOM_OUT_DATA_MODE = 0.85;
 export const ONTOLOGY_FIT_VIEW_PADDING = 40;
 export const ONTOLOGY_LARGE_GRAPH_NODE_COUNT = 1500;
 export const ONTOLOGY_TERMS_PAGE_SIZE = 300;
-export const DATA_MODE_MAX_RENDER_COUNT = 3500;
+export const DATA_MODE_MAX_RENDER_COUNT = 60;
 export const PRACTICAL_MIN_ZOOM = 0.15;
 export const PRACTICAL_MAX_ZOOM_INITIAL = 1;
 
@@ -413,7 +423,9 @@ export async function fitViewWithMinZoom(
   }
 }
 
-export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 1000;
+export const DATA_MODE_ASSET_LOAD_PAGE_SIZE = 6;
+/** Max assets a single "Load more" click pulls into a card (matches the backend @Max). */
+export const DATA_MODE_ASSET_MAX_LOAD = 100;
 export const DATA_MODE_ASSET_CIRCLE_SIZE = 20;
 
 export const DATA_MODE_ASSET_LABEL_FONT_SIZE = 12;
@@ -489,7 +501,7 @@ export const HIERARCHY_BADGE_OFFSET_X = 0;
 export const HIERARCHY_BADGE_OFFSET_Y = -18;
 export const HIERARCHY_BADGE_TEXT_INSET = 16;
 
-export const NODE_LINE_WIDTH = 1;
+export const NODE_LINE_WIDTH = 1.5;
 export const DATA_MODE_ASSET_LINE_WIDTH = 1.5;
 export const DATA_MODE_LABEL_OFFSET_Y = 20;
 export const DATA_MODE_TERM_LABEL_BG_RADIUS = 6;

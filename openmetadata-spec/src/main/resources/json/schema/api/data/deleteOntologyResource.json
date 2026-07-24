@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/deleteOntologyResource.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeleteOntologyResource",
+  "description": "Delete an ontology resource after confirming a fresh impact preview.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.DeleteOntologyResource",
+  "properties": {
+    "impactToken": {
+      "description": "Fresh signed token returned by the matching impact preview.",
+      "type": "string",
+      "minLength": 1
+    },
+    "reassignChildrenTo": {
+      "description": "Optional glossary or glossary-term target that receives immediate children before deletion.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "cascadeConfirmed": {
+      "description": "Explicit confirmation that child concepts may be recursively deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "hardDelete": {
+      "description": "Permanently remove the resource instead of soft deleting it.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["impactToken", "cascadeConfirmed", "hardDelete"],
+  "additionalProperties": false
+}

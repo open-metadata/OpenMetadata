@@ -22,6 +22,7 @@ import {
 } from '@antv/g6';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   BRAND_BLUE_FALLBACK,
   COMBO_COLOR_FALLBACK,
@@ -35,6 +36,7 @@ import {
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_CHAR,
   DATA_MODE_TERM_ASSET_COUNT_BADGE_WIDTH_MIN,
   DEFAULT_ZOOM,
+  DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
   EDGE_LINE_APPEND_WIDTH,
@@ -53,6 +55,7 @@ import {
   NODE_BORDER_RADIUS,
   NODE_FILL_DEFAULT,
   NODE_LABEL_FILL,
+  NODE_LINE_WIDTH,
   NODE_SELECTED_HALO_FILL,
   NODE_SELECTED_HALO_LINE_WIDTH,
   NODE_SELECTED_LINE_WIDTH,
@@ -61,12 +64,17 @@ import {
   type LayoutEngineType,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
-import { getEntityIconUrl } from '../utils/entityIconUrls';
+import {
+  OntologyEditNodeClickDetail,
+  ONTOLOGY_EDIT_CANCEL_EVENT,
+  ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+} from '../PortOverlay.interface';
 import {
   adaptiveSpacing,
   getLayoutConfig,
   NODE_HEIGHT,
   NODE_WIDTH,
+  shouldUseComboGridLayout,
 } from '../utils/graphConfig';
 import {
   buildComboStyle,
@@ -74,10 +82,13 @@ import {
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
+  CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
   getCanvasColor,
+  STUDIO_EDIT_PORT_CLASS_NAME,
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
+import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
 
 /**
  * Starts a G6 layout and waits for it to actually finish.
@@ -119,7 +130,10 @@ const sameStringSet = (a: Set<string>, b: Set<string>) => {
   return true;
 };
 
-function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
+export function isGraphTopologySynced(
+  graph: Graph,
+  graphData: GraphData
+): boolean {
   const { nodes = [], edges = [], combos = [] } = graphData;
 
   if (!sameStringSet(toIdSet(nodes), toIdSet(graph.getNodeData()))) {
@@ -138,7 +152,7 @@ function isGraphTopologySynced(graph: Graph, graphData: GraphData): boolean {
   return sameStringSet(toIdSet(combos), toIdSet(modelCombos));
 }
 
-const findBadgeIndex = (originalTarget: unknown): number | null => {
+export const findBadgeIndex = (originalTarget: unknown): number | null => {
   let current: unknown = originalTarget;
   for (let depth = 0; depth < 14; depth += 1) {
     if (!current || typeof current !== 'object') {
@@ -162,19 +176,39 @@ const findBadgeIndex = (originalTarget: unknown): number | null => {
   return null;
 };
 
-function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
+const hasShapeClass = (originalTarget: unknown, className: string): boolean => {
+  let current: unknown = originalTarget;
+  for (let depth = 0; depth < 14; depth += 1) {
+    if (!current || typeof current !== 'object') {
+      return false;
+    }
+    const shape = current as {
+      className?: string;
+      name?: string;
+      parent?: unknown;
+    };
+    if ((shape.className ?? shape.name) === className) {
+      return true;
+    }
+    current = shape.parent;
+  }
+
+  return false;
+};
+
+export function isDataModeAssetBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 0;
 }
 
-function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
+export function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 1;
 }
 
-function stripNodePositionsForDataMode<T extends { style?: unknown }>(
+export function stripNodePositionsForDataMode<T extends { style?: unknown }>(
   nodes: T[]
 ): T[] {
   return nodes.map((node) => {
@@ -200,6 +234,8 @@ interface GraphNodeMeta {
   ontologyNode?: OntologyNode;
   isDimmed?: boolean;
   isSelected?: boolean;
+  studioMode?: boolean;
+  studioAccentColor?: string;
 }
 
 interface GraphEdgeMeta {
@@ -245,9 +281,9 @@ interface UseOntologyGraphProps {
   glossaryColorMap: Record<string, string>;
   computeNodeColor: (node: OntologyNode) => string;
   assetToTermMap: Record<string, string[]>;
-  onPositionsReady?: (
-    positions: Record<string, { x: number; y: number }>
-  ) => void;
+  hierarchicalRelationTypes?: ReadonlySet<string>;
+  isEditMode?: boolean;
+  studioMode?: boolean;
 }
 
 export function useOntologyGraph({
@@ -271,7 +307,9 @@ export function useOntologyGraph({
   glossaryColorMap,
   computeNodeColor,
   assetToTermMap,
-  onPositionsReady,
+  hierarchicalRelationTypes,
+  isEditMode = false,
+  studioMode = false,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
@@ -299,8 +337,8 @@ export function useOntologyGraph({
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
 
-  const onPositionsReadyRef = useRef(onPositionsReady);
-  onPositionsReadyRef.current = onPositionsReady;
+  const isEditModeRef = useRef(isEditMode);
+  isEditModeRef.current = isEditMode;
 
   // Cached graph bounds — recomputed only when node data changes, not on every
   // pan/zoom transform. Updated by recomputeGraphBounds() after data updates.
@@ -376,24 +414,6 @@ export function useOntologyGraph({
     });
 
     return positions;
-  }, []);
-
-  const emitPagePositions = useCallback((graph: Graph) => {
-    const cb = onPositionsReadyRef.current;
-    if (!cb) {
-      return;
-    }
-    const pagePositions: Record<string, { x: number; y: number }> = {};
-    graph.getNodeData().forEach((node) => {
-      try {
-        const canvasPos = graph.getElementPosition(node.id);
-        const clientPos = graph.getClientByCanvas(canvasPos);
-        pagePositions[node.id] = { x: clientPos[0], y: clientPos[1] };
-      } catch {
-        // Node may not be rendered yet; skip it.
-      }
-    });
-    cb(pagePositions);
   }, []);
 
   const positionAssetNodes = useCallback((graph: Graph) => {
@@ -617,6 +637,42 @@ export function useOntologyGraph({
     }
   }, []);
 
+  const positionStudioNodes = useCallback(
+    async (graph: Graph) => {
+      const positions = await calculateStudioNodePositions(
+        graph.getNodeData(),
+        graph.getEdgeData(),
+        {
+          hierarchicalRelationTypes,
+          viewportWidth: containerRef.current?.offsetWidth,
+        }
+      );
+      const updates = graph
+        .getNodeData()
+        .map((node) => {
+          const position = positions[String(node.id)];
+          if (!position) {
+            return null;
+          }
+
+          return {
+            id: node.id,
+            style: {
+              ...(node.style ?? {}),
+              x: position.x,
+              y: position.y,
+            },
+          };
+        })
+        .filter((node): node is NonNullable<typeof node> => node !== null);
+
+      if (updates.length > 0) {
+        graph.updateNodeData(updates);
+      }
+    },
+    [containerRef, hierarchicalRelationTypes]
+  );
+
   const applyBakedPositions = useCallback((graph: Graph, nodes: NodeData[]) => {
     const bakedUpdates = nodes
       .filter(
@@ -811,6 +867,11 @@ export function useOntologyGraph({
     const isHierarchyMode = explorationMode === 'hierarchy';
     const hasCombos = Boolean(graphData.combos && graphData.combos.length > 0);
     const isModelView = explorationMode === 'model';
+    const useComboGridLayout = shouldUseComboGridLayout(layoutType, {
+      hasCombos,
+      isHierarchyMode,
+      isModelView,
+    });
     const graph = new Graph({
       container,
       width,
@@ -843,7 +904,10 @@ export function useOntologyGraph({
                     ontNode.entityRef.type
                   )
                 : undefined;
-            const entityIconUrl = getEntityIconUrl(ontNode?.entityRef?.type);
+            const entityIconUrl = serviceUtilClassBase.getServiceTypeLogo({
+              entityType: ontNode?.entityRef?.type,
+              serviceType: ontNode?.serviceLabel,
+            });
 
             return {
               ...buildDataModeAssetNodeStyle(
@@ -983,6 +1047,38 @@ export function useOntologyGraph({
             };
           }
 
+          if (d?.studioMode) {
+            const isIsolated = ontNode?.type === 'glossaryTermIsolated';
+            const accentColor = isIsolated
+              ? '#F79009'
+              : d.studioAccentColor ?? '#84CAFF';
+            const borderColor = isIsolated ? '#FEDF89' : '#E9EAEB';
+            const size = (datum.style?.size as
+              | [number, number]
+              | undefined) ?? [150, 36];
+            const label = d?.label ?? datum.id;
+
+            return {
+              ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
+              label: false,
+              studioLabelText: label,
+              studioAccentColor: accentColor,
+              zIndex: 2,
+              opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
+              stroke: d?.isSelected ? NODE_SELECTED_STROKE : borderColor,
+              lineWidth: d?.isSelected
+                ? NODE_SELECTED_LINE_WIDTH
+                : NODE_LINE_WIDTH,
+              ...(d?.isSelected && {
+                haloStroke: NODE_SELECTED_STROKE,
+                haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
+                haloStrokeOpacity: 0.7,
+                haloFill: NODE_SELECTED_HALO_FILL,
+                haloFillOpacity: 1,
+              }),
+            };
+          }
+
           const hasHierarchyBadge = Boolean(d?.hierarchyBadge);
           const badgeGlossaryId =
             ontNode?.originalGlossary ?? ontNode?.glossaryId;
@@ -1067,7 +1163,10 @@ export function useOntologyGraph({
         },
       },
       edge: {
-        type: () => CARDINALITY_AWARE_LINE_EDGE_TYPE,
+        type: () =>
+          studioMode && !isDataMode
+            ? CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE
+            : CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
           enter: false,
         },
@@ -1090,6 +1189,15 @@ export function useOntologyGraph({
             lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
             opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
             endArrow: !isDataMode,
+            // Reset label opacity on non-dimmed edges: G6 merges style updates,
+            // so an un-dimmed edge would otherwise retain a stale dimmed label
+            // opacity — a bold line with an unreadable relation label.
+            ...(isEdgeDimmed
+              ? {
+                  labelOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                  labelBackgroundOpacity: DIMMED_EDGE_LABEL_OPACITY,
+                }
+              : { labelOpacity: 1, labelBackgroundOpacity: 1 }),
           };
 
           const merged = (
@@ -1125,12 +1233,14 @@ export function useOntologyGraph({
           };
         },
       },
-      layout: getLayoutConfig(layoutType, inputNodes.length, {
-        hasCombos,
-        isDataMode,
-        isHierarchyMode,
-        isModelView,
-      }),
+      layout: studioMode
+        ? { type: 'preset', animation: false }
+        : getLayoutConfig(layoutType, inputNodes.length, {
+            hasCombos,
+            isDataMode,
+            isHierarchyMode,
+            isModelView,
+          }),
       behaviors: [
         { type: 'drag-canvas' },
         { type: 'zoom-canvas' },
@@ -1171,6 +1281,26 @@ export function useOntologyGraph({
             x: e.clientX ?? 0,
             y: e.clientY ?? 0,
           });
+          const isEditPort = hasShapeClass(
+            e.originalTarget,
+            STUDIO_EDIT_PORT_CLASS_NAME
+          );
+          if (studioMode && isEditModeRef.current) {
+            const detail: OntologyEditNodeClickDetail = {
+              clientX: e.clientX ?? position.x,
+              clientY: e.clientY ?? position.y,
+              isPort: isEditPort,
+              nodeId: id,
+            };
+            const editEvent = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
+              cancelable: true,
+              detail,
+            });
+            const isHandled = !container.dispatchEvent(editEvent);
+            if (isEditPort || isHandled) {
+              return;
+            }
+          }
           const dataModeAssetBadgeClick =
             isDataMode && isDataModeAssetBadgeShape(e.originalTarget);
           const dataModeLoadMoreBadgeClick =
@@ -1193,8 +1323,34 @@ export function useOntologyGraph({
       }
     };
 
+    const cancelEditGesture = () => {
+      container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
+    };
+    const writeGraphSnapshot = () => {
+      const positions = Object.fromEntries(
+        graph.getNodeData().flatMap((node) => {
+          try {
+            const canvasPosition = graph.getElementPosition(node.id);
+            const clientPosition = graph.getClientByCanvas(canvasPosition);
+
+            return [
+              [String(node.id), { x: clientPosition[0], y: clientPosition[1] }],
+            ];
+          } catch {
+            return [];
+          }
+        })
+      );
+      container.dataset.graphZoom = String(graph.getZoom());
+      container.dataset.nodePositions = JSON.stringify(positions);
+    };
+
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
+    graph.on(NodeEvent.DRAG_START, cancelEditGesture);
+    graph.on(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
+    graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
+    graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
       setClickedEdgeIdRef.current(null);
       onPaneClick();
@@ -1285,16 +1441,19 @@ export function useOntologyGraph({
     const runRender = async () => {
       suppressEdgeCheck(1500);
       try {
-        if (hasBakedPositions) {
+        if (studioMode) {
+          await positionStudioNodes(graph);
+          if (renderCancelled) {
+            return;
+          }
+          await graph.draw();
+        } else if (hasBakedPositions) {
           applyBakedPositions(graph, graphData.nodes ?? []);
           if (isDataMode) {
             positionAssetNodes(graph);
           }
           await graph.draw();
-        } else if (
-          (isModelView || isHierarchyMode) &&
-          layoutType === LayoutEngine.Dagre
-        ) {
+        } else if (useComboGridLayout) {
           positionModelModeNodes(graph);
           await graph.draw();
         } else if (isModelView && layoutType === LayoutEngine.Circular) {
@@ -1310,21 +1469,29 @@ export function useOntologyGraph({
         if (renderCancelled) {
           return;
         }
-        await fitAndClampZoom();
+        if (studioMode) {
+          await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
+          await graph.translateTo([0, 0], { duration: 0 });
+        } else {
+          await fitAndClampZoom();
+        }
         recomputeGraphBounds();
-        emitPagePositions(graph);
       } catch {
         if (renderCancelled) {
           return;
         }
         // Layout or draw failed — attempt a bare draw so at least something
-        // renders, then still try to fit the view.
+        // renders, then restore a usable viewport.
         try {
           await graph.draw();
           if (!renderCancelled) {
-            await fitAndClampZoom();
+            if (studioMode) {
+              await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
+              await graph.translateTo([0, 0], { duration: 0 });
+            } else {
+              await fitAndClampZoom();
+            }
             recomputeGraphBounds();
-            emitPagePositions(graph);
           }
         } catch {
           // Graph may have been destroyed; ignore.
@@ -1361,9 +1528,13 @@ export function useOntologyGraph({
       resizeObserver.disconnect();
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
+      graph.off(NodeEvent.DRAG_START, cancelEditGesture);
+      graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
+      graph.off(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
+      graph.off(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
       graph.destroy();
       graphRef.current = null;
     };
@@ -1373,8 +1544,9 @@ export function useOntologyGraph({
     explorationMode,
     hasBakedPositions,
     layoutType,
+    studioMode,
+    positionStudioNodes,
     recomputeGraphBounds,
-    emitPagePositions,
   ]);
 
   useEffect(() => {
@@ -1648,6 +1820,11 @@ export function useOntologyGraph({
       isHierarchyMode,
       isModelView: isModelViewLocal,
     });
+    const useComboGridLayout = shouldUseComboGridLayout(layoutType, {
+      hasCombos,
+      isHierarchyMode,
+      isModelView: isModelViewLocal,
+    });
 
     if (cancelPendingUpdateRef.current) {
       cancelPendingUpdateRef.current();
@@ -1683,10 +1860,9 @@ export function useOntologyGraph({
 
         graph.setData(graphData);
 
-        if (
-          (isModelViewLocal || isHierarchyMode) &&
-          layoutType === LayoutEngine.Dagre
-        ) {
+        if (studioMode) {
+          await positionStudioNodes(graph);
+        } else if (useComboGridLayout) {
           positionModelModeNodes(graph);
         } else if (isModelViewLocal && layoutType === LayoutEngine.Circular) {
           positionCircularNodes(graph);
@@ -1745,11 +1921,16 @@ export function useOntologyGraph({
           return;
         }
 
-        if (termFingerprintChanged || layoutTypeChanged) {
+        if (studioMode && termFingerprintChanged) {
+          await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
+          await graph.translateTo([0, 0], { duration: 0 });
+        } else if (
+          !studioMode &&
+          (termFingerprintChanged || layoutTypeChanged)
+        ) {
           await fitViewWithMinZoom(graph);
         }
         recomputeGraphBounds();
-        emitPagePositions(graph);
       } finally {
         if (!cancelled) {
           cancelPendingUpdateRef.current = null;
@@ -1776,14 +1957,14 @@ export function useOntologyGraph({
     positionAssetNodes,
     positionModelModeNodes,
     positionCircularNodes,
+    positionStudioNodes,
+    studioMode,
     recomputeGraphBounds,
-    emitPagePositions,
   ]);
 
   return {
     graphRef,
     extractNodePositions,
     suppressEdgeCheck,
-    emitPagePositions,
   };
 }

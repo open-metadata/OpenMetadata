@@ -89,6 +89,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -169,6 +170,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabelMetadata;
 import org.openmetadata.schema.type.UsageDetails;
@@ -180,6 +182,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRecord;
 import org.openmetadata.service.audit.AuditLogRecordMapper;
+import org.openmetadata.service.docstore.PrivateDocumentType;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -315,6 +318,27 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   GlossaryTermDAO glossaryTermDAO();
+
+  @CreateSqlObject
+  OntologyStudioDAO ontologyStudioDAO();
+
+  @CreateSqlObject
+  RelationshipTypeDAO relationshipTypeDAO();
+
+  @CreateSqlObject
+  OntologyAxiomDAO ontologyAxiomDAO();
+
+  @CreateSqlObject
+  OntologyChangeSetDAO ontologyChangeSetDAO();
+
+  @CreateSqlObject
+  OntologyAnnexDAO ontologyAnnexDAO();
+
+  @CreateSqlObject
+  OntologyEditLockDAO ontologyEditLockDAO();
+
+  @CreateSqlObject
+  RdfInferenceRuleDAO rdfInferenceRuleDAO();
 
   @CreateSqlObject
   BotDAO botDAO();
@@ -1854,13 +1878,6 @@ public interface CollectionDAO {
 
   @Getter
   @Builder
-  class RelationTypeUsageCount {
-    private String relationType;
-    private Integer count;
-  }
-
-  @Getter
-  @Builder
   class EntityRelationshipObject {
     private String fromId;
     private String toId;
@@ -1871,6 +1888,36 @@ public interface CollectionDAO {
     private String json;
     private String jsonSchema;
   }
+
+  record OntologyRelationshipRow(
+      UUID fromId,
+      UUID toId,
+      String fromEntity,
+      String toEntity,
+      int relation,
+      String relationType,
+      UUID relationshipId,
+      UUID relationshipTypeId,
+      String json) {}
+
+  record OntologyAnnexRow(
+      UUID glossaryId,
+      long revision,
+      String canonicalNQuads,
+      String checksum,
+      String source,
+      String createdBy,
+      long createdAt) {}
+
+  record OntologyEditLockRow(
+      String resourceType,
+      UUID resourceId,
+      UUID holderId,
+      String sessionId,
+      long version,
+      long acquiredAt,
+      long renewedAt,
+      long expiresAt) {}
 
   @Getter
   @Builder
@@ -1962,6 +2009,49 @@ public interface CollectionDAO {
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
         @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, "
+                + "relationType, relationshipId, relationshipTypeId, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, "
+                + ":relationshipId, :relationshipTypeId, :json) ON DUPLICATE KEY UPDATE "
+                + "relationshipId = VALUES(relationshipId), "
+                + "relationshipTypeId = VALUES(relationshipTypeId), json = VALUES(json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, "
+                + "relationType, relationshipId, relationshipTypeId, json) VALUES "
+                + "(:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType, "
+                + ":relationshipId, :relationshipTypeId, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET "
+                + "relationshipId = EXCLUDED.relationshipId, "
+                + "relationshipTypeId = EXCLUDED.relationshipTypeId, json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertOntologyRelationship(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @BindUUID("relationshipId") UUID relationshipId,
+        @BindUUID("relationshipTypeId") UUID relationshipTypeId,
+        @Bind("json") String json);
+
+    default void insertOntologyRelationship(OntologyRelationshipRow relationship) {
+      insertOntologyRelationship(
+          relationship.fromId(),
+          relationship.toId(),
+          relationship.fromEntity(),
+          relationship.toEntity(),
+          relationship.relation(),
+          relationship.relationType(),
+          relationship.relationshipId(),
+          relationship.relationshipTypeId(),
+          relationship.json());
+    }
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -2336,12 +2426,13 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END AS relationType, "
-            + "COUNT(*) AS cnt FROM entity_relationship "
-            + "WHERE fromEntity = :fromEntity AND toEntity = :toEntity AND relation = :relation "
-            + "GROUP BY CASE WHEN relationType = '' THEN 'relatedTo' ELSE relationType END")
+        "SELECT rt.id AS relationshipTypeId, rt.name AS relationshipTypeName, COUNT(*) AS cnt "
+            + "FROM entity_relationship er JOIN relationship_type_entity rt "
+            + "ON rt.id = er.relationshipTypeId WHERE er.fromEntity = :fromEntity "
+            + "AND er.toEntity = :toEntity AND er.relation = :relation "
+            + "GROUP BY rt.id, rt.name ORDER BY rt.name")
     @RegisterRowMapper(RelationTypeUsageCountMapper.class)
-    List<RelationTypeUsageCount> countByRelationType(
+    List<RelationshipTypeUsage> countByRelationType(
         @Bind("fromEntity") String fromEntity,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
@@ -2948,13 +3039,17 @@ public interface CollectionDAO {
       }
     }
 
-    class RelationTypeUsageCountMapper implements RowMapper<RelationTypeUsageCount> {
+    class RelationTypeUsageCountMapper implements RowMapper<RelationshipTypeUsage> {
       @Override
-      public RelationTypeUsageCount map(ResultSet rs, StatementContext ctx) throws SQLException {
-        return RelationTypeUsageCount.builder()
-            .relationType(rs.getString("relationType"))
-            .count(rs.getInt("cnt"))
-            .build();
+      public RelationshipTypeUsage map(ResultSet rs, StatementContext ctx) throws SQLException {
+        EntityReference relationshipType =
+            new EntityReference()
+                .withId(UUID.fromString(rs.getString("relationshipTypeId")))
+                .withType(Entity.RELATIONSHIP_TYPE)
+                .withName(rs.getString("relationshipTypeName"));
+        return new RelationshipTypeUsage()
+            .withRelationshipType(relationshipType)
+            .withCount(rs.getInt("cnt"));
       }
     }
 
@@ -5998,6 +6093,268 @@ public interface CollectionDAO {
         @Bind("offset") int offset);
   }
 
+  interface RelationshipTypeDAO
+      extends EntityDAO<org.openmetadata.schema.entity.data.RelationshipType> {
+    @Override
+    default String getTableName() {
+      return "relationship_type_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.RelationshipType> getEntityClass() {
+      return org.openmetadata.schema.entity.data.RelationshipType.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM relationship_type_entity "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.rdfPredicate')) = :predicate "
+                + "AND deleted = FALSE LIMIT 1",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM relationship_type_entity "
+                + "WHERE json->>'rdfPredicate' = :predicate AND deleted = FALSE LIMIT 1",
+        connectionType = POSTGRES)
+    String findByPredicate(@Bind("predicate") String predicate);
+
+    @SqlQuery("SELECT json FROM relationship_type_entity WHERE deleted = FALSE ORDER BY name")
+    List<String> listActive();
+  }
+
+  interface OntologyAxiomDAO extends EntityDAO<org.openmetadata.schema.entity.data.OntologyAxiom> {
+    @Override
+    default String getTableName() {
+      return "ontology_axiom_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.OntologyAxiom> getEntityClass() {
+      return org.openmetadata.schema.entity.data.OntologyAxiom.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ontology_axiom_entity "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
+                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
+                + "AND deleted = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
+                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
+                + "AND deleted = FALSE",
+        connectionType = POSTGRES)
+    int countClassSubjects(@Bind("iri") String iri);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ontology_axiom_entity "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
+                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
+                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
+        connectionType = POSTGRES)
+    int countIndividualSubjects(@Bind("iri") String iri);
+  }
+
+  interface OntologyChangeSetDAO
+      extends EntityDAO<org.openmetadata.schema.entity.data.OntologyChangeSet> {
+    @Override
+    default String getTableName() {
+      return "ontology_change_set_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.OntologyChangeSet> getEntityClass() {
+      return org.openmetadata.schema.entity.data.OntologyChangeSet.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface OntologyAnnexDAO {
+    @SqlUpdate(
+        "INSERT INTO ontology_annex(glossaryId, revision, canonicalNQuads, checksum, source, "
+            + "createdBy, createdAt) VALUES (:glossaryId, :revision, :canonicalNQuads, "
+            + ":checksum, :source, :createdBy, :createdAt)")
+    void insert(
+        @BindUUID("glossaryId") UUID glossaryId,
+        @Bind("revision") long revision,
+        @Bind("canonicalNQuads") String canonicalNQuads,
+        @Bind("checksum") String checksum,
+        @Bind("source") String source,
+        @Bind("createdBy") String createdBy,
+        @Bind("createdAt") long createdAt);
+
+    default void insert(OntologyAnnexRow revision) {
+      insert(
+          revision.glossaryId(),
+          revision.revision(),
+          revision.canonicalNQuads(),
+          revision.checksum(),
+          revision.source(),
+          revision.createdBy(),
+          revision.createdAt());
+    }
+
+    @SqlQuery(
+        "SELECT glossaryId, revision, canonicalNQuads, checksum, source, createdBy, createdAt "
+            + "FROM ontology_annex WHERE glossaryId = :glossaryId ORDER BY revision DESC LIMIT 1")
+    @RegisterRowMapper(OntologyAnnexRowMapper.class)
+    OntologyAnnexRow findLatest(@BindUUID("glossaryId") UUID glossaryId);
+
+    @SqlQuery(
+        "SELECT glossaryId, revision, canonicalNQuads, checksum, source, createdBy, createdAt "
+            + "FROM ontology_annex WHERE glossaryId = :glossaryId AND checksum = :checksum")
+    @RegisterRowMapper(OntologyAnnexRowMapper.class)
+    OntologyAnnexRow findByChecksum(
+        @BindUUID("glossaryId") UUID glossaryId, @Bind("checksum") String checksum);
+
+    @SqlQuery(
+        "SELECT COALESCE(MAX(revision), 0) + 1 FROM ontology_annex "
+            + "WHERE glossaryId = :glossaryId")
+    long nextRevision(@BindUUID("glossaryId") UUID glossaryId);
+
+    @SqlQuery(
+        "SELECT glossaryId, revision, canonicalNQuads, checksum, source, createdBy, createdAt "
+            + "FROM ontology_annex WHERE glossaryId = :glossaryId ORDER BY revision DESC "
+            + "LIMIT :limit")
+    @RegisterRowMapper(OntologyAnnexRowMapper.class)
+    List<OntologyAnnexRow> list(@BindUUID("glossaryId") UUID glossaryId, @Bind("limit") int limit);
+
+    class OntologyAnnexRowMapper implements RowMapper<OntologyAnnexRow> {
+      @Override
+      public OntologyAnnexRow map(ResultSet resultSet, StatementContext context)
+          throws SQLException {
+        return new OntologyAnnexRow(
+            UUID.fromString(resultSet.getString("glossaryId")),
+            resultSet.getLong("revision"),
+            resultSet.getString("canonicalNQuads"),
+            resultSet.getString("checksum"),
+            resultSet.getString("source"),
+            resultSet.getString("createdBy"),
+            resultSet.getLong("createdAt"));
+      }
+    }
+  }
+
+  interface OntologyEditLockDAO {
+    @SqlQuery(
+        "SELECT resourceType, resourceId, holderId, sessionId, version, acquiredAt, renewedAt, "
+            + "expiresAt FROM ontology_edit_lock WHERE resourceType = :resourceType "
+            + "AND resourceId = :resourceId FOR UPDATE")
+    @RegisterRowMapper(OntologyEditLockRowMapper.class)
+    OntologyEditLockRow findForUpdate(
+        @Bind("resourceType") String resourceType, @BindUUID("resourceId") UUID resourceId);
+
+    @SqlQuery(
+        "SELECT resourceType, resourceId, holderId, sessionId, version, acquiredAt, renewedAt, "
+            + "expiresAt FROM ontology_edit_lock WHERE resourceType = :resourceType "
+            + "AND resourceId = :resourceId")
+    @RegisterRowMapper(OntologyEditLockRowMapper.class)
+    OntologyEditLockRow find(
+        @Bind("resourceType") String resourceType, @BindUUID("resourceId") UUID resourceId);
+
+    @SqlUpdate(
+        "INSERT INTO ontology_edit_lock(resourceType, resourceId, holderId, sessionId, version, "
+            + "acquiredAt, renewedAt, expiresAt) VALUES (:resourceType, :resourceId, :holderId, "
+            + ":sessionId, :version, :acquiredAt, :renewedAt, :expiresAt)")
+    void insert(
+        @Bind("resourceType") String resourceType,
+        @BindUUID("resourceId") UUID resourceId,
+        @BindUUID("holderId") UUID holderId,
+        @Bind("sessionId") String sessionId,
+        @Bind("version") long version,
+        @Bind("acquiredAt") long acquiredAt,
+        @Bind("renewedAt") long renewedAt,
+        @Bind("expiresAt") long expiresAt);
+
+    default void insert(OntologyEditLockRow lock) {
+      insert(
+          lock.resourceType(),
+          lock.resourceId(),
+          lock.holderId(),
+          lock.sessionId(),
+          lock.version(),
+          lock.acquiredAt(),
+          lock.renewedAt(),
+          lock.expiresAt());
+    }
+
+    @SqlUpdate(
+        "UPDATE ontology_edit_lock SET holderId = :holderId, sessionId = :sessionId, "
+            + "version = :version, acquiredAt = :acquiredAt, renewedAt = :renewedAt, "
+            + "expiresAt = :expiresAt WHERE resourceType = :resourceType "
+            + "AND resourceId = :resourceId")
+    void update(
+        @Bind("resourceType") String resourceType,
+        @BindUUID("resourceId") UUID resourceId,
+        @BindUUID("holderId") UUID holderId,
+        @Bind("sessionId") String sessionId,
+        @Bind("version") long version,
+        @Bind("acquiredAt") long acquiredAt,
+        @Bind("renewedAt") long renewedAt,
+        @Bind("expiresAt") long expiresAt);
+
+    default void update(OntologyEditLockRow lock) {
+      update(
+          lock.resourceType(),
+          lock.resourceId(),
+          lock.holderId(),
+          lock.sessionId(),
+          lock.version(),
+          lock.acquiredAt(),
+          lock.renewedAt(),
+          lock.expiresAt());
+    }
+
+    @SqlUpdate(
+        "DELETE FROM ontology_edit_lock WHERE resourceType = :resourceType "
+            + "AND resourceId = :resourceId AND holderId = :holderId AND sessionId = :sessionId")
+    int delete(
+        @Bind("resourceType") String resourceType,
+        @BindUUID("resourceId") UUID resourceId,
+        @BindUUID("holderId") UUID holderId,
+        @Bind("sessionId") String sessionId);
+
+    @SqlUpdate("DELETE FROM ontology_edit_lock WHERE expiresAt < :now")
+    int deleteExpired(@Bind("now") long now);
+
+    class OntologyEditLockRowMapper implements RowMapper<OntologyEditLockRow> {
+      @Override
+      public OntologyEditLockRow map(ResultSet resultSet, StatementContext context)
+          throws SQLException {
+        return new OntologyEditLockRow(
+            resultSet.getString("resourceType"),
+            UUID.fromString(resultSet.getString("resourceId")),
+            UUID.fromString(resultSet.getString("holderId")),
+            resultSet.getString("sessionId"),
+            resultSet.getLong("version"),
+            resultSet.getLong("acquiredAt"),
+            resultSet.getLong("renewedAt"),
+            resultSet.getLong("expiresAt"));
+      }
+    }
+  }
+
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
     @Override
     default String getTableName() {
@@ -7016,6 +7373,19 @@ public interface CollectionDAO {
             + "WHERE (tagFQNHash LIKE :concatTagFQNHash OR tagFQNHash = :tagFqnHash) "
             + "AND source = :source")
     int getTagCount(
+        @Bind("source") int source,
+        @BindConcat(
+                value = "concatTagFQNHash",
+                original = "tagFqnHash",
+                parts = {":tagFqnHash", ".%"},
+                hash = true)
+            String tagFqnHash);
+
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT targetFQNHash) FROM tag_usage "
+            + "WHERE (tagFQNHash LIKE :concatTagFQNHash OR tagFQNHash = :tagFqnHash) "
+            + "AND source = :source")
+    int getDistinctTagTargetCount(
         @Bind("source") int source,
         @BindConcat(
                 value = "concatTagFQNHash",
@@ -10955,6 +11325,7 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case SPARQL_QUERY_SETTINGS -> JsonUtils.readValue(json, SparqlQuerySettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -11349,8 +11720,10 @@ public interface CollectionDAO {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -11372,6 +11745,7 @@ public interface CollectionDAO {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listBefore(
           getTableName(),
@@ -11387,9 +11761,11 @@ public interface CollectionDAO {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
 
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -11410,6 +11786,7 @@ public interface CollectionDAO {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listAfter(
           getTableName(),
@@ -11425,9 +11802,11 @@ public interface CollectionDAO {
     default int listCount(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String fqnPrefix = filter.getQueryParam("fqnPrefix");
+      String excludedEntityType =
+          filter.getQueryParam(PrivateDocumentType.EXCLUDED_ENTITY_TYPE_FILTER);
       String cond = filter.getCondition();
 
-      if (entityType == null && fqnPrefix == null) {
+      if (entityType == null && fqnPrefix == null && excludedEntityType == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -11449,6 +11828,7 @@ public interface CollectionDAO {
         mysqlCondition.append(" AND entityType=:entityType ");
         psqlCondition.append(" AND entityType=:entityType ");
       }
+      appendExcludedEntityType(mysqlCondition, psqlCondition, excludedEntityType);
 
       return listCount(
           getTableName(),
@@ -11456,6 +11836,14 @@ public interface CollectionDAO {
           filter.getQueryParams(),
           mysqlCondition.toString(),
           psqlCondition.toString());
+    }
+
+    private static void appendExcludedEntityType(
+        StringBuilder mysqlCondition, StringBuilder psqlCondition, String excludedEntityType) {
+      if (excludedEntityType != null) {
+        mysqlCondition.append(" AND entityType<>:excludedEntityType ");
+        psqlCondition.append(" AND entityType<>:excludedEntityType ");
+      }
     }
 
     @ConnectionAwareSqlQuery(
@@ -14546,6 +14934,101 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM activity_stream_config WHERE id = :id")
     void delete(@Bind("id") String id);
+  }
+
+  interface RdfInferenceRuleDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_inference_rule "
+                + "(name, json, systemRule, dirty, deleted, updatedAt) "
+                + "VALUES (:name, :json, :systemRule, TRUE, FALSE, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE name = VALUES(name)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_inference_rule "
+                + "(name, json, systemRule, dirty, deleted, updatedAt) "
+                + "VALUES (:name, :json::jsonb, :systemRule, TRUE, FALSE, :updatedAt) "
+                + "ON CONFLICT (name) DO NOTHING",
+        connectionType = POSTGRES)
+    void insertIfAbsent(
+        @Bind("name") String name,
+        @Bind("json") String json,
+        @Bind("systemRule") boolean systemRule,
+        @Bind("updatedAt") long updatedAt);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_inference_rule "
+                + "(name, json, systemRule, dirty, deleted, updatedAt) "
+                + "VALUES (:name, :json, FALSE, TRUE, FALSE, :updatedAt) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), dirty = TRUE, deleted = FALSE, "
+                + "updatedAt = VALUES(updatedAt), lastError = NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO rdf_inference_rule "
+                + "(name, json, systemRule, dirty, deleted, updatedAt) "
+                + "VALUES (:name, :json::jsonb, FALSE, TRUE, FALSE, :updatedAt) "
+                + "ON CONFLICT (name) DO UPDATE SET json = EXCLUDED.json, dirty = TRUE, "
+                + "deleted = FALSE, updatedAt = EXCLUDED.updatedAt, lastError = NULL",
+        connectionType = POSTGRES)
+    void upsert(
+        @Bind("name") String name, @Bind("json") String json, @Bind("updatedAt") long updatedAt);
+
+    @SqlUpdate(
+        "UPDATE rdf_inference_rule SET deleted = TRUE, dirty = FALSE, updatedAt = :updatedAt "
+            + "WHERE name = :name")
+    void softDelete(@Bind("name") String name, @Bind("updatedAt") long updatedAt);
+
+    @SqlUpdate(
+        "UPDATE rdf_inference_rule SET dirty = FALSE, lastMaterializedAt = :completedAt, "
+            + "lastTripleCount = :tripleCount, lastError = NULL WHERE name = :name")
+    void markMaterialized(
+        @Bind("name") String name,
+        @Bind("completedAt") long completedAt,
+        @Bind("tripleCount") long tripleCount);
+
+    @SqlUpdate(
+        "UPDATE rdf_inference_rule SET dirty = TRUE, lastError = :lastError WHERE name = :name")
+    void markFailed(@Bind("name") String name, @Bind("lastError") String lastError);
+
+    @SqlUpdate("UPDATE rdf_inference_rule SET dirty = TRUE WHERE deleted = FALSE")
+    void markAllDirty();
+
+    @SqlQuery("SELECT * FROM rdf_inference_rule WHERE deleted = FALSE ORDER BY name")
+    @RegisterRowMapper(RdfInferenceRuleRowMapper.class)
+    List<RdfInferenceRuleRow> listActive();
+
+    @SqlQuery("SELECT * FROM rdf_inference_rule WHERE name = :name AND deleted = FALSE")
+    @RegisterRowMapper(RdfInferenceRuleRowMapper.class)
+    RdfInferenceRuleRow findActive(@Bind("name") String name);
+
+    class RdfInferenceRuleRowMapper implements RowMapper<RdfInferenceRuleRow> {
+      @Override
+      public RdfInferenceRuleRow map(final ResultSet resultSet, final StatementContext context)
+          throws SQLException {
+        return new RdfInferenceRuleRow(
+            resultSet.getString("name"),
+            resultSet.getString("json"),
+            resultSet.getBoolean("systemRule"),
+            resultSet.getBoolean("dirty"),
+            resultSet.getLong("updatedAt"),
+            (Long) resultSet.getObject("lastMaterializedAt"),
+            resultSet.getLong("lastTripleCount"),
+            resultSet.getString("lastError"));
+      }
+    }
+
+    record RdfInferenceRuleRow(
+        String name,
+        String json,
+        boolean systemRule,
+        boolean dirty,
+        long updatedAt,
+        Long lastMaterializedAt,
+        long lastTripleCount,
+        String lastError) {}
   }
 
   /** DAO for distributed RDF index jobs. */

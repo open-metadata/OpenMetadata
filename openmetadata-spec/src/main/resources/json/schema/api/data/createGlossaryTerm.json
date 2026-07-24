@@ -61,7 +61,14 @@
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+        "$ref": "../../type/conceptMapping.json"
+      }
+    },
+    "attributes": {
+      "description": "Typed properties governed by this ontology concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
       }
     },
     "reviewers": {

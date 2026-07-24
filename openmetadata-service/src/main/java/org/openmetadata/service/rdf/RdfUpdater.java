@@ -1,6 +1,19 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.service.rdf;
 
 import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -11,6 +24,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
@@ -20,16 +35,22 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public class RdfUpdater {
 
   private static final int MAX_PENDING_RDF_WRITES = 1000;
-  private static final AtomicInteger pendingWrites = new AtomicInteger(0);
-  private static final AtomicLong droppedWrites = new AtomicLong(0L);
-  private static final ConcurrentMap<UUID, CompletableFuture<Void>> keyedWriteTails =
+  private static final int MAX_CONCURRENT_RDF_WRITES = 8;
+  private static final long QUEUE_FULL_WAIT_SECONDS = 30;
+  private static final AtomicInteger PENDING_WRITES = new AtomicInteger(0);
+  private static final AtomicLong DROPPED_WRITES = new AtomicLong(0L);
+  private static final Semaphore WRITE_PERMITS = new Semaphore(MAX_CONCURRENT_RDF_WRITES, true);
+  private static final Semaphore QUEUE_PERMITS = new Semaphore(MAX_PENDING_RDF_WRITES, true);
+  private static final ConcurrentMap<UUID, CompletableFuture<Void>> KEYED_WRITE_TAILS =
       new ConcurrentHashMap<>();
 
   private static RdfRepository rdfRepository;
@@ -59,8 +80,9 @@ public class RdfUpdater {
           Timer.Sample sample = RequestLatencyContext.startRdfOperation();
           try {
             rdfRepository.createOrUpdate(entity);
-          } catch (Exception e) {
-            LOG.error("Failed to update entity {} in RDF", entity.getId(), e);
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
+            LOG.error("Failed to update entity {} in RDF", entity.getId(), exception);
           } finally {
             RequestLatencyContext.endRdfOperation(sample);
           }
@@ -80,8 +102,9 @@ public class RdfUpdater {
           Timer.Sample sample = RequestLatencyContext.startRdfOperation();
           try {
             rdfRepository.delete(entityReference);
-          } catch (Exception e) {
-            LOG.error("Failed to delete entity {} in RDF", entityReference.getId(), e);
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
+            LOG.error("Failed to delete entity {} in RDF", entityReference.getId(), exception);
           } finally {
             RequestLatencyContext.endRdfOperation(sample);
           }
@@ -110,8 +133,9 @@ public class RdfUpdater {
           Timer.Sample sample = RequestLatencyContext.startRdfOperation();
           try {
             rdfRepository.addRelationship(relationship);
-          } catch (Exception e) {
-            LOG.error("Failed to add relationship in RDF", e);
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
+            LOG.error("Failed to add relationship in RDF", exception);
           } finally {
             RequestLatencyContext.endRdfOperation(sample);
           }
@@ -135,8 +159,9 @@ public class RdfUpdater {
           Timer.Sample sample = RequestLatencyContext.startRdfOperation();
           try {
             rdfRepository.removeRelationship(relationship);
-          } catch (Exception e) {
-            LOG.error("Failed to remove relationship in RDF", e);
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
+            LOG.error("Failed to remove relationship in RDF", exception);
           } finally {
             RequestLatencyContext.endRdfOperation(sample);
           }
@@ -174,13 +199,14 @@ public class RdfUpdater {
         () -> {
           try {
             rdfRepository.addGlossaryTermRelation(fromTermId, toTermId, relationType);
-          } catch (Exception e) {
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
             LOG.error(
                 "Failed to add glossary term relation {} -> {} ({}) to RDF",
                 fromTermId,
                 toTermId,
                 relationType,
-                e);
+                exception);
           }
         });
   }
@@ -196,13 +222,14 @@ public class RdfUpdater {
         () -> {
           try {
             rdfRepository.removeGlossaryTermRelation(fromTermId, toTermId, relationType);
-          } catch (Exception e) {
+          } catch (RuntimeException exception) {
+            RdfProjectionHealth.markDegraded();
             LOG.error(
                 "Failed to remove glossary term relation {} -> {} ({}) from RDF",
                 fromTermId,
                 toTermId,
                 relationType,
-                e);
+                exception);
           }
         });
   }
@@ -212,26 +239,56 @@ public class RdfUpdater {
   // This preserves the old synchronous hook ordering for per-entity RDF state
   // while still allowing unrelated entities to use AsyncService concurrently.
   private static void submitAsync(String description, Set<UUID> writeKeys, Runnable task) {
-    int newCount = pendingWrites.incrementAndGet();
-    if (newCount > MAX_PENDING_RDF_WRITES) {
-      pendingWrites.decrementAndGet();
-      long dropped = droppedWrites.incrementAndGet();
-      if (dropped == 1 || dropped % 100 == 0) {
-        LOG.warn(
-            "Dropping RDF {} due to backpressure (pending={}, total dropped={})",
-            description,
-            newCount - 1,
-            dropped);
+    PostCommitActionQueue.runOrDefer(() -> submitAsyncAfterCommit(description, writeKeys, task));
+  }
+
+  private static void submitAsyncAfterCommit(
+      String description, Set<UUID> writeKeys, Runnable task) {
+    if (!acquireQueuePermit(description)) {
+      return;
+    }
+    final int newCount = PENDING_WRITES.incrementAndGet();
+    OntologyMetrics.recordRdfQueueDepth(newCount);
+    submitPendingWrite(description, writeKeys, measureQueueLag(task));
+  }
+
+  private static boolean acquireQueuePermit(final String description) {
+    try {
+      if (QUEUE_PERMITS.tryAcquire(QUEUE_FULL_WAIT_SECONDS, TimeUnit.SECONDS)) {
+        return true;
       }
-      return;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
+    recordDroppedWrite(description);
+    return false;
+  }
 
-    Set<UUID> orderedKeys = normalizeWriteKeys(writeKeys);
-    if (!orderedKeys.isEmpty()) {
-      submitKeyedAsync(description, orderedKeys, task);
-      return;
+  private static void recordDroppedWrite(final String description) {
+    final long dropped = DROPPED_WRITES.incrementAndGet();
+    RdfProjectionHealth.markDegraded();
+    OntologyMetrics.recordRdfQueueDrop();
+    if (dropped == 1 || dropped % 100 == 0) {
+      LOG.warn(
+          "Dropping RDF {} after waiting {}s for queue capacity (total dropped={})",
+          description,
+          QUEUE_FULL_WAIT_SECONDS,
+          dropped);
     }
+  }
 
+  private static void submitPendingWrite(
+      final String description, final Set<UUID> writeKeys, final Runnable task) {
+    final Set<UUID> orderedKeys = normalizeWriteKeys(writeKeys);
+    final Runnable boundedTask = withWritePermit(task);
+    if (orderedKeys.isEmpty()) {
+      submitUnkeyedAsync(description, boundedTask);
+    } else {
+      submitKeyedAsync(description, orderedKeys, boundedTask);
+    }
+  }
+
+  private static void submitUnkeyedAsync(final String description, final Runnable task) {
     try {
       AsyncService.getInstance()
           .execute(
@@ -239,66 +296,111 @@ public class RdfUpdater {
                 try {
                   task.run();
                 } finally {
-                  pendingWrites.decrementAndGet();
+                  decrementPendingWrites();
                 }
               });
     } catch (RuntimeException e) {
-      pendingWrites.decrementAndGet();
+      decrementPendingWrites();
+      RdfProjectionHealth.markDegraded();
       LOG.error("Failed to submit RDF {} to async executor", description, e);
     }
   }
 
   private static void submitKeyedAsync(String description, Set<UUID> writeKeys, Runnable task) {
-    CompletableFuture<Void> next;
-    synchronized (keyedWriteTails) {
-      CompletableFuture<?>[] previous =
+    CompletableFuture<Void> next = null;
+    synchronized (KEYED_WRITE_TAILS) {
+      final CompletableFuture<?>[] previous =
           writeKeys.stream()
               .map(
-                  key -> keyedWriteTails.getOrDefault(key, CompletableFuture.completedFuture(null)))
+                  key ->
+                      KEYED_WRITE_TAILS.getOrDefault(key, CompletableFuture.completedFuture(null)))
               .toArray(CompletableFuture[]::new);
-      CompletableFuture<Void> previousWrites =
+      final CompletableFuture<Void> previousWrites =
           CompletableFuture.allOf(previous).handle((ignored, error) -> null);
       try {
         next = previousWrites.thenRunAsync(task, AsyncService.getInstance().getExecutorService());
       } catch (RuntimeException e) {
-        pendingWrites.decrementAndGet();
+        decrementPendingWrites();
+        RdfProjectionHealth.markDegraded();
         LOG.error("Failed to submit RDF {} to keyed async executor", description, e);
-        return;
       }
-      for (UUID key : writeKeys) {
-        keyedWriteTails.put(key, next);
+      if (next != null) {
+        for (UUID key : writeKeys) {
+          KEYED_WRITE_TAILS.put(key, next);
+        }
       }
     }
 
-    next.whenComplete(
-        (ignored, error) -> {
-          synchronized (keyedWriteTails) {
-            for (UUID key : writeKeys) {
-              keyedWriteTails.remove(key, next);
-            }
-          }
-          pendingWrites.decrementAndGet();
-          if (error != null) {
-            LOG.error("RDF {} failed while running in keyed async queue", description, error);
-          }
-        });
+    if (next != null) {
+      registerCompletion(description, writeKeys, next);
+    }
+  }
+
+  private static void registerCompletion(
+      final String description,
+      final Set<UUID> writeKeys,
+      final CompletableFuture<Void> submittedWrite) {
+    submittedWrite.whenComplete(
+        (ignored, error) -> completeKeyedWrite(description, writeKeys, submittedWrite, error));
+  }
+
+  private static void completeKeyedWrite(
+      final String description,
+      final Set<UUID> writeKeys,
+      final CompletableFuture<Void> submittedWrite,
+      final Throwable error) {
+    synchronized (KEYED_WRITE_TAILS) {
+      for (UUID key : writeKeys) {
+        KEYED_WRITE_TAILS.remove(key, submittedWrite);
+      }
+    }
+    decrementPendingWrites();
+    if (error != null) {
+      RdfProjectionHealth.markDegraded();
+      LOG.error("RDF {} failed while running in keyed async queue", description, error);
+    }
+  }
+
+  private static Runnable measureQueueLag(final Runnable task) {
+    final long queuedAt = System.nanoTime();
+    return () -> {
+      OntologyMetrics.recordRdfQueueLag(Duration.ofNanos(System.nanoTime() - queuedAt));
+      task.run();
+    };
+  }
+
+  private static Runnable withWritePermit(final Runnable task) {
+    return () -> {
+      WRITE_PERMITS.acquireUninterruptibly();
+      try {
+        task.run();
+      } finally {
+        WRITE_PERMITS.release();
+      }
+    };
+  }
+
+  static int maxConcurrentWrites() {
+    return MAX_CONCURRENT_RDF_WRITES;
+  }
+
+  private static void decrementPendingWrites() {
+    QUEUE_PERMITS.release();
+    OntologyMetrics.recordRdfQueueDepth(PENDING_WRITES.decrementAndGet());
   }
 
   private static Set<UUID> writeKeys(UUID... keys) {
-    if (keys == null || keys.length == 0) {
-      return Set.of();
-    }
-    return normalizeWriteKeys(Arrays.asList(keys));
+    final Iterable<UUID> values = keys == null ? List.of() : Arrays.asList(keys);
+    return normalizeWriteKeys(values);
   }
 
   private static Set<UUID> normalizeWriteKeys(Iterable<UUID> keys) {
-    if (keys == null) {
-      return Set.of();
-    }
-    List<UUID> filtered = new ArrayList<>();
-    for (UUID key : keys) {
-      if (key != null) {
-        filtered.add(key);
+    final List<UUID> filtered = new ArrayList<>();
+    if (keys != null) {
+      for (UUID key : keys) {
+        if (key != null) {
+          filtered.add(key);
+        }
       }
     }
     filtered.sort(Comparator.comparing(UUID::toString));

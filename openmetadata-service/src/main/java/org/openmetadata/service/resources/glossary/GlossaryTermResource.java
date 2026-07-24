@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -31,6 +32,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -58,9 +60,14 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
+import org.openmetadata.schema.api.data.OntologyStudioAsset;
+import org.openmetadata.schema.api.data.OntologyStudioDataGraph;
+import org.openmetadata.schema.api.data.OntologyStudioSummary;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -68,6 +75,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -87,6 +95,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -412,21 +421,112 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       operationId = "getRelationTypeUsageCounts",
       summary = "Get usage counts for all relation types",
       description =
-          "Get a map of relation types to the count of glossary term relations using that type. "
+          "Get typed relation definitions and the count of glossary term relations using each. "
               + "Useful for determining if a relation type can be safely deleted.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Map of relation type to usage count",
-            content = @Content(mediaType = "application/json"))
+            description = "Relationship type usage counts",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array =
+                        @ArraySchema(
+                            schema = @Schema(implementation = RelationshipTypeUsage.class))))
       })
   public Response getRelationTypeUsageCounts(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getRelationTypeUsageCounts();
+    List<RelationshipTypeUsage> result = repository.getRelationTypeUsageCounts();
     return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/studio/summary")
+  @Operation(
+      operationId = "getOntologyStudioSummary",
+      summary = "Get the bounded Ontology Studio health summary",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ontology Studio health summary",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OntologyStudioSummary.class)))
+      })
+  public OntologyStudioSummary getOntologyStudioSummary(
+      @Context SecurityContext securityContext,
+      @QueryParam("parent") String parent,
+      @DefaultValue("5") @Min(1) @Max(20) @QueryParam("limit") int limit,
+      @DefaultValue("0") @Min(0) @Max(10000) @QueryParam("offset") int offset) {
+    authorizeStudioView(securityContext);
+    return repository.getOntologyStudioSummary(parent, limit, offset);
+  }
+
+  @GET
+  @Path("/studio/data")
+  @Operation(
+      operationId = "getOntologyStudioDataGraph",
+      summary = "Get a bounded page of Ontology Studio data clusters",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ontology Studio data graph",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OntologyStudioDataGraph.class)))
+      })
+  public OntologyStudioDataGraph getOntologyStudioDataGraph(
+      @Context SecurityContext securityContext,
+      @QueryParam("parent") String parent,
+      @DefaultValue("12") @Min(1) @Max(12) @QueryParam("limit") int limit,
+      @DefaultValue("0") @Min(0) @Max(48) @QueryParam("offset") int offset,
+      @DefaultValue("4") @Min(1) @Max(4) @QueryParam("assetPreviewSize") int assetPreviewSize) {
+    authorizeStudioView(securityContext);
+    return repository.getOntologyStudioDataGraph(
+        parent,
+        limit,
+        offset,
+        assetPreviewSize,
+        DefaultAuthorizer.getSubjectContext(securityContext));
+  }
+
+  @GET
+  @Path("/{id}/studioAssets")
+  @Operation(
+      operationId = "listOntologyStudioAssets",
+      summary = "List a bounded page of detailed assets for an Ontology Studio term",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ontology Studio asset page",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OntologyStudioAsset.class)))
+      })
+  public ResultList<OntologyStudioAsset> listOntologyStudioAssets(
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @DefaultValue("6") @Min(1) @Max(100) @QueryParam("limit") int limit,
+      @DefaultValue("0") @Min(0) @Max(10000) @QueryParam("offset") int offset) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    return repository.getOntologyStudioAssets(
+        id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext));
+  }
+
+  private void authorizeStudioView(SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContext());
   }
 
   @GET
@@ -1237,8 +1337,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm term = repository.addTermRelation(id, termRelation);
-    return Response.ok(addHref(uriInfo, term)).build();
+    return repository
+        .addTermRelation(uriInfo, securityContext.getUserPrincipal().getName(), id, termRelation)
+        .toResponse();
   }
 
   @DELETE
@@ -1279,8 +1380,105 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm term = repository.removeTermRelation(id, toTermId, relationType);
-    return Response.ok(addHref(uriInfo, term)).build();
+    return repository
+        .removeTermRelation(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, toTermId, relationType)
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/relations/{toTermId}")
+  @Operation(
+      operationId = "updateTermRelation",
+      summary = "Change the type or metadata of an existing typed relation",
+      description =
+          "Change the relation type (e.g., broader to narrower) or the provenance/status of an existing typed relation to another glossary term. The inverse relation is updated automatically.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "404", description = "Glossary term or relation not found")
+      })
+  public Response updateTermRelation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the related glossary term whose relation is being changed",
+              schema = @Schema(type = "UUID"))
+          @PathParam("toTermId")
+          UUID toTermId,
+      @Valid TermRelation termRelation) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    return repository
+        .updateTermRelation(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, toTermId, termRelation)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{id}/relations/id/{relationshipId}")
+  @Operation(
+      operationId = "removeTermRelationById",
+      summary = "Remove one glossary-term relationship by its stable ID",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The updated glossary term"),
+        @ApiResponse(responseCode = "404", description = "Relationship not found")
+      })
+  public Response removeTermRelationById(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("relationshipId") final UUID relationshipId) {
+    authorizeRelationMutation(securityContext, id);
+    return repository
+        .removeTermRelationById(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, relationshipId)
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/{id}/relations/id/{relationshipId}")
+  @Operation(
+      operationId = "updateTermRelationById",
+      summary = "Update one glossary-term relationship by its stable ID",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The updated glossary term"),
+        @ApiResponse(responseCode = "400", description = "Invalid or inferred relationship"),
+        @ApiResponse(responseCode = "404", description = "Relationship not found")
+      })
+  public Response updateTermRelationById(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("relationshipId") final UUID relationshipId,
+      @Valid final UpdateTermRelation request) {
+    authorizeRelationMutation(securityContext, id);
+    return repository
+        .updateTermRelationById(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, relationshipId, request)
+        .toResponse();
+  }
+
+  private void authorizeRelationMutation(
+      final SecurityContext securityContext, final UUID glossaryTermId) {
+    final OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(glossaryTermId, ResourceContextInterface.Operation.PUT));
   }
 
   @GET
@@ -1294,32 +1492,55 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "Graph of related terms",
-            content = @Content(mediaType = "application/json")),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermRelationGraph.class))),
         @ApiResponse(responseCode = "404", description = "Glossary term not found")
       })
-  public Response getTermRelationGraph(
-      @Context UriInfo uriInfo,
+  public GlossaryTermRelationGraph getTermRelationGraph(
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Parameter(description = "Depth of the graph (1-5, default = 1)")
-          @DefaultValue("1")
-          @Min(1)
-          @Max(5)
-          @QueryParam("depth")
-          int depth,
-      @Parameter(description = "Comma-separated list of relation types to include")
-          @QueryParam("relationTypes")
-          String relationTypes) {
+      @BeanParam RelationGraphQuery query) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     List<String> types = null;
-    if (relationTypes != null && !relationTypes.isEmpty()) {
-      types = List.of(relationTypes.split(","));
+    if (!nullOrEmpty(query.relationTypes)) {
+      types = List.of(query.relationTypes.split(","));
     }
-    return Response.ok(repository.getTermRelationGraph(id, depth, types)).build();
+    GlossaryTermRepository.GraphLimits limits =
+        new GlossaryTermRepository.GraphLimits(query.nodeLimit, query.edgeLimit);
+    return repository.getTermRelationGraph(id, query.depth, types, limits);
+  }
+
+  public static final class RelationGraphQuery {
+    @Parameter(description = "Depth of the graph (1-5, default = 1)")
+    @DefaultValue("1")
+    @Min(1)
+    @Max(5)
+    @QueryParam("depth")
+    private int depth;
+
+    @Parameter(description = "Comma-separated list of relationship type keys to include")
+    @QueryParam("relationTypes")
+    private String relationTypes;
+
+    @Parameter(description = "Maximum nodes in the bounded graph slice")
+    @DefaultValue("500")
+    @Min(1)
+    @Max(5000)
+    @QueryParam("nodeLimit")
+    private int nodeLimit;
+
+    @Parameter(description = "Maximum edges in the bounded graph slice")
+    @DefaultValue("1000")
+    @Min(1)
+    @Max(10000)
+    @QueryParam("edgeLimit")
+    private int edgeLimit;
   }
 
   @GET

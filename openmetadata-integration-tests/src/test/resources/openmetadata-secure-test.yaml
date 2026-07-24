@@ -122,6 +122,7 @@ rdf:
   baseUri: "https://open-metadata.org/"
   storageType: "FUSEKI"
   remoteEndpoint: "http://localhost:3030/openmetadata"
+  maxInMemoryInferenceTriples: 100000
   username: "admin"
   password: "test-admin"
   dataset: "openmetadata"

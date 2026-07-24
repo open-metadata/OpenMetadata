@@ -17,61 +17,62 @@ import { getApiContext, toastNotification, uuid } from '../../utils/common';
 
 const PAGE_SIZE_BASE = 15;
 const RELATION_SETTINGS_ROUTE = '/settings/governance/glossary-term-relations';
-const RELATION_TYPES_API =
-  '/api/v1/system/settings/glossaryTermRelationSettings/relationTypes';
-const SYSTEM_DEFINED_RELATION = 'relatedTo';
+const RELATION_TYPES_API = '/api/v1/relationshipTypes';
+const SYSTEM_DEFINED_RELATION = 'broader';
 
 type RelationTypePayload = {
   name: string;
   displayName: string;
-  category?: string;
 };
 
+type RelationshipTypeResponse = RelationTypePayload & { id: string };
+
 const buildRelationName = () => `pwRel${uuid()}`;
-const CONFLICT_STATUS = 412;
-const CONFLICT_RETRY_LIMIT = 5;
 
 const createRelationTypeViaApi = async (
   apiContext: APIRequestContext,
   payload: RelationTypePayload
 ) => {
-  for (let attempt = 0; attempt < CONFLICT_RETRY_LIMIT; attempt++) {
-    const response = await apiContext.post(RELATION_TYPES_API, {
-      data: {
-        category: 'associative',
-        ...payload,
-      },
-    });
+  const response = await apiContext.post(RELATION_TYPES_API, {
+    data: {
+      ...payload,
+      category: 'CUSTOM',
+      description: '',
+      paletteKey: 'BLUE',
+      rdfPredicate: `https://example.org/${payload.name}`,
+    },
+  });
+  expect(response.status()).toBe(201);
 
-    if (response.status() !== CONFLICT_STATUS) {
-      expect(response.status()).toBe(201);
-
-      return;
-    }
-  }
-
-  throw new Error(
-    `Failed to create relation type '${payload.name}' after ${CONFLICT_RETRY_LIMIT} conflict retries`
-  );
+  return response.json() as Promise<RelationshipTypeResponse>;
 };
 
 const deleteRelationTypeViaApi = async (
   apiContext: APIRequestContext,
+  id: string
+) => {
+  const response = await apiContext.delete(`${RELATION_TYPES_API}/${id}`);
+  expect([200, 204, 404]).toContain(response.status());
+};
+
+const deleteRelationTypeByNameViaApi = async (
+  apiContext: APIRequestContext,
   name: string
 ) => {
-  for (let attempt = 0; attempt < CONFLICT_RETRY_LIMIT; attempt++) {
-    const response = await apiContext.delete(`${RELATION_TYPES_API}/${name}`);
-
-    if (response.status() !== CONFLICT_STATUS) {
-      return;
-    }
+  const response = await apiContext.get(
+    `${RELATION_TYPES_API}/name/${encodeURIComponent(name)}`
+  );
+  if (response.ok()) {
+    const relationshipType =
+      (await response.json()) as RelationshipTypeResponse;
+    await deleteRelationTypeViaApi(apiContext, relationshipType.id);
   }
 };
 
 const goToRelationSettings = async (page: Page) => {
   const listResponse = page.waitForResponse(
     (response) =>
-      response.url().includes('/glossaryTermRelationSettings/relationTypes') &&
+      response.url().includes(RELATION_TYPES_API) &&
       response.request().method() === 'GET'
   );
   await page.goto(RELATION_SETTINGS_ROUTE);
@@ -89,39 +90,30 @@ const selectOption = async (page: Page, testId: string, option: string) => {
   await page.getByRole('option', { name: option, exact: true }).click();
 };
 
-// The drawer's save fires a single non-retrying write against the shared
-// settings singleton, so a peer worker committing in the same instant can make
-// it lose the compare-and-set (412). The drawer stays open on failure, so retry
-// the click until the mutation lands, matching how every other writer to this
-// singleton self-heals under parallel execution.
 const submitRelationForm = async (
   page: Page,
   method: 'POST' | 'PUT',
   urlPart: string
 ) => {
-  await expect(async () => {
-    const mutation = page.waitForResponse(
-      (response) =>
-        response.url().includes(urlPart) &&
-        response.request().method() === method
-    );
-    await page.getByTestId('save-btn').click();
+  const mutation = page.waitForResponse(
+    (response) =>
+      response.url().includes(urlPart) && response.request().method() === method
+  );
+  await page.getByTestId('save-btn').click();
 
-    expect((await mutation).status()).toBeLessThan(300);
-  }).toPass();
+  expect((await mutation).status()).toBeLessThan(300);
 };
 
-const deleteRelationInUi = async (page: Page, name: string) => {
-  await expect(async () => {
-    const mutation = page.waitForResponse(
-      (response) =>
-        response.url().includes(`/relationTypes/${name}`) &&
-        response.request().method() === 'DELETE'
-    );
-    await page.getByTestId(`delete-${name}-btn`).click();
+const deleteRelationInUi = async (page: Page, id: string, name: string) => {
+  const mutation = page.waitForResponse(
+    (response) =>
+      response.url().includes(`${RELATION_TYPES_API}/${id}`) &&
+      response.request().method() === 'DELETE'
+  );
+  await page.getByTestId(`delete-${name}-btn`).click();
+  await page.getByTestId('confirm-delete-btn').click();
 
-    expect((await mutation).status()).toBeLessThan(300);
-  }).toPass();
+  expect((await mutation).status()).toBeLessThan(300);
 };
 
 test.describe('Glossary Term Relation Settings', () => {
@@ -142,18 +134,22 @@ test.describe('Glossary Term Relation Settings', () => {
 
       await fillInput(page, 'name-input', relationName);
       await fillInput(page, 'display-name-input', displayName);
-      await selectOption(page, 'category-select', 'Associative');
+      await fillInput(
+        page,
+        'rdf-predicate-input',
+        `https://example.org/${relationName}`
+      );
       await selectOption(page, 'cardinality-select', 'One to Many');
 
-      await submitRelationForm(page, 'POST', '/relationTypes');
+      await submitRelationForm(page, 'POST', RELATION_TYPES_API);
 
-      await toastNotification(page, 'Relation Type updated successfully.');
+      await toastNotification(page, 'Relation Type created successfully.');
 
       await expect(
         page.getByTestId(`relation-name-${relationName}`)
       ).toBeVisible();
     } finally {
-      await deleteRelationTypeViaApi(apiContext, relationName);
+      await deleteRelationTypeByNameViaApi(apiContext, relationName);
       await afterAction();
     }
   });
@@ -182,13 +178,13 @@ test.describe('Glossary Term Relation Settings', () => {
 
       await fillInput(page, 'display-name-input', updatedDisplayName);
 
-      await submitRelationForm(page, 'PUT', `/relationTypes/${relationName}`);
+      await submitRelationForm(page, 'PUT', RELATION_TYPES_API);
 
       await toastNotification(page, 'Relation Type updated successfully.');
 
       await expect(page.getByText(updatedDisplayName)).toBeVisible();
     } finally {
-      await deleteRelationTypeViaApi(apiContext, relationName);
+      await deleteRelationTypeByNameViaApi(apiContext, relationName);
       await afterAction();
     }
   });
@@ -214,7 +210,7 @@ test.describe('Glossary Term Relation Settings', () => {
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
-      await createRelationTypeViaApi(apiContext, {
+      const relationshipType = await createRelationTypeViaApi(apiContext, {
         name: relationName,
         displayName: 'PW Delete',
       });
@@ -225,7 +221,7 @@ test.describe('Glossary Term Relation Settings', () => {
         page.getByTestId(`relation-name-${relationName}`)
       ).toBeVisible();
 
-      await deleteRelationInUi(page, relationName);
+      await deleteRelationInUi(page, relationshipType.id, relationName);
 
       await toastNotification(page, 'Relation Type deleted successfully!');
 
@@ -233,7 +229,7 @@ test.describe('Glossary Term Relation Settings', () => {
         page.getByTestId(`relation-name-${relationName}`)
       ).toHaveCount(0);
     } finally {
-      await deleteRelationTypeViaApi(apiContext, relationName);
+      await deleteRelationTypeByNameViaApi(apiContext, relationName);
       await afterAction();
     }
   });
@@ -255,21 +251,18 @@ test.describe('Glossary Term Relation Settings', () => {
   });
 
   test('paginates relation types when they exceed a page', async ({ page }) => {
-    const createdNames: string[] = [];
+    const createdRelationshipTypes: RelationshipTypeResponse[] = [];
     const { apiContext, afterAction } = await getApiContext(page);
 
     try {
-      // Seed enough of our own types that they exceed a single page on their
-      // own. The 11 permanent system-defined types can never be deleted and
-      // peers only ever add more, so total always stays above PAGE_SIZE_BASE
-      // regardless of what else runs in parallel.
       for (let index = 0; index < PAGE_SIZE_BASE + 1; index++) {
         const name = buildRelationName();
-        await createRelationTypeViaApi(apiContext, {
-          name,
-          displayName: `PW Page ${index}`,
-        });
-        createdNames.push(name);
+        createdRelationshipTypes.push(
+          await createRelationTypeViaApi(apiContext, {
+            name,
+            displayName: `PW Page ${index}`,
+          })
+        );
       }
 
       await goToRelationSettings(page);
@@ -279,19 +272,12 @@ test.describe('Glossary Term Relation Settings', () => {
         page.getByTestId('relation-types-table').locator('tbody tr')
       ).toHaveCount(PAGE_SIZE_BASE);
 
-      const nextPageResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/relationTypes') &&
-          response.url().includes(`offset=${PAGE_SIZE_BASE}`) &&
-          response.request().method() === 'GET'
-      );
-
       await page.getByRole('button', { name: 'Next Page' }).first().click();
 
-      expect((await nextPageResponse).ok()).toBe(true);
+      await expect(page.getByLabel('Current page')).toHaveValue('2');
     } finally {
-      for (const name of createdNames) {
-        await deleteRelationTypeViaApi(apiContext, name);
+      for (const relationshipType of createdRelationshipTypes) {
+        await deleteRelationTypeViaApi(apiContext, relationshipType.id);
       }
       await afterAction();
     }

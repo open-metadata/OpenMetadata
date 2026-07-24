@@ -120,8 +120,7 @@ class ReindexBenchmarkIT {
     return rt.totalMemory() - rt.freeMemory();
   }
 
-  static void writeMetrics(final Map<String, Object> metrics, final String filename)
-      throws Exception {
+  static void writeMetrics(final Object metrics, final String filename) throws Exception {
     final Path dir = Path.of("target", "benchmark");
     Files.createDirectories(dir);
     new ObjectMapper()

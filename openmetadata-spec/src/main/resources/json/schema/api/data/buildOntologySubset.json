@@ -1,0 +1,50 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/buildOntologySubset.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildOntologySubset",
+  "description": "Build a reviewable application ontology subset from pinned source concepts.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.BuildOntologySubset",
+  "properties": {
+    "sourceGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "targetGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceTermIds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true
+    },
+    "includeDescendants": {
+      "type": "boolean",
+      "default": false
+    },
+    "includeRelationships": {
+      "type": "boolean",
+      "default": true
+    },
+    "changeSetName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "changeSetDisplayName": {
+      "type": "string"
+    },
+    "changeSetDescription": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    }
+  },
+  "required": [
+    "sourceGlossaryId",
+    "targetGlossaryId",
+    "sourceTermIds",
+    "changeSetName",
+    "changeSetDescription"
+  ],
+  "additionalProperties": false
+}

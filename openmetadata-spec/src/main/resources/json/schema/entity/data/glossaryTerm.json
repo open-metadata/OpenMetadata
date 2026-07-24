@@ -22,44 +22,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "conceptMappingType": {
-      "description": "Type of mapping used to align this term with an external concept.",
-      "type": "string",
-      "enum": [
-        "EXACT_MATCH",
-        "CLOSE_MATCH",
-        "BROAD_MATCH",
-        "NARROW_MATCH",
-        "RELATED_MATCH",
-        "SAME_AS"
-      ]
-    },
-    "conceptMapping": {
-      "description": "Mapping to an external concept (e.g., SKOS concept IRI).",
-      "type": "object",
-      "properties": {
-        "conceptIri": {
-          "description": "External concept IRI to map this glossary term to.",
-          "type": "string",
-          "format": "uri"
-        },
-        "mappingType": {
-          "description": "Type of mapping used for the external concept alignment.",
-          "$ref": "#/definitions/conceptMappingType"
-        },
-        "schemeIri": {
-          "description": "Optional external concept scheme IRI for the mapped concept.",
-          "type": "string",
-          "format": "uri"
-        },
-        "source": {
-          "description": "Optional source label or catalog for the external concept.",
-          "type": "string"
-        }
-      },
-      "required": ["conceptIri", "mappingType"],
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -129,9 +91,21 @@
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/glossaryTerm.json#/definitions/conceptMapping"
+        "$ref": "../../type/conceptMapping.json"
       },
       "default": []
+    },
+    "attributes": {
+      "description": "Typed properties governed by this ontology concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyAttribute.json"
+      },
+      "default": []
+    },
+    "ontologySource": {
+      "description": "Pinned source provenance when this term belongs to an application ontology subset.",
+      "$ref": "../../type/ontologySourceProvenance.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

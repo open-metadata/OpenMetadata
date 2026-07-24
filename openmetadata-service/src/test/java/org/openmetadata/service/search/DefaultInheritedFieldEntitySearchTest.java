@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.GLOSSARY_ASSET_SORT_ORDER;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -23,6 +26,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.OntologyStudioAssetResult;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultInheritedFieldEntitySearchTest {
@@ -341,6 +346,120 @@ class DefaultInheritedFieldEntitySearchTest {
   }
 
   @Test
+  void shouldReturnBoundedOntologyStudioAssetBuckets() throws IOException {
+    SubjectContext subjectContext = mock(SubjectContext.class);
+    JsonObject response =
+        jsonObject(
+            """
+            {
+              "sterms#studio_terms": {
+                "buckets": [{
+                  "key": "commerce.customer",
+                  "doc_count": 7,
+                  "top_hits#studio_assets": {
+                    "hits": {
+                      "hits": [{
+                        "_source": {
+                          "id": "11111111-1111-1111-1111-111111111111",
+                          "entityType": "table",
+                          "name": "customers",
+                          "fullyQualifiedName": "svc.db.schema.customers",
+                          "serviceType": "Snowflake",
+                          "service": {
+                            "id": "22222222-2222-2222-2222-222222222222",
+                            "type": "databaseService",
+                            "name": "warehouse"
+                          },
+                          "columnNames": ["id", "email"]
+                        }
+                      }]
+                    }
+                  }
+                }]
+              }
+            }
+            """);
+    when(searchRepository.aggregate(any(), any(), any(), any(), same(subjectContext)))
+        .thenReturn(response);
+
+    var result =
+        inheritedFieldSearch.getAssetBucketsForTerms(
+            List.of("Commerce.Customer"), 4, subjectContext);
+
+    assertEquals(1, result.size());
+    assertEquals("Commerce.Customer", result.getFirst().termFullyQualifiedName());
+    assertEquals(7, result.getFirst().assetCount());
+    assertEquals("Snowflake", result.getFirst().assets().getFirst().getServiceType());
+    assertEquals(2, result.getFirst().assets().getFirst().getColumnCount());
+    verify(searchRepository)
+        .aggregate(
+            any(),
+            any(),
+            org.mockito.ArgumentMatchers.argThat(
+                aggregation ->
+                    SearchAggregation.includedValues(aggregation.getAggregationTree().getValue())
+                            .equals(List.of("commerce.customer"))
+                        && GLOSSARY_ASSET_SORT_FIELD.equals(
+                            aggregation
+                                .getAggregationTree()
+                                .getChildren()
+                                .getFirst()
+                                .getValue()
+                                .get("sort_field"))
+                        && GLOSSARY_ASSET_SORT_ORDER.equals(
+                            aggregation
+                                .getAggregationTree()
+                                .getChildren()
+                                .getFirst()
+                                .getValue()
+                                .get("sort_order"))),
+            any(),
+            same(subjectContext));
+  }
+
+  @Test
+  @SuppressWarnings("resource")
+  void shouldPageDetailedOntologyStudioAssets() throws IOException {
+    SubjectContext subjectContext = mock(SubjectContext.class);
+    String responseBody =
+        """
+        {
+          "hits": {
+            "total": {"value": 9},
+            "hits": [{
+              "_source": {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "entityType": "dashboard",
+                "name": "sales",
+                "fullyQualifiedName": "bi.sales",
+                "serviceType": "Looker"
+              }
+            }]
+          }
+        }
+        """;
+    when(searchRepository.search(any(), same(subjectContext)))
+        .thenReturn(Response.ok(responseBody).build());
+    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm("Commerce.Customer", 6, 6);
+
+    OntologyStudioAssetResult result =
+        inheritedFieldSearch.getAssetPreviewsForField(
+            query, subjectContext, () -> new OntologyStudioAssetResult(List.of(), 0));
+
+    assertEquals(9, result.total());
+    assertEquals("Looker", result.assets().getFirst().getServiceType());
+    verify(searchRepository)
+        .search(
+            org.mockito.ArgumentMatchers.argThat(
+                request ->
+                    request.getFrom() == 6
+                        && request.getSize() == 6
+                        && GLOSSARY_ASSET_SORT_FIELD.equals(request.getSortFieldParam())
+                        && GLOSSARY_ASSET_SORT_ORDER.equals(request.getSortOrder())),
+            same(subjectContext));
+  }
+
+  @Test
   void shouldBuildInheritedFieldQueriesWithExpectedDefaults() {
     InheritedFieldQuery domain = InheritedFieldQuery.forDomain("domain", 1, 2);
     InheritedFieldQuery tag = InheritedFieldQuery.forTag("tag", 3, 4);
@@ -358,6 +477,8 @@ class DefaultInheritedFieldEntitySearchTest {
     assertFalse(dataProduct.isIncludeDeleted());
     assertEquals("tags.tagFQN", glossary.getFieldPath());
     assertFalse(glossary.isSupportsHierarchy());
+    assertEquals(GLOSSARY_ASSET_SORT_FIELD, glossary.getSortField());
+    assertEquals(GLOSSARY_ASSET_SORT_ORDER, glossary.getSortOrder());
     assertEquals("owners.id", team.getFieldPath());
     assertEquals(InheritedFieldEntitySearch.QueryFilterType.OWNER_ASSETS, team.getFilterType());
     assertEquals(List.of("user", "team1"), user.getFieldValues());

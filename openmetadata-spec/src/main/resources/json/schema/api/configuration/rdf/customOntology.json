@@ -1,0 +1,105 @@
+{
+  "$id": "https://open-metadata.org/schema/api/configuration/rdf/customOntology.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomOntology",
+  "description": "A user-authored extension to the canonical OpenMetadata ontology. Custom classes and properties live in the om-extension: namespace and never collide with the read-only canonical om: namespace.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.rdf.CustomOntology",
+  "definitions": {
+    "customClass": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.CustomOntologyClass",
+      "description": "A user-defined OWL class.",
+      "properties": {
+        "uri": {
+          "description": "Full URI of the class. Must start with the om-extension: namespace.",
+          "type": "string",
+          "pattern": "^https://open-metadata\\.org/ontology-extension/[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "label": {
+          "description": "Human-readable label (rdfs:label).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Markdown description of the class.",
+          "type": "string"
+        },
+        "subClassOf": {
+          "description": "Parent class URIs. May reference canonical om: classes (e.g. om:DataAsset) or other custom classes within this same extension. Must not be empty.",
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      },
+      "required": ["uri", "subClassOf"],
+      "additionalProperties": false
+    },
+    "customProperty": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.CustomOntologyProperty",
+      "description": "A user-defined OWL ObjectProperty or DatatypeProperty.",
+      "properties": {
+        "uri": {
+          "description": "Full URI of the property. Must start with the om-extension: namespace.",
+          "type": "string",
+          "pattern": "^https://open-metadata\\.org/ontology-extension/[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "label": {
+          "description": "Human-readable label.",
+          "type": "string"
+        },
+        "description": {
+          "description": "Markdown description of the property.",
+          "type": "string"
+        },
+        "type": {
+          "description": "OWL property type.",
+          "type": "string",
+          "enum": ["ObjectProperty", "DatatypeProperty"]
+        },
+        "domain": {
+          "description": "URI of the property's rdfs:domain (the class instances this property applies to).",
+          "type": "string"
+        },
+        "range": {
+          "description": "URI of the property's rdfs:range. For DatatypeProperty, an XSD datatype URI; for ObjectProperty, a class URI.",
+          "type": "string"
+        },
+        "subPropertyOf": {
+          "description": "Optional parent properties.",
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      },
+      "required": ["uri", "type", "domain", "range"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Stable identifier for the extension. Lowercase letters, digits, hyphen.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+    },
+    "displayName": { "type": "string" },
+    "description": {
+      "description": "Markdown description of the extension. Should explain why these classes/properties are needed.",
+      "type": "string"
+    },
+    "classes": {
+      "description": "Custom OWL classes defined by this extension.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/customClass" },
+      "default": []
+    },
+    "properties": {
+      "description": "Custom OWL properties defined by this extension.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/customProperty" },
+      "default": []
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

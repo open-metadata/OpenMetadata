@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyAttribute.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyAttribute",
+  "description": "A typed attribute governed by an ontology concept.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyAttribute",
+  "definitions": {
+    "dataType": {
+      "description": "Supported value type for an ontology attribute.",
+      "javaType": "org.openmetadata.schema.type.OntologyAttributeDataType",
+      "type": "string",
+      "enum": ["STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "ENUM"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Stable identifier used by drafts and version diffs.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the attribute within its concept.",
+      "$ref": "basic.json#/definitions/entityName"
+    },
+    "iri": {
+      "description": "Canonical IRI of the OWL datatype property.",
+      "type": "string",
+      "format": "uri"
+    },
+    "description": {
+      "description": "Human-readable meaning of the attribute.",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "dataType": {
+      "$ref": "#/definitions/dataType"
+    },
+    "datatypeIri": {
+      "description": "Exact RDF datatype IRI preserved for ontology round trips.",
+      "type": "string",
+      "format": "uri"
+    },
+    "unit": {
+      "description": "Optional unit IRI or display symbol.",
+      "type": "string",
+      "maxLength": 256
+    },
+    "enumValues": {
+      "description": "Allowed values when dataType is ENUM.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "isIdentifier": {
+      "description": "Whether the attribute identifies instances of the concept.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "dataType", "isIdentifier"],
+  "additionalProperties": false
+}

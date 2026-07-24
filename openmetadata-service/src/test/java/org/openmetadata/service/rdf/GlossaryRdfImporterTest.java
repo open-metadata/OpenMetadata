@@ -13,18 +13,24 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
+import java.net.URI;
 import java.util.List;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
-import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.RdfValidationReport;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.DatatypeIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
@@ -99,8 +105,8 @@ class GlossaryRdfImporterTest {
     TermIntent physician = find(intents, HCP + "Physician");
     assertEquals(HCP + "HealthcareProvider", physician.parentIri, "rdfs:subClassOf -> parent");
     assertEquals(1, physician.relations.size(), "custom object property -> typed relation");
-    assertEquals("prescribes", physician.relations.get(0)[0]);
-    assertEquals(HCP + "Drug", physician.relations.get(0)[1]);
+    assertEquals("prescribes", physician.relations.getFirst().relationshipType());
+    assertEquals(HCP + "Drug", physician.relations.getFirst().targetIri());
 
     TermIntent drug = find(intents, HCP + "Drug");
     assertNull(drug.parentIri);
@@ -108,19 +114,61 @@ class GlossaryRdfImporterTest {
   }
 
   @Test
+  void preservesPolyhierarchyWithDeterministicStructuralParent() {
+    String diamondOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+        @prefix ext:  <http://external.example.com/ontology#> .
+
+        hcp:AlphaParent a skos:Concept .
+        hcp:ZuluParent a skos:Concept .
+        hcp:Child a skos:Concept ;
+            skos:broader hcp:ZuluParent, hcp:AlphaParent, ext:ExternalParent ;
+            rdfs:subClassOf hcp:ZuluParent .
+        """;
+
+    TermIntent child = find(parse(diamondOntology), HCP + "Child");
+
+    assertEquals(
+        HCP + "AlphaParent",
+        child.parentIri,
+        "the lexicographically smallest internal IRI is the structural parent");
+    assertEquals(1, child.relations.size(), "the additional internal parent is retained once");
+    assertEquals("broader", child.relations.getFirst().relationshipType());
+    assertEquals(HCP + "ZuluParent", child.relations.getFirst().targetIri());
+    assertEquals(1, child.conceptMappings.size(), "the external parent is retained as a mapping");
+    assertEquals(
+        ConceptMapping.ConceptMappingType.BROAD_MATCH,
+        child.conceptMappings.get(0).getMappingType());
+    assertEquals(
+        "http://external.example.com/ontology#ExternalParent",
+        child.conceptMappings.get(0).getConceptIri().toString());
+  }
+
+  @Test
   void capturesObjectPropertyDomainRangeAndCharacteristics() {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(ONTOLOGY), null, "TURTLE");
 
-    GlossaryTermRelationType type =
+    RelationshipType type =
         new GlossaryRdfImporter(null, "test", true).buildRelationType(model, "prescribes");
 
     assertEquals("prescribes", type.getDisplayName(), "rdfs:label -> displayName");
-    assertEquals("prescribedBy", type.getInverseRelation(), "owl:inverseOf -> inverseRelation");
-    assertEquals(List.of(HCP + "Physician"), type.getDomain(), "rdfs:domain -> domain");
-    assertEquals(List.of(HCP + "Drug"), type.getRange(), "rdfs:range -> range");
-    assertTrue(type.getIsFunctional(), "owl:FunctionalProperty -> isFunctional");
-    assertEquals(Boolean.FALSE, type.getIsSymmetric(), "no owl:SymmetricProperty -> not symmetric");
+    assertEquals("prescribedBy", type.getInverse().getName(), "owl:inverseOf -> inverse");
+    assertEquals(
+        URI.create(HCP + "Physician"),
+        type.getDomain().iterator().next().getIri(),
+        "rdfs:domain -> domain");
+    assertEquals(
+        URI.create(HCP + "Drug"),
+        type.getRange().iterator().next().getIri(),
+        "rdfs:range -> range");
+    assertTrue(
+        type.getCharacteristics().contains(RelationshipCharacteristic.FUNCTIONAL),
+        "owl:FunctionalProperty -> functional characteristic");
+    assertEquals(1, type.getCardinality().getSourceMax());
   }
 
   @Test
@@ -138,8 +186,11 @@ class GlossaryRdfImporterTest {
             .findFirst()
             .orElseThrow();
     assertEquals("hasNpiNumber", npi.name, "local name -> custom property name");
-    assertEquals(HCP + "HealthcareProvider", npi.domainIri, "rdfs:domain captured");
-    assertEquals("string", importer.customPropertyTypeFor(npi.xsdType), "xsd:string -> string");
+    assertEquals(List.of(HCP + "HealthcareProvider"), npi.domainIris, "rdfs:domain captured");
+    assertEquals(
+        OntologyAttributeDataType.STRING,
+        importer.attributeDataType(npi.xsdType),
+        "xsd:string -> string");
 
     DatatypeIntent years =
         datatypes.stream()
@@ -147,10 +198,12 @@ class GlossaryRdfImporterTest {
             .findFirst()
             .orElseThrow();
     assertEquals(
-        "integer", importer.customPropertyTypeFor(years.xsdType), "xsd:integer -> integer");
+        OntologyAttributeDataType.INTEGER,
+        importer.attributeDataType(years.xsdType),
+        "xsd:integer -> integer");
     assertEquals(
-        "number",
-        importer.customPropertyTypeFor("http://www.w3.org/2001/XMLSchema#double"),
+        OntologyAttributeDataType.DECIMAL,
+        importer.attributeDataType("http://www.w3.org/2001/XMLSchema#double"),
         "xsd:double -> number");
   }
 
@@ -190,14 +243,83 @@ class GlossaryRdfImporterTest {
   }
 
   @Test
-  void rejectsJsonLdToPreventSsrf() {
+  void rejectsRemoteJsonLdContextToPreventSsrf() {
     String jsonld = "{\"@context\": \"http://169.254.169.254/latest/meta-data/\", \"@id\": \"x\"}";
     GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
 
     BadRequestException ex =
         assertThrows(
             BadRequestException.class, () -> importer.importRdf(jsonld, "jsonld", "g", true));
-    assertTrue(ex.getMessage().contains("JSON-LD"), ex.getMessage());
+    assertTrue(ex.getMessage().contains("remote context"), ex.getMessage());
+  }
+
+  @Test
+  void skipsShaclForPersistedImportsWhenValidationIsOff() {
+    Model model = invalidShaclModel();
+    try {
+      RdfValidationReport report = importer(ShaclValidationMode.OFF).validateModel(model, false);
+
+      assertFalse(report.getPerformed());
+      assertTrue(report.getConforms());
+      assertEquals(0, report.getViolationCount());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void reportsShaclViolationsWithoutBlockingInReportMode() {
+    Model model = invalidShaclModel();
+    try {
+      RdfValidationReport report = importer(ShaclValidationMode.REPORT).validateModel(model, false);
+
+      assertTrue(report.getPerformed());
+      assertFalse(report.getConforms());
+      assertTrue(report.getViolationCount() > 0);
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void blocksInvalidPersistedImportsButNotDryRunsInEnforcementMode() {
+    Model model = invalidShaclModel();
+    try {
+      GlossaryRdfImporter importer = importer(ShaclValidationMode.ENFORCE_IMPORTS);
+
+      BadRequestException exception =
+          assertThrows(BadRequestException.class, () -> importer.validateModel(model, false));
+      RdfValidationReport dryRunReport = importer.validateModel(model, true);
+
+      assertTrue(exception.getMessage().contains("SHACL validation"));
+      assertFalse(dryRunReport.getConforms());
+      assertTrue(dryRunReport.getPerformed());
+    } finally {
+      model.close();
+    }
+  }
+
+  private GlossaryRdfImporter importer(ShaclValidationMode mode) {
+    return new GlossaryRdfImporter(null, "test", true, () -> mode);
+  }
+
+  private Model invalidShaclModel() {
+    Model model = ModelFactory.createDefaultModel();
+    model.read(
+        new StringReader(
+            """
+            @prefix om: <https://open-metadata.org/ontology/> .
+            @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+            <https://open-metadata.org/entity/glossaryTerm/broken>
+              a om:GlossaryTerm ;
+              rdfs:label "Broken term" ;
+              om:fullyQualifiedName "Broken.Term" .
+            """),
+        null,
+        "TURTLE");
+    return model;
   }
 
   private List<TermIntent> parse(String turtle) {

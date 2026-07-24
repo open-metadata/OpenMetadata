@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyMappingSuggestionList.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyMappingSuggestionList",
+  "description": "Typed standards-mapping proposals returned by the configured AI provider.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyMappingSuggestionList",
+  "properties": {
+    "modelId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyMappingSuggestion.json"
+      }
+    }
+  },
+  "required": ["modelId", "generatedAt", "suggestions"],
+  "additionalProperties": false
+}

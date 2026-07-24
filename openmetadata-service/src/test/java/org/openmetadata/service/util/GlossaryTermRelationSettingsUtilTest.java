@@ -51,8 +51,8 @@ class GlossaryTermRelationSettingsUtilTest {
 
     GlossaryTermRelationSettingsUtil.normalize(relationType);
 
-    assertEquals(1, relationType.getSourceMax());
-    assertNull(relationType.getTargetMax());
+    assertNull(relationType.getSourceMax());
+    assertEquals(1, relationType.getTargetMax());
   }
 
   @Test

@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyDomainDraftResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDomainDraftResult",
+  "description": "A generated Draft payload that must be persisted through the normal change-set API.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyDomainDraftResult",
+  "properties": {
+    "modelId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "draft": {
+      "$ref": "createOntologyChangeSet.json"
+    }
+  },
+  "required": ["modelId", "generatedAt", "draft"],
+  "additionalProperties": false
+}

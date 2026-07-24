@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -57,12 +56,10 @@ import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
-import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
-import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.type.Style;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -81,9 +78,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.ontology.OntologyLayerValidator;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -92,8 +90,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final String UPDATE_FIELDS = "";
-  private static final String PATCH_FIELDS = "";
+  private static final String ONTOLOGY_CONFIGURATION = "ontologyConfiguration";
+  private static final String UPDATE_FIELDS = ONTOLOGY_CONFIGURATION;
+  private static final String PATCH_FIELDS = ONTOLOGY_CONFIGURATION;
+  private final OntologyLayerValidator ontologyLayerValidator;
 
   public GlossaryRepository() {
     super(
@@ -106,6 +106,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
+    ontologyLayerValidator =
+        new OntologyLayerValidator(
+            id -> Entity.getEntity(Entity.GLOSSARY, id, "", Include.NON_DELETED));
   }
 
   @Override
@@ -170,7 +173,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary, boolean update) {}
+  public void prepare(Glossary glossary, boolean update) {
+    ontologyLayerValidator.applyDefaultsAndValidate(glossary);
+  }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
@@ -271,10 +276,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         getCsvDocumentation(Entity.GLOSSARY, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Glossary glossary;
+    private final Set<String> validRelationTypeNames;
 
     GlossaryCsv(Glossary glossary, String user) {
       super(GLOSSARY_TERM, HEADERS, user);
       this.glossary = glossary;
+      this.validRelationTypeNames = loadValidRelationTypeNames();
     }
 
     @Override
@@ -369,9 +376,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
-    private static final Set<String> DEFAULT_RELATION_TYPES =
-        Set.copyOf(GlossaryTermRepository.DEFAULT_RELATION_TYPES);
-
     /**
      * Parse term relations from CSV field with support for relation type prefix.
      * Format: "relationType:termFQN" or just "termFQN" (defaults to "relatedTo").
@@ -444,39 +448,20 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return termRelations.isEmpty() ? null : termRelations;
     }
 
-    /**
-     * Check if a relation type is valid against the glossaryTermRelationSettings.
-     */
     private boolean isValidRelationType(String relationType) {
-      try {
-        GlossaryTermRelationSettings settings =
-            SettingsCache.getSetting(
-                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-        if (settings == null || settings.getRelationTypes() == null) {
-          return DEFAULT_RELATION_TYPES.contains(relationType);
-        }
-        return settings.getRelationTypes().stream()
-            .anyMatch(rt -> relationType.equals(rt.getName()));
-      } catch (Exception e) {
-        return DEFAULT_RELATION_TYPES.contains(relationType);
-      }
+      return validRelationTypeNames.contains(relationType);
     }
 
     private String getValidRelationTypeNames() {
-      try {
-        GlossaryTermRelationSettings settings =
-            SettingsCache.getSetting(
-                SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-        if (settings != null && settings.getRelationTypes() != null) {
-          return settings.getRelationTypes().stream()
-              .map(GlossaryTermRelationType::getName)
-              .sorted()
-              .collect(Collectors.joining(", "));
-        }
-      } catch (Exception e) {
-        // Fall through to defaults
-      }
-      return String.join(", ", new TreeSet<>(DEFAULT_RELATION_TYPES));
+      return validRelationTypeNames.stream().sorted().collect(Collectors.joining(", "));
+    }
+
+    private static Set<String> loadValidRelationTypeNames() {
+      RelationshipTypeResolver resolver =
+          new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+      return resolver.list().stream()
+          .map(RelationshipType::getName)
+          .collect(Collectors.toUnmodifiableSet());
     }
 
     private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
@@ -673,6 +658,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
+      recordChange(
+          ONTOLOGY_CONFIGURATION,
+          original.getOntologyConfiguration(),
+          updated.getOntologyConfiguration());
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }

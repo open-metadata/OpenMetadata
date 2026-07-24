@@ -1,11 +1,13 @@
 package org.openmetadata.service.rdf;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 /**
  * Utility methods for RDF operations
  */
-public class RdfUtils {
+public final class RdfUtils {
 
   private static final Set<String> PROV_ACTIVITY_TYPES =
       Set.of(
@@ -44,9 +46,7 @@ public class RdfUtils {
           "dataproduct",
           "domain");
 
-  private RdfUtils() {
-    // Private constructor for utility class
-  }
+  private RdfUtils() {}
 
   /**
    * Maps an entity type to its PROV-O class (Entity, Activity, or Agent).
@@ -98,7 +98,30 @@ public class RdfUtils {
       case "policy" -> "om:Policy";
       case "dataproduct" -> "dprod:DataProduct"; // W3C Data Product vocabulary
       case "domain" -> "skos:Collection"; // Organizational grouping
+      case "persona" -> "om:Persona";
+      case "llmmodel" -> "om:LLMModel";
+      case "aiapplication" -> "om:AIApplication";
+      case "mcpserver" -> "om:McpServer";
+      case "agentexecution" -> "om:AgentExecution";
+      case "mcpexecution" -> "om:McpExecution";
+      case "prompttemplate" -> "om:PromptTemplate";
+      case "workflow", "workflowdefinition" -> "om:Workflow";
+      case "workflowinstance" -> "om:WorkflowInstance";
+      case "automation" -> "om:Automation";
       default -> "om:" + entityType.substring(0, 1).toUpperCase() + entityType.substring(1);
     };
+  }
+
+  /**
+   * Mints a stable, FQN-derived URI for a Column resource. Columns are sub-objects of a Table and
+   * have no UUID, so the FQN is the only universal identifier. The same scheme is used by the
+   * Table-side mapping (Table om:hasColumn) and by column-level lineage (om:fromColumn /
+   * om:toColumn) so that SPARQL traversal across both sides resolves to the same resource.
+   */
+  public static String columnUri(String baseUri, String columnFqn) {
+    if (columnFqn == null || columnFqn.isEmpty()) {
+      return null;
+    }
+    return baseUri + "entity/column/" + URLEncoder.encode(columnFqn, StandardCharsets.UTF_8);
   }
 }

@@ -12,6 +12,7 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrat
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateRdfIndexAppScheduleToWeekly;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
+import static org.openmetadata.service.migration.utils.v200.OntologyMigration.migrateRelationshipTypes;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class Migration extends MigrationProcessImpl {
     // close that path. The helper is idempotent — safe on every run.
     backfillSearchRankingSettings();
     migrateRdfIndexAppScheduleToWeekly(collectionDAO);
+    migrateRelationshipTypes(handle, MYSQL);
     addTableColumnSearchSettings();
     migrateSuggestionsToTaskEntity(handle, MYSQL);
     migrateThreadTasksToTaskEntity(handle, MYSQL);

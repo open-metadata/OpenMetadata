@@ -151,6 +151,71 @@ UPDATE apps_marketplace
 SET json = JSON_SET(json, '$.appConfiguration.recreateIndex', CAST('true' AS JSON))
 WHERE name = 'RdfIndexApp';
 
+-- Invalidate pre-2.0 projection success records. RDF status remains REBUILDING until a new
+-- RdfIndexApp run succeeds, and the applications page exposes that Search indexing must be run.
+DELETE FROM apps_extension_time_series
+WHERE appName IN ('RdfIndexApp', 'SearchIndexingApplication');
+
+-- Search reindexing is staged and recreates every selected index. Include every entity so the
+-- new relationshipType index and the new glossaryTerm attribute mapping are materialized.
+UPDATE installed_apps
+SET json = JSON_SET(json, '$.appConfiguration.entities', JSON_ARRAY('all'))
+WHERE name = 'SearchIndexingApplication';
+
+UPDATE apps_marketplace
+SET json = JSON_SET(json, '$.appConfiguration.entities', JSON_ARRAY('all'))
+WHERE name = 'SearchIndexingApplication';
+
+-- Ontology Studio relationships use stable identifiers independent of physical row order.
+UPDATE entity_relationship
+SET relationshipId = COALESCE(
+  relationshipId,
+  CONCAT(
+    SUBSTRING(MD5(CONCAT_WS('|', 'ontology-relationship', fromId, toId, relation, relationType)), 1, 8), '-',
+    SUBSTRING(MD5(CONCAT_WS('|', 'ontology-relationship', fromId, toId, relation, relationType)), 9, 4), '-',
+    SUBSTRING(MD5(CONCAT_WS('|', 'ontology-relationship', fromId, toId, relation, relationType)), 13, 4), '-',
+    SUBSTRING(MD5(CONCAT_WS('|', 'ontology-relationship', fromId, toId, relation, relationType)), 17, 4), '-',
+    SUBSTRING(MD5(CONCAT_WS('|', 'ontology-relationship', fromId, toId, relation, relationType)), 21, 12)
+  )
+)
+WHERE fromEntity = 'glossaryTerm'
+  AND toEntity = 'glossaryTerm'
+  AND relation = 15;
+
+UPDATE entity_relationship relationship
+JOIN relationship_type_entity relationship_type
+  ON relationship_type.name COLLATE utf8mb4_bin = relationship.relationType COLLATE utf8mb4_bin
+SET relationship.relationshipTypeId = relationship_type.id,
+    relationship.json = JSON_SET(
+      COALESCE(relationship.json, JSON_OBJECT()),
+      '$.id', relationship.relationshipId,
+      '$.relationshipTypeId', relationship_type.id,
+      '$.sourceTermId', COALESCE(
+        JSON_UNQUOTE(JSON_EXTRACT(relationship.json, '$.sourceTermId')),
+        relationship.fromId
+      ),
+      '$.relationType', relationship.relationType,
+      '$.provenance', COALESCE(
+        JSON_UNQUOTE(JSON_EXTRACT(relationship.json, '$.provenance')),
+        'Manual'
+      ),
+      '$.status', COALESCE(
+        JSON_UNQUOTE(JSON_EXTRACT(relationship.json, '$.status')),
+        'Approved'
+      ),
+      '$.createdBy', COALESCE(
+        JSON_UNQUOTE(JSON_EXTRACT(relationship.json, '$.createdBy')),
+        'system'
+      ),
+      '$.createdAt', COALESCE(
+        CAST(JSON_UNQUOTE(JSON_EXTRACT(relationship.json, '$.createdAt')) AS UNSIGNED),
+        UNIX_TIMESTAMP() * 1000
+      )
+    )
+WHERE relationship.fromEntity = 'glossaryTerm'
+  AND relationship.toEntity = 'glossaryTerm'
+  AND relationship.relation = 15;
+
 -- Backfill policyAgentConfig defaults on existing Snowflake services. The schema-level
 -- defaults in snowflakeConnection.json only apply at create-time deserialization; rows
 -- already persisted carry the previous all-false shape and won't pick up the new defaults

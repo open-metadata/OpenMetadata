@@ -297,42 +297,6 @@ CREATE TABLE IF NOT EXISTS context_file_content (
   INDEX idx_context_file_content_updated_at (updatedAt)
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Add tag_usage.metadata column if missing (newer tag usage payloads carry metadata).
-SET @ddl = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'tag_usage'
-        AND column_name = 'metadata'
-    ),
-    'SELECT 1',
-    'ALTER TABLE tag_usage ADD COLUMN metadata JSON NULL'
-  )
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- Add audit_log_event.search_text column if missing (searchable audit log text).
-SET @ddl = (
-  SELECT IF(
-    EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = DATABASE()
-        AND table_name = 'audit_log_event'
-        AND column_name = 'search_text'
-    ),
-    'SELECT 1',
-    'ALTER TABLE audit_log_event ADD COLUMN search_text LONGTEXT NULL'
-  )
-);
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
 -- Distributed reindex job tracking.
 CREATE TABLE IF NOT EXISTS search_index_job (
   id VARCHAR(64) NOT NULL,
@@ -501,6 +465,106 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Ontology Studio: governed relationship types, OWL annex, drafts, and edit locks.
+CREATE TABLE IF NOT EXISTS relationship_type_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json json NOT NULL,
+  updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  UNIQUE KEY relationship_type_fqn_hash_unique (fqnHash),
+  KEY relationship_type_name_index (name),
+  KEY relationship_type_deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_axiom_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json json NOT NULL,
+  glossaryId varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.glossary.id'))) STORED NOT NULL,
+  axiomType varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.axiomType'))) STORED NOT NULL,
+  entityStatus varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.entityStatus'))) STORED NOT NULL,
+  updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  UNIQUE KEY ontology_axiom_fqn_hash_unique (fqnHash),
+  KEY ontology_axiom_name_index (name),
+  KEY ontology_axiom_glossary_type_index (glossaryId, axiomType),
+  KEY ontology_axiom_status_index (entityStatus),
+  KEY ontology_axiom_deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_change_set_entity (
+  id varchar(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json json NOT NULL,
+  state varchar(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.state'))) STORED NOT NULL,
+  updatedAt bigint unsigned GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy varchar(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted tinyint(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  UNIQUE KEY ontology_change_set_fqn_hash_unique (fqnHash),
+  KEY ontology_change_set_name_index (name),
+  KEY ontology_change_set_state_index (state),
+  KEY ontology_change_set_updated_by_index (updatedBy),
+  KEY ontology_change_set_deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_annex (
+  glossaryId varchar(36) NOT NULL,
+  revision bigint unsigned NOT NULL,
+  canonicalNQuads longtext NOT NULL,
+  checksum char(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  source varchar(32) NOT NULL,
+  createdBy varchar(256) NOT NULL,
+  createdAt bigint unsigned NOT NULL,
+  PRIMARY KEY (glossaryId, revision),
+  UNIQUE KEY ontology_annex_checksum_unique (glossaryId, checksum),
+  KEY ontology_annex_created_at_index (createdAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_edit_lock (
+  resourceType varchar(128) NOT NULL,
+  resourceId varchar(36) NOT NULL,
+  holderId varchar(36) NOT NULL,
+  sessionId varchar(64) NOT NULL,
+  version bigint unsigned NOT NULL,
+  acquiredAt bigint unsigned NOT NULL,
+  renewedAt bigint unsigned NOT NULL,
+  expiresAt bigint unsigned NOT NULL,
+  PRIMARY KEY (resourceType, resourceId),
+  KEY ontology_edit_lock_expiry_index (expiresAt),
+  KEY ontology_edit_lock_holder_index (holderId, sessionId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS rdf_inference_rule (
+  name varchar(64) NOT NULL,
+  json json NOT NULL,
+  systemRule tinyint(1) NOT NULL DEFAULT 0,
+  dirty tinyint(1) NOT NULL DEFAULT 1,
+  deleted tinyint(1) NOT NULL DEFAULT 0,
+  updatedAt bigint unsigned NOT NULL,
+  lastMaterializedAt bigint unsigned DEFAULT NULL,
+  lastTripleCount bigint unsigned NOT NULL DEFAULT 0,
+  lastError text DEFAULT NULL,
+  PRIMARY KEY (name),
+  KEY rdf_inference_rule_dirty_index (dirty, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE entity_relationship ADD COLUMN relationshipId varchar(36) DEFAULT NULL;
+
+ALTER TABLE entity_relationship ADD COLUMN relationshipTypeId varchar(36) DEFAULT NULL;
+
+ALTER TABLE entity_relationship ADD UNIQUE KEY relationship_id_unique (relationshipId);
+
+ALTER TABLE entity_relationship ADD KEY relationship_type_id_index (relationshipTypeId);
 
 -- Index the executionId column on the workflow instance state series so both the v200
 -- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable

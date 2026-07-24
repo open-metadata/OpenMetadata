@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyDomainDraftRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyDomainDraftRequest",
+  "description": "Generate a reviewable ontology Draft without applying any entity mutation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyDomainDraftRequest",
+  "properties": {
+    "glossary": {
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "changeSetName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "domainDescription": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "maxConcepts": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 25
+    }
+  },
+  "required": [
+    "glossary",
+    "changeSetName",
+    "displayName",
+    "description",
+    "domainDescription",
+    "maxConcepts"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/updateTermRelation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UpdateTermRelation",
+  "description": "Typed mutable fields for an existing glossary-term relationship.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.UpdateTermRelation",
+  "properties": {
+    "provenance": {
+      "description": "How this relation edge originated.",
+      "type": "string",
+      "existingJavaType": "org.openmetadata.schema.type.RelationProvenance",
+      "enum": ["Manual", "Inferred", "Imported", "AiSuggested"]
+    },
+    "relationType": {
+      "description": "New stable relationship-type name.",
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$"
+    },
+    "status": {
+      "description": "Approval status of this relation edge.",
+      "type": "string",
+      "existingJavaType": "org.openmetadata.schema.type.EntityStatus",
+      "enum": [
+        "Draft",
+        "In Review",
+        "Approved",
+        "Archived",
+        "Deprecated",
+        "Rejected",
+        "Unprocessed"
+      ]
+    }
+  },
+  "minProperties": 1,
+  "additionalProperties": false
+}

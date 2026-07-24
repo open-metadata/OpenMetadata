@@ -79,6 +79,11 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
+  @VisibleForTesting
+  boolean hasCollection(final String path) {
+    return collectionMap.containsKey(path);
+  }
+
   public static void initialize() {
     if (!initialized) {
       instance = new CollectionRegistry();
@@ -95,16 +100,14 @@ public final class CollectionRegistry {
    * the classpath
    */
   private void loadCollectionDescriptors() {
-    // Load collection classes marked with @Collection annotation
-    List<CollectionDetails> collections = getCollections();
-    for (int i = 0; i < 10; i++) { // Ordering @Collection order 0 to 9
-      for (CollectionDetails collection : collections) {
-        if (collection.order == i) {
-          CollectionInfo collectionInfo = collection.cd.getCollection();
-          collectionMap.put(collectionInfo.getHref().getPath(), collection);
-        }
-      }
-    }
+    getCollections().stream()
+        .sorted(Comparator.comparingInt(CollectionDetails::getOrder))
+        .forEach(this::addCollectionDescriptor);
+  }
+
+  private void addCollectionDescriptor(final CollectionDetails details) {
+    final CollectionInfo collectionInfo = details.cd.getCollection();
+    collectionMap.put(collectionInfo.getHref().getPath(), details);
   }
 
   /**
@@ -321,7 +324,7 @@ public final class CollectionRegistry {
     @Getter private final String resourceClass;
     @Getter @Setter private Object resource;
     private final CollectionDescriptor cd;
-    private final int order;
+    @Getter private final int order;
     private final boolean requiredForOps;
 
     CollectionDetails(

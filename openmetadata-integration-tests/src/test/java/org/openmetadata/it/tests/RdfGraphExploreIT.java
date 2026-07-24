@@ -37,6 +37,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
@@ -84,6 +85,12 @@ public class RdfGraphExploreIT {
 
   private static final String TABLE_RDF_TYPE = "dcat:Dataset";
   private static final String ENTITY_TYPE_TABLE = "table";
+
+  private static final String FORMAT_TURTLE = "turtle";
+  private static final String FORMAT_JSONLD = "jsonld";
+  private static final String MEDIA_TYPE_TURTLE = "text/turtle";
+  private static final String MEDIA_TYPE_JSONLD = "application/ld+json";
+  private static final long NON_ADMIN_TOKEN_TTL_SECONDS = 3600L;
 
   @BeforeAll
   static void enableRdf() {
@@ -255,7 +262,224 @@ public class RdfGraphExploreIT {
   // NOTE: A per-method "503 when RDF disabled" assertion is intentionally omitted here. The
   // class-level @BeforeAll enables RDF for the whole class, and toggling it off per-method would
   // fight the harness (and race other @Isolated RDF state). The 503 disabled-path branch of
-  // RdfResource.exploreEntityGraph is covered by the RdfResourceTest unit layer.
+  // RdfResource.exploreEntityGraph / exportEntityGraph is covered by the RdfResourceTest unit
+  // layer.
+
+  @Test
+  void exportReturnsTurtleWithCorrectMediaType(TestNamespace ns) throws Exception {
+    Table table = createTableInRdf(ns, "rdfExportTurtle");
+
+    HttpResponse<String> response =
+        exportRaw(table.getId(), ENTITY_TYPE_TABLE, 2, null, null, FORMAT_TURTLE);
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "turtle export should return 200 but got " + response.statusCode());
+    assertTrue(
+        contentType(response).contains(MEDIA_TYPE_TURTLE),
+        () ->
+            "turtle export Content-Type must be "
+                + MEDIA_TYPE_TURTLE
+                + " but was "
+                + contentType(response));
+    String body = response.body();
+    assertFalse(body.isBlank(), "turtle export body must not be blank");
+    assertTrue(
+        body.contains(table.getId().toString()),
+        "turtle export must contain the focal table URI (its id)");
+  }
+
+  @Test
+  void exportReturnsJsonLdWithCorrectMediaType(TestNamespace ns) throws Exception {
+    Table table = createTableInRdf(ns, "rdfExportJsonLd");
+
+    HttpResponse<String> response =
+        exportRaw(table.getId(), ENTITY_TYPE_TABLE, 2, null, null, FORMAT_JSONLD);
+
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "jsonld export should return 200 but got " + response.statusCode());
+    assertTrue(
+        contentType(response).contains(MEDIA_TYPE_JSONLD),
+        () ->
+            "jsonld export Content-Type must be "
+                + MEDIA_TYPE_JSONLD
+                + " but was "
+                + contentType(response));
+
+    JsonNode jsonLd = MAPPER.readTree(response.body());
+    assertNotNull(jsonLd, "jsonld export body must be valid JSON");
+    assertFalse(jsonLd.isEmpty(), "jsonld export body must not be an empty JSON document");
+    assertTrue(
+        response.body().contains(table.getId().toString()),
+        "jsonld export must reference the focal table id");
+  }
+
+  @Test
+  void filtersRestrictExportedGraph(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name(ns.prefix("db")).in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name(ns.prefix("schema"))
+            .in(database.getFullyQualifiedName())
+            .execute();
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix("rdfFilterTable"));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setDescription("Table for RDF export filter test");
+    createRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+
+    Table table = Tables.create(createRequest);
+    assertNotNull(table.getId());
+    awaitTableInRdf(table);
+
+    HttpResponse<String> unfiltered =
+        exportRaw(table.getId(), ENTITY_TYPE_TABLE, 2, null, null, FORMAT_TURTLE);
+    assertEquals(200, unfiltered.statusCode());
+    String unfilteredBody = unfiltered.body();
+    assertTrue(
+        unfilteredBody.contains(database.getId().toString()),
+        "unfiltered depth=2 export must include the 2-hop database neighbor");
+
+    HttpResponse<String> entityTypeFiltered =
+        exportRaw(table.getId(), ENTITY_TYPE_TABLE, 2, ENTITY_TYPE_TABLE, null, FORMAT_TURTLE);
+    assertEquals(200, entityTypeFiltered.statusCode());
+    String entityTypeBody = entityTypeFiltered.body();
+    assertTrue(
+        entityTypeBody.contains(table.getId().toString()),
+        "entityTypes=table filter must keep the focal table node");
+    assertFalse(
+        entityTypeBody.contains(database.getId().toString()),
+        "entityTypes=table filter must drop the database node (not a table type)");
+    assertFalse(
+        entityTypeBody.contains(schema.getId().toString()),
+        "entityTypes=table filter must drop the schema node (not a table type)");
+
+    HttpResponse<String> relationshipFiltered =
+        exportRaw(
+            table.getId(), ENTITY_TYPE_TABLE, 2, null, "nonexistent-relationship", FORMAT_TURTLE);
+    assertEquals(200, relationshipFiltered.statusCode());
+    String relationshipBody = relationshipFiltered.body();
+    assertFalse(
+        relationshipBody.contains(schema.getId().toString()),
+        "a relationshipTypes filter matching no edges must drop the neighbor nodes");
+  }
+
+  @Test
+  void invalidFormatReturns400(TestNamespace ns) throws Exception {
+    HttpResponse<String> response =
+        exportRaw(UUID.randomUUID(), ENTITY_TYPE_TABLE, 2, null, null, "not-a-format");
+    assertEquals(
+        400,
+        response.statusCode(),
+        () -> "unsupported export format must return 400 but got " + response.statusCode());
+  }
+
+  @Test
+  void nonAdminExportReturns403(TestNamespace ns) throws Exception {
+    HttpResponse<String> response =
+        exportRawWithToken(
+            UUID.randomUUID(), ENTITY_TYPE_TABLE, 2, null, null, FORMAT_TURTLE, nonAdminToken());
+    assertEquals(
+        403,
+        response.statusCode(),
+        () -> "non-admin export must be forbidden (403) but got " + response.statusCode());
+  }
+
+  private Table createTableInRdf(TestNamespace ns, String tableLabel) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name(ns.prefix("db")).in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create()
+            .name(ns.prefix("schema"))
+            .in(database.getFullyQualifiedName())
+            .execute();
+
+    CreateTable createRequest = new CreateTable();
+    createRequest.setName(ns.prefix(tableLabel));
+    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    createRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+
+    Table table = Tables.create(createRequest);
+    assertNotNull(table.getId());
+    awaitTableInRdf(table);
+    return table;
+  }
+
+  private String nonAdminToken() {
+    return JwtAuthProvider.tokenFor(
+        "data-consumer@open-metadata.org",
+        "data-consumer@open-metadata.org",
+        new String[] {"DataConsumer"},
+        NON_ADMIN_TOKEN_TTL_SECONDS);
+  }
+
+  private HttpResponse<String> exportRaw(
+      UUID entityId,
+      String entityType,
+      int depth,
+      String entityTypes,
+      String relationshipTypes,
+      String format)
+      throws Exception {
+    return exportRawWithToken(
+        entityId,
+        entityType,
+        depth,
+        entityTypes,
+        relationshipTypes,
+        format,
+        SdkClients.getAdminToken());
+  }
+
+  private HttpResponse<String> exportRawWithToken(
+      UUID entityId,
+      String entityType,
+      int depth,
+      String entityTypes,
+      String relationshipTypes,
+      String format,
+      String token)
+      throws Exception {
+    StringBuilder url = new StringBuilder(SdkClients.getServerUrl());
+    url.append("/v1/rdf/graph/explore/export?entityId=")
+        .append(URLEncoder.encode(entityId.toString(), StandardCharsets.UTF_8))
+        .append("&entityType=")
+        .append(URLEncoder.encode(entityType, StandardCharsets.UTF_8))
+        .append("&depth=")
+        .append(depth)
+        .append("&format=")
+        .append(URLEncoder.encode(format, StandardCharsets.UTF_8));
+    if (entityTypes != null) {
+      url.append("&entityTypes=").append(URLEncoder.encode(entityTypes, StandardCharsets.UTF_8));
+    }
+    if (relationshipTypes != null) {
+      url.append("&relationshipTypes=")
+          .append(URLEncoder.encode(relationshipTypes, StandardCharsets.UTF_8));
+    }
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url.toString()))
+            .header("Authorization", "Bearer " + token)
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private String contentType(HttpResponse<String> response) {
+    return response.headers().firstValue("Content-Type").orElse("");
+  }
 
   private void awaitTableInRdf(Table table) {
     Awaitility.await()

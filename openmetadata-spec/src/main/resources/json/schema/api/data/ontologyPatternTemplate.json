@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPatternTemplate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OntologyPatternTemplate",
+  "description": "A governed ontology modeling pattern available to Ontology Studio.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPatternTemplate",
+  "definitions": {
+    "patternType": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyPatternType",
+      "type": "string",
+      "enum": ["REGULATORY_CONTROL", "MEASURED_KPI", "PRODUCT_HIERARCHY"]
+    },
+    "termRole": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyPatternTermRole",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["key", "displayName", "description"],
+      "additionalProperties": false
+    },
+    "relationshipRole": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyPatternRelationshipRole",
+      "type": "object",
+      "properties": {
+        "fromRole": {
+          "type": "string"
+        },
+        "toRole": {
+          "type": "string"
+        },
+        "relationshipType": {
+          "type": "string"
+        }
+      },
+      "required": ["fromRole", "toRole", "relationshipType"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "patternType": {
+      "$ref": "#/definitions/patternType"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "termRoles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/termRole"
+      },
+      "minItems": 1
+    },
+    "relationshipRoles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/relationshipRole"
+      },
+      "default": []
+    }
+  },
+  "required": ["patternType", "displayName", "description", "termRoles", "relationshipRoles"],
+  "additionalProperties": false
+}

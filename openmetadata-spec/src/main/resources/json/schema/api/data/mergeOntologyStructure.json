@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/mergeOntologyStructure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MergeOntologyStructure",
+  "description": "Select source fields to merge into a reviewable application ontology Draft.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.MergeOntologyStructure",
+  "definitions": {
+    "selection": {
+      "javaType": "org.openmetadata.schema.api.data.OntologyStructuralMergeSelection",
+      "type": "object",
+      "properties": {
+        "subsetTermId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/ontologyTermStructure.json#/definitions/field"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "subsetTermId",
+        "fields"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "sourceGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "targetGlossaryId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "contextTermIds": {
+      "description": "Subset terms used to resolve hierarchy and relationship targets.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "minItems": 1,
+      "maxItems": 500,
+      "uniqueItems": true
+    },
+    "selections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/selection"
+      },
+      "minItems": 1,
+      "maxItems": 500
+    },
+    "changeSetName": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "changeSetDisplayName": {
+      "type": "string"
+    },
+    "changeSetDescription": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    }
+  },
+  "required": [
+    "sourceGlossaryId",
+    "targetGlossaryId",
+    "contextTermIds",
+    "selections",
+    "changeSetName",
+    "changeSetDescription"
+  ],
+  "additionalProperties": false
+}
