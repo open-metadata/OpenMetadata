@@ -26,7 +26,6 @@ import {
 } from '@tanstack/react-query';
 import {
   AlertCircle,
-  BarChartSquare02,
   Check,
   ChevronDown,
   CursorClick01,
@@ -465,9 +464,6 @@ const MetricListPage = () => {
 
         return (
           <Box align="center" gap={3}>
-            <div className="metric-list-icon">
-              <BarChartSquare02 />
-            </div>
             <div className="metric-list-cell">
               <Link
                 className="metric-list-name"
@@ -763,7 +759,8 @@ const MetricListPage = () => {
     <PageLayoutV1
       pageTitle={t('label.metric-plural')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div className="p-b-md m-t-xs metric-list-page-stack">
+      <div
+        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
         <div>
           {isAiMode ? (
             <HeaderShell
@@ -779,6 +776,8 @@ const MetricListPage = () => {
                   showHome={false}
                 />
               }
+              className="tw:mb-0!"
+              padding="comfortable"
               subtitle={t('message.metric-description')}
               title={t('label.metric-plural')}
               variant="gradient"
