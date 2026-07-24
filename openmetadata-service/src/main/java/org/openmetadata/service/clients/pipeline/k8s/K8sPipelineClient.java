@@ -930,6 +930,14 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     } catch (ApiException e) {
       LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
+    } catch (IllegalArgumentException e) {
+      // client-java could not deserialize a job returned by a newer Kubernetes
+      // than its models (see getServiceStatusInternal). Treat as "no queued jobs
+      // visible" rather than propagating the error to the caller.
+      LOG.warn(
+          "Could not deserialize queued job status (client-java lags the cluster's "
+              + "Kubernetes version): {}",
+          e.getMessage());
     }
 
     return queuedStatuses;
@@ -1002,6 +1010,25 @@ public class K8sPipelineClient extends PipelineServiceClient {
               e.getResponseBody());
       LOG.error(error);
       return buildUnhealthyStatus(error);
+    } catch (IllegalArgumentException e) {
+      // The list calls above reached the API server successfully (any real
+      // access/RBAC failure would be an ApiException, handled above). An
+      // IllegalArgumentException here is thrown by the bundled Kubernetes client
+      // (client-java) when it cannot DESERIALIZE a pod/job in the response —
+      // typically because the
+      // cluster runs a newer Kubernetes than the client models and the response
+      // carries an unmodeled status field, e.g.:
+      //   IllegalArgumentException: The field `allocatedResources` in the JSON
+      //   string is not defined in the `V1PodStatus` properties
+      // Cluster access is fine, so report healthy instead of failing the whole
+      // /services/ingestionPipelines/status endpoint (which blanks the UI).
+      LOG.warn(
+          "Kubernetes namespace {} is reachable but a pod/job could not be deserialized "
+              + "(client-java models likely lag the cluster's Kubernetes version): {}",
+          namespace,
+          e.getMessage());
+      return buildHealthyStatus(getKubernetesVersion())
+          .withReason(String.format(K8S_AVAILABLE_FORMAT, namespace, serviceAccount));
     }
   }
 
@@ -1127,6 +1154,16 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     } catch (ApiException e) {
       LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
+      return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
+    } catch (IllegalArgumentException e) {
+      // client-java could not deserialize a pod returned by a newer Kubernetes
+      // than its models (see getServiceStatusInternal). Return a graceful message
+      // instead of propagating the error.
+      LOG.warn(
+          "Could not deserialize pod while fetching logs for pipeline {} (client-java lags "
+              + "the cluster's Kubernetes version): {}",
+          pipelineName,
+          e.getMessage());
       return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
     }
   }
