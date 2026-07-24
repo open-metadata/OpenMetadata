@@ -1250,61 +1250,50 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test.fixme(
-    'Request description task for Glossary Term',
-    async ({ browser }) => {
-      const { page, afterAction, apiContext } = await performAdminLogin(
-        browser,
-        { navigate: true }
+  test('Request description task for Glossary Term', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const user1 = new UserClass();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+
+    try {
+      await user1.create(apiContext);
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      const value: TaskDetails = {
+        term: glossaryTerm1.data.name,
+        assignee: user1.responseData.name,
+      };
+
+      await page.getByTestId('request-description').click();
+
+      await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
+
+      const taskResolve = waitForTaskResolveResponse(page);
+      await page.getByTestId('approve-button').first().click();
+      await taskResolve;
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      const viewerContainerText = await page.textContent(
+        '[data-testid="viewer-container"]'
       );
-      const glossary1 = new Glossary();
-      const user1 = new UserClass();
-      const glossaryTerm1 = new GlossaryTerm(glossary1);
-      glossary1.data.terms = [glossaryTerm1];
 
-      try {
-        await user1.create(apiContext);
-        await glossary1.create(apiContext);
-        await glossaryTerm1.create(apiContext);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary1.data.displayName);
-        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-        const value: TaskDetails = {
-          term: glossaryTerm1.data.name,
-          assignee: user1.responseData.name,
-        };
-
-        await page.getByTestId('request-description').click();
-
-        await createDescriptionTaskForGlossary(
-          page,
-          value,
-          glossaryTerm1,
-          false
-        );
-
-        const taskResolve = waitForTaskResolveResponse(page);
-        await page.getByTestId('approve-button').first().click();
-        await taskResolve;
-
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary1.data.displayName);
-        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-        const viewerContainerText = await page.textContent(
-          '[data-testid="viewer-container"]'
-        );
-
-        expect(viewerContainerText).toContain('Updated description');
-      } finally {
-        await glossaryTerm1.delete(apiContext);
-        await glossary1.delete(apiContext);
-        await afterAction();
-      }
+      expect(viewerContainerText).toContain('Updated description');
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
     }
-  );
+  });
 
   test('Request tags for Glossary', async ({ browser }) => {
     test.slow(true);
