@@ -229,6 +229,48 @@ SNOWFLAKE_GET_STAGES = """
 SHOW STAGES IN SCHEMA "{schema}"
 """
 
+# NOTE: the column names differ (intentionally) between the semantic catalog
+# views. INFORMATION_SCHEMA.SEMANTIC_VIEWS exposes CATALOG / SCHEMA / NAME,
+# whereas the child views (SEMANTIC_TABLES / SEMANTIC_DIMENSIONS / _FACTS /
+# _METRICS) expose SEMANTIC_VIEW_CATALOG / SEMANTIC_VIEW_SCHEMA /
+# SEMANTIC_VIEW_NAME. So `WHERE SCHEMA` here vs `WHERE SEMANTIC_VIEW_SCHEMA`
+# below is correct, not a mismatch.
+SNOWFLAKE_GET_SEMANTIC_VIEWS = """
+SELECT NAME FROM information_schema.semantic_views WHERE SCHEMA = '{schema}'
+"""
+
+SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.semantic_dimensions
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
+"""
+
+SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.semantic_facts
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
+"""
+
+SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS = """
+SELECT TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS
+FROM information_schema.semantic_metrics
+WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
+"""
+
+# Database-qualified batch queries used by the lineage workflow to resolve
+# semantic view -> base table (and column) lineage across every schema/view in
+# a database in a single round-trip.
+SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, NAME,
+       BASE_TABLE_CATALOG, BASE_TABLE_SCHEMA, BASE_TABLE_NAME
+FROM "{database}".information_schema.semantic_tables
+"""
+
+SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, EXPRESSION
+FROM "{database}".information_schema.{catalog_view}
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
@@ -502,6 +544,10 @@ SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
 
 SNOWFLAKE_GET_STREAM_DEFINITION = """
 SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION = """
+SELECT GET_DDL('SEMANTIC_VIEW','{semantic_view_name}') AS \"text\"
 """
 
 SNOWFLAKE_QUERY_LOG_QUERY = """

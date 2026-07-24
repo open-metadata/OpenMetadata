@@ -56,6 +56,9 @@ from metadata.ingestion.source.database.snowflake.query_parser import (
     SNOWFLAKE_QUERY_BATCH_SIZE,
     SnowflakeQueryParserSource,
 )
+from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
+    SnowflakeSemanticViewLineage,
+)
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
@@ -235,6 +238,36 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             yield from self._yield_access_history_lineage()  # pyright: ignore[reportReturnType]
             return
         yield from super().yield_query_lineage()
+
+    def _iter(self, *args, **kwargs) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+        """Run the base lineage producers, then append semantic view lineage.
+
+        Semantic view lineage stays opt-in behind the same `includeSemanticViews`
+        connection flag that gates metadata discovery (default false) so lineage
+        runs on non-Enterprise accounts — where the SEMANTIC_* catalog views do
+        not exist — never issue the extra per-database queries.
+        """
+        yield from super()._iter(*args, **kwargs)
+        if self._is_semantic_view_lineage_enabled():
+            yield from self.yield_semantic_view_lineage()  # pyright: ignore[reportReturnType]
+
+    def _is_semantic_view_lineage_enabled(self) -> bool:
+        """Semantic view lineage requires both view lineage processing and the
+        `includeSemanticViews` opt-in (Enterprise-only catalog views)."""
+        return bool(self.source_config.processViewLineage) and bool(
+            getattr(self.service_connection, "includeSemanticViews", False)
+        )
+
+    def yield_semantic_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """Build lineage from Snowflake semantic views to their base tables."""
+        logger.info("Processing Semantic View Lineage")
+        extractor = SnowflakeSemanticViewLineage(
+            service_name=self.config.serviceName,  # pyright: ignore[reportArgumentType]
+            engine=self.engine,
+            database_filter_pattern=self.source_config.databaseFilterPattern,
+            resolve_table_by_fqn=self._get_table_by_fqn,
+        )
+        yield from extractor.iter_lineage()
 
     def _yield_access_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """

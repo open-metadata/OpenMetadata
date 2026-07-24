@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.data.storedProcedure import (
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
+    DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
@@ -102,6 +103,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_SCHEMATA,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
@@ -114,6 +118,9 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_semantic_view_definition,
+    get_semantic_view_names,
+    get_semantic_view_names_reflection,
     get_stage_names,
     get_stage_names_reflection,
     get_stream_definition,
@@ -172,6 +179,7 @@ SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_stage_names = get_stage_names
+SnowflakeDialect.get_semantic_view_names = get_semantic_view_names  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
@@ -183,6 +191,7 @@ Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
 Inspector.get_stage_names = get_stage_names_reflection
+Inspector.get_semantic_view_names = get_semantic_view_names_reflection  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
@@ -190,6 +199,7 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
+Inspector.get_semantic_view_definition = get_semantic_view_definition  # pyright: ignore[reportAttributeAccessIssue]
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
@@ -203,6 +213,99 @@ def _show_column(row, name: str):
     else:
         result = getattr(row, name, None)
     return result
+
+
+SEMANTIC_VIEW_COLUMN_QUERIES = (
+    ("Dimension", SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS),
+    ("Fact", SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
+    ("Metric", SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS),
+)
+
+
+def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
+    """Map a Snowflake INFORMATION_SCHEMA data_type string to a SQLAlchemy type.
+
+    Falls back to NullType (OpenMetadata maps this to DataType.UNKNOWN) when the
+    base type is unrecognized so a semantic view is never dropped over an exotic type.
+    """
+    resolved = sqltypes.NullType()
+    if data_type:
+        base_type = data_type.strip().split("(")[0].split()[0].upper()
+        type_class = ischema_names.get(base_type)
+        if type_class is not None:
+            try:
+                resolved = type_class()
+            except Exception:  # pylint: disable=broad-except
+                resolved = sqltypes.NullType()
+    return resolved
+
+
+def _build_semantic_column_description(
+    kinds: List[str],  # noqa: UP006
+    logical_table: Optional[str],  # noqa: UP045
+    expression: Optional[str],  # noqa: UP045
+    synonyms: Optional[str],  # noqa: UP045
+    comment: Optional[str],  # noqa: UP045
+) -> str:
+    """Compose a column description capturing the semantic object's kind(s),
+    owning logical table, defining expression, synonyms and original comment."""
+    parts = [f"[{', '.join(kinds)}]"]
+    if logical_table:
+        parts.append(f"Logical table: {logical_table}.")
+    if expression:
+        parts.append(f"Expression: {expression}.")
+    if synonyms:
+        parts.append(f"Synonyms: {synonyms}.")
+    if comment:
+        parts.append(comment)
+    return " ".join(parts)
+
+
+def _merge_semantic_view_column(merged: Dict[str, dict], kind: str, row) -> None:  # noqa: UP006
+    """Accumulate a dimension/fact/metric row under its column name, combining
+    kinds when the same name appears across dimensions, facts or metrics."""
+    logical_table, name, data_type, expression, comment, synonyms = (
+        row[0],
+        row[1],
+        row[2],
+        row[3],
+        row[4],
+        row[5],
+    )
+    entry = merged.get(name)
+    if entry is None:
+        entry = {
+            "name": name,
+            "kinds": [],
+            "logical_table": logical_table,
+            "data_type": data_type,
+            "expression": expression,
+            "comment": comment,
+            "synonyms": synonyms,
+        }
+        merged[name] = entry
+    if kind not in entry["kinds"]:
+        entry["kinds"].append(kind)
+
+
+def _build_semantic_view_column(entry: dict) -> dict:
+    """Convert an accumulated semantic object into an OpenMetadata column dict."""
+    return {
+        "name": entry["name"],
+        "type": _resolve_semantic_column_type(entry["data_type"]),
+        "system_data_type": entry["data_type"] or DataType.UNKNOWN.value,
+        "nullable": True,
+        "default": None,
+        "autoincrement": False,
+        "comment": _build_semantic_column_description(
+            entry["kinds"],
+            entry["logical_table"],
+            entry["expression"],
+            entry["synonyms"],
+            entry["comment"],
+        ),
+        "primary_key": False,
+    }
 
 
 # pylint: disable=too-many-public-methods
@@ -812,6 +915,17 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stage.name, type_=table_type) for stage in snowflake_stages.get_not_deleted()]
 
+    def _get_semantic_view_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+        """Fetch semantic views from the schema"""
+        table_type = TableType.SemanticView
+
+        snowflake_semantic_views = self.inspector.get_semantic_view_names(schema=schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+
+        return [
+            TableNameAndType(name=semantic_view.name, type_=table_type)
+            for semantic_view in snowflake_semantic_views.get_not_deleted()
+        ]
+
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
@@ -828,6 +942,13 @@ class SnowflakeSource(
 
         if self.service_connection.includeStages:
             table_list.extend(self._get_stage_names_and_types(schema_name))
+
+        if self.service_connection.includeSemanticViews:
+            try:
+                table_list.extend(self._get_semantic_view_names_and_types(schema_name))
+            except Exception as exc:
+                logger.warning(f"Failed to list semantic views for schema [{schema_name}]: {exc}")
+                logger.debug(traceback.format_exc())
 
         return table_list
 
@@ -1051,7 +1172,35 @@ class SnowflakeSource(
         else:
             yield from super().mark_tables_as_deleted()
 
-    def _get_columns_internal(
+    def _get_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+        """Build columns for a semantic view from its dimensions, facts and metrics.
+
+        Semantic views expose logical objects rather than physical columns; each
+        dimension/fact/metric becomes a column. Failures are swallowed (warn +
+        continue) so an unsupported account or missing catalog view never fails
+        ingestion of the semantic view itself.
+        """
+        columns = []
+        try:
+            columns = self._fetch_semantic_view_columns(schema_name, table_name)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(f"Failed to fetch semantic view columns for [{schema_name}.{table_name}]: {exc}")
+            logger.debug(traceback.format_exc())
+        return columns
+
+    def _fetch_semantic_view_columns(self, schema_name: str, table_name: str) -> List[dict]:  # noqa: UP006
+        """Query the semantic dimension/fact/metric catalog views and merge the
+        rows (deduplicated by column name) into OpenMetadata column dicts."""
+        schema = fqn.unquote_name(schema_name)
+        semantic_view = fqn.unquote_name(table_name)
+        merged: dict[str, dict] = {}
+        for kind, query in SEMANTIC_VIEW_COLUMN_QUERIES:
+            cursor = self.connection.execute(text(query.format(schema=schema, semantic_view=semantic_view)))
+            for row in cursor:
+                _merge_semantic_view_column(merged, kind, row)
+        return [_build_semantic_view_column(entry) for entry in merged.values()]
+
+    def _get_columns_internal(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         schema_name: str,
         table_name: str,
@@ -1062,9 +1211,13 @@ class SnowflakeSource(
         """
         Get columns of table/view/stream/stage
         """
-        # Stages do not have columns in Snowflake
+        # Stages do not expose columns in Snowflake
         if table_type == TableType.Stage:
             return []
+
+        # Semantic views expose logical objects (dimensions/facts/metrics) as columns
+        if table_type == TableType.SemanticView:
+            return self._get_semantic_view_columns(schema_name, table_name)
 
         # For streams, we will use source table/view's columns
         # since stream does not define columns separately in Snowflake
@@ -1144,6 +1297,8 @@ class SnowflakeSource(
                 schema_definition = inspector.get_view_definition(table_name, schema_name)
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
+            elif table_type == TableType.SemanticView:
+                schema_definition = inspector.get_semantic_view_definition(self.connection, table_name, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
             elif table_type == TableType.Stage:
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type
