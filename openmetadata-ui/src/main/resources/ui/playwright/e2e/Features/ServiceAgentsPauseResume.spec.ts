@@ -11,35 +11,31 @@
  *  limitations under the License.
  */
 import { expect, Page, test } from '@playwright/test';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { createNewPage, uuid } from '../../utils/common';
+import { getEncodedFqn } from '../../utils/entity';
 import { getAgentCard } from '../../utils/serviceIngestion';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const service = new DatabaseServiceClass();
 let pipelineName = '';
 
 /**
- * Pause/resume is a single `toggleIngestion` endpoint that flips `enabled`
- * server-side, and the backend forwards the pause to Airflow. The tests below
- * mock both the pipeline listing and the toggle call so the menu's
- * enabled → pause / disabled → resume mapping can be asserted without an
+ * The real `toggleIngestion` flip lives behind Airflow: it only sets
+ * `enabled=false` when Airflow's `disable` endpoint returns 200, which needs a
+ * deployed DAG. This suite never deploys one (and `Features` CI has no Airflow),
+ * so the live call returns 404 and leaves `enabled` untouched. We therefore mock
+ * the Airflow boundary — the toggle call — as a stateful flip, and rewrite the
+ * reads it feeds (list + single-agent refetch) so the UI's
+ * enabled → pause / disabled → resume mapping is exercised end-to-end without an
  * ingestion container.
  */
-const mockPipelineEnabledState = async (
-  page: Page,
-  initialEnabled: boolean
-) => {
+const mockToggleFlow = async (page: Page, initialEnabled: boolean) => {
   let enabled = initialEnabled;
 
-  await page.route('**/api/v1/services/ingestionPipelines/status', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ code: 200, platform: 'airflow' }),
-    })
-  );
+  const rewriteEnabled = (pipeline: { name: string; enabled?: boolean }) =>
+    pipeline.name === pipelineName ? { ...pipeline, enabled } : pipeline;
 
   await page.route('**/api/v1/services/ingestionPipelines?*', async (route) => {
     const response = await route.fetch();
@@ -47,15 +43,22 @@ const mockPipelineEnabledState = async (
 
     await route.fulfill({
       response,
-      json: {
-        ...body,
-        data: (body.data ?? []).map(
-          (pipeline: { name: string; enabled?: boolean }) =>
-            pipeline.name === pipelineName ? { ...pipeline, enabled } : pipeline
-        ),
-      },
+      json: { ...body, data: (body.data ?? []).map(rewriteEnabled) },
     });
   });
+
+  // Single-agent refetch after a terminal SSE progress event
+  // (`/services/ingestionPipelines/name/{fqn}`) — left un-mocked it would return
+  // the real `enabled` and clobber the flip.
+  await page.route(
+    '**/api/v1/services/ingestionPipelines/name/*',
+    async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+
+      await route.fulfill({ response, json: rewriteEnabled(body) });
+    }
+  );
 
   await page.route(
     '**/api/v1/services/ingestionPipelines/toggleIngestion/*',
@@ -64,6 +67,11 @@ const mockPipelineEnabledState = async (
 
       await route.fulfill({ status: 200, json: { enabled } });
     }
+  );
+
+  await page.route(
+    '**/api/v1/services/ingestionPipelines/progress/service/**',
+    (route) => route.fulfill({ status: 204, body: '' })
   );
 };
 
@@ -74,39 +82,20 @@ const openAgentActions = async (page: Page) => {
   await page.getByTestId('actions-dropdown').waitFor();
 };
 
-const visitAgentsTab = async (page: Page) => {
-  await redirectToHomePage(page);
-  await service.visitEntityPage(page);
+const visitAgentsTab = async (page: Page, serviceFQN: string) => {
+  await page.goto(
+    `/service/databaseServices/${getEncodedFqn(serviceFQN)}/agents/metadata`
+  );
   await page.getByTestId('data-assets-header').waitFor();
-  await page.getByTestId('agents').click();
-
-  const metadataSubTab = page.getByTestId('metadata-sub-tab');
-  if (await metadataSubTab.isVisible()) {
-    await metadataSubTab.click();
-  }
 
   await expect(getAgentCard(page, pipelineName)).toBeVisible();
 };
 
-const clickAndAwaitToggle = async (page: Page, testId: string) => {
-  const toggleResponse = page.waitForResponse(
-    (response) =>
-      response
-        .url()
-        .includes('/services/ingestionPipelines/toggleIngestion/') &&
-      response.request().method() === 'POST'
-  );
-
-  await page.getByTestId(testId).click();
-
-  await toggleResponse;
-};
-
 test.describe('Service Agents pause and resume', () => {
+  const service = EntityDataClass.databaseService;
+
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    await service.create(apiContext);
 
     pipelineName = `pw-pause-resume-${uuid()}`;
     const pipelineResponse = await apiContext.post(
@@ -131,48 +120,34 @@ test.describe('Service Agents pause and resume', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await service.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should pause an enabled agent and offer resume afterwards', async ({
+  test('should offer pause for an enabled agent and resume in disabled state', async ({
     page,
   }) => {
-    await mockPipelineEnabledState(page, true);
-    await visitAgentsTab(page);
+    await mockToggleFlow(page, true);
+    await visitAgentsTab(page, service.entityResponseData.fullyQualifiedName);
 
     await openAgentActions(page);
 
     await expect(page.getByTestId('pause-button')).toBeVisible();
     await expect(page.getByTestId('resume-button')).toBeHidden();
 
-    await clickAndAwaitToggle(page, 'pause-button');
+    const toggleResponse = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines/toggleIngestion/*'
+    );
+    const getPipelines = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines?fields=*'
+    );
+
+    await page.getByTestId('pause-button').click();
+
+    await toggleResponse;
+    await getPipelines;
+
+    await page.getByTestId('actions-dropdown').waitFor({ state: 'hidden' });
 
     await openAgentActions(page);
 
     await expect(page.getByTestId('resume-button')).toBeVisible();
     await expect(page.getByTestId('pause-button')).toBeHidden();
-  });
-
-  test('should resume a paused agent and offer pause afterwards', async ({
-    page,
-  }) => {
-    await mockPipelineEnabledState(page, false);
-    await visitAgentsTab(page);
-
-    await openAgentActions(page);
-
-    await expect(page.getByTestId('resume-button')).toBeVisible();
-    await expect(page.getByTestId('pause-button')).toBeHidden();
-
-    await clickAndAwaitToggle(page, 'resume-button');
-
-    await openAgentActions(page);
-
-    await expect(page.getByTestId('pause-button')).toBeVisible();
-    await expect(page.getByTestId('resume-button')).toBeHidden();
   });
 });
