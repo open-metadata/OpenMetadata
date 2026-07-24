@@ -14,7 +14,6 @@ Module to define overridden dialect methods
 """
 
 import operator  # noqa: I001
-import os
 from collections import OrderedDict
 from functools import reduce
 from typing import Dict, Optional  # noqa: UP035
@@ -35,6 +34,7 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeTable,
     SnowflakeTableList,
 )
+from metadata.ingestion.source.database.snowflake.settings import snowflake_settings
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
@@ -78,22 +78,9 @@ QueryMap = Dict[str, Query]  # noqa: UP006
 #
 # Without this bound info_cache only clears between databases
 # (_release_engine in common_db_source.py:171), so multi-schema runs
-# accumulate every schema's column metadata in RAM -- ~1.6 GB per
-# pathologically wide schema, OOM-killing 4 GB pods on databases like
-# COM_US_IMDNA_ADL.
-_DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE = 2
-try:
-    SCHEMA_COLUMNS_CACHE_SIZE = max(
-        1,
-        int(
-            os.environ.get(
-                "OM_SNOWFLAKE_SCHEMA_COLUMNS_CACHE_SIZE",
-                _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE,
-            )
-        ),
-    )
-except ValueError:
-    SCHEMA_COLUMNS_CACHE_SIZE = _DEFAULT_SCHEMA_COLUMNS_CACHE_SIZE
+# accumulate every schema's column metadata in RAM (~1.6 GB per wide schema)
+# and OOM small pods.
+SCHEMA_COLUMNS_CACHE_SIZE = snowflake_settings.schema_columns_cache_size
 
 _SCHEMA_COLUMNS_LRU_KEY = "_om_snowflake_schema_columns_lru"
 
