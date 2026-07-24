@@ -202,6 +202,15 @@ public class McpServer implements McpServerProvider {
                             .MCP_AUTH_REQUEST_ID);
             if (authRequestId instanceof String id) {
               pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+              request.setAttribute(
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider.MCP_STATE_LINKED,
+                  Boolean.TRUE);
+            } else {
+              LOG.warn(
+                  "MCP pending-state persister could not resolve {} from the session; "
+                      + "the returning /callback will not match a pending request",
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                      .MCP_AUTH_REQUEST_ID);
             }
           });
       LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
