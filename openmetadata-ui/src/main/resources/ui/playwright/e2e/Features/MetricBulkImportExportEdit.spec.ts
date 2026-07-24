@@ -26,6 +26,7 @@ import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
+  isMetricsSearchResponse,
   redirectToHomePage,
   uuid,
   waitForMetricsSearchResponse,
@@ -547,7 +548,17 @@ const waitForMetricsPage = async (page: Page) => {
 };
 
 const filterMetrics = async (page: Page, searchText: string) => {
+  const metricsResponsePromise = page.waitForResponse(
+    (response) =>
+      isMetricsSearchResponse(response) &&
+      new URL(response.url()).searchParams.get('q') === searchText
+  );
+
   await page.getByPlaceholder('Search Metrics').fill(searchText);
+
+  const metricsResponse = await metricsResponsePromise;
+  expect(metricsResponse.ok()).toBeTruthy();
+  await waitForAllLoadersToDisappear(page);
 };
 
 const getFirstVisibleFixtureMetricRow = async (
