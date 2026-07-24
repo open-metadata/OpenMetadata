@@ -1319,6 +1319,7 @@ def test_h2_config_is_derived_from_the_current_server_config():
     assert "    - type: h2\n" in rendered_connector
     assert "      keyStorePath: ${SERVER_H2_KEYSTORE_PATH}\n" in rendered_connector
     assert "      certAlias: openmetadata-h2\n" in rendered_connector
+    assert "        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256\n" in rendered_connector
 
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
     assert "generate_playwright_h2_config.py" in fast_launcher
