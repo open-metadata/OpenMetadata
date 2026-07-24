@@ -822,13 +822,13 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectOption(
         adminPage,
-        rule0.locator('.rule--field .ant-select'),
+        rule0.locator('.rule--field'),
         'Description',
         true
       );
       await selectOption(
         adminPage,
-        rule0.locator('.rule--operator .ant-select'),
+        rule0.locator('.rule--operator'),
         'Contains'
       );
       await rule0

@@ -21,9 +21,9 @@ import {
 } from '../../../generated/type/tagLabel';
 import TagsSection from './TagsSection';
 
-// Mock @react-awesome-query-builder/antd
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  ...jest.requireActual('@react-awesome-query-builder/antd'),
+// Mock @react-awesome-query-builder/ui
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Config: {},
   Utils: {
     loadFromJsonLogic: jest.fn(),

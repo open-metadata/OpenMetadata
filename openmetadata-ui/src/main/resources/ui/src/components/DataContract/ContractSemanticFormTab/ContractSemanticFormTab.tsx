@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
+import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import {
   Button,
   Col,

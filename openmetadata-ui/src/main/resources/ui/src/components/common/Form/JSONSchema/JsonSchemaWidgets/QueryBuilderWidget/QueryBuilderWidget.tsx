@@ -18,8 +18,8 @@ import {
   ImmutableTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import '@react-awesome-query-builder/antd/css/styles.css';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
 import { WidgetProps } from '@rjsf/utils';
 import {
   Alert,

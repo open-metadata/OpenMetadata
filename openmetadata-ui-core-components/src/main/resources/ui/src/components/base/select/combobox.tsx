@@ -227,7 +227,12 @@ export const ComboBox = ({
 
   return (
     <SelectContext.Provider value={selectContextValue}>
-      <AriaComboBox menuTrigger="focus" {...otherProps}>
+      {/* defaultItems must live on the ComboBox (not the inner ListBox) so
+          React Aria owns the collection and applies its contains-filter to
+          the typed input — with items only on the ListBox, react-aria ≥1.17
+          loses the options' textValue and any typed filter matches nothing,
+          which closes the popup and reverts the input. */}
+      <AriaComboBox defaultItems={items} menuTrigger="focus" {...otherProps}>
         {(state) => (
           <div className="tw:flex tw:flex-col tw:gap-1.5">
             {otherProps.label && (
@@ -253,7 +258,6 @@ export const ComboBox = ({
               triggerRef={triggerRef}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
-                items={items}
                 renderEmptyState={() => (
                   <SelectEmptyState emptyState={emptyState} />
                 )}>

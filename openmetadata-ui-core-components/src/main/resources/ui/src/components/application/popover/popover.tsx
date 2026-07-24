@@ -70,6 +70,9 @@ export const Popover = ({
 }: PopoverProps) => {
   return (
     <AriaPopover
+      // Non-modal: modal popovers apply aria-hidden to the rest of the page
+      // and leak it permanently on abrupt unmount — see base/select/popover.tsx.
+      isNonModal
       offset={offset}
       {...popoverProps}
       className={(state) =>

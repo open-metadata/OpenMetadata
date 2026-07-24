@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
   ListValues,
   RenderSettings,
   ValueSource,
-} from '@react-awesome-query-builder/antd';
-import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+} from '@react-awesome-query-builder/ui';
+import { Plus, Trash01, X } from '@untitledui/icons';
+import { Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
 import { isArray, isEmpty } from 'lodash';
-import React from 'react';
-import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
@@ -50,48 +48,47 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
 
   if (type === 'delRule') {
     return (
-      <Icon
-        className="action action--DELETE"
-        component={
-          CloseCircleOutlined as React.ForwardRefExoticComponent<CustomIconComponentProps>
-        }
+      <X
+        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
     );
-  } else if (type === 'addRule') {
+  }
+
+  if (type === 'addRule') {
     return (
       <Button
-        ghost
         className="action action--ADD-RULE"
+        color="secondary"
         data-testid="advanced-search-add-rule"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        iconLeading={Plus}
+        size="sm"
+        onPress={() => props?.onClick?.()}>
         {t('label.add')}
       </Button>
     );
-  } else if (type === 'addGroup') {
+  }
+
+  if (type === 'addGroup') {
     return (
       <Button
         className="action action--ADD-GROUP"
+        color="secondary"
         data-testid="advanced-search-add-group"
-        icon={<PlusOutlined />}
-        type="primary"
-        onClick={props?.onClick}>
+        iconLeading={Plus}
+        size="sm"
+        onPress={() => props?.onClick?.()}>
         {t('label.add')}
       </Button>
     );
-  } else if (type === 'delGroup') {
+  }
+
+  if (type === 'delGroup') {
     return (
-      <Icon
-        alt={t('label.delete-entity', {
-          entity: t('label.group'),
-        })}
-        className="action action--DELETE cursor-pointer align-middle"
-        component={IconDeleteColored}
+      <Trash01
+        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-error-primary"
         data-testid="advanced-search-delete-group"
-        style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
     );

@@ -15,7 +15,7 @@ import type {
   Fields,
   OldJsonItem,
   OldJsonTree,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';

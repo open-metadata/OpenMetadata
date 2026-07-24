@@ -174,52 +174,81 @@ export const selectOption = async (
   optionTitle: string,
   isSearchable = false
 ) => {
+  const comboboxInput = dropdownLocator.locator('input[role="combobox"]');
+  const triggerButton = dropdownLocator.locator(
+    'button[aria-haspopup="listbox"]'
+  );
+
+  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+
   if (isSearchable) {
-    // Wait for dropdown to be visible before clicking
-    const selector = dropdownLocator.locator('.ant-select-selector');
-    await expect(selector).toBeVisible();
-    await selector.click();
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-
-    // Clear any existing input and type the new value
-    const combobox = dropdownLocator.getByRole('combobox');
-    await combobox.clear();
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-
-    await combobox.fill(optionTitle);
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
+    if ((await triggerButton.count()) === 0) {
+      // MultiSelect: no chevron overlays the input, so clicking is safe —
+      // and required, since its popup opens from a mousedown handler.
+      await comboboxInput.click();
+    }
+    // Single fill (no clear first) — one input event, one async fetch.
+    await comboboxInput.fill(optionTitle);
+    // React Aria may close the focus-opened popup while processing the atomic
+    // fill; ArrowDown deterministically (re)opens it with the filter applied.
+    await comboboxInput.press('ArrowDown');
+  } else if ((await comboboxInput.count()) > 0) {
+    // Select.ComboBox: fill('') focuses the input (menuTrigger="focus" opens
+    // the popup) and clears the current-label filter so all options show.
+    // Never pointer-click the input — in narrow ComboBoxes (e.g. the RAQB
+    // operator column) the absolutely positioned chevron button covers the
+    // input's center and intercepts the click, hanging actionability retries.
+    await comboboxInput.fill('');
+    await comboboxInput.press('ArrowDown');
   } else {
-    await dropdownLocator.click();
+    // Plain Select (no combobox input): click the trigger button to open.
+    await triggerButton.click();
   }
 
-  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+  // Scope the popup to THIS control via aria-controls (react-aria sets it
+  // while expanded). Popovers portal to <body>, so a global
+  // [role="listbox"]:visible could match a popup left open by a previous
+  // interaction (MultiSelect keeps its popup open by design). The popup can
+  // also close and reopen under a new id while the builder re-renders, so
+  // re-resolve it (and reopen if needed) on every retry.
+  const control = comboboxInput.or(triggerButton).first();
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await control.press('ArrowDown');
+    }
+    const listboxId = await control.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+    await page
+      .locator(`[role="listbox"][id="${listboxId}"]`)
+      .getByRole('option', { name: optionTitle, exact: true })
+      .first()
+      .click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
-  // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-  // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
-  const optionLocator = page
-    .locator('.ant-select-dropdown:visible')
-    .getByTitle(optionTitle, { exact: true })
-    .first();
-  await expect(optionLocator).toBeVisible();
-
-  // Wait for dropdown animations to settle before clicking
-  // This prevents "element detached from DOM" errors during re-renders
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
-  await page.waitForTimeout(100);
-  await optionLocator.click({ timeout: 10000 });
+  // Close the popup if the click didn't: re-selecting the current value emits
+  // no selection change (so the popup stays open) and MultiSelect popups stay
+  // open by design — either would pollute the next interaction's locators.
+  // The control itself may be GONE by now (selecting a field can morph the
+  // whole rule row), which also unmounts its popup — tolerate that.
+  const openListboxId = await control
+    .getAttribute('aria-controls', { timeout: 1000 })
+    .catch(() => null);
+  if (openListboxId) {
+    const openListbox = page.locator(`[role="listbox"][id="${openListboxId}"]`);
+    await openListbox
+      .waitFor({ state: 'hidden', timeout: 2000 })
+      .catch(async () => {
+        // Blur the control — react-aria comboboxes close their popup when
+        // focus leaves. NEVER send Escape here: surrounding antd modals and
+        // forms handle Escape in the capture phase and dismiss themselves.
+        await control.blur({ timeout: 1000 }).catch(() => undefined);
+        await openListbox
+          .waitFor({ state: 'hidden', timeout: 1000 })
+          .catch(() => undefined);
+      });
+  }
 };
 
 export const selectRange = async (
@@ -228,16 +257,14 @@ export const selectRange = async (
   startDate: string,
   endDate: string
 ) => {
-  await ruleLocator.locator('.rule--value .ant-picker-range').click();
-
-  await page.locator('.ant-picker-dropdown-range').waitFor({
-    state: 'visible',
-  });
-
-  await page.locator('.ant-picker-input-active input').fill(startDate);
-  await page.press('.ant-picker-input-active input', 'Enter');
-  await page.locator('.ant-picker-input-active input').fill(endDate);
-  await page.press('.ant-picker-input-active input', 'Enter');
+  await ruleLocator
+    .locator('.rule--value input[type="date"]')
+    .nth(0)
+    .fill(startDate);
+  await ruleLocator
+    .locator('.rule--value input[type="date"]')
+    .nth(1)
+    .fill(endDate);
 };
 
 export const fillRule = async (
@@ -260,19 +287,10 @@ export const fillRule = async (
   const ruleLocator = page.locator('.rule').nth(index - 1);
 
   // Perform click on rule field
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--field .ant-select'),
-    field.id,
-    true
-  );
+  await selectOption(page, ruleLocator.locator('.rule--field'), field.id, true);
 
   // Perform click on operator
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    condition
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
 
   if (searchCriteria) {
     const inputElement = ruleLocator.locator(
@@ -284,14 +302,8 @@ export const fillRule = async (
       await inputElement.fill(searchData);
     } else {
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget > .ant-select > .ant-select-selector input'
+        '.widget--widget input[role="combobox"]'
       );
-
-      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-
-      await dropdownInput.click();
-
-      await aggregateRes1;
 
       const aggregateRes2 = page.waitForResponse(
         `/api/v1/search/aggregate?*${getEncodedFqn(
@@ -303,27 +315,26 @@ export const fillRule = async (
 
       await aggregateRes2;
 
-      const dropdown = page.locator('.ant-select-dropdown:visible');
-      const exactTitleMatch = dropdown
-        .locator('[title]')
-        .filter({
-          hasText: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+      const dropdown = page.locator('[role="listbox"]:visible');
+      const exactMatch = dropdown
+        .getByRole('option', {
+          name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
         })
         .first();
-      const partialTextMatch = dropdown
-        .locator('.ant-select-item-option-content')
+      const partialMatch = dropdown
+        .getByRole('option')
         .filter({
           hasText: new RegExp(escapeRegex(searchData), 'i'),
         })
         .first();
 
-      if (await exactTitleMatch.count()) {
-        await exactTitleMatch.click();
-      } else if (await partialTextMatch.count()) {
-        await partialTextMatch.click();
+      if (await exactMatch.count()) {
+        await exactMatch.click();
+      } else if (await partialMatch.count()) {
+        await partialMatch.click();
       } else {
         // Some suggestion backends normalize or delay option text; Enter keeps
-        // the typed criteria and avoids waiting forever on an exact title match.
+        // the typed criteria and avoids waiting forever on an exact match.
         await dropdownInput.press('Enter');
       }
     }
@@ -579,9 +590,11 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (operator === 'OR') {
+    // Conjunction toggle is a react-aria ToggleButtonGroup (selectionMode
+    // "single"), which exposes role="radio" items — not buttons.
     await page
       .getByTestId('advanced-search-modal')
-      .getByRole('button', { name: 'Or' })
+      .getByRole('radio', { name: 'Or' })
       .click();
   }
 
@@ -664,28 +677,39 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   // Perform click on rule field
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Database',
     true
   );
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    '=='
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
 
   const inputElement = ruleLocator.locator(
-    '.rule--widget--SELECT .ant-select-selection-search-input'
+    '.rule--widget--SELECT input[role="combobox"]'
   );
-  await inputElement.fill('non-existing-value');
-  const dropdownText = page.locator('.ant-select-item-empty');
 
-  await expect(dropdownText).toContainText('Loading...');
+  await inputElement.fill('non-existing-value');
+  await inputElement.press('ArrowDown');
+
+  // Scope to this input's own popup — a popup from a previous step may
+  // still be visible, which would break a global :visible locator.
+  let listboxId: string | null = null;
+  await expect(async () => {
+    listboxId = await inputElement.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+  }).toPass({ timeout: 15000 });
+
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
+
+  await expect(listbox).toBeVisible();
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
-  await expect(dropdownText).not.toContainText('Loading...');
+  // allowsEmptyCollection keeps the popup open and renders the "No data"
+  // empty state (as an option row) instead of an empty listbox.
+  await expect(listbox.getByText('No data')).toBeVisible();
 };
 
 // For fields backed by hard-coded listValues (no aggregate API call), options are
@@ -709,20 +733,12 @@ export const fillStaticListRule = async (
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     fieldLabel,
     true
   );
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    condition
-  );
-  await selectOption(
-    page,
-    ruleLocator.locator('.widget--widget > .ant-select'),
-    value
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
+  await selectOption(page, ruleLocator.locator('.widget--widget'), value);
 };
 
 export const getFieldsSuggestionSearchText = (

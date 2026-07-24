@@ -144,14 +144,14 @@ test.describe('Curated Assets Widget', () => {
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         'Display Name',
         true
       );
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.locator('.rule--operator'),
         'Contains'
       );
 
@@ -260,19 +260,15 @@ test.describe('Curated Assets Widget', () => {
     const ruleLocator = page.locator('.rule').nth(0);
     await selectOption(
       page,
-      ruleLocator.locator('.rule--field .ant-select'),
+      ruleLocator.locator('.rule--field'),
       'Deleted',
       true
     );
 
-    await selectOption(
-      page,
-      ruleLocator.locator('.rule--operator .ant-select'),
-      'Is'
-    );
+    await selectOption(page, ruleLocator.locator('.rule--operator'), 'Is');
 
     await ruleLocator
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -336,35 +332,30 @@ test.describe('Curated Assets Widget', () => {
     const ruleLocator1 = page.locator('.rule').nth(0);
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.locator('.rule--field'),
       'Owners',
       true
     );
-    await selectOption(
-      page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
-      'Is Set'
-    );
+    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Is Set');
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
 
     // Switch to OR condition (AND is selected by default, click OR button)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'Or' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       'Deleted',
       true
     );
-    await selectOption(
-      page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
-      'Is'
-    );
+    await selectOption(page, ruleLocator2.locator('.rule--operator'), 'Is');
     await ruleLocator2
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     const queryResponse = page.waitForResponse(
@@ -439,32 +430,31 @@ test.describe('Curated Assets Widget', () => {
     const ruleLocator1 = page.locator('.rule').nth(0);
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.locator('.rule--field'),
       'Deleted',
       true
     );
-    await selectOption(
-      page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
-      'Is'
-    );
+    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Is');
     await ruleLocator1
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
-    await page.locator('.group--conjunctions button:has-text("AND")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'And' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       'Display Name',
       true
     );
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
+      ruleLocator2.locator('.rule--operator'),
       'Contains'
     );
 
@@ -555,18 +545,14 @@ test.describe('Curated Assets Widget', () => {
     const ruleLocator1 = page.locator('.rule').nth(0);
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--field .ant-select'),
+      ruleLocator1.locator('.rule--field'),
       'Owners',
       true
     );
+    await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Any in');
     await selectOption(
       page,
-      ruleLocator1.locator('.rule--operator .ant-select'),
-      'Any in'
-    );
-    await selectOption(
-      page,
-      ruleLocator1.locator('.rule--value .ant-select'),
+      ruleLocator1.locator('.rule--value'),
       'admin',
       true
     );
@@ -574,23 +560,22 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add Condition' }).click();
 
     // Switch first group to OR condition (AND is default)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'Or' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--field .ant-select'),
+      ruleLocator2.locator('.rule--field'),
       'Description Status',
       true
     );
+    await selectOption(page, ruleLocator2.locator('.rule--operator'), 'Is');
     await selectOption(
       page,
-      ruleLocator2.locator('.rule--operator .ant-select'),
-      'Is'
-    );
-    await selectOption(
-      page,
-      ruleLocator2.locator('.rule--value .ant-select'),
+      ruleLocator2.locator('.rule--value'),
       'Incomplete'
     );
     await ruleLocator2.locator('.rule--value input').fill('production');
@@ -601,18 +586,14 @@ test.describe('Curated Assets Widget', () => {
     const ruleLocator3 = page.locator('.rule').nth(2);
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--field .ant-select'),
+      ruleLocator3.locator('.rule--field'),
       'Tier',
       true
     );
+    await selectOption(page, ruleLocator3.locator('.rule--operator'), 'Is Not');
     await selectOption(
       page,
-      ruleLocator3.locator('.rule--operator .ant-select'),
-      'Is Not'
-    );
-    await selectOption(
-      page,
-      ruleLocator3.locator('.rule--value .ant-select'),
+      ruleLocator3.locator('.rule--value'),
       'tier.tier5',
       true
     );

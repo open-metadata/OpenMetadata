@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  AntdConfig,
   AsyncFetchListValuesResult,
   Config,
   FieldOrGroup,
@@ -19,7 +18,7 @@ import {
   ListItem,
   Operators,
   SelectFieldSettings,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { get, sortBy, toLower } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
@@ -45,11 +44,12 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
+import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
-  baseConfig = AntdConfig as Config;
+  baseConfig = OMConfig as Config;
   configTypes: Config['types'] = {
     ...this.baseConfig.types,
     multiselect: {

@@ -140,6 +140,11 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
 
   return (
     <AriaPopover
+      // Menus are non-modal (ARIA menu-button pattern). Modal popovers apply
+      // aria-hidden to the rest of the page and leak it permanently when the
+      // popover unmounts abruptly, leaving the app invisible to the
+      // accessibility tree — see the identical fix in base/select/popover.tsx.
+      isNonModal
       placement={placement}
       {...rest}
       className={(state) =>

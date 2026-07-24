@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InfoCircleOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Card,
+  Divider,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,
@@ -22,18 +28,9 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
-import '@react-awesome-query-builder/antd/css/styles.css';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+} from '@react-awesome-query-builder/ui';
+import '@react-awesome-query-builder/ui/css/styles.css';
+import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
@@ -64,6 +61,7 @@ import { getExplorePath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import './query-builder-widget-v1.less';
+
 const QueryBuilderWidgetV1: FC<{
   fields?: Config['fields'];
   onChange?: (value: string, tree?: JsonTree) => void;
@@ -190,7 +188,7 @@ const QueryBuilderWidgetV1: FC<{
         });
         setSearchResults(res.hits.total.value ?? 0);
       } catch {
-        setSearchResults(0); // fallback to 0 on error
+        setSearchResults(0);
       } finally {
         setIsCountLoading(false);
       }
@@ -294,70 +292,61 @@ const QueryBuilderWidgetV1: FC<{
       className="query-builder-form-field"
       data-testid="query-builder-form-field">
       <Card className={classNames('query-builder-card', outputType)}>
-        <Row gutter={[8, 8]}>
-          <Col
+        <Card.Content>
+          {outputType === SearchOutputType.JSONLogic && props.label && (
+            <>
+              <Typography
+                as="span"
+                className="query-filter-label tw:text-tertiary"
+                size="text-sm">
+                {props.label}
+              </Typography>
+              <Divider className="tw:my-2" />
+            </>
+          )}
+
+          <div
             className={classNames({
-              'p-t-sm': outputType === SearchOutputType.ElasticSearch,
-            })}
-            span={24}>
-            {outputType === SearchOutputType.JSONLogic && props.label && (
-              <>
-                <Typography.Text className="query-filter-label text-grey-muted">
-                  {props.label}
-                </Typography.Text>
-                <Divider className="m-y-sm" />
-              </>
-            )}
+              'tw:pt-2': outputType === SearchOutputType.ElasticSearch,
+            })}>
             <Query
               {...config}
               renderBuilder={renderBuilder}
               value={treeInternal}
               onChange={handleChange}
             />
+          </div>
 
-            {isCountLoading && (
-              <Skeleton
-                active
-                className="m-t-sm"
-                loading={isCountLoading}
-                paragraph={false}
-                title={{ style: { height: '32px' } }}
-              />
-            )}
+          {isCountLoading && (
+            <Skeleton
+              animation="pulse"
+              className="tw:mt-2"
+              height={32}
+              variant="rectangular"
+            />
+          )}
 
-            {showFilteredResourceCount && (
-              <div className="m-t-sm">
-                <Button
-                  className="w-full p-0 text-left h-auto"
-                  data-testid="view-assets-banner-button"
-                  disabled={false}
-                  href={queryURL}
-                  target="_blank"
-                  type="link">
-                  <Alert
-                    closable
-                    showIcon
-                    icon={<InfoCircleOutlined height={16} />}
-                    message={
-                      <div className="d-flex flex-wrap items-center gap-1">
-                        <Typography.Text>
-                          {t('message.search-entity-count', {
-                            count: searchResults,
-                          })}
-                        </Typography.Text>
-
-                        <Typography.Text className="text-xs text-grey-muted">
-                          {t('message.click-here-to-view-assets-on-explore')}
-                        </Typography.Text>
-                      </div>
-                    }
-                    type="info"
-                  />
-                </Button>
-              </div>
-            )}
-          </Col>
-        </Row>
+          {showFilteredResourceCount && (
+            <a
+              className="tw:mt-2 tw:block tw:no-underline"
+              data-testid="view-assets-banner-button"
+              href={queryURL}
+              rel="noreferrer"
+              target="_blank">
+              <Alert
+                closable
+                icon={InfoCircle}
+                title={t('message.search-entity-count', {
+                  count: searchResults,
+                })}
+                variant="brand">
+                <Typography as="span" size="text-xs">
+                  {t('message.click-here-to-view-assets-on-explore')}
+                </Typography>
+              </Alert>
+            </a>
+          )}
+        </Card.Content>
       </Card>
     </div>
   );

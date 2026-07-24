@@ -929,26 +929,26 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Custom Properties',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             'Table',
             true
           );
           await selectOption(
             page,
-            ruleLocator.locator('.rule--field .ant-select'),
+            ruleLocator.locator('.rule--field'),
             durationPropertyName,
             true
           );
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             CONDITIONS_MUST.equalTo.name
           );
 
@@ -971,7 +971,7 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
           await selectOption(
             page,
-            ruleLocator.locator('.rule--operator .ant-select'),
+            ruleLocator.locator('.rule--operator'),
             'Contains'
           );
           await inputElement.fill(partialSearchValue);
@@ -1223,28 +1223,28 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Custom Properties',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               'Table',
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--field .ant-select'),
+              ruleLocator.locator('.rule--field'),
               propertyName,
               true
             );
 
             await selectOption(
               page,
-              ruleLocator.locator('.rule--operator .ant-select'),
+              ruleLocator.locator('.rule--operator'),
               CONDITIONS_MUST.equalTo.name
             );
 

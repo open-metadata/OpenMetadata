@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { Config, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';

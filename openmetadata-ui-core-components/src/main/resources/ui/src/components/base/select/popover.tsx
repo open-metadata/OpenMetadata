@@ -10,6 +10,12 @@ interface PopoverProps extends AriaPopoverProps, RefAttributes<HTMLElement> {
 export const Popover = (props: PopoverProps) => {
   return (
     <AriaPopover
+      // Combobox/select popups must be non-modal: modal popovers apply
+      // aria-hidden to the rest of the page (ariaHideOutside), and when the
+      // popover unmounts abruptly (its owner re-renders away) that cleanup
+      // never runs — leaving the whole app invisible to the accessibility
+      // tree (and to role-based queries) while looking perfectly normal.
+      isNonModal
       containerPadding={0}
       offset={4}
       placement="bottom"
