@@ -637,14 +637,14 @@ test.describe(
         ).toContainText('New');
       });
 
-      await test.step('Verify Resolved incident for Uniqueness test case on table4 DQ tab', async () => {
+      await test.step('Verify resolved Uniqueness incident is no longer shown as ongoing', async () => {
         await visitDataQualityTab(page, table4);
         await expect(
           page.locator(`[data-testid="status-badge-${uniquenessTestCaseName}"]`)
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${uniquenessTestCaseName}-status"]`)
-        ).toContainText('Resolved');
+        ).toHaveCount(0);
       });
 
       await test.step('Filter by Certification and verify Uniqueness widget shows 1 Failed test case', async () => {

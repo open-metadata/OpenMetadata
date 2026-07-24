@@ -579,12 +579,14 @@ export async function applyDashboardCertificationFilter(
 }
 
 /**
- * Polls the incident status API until an incident for `testCaseFqn` appears
- * within the [failTs-60s, failTs+120s] window.
- * Call this immediately after `addTestCaseResult` to guarantee the incident
- * document is indexed before any UI assertions.
- * Pass `expectedStatus` to also wait until the incident reaches that resolution
- * status (e.g. "Resolved") — useful after posting a status transition.
+ * Waits until incident data reaches the index consumed by the Data Quality tab.
+ *
+ * Ongoing incidents are read from the resolution-status timeline. Resolving an
+ * incident is different: the backend asynchronously clears TestCase.incidentId
+ * after the transaction commits, and the Data Quality tab uses that search
+ * field to decide whether an incident is still active. Therefore, a Resolved
+ * transition waits for incidentId to disappear from the test-case search
+ * document instead of polling the resolution-status timeline.
  */
 export async function waitForIncidentToBeIndexed(
   apiContext: APIRequestContext,
@@ -595,6 +597,35 @@ export async function waitForIncidentToBeIndexed(
   await expect
     .poll(
       async () => {
+        if (expectedStatus === 'Resolved') {
+          // The Resolved timeline record may be indexed before the targeted
+          // TestCase search update clears incidentId. Poll the latter because
+          // it is the state used to render the incident cell in the DQ tab.
+          const testCaseResponse = await apiContext.get(
+            '/api/v1/dataQuality/testCases/search/list',
+            {
+              params: {
+                fields: 'incidentId',
+                limit: 10,
+                q: testCaseFqn,
+              },
+            }
+          );
+          const testCaseBody = await testCaseResponse.json();
+          const testCase = (
+            (testCaseBody.data ?? []) as Array<{
+              fullyQualifiedName?: string;
+              incidentId?: string;
+            }>
+          ).find((item) => item.fullyQualifiedName === testCaseFqn);
+
+          // A missing test-case document is not equivalent to a cleared
+          // incidentId; wait until the exact document exists without the field.
+          return Boolean(testCase) && !testCase?.incidentId;
+        }
+
+        // Non-resolved incidents remain active, so wait for their matching
+        // resolution-status record to become searchable.
         const res = await apiContext.get(
           `/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true` +
             `&startTs=${failTs - 60_000}` +
