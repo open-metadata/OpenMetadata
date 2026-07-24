@@ -34,10 +34,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload Retire.js Report
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: retire-js-report
           path: openmetadata-ui/src/main/resources/ui/retire-report.json
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload Retire.js Slack artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: retire-slack
           path: |
@@ -178,15 +178,15 @@ jobs:
           large-packages: false
           docker-images: true
           swap-storage: true
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
@@ -264,7 +264,7 @@ jobs:
 
       - name: Upload Snyk Reports
         if: always() && steps.maven-build.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: security-report
           path: security-report
@@ -283,7 +283,7 @@ jobs:
     steps:
       - name: Download Snyk artifact
         if: needs.security-scan.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: security-report
           path: security-report
@@ -291,7 +291,7 @@ jobs:
 
       - name: Download Retire.js Slack artifact
         if: needs.vulnerability-scan.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: retire-slack
           path: retire-report
@@ -304,6 +304,7 @@ jobs:
           SNYK_RESULT: ${{ needs.security-scan.result }}
           REF_NAME: ${{ github.ref_name }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_IDS }}
         run: |
           python3 - <<'PY' > header.json
           import json, os, pathlib
@@ -312,6 +313,7 @@ jobs:
           snyk = os.environ["SNYK_RESULT"]
           ref_name = os.environ["REF_NAME"]
           run_url = os.environ["RUN_URL"]
+          channel = os.environ["SLACK_CHANNEL_ID"]
 
           def status_icon(s):
               return {"success": "✅", "cancelled": "⚠️ (cancelled)", "skipped": "⚠️ (skipped)"}.get(s, "❌")
@@ -355,6 +357,7 @@ jobs:
           )
           fallback = f"{overall} Security scan — OpenMetadata Repo on {ref_name}. {run_url}"
           payload = {
+              "channel": channel,
               "text": fallback,
               "blocks": [{"type": "section", "text": {"type": "mrkdwn", "text": header}}],
           }
@@ -364,23 +367,24 @@ jobs:
       - name: Send Slack — header
         id: send-header
         if: env.SEND_SLACK_NOTIFICATION == 'true'
-        uses: slackapi/slack-github-action@v1.27.1
+        uses: slackapi/slack-github-action@v4
         with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: header.json
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Build Slack thread payload
         id: build-thread
         if: always() && steps.send-header.outputs.ts != ''
         env:
           THREAD_TS: ${{ steps.send-header.outputs.ts }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_IDS }}
         run: |
           python3 - <<'PY' > thread.json
           import json, os, pathlib
 
           thread_ts = os.environ["THREAD_TS"]
+          channel = os.environ["SLACK_CHANNEL_ID"]
 
           def read_sections(path):
               p = pathlib.Path(path)
@@ -410,6 +414,7 @@ jobs:
               push("_No detailed scan output was produced._")
 
           payload = {
+              "channel": channel,
               "thread_ts": thread_ts,
               "text": "Security scan details (thread reply)",
               "blocks": blocks,
@@ -419,9 +424,8 @@ jobs:
 
       - name: Send Slack — thread reply
         if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
-        uses: slackapi/slack-github-action@v1.27.1
+        uses: slackapi/slack-github-action@v4
         with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
+          method: chat.postMessage
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
           payload-file-path: thread.json
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

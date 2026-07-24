@@ -12,6 +12,7 @@
  */
 
 import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import HeaderShell from '../HeaderShell/HeaderShell.component';
@@ -124,7 +125,7 @@ const EntityDetailHeader = ({
       actions={actions}
       badge={badge}
       breadcrumb={breadcrumb}
-      className={className}
+      className={classNames('entity-detail-header', className)}
       data-testid={dataTestId}
       footer={footer}
       leading={resolvedLeading}
