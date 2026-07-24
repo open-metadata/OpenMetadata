@@ -890,6 +890,15 @@ test.describe('Bulk Edit Entity', () => {
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
+      // Guard against a concurrent test's async job result being rendered here.
+      // All parallel tests share the same admin session, so the shared job tray
+      // can surface another test's completed export before this one's. Waiting
+      // for the name cell to contain THIS term's name ensures the correct job
+      // result is visible before we start editing.
+      await expect(page.locator('.rdg-row .rdg-cell-name')).toContainText(
+        nestedGlossaryTerm.data.name
+      );
+
       // Click on first cell and edit
       await page.locator('.rdg-cell[role="gridcell"]').first().click();
 
