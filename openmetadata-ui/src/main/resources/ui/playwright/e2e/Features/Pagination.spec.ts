@@ -331,7 +331,11 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       page,
     }) => {
       await page.goto(`/tags/${classification.responseData.name}`);
-      await testPaginationNavigation(page, '/api/v1/tags', 'table');
+      await testPaginationNavigation(
+        page,
+        '/api/v1/tags',
+        '[data-testid="table"]'
+      );
     });
   });
 

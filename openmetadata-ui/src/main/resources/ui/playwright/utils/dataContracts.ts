@@ -29,6 +29,10 @@ export const saveAndTriggerDataContractValidation = async (
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
+  expect(
+    response.ok(),
+    `Data contract save failed with status ${response.status()}`
+  ).toBe(true);
   const responseData = await response.json();
 
   if (isContractStatusNotVisible) {
