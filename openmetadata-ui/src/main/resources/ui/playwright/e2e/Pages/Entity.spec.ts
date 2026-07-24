@@ -266,15 +266,19 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       // 30s. Two adds + a remove = up to 90s of waste from one cold index.
       // Poll the search API up-front so the UI dropdown finds them on
       // the first search.
+      // Poll with getUserDisplayName() — this is the term addMultiOwner
+      // types into the picker (line ~292). If displayName ever diverges
+      // from name, polling by name would silently pass while the UI
+      // search still misses (per @gitar-bot review on PR #30390).
       await expect
         .poll(
           async () => {
             const [r1, r2] = await Promise.all([
               apiContext.get(
-                `/api/v1/search/query?q=${OWNER1.getUserName()}&index=user_search_index`
+                `/api/v1/search/query?q=${OWNER1.getUserDisplayName()}&index=user_search_index`
               ),
               apiContext.get(
-                `/api/v1/search/query?q=${OWNER2.getUserName()}&index=user_search_index`
+                `/api/v1/search/query?q=${OWNER2.getUserDisplayName()}&index=user_search_index`
               ),
             ]);
             const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
