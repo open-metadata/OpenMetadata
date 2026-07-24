@@ -145,6 +145,7 @@
       "$ref": "../../type/entityReferenceList.json"
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "domains", "children"],
   "required": ["id", "name"],
   "additionalProperties": false
 }

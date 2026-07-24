@@ -178,6 +178,7 @@
       "$ref": "../../type/entityReference.json"
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "tags", "domains"],
   "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }

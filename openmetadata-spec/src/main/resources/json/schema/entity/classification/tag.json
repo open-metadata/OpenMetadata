@@ -145,6 +145,7 @@
       "default": 50
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "domains", "dataProducts", "parent", "children", "style", "dataContract"],
   "required": [
     "id",
     "name",

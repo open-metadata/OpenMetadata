@@ -215,6 +215,7 @@
       "$ref": "../../type/status.json"
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "tags", "certification", "domains", "dataProducts", "extension", "dataContract"],
   "required": ["id", "name", "service"],
   "additionalProperties": false
 }

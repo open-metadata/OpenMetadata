@@ -86,6 +86,7 @@
       "$ref": "../../type/status.json"
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "domains"],
   "required": ["id", "name", "service"],
   "additionalProperties": false
 }
