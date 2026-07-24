@@ -355,3 +355,6 @@ allowedUntypedLibraries = []
 # root = "src/metadata/utils"
 # reportMissingParameterType = "error"
 
+[tool.uv.extra-build-dependencies]
+cx-oracle = ["pkg_resources"]
+
