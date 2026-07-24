@@ -189,7 +189,7 @@ export const visitCreateTestCasePanelFromEntityPage = async (
       table.entityResponseData?.['fullyQualifiedName'] ?? ''
     )}/tableProfile/latest?includeColumnProfile=false`
   );
-  await page.getByText('Data Observability').click();
+  await page.getByTestId('profiler').getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
