@@ -47,7 +47,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.superset.models import (
     DashboardResult,
-    DataSourceResult,
+    DSColumns,
     FetchChart,
     FetchColumn,
     FetchDashboard,
@@ -232,6 +232,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         table_name=table_name,
                         schema=table_schema,
                         sqlalchemy_uri=chart_json.sqlalchemy_uri,
+                        datasource_id=chart_json.datasource_id,
                     ),
                     column_mapping,
                 )
@@ -380,7 +381,7 @@ class SupersetSourceMixin(DashboardServiceSource):
             return col_parse["children"]
         return []
 
-    def get_column_info(self, data_source: List[Union[DataSourceResult, FetchColumn]]) -> Optional[List[Column]]:  # noqa: UP006, UP007, UP045
+    def get_column_info(self, data_source: list[DSColumns | FetchColumn]) -> list[Column] | None:
         """
         Args:
             data_source: DataSource
@@ -400,7 +401,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                         dataType=col_parse["dataType"],
                         arrayDataType=self.parse_array_data_type(col_parse),
                         children=self.parse_row_data_type(col_parse),
-                        name=truncate_column_name(str(field.id)),
+                        name=truncate_column_name(field.column_name or str(field.id)),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),
