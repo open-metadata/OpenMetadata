@@ -167,7 +167,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
+    const tagDetailResponseDisable = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponseDisable;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).toBeVisible();
@@ -230,7 +237,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('add-domain')).toBeVisible();
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
+    const tagDetailResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/tags') &&
+        response.url().includes(tag.responseData.name) &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId(tag.responseData.name).click();
+    await tagDetailResponse;
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();

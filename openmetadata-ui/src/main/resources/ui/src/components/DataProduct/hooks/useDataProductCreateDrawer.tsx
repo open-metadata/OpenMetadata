@@ -21,7 +21,10 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
-import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import {
+  setCreateEntityFieldError,
+  submitAndClose,
+} from '../../../utils/FormDrawerUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -62,7 +65,22 @@ export const useDataProductCreateDrawer = (onCreated?: () => void) => {
             form.reset();
           },
           t,
+          suppressErrorToast: true,
         });
+      } catch (error) {
+        setCreateEntityFieldError(
+          error,
+          form,
+          'name',
+          t('message.entity-with-name-already-exists', {
+            entity: t('label.data-product'),
+          }),
+          t('server.add-entity-error', {
+            entity: t('label.data-product').toLowerCase(),
+          })
+        );
+
+        throw error;
       } finally {
         setIsLoading(false);
       }

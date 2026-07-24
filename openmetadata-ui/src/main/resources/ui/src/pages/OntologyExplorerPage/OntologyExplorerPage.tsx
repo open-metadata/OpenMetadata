@@ -113,7 +113,9 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
+    <PageLayoutV1
+      pageTitle={t('label.ontology-explorer')}
+      variant={isAiMode ? 'compact' : 'default'}>
       <Box direction="col" gap={3}>
         {isAiMode ? (
           <HeaderShell

@@ -117,14 +117,13 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -178,7 +177,7 @@ jobs:
           AUTHENTICATION_CLIENT_TYPE: ${{ matrix.provider == 'mock-oidc' && 'confidential' || 'public' }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
@@ -214,7 +213,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         continue-on-error: true
         with:
           name: sso-auth-test-results-${{ matrix.provider }}
@@ -226,7 +225,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: sso-results-json-${{ matrix.provider }}
@@ -251,7 +250,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -276,13 +275,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout trusted CI classifier
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - name: Download results JSON
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: sso-results-json-*
@@ -306,7 +305,7 @@ jobs:
       - name: Upload SSO Playwright shadow-gate ledger
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-shadow-gate-sso-pr-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
@@ -315,7 +314,7 @@ jobs:
 
       - name: Post SSO test summary as PR comment
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           SSO_TEST_RESULT: ${{ needs.sso-auth-tests.result }}
         with:
