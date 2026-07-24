@@ -117,9 +117,10 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
@@ -275,7 +276,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout trusted CI classifier
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
