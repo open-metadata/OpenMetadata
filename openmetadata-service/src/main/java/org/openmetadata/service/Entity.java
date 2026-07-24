@@ -740,6 +740,19 @@ public final class Entity {
   }
 
   /**
+   * Whether an entity instance should be written to the search index, per its repository's {@link
+   * EntityRepository#isSearchIndexable} policy (e.g. {@code ContextMemoryRepository} excludes
+   * non-org-wide memories). Defaults to {@code true} for entity types with no regular entity
+   * repository (index-only / time-series sub-entities), so the live index paths never throw on an
+   * indexable but repository-less type.
+   */
+  public static boolean isSearchIndexable(EntityInterface entity) {
+    String entityType = entity.getEntityReference().getType();
+    EntityRepository<? extends EntityInterface> repository = ENTITY_REPOSITORY_MAP.get(entityType);
+    return repository == null || repository.isSearchIndexable(entity);
+  }
+
+  /**
    * Returns true when {@code entityTypeOrAlias} maps to an {@link EntityTimeSeriesInterface}
    * (append-only, no top-level {@code deleted} field). Backed by
    * {@link EntityIndexCapabilityRegistry}; the legacy {@code ENTITY_TS_REPOSITORY_MAP} fallback

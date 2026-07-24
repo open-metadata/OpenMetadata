@@ -127,6 +127,23 @@ class ListFilterTest {
   }
 
   @Test
+  void test_getMemorySearchVisibilityCondition() {
+    ListFilter filter = new ListFilter();
+    String condition = filter.getCondition("context_memory_entity");
+    assertFalse(condition.contains("shareConfig.visibility"));
+    assertFalse(condition.contains("shareConfig'->>'visibility"));
+
+    filter = new ListFilter();
+    filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
+    condition = filter.getCondition("context_memory_entity");
+    String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
+    assertTrue(
+        condition.contains(
+                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder)
+            || condition.contains("json->'shareConfig'->>'visibility' = " + bindPlaceholder));
+  }
+
+  @Test
   void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");

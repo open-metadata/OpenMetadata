@@ -26,8 +26,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -64,6 +66,30 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  /**
+   * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are searchable; PRIVATE and SHARED
+   * memories (and the {@code null}/unset default, which is PRIVATE) are kept out of the search
+   * index. This live-write check and {@link #getReindexFilter()} (the bulk-reindex equivalent
+   * expressed as a DB query) are the single home for the memory search-visibility rule — owners and
+   * shared principals still read restricted memories through the REST {@code /contextCenter/memories}
+   * endpoints (see {@link
+   * org.openmetadata.service.resources.context.ContextMemoryVisibility}).
+   */
+  @Override
+  public boolean isSearchIndexable(EntityInterface entity) {
+    boolean searchable = false;
+    if (entity instanceof ContextMemory memory && memory.getShareConfig() != null) {
+      searchable = memory.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
+    }
+    return searchable;
+  }
+
+  @Override
+  public ListFilter getReindexFilter() {
+    return new ListFilter(Include.ALL)
+        .addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, MemoryVisibility.ENTITY.value());
   }
 
   @Override
