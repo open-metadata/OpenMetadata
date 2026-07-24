@@ -514,6 +514,7 @@ test.describe('Entity Version pages', () => {
     }) => {
       await table.visitEntityPage(page);
       const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -524,7 +525,7 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`));
     });
 
     test('Database - closing version drawer navigates to entity page without tab', async ({
@@ -532,6 +533,7 @@ test.describe('Entity Version pages', () => {
     }) => {
       await database.visitEntityPage(page);
       const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -542,7 +544,7 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`));
     });
 
     test('DatabaseSchema - closing version drawer navigates to entity page without tab', async ({
@@ -550,6 +552,7 @@ test.describe('Entity Version pages', () => {
     }) => {
       await databaseSchema.visitEntityPage(page);
       const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
       const versionListResponse = page.waitForResponse(
         (response) =>
@@ -560,7 +563,7 @@ test.describe('Entity Version pages', () => {
 
       await page.locator('[data-testid="version-button"]').click();
 
-      await expect(page).toHaveURL(new RegExp(`^[^?]*${entityPathname}(\\?.*)?$`));
+      await expect(page).toHaveURL(new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`));
     });
   });
 });
