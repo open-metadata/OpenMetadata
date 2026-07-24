@@ -66,7 +66,7 @@ export const createAdminApiContext = async (): Promise<{
 
     if (!loginResponse.ok()) {
       throw new Error(
-        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`
+        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`,
       );
     }
 
