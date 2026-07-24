@@ -322,10 +322,12 @@ public class AppRepository extends EntityRepository<App> {
    *
    * <p>Extension rows outlive the code that wrote them. When a newer build adds a field and is then
    * rolled back, or a branch cut before that field runs against the same database, a strict read
-   * cannot parse the rows the newer build already wrote. Every caller below aggregates rows in
-   * bulk, so one unparseable row fails the entire scan instead of being skipped — a single write
-   * from a newer build can make an app's whole history unreadable until the row is deleted by hand.
-   * Ignoring unknown fields keeps adding a field backward compatible for readers.
+   * cannot parse the rows the newer build already wrote. The bulk {@code listAppExtension*} callers
+   * aggregate rows, so one unparseable row fails the entire scan instead of being skipped; the
+   * {@code getLatestExtension*} callers read the newest row, which is the one most likely to have
+   * been written by that newer build. Either way a single such write can make an app's history — or
+   * its latest run / credit status — unreadable until the row is deleted by hand. Ignoring unknown
+   * fields keeps adding a field backward compatible for readers.
    *
    * <p>Package-private for unit testing.
    */
@@ -507,7 +509,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionById(
@@ -525,7 +527,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       return Optional.empty();
     }
-    return Optional.of(JsonUtils.readValue(result.get(0), clazz));
+    return Optional.of(readExtension(result.getFirst(), clazz));
   }
 
   public <T> T getLatestExtensionAfterStartTimeByName(
@@ -538,7 +540,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   public <T> T getLatestExtensionAfterStartTimeById(
@@ -551,7 +553,7 @@ public class AppRepository extends EntityRepository<App> {
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }
-    return JsonUtils.readValue(result.get(0), clazz);
+    return readExtension(result.getFirst(), clazz);
   }
 
   @Override
