@@ -62,11 +62,11 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
@@ -216,7 +216,7 @@ jobs:
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
@@ -230,7 +230,7 @@ jobs:
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
@@ -239,7 +239,7 @@ jobs:
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
@@ -279,7 +279,7 @@ jobs:
     - name: Upload tests artifact
       if: ${{ always() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: tests-${{ matrix.e2e-test }}
         path: |
@@ -318,7 +318,7 @@ jobs:
     - name: Upload runner and service diagnostics
       if: ${{ failure() || cancelled() }}
       continue-on-error: true
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: py-cli-e2e-diagnostics-${{ matrix.e2e-test }}
         path: ${{ runner.temp }}/python-ci-diagnostics/
@@ -337,15 +337,14 @@ jobs:
     - name: Slack on Failure
       if: ${{ always() && !cancelled() && env.DEBUG == 'false' && failure() }}
       continue-on-error: true
-      uses: slackapi/slack-github-action@v1.23.0
+      uses: slackapi/slack-github-action@v4
       with:
+        webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
+        webhook-type: incoming-webhook
         payload: |
           {
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
   py-cli-e2e-tests-status:
     name: py-cli-e2e-tests-status
@@ -374,10 +373,10 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
@@ -393,7 +392,7 @@ jobs:
           make install_all install_test
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
@@ -414,7 +413,7 @@ jobs:
         shell: bash
 
       - name: Push Results to Sonar
-        uses: sonarsource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

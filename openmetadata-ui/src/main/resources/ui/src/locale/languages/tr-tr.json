@@ -3326,6 +3326,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} boyutu 2 ile 64 arasında olmalıdır",
     "entity-transfer-confirmation-message": "Devam etmek için, <0>{{from}}</0> durumunun şuna değişeceğini anladığınızı onaylayın:",
     "entity-transfer-message": "<0>{{from}}</0> {{entity}} öğesini <0>{{to}}</0> {{entity}} altına taşımak isterseniz Onayla'ya tıklayın.",
+    "entity-with-name-already-exists": "Bu ada sahip {{entity}} zaten mevcut.",
     "enum-property-update-message": "Sıralı değerler güncellemesi başlatıldı. Tamamlandığında bilgilendirileceksiniz.",
     "enum-with-description-update-note": "Mevcut değer anahtarlarını güncellemeye izin verilmez; yalnızca açıklama düzenlenebilir. Ancak, yeni değerler eklemeye izin verilir.",
     "error-generating-export-type": "{{exportType}} oluşturulurken hata oluştu",

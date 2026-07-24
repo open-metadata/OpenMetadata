@@ -123,6 +123,14 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.getByTestId('Rest').click();
     await page.locator('#service-name').waitFor();
 
+    const serviceNameValidation = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/services/apiServices/name/${encodeURIComponent(
+            apiServiceConfig.name
+          )}`
+    );
     await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
     await page.locator(descriptionBox).fill(apiServiceConfig.description);
@@ -133,6 +141,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
 
+    await serviceNameValidation;
     await testConnection(page);
 
     await page.getByTestId('next-button').click();

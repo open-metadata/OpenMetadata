@@ -3326,6 +3326,7 @@
     "entity-size-must-be-between-2-and-64": "Размер объекта «{{entity}}» должен быть от 2 до 64",
     "entity-transfer-confirmation-message": "Чтобы продолжить, подтвердите, что вы понимаете: статус <0>{{from}}</0> изменится на",
     "entity-transfer-message": "Переместить «<0>{{from}}</0>» в «<0>{{to}}</0>»?",
+    "entity-with-name-already-exists": "{{entity}} с таким именем уже существует.",
     "enum-property-update-message": "Началось обновление значений перечисления. Вы получите уведомление после завершения.",
     "enum-with-description-update-note": "Нельзя обновить существующие ключи значений. Вы можете редактировать их описание или добавить новые значения.",
     "error-generating-export-type": "Ошибка при генерации {{exportType}}",

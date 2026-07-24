@@ -3326,6 +3326,7 @@
     "entity-size-must-be-between-2-and-64": "اندازه {{entity}} باید بین 2 تا 64 کاراکتر باشد.",
     "entity-transfer-confirmation-message": "Para continuar, confirme que compreende que o estado de <0>{{from}}</0> será alterado para",
     "entity-transfer-message": "برای انتقال <0>{{from}}</0> {{entity}} به <0>{{to}}</0> {{entity}}، روی تأیید کلیک کنید.",
+    "entity-with-name-already-exists": "{{entity}} با این نام از قبل موجود است.",
     "enum-property-update-message": "به روز رسانی مقادیر enum شروع شد. پس از اتمام به شما اطلاع داده خواهد شد.",
     "enum-with-description-update-note": "به‌روزرسانی کلیدهای مقدار موجود مجاز نیست؛ فقط توضیحات قابل ویرایش است. با این حال، افزودن مقادیر جدید مجاز است.",
     "error-generating-export-type": "خطا در تولید {{exportType}}",
