@@ -92,6 +92,7 @@ const ConnectionConfigForm = forwardRef<
       disableTestConnection = false,
       isSubmitDisabled: isSubmitDisabledFromParent = false,
       additionalMissingFieldsCount = 0,
+      isAdditionalValidationPending = false,
       onTestConnectionStatusChange,
       onValidateAdditionalRequiredFields,
     }: Readonly<ConnectionConfigFormProps>,
@@ -371,6 +372,7 @@ const ConnectionConfigForm = forwardRef<
               flattenAuthTypeIntoConfig(currentFormData, connSch.schema)
             }
             hostIp={hostIp}
+            isFormValidationPending={isAdditionalValidationPending}
             isTestingDisabled={disableTestConnection}
             missingRequiredFieldsCount={
               missingRequiredFieldsCount + additionalMissingFieldsCount

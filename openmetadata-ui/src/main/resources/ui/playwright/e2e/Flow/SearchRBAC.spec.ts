@@ -18,10 +18,9 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { stripEtagConditionalReads, uuid } from '../../utils/common';
+import { disableEtagConditionalReads, uuid } from '../../utils/common';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
-  enableDisableSearchRBAC,
   exploreShouldShowEntity,
   exploreTreeCategories,
   searchForEntityShouldWork,
@@ -30,7 +29,7 @@ import {
 
 const newStrippedPage = async (browser: Browser) => {
   const page = await browser.newPage();
-  await stripEtagConditionalReads(page);
+  await disableEtagConditionalReads(page);
 
   return page;
 };
@@ -54,8 +53,6 @@ for (const entity of searchRBACEntities) {
         entityObj.entityResponseData?.fullyQualifiedName,
         'all'
       );
-
-      await enableDisableSearchRBAC(apiContext, true);
 
       const promises = [user1.create(apiContext), user2.create(apiContext)];
 
@@ -117,14 +114,6 @@ for (const entity of searchRBACEntities) {
           },
         ],
       });
-      await afterAction();
-    });
-
-    test.afterAll(async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-
-      await enableDisableSearchRBAC(apiContext, false);
-
       await afterAction();
     });
 
@@ -314,7 +303,6 @@ test.describe('Explore browse respects search RBAC across users', () => {
 
     await table.create(apiContext);
     await dashboard.create(apiContext);
-    await enableDisableSearchRBAC(apiContext, true);
 
     await Promise.all([
       userAll.create(apiContext),
@@ -350,7 +338,6 @@ test.describe('Explore browse respects search RBAC across users', () => {
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await enableDisableSearchRBAC(apiContext, false);
     await Promise.all([
       table.delete(apiContext),
       dashboard.delete(apiContext),
