@@ -422,6 +422,15 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["presidio-analyzer"],
     },
     "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
+    "ml": {
+        "sentence-transformers[train]>=2.7.0",
+        "torch>=2.0.0",
+        "transformers>=4.40.0",
+        "accelerate>=1.1.0",
+        "datasets",
+        VERSIONS["scikit-learn"],
+        VERSIONS["numpy"],
+    },
 }
 
 dev = {
