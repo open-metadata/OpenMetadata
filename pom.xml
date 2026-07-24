@@ -125,7 +125,7 @@
          Jena 5 with a CompletableFuture wrapper around every RDFConnection
          call. Jena 6 requires Java 21 — already our project minimum, so no
          JDK bump needed. -->
-    <jena.version>5.6.0</jena.version>
+    <jena.version>6.1.0</jena.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
