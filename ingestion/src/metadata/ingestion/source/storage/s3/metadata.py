@@ -176,7 +176,7 @@ class S3Source(StorageServiceSource):
                     )
                 )
 
-    def _get_bucket_name_and_key(self, full_path: str) -> Tuple[str, str]:  # noqa: UP006
+    def _get_bucket_name_and_key(self, full_path: str | None) -> tuple[str, str]:
         """
         Method to get the bucket name and key from the full path
         """
@@ -186,7 +186,7 @@ class S3Source(StorageServiceSource):
                 return parts[0], KEY_SEPARATOR.join(parts[1:])
         return None, None
 
-    def _get_root_bucket_name(self, full_path: str) -> Optional[str]:  # noqa: UP045
+    def _get_root_bucket_name(self, full_path: str | None) -> str | None:
         """Return the bucket name when full_path points at a bucket root (no key)."""
         bucket_name = None
         if full_path:
@@ -239,9 +239,9 @@ class S3Source(StorageServiceSource):
             logger.debug(f"Failed to ingest tags due to: {exc}")
             logger.debug(traceback.format_exc())
 
-    def _fetch_s3_tags(self, container_details: S3ContainerDetails) -> List[S3Tag]:  # noqa: UP006
+    def _fetch_s3_tags(self, container_details: S3ContainerDetails) -> list[S3Tag]:
         """Object tags for leaf files, bucket tags for the bucket container."""
-        tags_list: List[S3Tag] = []  # noqa: UP006
+        tags_list: list[S3Tag] = []
         bucket_name, key = self._get_bucket_name_and_key(container_details.fullPath)
         if container_details.leaf_container and bucket_name and key:
             response = self.s3_client.get_object_tagging(Bucket=bucket_name, Key=key)
@@ -726,11 +726,12 @@ class S3Source(StorageServiceSource):
         return 0
 
     def _generate_unstructured_container(self, bucket_response: S3BucketResponse) -> S3ContainerDetails:
-        return S3ContainerDetails(
+        return S3ContainerDetails(  # pyright: ignore[reportCallIssue]
             name=bucket_response.name,
             prefix=KEY_SEPARATOR,
             container_fqn=fqn._build(  # pylint: disable=protected-access
-                self.context.get().objectstore_service, bucket_response.name
+                getattr(self.context.get(), "objectstore_service"),  # noqa: B009
+                bucket_response.name,
             ),
             creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
             number_of_objects=self._fetch_metric(bucket_name=bucket_response.name, metric=S3Metric.NUMBER_OF_OBJECTS),
