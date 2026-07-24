@@ -20,7 +20,7 @@
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <jetty.version>12.1.7</jetty.version>
+        <jetty.version>12.1.10</jetty.version>
     </properties>
 
     <dependencyManagement>
