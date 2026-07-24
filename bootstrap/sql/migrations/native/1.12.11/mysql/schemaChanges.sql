@@ -1,0 +1,3 @@
+-- Placeholder for 1.12.11 MySQL schema changes
+-- No DDL changes required; this version only carries a data migration that removes highlight
+-- fields not marked highlightable (highlight:true) in the search settings allowedFields config.
