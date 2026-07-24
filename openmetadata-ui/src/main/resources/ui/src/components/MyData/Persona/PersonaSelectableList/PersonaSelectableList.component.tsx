@@ -20,7 +20,8 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { debounce } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -30,7 +31,7 @@ import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-pop
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getAllPersonas } from '../../../../rest/PersonaAPI';
+import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { normalizeToArray } from '../../../../utils/ObjectUtils';
@@ -65,9 +66,6 @@ export const PersonaSelectableList = ({
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const [allPersona, setAllPersona] = useState<EntityReference[]>(
-    personaList ?? []
-  );
   const [isSaving, setIsSaving] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] = useState<
@@ -107,58 +105,68 @@ export const PersonaSelectableList = ({
     return () => observer.disconnect();
   }, [isDropdownOpen, isDefaultPersona]);
 
-  const fetchOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const filteredData = allPersona.filter(
-          (persona) =>
-            persona.displayName?.includes(searchText) ||
-            persona.name?.includes(searchText) ||
-            persona.description?.includes(searchText)
-        );
-
-        return { data: filteredData, paging: { total: filteredData.length } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        if (personaList) {
-          return { data: personaList, paging: { total: personaList.length } };
-        }
-        const { data, paging } = await getAllPersonas({
-          limit: PAGE_SIZE_LARGE,
-          after: after ?? undefined,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.PERSONA
-        );
-
-        setAllPersona(filterData);
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    }
-  };
   const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
 
-  const loadOptions = async () => {
-    const { data } = await fetchOptions('');
-    setSelectOptions(data);
-  };
+  // Server-side search: the endpoint filters by name/displayName so the picker
+  // finds personas beyond the first fetched page. A caller-provided `personaList`
+  // is a fixed set, so filter it locally instead of hitting the server.
+  const fetchOptions = useCallback(
+    async (searchText: string): Promise<EntityReference[]> => {
+      let options: EntityReference[] = [];
+      try {
+        if (personaList) {
+          options = searchText
+            ? personaList.filter(
+                (persona) =>
+                  persona.displayName?.includes(searchText) ||
+                  persona.name?.includes(searchText)
+              )
+            : personaList;
+        } else if (searchText) {
+          const results = await searchPersonas(searchText, PAGE_SIZE_LARGE);
+          options = getEntityReferenceListFromEntities(
+            results,
+            EntityType.PERSONA
+          );
+        } else {
+          const { data } = await getAllPersonas({ limit: PAGE_SIZE_LARGE });
+          options = getEntityReferenceListFromEntities(
+            data,
+            EntityType.PERSONA
+          );
+        }
+      } catch (error) {
+        options = [];
+      }
+
+      return options;
+    },
+    [personaList]
+  );
+
+  const loadOptions = useCallback(async () => {
+    setSelectOptions(await fetchOptions(''));
+  }, [fetchOptions]);
+
+  const handleSearch = useMemo(
+    () =>
+      debounce(async (searchText: string) => {
+        setSelectOptions(await fetchOptions(searchText));
+      }, 300),
+    [fetchOptions]
+  );
+
+  useEffect(() => () => handleSearch.cancel(), [handleSearch]);
 
   useEffect(() => {
     loadOptions();
-  }, [personaList]);
+  }, [loadOptions]);
 
   useEffect(() => {
     if (popupVisible) {
       loadOptions();
     }
-  }, [popupVisible]);
+  }, [popupVisible, loadOptions]);
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);
@@ -221,6 +229,7 @@ export const PersonaSelectableList = ({
           <div className="border" id="area" style={{ borderRadius: '5px' }}>
             <Select
               allowClear
+              showSearch
               className={classNames('profile-edit-popover', {
                 'single-select': isDefaultPersona,
               })}
@@ -234,6 +243,7 @@ export const PersonaSelectableList = ({
                 maxHeight: 'fit-content',
                 overflow: 'auto',
               }}
+              filterOption={false}
               maxTagCount={3}
               maxTagPlaceholder={(omittedValues) => (
                 <span className="max-tag-text">
@@ -256,6 +266,7 @@ export const PersonaSelectableList = ({
               onDropdownVisibleChange={(open) => {
                 setIsDropdownOpen(open);
               }}
+              onSearch={handleSearch}
             />
           </div>
 
