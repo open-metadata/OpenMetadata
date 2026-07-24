@@ -37,11 +37,25 @@ on:
         required: true
         type: boolean
         default: true
-  # Every eligible PR runs smoke, changed specs, impact-mapped suites, and
-  # canaries. Keep this unprivileged: these jobs build PR code, populate caches,
-  # and exchange artifacts. Merge queue, schedule, and full dispatch runs still
-  # execute the complete duration-balanced suite.
+  # Same-repo PRs run under pull_request — unprivileged, secrets absent
+  # from the runner. These jobs build PR code, populate caches, and
+  # exchange artifacts. Merge queue, schedule, and full dispatch runs
+  # still execute the complete duration-balanced suite.
   pull_request:
+    types:
+      - labeled
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  # Fork PRs need cloud-connector secrets (TEST_SNOWFLAKE_*, TEST_BQ_*,
+  # TEST_REDSHIFT_* …) that pull_request events cannot access on forks.
+  # pull_request_target runs in the base repo's context so those secrets
+  # resolve, but requires a maintainer to apply the "safe to test" label
+  # first (enforced by the gate job below). Same-repo PRs already ran
+  # under pull_request above; this block short-circuits on them via the
+  # head-repo check in the gate job.
+  pull_request_target:
     types:
       - labeled
       - opened
@@ -57,11 +71,60 @@ permissions:
 concurrency:
   # PR and manual runs for the same branch supersede stale commits. This also
   # lets a manually dispatched full-suite run replace the automatic PR subset.
-  group: playwright-ci-postgresql-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  # Include event_name in the group so pull_request and pull_request_target
+  # runs for the same PR don't cancel each other — one gates false and skips,
+  # the other does the real work; sharing a group would let the "skip" event
+  # cancel an in-flight real run.
+  group: playwright-ci-postgresql-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
+  # Fork-vs-same-repo PR arbitration. GitHub fires BOTH pull_request and
+  # pull_request_target on every PR event; without a gate the pipeline
+  # would either double-run same-repo PRs or run fork PRs with the wrong
+  # secrets. Routing:
+  #   merge_group / schedule / workflow_dispatch → always run
+  #   drafts                                     → never run
+  #   labeled event with label != "safe to test" → skip (spurious re-fire)
+  #   same-repo PR                               → pull_request handles it
+  #   fork PR                                    → pull_request_target
+  #                                                handles it, must carry
+  #                                                the "safe to test" label
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      - name: Compute gate decision
+        id: gate
+        env:
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -euo pipefail
+          decide() { echo "should_run=$1" >> "$GITHUB_OUTPUT"; exit 0; }
+          case "$EVENT" in
+            merge_group|schedule|workflow_dispatch) decide true ;;
+          esac
+          if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
+          if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
+          if [[ "$HEAD_REPO" == "$BASE_REPO" ]]; then
+            [[ "$EVENT" == "pull_request" ]] && decide true || decide false
+          fi
+          # Fork PR — pull_request_target must fire AND "safe to test" must be present
+          if [[ "$EVENT" == "pull_request_target" ]] && echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
+            decide true
+          fi
+          decide false
+
   check-changes:
+    needs: gate
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
@@ -76,7 +139,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -135,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
       distribution: ${{ steps.fingerprints.outputs.distribution }}
@@ -146,7 +209,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Calculate cache fingerprints
@@ -176,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
       BUNDLE_MODE: ${{ needs.cache-keys.outputs.bundle_mode }}
@@ -184,7 +247,7 @@ jobs:
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -193,7 +256,7 @@ jobs:
 
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
           valid-labels: "safe to test"
@@ -203,7 +266,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Initialize distribution cache path
@@ -305,7 +368,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       !github.event.pull_request.draft &&
-      (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       mode: ${{ steps.select.outputs.mode }}
       selected_count: ${{ steps.select.outputs.selected_count }}
@@ -315,14 +378,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
 
       - name: Get all changed files
         id: all-changes
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
 
       - name: Select PR coverage
@@ -361,7 +424,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Download selection
@@ -476,7 +539,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Initialize fixture cache paths
@@ -571,7 +634,7 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Initialize generated fixture paths
@@ -762,7 +825,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Download OpenMetadata distribution
@@ -1165,7 +1228,7 @@ jobs:
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
   playwright-summary:
-    name: ${{ github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    name: ${{ contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
     if: ${{ always() && !cancelled() }}
     needs:
       [
@@ -1189,7 +1252,7 @@ jobs:
         continue-on-error: true
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Download blob reports
