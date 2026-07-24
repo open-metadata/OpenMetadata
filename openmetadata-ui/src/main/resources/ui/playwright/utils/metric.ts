@@ -147,7 +147,6 @@ export const updateRelatedMetric = async (
   if (type === 'add') {
     await page
       .getByTestId('add-related-metrics-container')
-      .locator('span')
       .first()
       .click();
   } else {
