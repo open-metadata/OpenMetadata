@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
+import { FieldValues, Path, UseFormReturn } from 'react-hook-form';
+import { ERROR_MESSAGE } from '../constants/constants';
+import { getIsErrorMatch } from './APIUtils';
+import { showErrorToast } from './ToastUtils';
+
 /**
  * Awaits the submit handler, then closes the drawer and runs the optional
  * post-success callback. If the submit handler throws or rejects,
@@ -26,4 +32,24 @@ export const submitAndClose = async <T>(
   await handler(data);
   closeDrawer();
   onSuccess?.();
+};
+
+/**
+ * Maps a failed entity-create error onto the form: a duplicate-name
+ * ("already exists") error becomes an inline validation error on the name
+ * field; any other error falls back to a toast. Callers must rethrow so the
+ * drawer stays open (see submitAndClose).
+ */
+export const setCreateEntityFieldError = <T extends FieldValues>(
+  error: unknown,
+  form: UseFormReturn<T>,
+  nameField: Path<T>,
+  duplicateNameMessage: string,
+  fallbackToastText: string
+): void => {
+  if (getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)) {
+    form.setError(nameField, { type: 'manual', message: duplicateNameMessage });
+  } else {
+    showErrorToast(error as AxiosError, fallbackToastText);
+  }
 };
