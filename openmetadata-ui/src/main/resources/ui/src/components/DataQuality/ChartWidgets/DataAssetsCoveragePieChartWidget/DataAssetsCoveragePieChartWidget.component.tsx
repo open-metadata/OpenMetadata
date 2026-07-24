@@ -37,9 +37,12 @@ import '../chart-widgets.less';
 const DataAssetsCoveragePieChartWidget = ({
   className = '',
   chartFilter,
+  navigate: navigateProp,
+  redirectPath,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const navigate = navigateProp ?? routerNavigate;
   const [isLoading, setIsLoading] = useState(true);
   const [dataAssetsCoverageStates, setDataAssetsCoverageStates] = useState<{
     covered: number;
@@ -50,16 +53,16 @@ const DataAssetsCoveragePieChartWidget = ({
   const handleSegmentClick = useCallback(
     (_entry: CustomPieChartData, index: number) => {
       if (index === 0) {
-        navigate(
+        const testSuitesPath =
           observabilityRouterClassBase.getDataQualityPagePath(
             DataQualityPageTabs.TEST_SUITES
-          )
-        );
+          );
+        navigate(redirectPath ?? testSuitesPath);
       } else if (index === 1) {
         navigate(ROUTES.EXPLORE);
       }
     },
-    [navigate]
+    [navigate, redirectPath]
   );
 
   const { data, chartLabel } = useMemo(
