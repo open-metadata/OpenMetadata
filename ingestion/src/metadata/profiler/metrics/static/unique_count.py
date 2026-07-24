@@ -24,7 +24,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
-from metadata.profiler.orm.registry import NOT_COMPUTE, Dialects
+from metadata.profiler.orm.registry import COMPLEX_TYPES, NOT_COMPUTE, Dialects
 from metadata.utils.logger import profiler_logger
 
 if TYPE_CHECKING:
@@ -59,7 +59,10 @@ class UniqueCount(QueryMetric):
         if not session:
             raise AttributeError("We are missing the session attribute to compute the UniqueCount.")
 
-        if self.col.type.__class__.__name__ in NOT_COMPUTE:
+        if (
+            self.col.type.__class__.__name__ in NOT_COMPUTE
+            or self.col.type.__class__.__name__ in COMPLEX_TYPES
+        ):
             return None
 
         # Run all queries on top of the sampled data
