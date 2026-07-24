@@ -3831,7 +3831,7 @@
     "onboarding-explore-data-description": "看看您組織中受歡迎的資料資產。",
     "onboarding-stay-up-to-date-description": "追蹤您經常使用的資料集以隨時了解其情況。",
     "only-image-files-supported": "僅支援圖片檔案",
-    "only-reviewers-can-approve-or-reject": "只有審核者可以核准或拒絕",
+    "only-reviewers-can-approve-or-reject": "您無法核准或拒絕此任務，因為您不是其審核者之一",
     "only-show-columns-with-lineage": "僅顯示具有血緣關係的欄位",
     "ontology-empty-description": "本體論擷取詞彙之間的關係——什麼屬於什麼、什麼衍生自什麼——使您的詞彙成為業務的連結模型，而不僅是按字母排序的清單。",
     "ontology-empty-title": "將您的詞彙表轉化為概念如何連結的地圖",
