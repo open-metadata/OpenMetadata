@@ -10413,21 +10413,6 @@ public interface CollectionDAO {
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
 
-    @Transaction
-    default void insertRecordWithIncident(
-        String recordFQN,
-        String jsonSchema,
-        String json,
-        String stateId,
-        String statusType,
-        String assignee,
-        String severity,
-        long timestamp,
-        String recordId) {
-      insert(recordFQN, jsonSchema, json);
-      upsertIncident(stateId, recordFQN, statusType, assignee, severity, timestamp, recordId);
-    }
-
     @SqlQuery(
         "SELECT json FROM "
             + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "

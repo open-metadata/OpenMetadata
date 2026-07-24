@@ -302,17 +302,33 @@ public class TestCaseResolutionStatusRepository
     recordEntity.withTestCaseReference(null);
     String recordJson = JsonUtils.pojoToJson(recordEntity);
     recordEntity.withTestCaseReference(testCaseReference);
-    ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-        .insertRecordWithIncident(
-            recordFQN,
-            entityType,
-            recordJson,
-            recordEntity.getStateId().toString(),
-            recordEntity.getTestCaseResolutionStatusType().value(),
-            extractAssigneeName(recordEntity),
-            recordEntity.getSeverity() != null ? recordEntity.getSeverity().value() : null,
-            recordEntity.getTimestamp(),
-            recordEntity.getId().toString());
+    DeadlockRetry.execute(
+        () ->
+            Entity.getJdbi()
+                .inTransaction(
+                    handle -> {
+                      timeSeriesDao.insert(recordFQN, entityType, recordJson);
+                      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                          .upsertIncident(
+                              recordEntity.getStateId().toString(),
+                              recordFQN,
+                              recordEntity.getTestCaseResolutionStatusType().value(),
+                              extractAssigneeName(recordEntity),
+                              recordEntity.getSeverity() != null
+                                  ? recordEntity.getSeverity().value()
+                                  : null,
+                              recordEntity.getTimestamp(),
+                              recordEntity.getId().toString());
+                      storeRelationship(recordEntity);
+                      return null;
+                    }));
+  }
+
+  // The PARENT_OF relationship is written inside persistRecord's transaction. The base
+  // createNewRecord's post-insert hook must not insert it a second time
+  @Override
+  protected void storeRelationshipInternal(TestCaseResolutionStatus recordEntity) {
+    // Relationship persisted atomically in persistRecord.
   }
 
   private static String extractAssigneeName(TestCaseResolutionStatus recordEntity) {
@@ -739,8 +755,6 @@ public class TestCaseResolutionStatusRepository
         recordFQN);
 
     persistRecord(recordFQN, recordEntity);
-
-    storeRelationship(recordEntity);
     postCreate(recordEntity);
   }
 
