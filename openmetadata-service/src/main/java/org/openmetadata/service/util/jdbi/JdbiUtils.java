@@ -17,10 +17,18 @@ public class JdbiUtils {
     DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
         .ifPresent(
             databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
-              dbFactory.setPassword(token);
+              try {
+                String token =
+                    databaseAuthenticationProvider.authenticate(
+                        dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
+                dbFactory.setPassword(token);
+              } finally {
+                try {
+                  databaseAuthenticationProvider.close();
+                } catch (Exception ignored) {
+                  // Ignored
+                }
+              }
             });
 
     Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
@@ -38,10 +46,18 @@ public class JdbiUtils {
     DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
         .ifPresent(
             databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
-              dbFactory.setPassword(token);
+              try {
+                String token =
+                    databaseAuthenticationProvider.authenticate(
+                        dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
+                dbFactory.setPassword(token);
+              } finally {
+                try {
+                  databaseAuthenticationProvider.close();
+                } catch (Exception ignored) {
+                  // Ignored
+                }
+              }
             });
 
     Jdbi jdbiInstance = Jdbi.create(dbFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
