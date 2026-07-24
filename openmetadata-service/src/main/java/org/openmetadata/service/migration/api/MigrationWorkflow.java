@@ -50,6 +50,9 @@ public class MigrationWorkflow {
   public static final String FAILED_MSG = "Failed due to : ";
   public static final String SKIPPED_MSG = "Skipped";
   public static final String CURRENT = "Current";
+  private static final String UTF8MB4_CHARSET = "utf8mb4";
+  private static final List<String> MIGRATION_TRACKING_TABLES =
+      List.of("SERVER_CHANGE_LOG", "SERVER_MIGRATION_SQL_LOGS");
   private List<MigrationProcess> migrations;
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
@@ -412,11 +415,59 @@ public class MigrationWorkflow {
   }
 
   /**
+   * Normalize the migration bookkeeping tables to utf8mb4 on MySQL. When the database default
+   * charset is latin1, these tables (created without an explicit charset) cannot store the full
+   * text of a migration statement that contains a non-latin1 character (e.g. a comment with an
+   * arrow glyph). Recording then fails, the migration is never marked complete, and the server
+   * reports pending migrations on every boot. PostgreSQL stores text in the database-level UTF-8
+   * encoding, so this is a no-op there.
+   */
+  private void ensureMigrationTrackingTablesUseUtf8mb4() {
+    if (connectionType == ConnectionType.MYSQL) {
+      try (Handle handle = jdbi.open()) {
+        for (final String tableName : MIGRATION_TRACKING_TABLES) {
+          convertTableToUtf8mb4IfNeeded(handle, tableName);
+        }
+      }
+    }
+  }
+
+  private void convertTableToUtf8mb4IfNeeded(final Handle handle, final String tableName) {
+    final String currentCharset = getTableCharset(handle, tableName);
+    if (needsUtf8mb4Conversion(currentCharset)) {
+      LOG.info(
+          "Converting migration table {} from charset '{}' to utf8mb4", tableName, currentCharset);
+      // tableName is an internal constant from MIGRATION_TRACKING_TABLES, never user input, and
+      // identifiers cannot be bound as JDBC parameters in DDL.
+      handle.execute(String.format("ALTER TABLE %s CONVERT TO CHARACTER SET utf8mb4", tableName));
+    }
+  }
+
+  static boolean needsUtf8mb4Conversion(final String currentCharset) {
+    return currentCharset != null && !currentCharset.startsWith(UTF8MB4_CHARSET);
+  }
+
+  private String getTableCharset(final Handle handle, final String tableName) {
+    return handle
+        .createQuery(
+            "SELECT ccsa.character_set_name FROM information_schema.TABLES t "
+                + "JOIN information_schema.COLLATION_CHARACTER_SET_APPLICABILITY ccsa "
+                + "ON ccsa.collation_name = t.table_collation "
+                + "WHERE t.table_schema = DATABASE() AND t.table_name = :tableName")
+        .bind("tableName", tableName)
+        .mapTo(String.class)
+        .findOne()
+        .orElse(null);
+  }
+
+  /**
    * Run the Migration Workflow
-   * @param computeAllContext If true, compute the context for each executed migration. Otherwise, we'll only compute
-   *                          the context for the initial and last state of the database.
+   *
+   * @param computeAllContext If true, compute the context for each executed migration. Otherwise,
+   *     we'll only compute the context for the initial and last state of the database.
    */
   public void runMigrationWorkflows(boolean computeAllContext) {
+    ensureMigrationTrackingTablesUseUtf8mb4();
     List<String> columns =
         Arrays.asList(
             "Version",
