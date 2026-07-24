@@ -404,9 +404,15 @@ public class TeamRepository extends EntityRepository<Team> {
     List<String> nonOrgIds = new ArrayList<>();
     for (UUID teamId : teamIds) {
       if (organization != null && teamId.equals(organization.getId())) {
-        result.put(
-            teamId,
-            EntityUtil.strToIds(daoCollection.teamDAO().listTeamsUnderOrganization(teamId)));
+        List<UUID> orgChildren =
+            EntityUtil.strToIds(daoCollection.teamDAO().listTeamsUnderOrganization(teamId));
+        List<UUID> liveOrgChildren =
+            nullOrEmpty(orgChildren)
+                ? List.of()
+                : Entity.getEntityReferencesByIds(TEAM, orgChildren, NON_DELETED).stream()
+                    .map(EntityReference::getId)
+                    .toList();
+        result.put(teamId, liveOrgChildren);
       } else {
         nonOrgIds.add(teamId.toString());
       }
