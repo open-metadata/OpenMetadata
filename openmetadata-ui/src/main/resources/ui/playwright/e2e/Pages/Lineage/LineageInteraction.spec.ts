@@ -35,7 +35,6 @@ import {
   editLineage,
   editLineageClick,
   fitToScreen,
-  performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
@@ -142,7 +141,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.beforeEach(async ({ page }) => {
       await table1.visitEntityPage(page);
       await visitLineageTab(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
     });
 
     test('Verify edge click opens edge drawer', async ({ page }) => {
@@ -362,7 +361,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.beforeEach(async ({ page }) => {
       await table1.visitEntityPage(page);
       await visitLineageTab(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
     });
 
     test('Verify node panel opens on click', async ({ page }) => {
@@ -683,7 +682,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     test.beforeEach(async ({ page }) => {
       await table1.visitEntityPage(page);
       await visitLineageTab(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
     });
 
     test('Verify edit mode with edge operations', async ({ page }) => {
@@ -766,7 +765,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await table.visitEntityPage(page);
       await visitLineageTab(page);
 
-      await performZoomOut(page);
+      await fitToScreen(page);
 
       await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
       await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
