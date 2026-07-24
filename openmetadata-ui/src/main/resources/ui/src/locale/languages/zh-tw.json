@@ -3327,6 +3327,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} 大小必須介於 2 和 64 之間",
     "entity-transfer-confirmation-message": "若要繼續，請確認您了解 <0>{{from}}</0> 的狀態將變更為",
     "entity-transfer-message": "如果您想將 <0>{{from}}</0> {{entity}} 移動到 <0>{{to}}</0> {{entity}} 下，請點擊「確認」。",
+    "entity-with-name-already-exists": "此名稱的 {{entity}} 已存在。",
     "enum-property-update-message": "列舉值更新已開始。完成後將會通知您。",
     "enum-with-description-update-note": "不允許更新現有的值鍵；只能編輯描述。但是，允許新增新值。",
     "error-generating-export-type": "產生 {{exportType}} 時發生錯誤",

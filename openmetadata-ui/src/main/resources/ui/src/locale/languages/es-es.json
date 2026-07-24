@@ -3327,6 +3327,7 @@
     "entity-size-must-be-between-2-and-64": "El tamaño de {{entity}} debe estar entre 2 y 64",
     "entity-transfer-confirmation-message": "Para continuar, confirma que entiendes que el estado de <0>{{from}}</0> cambiará a",
     "entity-transfer-message": "Haz clic en Confirmar si desea mover <0>{{from}}</0> {{entity}} debajo de <0>{{to}}</0> {{entity}}.",
+    "entity-with-name-already-exists": "{{entity}} con este nombre ya existe.",
     "enum-property-update-message": "La actualización de valores enum ha comenzado. Se le notificará cuando esté terminada.",
     "enum-with-description-update-note": "No está permitido actualizar valores clave existentes; sólo la descripción puede ser editada. Sin embargo, añadir nuevos valores está permitido.",
     "error-generating-export-type": "Error al generar el {{exportType}}",

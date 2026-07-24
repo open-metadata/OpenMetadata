@@ -3327,6 +3327,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} のサイズは 2 文字以上 64 文字以下でなければなりません",
     "entity-transfer-confirmation-message": "続行するには、<0>{{from}}</0> のステータスが変更されることを理解していることを確認してください",
     "entity-transfer-message": "「確認」をクリックすると、<0>{{from}}</0> {{entity}} を <0>{{to}}</0> {{entity}} に移動できます。",
+    "entity-with-name-already-exists": "この名前の {{entity}} はすでに存在しています。",
     "enum-property-update-message": "列挙型の値の更新が開始されました。完了後に通知されます。",
     "enum-with-description-update-note": "既存の値キーの更新はできませんが、説明の編集と新しい値の追加は可能です。",
     "error-generating-export-type": "{{exportType}} の生成中にエラーが発生しました",

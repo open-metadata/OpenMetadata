@@ -3327,6 +3327,7 @@
     "entity-size-must-be-between-2-and-64": "{{entity}} 크기는 2에서 64 사이여야 합니다",
     "entity-transfer-confirmation-message": "계속하려면 <0>{{from}}</0>의 상태가 변경됨을 확인하세요.",
     "entity-transfer-message": "<0>{{from}}</0> {{entity}}을(를) <0>{{to}}</0> {{entity}} 아래로 이동하려면 확인을 클릭하세요.",
+    "entity-with-name-already-exists": "이 이름의 {{entity}}이(가) 이미 존재합니다.",
     "enum-property-update-message": "열거형 값 업데이트가 시작되었습니다. 완료되면 알림을 받게 됩니다.",
     "enum-with-description-update-note": "기존 값 키를 업데이트하는 것은 허용되지 않습니다; 설명만 편집할 수 있습니다. 그러나 새로운 값을 추가하는 것은 허용됩니다.",
     "error-generating-export-type": "{{exportType}} 생성 중 오류가 발생했습니다.",

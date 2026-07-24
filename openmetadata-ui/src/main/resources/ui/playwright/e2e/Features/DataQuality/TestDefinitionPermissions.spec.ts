@@ -86,9 +86,11 @@ const test = base.extend<{
   viewOnlyPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
