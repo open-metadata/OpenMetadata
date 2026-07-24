@@ -695,6 +695,30 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' && (needs.plan-playwright.outputs.requires_airflow != 'true' || needs.restore-playwright-fixture.outputs.ingestion_cache_hit == 'true') }}
         run: echo "The golden fixture and optional ingestion image were restored while the distribution was prepared."
 
+      # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
+      # any docker work runs. `create_playwright_fixture.sh` does a
+      # `docker image save <ingestion>` after packing the fixture tar, which
+      # streams multi-GB blobs through /var/lib/docker/tmp/. On a fresh
+      # ubuntu-latest that partition has ~14 GB free after all the OM images
+      # (server, ingestion, postgres, opensearch, airflow) and their seeded
+      # volumes are loaded — not enough headroom for the docker export tmp,
+      # so the save fails with:
+      #   Error response from daemon: write /var/lib/docker/tmp/...: no space left on device
+      # (See failure on https://github.com/open-metadata/OpenMetadata/actions/runs/30097915650)
+      # docker-images:false is deliberate — the OM images are exactly what
+      # this job needs to snapshot, so we can't prune them here.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
       - name: Checkout
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         uses: actions/checkout@v5
@@ -1381,6 +1405,36 @@ jobs:
         with:
           pattern: playwright-results-json-*
           path: results
+          # Pin the per-artifact subdirectory layout the renderer expects
+          # (results/playwright-results-json-<shardId>/results.json). When
+          # only one artifact matches the pattern — typical for spec-only
+          # single-shard PR runs — some download-artifact configurations
+          # flatten the contents directly into `path:`, which breaks the
+          # readdirSync-based shard discovery in render_playwright_summary.cjs
+          # and reports the shard as "did not upload a usable Playwright
+          # results artifact". Explicitly locking merge-multiple=false keeps
+          # the layout consistent across single-shard and multi-shard runs.
+          # See run 30088248354 for the failure this addresses.
+          merge-multiple: false
+
+      # Diagnostic: log the actual on-disk layout the renderer sees. The
+      # explicit merge-multiple pin above matches the documented default,
+      # so if single-shard runs still fail the same way we need this
+      # trace to see whether download-artifact placed files at
+      # `results/playwright-results-json-<shardId>/results.json` (expected)
+      # or somewhere else. Remove once single-shard runs are consistently
+      # green.
+      - name: Diagnose downloaded results layout
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          echo "=== results/ tree ==="
+          ls -laR results 2>&1 || echo "(results/ does not exist)"
+          echo
+          echo "=== expected shardIds (from plan-playwright.matrix) ==="
+          echo '${{ needs.plan-playwright.outputs.matrix }}' \
+            | jq -r '.include[].shardId' \
+            || echo "(jq parse failed)"
 
       - name: Setup Node.js
         id: setup-node
