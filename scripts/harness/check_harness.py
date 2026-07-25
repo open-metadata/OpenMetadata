@@ -65,15 +65,6 @@ MAVEN_GOAL_ALLOWLIST = {
     "clean:clean",
 }
 
-# AGENTS.md drift patterns (check 2): factual claims CLAUDE.md was corrected away from.
-# Kept deliberately narrow — only unambiguous errors (not the contested Python ceiling
-# or the legitimately-legacy Ant Design), so this stays a high-signal drift warning.
-AGENTS_DRIFT = [
-    (re.compile(r"\bWebpack\b", re.I),
-     "AGENTS.md says 'Webpack'; the UI is built with Vite (mirror CLAUDE.md's 'Stack at a glance')."),
-]
-
-
 class Warn:
     __slots__ = ("check", "file", "line", "message")
 
@@ -339,13 +330,16 @@ def check_dead_references():
 
 
 def check_agents_sync():
+    """AGENTS.md must be exactly render(CLAUDE.md); it is generated, not hand-maintained."""
     warnings = []
-    if not os.path.exists(rp("AGENTS.md")):
+    if not (os.path.exists(rp("AGENTS.md")) and os.path.exists(rp("CLAUDE.md"))):
         return warnings
-    for lineno, line in enumerate(read_lines("AGENTS.md"), start=1):
-        for pattern, message in AGENTS_DRIFT:
-            if pattern.search(line):
-                warnings.append(Warn("agents-sync", "AGENTS.md", lineno, message))
+    import sync_agents_md  # same directory as this script (on sys.path[0])
+
+    if read("AGENTS.md") != sync_agents_md.render(read("CLAUDE.md")):
+        warnings.append(Warn("agents-sync", "AGENTS.md", 1,
+                             "out of sync with CLAUDE.md — AGENTS.md is generated; "
+                             "edit CLAUDE.md and run `make sync-agents-md`"))
     return warnings
 
 
