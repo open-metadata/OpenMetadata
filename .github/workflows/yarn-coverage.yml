@@ -77,9 +77,10 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           # Disabling shallow clone is recommended for improving relevancy of reporting.
           # Use partial clone (blob:none) to avoid downloading every blob in history —
           # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
