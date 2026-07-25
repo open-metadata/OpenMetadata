@@ -13,8 +13,7 @@ split statements). Compliant reference:
 - **Migrations are append-only by convention — never edit an already-applied migration.** Nothing
   enforces this today (no CI check, no runtime checksum-abort), so an edited migration **silently**
   either never re-runs on existing databases (version already recorded) or only partially applies —
-  producing schema drift with no error. Add a **new** version instead. (Audit:
-  `docs/harness-audit/08d-hazards.md` §2.)
+  producing schema drift with no error. Add a **new** version instead.
 - **New migration**: create `bootstrap/sql/migrations/native/{version}/mysql/schemaChanges.sql` **and**
   the `postgres/` variant — always both databases, one `schemaChanges.sql` per database per version
   (no numbered sub-files). Never add new `v0xx` Flyway files; always use the native path. Extension

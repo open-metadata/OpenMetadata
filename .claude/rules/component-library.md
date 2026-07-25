@@ -22,5 +22,4 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
 > **Resolved contradiction (do not follow the old wording):** `AGENTS.md` still says the frontend is
 > "React + TypeScript + Ant Design" and to "use React/TypeScript with Ant Design components." The
 > code says otherwise — a blocking hook rejects `antd` imports and every other source forbids Ant
-> Design for new work — so **the code-supported rule wins: no Ant Design for new work.** (Audit:
-> `docs/harness-audit/00-findings.md` §C-A.)
+> Design for new work — so **the code-supported rule wins: no Ant Design for new work.**

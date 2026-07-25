@@ -11,7 +11,7 @@ of truth and drive code generation across languages. Compliant reference schema:
 
 - **Edit the schema, then regenerate. Never hand-edit generated output** — it is overwritten on the
   next build and, for the committed TS tree, a CI job regenerates/reverts it.
-- Generated output by language (authoritative, from `docs/harness-audit/08d-hazards.md` §3):
+- Generated output by language (authoritative):
   - **Pydantic (Python)** → `ingestion/src/metadata/generated/**` — **gitignored**, `rm -rf`'d and
     rebuilt by `make generate`. Editing it is futile.
   - **Java POJOs** → `openmetadata-spec/target/generated-sources/jsonschema2pojo/**` — build-time under
@@ -33,8 +33,7 @@ of truth and drive code generation across languages. Compliant reference schema:
   yarn parse-schema                          # UI connection/ingestion schemas (build artifact)
   ```
   > **Correction:** `make generate` is a **root-only** Make target — running it after `cd ingestion`
-  > fails (`No rule to make target 'generate'`). Run it from the repo root. (Audit:
-  > `docs/harness-audit/00-findings.md` §DR-A.)
+  > fails (`No rule to make target 'generate'`). Run it from the repo root.
 - **Schema conventions**: `$id` matches the file path; `title` is camelCase of the filename; `javaType`
   follows `org.openmetadata.schema.{category}.{ClassName}`; use `$ref` for shared types; set
   `additionalProperties: false` on connection schemas. Import generated types **only as types**
