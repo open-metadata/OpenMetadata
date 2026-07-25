@@ -5,7 +5,8 @@ Always-loaded guidance for every session. **Language- and path-specific rules li
 (loaded on invoke).** This file is the map — see the pointer index at the bottom. Read
 [ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search paths,
 the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity
-or connector** (deep dives + end-to-end checklists).
+or connector** (deep dives + end-to-end checklists). Consult [docs/index.md](docs/index.md) to
+**find existing design, plan, and reference docs** (the knowledge index) before writing new ones.
 
 ## About OpenMetadata
 
