@@ -111,9 +111,12 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
           </Typography>
 
           {subtitle ? (
-            <Typography.Text className="lineage-service-subtitle">
+            <Typography
+              as="span"
+              className="lineage-service-subtitle"
+              size="text-xs">
               {subtitle}
-            </Typography.Text>
+            </Typography>
           ) : breadcrumbItems.length > 0 ? (
             <Breadcrumbs
               autoCollapse

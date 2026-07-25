@@ -102,6 +102,7 @@ const ZOOM_OUT_THRESHOLD = 0.5;
 const SEMANTIC_ZOOM_COOLDOWN = 450;
 const PROGRAMMATIC_ZOOM_SUPPRESSION_MS = 1200;
 const SCENE_CACHE_LIMIT = 50;
+const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
 const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
 const SCENE_ASSET_FIT_VIEW_MIN_ZOOM = 0.55;
@@ -317,7 +318,9 @@ const getPreviousZoomBand = (band: LineageBand) => {
 const isDeeperBand = (currentBand: LineageBand, nextBand: LineageBand) =>
   BAND_DEPTH[nextBand] > BAND_DEPTH[currentBand];
 
-const isSceneNodeDrillable = (node?: LineageSceneNode) =>
+const isSceneNodeDrillable = (
+  node?: LineageSceneNode
+): node is LineageSceneNode =>
   Boolean(node?.isExpandable && node.fullyQualifiedName);
 
 const getSceneCacheKey = (request: SceneRequest) =>
@@ -1256,7 +1259,7 @@ const LineageMapCanvas = ({
   const handleRefocusSelected = useCallback(() => {
     const selectedNode = reactFlowInstance
       ?.getNodes()
-      .find((node): node is Node<SceneFlowNodeData> => node.selected);
+      .find((node): node is Node<SceneFlowNodeData> => Boolean(node.selected));
 
     if (selectedNode) {
       reactFlowInstance?.setCenter(
@@ -1513,8 +1516,14 @@ const LineageMap = ({
     | undefined;
   const config = useMemo<LineageConfig>(
     () => ({
-      upstreamDepth: defaultLineageConfig?.upstreamDepth ?? 1,
-      downstreamDepth: defaultLineageConfig?.downstreamDepth ?? 1,
+      upstreamDepth: Math.min(
+        defaultLineageConfig?.upstreamDepth ?? 1,
+        MAX_SCENE_DEPTH
+      ),
+      downstreamDepth: Math.min(
+        defaultLineageConfig?.downstreamDepth ?? 1,
+        MAX_SCENE_DEPTH
+      ),
       nodesPerLayer: 200,
       pipelineViewMode:
         defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,

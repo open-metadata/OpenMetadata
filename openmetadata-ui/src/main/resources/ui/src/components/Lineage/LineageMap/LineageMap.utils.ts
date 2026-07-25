@@ -29,7 +29,7 @@ const ASSET_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Pipeline,
   LineageLevelKind.Container,
   LineageLevelKind.SearchIndex,
-  LineageLevelKind.ApiEndpoint,
+  LineageLevelKind.APIEndpoint,
   LineageLevelKind.Metric,
   LineageLevelKind.Directory,
   LineageLevelKind.File,
@@ -60,7 +60,7 @@ const COUNT_KIND_PRIORITY = [
   LineageLevelKind.Pipeline,
   LineageLevelKind.Container,
   LineageLevelKind.SearchIndex,
-  LineageLevelKind.ApiEndpoint,
+  LineageLevelKind.APIEndpoint,
   LineageLevelKind.Metric,
   LineageLevelKind.Directory,
   LineageLevelKind.File,
@@ -141,7 +141,7 @@ const LEVEL_ENTITY_LABEL_KEYS: Record<
     singular: 'label.search-index',
     plural: 'label.search-index-plural',
   },
-  [LineageLevelKind.ApiEndpoint]: {
+  [LineageLevelKind.APIEndpoint]: {
     singular: 'label.api-endpoint',
     plural: 'label.api-endpoint-plural',
   },
@@ -453,7 +453,7 @@ const getLevelLabelKey = (levelKind: LineageLevelKind) => {
       return 'label.lineage-map-container-level';
     case LineageLevelKind.SearchIndex:
       return 'label.lineage-map-search-index-level';
-    case LineageLevelKind.ApiEndpoint:
+    case LineageLevelKind.APIEndpoint:
       return 'label.lineage-map-api-endpoint-level';
     case LineageLevelKind.Metric:
       return 'label.lineage-map-metric-level';

@@ -94,6 +94,13 @@ public class LineageSceneResolver {
           Entity.FILE,
           Entity.SPREADSHEET,
           Entity.WORKSHEET);
+  private static final String SERVICE_FQN_KEYWORD_FIELD = "service.fullyQualifiedName.keyword";
+  private static final String DATABASE_FQN_KEYWORD_FIELD = "database.fullyQualifiedName.keyword";
+  private static final String DATABASE_FQN_FIELD = "database.fullyQualifiedName";
+  private static final String DATABASE_SCHEMA_FQN_KEYWORD_FIELD =
+      "databaseSchema.fullyQualifiedName.keyword";
+  private static final String DOMAINS_FQN_FIELD = "domains.fullyQualifiedName";
+  private static final String DATA_PRODUCTS_FQN_FIELD = "dataProducts.fullyQualifiedName";
   private static final int ROOT_ASSET_PAGE_SIZE = 25;
   private static final int FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT = 50;
   private static final int FOCUSED_CHILD_LINEAGE_PARALLELISM = 6;
@@ -368,7 +375,7 @@ public class LineageSceneResolver {
       throws IOException {
     SearchRootAssetsResult databases =
         searchRootAssets(
-            "service.name.keyword",
+            SERVICE_FQN_KEYWORD_FIELD,
             serviceFqn,
             Entity.DATABASE,
             includeDeleted,
@@ -376,9 +383,9 @@ public class LineageSceneResolver {
     List<SceneAsset> databaseAssets = toCountableContainerAssets(databases.assets());
     Map<String, Integer> tableCounts =
         fetchContainerAssetCounts(
-            "service.name.keyword",
+            SERVICE_FQN_KEYWORD_FIELD,
             serviceFqn,
-            "database.fullyQualifiedName.keyword",
+            DATABASE_FQN_KEYWORD_FIELD,
             Entity.TABLE,
             includeDeleted,
             Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)),
@@ -409,7 +416,7 @@ public class LineageSceneResolver {
       throws IOException {
     SearchRootAssetsResult schemas =
         searchRootAssets(
-            "database.fullyQualifiedName.keyword",
+            DATABASE_FQN_FIELD,
             databaseFqn,
             Entity.DATABASE_SCHEMA,
             includeDeleted,
@@ -417,9 +424,9 @@ public class LineageSceneResolver {
     List<SceneAsset> schemaAssets = toCountableContainerAssets(schemas.assets());
     Map<String, Integer> tableCounts =
         fetchContainerAssetCounts(
-            "database.fullyQualifiedName.keyword",
+            DATABASE_FQN_KEYWORD_FIELD,
             databaseFqn,
-            "databaseSchema.fullyQualifiedName.keyword",
+            DATABASE_SCHEMA_FQN_KEYWORD_FIELD,
             Entity.TABLE,
             includeDeleted,
             Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)),
@@ -692,13 +699,13 @@ public class LineageSceneResolver {
       return null;
     }
     if (SERVICE_ENTITY_TYPES.contains(entityType)) {
-      return "service.name.keyword";
+      return SERVICE_FQN_KEYWORD_FIELD;
     }
     return switch (entityType) {
-      case Entity.DOMAIN -> "domains.fullyQualifiedName.keyword";
-      case Entity.DATA_PRODUCT -> "dataProducts.fullyQualifiedName.keyword";
-      case Entity.DATABASE -> "database.fullyQualifiedName.keyword";
-      case Entity.DATABASE_SCHEMA -> "databaseSchema.fullyQualifiedName.keyword";
+      case Entity.DOMAIN -> DOMAINS_FQN_FIELD;
+      case Entity.DATA_PRODUCT -> DATA_PRODUCTS_FQN_FIELD;
+      case Entity.DATABASE -> DATABASE_FQN_KEYWORD_FIELD;
+      case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_FQN_KEYWORD_FIELD;
       default -> null;
     };
   }
@@ -728,9 +735,9 @@ public class LineageSceneResolver {
 
   private static String rootAssetFieldName(LineageLens lens) {
     return switch (lens) {
-      case DOMAIN -> "domains.fullyQualifiedName.keyword";
-      case DATA_PRODUCT -> "dataProducts.fullyQualifiedName.keyword";
-      case SERVICE -> "service.name.keyword";
+      case DOMAIN -> DOMAINS_FQN_FIELD;
+      case DATA_PRODUCT -> DATA_PRODUCTS_FQN_FIELD;
+      case SERVICE -> SERVICE_FQN_KEYWORD_FIELD;
     };
   }
 
@@ -1820,6 +1827,7 @@ public class LineageSceneResolver {
     private final LineageBand band;
     private final boolean rollup;
     private final List<String> underlyingEdgeIds = new ArrayList<>();
+    private final Set<String> seenEdgeIdentities = new LinkedHashSet<>();
     private String source;
     private String sqlQuery;
 
@@ -1831,9 +1839,19 @@ public class LineageSceneResolver {
     }
 
     private void add(EsLineageData edge) {
-      underlyingEdgeIds.add(firstNonBlank(edge.getDocUniqueId(), edge.getDocId(), edge.toString()));
-      source = firstNonBlank(source, edge.getSource());
-      sqlQuery = firstNonBlank(sqlQuery, edge.getSqlQuery());
+      if (seenEdgeIdentities.add(concreteEdgeIdentity(edge))) {
+        underlyingEdgeIds.add(
+            firstNonBlank(edge.getDocUniqueId(), edge.getDocId(), edge.toString()));
+        source = firstNonBlank(source, edge.getSource());
+        sqlQuery = firstNonBlank(sqlQuery, edge.getSqlQuery());
+      }
+    }
+
+    private static String concreteEdgeIdentity(EsLineageData edge) {
+      String fromFqn =
+          edge.getFromEntity() == null ? null : edge.getFromEntity().getFullyQualifiedName();
+      String toFqn = edge.getToEntity() == null ? null : edge.getToEntity().getFullyQualifiedName();
+      return firstNonBlank(fromFqn, "") + "->" + firstNonBlank(toFqn, "");
     }
 
     private LineageSceneEdge toSceneEdge() {
