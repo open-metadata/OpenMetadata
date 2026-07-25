@@ -152,8 +152,8 @@ jest.mock('../../../Database/SampleDataTable/RowData', () => ({
   RowData: jest.fn().mockImplementation(() => <div>RowData</div>),
 }));
 
-jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
-  jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>)
+jest.mock('../../../common/DeleteModal/DeleteModal', () =>
+  jest.fn().mockImplementation(() => <div>DeleteModal</div>)
 );
 
 const FQN = 'svc.db.schema.table.failing_test_case';

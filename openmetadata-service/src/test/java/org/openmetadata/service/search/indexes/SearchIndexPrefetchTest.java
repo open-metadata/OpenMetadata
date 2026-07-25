@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,6 +14,7 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,8 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -385,6 +390,44 @@ class SearchIndexPrefetchTest {
   }
 
   @Test
+  void prefetchServiceStylesContinuesWhenOneServiceTypeFetchFails() {
+    UUID databaseServiceId = UUID.randomUUID();
+    UUID dashboardServiceId = UUID.randomUUID();
+    Style databaseStyle = new Style().withColor("#123456");
+    Table table =
+        table("svc.db.s.t1").withService(serviceRef(Entity.DATABASE_SERVICE, databaseServiceId));
+    Dashboard dashboard =
+        new Dashboard()
+            .withId(UUID.randomUUID())
+            .withFullyQualifiedName("looker.d1")
+            .withService(serviceRef(Entity.DASHBOARD_SERVICE, dashboardServiceId));
+    DatabaseService databaseService =
+        new DatabaseService().withId(databaseServiceId).withStyle(databaseStyle);
+    entityStaticMock
+        .when(() -> Entity.entityHasField(eq(Entity.DATABASE_SERVICE), eq(Entity.FIELD_STYLE)))
+        .thenReturn(true);
+    entityStaticMock
+        .when(() -> Entity.entityHasField(eq(Entity.DASHBOARD_SERVICE), eq(Entity.FIELD_STYLE)))
+        .thenReturn(true);
+    entityStaticMock
+        .when(() -> Entity.getEntities(any(), eq(Entity.FIELD_STYLE), eq(Include.ALL)))
+        .thenAnswer(
+            invocation -> {
+              List<EntityReference> refs = invocation.getArgument(0);
+              if (Entity.DATABASE_SERVICE.equals(refs.get(0).getType())) {
+                return List.of(databaseService);
+              }
+              throw new RuntimeException("dashboard services unavailable");
+            });
+
+    Map<UUID, Optional<Style>> result =
+        SearchIndex.prefetchServiceStyles(List.of(table, dashboard));
+
+    assertEquals(Optional.of(databaseStyle), result.get(table.getId()));
+    assertFalse(result.containsKey(dashboard.getId()));
+  }
+
+  @Test
   void getLineageDataFromRefsSkipsRecordWithInvalidJsonAndLogsWarn() {
     EntityReference downstream =
         new EntityReference()
@@ -436,6 +479,10 @@ class SearchIndexPrefetchTest {
         .withId(UUID.randomUUID())
         .withType(type)
         .withFullyQualifiedName(fqn);
+  }
+
+  private static EntityReference serviceRef(String type, UUID id) {
+    return new EntityReference().withId(id).withType(type);
   }
 
   private static CollectionDAO.EntityRelationshipObject record(

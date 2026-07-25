@@ -35,8 +35,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class LLMModelRepository extends EntityRepository<LLMModel> {
-  private static final String MODEL_UPDATE_FIELDS = "usedByAgents";
-  private static final String MODEL_PATCH_FIELDS = "usedByAgents";
+  private static final String MODEL_UPDATE_FIELDS = "usedByAgents,reviewers";
+  private static final String MODEL_PATCH_FIELDS = "usedByAgents,reviewers";
 
   public LLMModelRepository() {
     super(
@@ -128,6 +128,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     if (llmModel.getService() != null) {
       populateService(llmModel);
     }
+    AIAssetStatusSync.sync(llmModel);
   }
 
   @Override
@@ -168,7 +169,13 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     if (entity.getService() == null) {
       return null;
     }
-    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+    EntityReference service = entity.getService();
+    EntityRepository<?> serviceRepository = Entity.getEntityRepository(service.getType());
+    Fields parentFields = serviceRepository.getOnlySupportedFields(fields);
+    return service.getId() != null
+        ? serviceRepository.get(null, service.getId(), parentFields, Include.ALL, true)
+        : serviceRepository.getByName(
+            null, service.getFullyQualifiedName(), parentFields, Include.ALL, true);
   }
 
   private void populateService(LLMModel llmModel) {

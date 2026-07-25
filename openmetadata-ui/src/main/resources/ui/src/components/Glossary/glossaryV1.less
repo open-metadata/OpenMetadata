@@ -128,10 +128,45 @@
   align-items: center;
 }
 
+.glossary-details.ant-row {
+  height: 100%;
+  flex-direction: column;
+  flex-wrap: nowrap;
+
+  > .ant-col {
+    flex: 0 0 auto;
+    max-width: 100%;
+    margin-bottom: 0;
+
+    &.glossary-page-tabs {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+  }
+}
+
 .glossary-page-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  .tabs-new,
+  .tabs-new > .ant-tabs-content-holder,
+  .tabs-new > .ant-tabs-content-holder > .ant-tabs-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
   .ant-tabs-tabpane {
     height: @glossary-page-height;
-    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: @glossary-page-height;
+    display: flex;
+    flex-direction: column;
+    // Inner columns own the scroll (internal scroll for tables), not the pane.
+    overflow: hidden;
 
     .activity-feed-tab {
       height: 100%;
@@ -140,6 +175,64 @@
       .center-container {
         height: 100%;
       }
+    }
+  }
+
+  .ant-tabs-tabpane-hidden {
+    display: none;
+  }
+
+  .grid-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100% !important;
+    margin-bottom: 0;
+  }
+
+  .ant-tabs.ant-tabs-top.tabs-new .grid-container > #KnowledgePanel\.LeftPanel {
+    height: 100% !important;
+
+    > .dynamic-height-widget {
+      height: 100% !important;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .left-panel-content {
+      height: 100%;
+      min-height: 0;
+    }
+  }
+
+  .left-panel-content > .ant-col:last-child > .ant-row {
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-flow: column nowrap;
+
+    > .ant-col {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  .glossary-terms-scroll-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .glossary-terms-table {
+    .ant-table-body {
+      max-height: none !important;
+    }
+
+    .ant-table-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
   }
 }
@@ -176,40 +269,94 @@
   color: #dc6803;
 }
 
-// Sticky table headers for glossary terms table
-.glossary-terms-scroll-container {
-  .glossary-terms-table {
-    .ant-table-thead {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: var(--tw-color-bg-primary);
+.glossary-page-tabs .left-panel-content.ant-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-content: stretch;
 
-      th {
-        background: @white !important;
-      }
-    }
+  > .ant-col {
+    flex: 0 0 auto;
+    max-width: 100%;
 
-    // Ensure the table header shadow appears when scrolling
-    .ant-table-thead::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 1px;
-      background: @grey-3;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    &:last-child {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
   }
 }
 
-// Background color for nested glossary terms
-.ant-table-tbody > tr.glossary-nested-row {
-  background-color: @grey-50;
+.glossary-terms-empty-container {
+  flex: 1 1 auto;
+  min-height: 300px;
+  overflow: auto;
+}
 
-  &:hover > td,
-  > td.ant-table-cell-row-hover {
+// Background color for nested glossary terms
+.glossary-terms-table {
+  .glossary-term-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    line-height: 0;
+    color: inherit;
+    vertical-align: baseline;
+    background: transparent;
+    border: 0;
+  }
+
+  .glossary-term-drag-handle-hidden {
+    display: none;
+  }
+
+  tbody > tr.glossary-term-draggable-row {
+    cursor: move;
+
+    .glossary-term-drag-handle,
+    .drag-icon {
+      cursor: move;
+    }
+
+    &[data-dragging='true'],
+    &:active {
+      cursor: move;
+
+      .glossary-term-drag-handle,
+      .drag-icon {
+        cursor: move;
+      }
+    }
+  }
+
+  tbody > tr.glossary-nested-row > td {
+    background-color: @grey-50;
+  }
+
+  tbody > tr.glossary-nested-row:hover > td {
     background-color: @grey-100;
+  }
+
+  table {
+    overflow-x: visible;
+  }
+}
+
+.glossary-terms-scroll-container.glossary-terms-scroll-container-drop-target {
+  .glossary-terms-table {
+    tbody {
+      border: 2px dashed
+        var(--tw-color-border-brand, var(--color-border-brand));
+      background: var(
+        --tw-color-bg-brand-primary,
+        var(--color-bg-brand-primary)
+      ) !important;
+
+      tr,
+      td,
+      th {
+        border: none !important;
+      }
+    }
   }
 }

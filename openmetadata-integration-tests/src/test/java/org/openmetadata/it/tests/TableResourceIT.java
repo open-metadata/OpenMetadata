@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -227,6 +230,38 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table createEntity(CreateTable createRequest) {
     return SdkClients.adminClient().tables().create(createRequest);
+  }
+
+  @Test
+  void post_tableWithInvalidConstraintOrPartitionColumnName_4xx(TestNamespace ns) {
+    CreateTable invalidConstraintRequest = createMinimalRequest(ns);
+    invalidConstraintRequest.setName(ns.prefix("table_invalid_constraint_column"));
+    invalidConstraintRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("name>invalid"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidConstraintRequest),
+        "Creating table with invalid constraint column name should fail");
+
+    CreateTable invalidPartitionRequest = createMinimalRequest(ns);
+    invalidPartitionRequest.setName(ns.prefix("table_invalid_partition_column"));
+    invalidPartitionRequest.setTablePartition(
+        new TablePartition()
+            .withColumns(
+                List.of(
+                    new PartitionColumnDetails()
+                        .withColumnName("name>invalid")
+                        .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
+                        .withInterval("daily"))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(invalidPartitionRequest),
+        "Creating table with invalid partition column name should fail");
   }
 
   @Override
@@ -1561,7 +1596,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // TODO: Migrate put_tableJoinsInvalidColumnName_4xx - Requires SDK table joins validation
   // TODO: Migrate put_tableSampleData_200 - Requires SDK sample data support
   // TODO: Migrate put_tableInvalidSampleData_4xx - Requires SDK sample data validation
-  // TODO: Migrate put_schemaDefinition_200 - Requires SDK schema definition support
   // TODO: Migrate put_profileConfig_200 - Requires SDK profiler config support
   // TODO: Migrate put_tableProfile_200 - Requires SDK table profile support
   // TODO: Migrate create_profilerWrongTimestamp - Requires SDK profile timestamp validation
@@ -2372,7 +2406,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_schemaDefinition_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a view table with schema definition
     String query =
         """
         sales_vw
@@ -2384,16 +2417,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         """;
 
     CreateTable createRequest = createRequest(ns.prefix("view_table"), ns);
-    createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
+    createRequest.setTableType(TableType.View);
     createRequest.setSchemaDefinition(query);
 
     Table table = createEntity(createRequest);
     assertNotNull(table);
-    assertEquals(org.openmetadata.schema.type.TableType.View, table.getTableType());
+    assertEquals(TableType.View, table.getTableType());
 
-    // Fetch with schemaDefinition field
+    // Verify schemaDefinition persisted on create
     Table fetched = client.tables().get(table.getId().toString(), "schemaDefinition");
     assertEquals(query, fetched.getSchemaDefinition());
+
+    // Verify schemaDefinition is updated via PUT
+    String updatedQuery =
+        """
+        sales_vw
+        create view sales_vw as
+        select * from public.sales;
+        """;
+    createRequest.setSchemaDefinition(updatedQuery);
+    client.tables().createOrUpdate(createRequest);
+
+    Table fetchedAfterUpdate = client.tables().get(table.getId().toString(), "schemaDefinition");
+    assertEquals(updatedQuery, fetchedAfterUpdate.getSchemaDefinition());
   }
 
   // ===================================================================
@@ -3738,11 +3784,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table baseState = client.tables().get(table.getId().toString(), "columns,tags");
 
     // Simulate concurrent updates
-    java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch completionLatch =
-        new java.util.concurrent.CountDownLatch(2);
-    java.util.concurrent.atomic.AtomicReference<Exception> errorRef =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch firstUpdateCompleted = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Exception> errorRef = new AtomicReference<>();
 
     // Thread A: Update column description
     Thread threadA =
@@ -3758,6 +3803,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
+                firstUpdateCompleted.countDown();
                 completionLatch.countDown();
               }
             });
@@ -3768,7 +3814,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             () -> {
               try {
                 startLatch.await();
-                Thread.sleep(50); // Small delay
+                if (!firstUpdateCompleted.await(30, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("First column update did not complete");
+                }
                 Table tableB = client.tables().get(baseState.getId().toString(), "columns");
                 Column col = tableB.getColumns().get(0);
                 col.setDisplayName("Display Name B");
@@ -3784,11 +3832,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     threadA.start();
     threadB.start();
     startLatch.countDown();
-    completionLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+    assertTrue(completionLatch.await(45, TimeUnit.SECONDS), "Concurrent updates did not complete");
+    assertNull(errorRef.get(), "Concurrent column update failed");
 
-    // Verify - at least one update should succeed
     Table finalTable = client.tables().get(table.getId().toString(), "columns");
-    assertNotNull(finalTable);
+    Column finalColumn = finalTable.getColumns().get(0);
+    assertEquals("Description A", finalColumn.getDescription());
+    assertEquals("Display Name B", finalColumn.getDisplayName());
   }
 
   // ===================================================================

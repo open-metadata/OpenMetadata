@@ -13,21 +13,39 @@
 Source connection handler
 """
 
-import os  # noqa: I001
-from functools import partial, singledispatch
-from typing import Any, Optional
-from urllib.parse import quote
+from __future__ import annotations
+
+import os
+from functools import singledispatch
+from typing import TYPE_CHECKING, Any, Optional
+from urllib.parse import quote, urlparse
+
+from packaging import version
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import JSONDecodeError, SSLError, Timeout
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
 
 from airflow import __version__ as airflow_version
 from airflow import settings
 from airflow.models.serialized_dag import SerializedDagModel
-from packaging import version
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
-
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
+)
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.database import run_sql
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.checks.rest import http_status, verify_access
+from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.network import (
+    NETWORK_ERRORS,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
@@ -44,19 +62,20 @@ from metadata.generated.schema.entity.services.connections.pipeline.airflowConne
 from metadata.generated.schema.entity.services.connections.pipeline.backendConnection import (
     BackendConnection,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.query_logger import attach_query_tracker
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_engine_step,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.pipeline.airflow.api.client import AirflowApiClient
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.orm import Session
+
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
 
@@ -189,34 +208,6 @@ def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
     return SQLiteConnection(airflow_connection)._get_client()
 
 
-def get_connection(connection: AirflowConnectionConfig):
-    """
-    Create connection
-    """
-    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        AirflowRestApiConnection,
-    )
-
-    if isinstance(connection.connection, AirflowRestApiConnection):
-        from metadata.ingestion.source.pipeline.airflow.api.client import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-            AirflowApiClient,
-        )
-
-        return AirflowApiClient(connection)
-
-    try:
-        return _get_connection(connection.connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
-class AirflowPipelineDetailsAccessError(Exception):
-    """
-    Raise when Pipeline information is not retrieved
-    """
-
-
 class AirflowTaskDetailsAccessError(Exception):
     """
     Raise when Task detail information is not retrieved
@@ -257,10 +248,13 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
 
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
-    Call client.get_version(); on failure, attempt a managed-flavor-specific
+    Call client.test_get_version(); on failure, attempt a managed-flavor-specific
     diagnostic and raise SourceConnectionException with a combined message
     ("<original error>\\n\\n<hint>"). When no hint applies, the original
     exception is re-raised unchanged.
+
+    Uses the strict accessor, not get_version: the latter tolerates a reply it
+    cannot parse, which would pass the gate against any web server.
     """
     from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
         diagnose,
@@ -268,7 +262,7 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
 
     result = None
     try:
-        result = client.get_version()
+        result = client.test_get_version()
     except Exception as exc:
         hint = diagnose(host, auth_config, verify, exc)
         if hint:
@@ -277,96 +271,194 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
     return result
 
 
-def _test_api_connection(
-    metadata: OpenMetadata,
-    client,
-    service_connection: AirflowConnectionConfig,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    rest_config = service_connection.connection
-    host = str(service_connection.hostPort) if getattr(service_connection, "hostPort", None) else None
-    auth_config = getattr(rest_config, "authConfig", None)
-    verify = getattr(rest_config, "verifySSL", True)
+def _db_message(*tokens: str) -> Matcher:
+    """Match a metadata-DB driver error by message token.
 
-    test_fn = {
-        "CheckAccess": lambda: _decorated_check_access(client, host, auth_config, verify),
-        "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
-        "TaskDetailAccess": lambda: True,
-    }
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    connection_obj,
-    service_connection: AirflowConnectionConfig,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
+    Requires a SQLAlchemy error in the cause chain, so a REST/transport failure
+    that happens to carry the same words is never diagnosed as a database problem.
     """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        AirflowRestApiConnection,
-    )
+    needles = [token.lower() for token in tokens]
 
-    if isinstance(service_connection.connection, AirflowRestApiConnection):
-        return _test_api_connection(
-            metadata,
-            connection_obj,
-            service_connection,
-            automation_workflow,
-            timeout_seconds,
+    def match(error: BaseException) -> bool:
+        chain = list(exception_chain(error))
+        result = False
+        if any(isinstance(current, SQLAlchemyError) for current in chain):
+            text = " ".join(str(current).lower() for current in chain)
+            result = any(needle in text for needle in needles)
+        return result
+
+    return match
+
+
+# Only signals we exercised live or that follow directly from HTTP / driver
+# documentation are diagnosed here; everything else keeps its raw error log.
+AIRFLOW_ERRORS = ErrorPack(
+    when(http_status(401)).diagnose(
+        "Authentication failed",
+        fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
+    ),
+    when(http_status(403)).diagnose(
+        "Access denied",
+        fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
+    ),
+    when(http_status(404)).diagnose(
+        "Endpoint not found",
+        fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
+        "server, not a UI or console page.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited",
+        fix="Airflow (or a gateway in front of it) is throttling the request. Retry in a few "
+        "minutes, or raise the rate limit for the account ingestion uses.",
+    ),
+    # A URL that is not the Airflow REST API (an SSO login page, the marketing
+    # site) answers with HTML that fails to decode as JSON.
+    when(Matchers.exception(JSONDecodeError)).diagnose(
+        "Host is not the Airflow REST API",
+        fix="The host replied with a web page, not the Airflow REST API. Point the Host and Port "
+        "at the Airflow web server and make sure its REST API is enabled.",
+    ),
+    when(Matchers.exception(SSLError)).diagnose(
+        "TLS verification failed",
+        fix="The server's certificate could not be verified. Check the Host, or uncheck "
+        "'Verify SSL' if you use a self-signed certificate.",
+    ),
+    when(Matchers.exception(Timeout)).diagnose(
+        "Connection timed out",
+        fix="Airflow did not respond in time. Check the Host and Port and that a firewall allows access to it.",
+    ),
+    when(Matchers.exception(RequestsConnectionError)).diagnose(
+        "Cannot reach the host",
+        fix="Could not reach the host. Check the Host and Port for typos and that it is reachable.",
+    ),
+    # Metadata-DB backend path. MySQL answers a bad login with "Access denied"
+    # (1045) and PostgreSQL with "password authentication failed" (28P01). Gated
+    # to a SQLAlchemy error so a REST failure carrying the same words is never
+    # mislabeled as a database problem.
+    when(_db_message("access denied", "password authentication failed")).diagnose(
+        "Database authentication failed",
+        fix="The Airflow metadata database rejected the credentials. Check the database username and password.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+class AirflowChecks:
+    """Test-connection checks for Airflow.
+
+    The client is dual-mode: an ``AirflowApiClient`` (REST) or a SQLAlchemy
+    ``Engine`` (metadata-DB backend). ``CheckAccess`` is the gate - it proves the
+    host and credentials before the later steps run. The client is borrowed from
+    the connection that owns it; a check never builds or authenticates its own.
+    """
+
+    errors = AIRFLOW_ERRORS
+
+    def __init__(self, client: Borrowed[Any]) -> None:
+        self._client = client
+
+    @property
+    def client(self) -> Any:
+        return self._client.client
+
+    @check(PipelineStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        client = self.client
+        if isinstance(client, AirflowApiClient):
+            host, auth_config, verify = self._rest_context(client)
+            self._preflight(client, host)
+            return verify_access(
+                lambda: _decorated_check_access(client, host, auth_config, verify),
+                command="read the Airflow REST API version",
+            )
+        return run_sql(client, "SELECT 1", lambda _: "connection established")
+
+    @staticmethod
+    def _preflight(client: AirflowApiClient, host: str | None) -> None:
+        """TCP-probe the host so an unreachable Airflow fails fast as a network
+        error, instead of waiting out the REST client's connect-retry budget.
+
+        Skipped for MWAA, whose transport is the AWS SDK rather than a socket to
+        ``host``, and when the host carries no resolvable host:port.
+        """
+        if client.mwaa_client is not None or not host:
+            return
+        parsed = urlparse(host)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        if parsed.hostname:
+            probe_or_fail(parsed.hostname, port)
+
+    @staticmethod
+    def _rest_context(client: AirflowApiClient) -> tuple[str | None, Any, bool]:
+        """Derive host, auth config and verifySSL from the borrowed REST client.
+
+        Read off the client the connection already built, so the provider never
+        sees the raw config (which is the ability to build a second client).
+        """
+        config = client.config
+        host = str(config.hostPort) if getattr(config, "hostPort", None) else None
+        rest_config = config.connection
+        auth_config = getattr(rest_config, "authConfig", None)
+        verify = getattr(rest_config, "verifySSL", True)
+        return host, auth_config, verify
+
+    @check(PipelineStep.PipelineDetailsAccess)
+    def pipeline_details_access(self) -> Evidence:
+        client = self.client
+        if isinstance(client, AirflowApiClient):
+            return verify_access(
+                lambda: client.list_dags(limit=1),
+                command="list one DAG via the Airflow REST API",
+            )
+        return self._backend_step(
+            lambda session: session.query(SerializedDagModel.dag_id).first(),
+            command="SELECT dag_id FROM serialized_dag LIMIT 1",
+            summary="serialized_dag reachable",
         )
 
-    session_maker = sessionmaker(bind=connection_obj)
-    session = session_maker()
+    @check(PipelineStep.TaskDetailAccess)
+    def task_detail_access(self) -> Evidence:
+        client = self.client
+        if isinstance(client, AirflowApiClient):
+            return Evidence(summary="task details are read per-DAG during ingestion")
+        return self._backend_step(
+            _test_task_detail_access,
+            command="SELECT data FROM serialized_dag LIMIT 1",
+            summary="serialized_dag task payload reachable",
+        )
 
-    def test_pipeline_details_access(session):
+    def _backend_step(self, run: Callable[[Session], object], command: str, summary: str) -> Evidence:
+        """Run a query against a session bound to the borrowed engine.
+
+        The session is a per-call working handle over the owned engine, not a
+        second client. On failure re-raise as ``CheckError`` carrying the command,
+        so the failed step still reports what it ran.
+        """
         try:
-            # Query only the dag_id column to avoid version compatibility issues
-            # The data_compressed column doesn't exist in Airflow 2.2.5
-            result = session.query(SerializedDagModel.dag_id).first()
-            return result  # noqa: RET504, TRY300
-        except Exception as e:
-            raise AirflowPipelineDetailsAccessError(f"Pipeline details access error: {e}")  # noqa: B904
-
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, connection_obj),
-        "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
-        "TaskDetailAccess": partial(_test_task_detail_access, session),
-    }
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+            with sessionmaker(bind=self.client)() as session:
+                run(session)
+        except Exception as cause:
+            raise CheckError(cause, Evidence(command=command)) from cause
+        return Evidence(summary=summary, command=command)
 
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        return get_connection(self.service_connection)
-
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        return test_connection(
-            metadata,
-            self.client,
-            self.service_connection,
-            automation_workflow,
-            timeout_seconds,
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            AirflowRestApiConnection,
         )
+
+        connection = self.service_connection
+        if isinstance(connection.connection, AirflowRestApiConnection):
+            return AirflowApiClient(connection)
+
+        try:
+            client = _get_connection(connection.connection)
+        except Exception as exc:
+            msg = f"Unknown error connecting with {connection}: {exc}."
+            raise SourceConnectionException(msg) from exc
+        if isinstance(client, Engine):
+            self._on_close(client.dispose)
+        return client
+
+    def checks(self) -> ChecksProvider:
+        return AirflowChecks(self.borrow())

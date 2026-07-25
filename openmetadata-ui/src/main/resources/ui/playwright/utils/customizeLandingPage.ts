@@ -238,6 +238,12 @@ const isLandingPageWidgetVisible = async (
   return false;
 };
 
+const isLandingPageWidgetLoading = async (widget: Locator) =>
+  widget
+    .getByTestId('entity-list-skeleton')
+    .isVisible()
+    .catch(() => false);
+
 export const waitForLandingPageWidget = async (
   page: Page,
   widgetKey: string
@@ -730,6 +736,10 @@ export const verifyDomainCountInDomainWidget = async (
         }
 
         const domainWidget = page.getByTestId('KnowledgePanel.Domains');
+        if (await isLandingPageWidgetLoading(domainWidget)) {
+          return null;
+        }
+
         const card = domainWidget.locator(widgetCardSelector).first();
         const isCardVisible = await card.isVisible().catch(() => false);
 
@@ -771,6 +781,10 @@ export const verifyDataProductCountInDataProductWidget = async (
         const dataProductWidget = page.getByTestId(
           'KnowledgePanel.DataProducts'
         );
+        if (await isLandingPageWidgetLoading(dataProductWidget)) {
+          return null;
+        }
+
         const card = dataProductWidget.locator(widgetCardSelector).first();
         const isCardVisible = await card.isVisible().catch(() => false);
 
@@ -798,6 +812,10 @@ export const verifyWidgetCountOnCurrentPage = async (
   await expect
     .poll(
       async () => {
+        if (await isLandingPageWidgetLoading(widget)) {
+          return null;
+        }
+
         const element = widget.locator(selector).first();
         const isVisible = await element.isVisible().catch(() => false);
 

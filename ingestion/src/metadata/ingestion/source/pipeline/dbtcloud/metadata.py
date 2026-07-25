@@ -58,6 +58,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -377,6 +378,21 @@ class DbtcloudSource(PipelineServiceSource):
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the ``Pipeline`` denominator from the dbt Cloud job count.
+
+        Skipped when a ``pipelineFilterPattern`` is configured: the count sums
+        the API's job ``total_count`` and cannot honor the include/exclude
+        regex, so the declared total would overstate the pipelines actually
+        processed. Since ``Pipeline`` is a leaf counter that is never reconciled
+        down, a filtered run would otherwise sit permanently below 100%; fall
+        back to denominator-less progress instead."""
+        if self.has_pipeline_filter():
+            return
+        count = self.client.get_jobs_count()
+        if isinstance(count, int) and count > 0:
+            totals.set_total("Pipeline", count)
 
     def get_pipelines_list(self) -> Iterable[DBTJob]:
         """

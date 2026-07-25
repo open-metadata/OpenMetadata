@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -138,10 +139,12 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    const testDetails = entitySupportsQuality(entityType)
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      : {};
+    const testTitle = `Create Data Contract and validate for ${entityType}`;
 
-    test(`Create Data Contract and validate for ${entityType}`, async ({
-      page,
-    }) => {
+    test(testTitle, testDetails, async ({ page }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
@@ -391,29 +394,21 @@ test.describe('Data Contracts', () => {
           await expect(page.getByRole('dialog')).toBeVisible();
 
           await page.fill(
-            '[data-testid="test-case-name"]',
+            '[data-testid="test-case-name"] input',
             NEW_TABLE_TEST_CASE.name
           );
 
           await page.locator('[id="root\\/testType"]').click();
 
-          const dropdown = page.locator('.rc-virtual-list-holder-inner');
+          const testTypeOption = page
+            .getByRole('option')
+            .filter({ hasText: NEW_TABLE_TEST_CASE.label })
+            .first();
 
-          await expect(dropdown).toBeVisible();
+          await expect(testTypeOption).toBeVisible();
 
-          for (let i = 0; i < 20; i++) {
-            const optionVisible = await dropdown
-              .getByText(NEW_TABLE_TEST_CASE.label)
-              .isVisible();
-            if (optionVisible) {
-              break;
-            }
-            await dropdown.press('ArrowDown');
-          }
+          await testTypeOption.click();
 
-          await dropdown.getByText(NEW_TABLE_TEST_CASE.label).click();
-
-          await page.click(`text=${NEW_TABLE_TEST_CASE.label}`);
           await page.fill(
             '#testCaseFormV1_params_columnCount',
             NEW_TABLE_TEST_CASE.value
@@ -425,10 +420,12 @@ test.describe('Data Contracts', () => {
             testTag.data.name
           );
           await page
-            .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
+            .getByTestId(
+              `tag-option-${testTag.responseData.fullyQualifiedName}`
+            )
             .click();
 
-          await page.getByRole('heading', { name: 'Tags' }).click();
+          await page.keyboard.press('Escape');
 
           await page.click('[data-testid="glossary-terms-selector"] input');
           await page.fill(
@@ -438,13 +435,16 @@ test.describe('Data Contracts', () => {
 
           await page
             .getByTestId(
-              `tag-${testGlossaryTerm.responseData.fullyQualifiedName}`
+              `tag-option-${testGlossaryTerm.responseData.fullyQualifiedName}`
             )
             .click();
 
-          await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+          await page.keyboard.press('Escape');
 
-          await page.getByTestId('pipeline-name').fill('test-pipeline');
+          await page
+            .getByTestId('pipeline-name')
+            .locator('input')
+            .fill('test-pipeline');
 
           await page.getByTestId('schedular-on-demand').click();
 

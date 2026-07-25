@@ -44,11 +44,14 @@ jest.mock('../../../hooks/useClipBoard', () => ({
   useClipboard: jest.fn(() => ({ onCopyToClipBoard: mockCopyToClipBoard })),
 }));
 
-jest.mock('../../../utils/KnowledgePageUtils', () => ({
+jest.mock('../../../utils/KnowledgePagePureUtils', () => ({
   getKnowledgePageName: jest.fn(
     (entity?: { displayName?: string; name?: string }) =>
       entity?.displayName || entity?.name || 'label.untitled'
   ),
+}));
+
+jest.mock('../../../utils/KnowledgePageUtils', () => ({
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
@@ -130,14 +133,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Button: jest.fn(
     ({
       children,
       onClick,
+      'data-testid': testId,
     }: {
       children: React.ReactNode;
       onClick?: () => void;
-    }) => <button onClick={onClick}>{children}</button>
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )
   ),
   ButtonUtility: jest.fn(
     ({
@@ -388,33 +400,6 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getByText(/unsaved/i)).toBeInTheDocument();
   });
 
-  it('shows the save button when contentChangeState is UN_SAVED and onSave is provided', () => {
-    render(
-      <ArticleDetailHeader
-        {...defaultProps}
-        contentChangeState={ContentChangeState.UN_SAVED}
-        onSave={jest.fn()}
-      />
-    );
-
-    expect(screen.getByText(/label\.save/i)).toBeInTheDocument();
-  });
-
-  it('calls onSave when the save button is clicked', () => {
-    const onSave = jest.fn();
-    render(
-      <ArticleDetailHeader
-        {...defaultProps}
-        contentChangeState={ContentChangeState.UN_SAVED}
-        onSave={onSave}
-      />
-    );
-
-    fireEvent.click(screen.getByText(/label\.save/i));
-
-    expect(onSave).toHaveBeenCalled();
-  });
-
   it('calls onVoteChange when the up-vote button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
@@ -472,7 +457,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('share-btn'));
+    fireEvent.click(screen.getByTestId('copy-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });

@@ -60,4 +60,4 @@ class TestLegacyLineageProgress:
         with patch.object(LineageSource, "generate_lineage_with_processes", staticmethod(fake_generate)):
             list(LineageSource.yield_query_lineage(source))
 
-        assert source.progress.global_counters() == [("Queries", 4, 4)]
+        assert source.progress_tracking.registry.global_counters() == [("Queries", 4, 4)]

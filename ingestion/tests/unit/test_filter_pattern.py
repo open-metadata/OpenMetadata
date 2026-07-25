@@ -22,6 +22,7 @@ from metadata.utils.filters import (
     filter_by_classifications,
     filter_by_dashboard,
     filter_by_fqn,
+    filter_pattern_enabled,
     validate_regex,
 )
 
@@ -43,6 +44,16 @@ def test_filter():
     # If we have both includes and excludes, we will check both "include" and "exclude"
     # This was not filter if we only check includes, but is filtered if we check both
     assert _filter(filter_pattern_both, "potato_tomato")
+
+
+def test_filter_pattern_enabled():
+    """A pattern is enabled only when includes or excludes are configured"""
+    assert filter_pattern_enabled(None) is False
+    assert filter_pattern_enabled(FilterPattern()) is False
+    assert filter_pattern_enabled(FilterPattern(includes=[])) is False
+    assert filter_pattern_enabled(FilterPattern(excludes=[])) is False
+    assert filter_pattern_enabled(FilterPattern(includes=["^keep$"])) is True
+    assert filter_pattern_enabled(FilterPattern(excludes=["^skip$"])) is True
 
 
 def test_filter_by_classifications():

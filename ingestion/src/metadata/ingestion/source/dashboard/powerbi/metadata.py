@@ -65,6 +65,7 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.powerbi.constants import (
     BIGQUERY_QUERY_EXPRESSION_KW,
@@ -133,6 +134,8 @@ DASHBOARD_TARGET = LineageTargetSpec(
 class PowerbiSource(DashboardServiceSource):
     """PowerBi Source Class"""
 
+    progress_mode = ProgressMode.MANUAL
+
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
 
@@ -167,7 +170,7 @@ class PowerbiSource(DashboardServiceSource):
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
                 workspace_total += len(workspaces)
-                self.progress.set_total("Workspaces", workspace_total)
+                self.progress_tracking.manual.set_total("Workspaces", workspace_total)
                 for workspace in workspaces:
                     # add the dashboards to the workspace
                     workspace.dashboards.extend(
@@ -307,7 +310,7 @@ class PowerbiSource(DashboardServiceSource):
                             missing_workspaces,
                         )
                     active_workspace_total += len(active_workspaces)
-                    self.progress.set_total("Workspaces", active_workspace_total)
+                    self.progress_tracking.manual.set_total("Workspaces", active_workspace_total)
                     yield from active_workspaces
                     count += 1
             else:

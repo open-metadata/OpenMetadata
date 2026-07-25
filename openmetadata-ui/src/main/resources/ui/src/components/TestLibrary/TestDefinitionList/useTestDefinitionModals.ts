@@ -41,6 +41,7 @@ export const useTestDefinitionModals = ({
   >();
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [definitionToDelete, setDefinitionToDelete] = useState<
     TestDefinition | undefined
   >();
@@ -60,12 +61,13 @@ export const useTestDefinitionModals = ({
     setIsDeleteModalVisible(true);
   }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!definitionToDelete) {
       return;
     }
 
     try {
+      setIsDeleting(true);
       await deleteTestDefinitionByFqn(
         definitionToDelete.fullyQualifiedName ?? ''
       );
@@ -79,8 +81,10 @@ export const useTestDefinitionModals = ({
       resetPagingAndRefetch();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeleting(false);
     }
-  };
+  }, [definitionToDelete, resetPagingAndRefetch, t]);
 
   const handleDeleteCancel = useCallback(() => {
     setIsDeleteModalVisible(false);
@@ -108,6 +112,7 @@ export const useTestDefinitionModals = ({
     selectedDefinition,
     isFormVisible,
     isDeleteModalVisible,
+    isDeleting,
     definitionToDelete,
     openCreateForm,
     handleEdit,

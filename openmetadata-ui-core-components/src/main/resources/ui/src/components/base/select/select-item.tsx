@@ -66,12 +66,14 @@ export const SelectItem = ({
       {(state) => (
         <div
           className={cx(
-            'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:outline-hidden tw:select-none',
+            // `outline-hidden` removed: the outline now draws the focus indicator (it
+            // replaced a ring, which WebKit does not pixel-snap).
+            'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:select-none',
             state.isSelected && 'tw:bg-active',
             state.isDisabled && 'tw:cursor-not-allowed',
             state.isFocused && 'tw:bg-primary_hover',
             state.isFocusVisible &&
-              'tw:ring-2 tw:ring-focus-ring tw:ring-inset',
+              'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
 
             // Icon styles
             'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary',

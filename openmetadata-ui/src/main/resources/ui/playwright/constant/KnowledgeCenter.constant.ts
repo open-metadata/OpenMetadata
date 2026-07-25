@@ -46,4 +46,5 @@ export const SLASH_COMMANDS = {
   callout: 'Callout',
   table: 'Table',
   task: 'Task',
+  image: 'Image',
 } as const;

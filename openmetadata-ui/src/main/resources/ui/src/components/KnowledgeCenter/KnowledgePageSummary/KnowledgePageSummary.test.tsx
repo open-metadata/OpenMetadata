@@ -16,7 +16,7 @@ import {
   KnowledgePage,
   PageType,
 } from '../../../interface/knowledge-center.interface';
-import { MOCK_KNOWLEDGE_PAGE_DATA } from '../../../pages/KnowledgePage/KnowledgePage.mock';
+import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
 jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({

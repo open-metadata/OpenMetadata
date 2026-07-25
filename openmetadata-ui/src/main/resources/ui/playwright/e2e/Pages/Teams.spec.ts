@@ -154,7 +154,9 @@ const test = base.extend<{
     await page.close();
   },
   page: async ({ browser }, use) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
     await afterAction();
   },
@@ -414,7 +416,11 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
+      await hardDeleteTeam(
+        page,
+        teamDetails?.updatedName ?? teamDetails.name,
+        true
+      );
     });
   });
 

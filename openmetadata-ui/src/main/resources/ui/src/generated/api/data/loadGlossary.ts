@@ -348,6 +348,10 @@ export interface CreateGlossaryTermRequest {
      */
     displayName?: string;
     /**
+     * Fully qualified names of the domains the Glossary Term belongs to.
+     */
+    domains?: string[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -355,6 +359,11 @@ export interface CreateGlossaryTermRequest {
      * FullyQualifiedName of the glossary that this term is part of.
      */
     glossary: string;
+    /**
+     * Canonical IRI of this term in its source ontology. Preserves identity across ontology
+     * import/export round-trips.
+     */
+    iri?: string;
     /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When

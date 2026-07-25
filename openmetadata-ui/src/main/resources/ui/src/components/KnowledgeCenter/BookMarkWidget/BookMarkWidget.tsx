@@ -59,7 +59,13 @@ const BookMarkWidget = ({
   };
 
   const titleIcon = useMemo(
-    () => <Star01 className="tw:text-quaternary" height={16} width={16} />,
+    () => (
+      <Star01
+        className="tw:text-quaternary tw:shrink-0"
+        height={16}
+        width={16}
+      />
+    ),
     []
   );
 

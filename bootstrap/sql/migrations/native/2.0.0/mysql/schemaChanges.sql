@@ -366,10 +366,30 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INT NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL DEFAULT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
+-- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
+SET @search_index_retry_claim_token_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_retry_queue'
+        AND column_name = 'claimToken'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_retry_queue ADD COLUMN claimToken VARCHAR(36) DEFAULT NULL'
+  )
+);
+PREPARE search_index_retry_claim_token_stmt FROM @search_index_retry_claim_token_ddl;
+EXECUTE search_index_retry_claim_token_stmt;
+DEALLOCATE PREPARE search_index_retry_claim_token_stmt;
 
 -- ContextMemory entity - reusable Context Center memory.
 CREATE TABLE IF NOT EXISTS context_memory (
@@ -386,6 +406,55 @@ CREATE TABLE IF NOT EXISTS context_memory (
   INDEX idx_context_memory_updated_at (updatedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- AI Governance Studio (Phase 4): framework + control entity tables.
+CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Governance Framework entities';
+
+CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX deleted_index (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Framework Control entities';
+
+CREATE TABLE IF NOT EXISTS audit_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
+    deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
+    status VARCHAR(32) GENERATED ALWAYS AS (json ->> '$.status') VIRTUAL,
+    requestSignature VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.requestSignature') STORED,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name (fqnHash),
+    INDEX name_index (name),
+    INDEX status_index (status),
+    INDEX deleted_index (deleted),
+    INDEX request_signature_index (requestSignature)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS `user_session` (
   `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
@@ -421,35 +490,6 @@ CREATE INDEX asset_entity_name_index ON asset_entity (name);
 CREATE INDEX context_file_name_index ON context_file (name);
 CREATE INDEX context_memory_name_index ON context_memory (name);
 
--- MCP conversation table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_conversation (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-  json JSON NOT NULL,
-  userId VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.user.id') NOT NULL,
-  createdAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.createdAt') NOT NULL,
-  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
-  createdBy VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.createdBy') NOT NULL,
-  updatedBy VARCHAR(50) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
-  messageCount INT GENERATED ALWAYS AS (json ->> '$.messageCount') STORED,
-
-  PRIMARY KEY (id),
-  INDEX idx_mcp_conversation_user_updated (userId, updatedAt DESC)
-);
-
--- MCP message table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_message (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
-  json JSON NOT NULL,
-  conversationId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.conversationId') STORED NOT NULL,
-  sender VARCHAR(10) GENERATED ALWAYS AS (json ->> '$.sender') STORED NOT NULL,
-  messageIndex INT GENERATED ALWAYS AS (json ->> '$.index') STORED,
-  timestamp BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.timestamp') NOT NULL,
-
-  PRIMARY KEY (id),
-  CONSTRAINT fk_mcp_message_conversation FOREIGN KEY (conversationId) REFERENCES mcp_conversation(id) ON DELETE CASCADE,
-  INDEX idx_mcp_message_conversation_index (conversationId, messageIndex),
-  INDEX idx_mcp_message_conversation_created (conversationId, timestamp)
-);
 -- Task workflow cutover support - OpenMetadata 2.0.0 (moved from 2.0.1)
 -- Maps legacy thread task IDs to new task entity IDs for migration traceability and redirects.
 
@@ -461,3 +501,39 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters). MySQL has no `CREATE INDEX IF NOT EXISTS`, so guard via
+-- information_schema (mirrors the approvedById guard earlier in this file).
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.token'),
+    '$.connection.config.authType',
+    JSON_OBJECT(
+        'token',
+        JSON_EXTRACT(json, '$.connection.config.token')
+    )
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');

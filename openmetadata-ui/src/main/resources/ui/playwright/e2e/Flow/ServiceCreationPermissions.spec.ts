@@ -32,6 +32,7 @@ import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   advanceToServiceConnectionStep,
+  getAgentCard,
   mockSuccessfulTestConnection,
   selectServiceConnector,
   testConnectionIfRequired,
@@ -90,7 +91,7 @@ const test = base.extend<{
   },
 });
 
-const openPipelineActions = async (page: Page) => {
+const visitAgentCard = async (page: Page) => {
   await redirectToHomePage(page);
   await adminOwnedService.visitEntityPage(page);
 
@@ -101,9 +102,15 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = page
-    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
-    .getByTestId('more-actions');
+  const agentCard = getAgentCard(page, ingestionPipelineName);
+
+  await agentCard.waitFor();
+
+  return agentCard;
+};
+
+const openPipelineActions = async (page: Page) => {
+  const actionButton = (await visitAgentCard(page)).getByTestId('more-actions');
 
   await actionButton.waitFor();
   await actionButton.click();
@@ -335,7 +342,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await page.getByTestId('confirm-button').click();
 
       await toastNotification(
@@ -519,7 +525,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteResponse = page.waitForResponse(
         (response) =>
@@ -584,25 +589,55 @@ test.describe(
     test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
       pipelineTriggerPage: page,
     }) => {
-      await openPipelineActions(page);
+      let agentCard = await visitAgentCard(page);
 
-      await expect(page.getByTestId('run-button')).toBeVisible();
-      await expect(page.getByTestId('edit-button')).toBeHidden();
-      await expect(page.getByTestId('kill-button')).toBeHidden();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
 
-      const triggerResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-          response.request().method() === 'POST'
-      );
+      // Both users own the service, so isOwner() still grants Delete on the
+      // pipeline and the menu renders with that single item — only the
+      // EditAll-gated actions must be absent for a trigger-only user.
+      await agentCard.getByTestId('more-actions').click();
 
-      await page.getByTestId('run-button').click();
+      const actionsDropdown = page.getByTestId('actions-dropdown');
 
-      const response = await triggerResponse;
+      await expect(actionsDropdown.getByTestId('delete-button')).toBeVisible();
+      await expect(actionsDropdown.getByTestId('edit-button')).toBeHidden();
+      await expect(
+        actionsDropdown.getByTestId('re-deploy-button')
+      ).toBeHidden();
+      await expect(actionsDropdown.getByTestId('pause-button')).toBeHidden();
+      await expect(actionsDropdown.getByTestId('resume-button')).toBeHidden();
 
-      expect(response.status()).toBe(200);
+      await page.keyboard.press('Escape');
+
+      await expect(actionsDropdown).toBeHidden();
+
+      // The pipeline deployed in beforeAll may still be registering in
+      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
+      await expect
+        .poll(
+          async () => {
+            const triggerResponse = page.waitForResponse(
+              (response) =>
+                response
+                  .url()
+                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+                response.request().method() === 'POST'
+            );
+
+            await agentCard.getByTestId('run-agent-button').click();
+
+            const response = await triggerResponse;
+
+            if (response.status() !== 200) {
+              agentCard = await visitAgentCard(page);
+            }
+
+            return response.status();
+          },
+          { intervals: [3_000], timeout: 90_000 }
+        )
+        .toBe(200);
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({
@@ -611,9 +646,12 @@ test.describe(
       await openPipelineActions(page);
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('kill-button')).toBeVisible();
       await expect(page.getByTestId('re-deploy-button')).toBeVisible();
-      await expect(page.getByTestId('run-button')).toBeHidden();
+      await expect(
+        getAgentCard(page, ingestionPipelineName).getByTestId(
+          'run-agent-button'
+        )
+      ).toBeHidden();
     });
   }
 );

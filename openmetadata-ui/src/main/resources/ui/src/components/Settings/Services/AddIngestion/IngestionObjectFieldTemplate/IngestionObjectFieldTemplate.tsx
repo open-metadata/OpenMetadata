@@ -44,6 +44,7 @@ interface SchemaProperty {
   anyOf?: unknown[];
   oneOf?: unknown[];
   type?: string | string[];
+  uiFieldType?: string;
 }
 
 interface IngestionSectionConfig {
@@ -71,6 +72,9 @@ const isWide = (
   const prop = schemaProperties[name];
   if (!prop) {
     return false;
+  }
+  if (prop.uiFieldType === 'code') {
+    return true;
   }
   if (prop.type === 'object' || prop.type === 'array') {
     return true;

@@ -1,5 +1,6 @@
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { borderAfter } from '@/utils/tailwindClasses';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -30,6 +31,13 @@ export const styles = sortCx({
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
+    xxs: {
+      root: [
+        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:*:data-icon:size-3',
+      ].join(' '),
+      linkRoot: 'tw:gap-0.5',
+    },
     xs: {
       root: [
         'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
@@ -65,20 +73,22 @@ export const styles = sortCx({
   colors: {
     primary: {
       root: [
-        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-primary-icon tw:hover:*:data-icon:text-button-primary-icon_hover',
       ].join(' '),
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
-        'tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
       ].join(' '),
@@ -110,20 +120,22 @@ export const styles = sortCx({
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-destructive-primary-icon tw:hover:*:data-icon:text-button-destructive-primary-icon_hover',
       ].join(' '),
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -146,25 +158,28 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-success-300 tw:ring-inset',
+        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-warning-300 tw:ring-inset',
+        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-brand tw:ring-inset',
+        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },

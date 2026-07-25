@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -23,6 +27,7 @@ import { useTestSuitesListPage } from './useTestSuitesListPage';
 
 export const TestSuites = () => {
   const { t } = useTranslation();
+  const { createActions } = useDataQualityProvider();
   const {
     subTab,
     params,
@@ -47,6 +52,24 @@ export const TestSuites = () => {
     isTestCaseSummaryLoading,
     testCaseSummary,
   } = useTestSuitesListPage();
+
+  const emptyStateAction: EmptyPlaceholderAction | undefined = useMemo(() => {
+    let action: EmptyPlaceholderAction | undefined;
+    if (
+      createActions?.canCreateBundleSuite &&
+      createActions?.onAddBundleSuite
+    ) {
+      action = {
+        key: 'new-bundle-suite',
+        label: t('label.new-entity', { entity: t('label.bundle-suite') }),
+        color: 'primary',
+        iconLeading: Plus,
+        onPress: createActions.onAddBundleSuite,
+      };
+    }
+
+    return action;
+  }, [createActions?.canCreateBundleSuite, createActions?.onAddBundleSuite, t]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
@@ -97,6 +120,7 @@ export const TestSuites = () => {
           columnList={columnList}
           currentPage={currentPage}
           data={sortedData}
+          emptyStateAction={emptyStateAction}
           hasActiveFilters={!isEmpty(params)}
           isLoading={isLoading}
           pageSize={pageSize}

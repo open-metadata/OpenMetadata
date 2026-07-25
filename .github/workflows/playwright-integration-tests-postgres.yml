@@ -14,8 +14,12 @@
 
 name: Postgres Playwright Integration Tests
 on:
+  merge_group:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -23,6 +27,7 @@ concurrency:
 
 jobs:
   playwright-postgresql:
+    name: ${{ github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-postgresql (ignored label)' || 'playwright-postgresql' }}
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     strategy:
@@ -58,23 +63,23 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
       - name: Get yarn cache directory path
-        if: steps.cache-output.outputs.exit-code == 0
         id: yarn-cache-dir-path
-        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
-        if: steps.yarn-cache-dir-path.outputs.exit-code == 0
+        run: echo "dir=$(yarn cache dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -87,6 +92,7 @@ jobs:
           python-version: "3.10"
           args: "-d postgresql"
           ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
       - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }}
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
@@ -99,14 +105,17 @@ jobs:
           source env/bin/activate
           make install_e2e_tests
           make run_e2e_tests
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
+        continue-on-error: true
         with:
           name: playwright-artifacts
           path: ingestion/tests/e2e/artifacts/
           retention-days: 1
       - name: Clean Up
+        if: always()
+        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"

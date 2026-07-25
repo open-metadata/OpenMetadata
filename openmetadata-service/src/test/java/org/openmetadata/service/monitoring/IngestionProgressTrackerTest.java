@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetric;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode;
@@ -331,6 +332,40 @@ class IngestionProgressTrackerTest {
     tracker.unregisterServiceListener("svc", listener);
     tracker.updateProgress("svc.metadata", run, processing(run, "b"));
     assertEquals(1, received.size());
+  }
+
+  @Test
+  void serviceEventCarriesIngestionPipelineWhenProvided() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    IngestionPipeline pipeline =
+        new IngestionPipeline().withName("metadata").withFullyQualifiedName("svc.metadata");
+    tracker.updateProgress("svc.metadata", run, discovery(run), pipeline);
+
+    assertEquals(1, received.size());
+    assertNotNull(received.get(0).getIngestionPipeline());
+    assertEquals("svc.metadata", received.get(0).getIngestionPipeline().getFullyQualifiedName());
+  }
+
+  @Test
+  void serviceEventHasNoIngestionPipelineByDefault() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, processing(run, "p"));
+
+    assertEquals(1, received.size());
+    assertNull(received.get(0).getIngestionPipeline());
+  }
+
+  private static ProgressUpdate discovery(UUID runId) {
+    return new ProgressUpdate()
+        .withRunId(runId.toString())
+        .withTimestamp(System.currentTimeMillis())
+        .withUpdateType(ProgressUpdateType.DISCOVERY);
   }
 
   private static ProgressUpdate processing(UUID runId, String msg) {

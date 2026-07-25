@@ -35,6 +35,7 @@ export const ImportStatus = ({ csvImportResult }: ImportStatusProps) => {
         className="csv-import-status-chip csv-import-status-chip-success"
         color="success"
         iconLeading={CheckCircle}
+        size="lg"
         type="pill-color">
         <span data-testid="passed-row">
           {csvImportResult.numberOfRowsPassed}
@@ -45,6 +46,7 @@ export const ImportStatus = ({ csvImportResult }: ImportStatusProps) => {
         className="csv-import-status-chip csv-import-status-chip-error"
         color="error"
         iconLeading={XCircle}
+        size="lg"
         type="pill-color">
         <span data-testid="failed-row">
           {csvImportResult.numberOfRowsFailed}

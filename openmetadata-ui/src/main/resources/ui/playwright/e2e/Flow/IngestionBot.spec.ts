@@ -31,7 +31,9 @@ const test = base.extend<{
   ingestionBotPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { afterAction, page } = await performAdminLogin(browser);
+    const { afterAction, page } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     await use(page);
     await afterAction();
@@ -67,8 +69,7 @@ test.describe('Ingestion Bot ', () => {
   const domain3 = new Domain();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([
       domain1.create(apiContext),
       domain2.create(apiContext),

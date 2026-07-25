@@ -1000,7 +1000,7 @@ class TestDiagnoseSwallowsExceptions:
 
 
 class TestDecoratedCheckAccess:
-    """Verify the post-failure decoration wrapping client.get_version in CheckAccess."""
+    """Verify the post-failure decoration wrapping client.test_get_version in CheckAccess."""
 
     def test_success_returns_result_unchanged(self):
         from metadata.ingestion.source.pipeline.airflow.connection import (
@@ -1008,7 +1008,7 @@ class TestDecoratedCheckAccess:
         )
 
         client = MagicMock()
-        client.get_version.return_value = {"version": "2.8.0"}
+        client.test_get_version.return_value = {"version": "2.8.0"}
         result = _decorated_check_access(client, "https://airflow.example.com", None, True)
         assert result == {"version": "2.8.0"}
 
@@ -1021,7 +1021,7 @@ class TestDecoratedCheckAccess:
         )
 
         client = MagicMock()
-        client.get_version.side_effect = ValueError("Expecting value: line 2 column 1 (char 1)")
+        client.test_get_version.side_effect = ValueError("Expecting value: line 2 column 1 (char 1)")
 
         with (
             patch(
@@ -1047,7 +1047,7 @@ class TestDecoratedCheckAccess:
         )
 
         client = MagicMock()
-        client.get_version.side_effect = RuntimeError("transport closed")
+        client.test_get_version.side_effect = RuntimeError("transport closed")
 
         with (
             patch(

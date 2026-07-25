@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/forkAIGovernanceFrameworkRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ForkAIGovernanceFrameworkRequest",
+  "description": "Request to fork an AI Governance Framework into a custom framework.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest",
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Display name for the forked framework."
+    }
+  },
+  "additionalProperties": false
+}

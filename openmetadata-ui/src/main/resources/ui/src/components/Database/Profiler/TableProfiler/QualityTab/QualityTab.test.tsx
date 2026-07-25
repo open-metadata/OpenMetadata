@@ -53,7 +53,6 @@ import { render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
-import '../../../../../test/unit/mocks/mui.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import { QualityTab } from './QualityTab.component';
 

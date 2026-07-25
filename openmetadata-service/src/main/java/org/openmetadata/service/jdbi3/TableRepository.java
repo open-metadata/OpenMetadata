@@ -144,7 +144,7 @@ public class TableRepository extends EntityRepository<Table> {
   public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
+      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -2337,7 +2337,17 @@ public class TableRepository extends EntityRepository<Table> {
       if (updatedTable.getDataModel() == null && origTable.getDataModel() != null) {
         updatedTable.withDataModel(origTable.getDataModel());
       }
+      if (updatedTable.getSchemaDefinition() == null && origTable.getSchemaDefinition() != null) {
+        updatedTable.withSchemaDefinition(origTable.getSchemaDefinition());
+      }
 
+      compareAndUpdate(
+          "schemaDefinition",
+          () ->
+              recordChange(
+                  "schemaDefinition",
+                  original.getSchemaDefinition(),
+                  updated.getSchemaDefinition()));
       compareAndUpdate(
           "columns",
           () -> {

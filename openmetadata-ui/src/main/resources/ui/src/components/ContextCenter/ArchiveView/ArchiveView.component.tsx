@@ -16,15 +16,16 @@ import {
   ButtonUtility,
   Card,
   Dot,
+  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01, Trash01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as RefreshIcon } from '../../../assets/svg/action-icons/refresh.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ArchiveIcon } from '../../../assets/svg/sidebar-icons/archive.svg';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
 
@@ -103,7 +104,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid="restore-btn"
-            icon={<RefreshCcw01 size={20} />}
+            icon={<RefreshIcon height={20} width={20} />}
             size="sm"
             tooltip={t('label.restore')}
             onClick={() => onRestore(item)}
@@ -113,7 +114,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid="delete-btn"
-            icon={<Trash01 size={20} />}
+            icon={<TrashIcon height={20} width={20} />}
             size="sm"
             tooltip={t('label.delete')}
             onClick={() => onDelete(item)}
@@ -124,14 +125,29 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
   );
 };
 
+const SCROLL_THRESHOLD = 100;
+
 const ArchiveView: FC<ArchiveViewProps> = ({
   data,
   isLoading,
+  isLoadingMore,
   canRestore,
   canDelete,
   onDelete,
   onRestore,
+  onScrollEnd,
 }) => {
+  const { t } = useTranslation();
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    if (isLoadingMore) {
+      return;
+    }
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+      onScrollEnd?.();
+    }
+  };
   if (isLoading) {
     return (
       <Card className="tw:flex tw:flex-col">
@@ -144,14 +160,22 @@ const ArchiveView: FC<ArchiveViewProps> = ({
 
   if (data.length === 0) {
     return (
-      <Card className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-12">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-      </Card>
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          description={t('message.archived-items-appear-here')}
+          icon={<ArchiveIcon className="tw:text-utility-gray-600" />}
+          title={t('label.no-archived-item-plural-yet')}
+          variant="blank"
+        />
+      </div>
     );
   }
 
   return (
-    <div data-testid="archive-view">
+    <div
+      className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
+      data-testid="archive-view"
+      onScroll={handleScroll}>
       {data.map((item) => (
         <ArchiveRow
           canDelete={canDelete}
@@ -162,6 +186,12 @@ const ArchiveView: FC<ArchiveViewProps> = ({
           onRestore={onRestore}
         />
       ))}
+      {isLoadingMore && (
+        <>
+          <ArchiveRowSkeleton />
+          <ArchiveRowSkeleton />
+        </>
+      )}
     </div>
   );
 };

@@ -176,7 +176,9 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 | `tw:border-disabled` | `--color-border-disabled` | `#d5d7da` | `#373a41` | Disabled input border |
 | `tw:border-disabled_subtle` | `--color-border-disabled_subtle` | `#e9eaeb` | `#22262f` | Subtle disabled border |
 
-**Ring and outline tokens** follow the same naming (`tw:ring-primary`, `tw:outline-brand`, etc.) and map to the same values.
+**Outline tokens** follow the same naming (`tw:outline-primary`, `tw:outline-brand`, …) and
+resolve to the same values. **Ring tokens exist but must not be used to draw an edge** — see
+§2.3.1.
 
 ```tsx
 // ✅ Correct
@@ -187,6 +189,137 @@ Use border tokens for input outlines, card dividers, separators, and table borde
 <input className="tw:border tw:border-gray-300" />
 <div className="tw:border tw:border-red-500">...</div>
 ```
+
+---
+
+### 2.3.1 Never use `ring-*` to draw a border — use `border` or `outline`
+
+**Rule: `tw:ring-*` is banned for any visible edge.** Use `tw:border-*` where the edge may
+occupy layout space, and `tw:outline-*` where it must not.
+
+#### Why
+
+Tailwind's `ring-*` compiles to a `box-shadow`. **WebKit does not pixel-snap box-shadows**,
+so a ring used as a border thins out — and at some zoom levels disappears entirely — in
+Safari. `border` and `outline` are snapped to whole device pixels and never degrade.
+
+Measured peak border darkness (42 = full strength) across a 50–150% zoom sweep:
+
+| | `border` | `ring` | `outline` |
+|---|---|---|---|
+| WebKit @1x | 42..42 | **0..42** (vanishes) | 42..42 |
+| Chromium @1x | 42..42 | 21..42 (dims ~50%) | 42..42 |
+| WebKit @2x | 42..42 | 42..42 | 42..42 |
+
+Chromium degrades rings too — it just never falls far enough to notice, which is why this
+reads as a Safari-only bug. Confirmed in real Safari: an inset outline and a real border are
+indistinguishable at every zoom; the ring is not.
+
+#### Which one to use
+
+| Situation | Use |
+|---|---|
+| Edge may take layout space (static container, card) | `tw:border tw:border-<token>` |
+| Edge must be layout-neutral, element's `outline` is free | `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` |
+| Element's `outline` is already the focus ring | **`::after` overlay** — see below |
+
+`border` consumes 1px of the box. On controls whose height is content-driven, switching a
+ring to a border makes them 2px taller and makes them **grow on focus** (1px → 2px). That is
+why controls use `outline`, not `border`.
+
+#### Translating an existing ring
+
+| Ring | Equivalent |
+|---|---|
+| `tw:ring-1 tw:ring-inset tw:ring-X` | `tw:outline-1 tw:-outline-offset-1 tw:outline-X` |
+| `tw:ring-1 tw:ring-X` (no `ring-inset`) | `tw:outline-1 tw:outline-X` — offset **0**, since a non-inset ring draws *outward* |
+| `tw:ring-2 …` (focus) | `tw:outline-2 tw:-outline-offset-2 tw:outline-X` |
+| `tw:ring-0` (suppressor) | `tw:outline-0` — or `tw:after:outline-0` if the target draws its border on `::after` |
+
+Getting the offset wrong shifts the edge by 1px, so check for `ring-inset` before converting.
+
+#### When the outline is already taken (focusable elements)
+
+An element has **exactly one** outline. Buttons, checkboxes, radios, toggles, tags, tabs and
+the slider thumb already use theirs for the focus ring, and they must show the border **and**
+the focus ring at once. Draw the border on an `::after` overlay instead — import
+`borderAfter` from `@openmetadata/ui-core-components`:
+
+```tsx
+import { borderAfter } from '@openmetadata/ui-core-components';
+
+// host needs `tw:relative`; supply the colour with `tw:after:outline-<token>`
+<button className={cx('tw:relative', borderAfter, 'tw:after:outline-primary')} />
+```
+
+State changes stack the variant: `tw:disabled:after:outline-disabled_subtle`. A 2px variant,
+`borderAfter2`, exists for edges that were `ring-2`.
+
+**Overriding a core component's border from a consumer:** match where that component draws
+it. `Button`/`ButtonUtility`/`Tab` draw on `::after` → use `tw:after:outline-<token>`.
+`Input`/`Select`/`Badge`/`Card` draw on the element → use `tw:outline-<token>`. Using
+`tw:outline-*` on a Button sets its **focus** colour, not its border — a silent no-op.
+
+#### Gotchas
+
+- **`tw:outline-hidden` / `outline: none` erases an outline border.** If a component draws
+  its border with `outline`, any `outline-hidden` on that element must go. Unlayered LESS
+  beats Tailwind utilities regardless of specificity, so a stray `outline: none` in a `.less`
+  file will silently kill a border.
+- **`tw:transition-shadow` does not animate an outline.** Use
+  `tw:transition-[outline-color,outline-width]`. Plain `tw:transition` covers `outline-color`
+  but **not** `outline-width`.
+- **`tw:shadow-*` is a real drop shadow** — keep it; it is not the ring.
+- **`--shadow-skeumorphic`** (`globals.css`) contains an inset `0 0 0 1px` layer and has the
+  same Safari fragility as a ring.
+- **Suppressors may carry an important modifier — and the two forms are not
+  interchangeable.** A `ring-0` written as `tw:!ring-0` is just as dead as a plain one once
+  the border is an outline, so it must become `tw:!outline-0`. But when the target draws its
+  border on `::after`, the replacement **must use the suffix form**
+  `tw:after:outline-0!` — the prefix form `tw:!after:outline-0` (`!` before a variant)
+  compiles to **nothing at all**, silently reproducing the bug it was meant to fix. Verify
+  any important-modified class actually generates CSS before trusting it.
+- **A static `outline-<colour>` leaks into the focus ring.** Core components declare their
+  focus indicator as a *base* colour plus `focus-visible:outline-2
+  focus-visible:outline-offset-2` — **width and offset only, no colour**. So when a consumer
+  sets its own base `outline-<colour>` for a resting border, tailwind-merge makes the consumer
+  win and **the focus ring renders in that static colour**. `outline-black/5` becomes a
+  5%-opacity focus ring; `outline-brand-600/12` becomes 12% — i.e. no visible focus indicator.
+  Whenever you put a static outline colour on a focusable element, either pair it with an
+  explicit `tw:focus-visible:outline-<colour>`, or move the static edge to `::after` and leave
+  the element's `outline` to focus. `Card`'s outline in particular is reserved for focus.
+- **Searching for leftovers: use `[^a-zA-Z]ring-`.** Narrower patterns miss real cases —
+  `tw:ring-` misses variant forms (`tw:focus-visible:ring-2`, `tw:has-[&>select]:ring-1`)
+  and `:ring` misses important-prefixed ones (`tw:!ring-0`). An ESLint
+  `no-restricted-syntax` rule now enforces this in all three UI packages; prefer fixing the
+  code over adding to its allow-list.
+
+#### No exceptions
+
+There are **zero** remaining `ring-*` usages, and the ESLint rule has **no allow-list**. Cases
+that once looked unconvertible all had an exact equivalent:
+
+- **`ring-offset-*` halos.** The offset gap is filled with `--tw-ring-offset-color`, whose
+  default is `#fff`. When the ring colour is *also* white the two merge into a single
+  `(ring + offset)`px band — e.g. `ring-2 ring-white ring-offset-2` is exactly
+  `outline-4 outline-white`. Where the colours differ, `outline-offset-N` reproduces the
+  geometry and leaves the gap transparent (identical over a white backdrop, and avoids a
+  hardcoded white gap in dark mode).
+- **Consumer focus rings on `Button`.** `Button` already applies
+  `outline-brand focus-visible:outline-2 focus-visible:outline-offset-2`. A consumer
+  `focus-visible:ring-2 ring-brand ring-offset-2` duplicates it exactly — delete rather than
+  convert. If the consumer ring had **no** `ring-offset`, it sat flush against Button's
+  outline and read as one `4px` band: use `focus-visible:outline-4 focus-visible:outline-offset-0`.
+- **`Avatar` consumers.** `Avatar` draws its contrast border with the element `outline`, so a
+  consumer outline would clobber it — but its root has `tw:relative` and no `::after`, so the
+  extra edge goes on `::after`. These rings are non-inset, so use **offset 0**; do *not* reuse
+  `borderAfter`, which bakes in `-outline-offset-1`.
+- **`ring-0` on `Card`.** `Card` uses a real `border` and never had a ring, so the suppressor
+  was inert — just delete it.
+- **A ring colour with no width class** (e.g. `ring-secondary` alone) is *not* dead when the
+  component supplies the width. On a migrated component whose border moved to `::after`, the
+  override must become `after:outline-<token>` — deleting it silently leaves the default
+  colour.
 
 ---
 
@@ -378,3 +511,10 @@ Quick reference for the most common mistakes. When reviewing or writing code, sc
 | `tw:dark:text-white` (redundant) | Use `tw:text-primary` instead | Same — prefer the token unless the design specifically diverges |
 | `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` | Never hardcode hex values |
 | `style={{ backgroundColor: '#ffffff' }}` | `tw:bg-primary` | Never hardcode hex values |
+| `tw:ring-1 tw:ring-inset tw:ring-primary` | `tw:outline-1 tw:-outline-offset-1 tw:outline-primary` | Rings are box-shadows; WebKit doesn't pixel-snap them, so they thin/vanish in Safari when zoomed. See §2.3.1 |
+| `tw:ring-1 tw:ring-secondary` (no `ring-inset`) | `tw:outline-1 tw:outline-secondary` | Same — but offset **0**, because a non-inset ring draws outward |
+| `tw:ring-2 tw:ring-brand` (focus) | `tw:outline-2 tw:-outline-offset-2 tw:outline-brand` | Same |
+| `tw:ring-0` to suppress a core component's border | `tw:outline-0`, or `tw:after:outline-0` if it draws on `::after` | After the ring→outline migration a `ring-0` is a no-op, so the border reappears |
+| `tw:outline-<token>` to recolour a **Button**'s border | `tw:after:outline-<token>` | Button draws its border on `::after`; `outline-*` sets its *focus* colour instead |
+| `tw:outline-hidden` on an element whose border is an outline | Remove it | It erases the border, not just the native focus ring |
+| `tw:transition-shadow` alongside an outline border | `tw:transition-[outline-color,outline-width]` | `transition-shadow` only animates `box-shadow`, so the transition silently dies |

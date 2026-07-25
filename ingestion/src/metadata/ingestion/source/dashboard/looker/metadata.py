@@ -109,6 +109,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
@@ -129,7 +130,12 @@ from metadata.readers.file.base import Reader
 from metadata.readers.file.credentials import get_credentials_from_url
 from metadata.readers.file.local import LocalReader
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_dashboard,
+    filter_by_datamodel,
+    filter_pattern_enabled,
+)
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -194,6 +200,7 @@ class LookerSource(DashboardServiceSource):
     config: WorkflowSource
     metadata: OpenMetadata
     client: Looker40SDK
+    progress_mode = ProgressMode.MANUAL
 
     def __init__(
         self,
@@ -425,12 +432,40 @@ class LookerSource(DashboardServiceSource):
                 # Store the models for later processing of standalone views
                 self._all_lookml_models = all_lookml_models
 
+                manual = self.progress_tracking.manual
+                manual.set_total(
+                    DashboardDataModel.__name__,
+                    self._reconcilable_explore_total(all_lookml_models),
+                )
+                manual.mark_reconcilable(DashboardDataModel.__name__)
+
                 # Finally, iterate through them to ingest Explores and Views
                 yield from self.fetch_lookml_explores(all_lookml_models)
 
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Unexpected error fetching LookML models - {err}")
+
+    def _reconcilable_explore_total(self, all_lookml_models: Sequence[LookmlModel]) -> int:
+        """Count the explores that ``fetch_lookml_explores`` would actually
+        yield, i.e. those whose model and composite datamodel name survive the
+        dataModelFilterPattern. This is the DashboardDataModel progress total."""
+        total = 0
+        for model in all_lookml_models:
+            model_name = model.name
+            explores = model.explores
+            if not model_name or not explores:
+                continue
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, model_name):
+                continue
+            for explore in explores:
+                explore_name = explore.name
+                if explore_name and not filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern,
+                    build_datamodel_name(model_name, explore_name),
+                ):
+                    total += 1
+        return total
 
     def fetch_lookml_explores(self, all_lookml_models: Sequence[LookmlModel]) -> Iterable[LookmlModelExplore]:
         """
@@ -531,6 +566,7 @@ class LookerSource(DashboardServiceSource):
                 )
 
                 yield Either(right=data_model_request)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=data_model_request)
 
                 # Build and cache the view model
@@ -626,6 +662,7 @@ class LookerSource(DashboardServiceSource):
                     ),
                 )
                 yield Either(right=explore_datamodel)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
@@ -1177,12 +1214,31 @@ class LookerSource(DashboardServiceSource):
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         try:
-            return list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
+            dashboards = list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
+            kept = [
+                dashboard
+                for dashboard in dashboards
+                if not filter_by_dashboard(
+                    self.source_config.dashboardFilterPattern,
+                    self.get_dashboard_name(dashboard),
+                )
+            ]
+            manual = self.progress_tracking.manual
+            if filter_pattern_enabled(self.source_config.projectFilterPattern):
+                # projectFilterPattern is applied downstream in the base
+                # get_dashboard (needs per-dashboard project detail), so the
+                # kept count over-counts — show a running count instead of a
+                # bar stuck below 100%.
+                manual.mark_reconcilable(Dashboard.__name__)
+            else:
+                manual.set_total(Dashboard.__name__, len(kept))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Wild error trying to obtain dashboard list {err}")
             # If we cannot list the dashboards, let's blow up
             raise err  # noqa: TRY201
+        else:
+            return dashboards
 
     def get_dashboard_name(self, dashboard: DashboardBase) -> str:
         """
@@ -1253,6 +1309,7 @@ class LookerSource(DashboardServiceSource):
             owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
+        self.progress_tracking.manual.track(Dashboard.__name__)
         self.register_record(dashboard_request=dashboard_request)
 
     def get_project_name(self, dashboard_details: LookerDashboard) -> Optional[str]:  # noqa: UP045

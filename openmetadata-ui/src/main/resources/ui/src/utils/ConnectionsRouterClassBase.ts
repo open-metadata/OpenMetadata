@@ -18,7 +18,6 @@ import {
   getAddServicePath,
   getEditConnectionPath,
   getEditIngestionPath,
-  getLogsViewerPath,
   getPathByServiceFQN,
   getServiceDetailsPath,
   getSettingPath,
@@ -80,14 +79,6 @@ class ConnectionsRouterClassBase {
       ingestionFqn,
       ingestionType
     );
-  }
-
-  public getLogsViewerPath(
-    logEntityType: string,
-    logEntityName: string,
-    ingestionName: string
-  ): string {
-    return getLogsViewerPath(logEntityType, logEntityName, ingestionName);
   }
 }
 

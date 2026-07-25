@@ -36,6 +36,7 @@ export const DeleteModal = ({
 
   return (
     <ModalOverlay
+      data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
       style={{ zIndex: 999 }}

@@ -16,8 +16,6 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
-  LOG_ENTITY_NAME,
-  LOG_ENTITY_TYPE,
   PLACEHOLDER_ACTION,
   PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_DIMENSION_KEY,
@@ -433,28 +431,6 @@ export const getTestSuiteIngestionPath = (
       getEncodedFqn(ingestionFqn)
     );
   }
-
-  return path;
-};
-
-/**
- * It takes in a log entity type, log entity name, and ingestion name, and returns a path to the logs
- * viewer
- * @param {string} logEntityType - The type of entity that the logs are associated with.
- * @param {string} logEntityName - The name of the log entity.
- * @param {string} ingestionName - The name of the ingestion.
- * @returns A string
- */
-export const getLogsViewerPath = (
-  logEntityType: string,
-  logEntityName: string,
-  ingestionName: string
-) => {
-  let path = ROUTES.LOGS;
-
-  path = path.replace(LOG_ENTITY_TYPE, logEntityType);
-  path = path.replace(LOG_ENTITY_NAME, logEntityName);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(ingestionName));
 
   return path;
 };

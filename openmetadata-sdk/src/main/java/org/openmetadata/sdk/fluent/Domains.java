@@ -342,4 +342,14 @@ public final class Domains {
       return new DomainDeleter(client, domain.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().domains().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().domains().getContextByName(fqn);
+  }
 }

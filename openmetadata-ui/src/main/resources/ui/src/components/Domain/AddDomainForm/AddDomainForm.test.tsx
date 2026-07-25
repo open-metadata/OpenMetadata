@@ -30,7 +30,6 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
-import '../../../test/unit/mocks/mui.mock';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
@@ -199,6 +198,13 @@ jest.mock(
   })
 );
 
+jest.mock('../../../utils/Domain/DomainClassBase', () => ({
+  __esModule: true,
+  default: {
+    getCoverImageField: jest.fn().mockReturnValue(null),
+  },
+}));
+
 jest.mock('../../common/IconPicker', () => ({
   AVAILABLE_ICONS: [
     { category: 'default', component: jest.fn(), name: 'Cube01' },
@@ -208,14 +214,12 @@ jest.mock('../../common/IconPicker', () => ({
   DEFAULT_DOMAIN_ICON: { name: 'domain' },
 }));
 
-jest.mock(
-  '../../common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion',
-  () =>
-    jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="glossary-terms">MUIGlossaryTagSuggestion</div>
-      )
+jest.mock('../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="glossary-terms">GlossaryTermTreeSelect</div>
+    )
 );
 
 type RichTextEditorMockProps = {

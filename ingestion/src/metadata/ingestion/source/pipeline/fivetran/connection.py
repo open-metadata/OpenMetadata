@@ -31,16 +31,9 @@ from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: FivetranConnectionConfig) -> FivetranClient:
-    """
-    Create connection
-    """
-    return FivetranClient(connection)
-
-
 class FivetranConnection(BaseConnection[FivetranConnectionConfig, FivetranClient]):
     def _get_client(self) -> FivetranClient:
-        return get_connection(self.service_connection)
+        return FivetranClient(self.service_connection)
 
     def test_connection(
         self,

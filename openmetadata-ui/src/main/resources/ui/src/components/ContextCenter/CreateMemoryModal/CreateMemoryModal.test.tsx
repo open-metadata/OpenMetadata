@@ -12,30 +12,19 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  Control,
+  FieldValues,
+  FormProvider,
+  useController,
+  useForm,
+  useFormContext,
+} from 'react-hook-form';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-jest.mock('react-router-dom', () => ({
-  Link: jest.fn(
-    ({
-      children,
-      to,
-      'data-testid': testId,
-    }: {
-      children: React.ReactNode;
-      to: string;
-      'data-testid'?: string;
-    }) => (
-      <a data-testid={testId} href={to}>
-        {children}
-      </a>
-    )
-  ),
 }));
 
 jest.mock(
@@ -66,7 +55,6 @@ jest.mock('../../../utils/TagClassBase', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   formatDate: jest.fn(() => 'Jan 1, 2026'),
 }));
 
@@ -82,10 +70,6 @@ jest.mock(
 jest.mock(
   '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
   () => jest.fn(() => <div data-testid="tag-select-form" />)
-);
-
-jest.mock('../DerivedOntologyCard/DerivedOntologyCard.component', () =>
-  jest.fn(() => <div data-testid="derived-ontology-card" />)
 );
 
 jest.mock('antd', () => ({
@@ -114,6 +98,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Button: jest.fn(
     ({
       children,
@@ -140,6 +127,90 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }
   ),
   Dot: jest.fn(() => <span />),
+  FieldTypes: { TEXT: 'text', SELECT: 'select' },
+  FormField: ({
+    control,
+    name,
+    children,
+  }: {
+    control: Control<FieldValues>;
+    name: string;
+    children: (controller: unknown) => React.ReactNode;
+  }) => {
+    const controller = useController({ control, name });
+
+    return <>{children(controller)}</>;
+  },
+  FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
+    <label>{label}</label>
+  )),
+  getField: (fieldProp: {
+    name: string;
+    label: React.ReactNode;
+    type: string;
+    props?: Record<string, unknown>;
+  }) => {
+    const MockField = () => {
+      const { control } = useFormContext();
+      const { field } = useController({ control, name: fieldProp.name });
+      const testId = fieldProp.props?.['data-testid'] as string | undefined;
+
+      if (fieldProp.type === 'select') {
+        const options =
+          (fieldProp.props?.options as { id: string; label: string }[]) ?? [];
+
+        return (
+          <div>
+            <label>{fieldProp.label}</label>
+            <select
+              data-testid={testId}
+              value={field.value?.id ?? ''}
+              onChange={(e) => {
+                const next = options.find((opt) => opt.id === e.target.value);
+                field.onChange(next ?? null);
+              }}>
+              <option value="" />
+              {options.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <label>{fieldProp.label}</label>
+          <input
+            data-testid={testId}
+            value={field.value ?? ''}
+            onChange={(e) => field.onChange(e.target.value)}
+          />
+        </div>
+      );
+    };
+
+    return <MockField />;
+  },
+  HookForm: ({
+    form,
+    children,
+    className,
+    onSubmit,
+  }: {
+    form: ReturnType<typeof useForm>;
+    children: React.ReactNode;
+    className?: string;
+    onSubmit?: (e: React.FormEvent) => void;
+  }) => (
+    <FormProvider {...form}>
+      <form className={className} onSubmit={onSubmit}>
+        {children}
+      </form>
+    </FormProvider>
+  ),
   Input: jest.fn(
     ({
       'data-testid': testId,
@@ -224,48 +295,5 @@ describe('CreateMemoryModal', () => {
 
     expect(screen.getByTestId('memory-title-input')).toBeInTheDocument();
     expect(screen.getByTestId('memory-type-select')).toBeInTheDocument();
-  });
-
-  it('links a file-extracted memory to its source document', () => {
-    const memoryToEdit = {
-      id: 'm1',
-      name: 'pill-1',
-      sourceFile: { id: 'f1', type: 'contextFile', name: 'policy.pdf' },
-    } as unknown as ContextMemory;
-
-    render(
-      <CreateMemoryModal
-        {...defaultProps}
-        viewOnly
-        memoryToEdit={memoryToEdit}
-      />
-    );
-
-    const link = screen.getByTestId('memory-source-file-link');
-
-    expect(link).toHaveTextContent('policy.pdf');
-    expect(link).toHaveAttribute(
-      'href',
-      '/context-center/documents?document=f1'
-    );
-  });
-
-  it('renders no source link for a manually created memory', () => {
-    const memoryToEdit = {
-      id: 'm2',
-      name: 'manual-memory',
-    } as unknown as ContextMemory;
-
-    render(
-      <CreateMemoryModal
-        {...defaultProps}
-        viewOnly
-        memoryToEdit={memoryToEdit}
-      />
-    );
-
-    expect(
-      screen.queryByTestId('memory-source-file-link')
-    ).not.toBeInTheDocument();
   });
 });

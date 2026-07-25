@@ -25,6 +25,8 @@ export const toastQueue = new ToastQueue<ToastContent>({
   maxVisibleToasts: 5,
 });
 
+const ERROR_TOAST_TIMEOUT = 60000;
+
 export interface ShowToastOptions {
   /** Whether the toast should dismiss automatically. Defaults to true. */
   autoDismiss?: boolean;
@@ -57,7 +59,7 @@ export const toast = {
   success: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'success', options),
   error: (message: string | ReactNode, options?: ShowToastOptions) =>
-    add(message, 'error', { timeout: 0, ...options }),
+    add(message, 'error', { timeout: ERROR_TOAST_TIMEOUT, ...options }),
   warning: (message: string | ReactNode, options?: ShowToastOptions) =>
     add(message, 'warning', options),
   info: (message: string | ReactNode, options?: ShowToastOptions) =>

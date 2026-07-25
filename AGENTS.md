@@ -114,7 +114,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - **Side Effects**: Use `useEffect` with proper dependency arrays
 - **Performance**: Use `useCallback` for event handlers, `useMemo` for expensive computations
 - **Custom Hooks**: Prefix with `use`, place in `src/hooks/`, return typed objects
-- **Internationalization**: Use `useTranslation` hook from react-i18next, access with `t('key')`
+- **Internationalization**: Use `useTranslation` hook from react-i18next, access with `t('key')`. When you add new keys to `src/locale/languages/en-us.json`, run `yarn i18n` to propagate them into every other locale file, then **replace the English placeholders that `yarn i18n` inserts with real translations for each language** (`ar-sa`, `de-de`, `es-es`, `fr-fr`, `gl-es`, `he-he`, `ja-jp`, `ko-kr`, `mr-in`, `nl-nl`, `pr-pr`, `pt-br`, `pt-pt`, `ru-ru`, `sv-se`, `th-th`, `tr-tr`, `zh-cn`, `zh-tw`). Shipping English text under a non-English locale key is a reviewable defect; leave a term in English only when it's an intentional translation decision (a widely-borrowed acronym, a product name).
 - **Component Structure**: Functional components only, no class components
 - **Props**: Define interfaces for all component props, place in `.interface.ts` files
 - **Loading States**: Use object state for multiple loading states: `useState<Record<string, boolean>>({})`
@@ -129,11 +129,10 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **MUI Migration**: The project is gradually migrating from Ant Design to Material-UI (MUI) v7.3.1
-- **Preferred Approach**: Use MUI components v7.3.1 and styles wherever possible for new features
-- **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
-- **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
-- **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- **Component Library**: The project is gradually migrating from Ant Design to `openmetadata-ui-core-components` as the canonical component library
+- **Preferred Approach**: Use `openmetadata-ui-core-components` components and styles wherever possible for new features, do not use Ant Design
+- **Colors and Design Tokens**: Always reference design tokens from `openmetadata-ui-core-components`, not hardcoded values. Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
+- **Legacy Components**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)

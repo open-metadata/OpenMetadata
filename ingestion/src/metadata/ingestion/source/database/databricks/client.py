@@ -46,6 +46,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_COLUMN_LINEAGE,
     DATABRICKS_GET_TABLE_LINEAGE,
 )
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
+)
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -97,9 +100,6 @@ class DatabricksClient:
         """
         Method to get auth header
         """
-        if isinstance(self.config, DatabricksPipelineConnection):
-            return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
-
         from metadata.ingestion.source.database.databricks import auth  # noqa: PLC0415
 
         auth_method = {
@@ -124,6 +124,7 @@ class DatabricksClient:
         return {
             **self._get_auth_header(),
             "Content-Type": "application/json",
+            "User-Agent": get_databricks_user_agent(),
         }
 
     def _list_scim_resources(self, path: str, filter_expression: str | None = None) -> Iterable[dict]:

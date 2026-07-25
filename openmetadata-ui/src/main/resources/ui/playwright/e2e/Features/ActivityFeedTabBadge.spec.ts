@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -19,7 +19,7 @@ import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
 
 async function createOpenTask(
-  apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
+  apiContext: APIRequestContext,
   tableFqn: string,
   assigneeName: string
 ): Promise<{ id: string }> {
@@ -37,10 +37,7 @@ async function createOpenTask(
   return res.json();
 }
 
-async function resolveTask(
-  apiContext: Awaited<ReturnType<typeof performAdminLogin>>['apiContext'],
-  taskId: string
-) {
+async function resolveTask(apiContext: APIRequestContext, taskId: string) {
   const res = await apiContext.post(`/api/v1/tasks/${taskId}/resolve`, {
     data: { resolutionType: 'Approved' },
   });
@@ -99,7 +96,9 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   test('badge reflects openTaskCount in Open filter and closedTaskCount in Closed filter', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     try {
       const fqn = table.entityResponseData?.fullyQualifiedName as string;
@@ -135,7 +134,9 @@ test.describe('ActivityFeedTab — task filter badge and placeholder', () => {
   test('placeholder shows the correct message per filter state', async ({
     browser,
   }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
 
     const emptyTable = new TableClass();
 

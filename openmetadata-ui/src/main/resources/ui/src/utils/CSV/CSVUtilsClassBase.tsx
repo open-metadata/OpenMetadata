@@ -37,6 +37,7 @@ import {
   lazy,
   MouseEvent,
   ReactNode,
+  RefObject,
   useEffect,
   useMemo,
   useRef,
@@ -102,7 +103,47 @@ import entityBulkEditConfigClassBase from './EntityBulkEditConfigClassBase';
 
 export interface CSVEditorOptions {
   usePlainTextEditor?: boolean;
+  /**
+   * Reports the live rendered height of a multi-select editor (tags / glossary)
+   * so the grid row can grow while the cell is being edited. Called with `null`
+   * when the editor unmounts to reset the row back to its content-based height.
+   */
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
+
+const EDIT_CELL_HEIGHT_BUFFER = 8;
+
+/**
+ * Observes an inline editor's container and reports its rendered height so the
+ * enclosing grid row can grow to fit a growing multi-select input while editing.
+ */
+const useEditCellHeightReporter = (
+  containerRef: RefObject<HTMLDivElement | null>,
+  rowIdx: number,
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
+) => {
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || !onEditCellHeightChange) {
+      return;
+    }
+
+    const report = () =>
+      onEditCellHeightChange(
+        rowIdx,
+        node.offsetHeight + EDIT_CELL_HEIGHT_BUFFER
+      );
+
+    report();
+    const observer = new ResizeObserver(report);
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      onEditCellHeightChange(rowIdx, null);
+    };
+  }, [containerRef, rowIdx, onEditCellHeightChange]);
+};
 
 type CustomPropertyDefinition = NonNullable<Type['customProperties']>[number];
 
@@ -2069,6 +2110,7 @@ class CSVUtilsClassBase {
 
         return ({
           row,
+          rowIdx,
           onRowChange,
           onClose,
           column,
@@ -2079,6 +2121,11 @@ class CSVUtilsClassBase {
             containers: [containerRef.current, dropdownContainerRef.current],
             active: true,
           });
+          useEditCellHeightReporter(
+            containerRef,
+            rowIdx,
+            options.onEditCellHeightChange
+          );
 
           const tags = row[column.key]
             ? row[column.key]?.split(';').map(
@@ -2132,6 +2179,7 @@ class CSVUtilsClassBase {
 
         return ({
           row,
+          rowIdx,
           onRowChange,
           onClose,
           column,
@@ -2142,6 +2190,11 @@ class CSVUtilsClassBase {
             containers: [containerRef.current, dropdownContainerRef.current],
             active: true,
           });
+          useEditCellHeightReporter(
+            containerRef,
+            rowIdx,
+            options.onEditCellHeightChange
+          );
 
           const value = row[column.key];
           const tags = value ? value?.split(';') : [];

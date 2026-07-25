@@ -249,10 +249,13 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        # `close_steps` is recorded twice: once from execute() before
-        # print_status, and once from inside stop() to keep the public
-        # cleanup contract. The second call is a no-op via _steps_closed.
+        # An initial `send_progress_update` fires at the very start so short
+        # runs (shorter than the reporting interval) still emit a "run started"
+        # event. `close_steps` is recorded twice: once from execute() before
+        # print_status, and once from inside stop() to keep the public cleanup
+        # contract. The second call is a no-op via _steps_closed.
         assert ordered_names == [
+            "send_progress_update",
             "close_steps",
             "build_ingestion_status",
             "set_ingestion_pipeline_status",
@@ -261,7 +264,8 @@ class TestWorkflowExecuteTeardown:
             "stop",
             "close_steps",
         ]
-        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
 
     def test_success_states_map_to_pipeline_complete_progress(self):
         workflow = SimpleWorkflow(config=config)
@@ -281,7 +285,40 @@ class TestWorkflowExecuteTeardown:
         ) as mock_send_progress_update:
             workflow.execute()
 
-        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
+
+    def test_execute_emits_initial_progress_before_work(self):
+        """A run shorter than the reporting interval still emits events: an
+        initial DISCOVERY at start (so the run is registered/visible live) and
+        a terminal update at the end — never zero events."""
+        workflow = SimpleWorkflow(config=config)
+
+        emitted = []
+        original = workflow.send_progress_update
+
+        def record(update_type=ProgressUpdateType.PROCESSING):
+            emitted.append((update_type, workflow.execute_internal_started))
+            return original(update_type)
+
+        workflow.execute_internal_started = False
+        real_execute_internal = workflow.execute_internal
+
+        def flag_execute_internal():
+            workflow.execute_internal_started = True
+            return real_execute_internal()
+
+        with (
+            patch.object(workflow, "send_progress_update", side_effect=record),
+            patch.object(workflow, "execute_internal", side_effect=flag_execute_internal),
+        ):
+            workflow.execute()
+
+        # First emit is DISCOVERY and happens before execute_internal runs.
+        assert emitted[0][0] is ProgressUpdateType.DISCOVERY
+        assert emitted[0][1] is False
+        # At least the initial + a terminal event, so never zero.
+        assert len(emitted) >= 2
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)

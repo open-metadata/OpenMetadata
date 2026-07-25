@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -202,7 +202,11 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         <WidgetCard
           title={t('label.recently-viewed')}
           titleIcon={
-            <EyeIcon className="tw:text-quaternary" height={16} width={16} />
+            <EyeIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={16}
+              width={16}
+            />
           }>
           {isEmpty(recentlyViewed) ? (
             <Typography className="tw:text-quaternary" size="text-xs">
@@ -228,10 +232,9 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 <WidgetCard
                   title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
                   titleIcon={
-                    <File06
-                      className="tw:text-quaternary"
+                    <FileIcon
+                      className="tw:text-quaternary tw:shrink-0"
                       height={16}
-                      strokeWidth={1.75}
                       width={16}
                     />
                   }>

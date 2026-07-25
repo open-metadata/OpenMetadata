@@ -153,21 +153,32 @@ const TourPage = () => {
     };
   }, [updateIsTourOpen]);
 
+  const isExplorePage = currentTourPage === CurrentTourPageType.EXPLORE_PAGE;
+  // Pre-mount Explore (hidden) during the MyData phase so it stays mounted into
+  // the Explore step — react-tour closes a step whose target is missing on
+  // activation, and the redesigned Explore can't mount within its stepWaitTimer.
+  const shouldRenderExplore =
+    currentTourPage === CurrentTourPageType.MY_DATA_PAGE || isExplorePage;
+  const exploreStyle = useMemo(
+    () => ({ display: isExplorePage ? undefined : 'none' }),
+    [isExplorePage]
+  );
+
   const currentPageComponent = useMemo(() => {
-    switch (currentTourPage) {
-      case CurrentTourPageType.MY_DATA_PAGE:
-        return <MyDataPage />;
-
-      case CurrentTourPageType.EXPLORE_PAGE:
-        return <ExplorePageV1Component pageTitle={t('label.explore')} />;
-
-      case CurrentTourPageType.DATASET_PAGE:
-        return <TableDetailsPageV1 />;
-
-      default:
-        return;
-    }
-  }, [currentTourPage]);
+    return (
+      <>
+        {currentTourPage === CurrentTourPageType.MY_DATA_PAGE && <MyDataPage />}
+        {shouldRenderExplore && (
+          <div style={exploreStyle}>
+            <ExplorePageV1Component pageTitle={t('label.explore')} />
+          </div>
+        )}
+        {currentTourPage === CurrentTourPageType.DATASET_PAGE && (
+          <TableDetailsPageV1 />
+        )}
+      </>
+    );
+  }, [currentTourPage, shouldRenderExplore, exploreStyle, t]);
 
   const tourSteps = useMemo(
     () =>

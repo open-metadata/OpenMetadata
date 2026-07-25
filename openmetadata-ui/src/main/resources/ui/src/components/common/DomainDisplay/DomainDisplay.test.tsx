@@ -84,10 +84,11 @@ describe('DomainDisplay Component', () => {
   });
 
   it('should render single domain with icon by default', () => {
-    renderDomainDisplay({ domains: [mockDomain1] });
+    const { container } = renderDomainDisplay({ domains: [mockDomain1] });
 
     expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
     expect(screen.getByText('Domain One')).toBeInTheDocument();
+    expect(container.firstChild).toHaveClass('gap-1');
     expect(screen.getByRole('link')).toHaveAttribute(
       'href',
       '/domain/domain.one'

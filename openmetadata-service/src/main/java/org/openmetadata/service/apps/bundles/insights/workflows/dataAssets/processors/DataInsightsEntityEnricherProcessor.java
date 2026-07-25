@@ -28,6 +28,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.DescriptionStatsStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.EntityStatusStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.IdentityProjectionStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerNameStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerTeamStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TagAndTierSourcesStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TierStep;
@@ -75,6 +76,7 @@ public class DataInsightsEntityEnricherProcessor
               new DescriptionSourcesStep(),
               new TagAndTierSourcesStep(),
               new OwnerTeamStep(ownerResolver),
+              new OwnerNameStep(),
               new TierStep(),
               new DescriptionStatsStep(),
               new CustomPropertiesStep()));

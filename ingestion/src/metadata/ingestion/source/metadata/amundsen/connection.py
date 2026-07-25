@@ -50,7 +50,9 @@ class AmundsenConnection(BaseConnection[AmundsenConnectionConfig, Neo4jHelper]):
                 neo4j_encrypted=connection.encrypted,  # pyright: ignore[reportArgumentType]
                 neo4j_validate_ssl=connection.validateSSL,  # pyright: ignore[reportArgumentType]
             )
-            return Neo4jHelper(neo4j_config)
+            client = Neo4jHelper(neo4j_config)
+            self._on_close(client.close)
+            return client  # noqa: TRY300
         except Exception as exc:
             msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg)  # noqa: B904

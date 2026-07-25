@@ -131,8 +131,8 @@ export const EntityTitleSection = ({
         className
       )}>
       <div className="tw:flex tw:gap-2 tw:items-center tw:rounded-lg tw:px-1 tw:bg-gray-blue-50 tw:py-2">
-        <span className="tw:text-blue-700 tw:w-4.5 tw:h-4.5 tw:ml-1 tw:shrink-0">
-          {searchClassBase.getEntityIcon(entityTypeValue)}
+        <span className="tw:text-blue-700 tw:ml-1 tw:shrink-0 tw:leading-0">
+          {searchClassBase.getEntityIcon(entityTypeValue, 'tw:w-4.5 tw:h-4.5')}
         </span>
         <Tooltip
           placement={tooltipPlacement}

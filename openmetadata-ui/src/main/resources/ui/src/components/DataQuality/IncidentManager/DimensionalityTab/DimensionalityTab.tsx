@@ -14,8 +14,9 @@ import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
 import { format } from 'date-fns';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateRangeObject } from 'Models';
+import type { ComponentType, ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { Trans as ReactI18nextTrans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   DEFAULT_RANGE_DATA,
@@ -26,24 +27,26 @@ import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
-import {
-  getEndOfDayInMillis,
-  getStartOfDayInMillis,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,
 } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
+import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
-import MuiDatePickerMenu from '../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
+
+const TransWithComponents = ReactI18nextTrans as unknown as ComponentType<{
+  components: Record<number, ReactElement>;
+  i18nKey: string;
+}>;
+
 const DimensionalityTab = () => {
   const { t } = useTranslation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
@@ -86,8 +89,8 @@ const DimensionalityTab = () => {
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     setDateRange({
-      startTs: getStartOfDayInMillis(value.startTs),
-      endTs: getEndOfDayInMillis(value.endTs),
+      startTs: value.startTs,
+      endTs: value.endTs,
     });
   };
 
@@ -244,7 +247,7 @@ const DimensionalityTab = () => {
 
     return (
       <NoDataPlaceholderNew size={SIZE.LARGE}>
-        <Trans
+        <TransWithComponents
           components={{
             0: <span className="tw:text-sm" />,
             1: <span className="tw:text-sm" />,
@@ -280,7 +283,7 @@ const DimensionalityTab = () => {
           <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
           </p>
-          <MuiDatePickerMenu
+          <DatePickerMenu
             showSelectedCustomRange
             defaultDateRange={DEFAULT_SELECTED_RANGE}
             handleDateRangeChange={handleDateRangeChange}
@@ -307,7 +310,7 @@ const DimensionalityTab = () => {
                 entityText: selectedDimension || '',
               })}
             </p>
-            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary">
+            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary">
               <Table aria-label={selectedDimension ?? ''}>
                 <Table.Header columns={dimensionTableColumns}>
                   {(col) => (

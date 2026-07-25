@@ -64,7 +64,7 @@ class AzureSQLSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        if self.entity.tableType != TableType.View:
+        if self.entity.tableType != TableType.View:  # pyright: ignore[reportAttributeAccessIssue]
             if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
                 return selectable.tablesample(text(f"{static.profileSample or 100} PERCENT"))
 

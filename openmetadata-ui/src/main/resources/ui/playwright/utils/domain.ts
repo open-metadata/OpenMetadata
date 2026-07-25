@@ -63,6 +63,21 @@ const waitForSearchDebounce = async (page: Page) => {
   }
 };
 
+const clickAvailableWidgetAction = async (
+  addBtn: Locator,
+  editBtn: Locator
+) => {
+  await addBtn.or(editBtn).first().waitFor({ state: 'visible' });
+
+  if (await addBtn.isVisible()) {
+    await addBtn.click();
+
+    return;
+  }
+
+  await editBtn.click();
+};
+
 export const addTierWidget = async (
   page: Page,
   tier: string,
@@ -70,8 +85,7 @@ export const addTierWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-tier');
   const editBtn = page.getByTestId('edit-tier');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
 
   await waitForAllLoadersToDisappear(page);
 
@@ -106,8 +120,7 @@ export const addCertificationWidget = async (
 ) => {
   const addBtn = page.getByTestId('add-certification');
   const editBtn = page.getByTestId('edit-certification');
-  const isAdd = await addBtn.isVisible();
-  await (isAdd ? addBtn : editBtn).click();
+  await clickAvailableWidgetAction(addBtn, editBtn);
 
   await page.locator('.certification-card-popover').waitFor({
     state: 'visible',
@@ -569,8 +582,7 @@ export const fillCommonFormItems = async (
 
 export const fillDomainForm = async (
   page: Page,
-  entity: Domain['data'] | SubDomain['data'],
-  isDomain = true
+  entity: Domain['data'] | SubDomain['data']
 ) => {
   await fillCommonFormItems(page, entity);
 
@@ -721,7 +733,7 @@ export const createSubDomain = async (
 
   await expect(page.getByText('Add Sub Domain')).toBeVisible();
 
-  await fillDomainForm(page, subDomain, false);
+  await fillDomainForm(page, subDomain);
   const saveRes = page.waitForResponse('/api/v1/domains');
   await page.getByTestId('save-btn').click();
   await saveRes;

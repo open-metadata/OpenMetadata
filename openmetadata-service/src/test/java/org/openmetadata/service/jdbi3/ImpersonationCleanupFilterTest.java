@@ -8,12 +8,22 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.ActivePersonaContext;
 import org.openmetadata.service.security.ImpersonationCleanupFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RequestEntityCache;
 
 class ImpersonationCleanupFilterTest {
+
+  @Test
+  void filterClearsActivePersonaContextThreadLocal() {
+    ActivePersonaContext.setActivePersona("persona-id");
+
+    new ImpersonationCleanupFilter().filter(null, null);
+
+    assertNull(ActivePersonaContext.getActivePersona());
+  }
 
   @Test
   void filterClearsReadBundleContextThreadLocal() {

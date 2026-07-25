@@ -11,53 +11,114 @@
  *  limitations under the License.
  */
 import {
+  Box,
   ButtonUtility,
-  Card,
   FileIcon,
   getReadableFileSize,
-  Tooltip,
-  TooltipTrigger,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy06, Download01 } from '@untitledui/icons';
-import { FC, useMemo } from 'react';
+import { Download01 } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
+import { AssetType } from '../../../generated/attachments/asset';
+import { downloadAsset, listAssetsByFqn } from '../../../rest/assetAPI';
+import { downloadBlob } from '../../../utils/ContextCenterPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import {
   AttachmentItem,
   AttachmentWidgetProps,
 } from './AttachmentWidget.interface';
 
-const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
+const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
   const { t } = useTranslation();
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const attachments: AttachmentItem[] = [];
+  const fetchAttachments = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!entityFqn) {
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const assetData = await listAssetsByFqn(entityFqn, AssetType.Inline);
+        if (!isCancelled?.()) {
+          setAttachments(
+            assetData.map((asset) => ({
+              id: asset.id,
+              name: asset.fileName,
+              size: asset.size ?? 0,
+              fileType: asset?.extension?.replace('.', '') || '',
+              downloadUrl: asset.url,
+            }))
+          );
+        }
+      } catch {
+        if (!isCancelled?.()) {
+          setAttachments([]);
+        }
+      } finally {
+        if (!isCancelled?.()) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [entityFqn]
+  );
 
-  const handleCopy = (item: AttachmentItem) => {
-    navigator.clipboard.writeText(item.downloadUrl ?? item.name);
-  };
+  useEffect(() => {
+    let isStale = false;
+    fetchAttachments(() => isStale);
 
-  const handleDownload = (item: AttachmentItem) => {
-    if (item.downloadUrl) {
-      window.open(item.downloadUrl, '_blank');
+    return () => {
+      isStale = true;
+    };
+  }, [fetchAttachments]);
+
+  const handleDownload = async (file: AttachmentItem) => {
+    try {
+      if (!file.id) {
+        throw new Error('Invalid attachment URL');
+      }
+      const blob = await downloadAsset(file.id);
+      if (!blob) {
+        throw new Error('Failed to fetch file');
+      }
+      downloadBlob(blob, file.name);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-error'));
     }
   };
 
   const content = useMemo(() => {
+    if (isLoading) {
+      return (
+        <Box direction="col" gap={2}>
+          <Skeleton height="14px" variant="rounded" width="80%" />
+          <Skeleton height="14px" variant="rounded" width="60%" />
+        </Box>
+      );
+    }
+
     if (attachments.length === 0) {
-      return null;
+      return (
+        <Typography className="tw:text-utility-gray-400" size="text-sm">
+          {t('label.no-entity', { entity: t('label.attachment-plural') })}
+        </Typography>
+      );
     }
 
     return (
       <div className="tw:flex tw:flex-col tw:gap-2">
         {attachments.map((item) => (
-          <Card
-            className="tw:flex tw:items-center tw:gap-3 tw:p-2"
+          <Box
+            align="center"
+            className="tw:p-2 tw:border-b tw:border-secondary tw:last:border-0"
             data-testid={`attachment-item-${item.id}`}
+            gap={3}
             key={item.id}>
             <FileIcon
               className="tw:h-6 tw:w-6 tw:shrink-0"
@@ -72,56 +133,25 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
               </Typography>
             </div>
             <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-              <Tooltip title={t('label.copy')}>
-                <TooltipTrigger>
-                  <ButtonUtility
-                    color="tertiary"
-                    data-testid={`copy-attachment-${item.id}`}
-                    icon={<Copy06 size={12} />}
-                    size="xs"
-                    onClick={() => handleCopy(item)}
-                  />
-                </TooltipTrigger>
-              </Tooltip>
-              <Tooltip title={t('label.download')}>
-                <TooltipTrigger>
-                  <ButtonUtility
-                    color="tertiary"
-                    data-testid={`download-attachment-${item.id}`}
-                    icon={<Download01 size={12} />}
-                    size="xs"
-                    onClick={() => handleDownload(item)}
-                  />
-                </TooltipTrigger>
-              </Tooltip>
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`download-attachment-${item.id}`}
+                icon={<Download01 size={14} />}
+                size="sm"
+                tooltip={t('label.download')}
+                onClick={() => handleDownload(item)}
+              />
             </div>
-          </Card>
+          </Box>
         ))}
       </div>
     );
-  }, [attachments]);
-
-  const headerExtra = hasPermission ? (
-    attachments.length === 0 ? (
-      <WidgetPlusButton
-        data-testid="add-attachment"
-        title={t('label.add-entity', { entity: t('label.attachment-plural') })}
-      />
-    ) : (
-      <WidgetEditButton
-        data-testid="edit-attachment"
-        title={t('label.edit-entity', {
-          entity: t('label.attachment-plural'),
-        })}
-      />
-    )
-  ) : null;
+  }, [attachments, isLoading]);
 
   return (
     <WidgetCard
       dataTestId="attachment-widget"
-      headerExtra={headerExtra}
-      isExpandDisabled={attachments.length === 0}
+      isExpandDisabled={false}
       title={t('label.attachment-plural')}>
       {content}
     </WidgetCard>

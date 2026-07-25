@@ -48,6 +48,12 @@ export interface ProgressUpdate {
      */
     timestamp: number;
     /**
+     * Monotonic count of leaf assets ingested so far (tables + stored procedures + other leaf
+     * entities). Survives scope pruning and is present on the terminal PIPELINE_COMPLETE event,
+     * so it carries the run's final asset total.
+     */
+    totalAssetsIngested?: number | null;
+    /**
      * Type of progress update
      */
     updateType: ProgressUpdateType;

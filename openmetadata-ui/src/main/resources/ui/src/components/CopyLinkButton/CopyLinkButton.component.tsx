@@ -50,7 +50,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
           className={classNames(
             hasCopied ? 'tw:rounded-full' : 'tw:rounded-md',
             hasCopied &&
-              'tw:bg-success-solid tw:text-fg-white tw:ring-0 tw:shadow-none tw:hover:bg-success-solid tw:hover:text-fg-white',
+              'tw:bg-success-solid tw:text-fg-white tw:after:outline-0 tw:shadow-none tw:hover:bg-success-solid tw:hover:text-fg-white',
             className
           )}
           color={color}

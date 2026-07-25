@@ -18,7 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -211,7 +211,7 @@ function DatabaseVersionPage() {
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[16, 16]}>
                 <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.DATABASE}
                     showActions={false}

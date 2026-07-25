@@ -382,6 +382,19 @@ class RuleEvaluatorTest {
     assertFalse(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Non-reviewer user should return false for isReviewer()");
+
+    Glossary createGlossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("createGlossary")
+            .withReviewers(List.of(reviewerRef));
+    CreateResourceContext<Glossary> createResourceContext =
+        new CreateResourceContext<>(Entity.GLOSSARY, createGlossary);
+    ruleEvaluator = new RuleEvaluator(null, subjectContext, createResourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Self-assigned reviewer on CREATE should return false for isReviewer()");
   }
 
   @Test

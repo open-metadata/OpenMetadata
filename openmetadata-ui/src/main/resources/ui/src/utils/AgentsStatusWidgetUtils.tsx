@@ -20,6 +20,7 @@ import { ReactComponent as RunningIcon } from '../assets/svg/ic-running.svg';
 import {
   getAgentLabelFromType,
   getAgentStatusLabelFromStatus,
+  getAutomationTemplate,
 } from './AgentsStatusWidgetPureUtils';
 
 import { ReactComponent as AutoClassificationIcon } from '../assets/svg/ic-auto-classification.svg';
@@ -37,12 +38,11 @@ import type {
 } from '../components/ServiceInsights/ServiceInsightsTab.interface';
 import { AUTOPILOT_AGENTS_ORDERED_LIST } from '../constants/AgentsStatusWidget.constant';
 import {
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  TIER_AUTOMATION_TEMPLATE,
 } from '../constants/Applications.constant';
 import { AgentStatus } from '../enums/ServiceInsights.enum';
-import type { App } from '../generated/entity/applications/app';
 import type { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import {
   PipelineType,
@@ -53,6 +53,7 @@ import {
   WorkflowStatus,
   type WorkflowInstance,
 } from '../generated/governance/workflows/workflowInstance';
+import type { CollateAgentAutomation } from '../rest/applicationAPI';
 import { t } from './i18next/LocalUtil';
 
 export const getAgentIconFromType = (agentType: string) => {
@@ -80,17 +81,17 @@ export const getAgentIconFromType = (agentType: string) => {
       Icon = ProfilerIcon;
 
       break;
-    case COLLATE_DOCUMENTATION_APP_NAME:
+    case DOCUMENTATION_AUTOMATION_TEMPLATE:
       Icon = MetadataIcon;
       className = 'collate-agent-icon';
 
       break;
-    case COLLATE_DATA_QUALITY_APP_NAME:
+    case DATA_QUALITY_AUTOMATION_TEMPLATE:
       Icon = DataQualityIcon;
       className = 'collate-agent-icon';
 
       break;
-    case COLLATE_AUTO_TIER_APP_NAME:
+    case TIER_AUTOMATION_TEMPLATE:
       Icon = AutoTieringIcon;
       className = 'collate-agent-icon';
 
@@ -107,7 +108,7 @@ export const getAgentIconFromType = (agentType: string) => {
 export const getFormattedAgentsList = (
   recentRunStatuses: Record<string, AppRunRecord[]>,
   agentsList: IngestionPipeline[] = [],
-  collateAIagentsList: App[] = []
+  collateAIagentsList: CollateAgentAutomation[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsList.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -123,15 +124,19 @@ export const getFormattedAgentsList = (
     ),
   }));
 
-  const collateAIagents = collateAIagentsList.map((agent) => ({
-    agentIcon: getAgentIconFromType(agent.name),
-    agentType: agent.name,
-    isCollateAgent: true,
-    label: getAgentLabelFromType(agent.name),
-    status: getAgentStatusLabelFromStatus(
-      recentRunStatuses?.[agent.name]?.[0]?.status
-    ),
-  }));
+  const collateAIagents = collateAIagentsList.map((agent) => {
+    const template = getAutomationTemplate(agent.name) ?? agent.name;
+
+    return {
+      agentIcon: getAgentIconFromType(template),
+      agentType: template,
+      isCollateAgent: true,
+      label: getAgentLabelFromType(template),
+      status: getAgentStatusLabelFromStatus(
+        recentRunStatuses?.[template]?.[0]?.status
+      ),
+    };
+  });
 
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
@@ -155,7 +160,11 @@ export const getFormattedAgentsList = (
 
 export const getFormattedAgentsListFromAgentsLiveInfo = (
   agentsLiveInfo: AgentsLiveInfo[],
-  collateAIagentsLiveInfo: CollateAgentLiveInfo[]
+  collateAIagentsLiveInfo: CollateAgentLiveInfo[],
+  // Terminal frames (stream completed, or an error fetching chart data) carry no
+  // payload, so keep the agents already on screen instead of blanking them as the
+  // run finishes.
+  preservedCollateAgents: AgentsInfo[] = []
 ): AgentsInfo[] => {
   const filteredAgentsList = agentsLiveInfo.filter(
     (agent) => agent.provider === ProviderType.Automation
@@ -169,13 +178,22 @@ export const getFormattedAgentsListFromAgentsLiveInfo = (
     status: getAgentStatusLabelFromStatus(agent.status),
   }));
 
-  const collateAIagents = collateAIagentsLiveInfo.map((agent) => ({
-    agentIcon: getAgentIconFromType(agent.appName ?? ''),
-    agentType: agent.appName ?? '',
-    isCollateAgent: true,
-    label: getAgentLabelFromType(agent.appName ?? ''),
-    status: getAgentStatusLabelFromStatus(agent.status),
-  }));
+  const liveCollateAgents = collateAIagentsLiveInfo.map((agent) => {
+    const template =
+      getAutomationTemplate(agent.appName ?? '') ?? agent.appName;
+
+    return {
+      agentIcon: getAgentIconFromType(template ?? ''),
+      agentType: template ?? '',
+      isCollateAgent: true,
+      label: getAgentLabelFromType(template ?? ''),
+      status: getAgentStatusLabelFromStatus(agent.status),
+    };
+  });
+
+  const collateAIagents = isEmpty(liveCollateAgents)
+    ? preservedCollateAgents
+    : liveCollateAgents;
 
   const allAgentsList: AgentsInfo[] = [
     ...formattedAgentsList,
@@ -264,7 +282,7 @@ export const getAgentRunningStatusMessage = (
       break;
   }
 
-  if (!isLoading && isEmpty(agentsInfo)) {
+  if (!isLoading && isEmpty(agentsInfo) && !status) {
     message = t('message.auto-pilot-no-agents-message');
   }
 

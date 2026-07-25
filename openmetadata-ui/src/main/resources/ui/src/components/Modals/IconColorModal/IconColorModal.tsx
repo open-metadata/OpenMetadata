@@ -14,17 +14,29 @@
 import {
   Button,
   Dialog,
+  FieldProp,
+  FieldTypes,
+  getField,
+  HelperTextType,
+  HookForm,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
-import { iconTooltipDataRender } from '../../../utils/DomainUtils';
-import { ColorSwatchPicker } from '../../common/ColorPicker';
-import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
+import { AVAILABLE_ICONS, DEFAULT_TAG_ICON } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
+
+const ICON_OPTIONS = [
+  DEFAULT_TAG_ICON,
+  ...AVAILABLE_ICONS.filter((icon) => icon.name !== DEFAULT_TAG_ICON.name),
+].map((icon) => ({
+  icon: icon.component,
+  id: icon.name,
+  label: icon.name,
+}));
 
 const IconColorModal: FC<StyleModalProps> = ({
   open,
@@ -33,10 +45,25 @@ const IconColorModal: FC<StyleModalProps> = ({
   style,
 }) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<Style>({
+    defaultValues: {
+      iconURL: style?.iconURL,
+      color: style?.color,
+    },
+  });
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const selectedColor = Form.useWatch('color', form);
+  // The parent keeps this modal mounted and only toggles `open`, so
+  // useForm's defaultValues (captured once at mount) go stale across
+  // reopens with a different `style` — reset on every open to pick up
+  // the latest values.
+  useEffect(() => {
+    if (open) {
+      form.reset({ iconURL: style?.iconURL, color: style?.color });
+    }
+  }, [open]);
+
+  const selectedColor = useWatch({ control: form.control, name: 'color' });
 
   const handleSubmit = async (values: Style) => {
     try {
@@ -47,6 +74,30 @@ const IconColorModal: FC<StyleModalProps> = ({
     }
   };
 
+  const iconField: FieldProp = {
+    helperText: t('message.icon-aspect-ratio'),
+    helperTextType: HelperTextType.TOOLTIP,
+    id: 'root/iconURL',
+    label: t('label.icon'),
+    name: 'iconURL',
+    placeholder: t('label.icon-url'),
+    props: {
+      allowUrl: true,
+      backgroundColor: selectedColor,
+      'data-testid': 'icon-picker-btn',
+      defaultIcon: DEFAULT_TAG_ICON,
+      options: ICON_OPTIONS,
+    },
+    type: FieldTypes.ICON_PICKER,
+  };
+
+  const colorField: FieldProp = {
+    id: 'root/color',
+    label: t('label.color'),
+    name: 'color',
+    type: FieldTypes.COLOR_PICKER,
+  };
+
   return (
     <ModalOverlay
       isDismissable={!isSaving}
@@ -55,41 +106,13 @@ const IconColorModal: FC<StyleModalProps> = ({
       <Modal data-testid="icon-color-modal">
         <Dialog title={t('label.edit-entity', { entity: t('label.style') })}>
           <Dialog.Content>
-            <Form
+            <HookForm
               form={form}
               id="style-modal-new"
-              initialValues={{
-                iconURL: style?.iconURL,
-                color: style?.color,
-              }}
-              layout="vertical"
-              onFinish={handleSubmit}>
-              <div className="tw:mb-6">
-                <Form.Item
-                  name="iconURL"
-                  trigger="onChange"
-                  valuePropName="value">
-                  <MUIIconPicker
-                    allowUrl
-                    backgroundColor={selectedColor}
-                    data-testid="icon-picker-btn"
-                    defaultIcon={DEFAULT_TAG_ICON}
-                    label={t('label.icon')}
-                    placeholder={t('label.icon-url')}
-                    toolTip={iconTooltipDataRender()}
-                  />
-                </Form.Item>
-              </div>
-
-              <div className="tw:mb-6">
-                <Form.Item
-                  name="color"
-                  trigger="onChange"
-                  valuePropName="value">
-                  <ColorSwatchPicker label={t('label.color')} />
-                </Form.Item>
-              </div>
-            </Form>
+              onSubmit={form.handleSubmit(handleSubmit)}>
+              <div className="tw:mb-6">{getField(iconField)}</div>
+              <div className="tw:mb-6">{getField(colorField)}</div>
+            </HookForm>
           </Dialog.Content>
 
           <Dialog.Footer>
@@ -106,7 +129,7 @@ const IconColorModal: FC<StyleModalProps> = ({
               data-testid="save-button"
               isDisabled={isSaving}
               isLoading={isSaving}
-              onPress={() => form.submit()}>
+              onPress={() => form.handleSubmit(handleSubmit)()}>
               {t('label.save')}
             </Button>
           </Dialog.Footer>

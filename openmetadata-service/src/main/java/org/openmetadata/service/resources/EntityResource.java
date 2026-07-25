@@ -32,6 +32,8 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
@@ -55,6 +57,7 @@ import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -70,6 +73,8 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.aicontext.AIContextBuilder;
+import org.openmetadata.service.aicontext.AIContextMarkdown;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.csv.CsvAsyncJob;
@@ -1498,6 +1503,96 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));
       }
     }
+  }
+
+  @GET
+  @Path("/{id}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextById",
+      summary = "Get the AI context for an entity by id",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity — its attached "
+              + "business knowledge (glossary terms, Context Center articles, applied metrics), "
+              + "type-specific structural context, and depth-1 lineage — as an OKF-style markdown "
+              + "document (default) or the structured AIContext JSON (`?format=json`).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity id", required = true) @PathParam("id") UUID id,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextById(id));
+    EntityReference reference = Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
+    return renderAiContext(reference.getFullyQualifiedName(), securityContext, format, query);
+  }
+
+  @GET
+  @Path("/name/{fqn}/context")
+  @Produces({AIContextMarkdown.TEXT_MARKDOWN, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "getEntityAiContextByName",
+      summary = "Get the AI context for an entity by fully qualified name",
+      description =
+          "Retrieve the LLM-ready AI Context (Context Profile) for the entity by FQN — see "
+              + "getEntityAiContextById. Returns an OKF-style markdown document by default, or the "
+              + "structured AIContext JSON with `?format=json`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Entity AI context"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
+      })
+  public Response getAiContextByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity fully qualified name", required = true) @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Output format: markdown (default) or json")
+          @QueryParam("format")
+          @DefaultValue("markdown")
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+        getResourceContextByName(fqn));
+    return renderAiContext(fqn, securityContext, format, query);
+  }
+
+  private Response renderAiContext(
+      String fqn, SecurityContext securityContext, String format, String query) {
+    AIContext context =
+        new AIContextBuilder(entityType, fqn)
+            .withQuery(query)
+            .withSecurity(authorizer, securityContext)
+            .build();
+    Response response;
+    if (AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)) {
+      response = Response.ok(context, MediaType.APPLICATION_JSON).build();
+    } else {
+      response =
+          Response.ok(AIContextMarkdown.render(context), AIContextMarkdown.TEXT_MARKDOWN).build();
+    }
+    return response;
   }
 
   @GET

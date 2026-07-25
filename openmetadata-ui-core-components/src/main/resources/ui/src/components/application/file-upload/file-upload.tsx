@@ -237,8 +237,10 @@ export const FileUploadDropZone = ({
       aria-disabled={isDisabled}
       aria-labelledby={`${id}-label`}
       className={cx(
-        'tw:relative tw:flex tw:flex-col tw:items-center tw:gap-3 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-4 tw:text-tertiary tw:ring-1 tw:ring-secondary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-        isDraggingOver && 'tw:ring-2 tw:ring-brand',
+        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
+        // rings thin/vanish in Safari when zoomed out.
+        'tw:relative tw:flex tw:flex-col tw:items-center tw:gap-3 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-4 tw:text-tertiary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:transition tw:duration-100 tw:ease-linear',
+        isDraggingOver && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
         isDisabled
           ? 'tw:cursor-not-allowed tw:bg-secondary'
           : 'tw:cursor-pointer',
@@ -342,8 +344,10 @@ export const FileListItemProgressBar = ({
   return (
     <li
       className={cx(
-        'tw:relative tw:flex tw:gap-3 tw:rounded-xl tw:bg-primary tw:p-4 tw:ring-1 tw:ring-secondary tw:transition-shadow tw:duration-100 tw:ease-linear tw:ring-inset',
-        failed && 'tw:ring-2 tw:ring-error',
+        // Border drawn with outline, not a ring. `transition-shadow` animated only
+        // box-shadow, so it must name the outline properties now.
+        'tw:relative tw:flex tw:gap-3 tw:rounded-xl tw:bg-primary tw:p-4 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+        failed && 'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
         className
       )}>
       <FileIcon
@@ -468,8 +472,8 @@ export const FileListItemProgressFill = ({
       />
       <div
         className={cx(
-          'tw:absolute tw:inset-0 tw:size-full tw:rounded-[inherit] tw:ring-1 tw:ring-secondary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-          failed && 'tw:ring-2 tw:ring-error'
+          'tw:absolute tw:inset-0 tw:size-full tw:rounded-[inherit] tw:outline-1 tw:-outline-offset-1 tw:outline-secondary tw:transition tw:duration-100 tw:ease-linear',
+          failed && 'tw:outline-2 tw:-outline-offset-2 tw:outline-error'
         )}
       />
       <FileIcon

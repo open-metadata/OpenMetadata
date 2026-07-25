@@ -24,8 +24,10 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Slf4j
 @Repository
 public class AIApplicationRepository extends EntityRepository<AIApplication> {
-  private static final String APPLICATION_UPDATE_FIELDS = "modelConfigurations,tools,dataSources";
-  private static final String APPLICATION_PATCH_FIELDS = "modelConfigurations,tools,dataSources";
+  private static final String APPLICATION_UPDATE_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
+  private static final String APPLICATION_PATCH_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
 
   public AIApplicationRepository() {
     super(
@@ -53,6 +55,7 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
   public void prepare(AIApplication aiApplication, boolean update) {
     // Entity references in modelConfigurations are stored as-is without validation
     // as they may reference external LLM models
+    AIAssetStatusSync.sync(aiApplication);
   }
 
   @Override

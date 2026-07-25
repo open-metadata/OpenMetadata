@@ -84,6 +84,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     (key: string) => fields.find((item) => item.key === key)?.options,
     [fields]
   );
+  const getExploreDropdownPopupContainer = useCallback(
+    // Keep legacy Explore filter overlays tied to the trigger subtree so they
+    // are removed with the page during route changes.
+    (triggerNode: HTMLElement) => triggerNode.parentElement ?? document.body,
+    []
+  );
 
   const { showDeleted, searchText } = useMemo(() => {
     const parsed = Qs.parse(
@@ -315,6 +321,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           <SearchDropdown
             highlight
             dropdownClassName={field.dropdownClassName}
+            getPopupContainer={getExploreDropdownPopupContainer}
             hasNullOption={hasNullOption}
             helperText={helperText}
             hideCounts={field.hideCounts ?? false}

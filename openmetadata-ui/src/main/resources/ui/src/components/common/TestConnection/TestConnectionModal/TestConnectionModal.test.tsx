@@ -23,16 +23,16 @@ const onConfirmMock = jest.fn();
 
 const testConnectionStep = [
   {
-    name: 'Step 1',
+    name: 'CheckAccess',
     description: 'Description 1',
     mandatory: true,
   },
-  { name: 'Step 2', description: 'Description 2', mandatory: true },
+  { name: 'GetSchemas', description: 'Description 2', mandatory: true },
 ];
 const testConnectionStepResult = [
-  { name: 'Step 1', passed: true, mandatory: true },
+  { name: 'CheckAccess', passed: true, mandatory: true },
   {
-    name: 'Step 2',
+    name: 'GetSchemas',
     passed: false,
     message: 'Error message',
     mandatory: true,
@@ -70,7 +70,7 @@ describe('TestConnectionModal', () => {
     render(<TestConnectionModal {...commonProps} />);
 
     expect(screen.getByText('label.establish-connection')).toBeInTheDocument();
-    expect(screen.getAllByText('Step 2').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('GetSchemas').length).toBeGreaterThan(0);
   });
 
   it('Should render the success icon for a passing step', () => {
@@ -104,7 +104,7 @@ describe('TestConnectionModal', () => {
         isTestingConnection
         testConnectionStepResult={[
           {
-            name: 'Step 2',
+            name: 'GetSchemas',
             passed: false,
             mandatory: true,
             status: Status.Running,
@@ -158,7 +158,7 @@ describe('TestConnectionModal', () => {
         isTestingConnection
         progress={90}
         testConnectionStepResult={[
-          { name: 'Step 1', passed: true, mandatory: true },
+          { name: 'CheckAccess', passed: true, mandatory: true },
         ]}
       />
     );
@@ -243,6 +243,29 @@ describe('TestConnectionModal', () => {
     ).toBeInTheDocument();
   });
 
+  it('should show all steps as capability checks when no step is a connection gate', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStep={[
+          { name: 'Step 1', description: 'Description 1', mandatory: true },
+          { name: 'Step 2', description: 'Description 2', mandatory: true },
+        ]}
+        testConnectionStepResult={[]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-gate-phase')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-connection-step-Step 1')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('test-connection-step-Step 2')
+    ).toBeInTheDocument();
+  });
+
   it('should mark capability checks as "Didn\'t run" when the gate fails', () => {
     render(
       <TestConnectionModal
@@ -278,7 +301,7 @@ describe('TestConnectionModal', () => {
   it('should let the user expand and collapse a capability step log', () => {
     render(<TestConnectionModal {...commonProps} />);
 
-    const step = screen.getByTestId('test-connection-step-Step 2');
+    const step = screen.getByTestId('test-connection-step-GetSchemas');
     const stepToggle = step.querySelector('button') as HTMLButtonElement;
 
     expect(screen.queryByText('Error message')).not.toBeInTheDocument();
@@ -404,7 +427,7 @@ describe('TestConnectionModal', () => {
 
     expect(rawLog).toHaveTextContent('Error message');
 
-    expect(rawLog).not.toHaveTextContent('> Step 2');
+    expect(rawLog).not.toHaveTextContent('> GetSchemas');
 
     fireEvent.click(screen.getByText('message.hide-raw-connection-log-lines'));
 
@@ -417,7 +440,7 @@ describe('TestConnectionModal', () => {
         {...commonProps}
         testConnectionStepResult={[
           {
-            name: 'Step 1',
+            name: 'CheckAccess',
             passed: true,
             mandatory: true,
             executedCommand: 'SELECT 1',
@@ -433,7 +456,7 @@ describe('TestConnectionModal', () => {
 
     expect(rawLog).toHaveTextContent('> SELECT 1');
     expect(rawLog).toHaveTextContent('Connected (12 ms)');
-    expect(rawLog).not.toHaveTextContent('> Step 1');
+    expect(rawLog).not.toHaveTextContent('> CheckAccess');
   });
 
   it('should render all lines of a SQLAlchemy multi-line errorLog in error color', () => {
@@ -452,7 +475,7 @@ describe('TestConnectionModal', () => {
         {...commonProps}
         testConnectionStepResult={[
           {
-            name: 'Step 1',
+            name: 'CheckAccess',
             passed: false,
             mandatory: true,
             errorLog: multiLineError,
@@ -480,13 +503,13 @@ describe('TestConnectionModal', () => {
         {...commonProps}
         testConnectionStepResult={[
           {
-            name: 'Step 1',
+            name: 'CheckAccess',
             passed: false,
             mandatory: true,
             errorLog: 'ConnectionError: refused',
           },
           {
-            name: 'Step 2',
+            name: 'GetSchemas',
             passed: true,
             mandatory: true,
             message: 'Connection successful',
@@ -879,7 +902,7 @@ describe('TestConnectionModal', () => {
         {...commonProps}
         isTestingConnection
         testConnectionStepResult={[
-          { name: 'Step 1', passed: true, mandatory: true },
+          { name: 'CheckAccess', passed: true, mandatory: true },
         ]}
       />
     );

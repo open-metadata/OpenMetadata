@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -31,14 +36,13 @@ import {
 } from '../../../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -498,27 +502,43 @@ const GlossaryPage = () => {
 
   if (glossaries.length === 0 && !isLoading) {
     return (
-      <div className="full-height">
-        <ErrorPlaceHolder
-          buttonId="add-glossary"
-          className="mt-0-important border-none"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
-          permission={createGlossaryPermission}
-          permissionValue={
-            createGlossaryPermission
-              ? t('label.create-entity', {
-                  entity: t('label.glossary'),
-                })
-              : ''
+      <div className="tw:relative full-height tw:overflow-hidden tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary">
+        <EmptyPlaceholder
+          description={t('message.glossary-empty-description')}
+          features={[
+            {
+              key: 'create-glossary',
+              icon: <BookOpen01 className="tw:text-fg-brand-primary" />,
+              title: t('label.create-a-glossary'),
+              description: t('message.create-a-glossary-description'),
+            },
+            {
+              key: 'add-terms',
+              icon: <File02 className="tw:text-fg-warning-primary" />,
+              title: t('label.add-terms'),
+              description: t('message.add-terms-description'),
+            },
+            {
+              key: 'link-to-data',
+              icon: <Data className="tw:text-fg-success-primary" />,
+              title: t('label.link-them-to-data'),
+              description: t('message.link-them-to-data-description'),
+            },
+          ]}
+          footer={
+            createGlossaryPermission ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-glossary"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add-entity', { entity: t('label.glossary') })}
+              </CoreButton>
+            ) : undefined
           }
-          size={SIZE.X_LARGE}
-          type={
-            createGlossaryPermission
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
-          }
-          onClick={handleAddGlossaryClick}
+          title={t('message.build-your-business-dictionary')}
+          variant="features"
         />
       </div>
     );

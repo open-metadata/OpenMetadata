@@ -751,6 +751,8 @@ describe('getConnectionFieldSection', () => {
     properties: {
       hostPort: { type: 'string' },
       password: { type: 'string', format: 'password' },
+      username: { type: 'string' },
+      clientId: { type: 'string' },
       authType: { type: 'object' },
       connectionOptions: { type: 'object' },
       billingProjectId: { type: 'string' },
@@ -775,6 +777,15 @@ describe('getConnectionFieldSection', () => {
       getConnectionFieldSection(schemaWithRequiredConnectionField, 'authType')
     ).toBe('authentication');
   });
+
+  it.each(['username', 'clientId'])(
+    'classifies the optional identity field %s as connection',
+    (field) => {
+      expect(
+        getConnectionFieldSection(schemaWithRequiredConnectionField, field)
+      ).toBe('connection');
+    }
+  );
 
   it('classifies an ADVANCED_PROPERTIES field as advanced', () => {
     expect(

@@ -262,7 +262,7 @@ test.describe('User with different Roles', () => {
 
     const searchPromise = adminPage.waitForResponse('/api/v1/search/query?q=*');
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
@@ -314,7 +314,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise;
@@ -385,7 +385,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -462,7 +462,7 @@ test.describe('User with different Roles', () => {
       )}**`
     );
     await adminPage
-      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .getByTestId('domain-search-input')
       .fill(domain.responseData.displayName);
 
     await searchPromise2;
@@ -529,7 +529,7 @@ test.describe('User with different Roles', () => {
       .getByText('Application bot role', { exact: true })
       .click();
 
-    await adminPage.getByTestId('profile-edit-roles-select').click();
+    await adminPage.keyboard.press('Escape');
 
     await adminPage.locator('.ant-select-dropdown').waitFor({
       state: 'hidden',

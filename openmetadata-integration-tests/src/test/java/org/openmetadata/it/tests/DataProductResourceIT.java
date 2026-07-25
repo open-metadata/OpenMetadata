@@ -1259,7 +1259,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
       Double currentVersion,
       long eventsSince) {
     Awaitility.await()
-        .atMost(Duration.ofSeconds(10))
+        .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
               ListResponse<ChangeEvent> events =

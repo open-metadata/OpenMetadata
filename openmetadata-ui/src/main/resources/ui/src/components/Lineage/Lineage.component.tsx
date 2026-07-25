@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
+
 const Lineage = ({
   deleted,
   entity,
@@ -27,25 +29,27 @@ const Lineage = ({
 }: LineageProps) => {
   const { isEditMode } = useLineageStore();
 
+  const headerContent = isPlatformLineage ? (
+    platformHeader
+  ) : showControls ? (
+    <div
+      className={classNames('lineage-header', {
+        'lineage-header-edit-mode': isEditMode,
+      })}>
+      <CustomControlsComponent
+        deleted={Boolean(deleted)}
+        hasEditAccess={hasEditAccess}
+      />
+    </div>
+  ) : null;
+
   return (
-    <Card
-      className="lineage-card card-padding-0"
-      data-testid="lineage-details"
-      title={
-        isPlatformLineage ? (
-          platformHeader
-        ) : showControls ? (
-          <div
-            className={classNames('lineage-header', {
-              'lineage-header-edit-mode': isEditMode,
-            })}>
-            <CustomControlsComponent
-              deleted={Boolean(deleted)}
-              hasEditAccess={hasEditAccess}
-            />
-          </div>
-        ) : undefined
-      }>
+    <Card className="lineage-card card-padding-0" data-testid="lineage-details">
+      {headerContent ? (
+        <div className="tw:py-4 tw:px-6 tw:border-b tw:border-tertiary">
+          {headerContent}
+        </div>
+      ) : null}
       <div
         className="h-full relative lineage-container"
         data-testid="lineage-container"

@@ -76,6 +76,9 @@ const getSceneBandLabelKey = (band: LineageBand) => {
   }
 };
 
+const TOGGLE_BUTTON_BACKGROUND = '#ffffff';
+const TOGGLE_BUTTON_SELECTED_BACKGROUND = '#d1e9ff';
+
 const StyledButton = styled((props: ToggleButtonProps) => (
   <ToggleButton {...props} />
 ))(({ theme }) => ({
@@ -83,7 +86,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   flexDirection: 'column',
   alignItems: 'center',
   gap: '4px',
-  backgroundColor: theme.palette.allShades.white,
+  backgroundColor: TOGGLE_BUTTON_BACKGROUND,
   fontSize: theme.typography.pxToRem(10),
   color: theme.palette.text.primary,
   wordBreak: 'break-word',
@@ -99,7 +102,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+    backgroundColor: TOGGLE_BUTTON_BACKGROUND,
 
     svg: {
       color: theme.palette.primary.main,
@@ -107,11 +110,11 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   },
 
   '&.Mui-selected': {
-    backgroundColor: theme.palette.allShades.brand[100],
+    backgroundColor: TOGGLE_BUTTON_SELECTED_BACKGROUND,
 
     '&:hover': {
       border: '1px solid' + ' ' + theme.palette.primary.main,
-      backgroundColor: theme.palette.allShades.brand[100],
+      backgroundColor: TOGGLE_BUTTON_SELECTED_BACKGROUND,
     },
   },
 
@@ -121,7 +124,7 @@ const StyledButton = styled((props: ToggleButtonProps) => (
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
-    backgroundColor: theme.palette.allShades.white,
+    backgroundColor: TOGGLE_BUTTON_BACKGROUND,
 
     svg: {
       color: theme.palette.primary.main,

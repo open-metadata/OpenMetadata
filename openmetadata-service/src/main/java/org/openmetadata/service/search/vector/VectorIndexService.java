@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 
 public interface VectorIndexService {
@@ -12,6 +13,26 @@ public interface VectorIndexService {
   Map<String, Object> generateEmbeddingFields(EntityInterface entity);
 
   void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
+
+  /**
+   * Multi-chunk write path (issue #4789): index one document per body chunk into the dedicated
+   * chunk index so long articles are fully retrievable. Default is a no-op for backends without
+   * chunk support.
+   */
+  default void updateEntityEmbeddingChunks(EntityInterface entity) {}
+
+  /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
+  default void deleteEntityChunks(String parentId) {}
+
+  /**
+   * Combined write: refresh both the legacy entity-doc embedding (read by hybrid search) and the
+   * chunk documents (read by the semantic vector path). Implementations should embed each chunk
+   * once and reuse chunk 0 for the entity doc; this default simply chains the two writes.
+   */
+  default void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+    updateEntityEmbedding(entity, entityIndexName);
+    updateEntityEmbeddingChunks(entity);
+  }
 
   default VectorSearchResponse search(
       String query,
@@ -31,4 +52,22 @@ public interface VectorIndexService {
       int k,
       double threshold,
       String preference);
+
+  String getExistingFingerprint(String indexName, String entityId);
+
+  Map<String, String> getExistingFingerprintsBatch(String indexName, List<String> entityIds);
+
+  String executeGenericRequest(String method, String endpoint, String body);
+
+  default String getIndexAlias() {
+    try {
+      String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+      if (clusterAlias == null || clusterAlias.isEmpty()) {
+        return VECTOR_EMBEDDING_ALIAS;
+      }
+      return clusterAlias + "_" + VECTOR_EMBEDDING_ALIAS;
+    } catch (Exception ex) {
+      return VECTOR_EMBEDDING_ALIAS;
+    }
+  }
 }

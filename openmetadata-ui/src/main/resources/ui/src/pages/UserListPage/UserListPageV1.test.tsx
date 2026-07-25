@@ -161,6 +161,10 @@ jest.mock(
   }
 );
 
+jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
+  return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
+});
+
 describe('Test UserListPage component', () => {
   let mockTableComponent: jest.Mock;
 

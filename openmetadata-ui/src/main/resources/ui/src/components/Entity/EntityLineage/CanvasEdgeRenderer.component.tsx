@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Edge, Node, useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
+import { useLineageEdgeColors } from '../../../hooks/useLineageEdgeColors';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { ECanvasButtonType } from '../../../utils/CanvasButtonUtils';
 import { calculateEdgeMidpoints } from '../../../utils/EdgeMidpointUtils';
@@ -45,12 +45,17 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   onEdgeHover,
   hoverEdge,
 }) => {
-  const theme = useTheme();
+  const edgeColors = useLineageEdgeColors();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const { isEditMode, columnsInCurrentPages, isCanvasReady } =
-    useLineageStore();
+  const {
+    isEditMode,
+    columnsInCurrentPages,
+    isCanvasReady,
+    tracedNodes,
+    tracedColumns,
+  } = useLineageStore();
   const { edges: providerEdges, nodes: providerNodes } = useLineageProvider();
   const edges = edgesOverride ?? providerEdges;
   const nodes = nodesOverride ?? providerNodes;
@@ -113,7 +118,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     canvasRef,
     edges,
     dqHighlightedEdges,
-    theme,
+    colors: edgeColors,
     hoverEdge,
     pathHighlightedEdgeIds,
     isPathHighlightActive,
@@ -144,7 +149,13 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       return [];
     }
 
-    return calculateEdgeMidpoints(edges, getNode, columnsInCurrentPages);
+    return calculateEdgeMidpoints(
+      edges,
+      getNode,
+      columnsInCurrentPages,
+      tracedNodes,
+      tracedColumns
+    );
   }, [
     isPlaywright,
     edges,
@@ -152,6 +163,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
     getNode,
     columnsInCurrentPages,
     isCanvasReady,
+    tracedNodes,
+    tracedColumns,
   ]);
 
   const hoveredEdge = useMemo(() => {
@@ -217,6 +230,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       {edgeMidpoints.map((midpoint) =>
         midpoint?.dataTestId ? (
           <button
+            data-edge-state={midpoint.visualState}
             data-testid={midpoint.dataTestId}
             key={midpoint.id}
             style={{

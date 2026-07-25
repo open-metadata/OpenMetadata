@@ -69,7 +69,7 @@ export const DomainDisplay = ({
     }));
 
     return (
-      <div className={`d-flex items-center gap-2 ${className}`}>
+      <div className={`d-flex items-center gap-1 ${className}`}>
         {showIcon && (
           <div className="d-flex">
             <DomainIcon
@@ -106,7 +106,7 @@ export const DomainDisplay = ({
   }
 
   return (
-    <div className={`d-flex items-center gap-2 ${className}`}>
+    <div className={`d-flex items-center gap-1 ${className}`}>
       {showIcon && (
         <div className="d-flex">
           <DomainIcon

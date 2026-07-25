@@ -111,6 +111,34 @@ describe('suggestionsAPI', () => {
         '<#E::table::db.schema.my_table::columns::col_name>'
       );
     });
+
+    it('uses createdById when expanded createdBy reference is missing', async () => {
+      const task = makeTask('task-1', 'description');
+
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: {
+          data: [
+            {
+              id: task.id,
+              about: task.about,
+              payload: task.payload,
+              status: task.status,
+              createdById: '01146525-1f0b-4318-95e0-e7ab3b83fef4',
+              updatedBy: 'ingestion-bot',
+            },
+          ],
+          paging: {},
+        },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].createdBy).toEqual({
+        id: '01146525-1f0b-4318-95e0-e7ab3b83fef4',
+        name: 'ingestion-bot',
+        type: 'user',
+      });
+    });
   });
 
   describe('getSuggestionsByUserId', () => {

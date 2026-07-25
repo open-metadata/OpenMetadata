@@ -29,6 +29,32 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
 /**
+ * Selects a test type from the "Select Test Type" field. The field is a
+ * searchable autocomplete, so we type the label to filter the list before
+ * picking the option — relying on the option being present in the full
+ * (scrollable, height-capped) list is brittle and regresses whenever the
+ * field's rendering changes. `label` is the test type's display name, which is
+ * also what the option is matched by.
+ */
+export const selectTestType = async (page: Page, label: string) => {
+  await page.click('[id="root\\/testType"]');
+  await page.fill('[id="root\\/testType"]', label);
+  await page.getByRole('option').filter({ hasText: label }).first().click();
+};
+
+/**
+ * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
+ * heading. This is a deterministic outside-click that closes the react-aria
+ * combobox popover without the ambiguity of a page-level Escape — which, when
+ * the menu happens to already be closed, would bubble up and dismiss the whole
+ * drawer.
+ */
+export const dismissTagSuggestions = async (page: Page) => {
+  await page.getByTestId('form-heading').click();
+  await expect(page.locator('[role="listbox"]')).toBeHidden();
+};
+
+/**
  * Matches the batched `dataQualityReport` POST the dashboard now fires instead
  * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
  * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert
@@ -109,7 +135,7 @@ export const clickUpdateButton = async (page: Page) => {
       response.url().includes('/api/v1/dataQuality/testCases') &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId('create-btn').click();
   const response = await updateTestCaseResponse;
 
   expect(response.status()).toBe(200);
@@ -259,9 +285,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.url().includes('fields=owners') &&
       res.status() === 200
   );
-  const addPlaceholderButton = page.getByTestId('add-placeholder-button');
+  const emptyStateAddButton = page
+    .getByTestId('empty-placeholder')
+    .getByRole('button', { name: /add pipeline/i });
   const addPipelineButton = page.getByTestId('add-pipeline-button');
-  const addButton = addPlaceholderButton.or(addPipelineButton);
+  const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
   await testSuiteByNameResponse;
@@ -337,14 +365,14 @@ export const openCreateNewBundleSuiteForm = async (page: Page) => {
   );
   await page.getByTestId('create-new-bundle-suite').click();
   await listResponse;
-  await page.locator('form.bundle-suite-form').waitFor();
+  await page.locator('.bundle-suite-form').waitFor();
 };
 
 export const fillAndSubmitBundleSuiteForm = async (
   page: Page,
   name: string
 ) => {
-  await page.getByTestId('test-suite-name').fill(name);
+  await page.getByTestId('test-suite-name').locator('input').fill(name);
   const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
   await page.getByTestId('submit-button').click();
   await createResponse;
@@ -373,6 +401,10 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
+  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
+  // react-aria stack), so scope to the visible antd dropdown and its option
+  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
+  // (e.g. the header asset search) and resolves ambiguously.
   const dropdown = page.locator('.ant-select-dropdown:visible');
   const option = dropdown.locator('.ant-select-item-option', {
     hasText: suiteName,
@@ -402,29 +434,17 @@ export const verifyBundleSuitePageLoaded = async (
 ) => {
   await expect(page).toHaveURL(new RegExp(`.*test-suites.*${suiteName}.*`));
 
-  await expect
-    .poll(
-      async () => {
-        const listTestCasesResponse = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/search/list?*'
-        );
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await expect(page.getByTestId('entity-header-name')).toBeVisible();
-        await listTestCasesResponse;
+  await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-        const rows = await page
-          .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-          .count();
+  const testCaseRows = page
+    .getByTestId('test-case-table')
+    .locator('[role="rowgroup"]')
+    .last()
+    .getByRole('row');
 
-        return rows;
-      },
-      {
-        timeout: 15000,
-        intervals: [3000],
-      }
-    )
-    .toBe(expectedTestCaseCount);
+  await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
+    timeout: 30000,
+  });
 };
 
 /** A `dataQualityReport` call captured for assertion in tests. */

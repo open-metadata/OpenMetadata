@@ -25,7 +25,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
@@ -328,7 +328,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   }, [topicFQN]);
 
   if (permissionsLoading || topicLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (
@@ -349,7 +349,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   }
   if (!topicDetails) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

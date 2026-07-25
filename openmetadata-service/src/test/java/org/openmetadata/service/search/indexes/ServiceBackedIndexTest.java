@@ -58,9 +58,10 @@ class ServiceBackedIndexTest {
     index.applyServiceFields(doc);
 
     assertNotNull(doc.get("service"));
-    EntityReference result = (EntityReference) doc.get("service");
-    assertEquals("Looker Production", result.getDisplayName());
-    assertEquals("looker", result.getName());
+    assertTrue(doc.get("service") instanceof Map<?, ?>);
+    Map<?, ?> result = (Map<?, ?>) doc.get("service");
+    assertEquals("Looker Production", result.get("displayName"));
+    assertEquals("looker", result.get("name"));
   }
 
   @Test
@@ -163,8 +164,9 @@ class ServiceBackedIndexTest {
 
     index.applyServiceFields(doc);
 
-    EntityReference result = (EntityReference) doc.get("service");
+    assertTrue(doc.get("service") instanceof Map<?, ?>);
+    Map<?, ?> result = (Map<?, ?>) doc.get("service");
     // When displayName is null, getEntityWithDisplayName falls back to name
-    assertEquals("looker", result.getDisplayName());
+    assertEquals("looker", result.get("displayName"));
   }
 }

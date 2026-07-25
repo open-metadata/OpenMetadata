@@ -72,6 +72,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SlideoutMenu: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  EmptyPlaceholder: ({ title }: { title?: string }) => (
+    <div data-testid="empty-tags-placeholder">{title}</div>
+  ),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -105,7 +109,7 @@ jest.mock('../../../rest/tagAPI', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div data-testid="description-container">
       <button

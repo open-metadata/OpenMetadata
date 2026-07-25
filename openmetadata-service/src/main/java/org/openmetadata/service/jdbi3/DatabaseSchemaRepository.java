@@ -971,7 +971,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {

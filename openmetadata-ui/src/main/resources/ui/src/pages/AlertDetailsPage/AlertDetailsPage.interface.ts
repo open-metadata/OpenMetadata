@@ -44,6 +44,7 @@ export interface UseAlertDetailsPageReturn extends AlertDetailsPermissions {
     url: string;
   }[];
   extraInfo: ReactNode;
+  fetchAlertDetails: () => Promise<void>;
   handleAlertDelete: () => Promise<void>;
   handleAlertEdit: () => Promise<void>;
   handleAlertSync: () => Promise<void>;

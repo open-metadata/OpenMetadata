@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  APIResponse,
+  expect,
+  Page,
+  Response,
+} from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -28,6 +34,9 @@ export enum Services {
   Search = GlobalSettingOptions.SEARCH,
   API = GlobalSettingOptions.APIS,
 }
+
+export const getAgentCard = (page: Page, pipelineName: string) =>
+  page.locator(`[data-testid^="agent-card-"][data-testid*="${pipelineName}"]`);
 
 export const getEntityTypeFromService = (service: Services) => {
   switch (service) {
@@ -94,11 +103,8 @@ export const deleteService = async (
   await page.locator('[data-menu-id*="delete-button"]').waitFor();
   await page.click('[data-testid="delete-button-title"]');
 
-  // Clicking on permanent delete radio button and checking the service name
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.click(`[data-testid="hard-delete-option"] >> text=${serviceName}`);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  // Clicking on permanent delete radio button
+  await page.click('[data-testid="hard-delete"]');
 
   const deleteResponse = page.waitForResponse((response) =>
     response
@@ -143,10 +149,53 @@ export const deleteService = async (
 };
 
 export const testConnection = async (page: Page) => {
-  // Test the connection
-  await page.getByTestId('test-connection-btn').waitFor();
+  const testConnectionButton = page.getByTestId('test-connection-btn');
+  const readyToTestCard = page.getByTestId(
+    'test-connection-card-ready-to-test'
+  );
 
-  await page.click('[data-testid="test-connection-btn"]');
+  await expect(readyToTestCard).toBeVisible();
+  await expect(testConnectionButton).toBeEnabled();
+
+  let definitionResponse: Response;
+  try {
+    [definitionResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          response
+            .url()
+            .includes('/api/v1/services/testConnectionDefinitions/name/'),
+        { timeout: 15_000 }
+      ),
+      testConnectionButton.click(),
+    ]);
+  } catch (error) {
+    const validationErrors = (
+      await page
+        .locator(
+          '[slot="errorMessage"]:visible, li[class*="text-error-primary"]:visible'
+        )
+        .allTextContents()
+    )
+      .map((message) => message.trim())
+      .filter(Boolean);
+    const details =
+      validationErrors.length > 0
+        ? ` Visible validation errors: ${validationErrors.join('; ')}`
+        : '';
+    const cause = error instanceof Error ? ` ${error.message}` : '';
+
+    throw new Error(
+      `Test Connection did not request its connection definition.${details}${cause}`
+    );
+  }
+
+  expect(
+    definitionResponse.ok(),
+    `Connection definition request failed with ${definitionResponse.status()} ${definitionResponse.statusText()}`
+  ).toBeTruthy();
+
   const testConnectionDialog = page
     .getByRole('dialog')
     .filter({ hasText: /Connection status|Test Connection/ });

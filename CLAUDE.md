@@ -217,7 +217,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use MUI or introduce new MUI dependencies.
+- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use Ant Design or introduce new UI component library dependencies.
 - **Available Components**: Button, Input, Select, Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle, Slider, Textarea, Tags, and more — all in `openmetadata-ui-core-components/src/main/resources/ui/src/components/`
 - **Tailwind Classes**: All Tailwind utility classes must use the `tw:` prefix (e.g., `tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to avoid conflicts with existing Ant Design/Less styles
 - **Design Tokens**: Use CSS custom properties defined in `openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css`. Never use hardcoded color or spacing values. Semantic tokens include:
@@ -227,7 +227,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   - Shadows: `--shadow-xs` through `--shadow-3xl`
   - Border radius: `--radius-none` through `--radius-full`
 - **Color Usage**: Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
-- **MUI**: Do not use MUI — we are actively removing MUI from the codebase. Do not import from `@mui/*` or `@emotion/*`
+- **Borders — never use `tw:ring-*` to draw an edge.** Rings compile to `box-shadow`, which WebKit does not pixel-snap, so they thin out and can vanish in Safari at non-100% zoom. Use `tw:border-*` where the edge may take layout space, or `tw:outline-1 tw:-outline-offset-1 tw:outline-<token>` where it must not. On focusable elements the `outline` is already the focus ring — draw the border on `::after` via `borderAfter` from `@openmetadata/ui-core-components`. Rules, ring→outline translation table, and gotchas (`outline-hidden` erases outline borders; `transition-shadow` won't animate them): [`colors.md` §2.3.1](openmetadata-ui/src/main/resources/ui/docs/colors.md).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
@@ -510,7 +510,7 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - **Blank lines around `describe`, `it`, `beforeEach`** in test files
 - **JSON keys sorted alphabetically** in locale files (`src/locale/**/*.json`)
 - **Apache 2.0 license header** on every new source file — run `yarn license-header-fix`
-- **i18n keys synced** — after adding keys to `en-us.json`, run `yarn i18n` to sync all 17 locales
+- **i18n keys synced AND translated** — after adding keys to `en-us.json`, run `yarn i18n` to propagate them into every locale file. `yarn i18n` copies the English string verbatim into each locale as a placeholder — **you MUST then replace those placeholders with real translations in every non-en-us file**. Shipping English text under a non-English locale key is a defect (reviewers will flag it). If a term is intentionally left in English (e.g. an acronym like "AI" in Chinese, or a product name), keep it — but that has to be a translation decision, not a "yarn i18n did it" default.
 - **Prettier formatting** — 2-space indent, single quotes, strict HTML whitespace
 
 #### Playwright Test Rules (lint-playwright)

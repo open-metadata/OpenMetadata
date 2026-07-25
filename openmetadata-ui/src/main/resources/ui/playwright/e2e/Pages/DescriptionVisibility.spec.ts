@@ -191,7 +191,7 @@ test.describe(
       await verifyDescriptionRequiresScroll(descContainer, page);
     });
 
-    test('Domain description card collapse hides content and expand restores scrollability', async ({
+    test('Domain description comment-thread button opens the activity feed drawer', async ({
       page,
     }) => {
       await redirectToHomePage(page);
@@ -200,15 +200,17 @@ test.describe(
 
       const descContainer = page.getByTestId('asset-description-container');
       await expect(descContainer).toBeVisible();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
 
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
+      await descContainer.getByTestId('description-thread').click();
 
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
+      const drawer = page.locator('.feed-drawer');
+      await expect(drawer).toBeVisible();
+      await expect(drawer.locator('#thread-panel')).toBeVisible();
 
-      await verifyDescriptionRequiresScroll(descContainer, page);
+      await drawer.getByRole('tab', { name: 'Conversations' }).click();
+      await drawer.getByTestId('closeDrawer').click();
+
+      await expect(drawer).toBeHidden();
     });
 
     // ── Data Product ──
@@ -253,24 +255,6 @@ test.describe(
       await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
     });
 
-    test('Data Product description card collapse hides content and expand restores it', async ({
-      page,
-    }) => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await selectDataProduct(page, dataProductData);
-
-      const descContainer = page.getByTestId('asset-description-container');
-      await expect(descContainer).toBeVisible();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
-    });
-
     // ── Glossary ──
 
     test('Glossary truncates long description and end of text is not visible before expand', async ({
@@ -309,22 +293,6 @@ test.describe(
       await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
     });
 
-    test('Glossary description card collapse hides content and expand restores it', async ({
-      page,
-    }) => {
-      await visitGlossaryPage(page, glossary.responseData.displayName);
-
-      const descContainer = page.getByTestId('asset-description-container');
-      await expect(descContainer).toBeVisible();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
-    });
-
     // ── Glossary Term ──
 
     test('Glossary Term truncates long description and end of text is not visible before expand', async ({
@@ -361,22 +329,6 @@ test.describe(
         descContainer.getByText(LONG_DESCRIPTION_END_TEXT)
       ).not.toBeVisible();
       await expect(descContainer.getByTestId('read-more-button')).toBeVisible();
-    });
-
-    test('Glossary Term description card collapse hides content and expand restores it', async ({
-      page,
-    }) => {
-      await glossaryTerm.visitPage(page);
-
-      const descContainer = page.getByTestId('asset-description-container');
-      await expect(descContainer).toBeVisible();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).not.toHaveClass(/\bexpanded\b/);
-
-      await descContainer.getByTestId('expand-collapse-icon').click();
-      await expect(descContainer).toHaveClass(/\bexpanded\b/);
     });
 
     // ── Customized Table Detail Page ──

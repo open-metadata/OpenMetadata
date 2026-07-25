@@ -14,14 +14,16 @@
 import { AirflowStatusContextType } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { App } from '../../../../generated/entity/applications/app';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ServicesType } from '../../../../interface/service.interface';
+import { CollateAgentAutomation } from '../../../../rest/applicationAPI';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 
 export interface IngestionProps {
+  agents: Agent[];
   ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;
   ingestionPipelineList: Array<IngestionPipeline>;
@@ -45,7 +47,7 @@ export interface IngestionProps {
   statusFilter?: Array<{ key: string; label: string }>;
   typeFilter?: Array<{ key: string; label: string }>;
   isCollateAgentLoading?: boolean;
-  collateAgentsList?: App[];
+  collateAgentsList?: CollateAgentAutomation[];
   collateAgentPagingInfo?: UsePagingInterface;
   onCollateAgentPageChange?: (pagingHandlerParams: PagingHandlerParams) => void;
   agentCounts?: Record<ServiceAgentSubTabs, number>;

@@ -70,6 +70,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
@@ -86,7 +87,11 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_datamodel,
+    filter_pattern_enabled,
+)
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
@@ -109,6 +114,7 @@ class TableauSource(DashboardServiceSource):
     config: WorkflowSource
     metadata_config: OpenMetadataConnection
     client: TableauClient
+    progress_mode = ProgressMode.MANUAL
 
     def __init__(
         self,
@@ -134,7 +140,27 @@ class TableauSource(DashboardServiceSource):
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
+        self._declare_dashboard_progress_total()
         yield from self.client.get_workbooks(include_owners=self.source_config.includeOwners)
+
+    def _declare_dashboard_progress_total(self) -> None:
+        """Declare the Dashboard progress total. ``get_workbook_count`` is a
+        server-side pre-filter count, so when a dashboard or project filter is
+        active the tracked (post-filter) count can never reach it — fall back to
+        a reconcilable running count instead of a bar stuck below 100%."""
+        manual = self.progress_tracking.manual
+        patterns = (
+            self.source_config.dashboardFilterPattern,
+            self.source_config.projectFilterPattern,
+        )
+        if any(filter_pattern_enabled(pattern) for pattern in patterns):
+            manual.mark_reconcilable(Dashboard.__name__)
+        else:
+            try:
+                manual.set_total(Dashboard.__name__, self.client.get_workbook_count())
+            except Exception as exc:
+                logger.warning("Could not prefetch Tableau workbook count for progress: %s", exc)
+                manual.mark_reconcilable(Dashboard.__name__)
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -332,6 +358,7 @@ class TableauSource(DashboardServiceSource):
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
+            self.progress_tracking.manual.track(Dashboard.__name__)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
             yield Either(

@@ -12,53 +12,59 @@
  */
 @import (reference) '../../styles/variables.less';
 
-.test-suite-details-domain-owner-section {
-  .domain-link-container {
-    background-color: var(--tw-color-bg-primary);
-    border-color: @grey-200;
+// Color overrides copied from data-asset-header.less, which only loads
+// with DataAssetsHeader and therefore can't be relied on here.
+.test-suite-details-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+
+  .owner-label-container,
+  .domain-label-container {
+    max-width: 220px;
   }
 
-  .owner-pills-content {
-    background-color: var(--tw-color-bg-primary);
-    border-color: @grey-200;
+  .domain-link-container {
+    max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      color: var(--tw-color-gray-700);
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
+  }
+
+  .domain-link.ant-typography,
+  span.header-owner-heading,
+  .ant-typography.no-owner-heading {
+    color: var(--tw-color-gray-700);
   }
 }
 
 .test-suite-details-tabs {
-  [role='tablist'] {
-    display: flex;
-    width: 100%;
-    position: relative;
-    min-height: @size-2xl;
-    flex-shrink: 0;
-    background-color: var(--tw-color-bg-primary);
-    border: 1px solid @grey-200;
-    border-radius: @size-sm;
-    padding: 0;
-    margin-bottom: @size-sm;
-  }
-
-  [role='tab'] {
-    min-height: @size-2xl;
-    padding: 6px @size-sm;
-    font-size: @font-size-base;
-    font-weight: @font-semibold;
-    text-transform: none;
-    color: @grey-500;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-
-    &:hover {
-      color: @primary-color;
-    }
-
-    &[aria-selected='true'] {
-      color: @primary-color;
-      border-bottom-color: @primary-color;
+  // The pipeline tab's Row brings vertical margins needed in the table
+  // profiler QualityTab; the pane wrapper's padding already covers it here.
+  .ant-tabs-tabpane {
+    .test-suite-pipeline-tab {
+      margin-top: 0;
+      margin-bottom: 0;
     }
   }
 
-  [role='tabpanel'] {
-    outline: none;
+  // AI-side renderer (TestSuiteDetailAi) keeps this wrapper.
+  .test-suite-details-tab-panel {
+    // 1px horizontal inset so the table card's ring (a box-shadow drawn
+    // outside its box) isn't clipped by the page column's overflow-x.
+    padding: 20px 1px;
+
+    .test-suite-pipeline-tab {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
   }
 }

@@ -22,7 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06, Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
@@ -41,6 +41,7 @@ import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -55,6 +56,7 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   KnowledgePage,
@@ -129,6 +131,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const [isHierarchyInitialized, setIsHierarchyInitialized] =
       useState<boolean>(false);
     const lastFetchedFqnRef = useRef<string | null>(null);
+    const consumedCreateHashFqnRef = useRef<string | null>(null);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -144,6 +147,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const {
       preferences: { recentlyViewedQuickLinks: recentlyViewed },
     } = useCurrentUserPreferences();
+    const { removeDraft } = useArticleDraftStore();
 
     const [paginationState, setPaginationState] = useReducer(
       hierarchyPaginationReducer,
@@ -162,7 +166,7 @@ const KnowledgePagesHierarchy = forwardRef<
         ): PageHierarchy[] => {
           const unloaded: PageHierarchy[] = [];
           nodes.forEach((n) => {
-            if (n.childrenCount > 0 && !n.children) {
+            if (n.childrenCount > (n.children?.length ?? 0)) {
               unloaded.push(n);
             } else if (n.children) {
               unloaded.push(...collectUnloadedExpandableNodes(n.children));
@@ -247,7 +251,10 @@ const KnowledgePagesHierarchy = forwardRef<
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
     ) => {
-      const isCreateHash = hash?.slice(1) === CREATE_PAGE_HASH;
+      const isCreateHash =
+        hash?.slice(1) === CREATE_PAGE_HASH &&
+        !isPaginationLoading &&
+        consumedCreateHashFqnRef.current !== fqn;
 
       if (
         !forceRefresh &&
@@ -289,6 +296,14 @@ const KnowledgePagesHierarchy = forwardRef<
 
         if (isCreateHash || forceRefresh) {
           setKnowledgePageHierarchy(data);
+          if (forceRefresh) {
+            setExpandedKeys([]);
+            setIsUserExpandedAll(false);
+          }
+          if (isCreateHash) {
+            consumedCreateHashFqnRef.current = fqn;
+            fetchKnowledgePagesTotalCount();
+          }
         } else {
           const fqnParts = fqn ? Fqn.split(fqn) : [];
           const isNestedNode = fqnParts.length > 1;
@@ -324,7 +339,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
-        if (!node || node.children) {
+        if (!node || node.childrenCount <= (node.children?.length ?? 0)) {
           return;
         }
         try {
@@ -580,11 +595,11 @@ const KnowledgePagesHierarchy = forwardRef<
                 width={14}
               />
             ) : (
-              <File06
+              <FileIcon
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
-                height={13}
-                width={13}
+                height={14}
+                width={14}
               />
             )}
             <Typography
@@ -703,7 +718,7 @@ const KnowledgePagesHierarchy = forwardRef<
     useEffect(() => {
       expandedKeys.forEach((key) => {
         const node = findPageInTreeData(knowledgePageHierarchy, key);
-        if (node && !node.children) {
+        if (node && node.childrenCount > (node.children?.length ?? 0)) {
           loadNodeChildren(key);
         }
       });
@@ -743,7 +758,11 @@ const KnowledgePagesHierarchy = forwardRef<
             justify="between">
             <Box align="center" gap={3}>
               <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
-                <File06 className="tw:text-fg-tertiary" size={20} />
+                <FileIcon
+                  className="tw:text-quaternary"
+                  height={20}
+                  width={20}
+                />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
@@ -866,6 +885,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 } else {
                   await deleteKnowledgePage(deletePage.id);
                 }
+                removeDraft(deletePage.id);
                 await handleAfterDeletePage(deletePage);
                 setDeletePage(undefined);
               } catch (error) {

@@ -78,29 +78,11 @@
     font-weight: 600;
   }
 
-  .lvm-dots {
-    display: inline-flex;
-    flex-shrink: 0;
-    gap: 6px;
-  }
-
   .lvm-dot {
     display: inline-block;
     width: 11px;
     height: 11px;
     border-radius: 9999px;
-
-    &--red {
-      background-color: #ff5f56;
-    }
-
-    &--amber {
-      background-color: #ffbd2e;
-    }
-
-    &--green {
-      background-color: #27c93f;
-    }
 
     &--live {
       background-color: var(--lvm-level-ok);
@@ -205,6 +187,11 @@
     cursor: pointer;
 
     &:hover {
+      background-color: var(--lvm-surface-2);
+      color: var(--lvm-text);
+    }
+
+    &--active {
       background-color: var(--lvm-surface-2);
       color: var(--lvm-text);
     }

@@ -187,6 +187,25 @@ and table_catalog = '{database_name}'
 """
 )
 
+# TABLE_STORAGE is only exposed at the region/organization level (it cannot be
+# dataset-qualified like TABLES), so this variant is region-scoped and joins on
+# table_schema to restrict TABLE_STORAGE to the current dataset. Used when the
+# dataset's region can be resolved; otherwise we fall back to the dataset-scoped
+# created-only query above.
+BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION = textwrap.dedent(
+    """
+select
+t.table_name as table_name,
+t.creation_time as created_at,
+s.storage_last_modified_time as updated_at
+from `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES t
+left join `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_STORAGE s
+on t.table_name = s.table_name and t.table_schema = s.table_schema
+where t.table_schema = '{schema_name}'
+and t.table_catalog = '{database_name}'
+"""
+)
+
 BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING = """
 protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.BigQueryAuditMetadata"
 AND (

@@ -8,7 +8,8 @@
       "description": "Validate that we can properly reach the Microsoft Fabric Warehouse and authenticate with the given Service Principal credentials.",
       "errorMessage": "Failed to connect to Microsoft Fabric Warehouse, please validate the Service Principal credentials (clientId, clientSecret, tenantId) and ensure the hostPort is correct.",
       "shortCircuit": true,
-      "mandatory": true
+      "mandatory": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetSchemas",

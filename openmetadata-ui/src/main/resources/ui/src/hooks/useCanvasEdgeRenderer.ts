@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import type { Edge } from 'reactflow';
 import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
@@ -28,10 +27,17 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
-import { computeEdgeStyle } from '../utils/EdgeStyleUtils';
+import {
+  computeEdgeStyle,
+  computeEdgeVisualState,
+  LineageEdgeColors,
+} from '../utils/EdgeStyleUtils';
 import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
+
+const ROLLUP_LABEL_BACKGROUND = '#ffffff';
+const ROLLUP_LABEL_TEXT = '#475467';
 
 interface UseCanvasEdgeRendererProps {
   canvasRef: RefObject<HTMLCanvasElement>;
@@ -40,7 +46,7 @@ interface UseCanvasEdgeRendererProps {
   dqHighlightedEdges: Set<string>;
   pathHighlightedEdgeIds?: Set<string>;
   isPathHighlightActive?: boolean;
-  theme: Theme;
+  colors: LineageEdgeColors;
   containerWidth: number;
   containerHeight: number;
 }
@@ -62,7 +68,7 @@ export function useCanvasEdgeRenderer({
   hoverEdge,
   pathHighlightedEdgeIds,
   isPathHighlightActive = false,
-  theme,
+  colors,
   containerWidth,
   containerHeight,
 }: UseCanvasEdgeRendererProps) {
@@ -160,7 +166,7 @@ export function useCanvasEdgeRenderer({
         tracedColumns,
         dqHighlightedEdges,
         selectedColumn,
-        theme,
+        colors,
         edge.data?.isColumnLineage ?? false,
         edge.sourceHandle,
         edge.targetHandle,
@@ -178,7 +184,7 @@ export function useCanvasEdgeRenderer({
       const isPathHighlighted = pathHighlightedEdgeIds?.has(edge.id) ?? false;
       const pathStroke =
         isPathHighlightActive && isPathHighlighted
-          ? theme.palette.primary.main
+          ? colors.primary
           : style.stroke;
       const pathOpacity =
         isPathHighlightActive && !isPathHighlighted
@@ -234,14 +240,14 @@ export function useCanvasEdgeRenderer({
         ctx.save();
         ctx.globalAlpha =
           isPathHighlightActive && !isPathHighlighted ? 0.28 : 1;
-        ctx.fillStyle = theme.palette.background.paper;
+        ctx.fillStyle = ROLLUP_LABEL_BACKGROUND;
         ctx.strokeStyle = pathStroke;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.roundRect(x, y, labelWidth, labelHeight, 9);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = theme.palette.text.secondary;
+        ctx.fillStyle = ROLLUP_LABEL_TEXT;
         ctx.font = '600 11px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -257,7 +263,7 @@ export function useCanvasEdgeRenderer({
       tracedColumns,
       dqHighlightedEdges,
       selectedColumn,
-      theme,
+      colors,
       columnsInCurrentPages,
       hoverEdge,
       selectedEdge,
@@ -315,16 +321,17 @@ export function useCanvasEdgeRenderer({
 
     const visibleEdges = edges.filter(
       (edge) =>
-        isEdgeTraced(edge, tracedColumns) ||
-        isEdgeInViewport(
-          edge,
-          getNode(edge.source),
-          getNode(edge.target),
-          viewport,
-          containerWidth,
-          containerHeight,
-          columnsInCurrentPages
-        )
+        computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        (isEdgeTraced(edge, tracedColumns) ||
+          isEdgeInViewport(
+            edge,
+            getNode(edge.source),
+            getNode(edge.target),
+            viewport,
+            containerWidth,
+            containerHeight,
+            columnsInCurrentPages
+          ))
     );
 
     visibleEdgesRef.current = visibleEdges;
@@ -515,7 +522,7 @@ export function useCanvasEdgeRenderer({
     dqHighlightedEdges,
     pathHighlightedEdgeIds,
     isPathHighlightActive,
-    theme,
+    colors,
   ]);
 
   useEffect(() => {
