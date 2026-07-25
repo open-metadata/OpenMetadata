@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -83,41 +84,43 @@ const CustomizableDataProductPage = ({
   }, [currentPage, currentPageType, getPage]);
 
   return (
-    <PageLayoutV1
-      className="bg-grey"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.data-product'),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col className="p-l-xs" span={24}>
-          <EntityHeader
-            breadcrumb={breadcrumbs}
-            entityData={entityDummyData}
-            entityType={EntityType.DATA_PRODUCT}
-            icon={
-              <DataProductIcon
-                className="align-middle"
-                color={DE_ACTIVE_COLOR}
-                height={36}
-                name="data-product"
-                width={32}
-              />
-            }
-            serviceName=""
-          />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.data-product'),
+        })}>
+        <Row className="customize-details-page" gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Col>
+          <Col className="p-l-xs" span={24}>
+            <EntityHeader
+              breadcrumb={breadcrumbs}
+              entityData={entityDummyData}
+              entityType={EntityType.DATA_PRODUCT}
+              icon={
+                <DataProductIcon
+                  className="align-middle"
+                  color={DE_ACTIVE_COLOR}
+                  height={36}
+                  name="data-product"
+                  width={32}
+                />
+              }
+              serviceName=""
+            />
+          </Col>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };
 
