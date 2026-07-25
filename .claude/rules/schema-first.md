@@ -19,6 +19,13 @@ of truth and drive code generation across languages. Compliant reference schema:
   - **TypeScript** → `openmetadata-ui/src/main/resources/ui/src/generated/**` (except `.../generated/antlr/`)
     — **committed**; the `typescript-type-generation` workflow regenerates it and fails fork PRs whose
     generated types are stale.
+- **Enforced:** a `PreToolUse` hook (`.claude/settings.json`) **blocks `Edit`/`Write` to generated
+  output** — `openmetadata-ui/src/main/resources/ui/src/generated/**`,
+  `ingestion(-core)/src/metadata/generated/**`, and `**/target/generated-sources/**`. It does **not**
+  block `make generate` (that's a Bash command, not a file edit), so regeneration is unaffected.
+  (The gitignored `parseSchemas.js` outputs under `src/jsons/` are intentionally **not** blocked, to
+  avoid false-positiving the two hand-maintained files there — `profilerSettings.json` and
+  `ssoSchemas/`.)
 - When you modify a schema:
   ```bash
   make generate                              # root-only target — Pydantic models (+ ANTLR)

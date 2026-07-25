@@ -37,7 +37,11 @@ and Docker infrastructure.
   source env/bin/activate && cd ingestion && make install_dev_env && cd ..
   make generate                    # regenerate models after any schema change
   make yarn_install_cache
+  make install_test precommit_install   # activate the commit-time format/license gate (pre-commit)
   ```
+  The last line installs the `pre-commit` hooks (`.pre-commit-config.yaml`): on `git commit` they run
+  Java format (spotless), Python format (ruff), UI format (prettier), design-token, and Apache-2.0
+  license checks on your changed files, matching CI. Do not skip them with `--no-verify`.
 - **Java**: Java 21; use `mvn`. **Frontend**: use `yarn` (never `npm`); frontend root is
   `openmetadata-ui/src/main/resources/ui/`.
 - **Docker dev services**: `docker compose -f docker/development/docker-compose.yml up -d`.
@@ -66,6 +70,9 @@ Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` 
 
 **Secrets & security.** Never commit secrets — use environment variables or a secrets manager.
 Auth is JWT with OAuth2/SAML; RBAC lives in Java entities; config in `conf/openmetadata.yaml`.
+**Do not modify `.github/workflows/**` on your own** — CI workflows are a supply-chain surface; a
+`PreToolUse` hook blocks edits there unless the user explicitly authorizes them (by setting
+`CLAUDE_ALLOW_WORKFLOW_EDITS=1`). Ask first.
 
 **All caches MUST be bounded.** Never use a bare `dict` / `HashMap` / `Map` as a cache without an
 explicit size cap — they grow with input and OOM on large catalogs/ingestions (only exception: the
