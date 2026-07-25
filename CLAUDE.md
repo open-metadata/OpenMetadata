@@ -151,7 +151,7 @@ sign-off) when the agent-facing config decays:
 
 - **dead references** — a path, `make`/`yarn` target, or `mvn` goal named in this file, AGENTS.md,
   ARCHITECTURE.md, `docs/index.md`, `.claude/rules/**`, or a SKILL.md that no longer resolves;
-- **AGENTS.md sync** — AGENTS.md is generated from this file (`make sync-agents-md`); the check warns if it drifted;
+- **AGENTS.md sync** — AGENTS.md is a symlink to this file; the check warns if it isn't;
 - **skill symlinks** — a real file where a symlink into `skills/` is expected (`.claude/skills`,
   `.agents/skills`), or two same-named SKILL.md with different content;
 - **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;

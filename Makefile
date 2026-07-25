@@ -71,10 +71,6 @@ generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS
 .PHONY: generate-reference-docs
 generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
 
-.PHONY: sync-agents-md
-sync-agents-md:  ## Regenerate AGENTS.md from CLAUDE.md (AGENTS.md mirrors CLAUDE.md)
-	python3 scripts/harness/sync_agents_md.py
-
 .PHONY: harness-check
 harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
 	python3 scripts/harness/check_harness.py

@@ -330,16 +330,14 @@ def check_dead_references():
 
 
 def check_agents_sync():
-    """AGENTS.md must be exactly render(CLAUDE.md); it is generated, not hand-maintained."""
+    """AGENTS.md must be a symlink to CLAUDE.md, so the two can never drift."""
     warnings = []
-    if not (os.path.exists(rp("AGENTS.md")) and os.path.exists(rp("CLAUDE.md"))):
+    agents = rp("AGENTS.md")
+    if not os.path.lexists(agents):
         return warnings
-    import sync_agents_md  # same directory as this script (on sys.path[0])
-
-    if read("AGENTS.md") != sync_agents_md.render(read("CLAUDE.md")):
+    if not os.path.islink(agents) or os.path.realpath(agents) != os.path.realpath(rp("CLAUDE.md")):
         warnings.append(Warn("agents-sync", "AGENTS.md", 1,
-                             "out of sync with CLAUDE.md — AGENTS.md is generated; "
-                             "edit CLAUDE.md and run `make sync-agents-md`"))
+                             "AGENTS.md should be a symlink to CLAUDE.md - run: ln -sf CLAUDE.md AGENTS.md"))
     return warnings
 
 

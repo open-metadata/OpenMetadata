@@ -26,8 +26,8 @@
           },
           {
             "type": "command",
-            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)AGENTS\\.md$'; then echo '{\"decision\": \"block\", \"reason\": \"Blocked write to AGENTS.md. It is GENERATED from CLAUDE.md by scripts/harness/sync_agents_md.py; hand edits are reverted by the harness-integrity sync check. Edit CLAUDE.md instead, then run make sync-agents-md.\"}'; exit 2; fi",
-            "description": "Block edits to AGENTS.md; it is generated from CLAUDE.md"
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)AGENTS\\.md$'; then echo '{\"decision\": \"block\", \"reason\": \"Blocked write to AGENTS.md. It is a symlink to CLAUDE.md; edit CLAUDE.md directly and do not replace the symlink with a regular file.\"}'; exit 2; fi",
+            "description": "Block edits to AGENTS.md; it is a symlink to CLAUDE.md"
           },
           {
             "type": "command",
