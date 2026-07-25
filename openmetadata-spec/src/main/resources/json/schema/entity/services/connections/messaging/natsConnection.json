@@ -1,0 +1,86 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/messaging/natsConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NatsConnection",
+  "description": "NATS Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.NatsConnection",
+  "definitions": {
+    "natsType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Nats"],
+      "default": "Nats"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/natsType",
+      "default": "Nats"
+    },
+    "natsServers": {
+      "title": "NATS Servers",
+      "description": "NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222",
+      "type": "string"
+    },
+    "jetStreamEnabled": {
+      "title": "JetStream Enabled",
+      "description": "Enable JetStream to ingest Streams and Consumers metadata. If false, only core NATS subjects are ingested.",
+      "type": "boolean",
+      "default": true
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username for NATS basic authentication.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password for NATS basic authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "token": {
+      "title": "Token",
+      "description": "Token for NATS token-based authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "nkeySeed": {
+      "title": "NKey Seed",
+      "description": "NKey seed for NATS NKey-based authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "tlsConfig": {
+      "title": "TLS Configuration",
+      "description": "TLS/SSL configuration for secure NATS connections.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "additionalConfig": {
+      "title": "Additional NATS Config",
+      "description": "Additional NATS client configuration options. See https://nats-io.github.io/nats.py/",
+      "type": "object",
+      "default": {},
+      "additionalProperties": true
+    },
+    "schemaKvBucket": {
+      "title": "Schema KV Bucket",
+      "description": "Name of the JetStream KV bucket where schemas are stored. Keys must match stream names. Values should be Avro JSON, Protobuf (.proto) or JSON Schema text.",
+      "type": "string"
+    },
+    "topicFilterPattern": {
+      "title": "Default Topic Filter Pattern",
+      "description": "Regex to only fetch subjects/streams that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["natsServers"]
+}

@@ -186,10 +186,7 @@ describe('DynamicHeightWidget', () => {
       resizeCallback([{ contentRect: { height: 0 } }]);
 
       // (0 + GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN) = 16/116
-      expect(mockOnHeightChange).toHaveBeenCalledWith(
-        'test-widget',
-        16 / 116
-      );
+      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 16 / 116);
     });
 
     it('handles very large height values', () => {
