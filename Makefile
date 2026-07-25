@@ -59,6 +59,18 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) py_antlr js_antlr
 	$(MAKE) install
 
+## Reference docs generation (deterministic; CI fails if the committed output drifts)
+.PHONY: generate-entity-index
+generate-entity-index:  ## Generate docs/generated/entity-index.md from schemas + resources
+	python3 scripts/generate_entity_index.py
+
+.PHONY: generate-api-reference
+generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS resources
+	python3 scripts/generate_api_reference.py
+
+.PHONY: generate-reference-docs
+generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
+
 .PHONY: install_antlr_cli
 ANTLR_VERSION := 4.9.2
 # Dots escaped so the banner match below is a real version match, not a
