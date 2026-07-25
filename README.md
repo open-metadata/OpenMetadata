@@ -1,5 +1,7 @@
 # OpenMetadata
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.open-metadata%2Fopenmetadata-mcp.svg)](https://mcptoplist.com/server/io.github.open-metadata%2Fopenmetadata-mcp)
+
 ![Commit Activity](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata?style=for-the-badge) [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg?style=for-the-badge)](https://github.com/open-metadata/OpenMetadata/releases)
 
 ## The Open Context Layer for AI
