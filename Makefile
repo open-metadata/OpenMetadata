@@ -71,6 +71,10 @@ generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS
 .PHONY: generate-reference-docs
 generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
 
+.PHONY: harness-check
+harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
+	python3 scripts/harness/check_harness.py
+
 .PHONY: install_antlr_cli
 ANTLR_VERSION := 4.9.2
 # Dots escaped so the banner match below is a real version match, not a

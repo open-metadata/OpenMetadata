@@ -142,3 +142,18 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at
 > session start when the `openmetadata-skills` plugin is installed.
+
+### Harness integrity (CI, warnings-only)
+
+A CI workflow (harness-integrity.yml) runs `scripts/harness/check_harness.py` on PRs — also
+`make harness-check` locally. It **warns, never blocks** (promote to a gate only with maintainer
+sign-off) when the agent-facing config decays:
+
+- **dead references** — a path, `make`/`yarn` target, or `mvn` goal named in this file, AGENTS.md,
+  ARCHITECTURE.md, `docs/index.md`, `.claude/rules/**`, or a SKILL.md that no longer resolves;
+- **AGENTS.md drift** from this file's corrected stack facts;
+- **skill symlinks** — a real file where a symlink into `skills/` is expected (`.claude/skills`,
+  `.agents/skills`), or two same-named SKILL.md with different content;
+- **doc-size budgets** — this file > 200 lines, ARCHITECTURE.md > 300, any single rule > 100;
+- **rule globs** — a `.claude/rules/**` `paths:` glob matching zero files;
+- **generated-doc freshness** — `docs/generated/**` out of date with its source.

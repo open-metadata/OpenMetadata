@@ -92,10 +92,10 @@ Intended flow (sampled, 08a Pass 2): **`resources/*Resource` → `jdbi3/*Reposit
 ### `ingestion/src/metadata/` internals
 | dir | role |
 |---|---|
-| `ingestion/source/{database,dashboard,pipeline,messaging,metadata,storage,search,mlmodel,api}/` | the connectors (per family); ~97 carry a `service_spec.py` |
-| `ingestion/api/` | the plugin base classes (`step.py`, `steps.py` — `Source`, `create()`) |
-| `ingestion/sink/` | `metadata_rest.py` — posts entities to the backend API |
-| `ingestion/source/database/{common_db_source,database_service}.py` | the SQL/topology bases connectors extend |
+| `ingestion/…/source/{database,dashboard,pipeline,messaging,metadata,storage,search,mlmodel,api}/` | the connectors (per family); ~97 carry a `service_spec.py` |
+| `ingestion/…/api/` | the plugin base classes (`step.py`, `steps.py` — `Source`, `create()`) |
+| `ingestion/…/sink/` | `metadata_rest.py` — posts entities to the backend API |
+| `ingestion/…/source/database/{common_db_source,database_service}.py` | the SQL/topology bases connectors extend |
 | `generated/` | Pydantic models (datamodel-code-generator); **gitignored** |
 
 ---
