@@ -2,8 +2,10 @@
 
 Always-loaded guidance for every session. **Language- and path-specific rules live in
 `.claude/rules/*.md` (auto-loaded when you touch matching files); procedures live in skills
-(loaded on invoke).** This file is the map — see the pointer index at the bottom. For architecture
-deep dives and end-to-end checklists, see [DEVELOPER.md](DEVELOPER.md).
+(loaded on invoke).** This file is the map — see the pointer index at the bottom. Read
+[ARCHITECTURE.md](ARCHITECTURE.md) for the **system map** (modules, the request/ingestion/search paths,
+the invariants that hold); read [DEVELOPER.md](DEVELOPER.md) for **how to build, test, and add an entity
+or connector** (deep dives + end-to-end checklists).
 
 ## About OpenMetadata
 
