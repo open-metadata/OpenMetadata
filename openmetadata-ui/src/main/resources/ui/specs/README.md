@@ -1,10 +1,22 @@
 # OpenMetadata Design System Specs
 
 Machine- and human-readable specifications for the OpenMetadata design system.
-**Read the relevant spec before writing or modifying any UI code**, and use only
-tokens from [`src/styles/tokens.css`](../src/styles/tokens.css).
+**Read the relevant spec before writing or modifying any UI code.**
 
-## How the system is layered
+## Two stacks: go-forward vs legacy
+
+| | Stack | Style with | Tokens | Audit |
+| --- | --- | --- | --- | --- |
+| **Go-forward** ✅ | UntitledUI + Tailwind | `tw:` utility classes | `globals.css` `@theme` → [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) | `yarn tw-audit` |
+| **Legacy** ⚠️ (deprecated) | Ant Design + Less | `.less` + `var(--om-*)` | [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
+
+**New work uses UntitledUI + Tailwind. Do not add new Antd components or new
+`.less` files** — `yarn tw-guard` blocks new debt. Never hardcode a value in
+either stack: use a `tw:` token utility (or `var(--color-*)`) in TSX, and
+`var(--om-*)` in existing `.less`. The `--om-*` layer below documents the
+**deprecated** Antd/Less side (still maintained during the migration).
+
+## How the (legacy) LESS system is layered
 
 ```
 Layer 1  --ds-*   Upstream primitives. Reference the design system
@@ -24,6 +36,10 @@ a violation; new work should prefer `var(--om-*)`.
 
 | Area | Spec |
 | --- | --- |
+| **Tailwind (go-forward)** ✅ | [foundations/tailwind.md](foundations/tailwind.md) |
+| **Tailwind utilities** | [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) |
+| UntitledUI components | [components/](components/) |
+| _Legacy LESS below_ | |
 | Colors | [foundations/color.md](foundations/color.md) |
 | Spacing | [foundations/spacing.md](foundations/spacing.md) |
 | Typography | [foundations/typography.md](foundations/typography.md) |
@@ -37,7 +53,11 @@ a violation; new work should prefer `var(--om-*)`.
 
 | Command | What it does |
 | --- | --- |
-| `yarn token-audit` | Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
+| `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded Tailwind values. Exit 1 on error. |
+| `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
+| `yarn tw-migrate` | Codemod exact-match arbitrary `tw:` values → utilities. |
+| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `.less` files (deprecation). |
+| `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory of every value + its suggested token. |
 | `yarn token-migrate` | Codemod raw values → `var(--om-*)` tokens (safe, idempotent). |
 | `yarn token-gen` | Regenerate the generated block of `tokens.css` + token-reference. |

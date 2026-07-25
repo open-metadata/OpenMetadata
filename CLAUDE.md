@@ -234,7 +234,46 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Custom styles in `.less` files with component-specific naming (legacy pattern, avoid for new code)
 - Follow BEM naming convention for custom CSS classes when writing raw CSS
 
-### Design system tokens & specs (LESS/CSS)
+### Styling direction: UntitledUI + Tailwind (go-forward); Antd + Less (deprecated)
+
+**New UI work uses UntitledUI components (`@openmetadata/ui-core-components`) +
+Tailwind (`tw:` prefix), styled from the design tokens in
+[`globals.css`](openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css).
+Do NOT add new Ant Design components or new `.less` files — those stacks are
+being migrated away.** When you touch an Antd/Less component, convert it to
+UntitledUI/Tailwind. Run `yarn tw-audit` for the live migration-debt inventory
+(currently ~864 files import `antd`, 449 `.less` files remain).
+
+**Never hardcode a visual value in `.tsx`/`.ts`:**
+- No arbitrary Tailwind values for color/spacing/radius: `tw:bg-[#2e90fa]` →
+  `tw:bg-brand-500`, `tw:p-[8px]` → `tw:p-2`, `tw:rounded-[8px]` →
+  `tw:rounded-lg`. Use a token utility.
+- No raw hex / `rgb()` in JSX, chart configs, SVG props, or `style={{}}` — use a
+  token utility (`tw:*-<token>`) or `var(--color-*)`. `yarn tw-audit:report`
+  tells you which token each raw hex matches.
+- No `tw:ring-*` to draw an edge (enforced eslint rule) — use `border`/`outline`.
+  See [`docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md).
+
+**Read the relevant spec in
+[`specs/`](openmetadata-ui/src/main/resources/ui/specs/) before UI work**
+(foundations, utility reference, and UntitledUI component specs).
+
+**Run before committing:**
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn tw-audit    # CI: exits 1 on hardcoded color/spacing/radius Tailwind values
+yarn tw-guard    # CI: fails on NEW antd imports or NEW .less files
+```
+
+Supporting: `yarn tw-audit:report` (full inventory + which token each raw hex
+matches), `yarn tw-migrate` (codemod exact-match arbitrary values → utilities).
+
+### Legacy styling: LESS/CSS `--om-*` tokens (deprecated Antd/Less stack)
+
+> This covers the **deprecated** Antd/Less side. Use it only when maintaining
+> existing `.less`; do not create new `.less` files. For new work use the
+> UntitledUI + Tailwind section above.
 
 **Before writing or modifying any UI code, read the relevant spec file in
 [`openmetadata-ui/src/main/resources/ui/specs/`](openmetadata-ui/src/main/resources/ui/specs/).**

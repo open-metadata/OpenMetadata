@@ -1147,7 +1147,7 @@ const AddDomainForm = ({
         {({ field, fieldState }) => (
           <Box
             aria-invalid={fieldState.invalid || undefined}
-            className="tw:gap-[6px]"
+            className="tw:gap-1.5"
             direction="col">
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor
