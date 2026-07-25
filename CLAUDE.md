@@ -122,6 +122,13 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
 | `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
 
+### Repo coding conventions (read before writing non-trivial code)
+
+- `docs/design-patterns.md` — the design patterns this codebase uses idiomatically (Template Method
+  for repositories, Factory/Registry for dispatch, Strategy/Adapter/Observer, the ingestion
+  Source→Sink pipeline, …) with the canonical class to copy each from. Extend the established pattern
+  rather than inventing a parallel one.
+
 ### Skills (invoke by name; procedures, not rules)
 
 | Skill | Reach for it when… |

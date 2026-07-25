@@ -26,7 +26,7 @@ import sys
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", ".."))
 
 # Files whose code-span references are dead-ref checked (check 1).
-REF_DOCS = ["CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "docs/index.md"]
+REF_DOCS = ["CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md", "docs/index.md", "docs/design-patterns.md"]
 RULES_DIR = ".claude/rules"
 
 # Path prefixes that legitimately do not exist in a fresh checkout (gitignored /
