@@ -47,6 +47,32 @@ def get_table_comment_wrapper(self, connection, query, table_name, schema=None):
 
 
 @reflection.cache
+def get_all_column_comments(self, connection, query):
+    """
+    Method to fetch comments of all columns in a single query.
+
+    Column comments live in a sparse catalog table (only commented columns have a
+    row), so bulk-loading them once and caching by (schema, table, column) avoids a
+    per-table catalog join while keeping the memory footprint bounded by the number
+    of commented columns.
+    """
+    self.all_column_comments: Dict[Tuple[str, str, str], str] = {}  # noqa: UP006
+    self.current_db: str = connection.engine.url.database
+    result = connection.execute(text(query) if isinstance(query, str) else query)
+    for row in result:
+        row_dict = {k.lower(): v for k, v in dict(row._mapping).items()}
+        self.all_column_comments[
+            (row_dict["schema"], row_dict["table_name"], row_dict["column_name"])
+        ] = row_dict["column_comment"]
+
+
+def get_column_comment_wrapper(self, connection, query, table_name, column_name, schema=None):
+    if not hasattr(self, "all_column_comments") or self.current_db != connection.engine.url.database:
+        self.get_all_column_comments(connection, query)
+    return self.all_column_comments.get((schema, table_name, column_name))
+
+
+@reflection.cache
 def get_all_table_owners(self, connection, query, schema_name, **kw):  # pylint: disable=unused-argument
     """
     Method to fetch owners of all available tables
