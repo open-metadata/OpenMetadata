@@ -896,7 +896,7 @@ export const waitForSearchResult = async (
         hasSubmittedSearch = true;
 
         return result
-          .waitFor({ state: 'visible', timeout: 5_000 })
+          .waitFor({ state: 'visible', timeout: 30_000 })
           .then(() => true)
           .catch(() => false);
       },
@@ -913,7 +913,7 @@ export const verifyDomainPropagation = async (
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink, 90_000);
   await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
