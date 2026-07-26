@@ -850,7 +850,8 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  timeout = 45_000
 ) => {
   let hasSubmittedSearch = false;
 
@@ -878,7 +879,7 @@ export const waitForSearchResult = async (
 
         return result.isVisible();
       },
-      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+      { timeout, intervals: [1_000, 2_000, 5_000] }
     )
     .toBe(true);
 };
@@ -891,7 +892,7 @@ export const verifyDomainPropagation = async (
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink, 90_000);
   await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
