@@ -226,6 +226,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
+      <div className="h-full tw:relative">
         <CreatePlaceholder
           description={
             <Transi18next
@@ -246,6 +247,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           }
           icon={<CustomPropertyEmpty />}
         />
+      </div>
     );
   }
 
