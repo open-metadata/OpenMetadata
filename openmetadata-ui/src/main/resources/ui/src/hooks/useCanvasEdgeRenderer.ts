@@ -36,9 +36,6 @@ import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
 
-const ROLLUP_LABEL_BACKGROUND = '#ffffff';
-const ROLLUP_LABEL_TEXT = '#475467';
-
 interface UseCanvasEdgeRendererProps {
   canvasRef: RefObject<HTMLCanvasElement>;
   edges: Edge[];
@@ -233,6 +230,7 @@ export function useCanvasEdgeRenderer({
         const label = String(rollupLabel);
         const paddingX = 6;
         const labelHeight = 18;
+        ctx.font = '600 11px Inter, sans-serif';
         const labelWidth = ctx.measureText(label).width + paddingX * 2;
         const x = pathData.edgeCenterX - labelWidth / 2;
         const y = pathData.edgeCenterY - labelHeight / 2;
@@ -240,15 +238,14 @@ export function useCanvasEdgeRenderer({
         ctx.save();
         ctx.globalAlpha =
           isPathHighlightActive && !isPathHighlighted ? 0.28 : 1;
-        ctx.fillStyle = ROLLUP_LABEL_BACKGROUND;
+        ctx.fillStyle = colors.labelBackground;
         ctx.strokeStyle = pathStroke;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.roundRect(x, y, labelWidth, labelHeight, 9);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = ROLLUP_LABEL_TEXT;
-        ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillStyle = colors.labelText;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(label, pathData.edgeCenterX, pathData.edgeCenterY);

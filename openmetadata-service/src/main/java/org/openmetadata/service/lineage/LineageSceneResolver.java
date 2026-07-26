@@ -21,14 +21,17 @@ import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,7 +40,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
@@ -51,18 +57,23 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
+@Slf4j
 public class LineageSceneResolver {
-  private static final String REQUIRED_FIELDS =
+  private static final String BASE_SOURCE_FIELDS =
       "id,name,displayName,fullyQualifiedName,entityType,service,serviceType,database,"
-          + "databaseSchema,domains,dataProducts,columns,messageSchema,charts,mlFeatures,fields,"
-          + "dataModel,upstreamLineage";
+          + "databaseSchema,domains,dataProducts,deleted,certification";
+  private static final String FIELD_BAND_SOURCE_FIELDS =
+      BASE_SOURCE_FIELDS + ",columns,messageSchema,charts,mlFeatures,fields,dataModel";
   private static final String FIELD_SEPARATOR = "::field::";
   private static final Set<String> SERVICE_ENTITY_TYPES =
       Set.of(
@@ -84,7 +95,9 @@ public class LineageSceneResolver {
           Entity.TABLE,
           Entity.TOPIC,
           Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
           Entity.PIPELINE,
+          Entity.STORED_PROCEDURE,
           Entity.MLMODEL,
           Entity.CONTAINER,
           Entity.SEARCH_INDEX,
@@ -101,6 +114,10 @@ public class LineageSceneResolver {
       "databaseSchema.fullyQualifiedName.keyword";
   private static final String DOMAINS_FQN_FIELD = "domains.fullyQualifiedName";
   private static final String DATA_PRODUCTS_FQN_FIELD = "dataProducts.fullyQualifiedName";
+  private static final String ENTITY_FQN_FIELD = "fullyQualifiedName";
+  private static final String UPSTREAM_LINEAGE_DOC_ID_FIELD = "upstreamLineage.docId";
+  private static final String UPSTREAM_LINEAGE_FROM_FQN_FIELD =
+      "upstreamLineage.fromEntity.fullyQualifiedName.keyword";
   private static final int ROOT_ASSET_PAGE_SIZE = 25;
   private static final int FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT = 50;
   private static final int FOCUSED_CHILD_LINEAGE_PARALLELISM = 6;
@@ -108,18 +125,8 @@ public class LineageSceneResolver {
   private static final int CONTAINER_TOTAL_LOOKUP_LIMIT = 100;
   private static final int FIELD_ENDPOINTS_PER_NODE = 10;
   private static final int FIELD_EDGE_LIMIT = 120;
-  private static final AtomicInteger LINEAGE_LOOKUP_THREAD_COUNTER = new AtomicInteger();
-  private static final ExecutorService LINEAGE_LOOKUP_EXECUTOR =
-      Executors.newFixedThreadPool(
-          FOCUSED_CHILD_LINEAGE_PARALLELISM,
-          task -> {
-            Thread thread =
-                new Thread(
-                    task,
-                    "lineage-scene-lookup-" + LINEAGE_LOOKUP_THREAD_COUNTER.incrementAndGet());
-            thread.setDaemon(true);
-            return thread;
-          });
+  private static final int ROOT_LINEAGE_HYDRATION_BATCH_SIZE = 1000;
+  private static final long LOOKUP_TIMEOUT_SECONDS = 15;
 
   public LineageScene getScene(
       String focusFqn,
@@ -135,6 +142,16 @@ public class LineageSceneResolver {
       throws IOException {
     LineageLens sceneLens = lens == null ? LineageLens.SERVICE : lens;
     LineageBand sceneBand = defaultBand(band);
+    boolean cacheable = nullOrEmpty(focusFqn) && !LineageDomainFilter.shouldApply(subjectContext);
+    LineageSceneCache.Key cacheKey =
+        new LineageSceneCache.Key(
+            sceneLens, sceneBand, size, queryFilter == null ? "" : queryFilter, includeDeleted);
+    if (cacheable) {
+      Optional<LineageScene> cached = LineageSceneCache.getInstance().get(cacheKey);
+      if (cached.isPresent()) {
+        return cached.get();
+      }
+    }
     SearchLineageResult lineage =
         shouldLoadFocusedChildrenOnly(focusFqn, entityType, sceneBand)
             ? emptyLineage()
@@ -145,20 +162,26 @@ public class LineageSceneResolver {
                 upstreamDepth,
                 downstreamDepth,
                 size,
+                sceneBand,
                 queryFilter,
                 includeDeleted,
                 subjectContext);
+    boolean sampled = false;
     if (nullOrEmpty(focusFqn)) {
-      enrichRootSceneAssets(lineage, sceneLens, sceneBand, size, includeDeleted, subjectContext);
+      sampled =
+          enrichRootSceneAssets(
+              lineage, sceneLens, sceneBand, size, queryFilter, includeDeleted, subjectContext);
     } else if (!nullOrEmpty(focusFqn) && sceneBand != LineageBand.LAYER) {
-      List<LineageSeed> childLineageSeeds =
-          enrichFocusedSceneAssets(lineage, focusFqn, entityType, size, includeDeleted);
+      FocusedAssetsResult focusedAssets =
+          enrichFocusedSceneAssets(lineage, focusFqn, entityType, sceneBand, size, includeDeleted);
+      sampled = focusedAssets.sampled();
       enrichFocusedContainerTotals(
           lineage, focusFqn, entityType, size, includeDeleted, subjectContext);
       enrichFocusedChildLineage(
           lineage,
-          childLineageSeeds,
+          focusedAssets.seeds(),
           sceneLens,
+          sceneBand,
           upstreamDepth,
           downstreamDepth,
           queryFilter,
@@ -166,7 +189,12 @@ public class LineageSceneResolver {
           subjectContext);
     }
     pruneLineage(lineage, subjectContext, focusFqn);
-    return resolveScene(focusFqn, entityType, sceneLens, sceneBand, lineage, size);
+    LineageScene scene =
+        resolveScene(focusFqn, entityType, sceneLens, sceneBand, lineage, size, sampled);
+    if (cacheable) {
+      LineageSceneCache.getInstance().put(cacheKey, scene);
+    }
+    return scene;
   }
 
   LineageScene resolveScene(
@@ -176,8 +204,19 @@ public class LineageSceneResolver {
       LineageBand sceneBand,
       SearchLineageResult lineage,
       int size) {
+    return resolveScene(focusFqn, entityType, sceneLens, sceneBand, lineage, size, false);
+  }
+
+  private LineageScene resolveScene(
+      String focusFqn,
+      String entityType,
+      LineageLens sceneLens,
+      LineageBand sceneBand,
+      SearchLineageResult lineage,
+      int size,
+      boolean sampled) {
     enrichIndexedUpstreamLineage(lineage);
-    Map<String, SceneAsset> assets = buildAssets(lineage);
+    Map<String, SceneAsset> assets = buildAssets(lineage, sceneBand);
     SceneAsset focusAsset = findFocusAsset(assets.values(), focusFqn);
     Ref focusRef = focusAsset == null ? null : focusAsset.refForFqn(focusFqn);
     SceneSelection selection =
@@ -193,7 +232,8 @@ public class LineageSceneResolver {
         .withNodes(selection.nodes())
         .withEdges(selection.edges())
         .withBreadcrumb(buildBreadcrumb(sceneLens, sceneBand, focusAsset, focusRef))
-        .withHiddenNodeCount(selection.hiddenNodeCount());
+        .withHiddenNodeCount(selection.hiddenNodeCount())
+        .withSampled(sampled);
   }
 
   private static LineageBand defaultBand(LineageBand band) {
@@ -221,11 +261,20 @@ public class LineageSceneResolver {
       int upstreamDepth,
       int downstreamDepth,
       int size,
+      LineageBand band,
       String queryFilter,
       boolean includeDeleted,
       SubjectContext subjectContext)
       throws IOException {
     if (nullOrEmpty(focusFqn)) {
+      if (LineageDomainFilter.shouldApply(subjectContext)) {
+        SearchLineageResult lineage =
+            Entity.getSearchRepository()
+                .searchPlatformLineage(
+                    "dataAsset", rootLineageParticipantQuery(queryFilter), includeDeleted);
+        hydrateMissingRootLineageAssets(lineage, band, includeDeleted);
+        return lineage;
+      }
       return Entity.getSearchRepository()
           .searchPlatformLineage(lens.value(), queryFilter, includeDeleted, subjectContext);
     }
@@ -239,113 +288,335 @@ public class LineageSceneResolver {
                 .withIncludeDeleted(includeDeleted)
                 .withLayerSize(size)
                 .withIsConnectedVia(isConnectedVia(entityType))
-                .withIncludeSourceFields(getRequiredLineageFields(REQUIRED_FIELDS)),
+                .withIncludeSourceFields(getRequiredLineageFields(sourceFieldsForBand(band))),
             subjectContext);
   }
 
-  private static void enrichRootSceneAssets(
+  private static String sourceFieldsForBand(LineageBand band) {
+    return band == LineageBand.FIELD ? FIELD_BAND_SOURCE_FIELDS : BASE_SOURCE_FIELDS;
+  }
+
+  private static boolean enrichRootSceneAssets(
       SearchLineageResult lineage,
       LineageLens lens,
       LineageBand band,
       int size,
+      String queryFilter,
       boolean includeDeleted,
       SubjectContext subjectContext)
       throws IOException {
     if (lineage == null || lineage.getNodes() == null || lineage.getNodes().isEmpty()) {
-      return;
+      return false;
     }
     List<Ref> roots = rootRefs(lineage, lens);
     if (roots.isEmpty()) {
-      return;
+      return false;
     }
 
-    int remaining = Math.max(1, size + 1);
-    for (Ref root : roots) {
-      if (remaining <= 0) {
-        return;
-      }
-      String fieldName = rootAssetFieldName(lens);
-      if (nullOrEmpty(fieldName) || nullOrEmpty(root.fqn())) {
-        continue;
-      }
-      for (String entityType : ROOT_ASSET_ENTITY_TYPES) {
-        if (band == LineageBand.LAYER) {
-          if (LineageDomainFilter.shouldApply(subjectContext)) {
-            continue;
-          }
-          SearchRootAssetsResult searchResult =
-              searchRootAssets(fieldName, root.fqn(), entityType, includeDeleted, 0);
-          if (searchResult.total() > 0) {
+    if (LineageDomainFilter.shouldApply(subjectContext)) {
+      return false;
+    }
+    String fieldName = rootAssetFieldName(lens);
+    if (nullOrEmpty(fieldName)) {
+      return false;
+    }
+    RootAssetCounts rootAssetCounts =
+        fetchRootAssetCountsByLens(fieldName, queryFilter, includeDeleted);
+    if (rootAssetCounts.truncated()) {
+      LOG.warn(
+          "Lineage scene root aggregation exceeded its bucket limit for lens field {}", fieldName);
+    }
+    if (band == LineageBand.LAYER) {
+      for (Ref root : roots) {
+        Map<String, Integer> counts =
+            rootAssetCounts.counts().getOrDefault(normalizedKey(root.fqn()), Map.of());
+        for (String entityType : ROOT_ASSET_ENTITY_TYPES) {
+          int count = counts.getOrDefault(normalizedKey(entityType), 0);
+          if (count > 0) {
             lineage
                 .getNodes()
                 .putIfAbsent(
                     syntheticCountFqn(root, entityType),
                     new NodeInformation()
-                        .withEntity(
-                            syntheticCountEntity(root, lens, entityType, searchResult.total())));
+                        .withEntity(syntheticCountEntity(root, lens, entityType, count)));
           }
+        }
+      }
+      return rootAssetCounts.truncated();
+    }
+
+    int remainingBudget = Math.max(1, size + 1);
+    int totalMatchingAssets = 0;
+    List<IOTask<SearchRootAssetsResult>> tasks = new ArrayList<>();
+    for (Ref root : roots) {
+      Map<String, Integer> counts =
+          rootAssetCounts.counts().getOrDefault(normalizedKey(root.fqn()), Map.of());
+      for (String entityType : ROOT_ASSET_ENTITY_TYPES) {
+        int count = counts.getOrDefault(normalizedKey(entityType), 0);
+        totalMatchingAssets += count;
+        if (count <= 0 || remainingBudget <= 0) {
           continue;
         }
-        if (remaining <= 0) {
-          return;
+        int fetchSize = Math.min(Math.min(ROOT_ASSET_PAGE_SIZE, count), remainingBudget);
+        remainingBudget -= fetchSize;
+        tasks.add(
+            () ->
+                searchRootAssets(
+                    fieldName, root.fqn(), entityType, includeDeleted, fetchSize, band, null));
+      }
+    }
+
+    int fetchedAssets = 0;
+    for (SearchRootAssetsResult searchResult :
+        runBounded(tasks, FOCUSED_CHILD_LINEAGE_PARALLELISM)) {
+      for (Map<String, Object> asset : searchResult.assets()) {
+        String fqn = stringValue(asset, "fullyQualifiedName");
+        if (!nullOrEmpty(fqn) && !SERVICE_ENTITY_TYPES.contains(stringValue(asset, "entityType"))) {
+          lineage.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(asset));
+          fetchedAssets++;
         }
-        SearchRootAssetsResult searchResult =
-            searchRootAssets(
-                fieldName,
-                root.fqn(),
-                entityType,
-                includeDeleted,
-                Math.min(ROOT_ASSET_PAGE_SIZE, remaining));
-        for (Map<String, Object> asset : searchResult.assets()) {
-          String fqn = stringValue(asset, "fullyQualifiedName");
-          if (!nullOrEmpty(fqn)
-              && !SERVICE_ENTITY_TYPES.contains(stringValue(asset, "entityType"))) {
-            lineage.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(asset));
-            remaining--;
-          }
-          if (remaining <= 0) {
-            return;
-          }
+      }
+    }
+    return rootAssetCounts.truncated() || totalMatchingAssets > fetchedAssets;
+  }
+
+  private static RootAssetCounts fetchRootAssetCountsByLens(
+      String rootFieldName, String queryFilter, boolean includeDeleted) throws IOException {
+    String aggregation =
+        "bucketName=roots:aggType=terms:field="
+            + rootFieldName
+            + "&size=10000,bucketName=types:aggType=terms:field=entityType&size=30";
+    JsonObject response =
+        Entity.getSearchRepository()
+            .aggregate(
+                rootAssetQuery(queryFilter, includeDeleted),
+                "dataAsset",
+                SearchIndexUtils.buildAggregationTree(aggregation),
+                new SearchListFilter());
+    if (response == null) {
+      return new RootAssetCounts(Map.of(), false);
+    }
+    return parseNestedAggregationResult(response.toString());
+  }
+
+  private static String rootAssetQuery(String queryFilter, boolean includeDeleted) {
+    List<Object> must = new ArrayList<>();
+    must.add(Map.of("term", Map.of("deleted", includeDeleted)));
+    addQueryFilterClause(must, queryFilter);
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
+  }
+
+  private static String rootLineageParticipantQuery(String queryFilter) {
+    List<Object> must = new ArrayList<>();
+    must.add(Map.of("exists", Map.of("field", UPSTREAM_LINEAGE_DOC_ID_FIELD)));
+    addQueryFilterClause(must, queryFilter);
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
+  }
+
+  private static void addQueryFilterClause(List<Object> must, String queryFilter) {
+    if (!nullOrEmpty(queryFilter)) {
+      try {
+        JsonNode query = JsonUtils.readTree(queryFilter);
+        JsonNode innerQuery = query.has("query") ? query.path("query") : query;
+        if (!innerQuery.isMissingNode() && !innerQuery.isNull() && !innerQuery.isEmpty()) {
+          must.add(JsonUtils.convertValue(innerQuery, new TypeReference<Map<String, Object>>() {}));
         }
+      } catch (RuntimeException exception) {
+        LOG.warn("Ignoring invalid lineage scene query filter", exception);
       }
     }
   }
 
-  private static List<LineageSeed> enrichFocusedSceneAssets(
+  static Map<String, Map<String, Integer>> parseNestedAggregationCounts(String responseJson) {
+    return parseNestedAggregationResult(responseJson).counts();
+  }
+
+  static boolean isNestedAggregationTruncated(String responseJson) {
+    return parseNestedAggregationResult(responseJson).truncated();
+  }
+
+  private static RootAssetCounts parseNestedAggregationResult(String responseJson) {
+    JsonNode response = JsonUtils.readTree(responseJson);
+    JsonNode aggregationRoot =
+        response.has("aggregations") ? response.path("aggregations") : response;
+    JsonNode roots = findAggregation(aggregationRoot, "roots");
+    JsonNode buckets = roots.path("buckets");
+    if (!buckets.isArray()) {
+      return new RootAssetCounts(Map.of(), false);
+    }
+    boolean truncated = roots.path("sum_other_doc_count").asLong(0) > 0;
+    Map<String, Map<String, Integer>> counts = new LinkedHashMap<>();
+    for (JsonNode rootBucket : buckets) {
+      String rootKey = rootBucket.path("key").asText();
+      if (nullOrEmpty(rootKey)) {
+        continue;
+      }
+      JsonNode types = findAggregation(rootBucket, "types");
+      truncated |= types.path("sum_other_doc_count").asLong(0) > 0;
+      Map<String, Integer> typeCounts = new LinkedHashMap<>();
+      for (JsonNode typeBucket : types.path("buckets")) {
+        String type = typeBucket.path("key").asText();
+        if (!nullOrEmpty(type)) {
+          typeCounts.put(normalizedKey(type), typeBucket.path("doc_count").asInt(0));
+        }
+      }
+      counts.put(normalizedKey(rootKey), typeCounts);
+    }
+    return new RootAssetCounts(counts, truncated);
+  }
+
+  private static JsonNode findAggregation(JsonNode parent, String name) {
+    if (parent == null || !parent.isObject()) {
+      return JsonUtils.readTree("{}");
+    }
+    JsonNode direct = parent.path(name);
+    if (!direct.isMissingNode()) {
+      return direct;
+    }
+    Iterator<Map.Entry<String, JsonNode>> fields = parent.fields();
+    while (fields.hasNext()) {
+      Map.Entry<String, JsonNode> field = fields.next();
+      if (field.getKey().endsWith("#" + name)) {
+        return field.getValue();
+      }
+    }
+    return parent.path(name);
+  }
+
+  private static String normalizedKey(String value) {
+    return value == null ? "" : value.toLowerCase(Locale.ROOT);
+  }
+
+  private static FocusedAssetsResult enrichFocusedSceneAssets(
       SearchLineageResult lineage,
       String focusFqn,
       String entityType,
+      LineageBand band,
       int size,
       boolean includeDeleted)
       throws IOException {
-    List<LineageSeed> lineageSeeds = new ArrayList<>();
     if (lineage == null || lineage.getNodes() == null) {
-      return lineageSeeds;
+      return new FocusedAssetsResult(List.of(), false);
     }
     String fieldName = focusedAssetFieldName(entityType);
     if (nullOrEmpty(fieldName)) {
-      return lineageSeeds;
+      return new FocusedAssetsResult(List.of(), false);
     }
+    if (DATABASE_FQN_KEYWORD_FIELD.equals(fieldName) && !isDatabaseKeywordFieldMapped()) {
+      logDatabaseReindexRequired();
+      return new FocusedAssetsResult(List.of(), false);
+    }
+
+    Map<String, LineageSeed> seedsByFqn = new LinkedHashMap<>();
     int remaining = Math.max(1, size + 1);
+    boolean sampled = false;
+
     for (String rootAssetType : ROOT_ASSET_ENTITY_TYPES) {
       if (remaining <= 0) {
-        return lineageSeeds;
+        sampled = true;
+        break;
       }
-      List<Map<String, Object>> assets =
-          searchRootAssets(fieldName, focusFqn, rootAssetType, includeDeleted, remaining).assets();
-      for (Map<String, Object> asset : assets) {
-        String fqn = stringValue(asset, "fullyQualifiedName");
-        if (!nullOrEmpty(fqn) && !SERVICE_ENTITY_TYPES.contains(stringValue(asset, "entityType"))) {
-          lineage.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(asset));
-          lineageSeeds.add(new LineageSeed(fqn, stringValue(asset, "entityType")));
-          remaining--;
-        }
-        if (remaining <= 0) {
-          return lineageSeeds;
+      SearchRootAssetsResult participants =
+          searchRootAssets(
+              fieldName,
+              focusFqn,
+              rootAssetType,
+              includeDeleted,
+              remaining,
+              band,
+              UPSTREAM_LINEAGE_DOC_ID_FIELD);
+      int added = addFocusedAssets(lineage, seedsByFqn, participants.assets(), remaining);
+      remaining -= added;
+      sampled |= participants.total() > participants.assets().size();
+    }
+
+    if (remaining > 0) {
+      SearchRootAssetsResult feederHits =
+          searchRootAssets(
+              UPSTREAM_LINEAGE_FROM_FQN_FIELD,
+              focusFqn + ".*",
+              "dataAsset",
+              includeDeleted,
+              Math.max(remaining * 4, remaining),
+              band,
+              null,
+              List.of("upstreamLineage"));
+      sampled |= feederHits.total() > feederHits.assets().size();
+      List<String> feederFqns = feederChildFqns(feederHits.assets(), focusFqn);
+      if (!feederFqns.isEmpty()) {
+        SearchRootAssetsResult feederAssets =
+            searchAssetsByTerms(
+                ENTITY_FQN_FIELD,
+                feederFqns.stream().map(LineageSceneResolver::normalizedKey).toList(),
+                "dataAsset",
+                includeDeleted,
+                remaining,
+                band);
+        int added = addFocusedAssets(lineage, seedsByFqn, feederAssets.assets(), remaining);
+        remaining -= added;
+        sampled |= feederAssets.total() > feederAssets.assets().size();
+      }
+    }
+
+    for (String rootAssetType : ROOT_ASSET_ENTITY_TYPES) {
+      if (remaining <= 0) {
+        sampled = true;
+        break;
+      }
+      SearchRootAssetsResult fill =
+          searchRootAssets(
+              fieldName,
+              focusFqn,
+              rootAssetType,
+              includeDeleted,
+              remaining + seedsByFqn.size(),
+              band,
+              null);
+      int added = addFocusedAssets(lineage, seedsByFqn, fill.assets(), remaining);
+      remaining -= added;
+      sampled |= fill.total() > fill.assets().size();
+    }
+    sampled |= seedsByFqn.size() > FOCUSED_CHILD_LINEAGE_LOOKUP_LIMIT;
+    return new FocusedAssetsResult(new ArrayList<>(seedsByFqn.values()), sampled);
+  }
+
+  private static int addFocusedAssets(
+      SearchLineageResult lineage,
+      Map<String, LineageSeed> seedsByFqn,
+      List<Map<String, Object>> assets,
+      int limit) {
+    int added = 0;
+    for (Map<String, Object> asset : assets) {
+      String fqn = stringValue(asset, "fullyQualifiedName");
+      String assetEntityType = stringValue(asset, "entityType");
+      if (nullOrEmpty(fqn)
+          || SERVICE_ENTITY_TYPES.contains(assetEntityType)
+          || seedsByFqn.containsKey(fqn)) {
+        continue;
+      }
+      lineage.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(asset));
+      seedsByFqn.put(fqn, new LineageSeed(fqn, assetEntityType));
+      added++;
+      if (added >= limit) {
+        break;
+      }
+    }
+    return added;
+  }
+
+  private static List<String> feederChildFqns(List<Map<String, Object>> assets, String focusFqn) {
+    Set<String> fqns = new LinkedHashSet<>();
+    String childPrefix = focusFqn + ".";
+    for (Map<String, Object> asset : assets) {
+      for (Map<String, Object> upstream : listValue(asset, "upstreamLineage")) {
+        Map<String, Object> fromEntity = mapValue(upstream.get("fromEntity"));
+        String fqn = stringValue(fromEntity, "fullyQualifiedName");
+        if (!nullOrEmpty(fqn) && fqn.startsWith(childPrefix)) {
+          fqns.add(fqn);
         }
       }
     }
-    return lineageSeeds;
+    return new ArrayList<>(fqns);
   }
 
   private static void enrichFocusedContainerTotals(
@@ -391,7 +662,7 @@ public class LineageSceneResolver {
             Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)),
             subjectContext);
     for (SceneAsset database : databaseAssets) {
-      int tableCount = tableCounts.getOrDefault(database.self().fqn(), 0);
+      int tableCount = tableCounts.getOrDefault(normalizedKey(database.self().fqn()), 0);
       if (tableCount > 0) {
         addSyntheticCountEntity(
             lineage,
@@ -432,7 +703,7 @@ public class LineageSceneResolver {
             Math.max(1, Math.min(size + 1, CONTAINER_TOTAL_LOOKUP_LIMIT)),
             subjectContext);
     for (SceneAsset schema : schemaAssets) {
-      int tableCount = tableCounts.getOrDefault(schema.self().fqn(), 0);
+      int tableCount = tableCounts.getOrDefault(normalizedKey(schema.self().fqn()), 0);
       if (tableCount > 0) {
         addSyntheticCountEntity(
             lineage,
@@ -470,6 +741,10 @@ public class LineageSceneResolver {
     if (LineageDomainFilter.shouldApply(subjectContext)) {
       return Map.of();
     }
+    if (DATABASE_FQN_KEYWORD_FIELD.equals(bucketFieldName) && !isDatabaseKeywordFieldMapped()) {
+      logDatabaseReindexRequired();
+      return Map.of();
+    }
     Response response =
         Entity.getSearchRepository()
             .aggregate(
@@ -505,10 +780,22 @@ public class LineageSceneResolver {
     for (JsonNode bucket : buckets) {
       String key = bucket.path("key").asText();
       if (!nullOrEmpty(key)) {
-        counts.put(key, bucket.path("doc_count").asInt(0));
+        counts.put(normalizedKey(key), bucket.path("doc_count").asInt(0));
       }
     }
     return counts;
+  }
+
+  private static boolean isDatabaseKeywordFieldMapped() throws IOException {
+    return Entity.getSearchRepository()
+        .isFieldMappedInIndex(Entity.TABLE, DATABASE_FQN_KEYWORD_FIELD);
+  }
+
+  private static void logDatabaseReindexRequired() {
+    LOG.warn(
+        "Field {} is not mapped. Run Search Reindex to enable database-focused lineage scenes "
+            + "and per-database lineage counts.",
+        DATABASE_FQN_KEYWORD_FIELD);
   }
 
   private static JsonNode aggregationBuckets(JsonNode responseRoot, String fieldName) {
@@ -564,6 +851,7 @@ public class LineageSceneResolver {
       SearchLineageResult lineage,
       List<LineageSeed> lineageSeeds,
       LineageLens lens,
+      LineageBand band,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
@@ -578,50 +866,84 @@ public class LineageSceneResolver {
     if (seeds.isEmpty()) {
       return;
     }
-    List<CompletableFuture<SearchLineageResult>> futures =
+    List<IOTask<SearchLineageResult>> tasks =
         seeds.stream()
             .map(
                 seed ->
-                    CompletableFuture.supplyAsync(
-                        RequestLatencyContext.wrapWithContext(
-                            () -> {
-                              try {
-                                return fetchLineage(
-                                    seed.fqn(),
-                                    seed.entityType(),
-                                    lens,
-                                    upstreamDepth,
-                                    downstreamDepth,
-                                    FOCUSED_CHILD_LINEAGE_SIZE,
-                                    queryFilter,
-                                    includeDeleted,
-                                    subjectContext);
-                              } catch (IOException exception) {
-                                throw new CompletionException(exception);
-                              }
-                            }),
-                        LINEAGE_LOOKUP_EXECUTOR))
+                    (IOTask<SearchLineageResult>)
+                        () ->
+                            fetchLineage(
+                                seed.fqn(),
+                                seed.entityType(),
+                                lens,
+                                upstreamDepth,
+                                downstreamDepth,
+                                FOCUSED_CHILD_LINEAGE_SIZE,
+                                band,
+                                queryFilter,
+                                includeDeleted,
+                                subjectContext))
             .toList();
-    for (CompletableFuture<SearchLineageResult> future : futures) {
-      mergeLineage(lineage, joinLineageFuture(future));
+    for (SearchLineageResult childLineage : runBounded(tasks, FOCUSED_CHILD_LINEAGE_PARALLELISM)) {
+      mergeLineage(lineage, childLineage);
     }
   }
 
-  private static <T> T joinFuture(CompletableFuture<T> future) throws IOException {
-    try {
-      return future.join();
-    } catch (CompletionException exception) {
-      Throwable cause = exception.getCause();
-      if (cause instanceof IOException ioException) {
-        throw ioException;
+  private static <T> List<T> runBounded(List<IOTask<T>> tasks, int parallelism) throws IOException {
+    if (tasks.isEmpty()) {
+      return List.of();
+    }
+    Semaphore semaphore = new Semaphore(Math.max(1, parallelism));
+    List<T> results = new ArrayList<>();
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      List<CompletableFuture<T>> futures =
+          tasks.stream()
+              .map(
+                  task ->
+                      CompletableFuture.supplyAsync(
+                              RequestLatencyContext.wrapWithContext(
+                                  () -> {
+                                    boolean acquired = false;
+                                    try {
+                                      semaphore.acquire();
+                                      acquired = true;
+                                      return task.call();
+                                    } catch (InterruptedException exception) {
+                                      Thread.currentThread().interrupt();
+                                      throw new CompletionException(exception);
+                                    } catch (IOException exception) {
+                                      throw new CompletionException(exception);
+                                    } finally {
+                                      if (acquired) {
+                                        semaphore.release();
+                                      }
+                                    }
+                                  }),
+                              executor)
+                          .orTimeout(LOOKUP_TIMEOUT_SECONDS, TimeUnit.SECONDS))
+              .toList();
+      for (CompletableFuture<T> future : futures) {
+        try {
+          T result = future.join();
+          if (result != null) {
+            results.add(result);
+          }
+        } catch (CompletionException exception) {
+          Throwable cause = exception.getCause();
+          if (cause instanceof TimeoutException) {
+            future.cancel(true);
+            LOG.warn(
+                "Timed out after {} seconds while building a lineage scene; skipping result",
+                LOOKUP_TIMEOUT_SECONDS);
+          } else if (cause instanceof IOException ioException) {
+            throw ioException;
+          } else {
+            throw new IOException(cause);
+          }
+        }
       }
-      throw new IOException(cause);
     }
-  }
-
-  private static SearchLineageResult joinLineageFuture(
-      CompletableFuture<SearchLineageResult> future) throws IOException {
-    return joinFuture(future);
+    return results;
   }
 
   private static void mergeLineage(SearchLineageResult target, SearchLineageResult source) {
@@ -631,6 +953,41 @@ public class LineageSceneResolver {
     nodeMap(target).putAll(nodeMap(source));
     upstreamEdgeMap(target).putAll(upstreamEdgeMap(source));
     downstreamEdgeMap(target).putAll(downstreamEdgeMap(source));
+  }
+
+  private static void hydrateMissingRootLineageAssets(
+      SearchLineageResult lineage, LineageBand band, boolean includeDeleted) throws IOException {
+    Set<String> missingFqns = new LinkedHashSet<>();
+    for (EsLineageData edge : allEdges(lineage)) {
+      if (edge.getFromEntity() != null
+          && !nullOrEmpty(edge.getFromEntity().getFullyQualifiedName())) {
+        missingFqns.add(edge.getFromEntity().getFullyQualifiedName());
+      }
+      if (edge.getToEntity() != null && !nullOrEmpty(edge.getToEntity().getFullyQualifiedName())) {
+        missingFqns.add(edge.getToEntity().getFullyQualifiedName());
+      }
+    }
+    missingFqns.removeAll(nodeMap(lineage).keySet());
+    List<String> missing = new ArrayList<>(missingFqns);
+    for (int offset = 0; offset < missing.size(); offset += ROOT_LINEAGE_HYDRATION_BATCH_SIZE) {
+      List<String> batch =
+          missing.subList(
+              offset, Math.min(offset + ROOT_LINEAGE_HYDRATION_BATCH_SIZE, missing.size()));
+      SearchRootAssetsResult searchResult =
+          searchAssetsByTerms(
+              ENTITY_FQN_FIELD,
+              batch.stream().map(LineageSceneResolver::normalizedKey).toList(),
+              "dataAsset",
+              includeDeleted,
+              batch.size(),
+              band);
+      for (Map<String, Object> asset : searchResult.assets()) {
+        String fqn = stringValue(asset, "fullyQualifiedName");
+        if (!nullOrEmpty(fqn)) {
+          nodeMap(lineage).putIfAbsent(fqn, new NodeInformation().withEntity(asset));
+        }
+      }
+    }
   }
 
   private static void enrichIndexedUpstreamLineage(SearchLineageResult lineage) {
@@ -744,9 +1101,82 @@ public class LineageSceneResolver {
   private static SearchRootAssetsResult searchRootAssets(
       String fieldName, String fieldValue, String entityType, boolean includeDeleted, int size)
       throws IOException {
+    return searchRootAssets(
+        fieldName, fieldValue, entityType, includeDeleted, size, LineageBand.ASSET, null);
+  }
+
+  private static SearchRootAssetsResult searchRootAssets(
+      String fieldName,
+      String fieldValue,
+      String entityType,
+      boolean includeDeleted,
+      int size,
+      LineageBand band,
+      String requiredExistsField)
+      throws IOException {
+    return searchRootAssets(
+        fieldName,
+        fieldValue,
+        entityType,
+        includeDeleted,
+        size,
+        band,
+        requiredExistsField,
+        sourceFieldList(band));
+  }
+
+  private static SearchRootAssetsResult searchRootAssets(
+      String fieldName,
+      String fieldValue,
+      String entityType,
+      boolean includeDeleted,
+      int size,
+      LineageBand band,
+      String requiredExistsField,
+      List<String> sourceIncludes)
+      throws IOException {
     Response response =
         Entity.getSearchRepository()
-            .searchByField(fieldName, fieldValue, entityType, includeDeleted, 0, size);
+            .searchByFieldWithOptions(
+                fieldName,
+                fieldValue,
+                entityType,
+                includeDeleted,
+                0,
+                size,
+                sourceIncludes,
+                requiredExistsField,
+                true);
+    return parseSearchAssets(response);
+  }
+
+  private static SearchRootAssetsResult searchAssetsByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String entityType,
+      boolean includeDeleted,
+      int size,
+      LineageBand band)
+      throws IOException {
+    Response response =
+        Entity.getSearchRepository()
+            .searchByTerms(
+                fieldName,
+                fieldValues,
+                entityType,
+                includeDeleted,
+                0,
+                size,
+                sourceFieldList(band),
+                true);
+    return parseSearchAssets(response);
+  }
+
+  private static List<String> sourceFieldList(LineageBand band) {
+    return List.of(sourceFieldsForBand(band).split(","));
+  }
+
+  private static SearchRootAssetsResult parseSearchAssets(Response response) {
     if (!(response.getEntity() instanceof String responseJson)) {
       return new SearchRootAssetsResult(List.of(), 0);
     }
@@ -843,7 +1273,8 @@ public class LineageSceneResolver {
     return map;
   }
 
-  private static Map<String, SceneAsset> buildAssets(SearchLineageResult lineage) {
+  private static Map<String, SceneAsset> buildAssets(
+      SearchLineageResult lineage, LineageBand band) {
     Map<String, SceneAsset> assets = new LinkedHashMap<>();
     if (lineage == null || lineage.getNodes() == null) {
       return assets;
@@ -852,7 +1283,7 @@ public class LineageSceneResolver {
       if (nodeInformation == null || nodeInformation.getEntity() == null) {
         continue;
       }
-      SceneAsset asset = toAsset(nodeInformation.getEntity());
+      SceneAsset asset = toAsset(nodeInformation.getEntity(), band);
       if (!nullOrEmpty(asset.self().fqn())) {
         assets.put(asset.self().fqn(), asset);
       }
@@ -861,6 +1292,10 @@ public class LineageSceneResolver {
   }
 
   private static SceneAsset toAsset(Map<String, Object> entity) {
+    return toAsset(entity, LineageBand.ASSET);
+  }
+
+  private static SceneAsset toAsset(Map<String, Object> entity, LineageBand band) {
     String entityType = stringValue(entity, "entityType");
     if (nullOrEmpty(entityType)) {
       entityType = stringValue(entity, "type");
@@ -873,13 +1308,13 @@ public class LineageSceneResolver {
             label(entity),
             levelKind(entityType),
             stringValue(entity, "serviceType"),
-            entity);
+            trimSourceEntity(entity, band));
 
-    Ref service = serviceRef(entity, entityType, self);
-    Ref database = refValue(entity, "database", LineageLevelKind.DATABASE);
-    Ref schema = refValue(entity, "databaseSchema", LineageLevelKind.SCHEMA);
-    Ref domain = firstRef(entity, "domains", LineageLevelKind.DOMAIN);
-    Ref dataProduct = firstRef(entity, "dataProducts", LineageLevelKind.DATA_PRODUCT);
+    Ref service = serviceRef(entity, entityType, self, band);
+    Ref database = refValue(entity, "database", LineageLevelKind.DATABASE, band);
+    Ref schema = refValue(entity, "databaseSchema", LineageLevelKind.SCHEMA, band);
+    Ref domain = firstRef(entity, "domains", LineageLevelKind.DOMAIN, band);
+    Ref dataProduct = firstRef(entity, "dataProducts", LineageLevelKind.DATA_PRODUCT, band);
 
     return new SceneAsset(
         self,
@@ -893,11 +1328,12 @@ public class LineageSceneResolver {
         syntheticCount(entity));
   }
 
-  private static Ref serviceRef(Map<String, Object> entity, String entityType, Ref self) {
+  private static Ref serviceRef(
+      Map<String, Object> entity, String entityType, Ref self, LineageBand band) {
     if (SERVICE_ENTITY_TYPES.contains(entityType)) {
       return self.withKind(LineageLevelKind.SERVICE);
     }
-    Ref service = refValue(entity, "service", LineageLevelKind.SERVICE);
+    Ref service = refValue(entity, "service", LineageLevelKind.SERVICE, band);
     if (service != null) {
       return service.withServiceType(stringValue(entity, "serviceType"));
     }
@@ -999,7 +1435,7 @@ public class LineageSceneResolver {
     }
 
     int hiddenNodeCount = Math.max(0, nodes.size() - size);
-    Set<String> visibleNodeIds = truncateNodes(nodes, size);
+    Set<String> visibleNodeIds = truncateNodes(nodes, edgeByKey, size);
     List<LineageSceneEdge> visibleEdges =
         edgeByKey.values().stream()
             .map(RollupEdge::toSceneEdge)
@@ -1225,8 +1661,12 @@ public class LineageSceneResolver {
 
   private static Optional<Ref> lensRef(SceneAsset asset, LineageLens lens) {
     return switch (lens) {
-      case DOMAIN -> Optional.ofNullable(asset.domain());
-      case DATA_PRODUCT -> Optional.ofNullable(asset.dataProduct());
+      case DOMAIN -> Optional.ofNullable(
+          asset.self().kind() == LineageLevelKind.DOMAIN ? asset.self() : asset.domain());
+      case DATA_PRODUCT -> Optional.ofNullable(
+          asset.self().kind() == LineageLevelKind.DATA_PRODUCT
+              ? asset.self()
+              : asset.dataProduct());
       case SERVICE -> Optional.ofNullable(asset.service());
     };
   }
@@ -1236,8 +1676,10 @@ public class LineageSceneResolver {
       case TABLE,
           TOPIC,
           DASHBOARD,
+          DASHBOARD_DATA_MODEL,
           MODEL,
           PIPELINE,
+          STORED_PROCEDURE,
           CONTAINER,
           SEARCH_INDEX,
           API_ENDPOINT,
@@ -1454,7 +1896,11 @@ public class LineageSceneResolver {
       }
       return;
     }
-    addRollup(edgeByKey, edge, fromRef.nodeId(), toRef.nodeId(), band, band != LineageBand.FIELD);
+    boolean rollup =
+        band == LineageBand.LAYER
+            || !Objects.equals(fromRef.nodeId(), fromAsset.self().nodeId())
+            || !Objects.equals(toRef.nodeId(), toAsset.self().nodeId());
+    addRollup(edgeByKey, edge, fromRef.nodeId(), toRef.nodeId(), band, rollup);
   }
 
   private static void addRollup(
@@ -1496,9 +1942,15 @@ public class LineageSceneResolver {
     return index < 0 ? null : edgeEndpoint.substring(index + FIELD_SEPARATOR.length());
   }
 
-  private static Set<String> truncateNodes(Map<String, LineageSceneNode> nodes, int size) {
+  private static Set<String> truncateNodes(
+      Map<String, LineageSceneNode> nodes, Map<String, RollupEdge> edgeByKey, int size) {
     if (size <= 0 || nodes.size() <= size) {
       return new LinkedHashSet<>(nodes.keySet());
+    }
+    Map<String, Integer> degreeByNode = new LinkedHashMap<>();
+    for (RollupEdge edge : edgeByKey.values()) {
+      degreeByNode.merge(nodeId(edge.from), 1, Integer::sum);
+      degreeByNode.merge(nodeId(edge.to), 1, Integer::sum);
     }
     Set<String> keep = new LinkedHashSet<>();
     for (LineageSceneNode node : nodes.values()) {
@@ -1506,7 +1958,21 @@ public class LineageSceneResolver {
         keep.add(node.getId());
       }
     }
-    for (LineageSceneNode node : nodes.values()) {
+    List<LineageSceneNode> rankedNodes =
+        nodes.values().stream()
+            .filter(node -> !keep.contains(node.getId()))
+            .sorted(
+                Comparator.comparingInt(
+                        (LineageSceneNode node) ->
+                            node.getChildrenCount() == null ? 0 : node.getChildrenCount())
+                    .reversed()
+                    .thenComparing(
+                        Comparator.comparingInt(
+                                (LineageSceneNode node) ->
+                                    degreeByNode.getOrDefault(node.getId(), 0))
+                            .reversed()))
+            .toList();
+    for (LineageSceneNode node : rankedNodes) {
       if (keep.size() >= size) {
         break;
       }
@@ -1584,9 +2050,11 @@ public class LineageSceneResolver {
       case Entity.TABLE -> LineageLevelKind.TABLE;
       case Entity.TOPIC -> LineageLevelKind.TOPIC;
       case Entity.DASHBOARD -> LineageLevelKind.DASHBOARD;
+      case Entity.DASHBOARD_DATA_MODEL -> LineageLevelKind.DASHBOARD_DATA_MODEL;
       case Entity.CHART -> LineageLevelKind.CHART;
       case Entity.MLMODEL -> LineageLevelKind.MODEL;
       case Entity.PIPELINE -> LineageLevelKind.PIPELINE;
+      case Entity.STORED_PROCEDURE -> LineageLevelKind.STORED_PROCEDURE;
       case Entity.DOMAIN -> LineageLevelKind.DOMAIN;
       case Entity.DATA_PRODUCT -> LineageLevelKind.DATA_PRODUCT;
       case Entity.CONTAINER -> LineageLevelKind.CONTAINER;
@@ -1654,19 +2122,34 @@ public class LineageSceneResolver {
   }
 
   private static Ref refValue(Map<String, Object> entity, String key, LineageLevelKind kind) {
+    return refValue(entity, key, kind, LineageBand.ASSET);
+  }
+
+  private static Ref refValue(
+      Map<String, Object> entity, String key, LineageLevelKind kind, LineageBand band) {
     Map<String, Object> ref = mapValue(entity.get(key));
-    return ref == null ? null : refFromMap(ref, kind, stringValue(entity, "serviceType"));
+    return ref == null ? null : refFromMap(ref, kind, stringValue(entity, "serviceType"), band);
   }
 
   private static Ref firstRef(Map<String, Object> entity, String key, LineageLevelKind kind) {
+    return firstRef(entity, key, kind, LineageBand.ASSET);
+  }
+
+  private static Ref firstRef(
+      Map<String, Object> entity, String key, LineageLevelKind kind, LineageBand band) {
     List<Map<String, Object>> refs = listValue(entity, key);
     return refs.isEmpty()
         ? null
-        : refFromMap(refs.get(0), kind, stringValue(entity, "serviceType"));
+        : refFromMap(refs.get(0), kind, stringValue(entity, "serviceType"), band);
   }
 
   private static Ref refFromMap(
       Map<String, Object> ref, LineageLevelKind kind, String serviceType) {
+    return refFromMap(ref, kind, serviceType, LineageBand.ASSET);
+  }
+
+  private static Ref refFromMap(
+      Map<String, Object> ref, LineageLevelKind kind, String serviceType, LineageBand band) {
     String entityType = stringValue(ref, "type");
     if (nullOrEmpty(entityType)) {
       entityType = stringValue(ref, "entityType");
@@ -1678,7 +2161,21 @@ public class LineageSceneResolver {
         label(ref),
         kind,
         serviceType,
-        new LinkedHashMap<>(ref));
+        trimSourceEntity(ref, band));
+  }
+
+  static Map<String, Object> trimSourceEntity(Map<String, Object> entity, LineageBand band) {
+    Set<String> allowedFields = new LinkedHashSet<>(sourceFieldList(band));
+    allowedFields.add("type");
+    allowedFields.add("lineageSceneCount");
+    allowedFields.add("lineageSceneSyntheticCount");
+    Map<String, Object> trimmed = new LinkedHashMap<>();
+    for (String field : allowedFields) {
+      if (entity.containsKey(field)) {
+        trimmed.put(field, entity.get(field));
+      }
+    }
+    return trimmed;
   }
 
   private static List<Map<String, Object>> listValue(Map<String, Object> entity, String key) {
@@ -1777,7 +2274,16 @@ public class LineageSceneResolver {
 
   private record LineageSeed(String fqn, String entityType) {}
 
+  private record FocusedAssetsResult(List<LineageSeed> seeds, boolean sampled) {}
+
   private record SearchRootAssetsResult(List<Map<String, Object>> assets, int total) {}
+
+  private record RootAssetCounts(Map<String, Map<String, Integer>> counts, boolean truncated) {}
+
+  @FunctionalInterface
+  private interface IOTask<T> {
+    T call() throws IOException;
+  }
 
   private record SceneAsset(
       Ref self,
@@ -1830,6 +2336,8 @@ public class LineageSceneResolver {
     private final Set<String> seenEdgeIdentities = new LinkedHashSet<>();
     private String source;
     private String sqlQuery;
+    private String description;
+    private EntityReference pipeline;
 
     private RollupEdge(String from, String to, LineageBand band, boolean rollup) {
       this.from = from;
@@ -1844,6 +2352,13 @@ public class LineageSceneResolver {
             firstNonBlank(edge.getDocUniqueId(), edge.getDocId(), edge.toString()));
         source = firstNonBlank(source, edge.getSource());
         sqlQuery = firstNonBlank(sqlQuery, edge.getSqlQuery());
+        description = firstNonBlank(description, edge.getDescription());
+        if (pipeline == null && edge.getPipeline() != null) {
+          pipeline =
+              edge.getPipeline() instanceof EntityReference entityReference
+                  ? entityReference
+                  : JsonUtils.convertValue(edge.getPipeline(), EntityReference.class);
+        }
       }
     }
 
@@ -1866,6 +2381,8 @@ public class LineageSceneResolver {
           .withLabel(weight > 1 ? String.valueOf(weight) : null)
           .withSource(source)
           .withSqlQuery(sqlQuery)
+          .withDescription(weight == 1 ? description : null)
+          .withPipeline(weight == 1 ? pipeline : null)
           .withUnderlyingEdgeIds(underlyingEdgeIds);
     }
   }

@@ -173,7 +173,7 @@ test.describe('Data asset lineage', () => {
           await fitToScreen(page);
         }
 
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageRes;
         await page.getByTestId('edit-lineage').waitFor({
@@ -319,7 +319,9 @@ test.describe('Column Level Lineage', () => {
 
         await test.step('Add column lineage', async () => {
           await addPipelineBetweenNodes(page, sourceEntity, targetEntity);
+          await editLineageClick(page);
           await activateColumnLayer(page);
+          await editLineageClick(page);
 
           // Add column lineage
           await addColumnLineage(page, sourceCol, targetCol);
@@ -365,9 +367,7 @@ test.describe('Column Level Lineage', () => {
     });
   });
 
-  test('Verify column layer is applied on entering edit mode', async ({
-    page,
-  }) => {
+  test('Verify edit mode respects the active scene band', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
 
@@ -389,7 +389,19 @@ test.describe('Column Level Lineage', () => {
         await clickOutside(page);
       });
 
-      await test.step('Enter edit mode and verify column layer is active', async () => {
+      await test.step('Enter ASSET edit mode and verify the column layer stays inactive', async () => {
+        await editLineageClick(page);
+
+        await page.click('[data-testid="lineage-layer-btn"]');
+
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
+
+        await clickOutside(page);
+      });
+
+      await test.step('Enter FIELD edit mode and verify the column layer is active', async () => {
+        await editLineageClick(page);
+        await activateColumnLayer(page);
         await editLineageClick(page);
 
         await page.click('[data-testid="lineage-layer-btn"]');
@@ -439,6 +451,7 @@ test.describe('Column Level Lineage', () => {
       });
 
       await test.step('Verify column tracing is cleared on exiting edit mode', async () => {
+        await activateColumnLayer(page);
         await editLineageClick(page);
 
         await firstColumn.click();

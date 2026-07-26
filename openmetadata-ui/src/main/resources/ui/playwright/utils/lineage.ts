@@ -97,7 +97,23 @@ export const verifyColumnLayerInactive = async (page: Page) => {
 };
 
 export const activateColumnLayer = async (page: Page) => {
-  await page.click('[data-testid="lineage-layer-btn"]');
+  await page.getByTestId('lineage-layer-btn').click();
+
+  const fieldBandButton = page.getByTestId('lineage-layer-band-FIELD');
+  if (await fieldBandButton.isVisible()) {
+    if ((await fieldBandButton.getAttribute('aria-pressed')) !== 'true') {
+      const sceneRes = page.waitForResponse(
+        '**/api/v1/lineage/scene?*band=FIELD*'
+      );
+      await fieldBandButton.click();
+      await sceneRes;
+      await waitForAllLoadersToDisappear(page);
+    } else {
+      await clickOutside(page);
+    }
+
+    return;
+  }
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
@@ -639,7 +655,7 @@ export const removeColumnLineage = async (
 };
 
 export const visitLineageTab = async (page: Page) => {
-  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  const lineageRes = page.waitForResponse('**/api/v1/lineage/scene?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
   await waitForAllLoadersToDisappear(page);

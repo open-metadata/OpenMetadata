@@ -174,6 +174,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+  private final Map<String, Boolean> mappedFieldCache = new ConcurrentHashMap<>();
 
   /**
    * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
@@ -3949,6 +3950,54 @@ public class SearchRepository {
       String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     return searchClient.searchByField(fieldName, fieldValue, index, deleted, from, size);
+  }
+
+  public Response searchByFieldWithOptions(
+      String fieldName,
+      String fieldValue,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      String requiredExistsField,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByFieldWithOptions(
+        fieldName,
+        fieldValue,
+        index,
+        deleted,
+        from,
+        size,
+        sourceIncludes,
+        requiredExistsField,
+        trackTotalHits);
+  }
+
+  public Response searchByTerms(
+      String fieldName,
+      List<String> fieldValues,
+      String index,
+      Boolean deleted,
+      int from,
+      int size,
+      List<String> sourceIncludes,
+      boolean trackTotalHits)
+      throws IOException {
+    return searchClient.searchByTerms(
+        fieldName, fieldValues, index, deleted, from, size, sourceIncludes, trackTotalHits);
+  }
+
+  public boolean isFieldMappedInIndex(String entityType, String fieldPath) throws IOException {
+    String cacheKey = entityType + ":" + fieldPath;
+    Boolean cached = mappedFieldCache.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+    boolean mapped = searchClient.isFieldMappedInIndex(entityType, fieldPath);
+    mappedFieldCache.putIfAbsent(cacheKey, mapped);
+    return mapped;
   }
 
   public Response aggregate(AggregationRequest request) throws IOException {

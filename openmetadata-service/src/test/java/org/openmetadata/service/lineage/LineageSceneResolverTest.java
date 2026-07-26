@@ -14,6 +14,7 @@
 package org.openmetadata.service.lineage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
 
@@ -186,6 +188,43 @@ class LineageSceneResolverTest {
     assertEquals(1, scene.getNodes().size());
     assertEquals(40, snowflake.getChildrenCount());
     assertEquals(40, snowflake.getCounts().get(LineageLevelKind.TABLE.value()));
+  }
+
+  @Test
+  void domainAndDataProductRootEntitiesUseTheirOwnLensReferences() {
+    String domainFqn = "analytics";
+    SearchLineageResult domainLineage =
+        result(
+            List.of(
+                rootEntity(Entity.DOMAIN, domainFqn),
+                syntheticLensCount(Entity.TABLE, "domains", Entity.DOMAIN, domainFqn, 7)),
+            List.of());
+
+    LineageScene domainScene =
+        RESOLVER.resolveScene(
+            null, null, LineageLens.DOMAIN, LineageBand.LAYER, domainLineage, 200);
+
+    assertEquals(
+        7, nodeByFqn(domainScene, domainFqn).getCounts().get(LineageLevelKind.TABLE.value()));
+
+    String dataProductFqn = "customer360";
+    SearchLineageResult dataProductLineage =
+        result(
+            List.of(
+                rootEntity(Entity.DATA_PRODUCT, dataProductFqn),
+                syntheticLensCount(
+                    Entity.TABLE, "dataProducts", Entity.DATA_PRODUCT, dataProductFqn, 9)),
+            List.of());
+
+    LineageScene dataProductScene =
+        RESOLVER.resolveScene(
+            null, null, LineageLens.DATA_PRODUCT, LineageBand.LAYER, dataProductLineage, 200);
+
+    assertEquals(
+        9,
+        nodeByFqn(dataProductScene, dataProductFqn)
+            .getCounts()
+            .get(LineageLevelKind.TABLE.value()));
   }
 
   @Test
@@ -419,6 +458,163 @@ class LineageSceneResolverTest {
         Map.of("snowflake.shop.shopify", 8, "snowflake.shop.analytics", 12),
         LineageSceneResolver.parseAggregationCounts(
             typedResponse, "databaseSchema.fullyQualifiedName.keyword"));
+  }
+
+  @Test
+  void nestedAggregationParserNormalizesKeysAndDetectsOverflow() {
+    String response =
+        """
+        {
+          "sterms#roots": {
+            "sum_other_doc_count": 3,
+            "buckets": [
+              {
+                "key": "Snowflake.ANALYTICS",
+                "doc_count": 12,
+                "sterms#types": {
+                  "sum_other_doc_count": 1,
+                  "buckets": [
+                    { "key": "TABLE", "doc_count": 10 },
+                    { "key": "storedProcedure", "doc_count": 2 }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+        """;
+
+    assertEquals(
+        Map.of(
+            "snowflake.analytics",
+            Map.of(Entity.TABLE, 10, Entity.STORED_PROCEDURE.toLowerCase(), 2)),
+        LineageSceneResolver.parseNestedAggregationCounts(response));
+    assertTrue(LineageSceneResolver.isNestedAggregationTruncated(response));
+  }
+
+  @Test
+  void duplicateEdgeAcrossDirectionMapsHasConcreteWeightOne() {
+    EsLineageData concreteEdge = edge("same-edge", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE);
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("customer_id"))),
+            List.of(concreteEdge));
+    lineage.withUpstreamEdges(new LinkedHashMap<>(Map.of("upstream-copy", concreteEdge)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    assertEquals(1, scene.getEdges().size());
+    assertEquals(1, scene.getEdges().get(0).getWeight());
+    assertFalse(Boolean.TRUE.equals(scene.getEdges().get(0).getIsRollup()));
+  }
+
+  @Test
+  void concreteEdgeCarriesPipelineAndDescription() {
+    EntityReference pipeline =
+        new EntityReference()
+            .withId(uuid("daily-pipeline"))
+            .withType(Entity.PIPELINE)
+            .withName("daily-pipeline");
+    EsLineageData concreteEdge =
+        edge("edge-details", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE)
+            .withDescription("Curated orders")
+            .withPipeline(pipeline);
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("customer_id"))),
+            List.of(concreteEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    assertEquals("Curated orders", scene.getEdges().get(0).getDescription());
+    assertEquals(pipeline, scene.getEdges().get(0).getPipeline());
+  }
+
+  @Test
+  void sourceEntityPayloadIsTrimmedByBand() {
+    Map<String, Object> entity = table(ORDERS, SNOWFLAKE_SERVICE, List.of("id"));
+    entity.put("owners", List.of(ref(Entity.USER, "owner", "owner")));
+    entity.put("upstreamLineage", List.of(Map.of("docId", "edge-id")));
+
+    Map<String, Object> assetPayload =
+        LineageSceneResolver.trimSourceEntity(entity, LineageBand.ASSET);
+    Map<String, Object> fieldPayload =
+        LineageSceneResolver.trimSourceEntity(entity, LineageBand.FIELD);
+
+    assertTrue(assetPayload.containsKey("id"));
+    assertFalse(assetPayload.containsKey("columns"));
+    assertFalse(assetPayload.containsKey("owners"));
+    assertFalse(assetPayload.containsKey("upstreamLineage"));
+    assertTrue(fieldPayload.containsKey("columns"));
+    assertFalse(fieldPayload.containsKey("upstreamLineage"));
+  }
+
+  @Test
+  void storedProcedureAndDashboardDataModelAreAssetKinds() {
+    String procedureFqn = "snowflake.shop.public.refresh_orders";
+    String modelFqn = "powerbi.sales.sales_model";
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                asset(Entity.STORED_PROCEDURE, procedureFqn, SNOWFLAKE_SERVICE, "snowflake"),
+                asset(Entity.DASHBOARD_DATA_MODEL, modelFqn, POWERBI_SERVICE, "powerbi")),
+            List.of(
+                edge(
+                    "procedure-model",
+                    procedureFqn,
+                    Entity.STORED_PROCEDURE,
+                    modelFqn,
+                    Entity.DASHBOARD_DATA_MODEL)));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            procedureFqn,
+            Entity.STORED_PROCEDURE,
+            LineageLens.SERVICE,
+            LineageBand.ASSET,
+            lineage,
+            200);
+
+    assertTrue(
+        scene.getNodes().stream()
+            .anyMatch(node -> node.getLevelKind() == LineageLevelKind.STORED_PROCEDURE));
+    assertTrue(
+        scene.getNodes().stream()
+            .anyMatch(node -> node.getLevelKind() == LineageLevelKind.DASHBOARD_DATA_MODEL));
+  }
+
+  @Test
+  void truncationPinsFocusThenRanksByChildrenCount() {
+    String wideTable = "snowflake.shop.public.wide_table";
+    String narrowTable = "snowflake.shop.public.narrow_table";
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(wideTable, SNOWFLAKE_SERVICE, numberedColumns("wide_", 8)),
+                table(narrowTable, SNOWFLAKE_SERVICE, List.of("narrow"))),
+            List.of());
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.FIELD, lineage, 2);
+
+    assertEquals(2, scene.getNodes().size());
+    assertTrue(
+        scene.getNodes().stream().anyMatch(node -> ORDERS.equals(node.getFullyQualifiedName())));
+    assertTrue(
+        scene.getNodes().stream().anyMatch(node -> wideTable.equals(node.getFullyQualifiedName())));
+    assertFalse(
+        scene.getNodes().stream()
+            .anyMatch(node -> narrowTable.equals(node.getFullyQualifiedName())));
   }
 
   @Test
@@ -802,6 +998,15 @@ class LineageSceneResolverTest {
     return entity;
   }
 
+  private static Map<String, Object> rootEntity(String entityType, String fqn) {
+    Map<String, Object> entity = new LinkedHashMap<>();
+    entity.put("id", id(fqn));
+    entity.put("name", fqn);
+    entity.put("fullyQualifiedName", fqn);
+    entity.put("entityType", entityType);
+    return entity;
+  }
+
   private static Map<String, Object> asset(
       String entityType, String fqn, String serviceName, String serviceType) {
     Map<String, Object> entity = new LinkedHashMap<>();
@@ -824,6 +1029,16 @@ class LineageSceneResolverTest {
             "snowflake");
     entity.put("lineageSceneCount", count);
     entity.put("lineageSceneSyntheticCount", true);
+    return entity;
+  }
+
+  private static Map<String, Object> syntheticLensCount(
+      String entityType, String lensField, String lensEntityType, String lensFqn, int count) {
+    Map<String, Object> entity =
+        rootEntity(entityType, "__lineage_scene_count__." + lensFqn + "." + entityType);
+    entity.put("lineageSceneCount", count);
+    entity.put("lineageSceneSyntheticCount", true);
+    entity.put(lensField, List.of(ref(lensEntityType, lensFqn, lensFqn)));
     return entity;
   }
 

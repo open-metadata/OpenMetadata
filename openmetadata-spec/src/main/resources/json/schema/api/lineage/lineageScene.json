@@ -31,10 +31,12 @@
         "topic",
         "field",
         "dashboard",
+        "dashboardDataModel",
         "chart",
         "model",
         "feature",
         "pipeline",
+        "storedProcedure",
         "task",
         "domain",
         "dataProduct",
@@ -250,6 +252,14 @@
           "description": "SQL or transform text associated with this edge.",
           "type": "string"
         },
+        "description": {
+          "description": "Description associated with this concrete lineage edge.",
+          "type": "string"
+        },
+        "pipeline": {
+          "description": "Pipeline or stored procedure associated with this concrete lineage edge.",
+          "$ref": "../../type/entityReference.json"
+        },
         "transform": {
           "description": "Field-level transform expression.",
           "type": "string"
@@ -312,6 +322,11 @@
       "type": "integer",
       "minimum": 0,
       "default": 0
+    },
+    "sampled": {
+      "description": "Whether the scene was built from a sampled subset of matching assets.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["lens", "band", "nodes", "edges", "breadcrumb"],

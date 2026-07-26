@@ -242,6 +242,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedColumn,
     setIsRepositioning,
     isDQEnabled,
+    bumpLineageMutationTick,
     reset,
   } = useLineageStore();
 
@@ -1093,6 +1094,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const edgeData = getEdgeDataFromEdge(edge);
 
     await removeLineageHandler(edgeData);
+    bumpLineageMutationTick();
 
     let filteredEdges: EdgeDetails[] = [];
 
@@ -1134,6 +1136,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     const selectedEdge = createNewEdge(edge);
     const updatedCols = selectedEdge.edge.lineageDetails?.columnsLineage ?? [];
     await addLineageHandler(selectedEdge);
+    bumpLineageMutationTick();
 
     const updatedEdgeWithColumns = (entityLineage.edges ?? []).map((obj) => {
       if (
@@ -1693,6 +1696,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await addLineageHandler(newEdge);
+        bumpLineageMutationTick();
 
         setStatus('success');
         setLoading(false);
@@ -1748,6 +1752,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       try {
         await updateLineageEdge(updatedEdgeDetails);
+        bumpLineageMutationTick();
         const updatedEdges = (entityLineage.edges ?? []).map((edge) => {
           if (
             edge.fromEntity.id === updatedEdgeDetails.edge.fromEntity.id &&
@@ -1986,11 +1991,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         if (activeNode) {
           removeNodeHandler(activeNode);
         } else if (selectedEdge) {
-          removeEdgeHandler(selectedEdge, true);
+          if (selectedEdge.data?.isColumnLineage) {
+            removeColumnEdge(selectedEdge, true);
+          } else {
+            removeEdgeHandler(selectedEdge, true);
+          }
         }
       }
     }
-  }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
+  }, [
+    isEditMode,
+    deletePressed,
+    backspacePressed,
+    activeNode,
+    selectedEdge,
+    removeColumnEdge,
+    removeEdgeHandler,
+  ]);
 
   useEffect(() => {
     if (reactFlowInstance?.viewportInitialized) {

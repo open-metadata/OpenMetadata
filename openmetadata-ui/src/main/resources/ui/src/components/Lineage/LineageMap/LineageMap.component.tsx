@@ -23,18 +23,28 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
+import { Alert, Badge } from '@openmetadata/ui-core-components';
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
-import { debounce, isEqual } from 'lodash';
+import { debounce, isEqual, uniqueId } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   applyNodeChanges,
   Background,
+  Connection,
   Edge,
   MiniMap,
   Node,
@@ -53,33 +63,43 @@ import {
   NODE_HEIGHT_WITH_CHILDREN,
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
   LineageLens,
+  LineageLevelKind,
   LineageScene,
   LineageSceneBreadcrumb,
   LineageSceneNode,
 } from '../../../generated/api/lineage/lineageScene';
-import {
-  LineageSettings,
-  PipelineViewMode,
-} from '../../../generated/configuration/lineageSettings';
+import { EntityReference } from '../../../generated/entity/type';
 import { LineageLayer } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { LineageDetails } from '../../../generated/type/entityLineage';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { getLineageScene } from '../../../rest/lineageAPI';
+import {
+  getLineageEdgeDetails,
+  getLineageScene,
+} from '../../../rest/lineageAPI';
+import {
+  addLineageHandler,
+  removeLineageHandler,
+} from '../../../utils/EntityLineagePureUtils';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { EntityChildren } from '../../Entity/EntityLineage/NodeChildren/NodeChildren.interface';
+import NodeSuggestions from '../../Entity/EntityLineage/NodeSuggestions.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageNodeType, LineageProps } from '../Lineage.interface';
+import LineageNodeRemoveButton from '../LineageNodeRemoveButton';
 import LineageSkeleton from '../LineageSkeleton.component';
 import './lineage-map.less';
 import {
@@ -94,8 +114,19 @@ import {
   getSceneLevelLabelKey,
   getSceneNodeCountSubtitle,
 } from './LineageMap.utils';
+import {
+  buildConnectPayload,
+  getEndpointHandle,
+  getEndpointNodeId,
+  getRealEntityRef,
+  hydrateSelectedEdge,
+  isEditableSceneEdge,
+  isEditableSceneNode,
+  isRemovableSceneNode,
+  toFlowEdge,
+  type LineageMapEdgeData,
+} from './LineageMapEdit.utils';
 
-const FIELD_SEPARATOR = '::field::';
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const ZOOM_IN_THRESHOLD = 1.9;
 const ZOOM_OUT_THRESHOLD = 0.5;
@@ -171,6 +202,10 @@ interface SceneFlowNodeData {
   isPathHighlighted?: boolean;
   onSceneColumnHover?: (columnFqn?: string) => void;
   onSceneColumnSelect?: (columnFqn?: string) => void;
+  isNewNode?: boolean;
+  isNodeRemovable?: boolean;
+  label?: ReactNode;
+  onSceneNodeRemove?: (node: { id: string }) => void;
 }
 
 interface SceneNodeBounds {
@@ -194,20 +229,6 @@ const getLineageMapOnboardingExpiry = () => {
   expiry.setFullYear(expiry.getFullYear() + 1);
 
   return expiry;
-};
-
-const getEndpointNodeId = (endpoint: string) => {
-  const index = endpoint.indexOf(FIELD_SEPARATOR);
-
-  return index === -1 ? endpoint : endpoint.slice(0, index);
-};
-
-const getEndpointHandle = (endpoint: string) => {
-  const index = endpoint.indexOf(FIELD_SEPARATOR);
-
-  return index === -1
-    ? undefined
-    : endpoint.slice(index + FIELD_SEPARATOR.length);
 };
 
 const getNodeHeight = (
@@ -323,12 +344,19 @@ const isSceneNodeDrillable = (
 ): node is LineageSceneNode =>
   Boolean(node?.isExpandable && node.fullyQualifiedName);
 
-const getSceneCacheKey = (request: SceneRequest) =>
+export const getSceneCacheKey = (
+  request: SceneRequest,
+  config: LineageConfig
+) =>
   [
     request.lens,
     request.band,
     request.focusFqn ?? '',
     request.entityType ?? '',
+    config.upstreamDepth,
+    config.downstreamDepth,
+    config.nodesPerLayer,
+    config.pipelineViewMode,
   ].join('|');
 
 const getCachedScene = (
@@ -358,47 +386,6 @@ const setCachedScene = (
       cache.delete(oldestKey);
     }
   }
-};
-
-const toFlowEdge = (
-  nodeById: Map<string, LineageSceneNode>,
-  edge: LineageScene['edges'][number]
-): Edge => {
-  const source = getEndpointNodeId(edge.from);
-  const target = getEndpointNodeId(edge.to);
-  const sourceHandle = getEndpointHandle(edge.from);
-  const targetHandle = getEndpointHandle(edge.to);
-  const sourceNode = nodeById.get(source);
-  const targetNode = nodeById.get(target);
-
-  return {
-    id: edge.id,
-    source,
-    target,
-    sourceHandle,
-    targetHandle,
-    type: 'buttonedge',
-    data: {
-      edge: {
-        fromEntity: {
-          id: source,
-          type: sourceNode?.entityType ?? '',
-          fullyQualifiedName: sourceNode?.fullyQualifiedName,
-        },
-        toEntity: {
-          id: target,
-          type: targetNode?.entityType ?? '',
-          fullyQualifiedName: targetNode?.fullyQualifiedName,
-        },
-        source: edge.source,
-        sqlQuery: edge.sqlQuery,
-      },
-      isColumnLineage: Boolean(sourceHandle || targetHandle),
-      label: edge.label,
-      isRollup: edge.isRollup,
-      weight: edge.weight,
-    },
-  };
 };
 
 const getSceneChildren = (node: LineageSceneNode): EntityChildren =>
@@ -642,9 +629,13 @@ const LineageMapOnboardingDialog = ({
 };
 
 const LineageMapControls = ({
+  canDrill,
+  isEditMode,
   scene,
   onBandChange,
 }: {
+  canDrill: boolean;
+  isEditMode: boolean;
   scene: LineageScene;
   onBandChange: (band: LineageBand) => void;
 }) => {
@@ -654,31 +645,47 @@ const LineageMapControls = ({
 
   return (
     <Box className="lineage-map-rail">
-      {bandOptions.map((band) => (
-        <Tooltip key={band} placement="left" title={t(getBandLabelKey(band))}>
-          <IconButton
-            className="lineage-map-rail-button"
-            data-testid={`lineage-map-band-${band}`}
-            sx={{
-              color:
-                scene.band === band
-                  ? theme.palette.primary.main
-                  : theme.palette.text.secondary,
-            }}
-            onClick={(event) => {
-              event.stopPropagation();
-              onBandChange(band);
-            }}>
-            <span
-              className={
-                scene.band === band
-                  ? 'lineage-map-rail-dot active'
-                  : 'lineage-map-rail-dot'
-              }
-            />
-          </IconButton>
-        </Tooltip>
-      ))}
+      {bandOptions.map((band) => {
+        const isDeeperBandUnavailable =
+          isDeeperBand(scene.band, band) && !canDrill;
+        const isDisabled = isEditMode || isDeeperBandUnavailable;
+
+        return (
+          <Tooltip
+            key={band}
+            placement="left"
+            title={
+              isDeeperBandUnavailable
+                ? t('label.zoom-in')
+                : t(getBandLabelKey(band))
+            }>
+            <span>
+              <IconButton
+                className="lineage-map-rail-button"
+                data-testid={`lineage-map-band-${band}`}
+                disabled={isDisabled}
+                sx={{
+                  color:
+                    scene.band === band
+                      ? theme.palette.primary.main
+                      : theme.palette.text.secondary,
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onBandChange(band);
+                }}>
+                <span
+                  className={
+                    scene.band === band
+                      ? 'lineage-map-rail-dot active'
+                      : 'lineage-map-rail-dot'
+                  }
+                />
+              </IconButton>
+            </span>
+          </Tooltip>
+        );
+      })}
       <Typography className="lineage-map-rail-label">
         {t(getSceneLevelLabelKey(scene))}
       </Typography>
@@ -687,9 +694,11 @@ const LineageMapControls = ({
 };
 
 const LineageMapBreadcrumbs = ({
+  isEditMode,
   scene,
   onBreadcrumbFocus,
 }: {
+  isEditMode: boolean;
   scene: LineageScene;
   onBreadcrumbFocus: (breadcrumb: LineageSceneBreadcrumb) => void;
 }) => {
@@ -721,7 +730,7 @@ const LineageMapBreadcrumbs = ({
                 active: isCurrent,
               })}
               data-testid={`lineage-map-breadcrumb-${index}`}
-              disabled={isCurrent}
+              disabled={isCurrent || isEditMode}
               key={breadcrumb.id}
               title={label}
               type="button"
@@ -749,6 +758,13 @@ const LineageMapCanvas = ({
 }) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
+  const navigate = useNavigate();
+  const {
+    onAddPipelineClick,
+    onColumnEdgeRemove,
+    onEdgeClick: onProviderEdgeClick,
+    onPaneClick: onProviderPaneClick,
+  } = useLineageProvider();
   const queryParams = useMemo(
     () => Qs.parse(location.search, { ignoreQueryPrefix: true }),
     [location.search]
@@ -787,6 +803,7 @@ const LineageMapCanvas = ({
   });
   const [scene, setScene] = useState<LineageScene>();
   const [loading, setLoading] = useState(true);
+  const [sceneError, setSceneError] = useState<AxiosError>();
   const [nodes, setNodes] = useState<Node<SceneFlowNodeData>[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [hoveredEdge, setHoveredEdge] = useState<Edge | null>(null);
@@ -798,28 +815,61 @@ const LineageMapCanvas = ({
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const cacheRef = useRef(new Map<string, LineageScene>());
+  const nodesRef = useRef<Node<SceneFlowNodeData>[]>([]);
+  const sceneRef = useRef<LineageScene>();
   const sceneRequestIdRef = useRef(0);
+  const preserveViewportRef = useRef(false);
   const lastSemanticZoomAtRef = useRef(0);
   const previousZoomRef = useRef<number>();
   const semanticZoomSuppressedRef = useRef(false);
   const semanticZoomSuppressedUntilRef = useRef(0);
   const semanticZoomResumeTimerRef = useRef<number>();
+  const hoverFrameRef = useRef<number>();
+  const pendingHoverPointRef = useRef<{ x: number; y: number }>();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {
+    lineageMutationTick,
     isEditMode,
     selectedColumn,
+    selectedNode,
     setActiveLayer,
+    setActiveNode,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
+    setIsCreatingEdge,
     setIsPlatformLineage,
+    setSceneBand,
     setSelectedColumn,
+    setSelectedEdge,
+    setSelectedNode,
     setTracedColumns,
   } = useLineageStore();
+  const previousMutationTickRef = useRef(lineageMutationTick);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  useEffect(() => {
+    sceneRef.current = scene;
+  }, [scene]);
 
   useEffect(() => {
     setActiveLayer(getActiveLayersFromBand(request.band));
     setIsPlatformLineage(Boolean(isPlatformLineage));
-  }, [isPlatformLineage, request.band, setActiveLayer, setIsPlatformLineage]);
+  }, [
+    isEditMode,
+    isPlatformLineage,
+    request.band,
+    setActiveLayer,
+    setIsPlatformLineage,
+  ]);
+
+  useEffect(() => {
+    setSceneBand(scene?.band);
+
+    return () => setSceneBand(undefined);
+  }, [scene?.band, setSceneBand]);
 
   const suppressSemanticZoom = useCallback(
     (durationMs = PROGRAMMATIC_ZOOM_SUPPRESSION_MS) => {
@@ -845,12 +895,39 @@ const LineageMapCanvas = ({
 
   const updateRequest = useCallback(
     (nextRequest: SceneRequest) => {
+      if (isEditMode) {
+        return;
+      }
       suppressSemanticZoom();
       setRequest((current) =>
         isEqual(current, nextRequest) ? current : nextRequest
       );
+      const params = Qs.parse(location.search, {
+        ignoreQueryPrefix: true,
+      });
+      params.lineageLens = nextRequest.lens;
+      params.lineageBand = nextRequest.band;
+      if (nextRequest.focusFqn) {
+        params.lineageFocus = nextRequest.focusFqn;
+      } else {
+        delete params.lineageFocus;
+      }
+      if (nextRequest.entityType) {
+        params.lineageEntityType = nextRequest.entityType;
+      } else {
+        delete params.lineageEntityType;
+      }
+      navigate(
+        {
+          search: Qs.stringify(params, {
+            addQueryPrefix: true,
+            encode: false,
+          }),
+        },
+        { replace: true }
+      );
     },
-    [suppressSemanticZoom]
+    [isEditMode, location.search, navigate, suppressSemanticZoom]
   );
 
   const handleOnboardingClose = useCallback(() => {
@@ -879,17 +956,24 @@ const LineageMapCanvas = ({
   );
 
   const fetchScene = useCallback(
-    async (nextRequest: SceneRequest) => {
+    async (
+      nextRequest: SceneRequest,
+      options: { bypassCache?: boolean; preserveViewport?: boolean } = {}
+    ) => {
       const requestId = sceneRequestIdRef.current + 1;
       sceneRequestIdRef.current = requestId;
-      const cacheKey = getSceneCacheKey(nextRequest);
-      const cachedScene = getCachedScene(cacheRef.current, cacheKey);
+      const cacheKey = getSceneCacheKey(nextRequest, config);
+      const cachedScene = options.bypassCache
+        ? undefined
+        : getCachedScene(cacheRef.current, cacheKey);
       if (cachedScene) {
         setScene(cachedScene);
+        setSceneError(undefined);
         setLoading(false);
 
         return;
       }
+      preserveViewportRef.current = Boolean(options.preserveViewport);
       setLoading(true);
       try {
         const response = await getLineageScene({
@@ -899,9 +983,11 @@ const LineageMapCanvas = ({
         setCachedScene(cacheRef.current, cacheKey, response);
         if (sceneRequestIdRef.current === requestId) {
           setScene(response);
+          setSceneError(undefined);
         }
       } catch (error) {
         if (sceneRequestIdRef.current === requestId) {
+          setSceneError(error as AxiosError);
           showErrorToast(error as AxiosError);
         }
       } finally {
@@ -913,16 +999,105 @@ const LineageMapCanvas = ({
     [config]
   );
 
+  const refetchCurrentScene = useCallback(async () => {
+    cacheRef.current.clear();
+    await fetchScene(request, {
+      bypassCache: true,
+      preserveViewport: true,
+    });
+  }, [fetchScene, request]);
+
+  const removeSceneNode = useCallback(
+    async (node: { id: string }) => {
+      const currentScene = sceneRef.current;
+      const flowNode = nodesRef.current.find(
+        (candidate) => candidate.id === node.id
+      );
+      if (!currentScene || !flowNode) {
+        return;
+      }
+
+      const nodeById = new Map(
+        nodesRef.current.map((candidate) => [
+          candidate.id,
+          candidate.data.sceneNode,
+        ])
+      );
+      const touchingEdges = currentScene.edges.filter(
+        (edge) =>
+          getEndpointNodeId(edge.from) === node.id ||
+          getEndpointNodeId(edge.to) === node.id
+      );
+      if (
+        !flowNode.data.isNewNode &&
+        !isRemovableSceneNode(
+          flowNode.data.sceneNode,
+          currentScene.edges,
+          nodeById
+        )
+      ) {
+        showInfoToast(t('label.zoom-in'));
+
+        return;
+      }
+
+      const edgesToDelete = new Map<
+        string,
+        {
+          fromEntity: string;
+          fromId: string;
+          toEntity: string;
+          toId: string;
+        }
+      >();
+      touchingEdges.forEach((edge) => {
+        const fromNode = nodeById.get(getEndpointNodeId(edge.from));
+        const toNode = nodeById.get(getEndpointNodeId(edge.to));
+        const fromEntity = fromNode ? getRealEntityRef(fromNode) : undefined;
+        const toEntity = toNode ? getRealEntityRef(toNode) : undefined;
+        if (!fromEntity || !toEntity || !isEditableSceneEdge(edge, nodeById)) {
+          return;
+        }
+        edgesToDelete.set(`${fromEntity.id}:${toEntity.id}`, {
+          fromEntity: fromEntity.type,
+          fromId: fromEntity.id,
+          toEntity: toEntity.type,
+          toId: toEntity.id,
+        });
+      });
+
+      try {
+        for (const edgeData of edgesToDelete.values()) {
+          await removeLineageHandler(edgeData);
+        }
+        setNodes((currentNodes) =>
+          currentNodes.filter((candidate) => candidate.id !== node.id)
+        );
+        setSelectedNode(undefined);
+        setSelectedEdge(undefined);
+        if (edgesToDelete.size > 0) {
+          await refetchCurrentScene();
+        }
+      } catch {
+        return;
+      }
+    },
+    [refetchCurrentScene, setSelectedEdge, setSelectedNode, t]
+  );
+
   const prefetchAdjacentBands = useMemo(
     () =>
       debounce((currentScene: LineageScene) => {
+        if (isEditMode) {
+          return;
+        }
         const bands =
           currentScene.band === LineageBand.Asset
             ? [LineageBand.Layer, LineageBand.Field]
             : [LineageBand.Asset];
         bands.forEach((band) => {
           const nextRequest = { ...request, band };
-          const cacheKey = getSceneCacheKey(nextRequest);
+          const cacheKey = getSceneCacheKey(nextRequest, config);
           if (!cacheRef.current.has(cacheKey)) {
             getLineageScene({ ...nextRequest, config })
               .then((response) =>
@@ -932,7 +1107,7 @@ const LineageMapCanvas = ({
           }
         });
       }, 300),
-    [config, request]
+    [config, isEditMode, request]
   );
 
   useEffect(() => {
@@ -946,6 +1121,14 @@ const LineageMapCanvas = ({
 
     return () => prefetchAdjacentBands.cancel();
   }, [prefetchAdjacentBands, scene]);
+
+  useEffect(() => {
+    if (previousMutationTickRef.current === lineageMutationTick) {
+      return;
+    }
+    previousMutationTickRef.current = lineageMutationTick;
+    refetchCurrentScene();
+  }, [lineageMutationTick, refetchCurrentScene]);
 
   const handleDrill = useCallback(
     (node: LineageSceneNode) => {
@@ -1007,6 +1190,9 @@ const LineageMapCanvas = ({
       if (semanticZoomResumeTimerRef.current) {
         window.clearTimeout(semanticZoomResumeTimerRef.current);
       }
+      if (hoverFrameRef.current) {
+        window.cancelAnimationFrame(hoverFrameRef.current);
+      }
     },
     []
   );
@@ -1029,6 +1215,10 @@ const LineageMapCanvas = ({
       const lineageNode = toLineageNode(node, t);
 
       return {
+        connectable:
+          isEditMode &&
+          scene.band !== LineageBand.Layer &&
+          isEditableSceneNode(node),
         id: node.id,
         type: EntityLineageNodeType.DEFAULT,
         width: getNodeWidth(node, scene.band),
@@ -1043,6 +1233,8 @@ const LineageMapCanvas = ({
           sceneDrillLabel: t('label.zoom-in'),
           onSceneColumnHover: handleSceneColumnHover,
           onSceneColumnSelect: handleSceneColumnSelect,
+          onSceneNodeRemove: removeSceneNode,
+          isNodeRemovable: isRemovableSceneNode(node, scene.edges, nodeById),
           isRootNode: Boolean(node.isOrigin || node.isFocus),
           hasOutgoers: false,
           hasIncomers: false,
@@ -1056,7 +1248,11 @@ const LineageMapCanvas = ({
       if (isMounted) {
         setNodes(layoutedNodes);
         setEdges(nextEdges);
-        setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+        if (preserveViewportRef.current) {
+          preserveViewportRef.current = false;
+        } else {
+          setPendingFitNodeIds(layoutedNodes.map((node) => node.id));
+        }
       }
     });
 
@@ -1067,6 +1263,8 @@ const LineageMapCanvas = ({
     handleDrill,
     handleSceneColumnHover,
     handleSceneColumnSelect,
+    isEditMode,
+    removeSceneNode,
     scene,
     setColumnsHavingLineage,
     setColumnsInCurrentPages,
@@ -1159,6 +1357,11 @@ const LineageMapCanvas = ({
 
   const handleMove = useCallback(
     (_event: unknown, viewport: { zoom: number }) => {
+      if (isEditMode) {
+        previousZoomRef.current = viewport.zoom;
+
+        return;
+      }
       if (!scene) {
         previousZoomRef.current = viewport.zoom;
 
@@ -1212,6 +1415,7 @@ const LineageMapCanvas = ({
     [
       handleBandChange,
       handleDrill,
+      isEditMode,
       pickCenterExpandableNode,
       scene,
       updateRequest,
@@ -1327,10 +1531,9 @@ const LineageMapCanvas = ({
 
         return {
           ...node,
-          data: {
-            ...node.data,
-            isPathHighlighted,
-          },
+          className: classNames(node.className, {
+            'lineage-path-highlight': isPathHighlighted,
+          }),
         };
       }),
     [nodes, pathHighlight]
@@ -1346,10 +1549,345 @@ const LineageMapCanvas = ({
       ) {
         return;
       }
+      if (isEditMode) {
+        setActiveNode(undefined);
+        setSelectedEdge(undefined);
+        setSelectedNode(node.data.node as unknown as SourceType);
+
+        return;
+      }
       handleDrill(node.data.sceneNode);
     },
-    [handleDrill]
+    [handleDrill, isEditMode, setActiveNode, setSelectedEdge, setSelectedNode]
   );
+
+  const handleEdgeClick = useCallback(
+    async (flowEdge: Edge, _event: MouseEvent) => {
+      if (!scene) {
+        return;
+      }
+      const edge = flowEdge as Edge<LineageMapEdgeData>;
+      const sceneEdge =
+        edge.data?.sceneEdge ??
+        scene.edges.find((candidate) => candidate.id === edge.id);
+      if (!sceneEdge) {
+        return;
+      }
+      const nodeById = new Map(
+        nodesRef.current.map((node) => [node.id, node.data.sceneNode])
+      );
+      const isEditable = isEditableSceneEdge(sceneEdge, nodeById);
+      if (isEditMode && !isEditable) {
+        showInfoToast(t('label.zoom-in'));
+
+        return;
+      }
+      if (!isEditable) {
+        onProviderEdgeClick(edge);
+
+        return;
+      }
+
+      const fromNode = nodeById.get(getEndpointNodeId(sceneEdge.from));
+      const toNode = nodeById.get(getEndpointNodeId(sceneEdge.to));
+      const fromEntity = fromNode ? getRealEntityRef(fromNode) : undefined;
+      const toEntity = toNode ? getRealEntityRef(toNode) : undefined;
+      if (!fromEntity || !toEntity) {
+        showInfoToast(t('message.no-lineage-data-available'));
+
+        return;
+      }
+
+      try {
+        const details = await getLineageEdgeDetails(fromEntity.id, toEntity.id);
+        const hydratedEdge = hydrateSelectedEdge(
+          edge,
+          sceneEdge,
+          nodeById,
+          details
+        );
+        if (!hydratedEdge) {
+          showInfoToast(t('message.no-lineage-data-available'));
+
+          return;
+        }
+        setSelectedNode(undefined);
+        setActiveNode(undefined);
+        if (isEditMode) {
+          setSelectedEdge(hydratedEdge);
+        } else {
+          onProviderEdgeClick(hydratedEdge);
+        }
+      } catch (error) {
+        if ((error as AxiosError).response?.status === 404) {
+          showInfoToast(t('message.no-lineage-data-available'));
+          await refetchCurrentScene();
+
+          return;
+        }
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [
+      isEditMode,
+      onProviderEdgeClick,
+      refetchCurrentScene,
+      scene,
+      setActiveNode,
+      setSelectedEdge,
+      setSelectedNode,
+      t,
+    ]
+  );
+
+  const handleConnect = useCallback(
+    async (connection: Connection) => {
+      if (!isEditMode || scene?.band === LineageBand.Layer) {
+        return;
+      }
+      const nodeById = new Map(
+        nodesRef.current.map((node) => [node.id, node.data.sceneNode])
+      );
+      const sourceNode = connection.source
+        ? nodeById.get(connection.source)
+        : undefined;
+      const targetNode = connection.target
+        ? nodeById.get(connection.target)
+        : undefined;
+      if (
+        !isEditableSceneNode(sourceNode) ||
+        !isEditableSceneNode(targetNode)
+      ) {
+        showInfoToast(t('label.zoom-in'));
+
+        return;
+      }
+
+      const fromEntity = getRealEntityRef(sourceNode);
+      const toEntity = getRealEntityRef(targetNode);
+      if (!fromEntity || !toEntity) {
+        return;
+      }
+
+      setIsCreatingEdge(true);
+      try {
+        let existingDetails: LineageDetails | undefined;
+        try {
+          existingDetails = await getLineageEdgeDetails(
+            fromEntity.id,
+            toEntity.id
+          );
+        } catch (error) {
+          if ((error as AxiosError).response?.status !== 404) {
+            throw error;
+          }
+        }
+        const payload = buildConnectPayload(
+          connection,
+          nodeById,
+          existingDetails
+        );
+        if (!payload) {
+          return;
+        }
+        await addLineageHandler(payload);
+        setSelectedEdge(undefined);
+        setSelectedNode(undefined);
+        await refetchCurrentScene();
+      } catch (error) {
+        if ((error as AxiosError).response?.status !== undefined) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        setIsCreatingEdge(false);
+      }
+    },
+    [
+      isEditMode,
+      refetchCurrentScene,
+      scene?.band,
+      setIsCreatingEdge,
+      setSelectedEdge,
+      setSelectedNode,
+      t,
+    ]
+  );
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedEdge(undefined);
+    setSelectedNode(undefined);
+    setActiveNode(undefined);
+    onProviderPaneClick();
+  }, [onProviderPaneClick, setActiveNode, setSelectedEdge, setSelectedNode]);
+
+  const handleNewNodeSelect = useCallback(
+    (nodeId: string, value: EntityReference) => {
+      const sourceEntity = value as EntityReference & Partial<SourceType>;
+      const selectedEntityType = sourceEntity.entityType ?? value.type;
+      const currentNode = nodesRef.current.find((node) => node.id === nodeId);
+      if (!currentNode || !selectedEntityType || !value.id) {
+        return;
+      }
+      const selectedSceneNode: LineageSceneNode = {
+        ...currentNode.data.sceneNode,
+        entityType: selectedEntityType,
+        fullyQualifiedName: value.fullyQualifiedName,
+        label:
+          value.displayName ?? value.name ?? value.fullyQualifiedName ?? '',
+        sourceEntity: {
+          ...sourceEntity,
+          entityType: selectedEntityType,
+          type: selectedEntityType,
+        },
+      };
+      const selectedLineageNode = toLineageNode(selectedSceneNode, t);
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                connectable: true,
+                data: {
+                  ...node.data,
+                  isNewNode: false,
+                  isNodeRemovable: true,
+                  label: undefined,
+                  node: selectedLineageNode,
+                  sceneNode: selectedSceneNode,
+                },
+              }
+            : node
+        )
+      );
+      setSelectedEdge(undefined);
+      setSelectedNode(selectedLineageNode as unknown as SourceType);
+    },
+    [setSelectedEdge, setSelectedNode, t]
+  );
+
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!isEditMode || scene?.band === LineageBand.Layer) {
+        return;
+      }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+    },
+    [isEditMode, scene?.band]
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (
+        !isEditMode ||
+        !scene ||
+        scene?.band === LineageBand.Layer ||
+        !reactFlowInstance ||
+        !wrapperRef.current
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const droppedEntityType = event.dataTransfer.getData(
+        'application/reactflow'
+      );
+      if (!droppedEntityType) {
+        return;
+      }
+      const nodeId = `temporary:${uniqueId('lineage-map-node-')}`;
+      const bounds = wrapperRef.current.getBoundingClientRect();
+      const position = reactFlowInstance.project({
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      });
+      const temporarySceneNode: LineageSceneNode = {
+        band: scene.band,
+        entityType: droppedEntityType,
+        id: nodeId,
+        label: droppedEntityType,
+        levelKind: LineageLevelKind.Asset,
+        sourceEntity: {
+          entityType: droppedEntityType,
+          type: droppedEntityType,
+        },
+      };
+      const temporaryLineageNode = toLineageNode(temporarySceneNode, t);
+      const temporaryNode: Node<SceneFlowNodeData> = {
+        connectable: false,
+        data: {
+          hasIncomers: false,
+          hasOutgoers: false,
+          isDownstreamNode: false,
+          isNewNode: true,
+          isNodeRemovable: true,
+          isRootNode: false,
+          isUpstreamNode: false,
+          label: (
+            <>
+              <LineageNodeRemoveButton
+                onRemove={() => removeSceneNode({ id: nodeId })}
+              />
+              <NodeSuggestions
+                entityType={droppedEntityType}
+                onSelectHandler={(value) => handleNewNodeSelect(nodeId, value)}
+              />
+            </>
+          ),
+          node: temporaryLineageNode,
+          nodeWidth: NODE_WIDTH,
+          onSceneDrill: handleDrill,
+          onSceneNodeRemove: removeSceneNode,
+          sceneBand: scene.band,
+          sceneDrillLabel: t('label.zoom-in'),
+          sceneNode: temporarySceneNode,
+        },
+        height: NODE_HEIGHT,
+        id: nodeId,
+        position,
+        type: EntityLineageNodeType.DEFAULT,
+        width: NODE_WIDTH,
+      };
+      setNodes((currentNodes) => [...currentNodes, temporaryNode]);
+    },
+    [
+      handleDrill,
+      handleNewNodeSelect,
+      isEditMode,
+      reactFlowInstance,
+      removeSceneNode,
+      scene?.band,
+      t,
+    ]
+  );
+
+  useEffect(() => {
+    const handleDeleteKey = (event: KeyboardEvent) => {
+      if (
+        !isEditMode ||
+        !selectedNode ||
+        (event.key !== 'Delete' && event.key !== 'Backspace')
+      ) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest('input, textarea, [contenteditable="true"]')
+      ) {
+        return;
+      }
+      const selectedFlowNode = nodesRef.current.find(
+        (node) => node.data.node === selectedNode
+      );
+      if (selectedFlowNode) {
+        event.preventDefault();
+        removeSceneNode(selectedFlowNode);
+      }
+    };
+    window.addEventListener('keydown', handleDeleteKey);
+
+    return () => window.removeEventListener('keydown', handleDeleteKey);
+  }, [isEditMode, removeSceneNode, selectedNode]);
 
   const handleCanvasMouseMove = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -1363,46 +1901,85 @@ const LineageMapCanvas = ({
           '.react-flow__panel, .lineage-map-layer-control, .lineage-map-panel, .lineage-map-rail'
         )
       ) {
+        pendingHoverPointRef.current = undefined;
         setHoveredNodeId(undefined);
 
         return;
       }
-
-      const rect = wrapperRef.current.getBoundingClientRect();
-      const viewport = reactFlowInstance.getViewport();
-      const point = {
-        x: (event.clientX - rect.left - viewport.x) / viewport.zoom,
-        y: (event.clientY - rect.top - viewport.y) / viewport.zoom,
+      pendingHoverPointRef.current = {
+        x: event.clientX,
+        y: event.clientY,
       };
-      const hoveredNode = nodes.find((node) => {
-        const width = node.width ?? NODE_WIDTH;
-        const height =
-          node.height ??
-          getNodeHeight(node.data.sceneNode, node.data.sceneBand);
+      if (hoverFrameRef.current) {
+        return;
+      }
+      hoverFrameRef.current = window.requestAnimationFrame(() => {
+        hoverFrameRef.current = undefined;
+        const pendingPoint = pendingHoverPointRef.current;
+        const wrapper = wrapperRef.current;
+        if (!pendingPoint || !wrapper) {
+          return;
+        }
+        const rect = wrapper.getBoundingClientRect();
+        const viewport = reactFlowInstance.getViewport();
+        const point = {
+          x: (pendingPoint.x - rect.left - viewport.x) / viewport.zoom,
+          y: (pendingPoint.y - rect.top - viewport.y) / viewport.zoom,
+        };
+        const hoveredNode = nodesRef.current.find((node) => {
+          const width = node.width ?? NODE_WIDTH;
+          const height =
+            node.height ??
+            getNodeHeight(node.data.sceneNode, node.data.sceneBand);
 
-        return (
-          point.x >= node.position.x &&
-          point.x <= node.position.x + width &&
-          point.y >= node.position.y &&
-          point.y <= node.position.y + height
+          return (
+            point.x >= node.position.x &&
+            point.x <= node.position.x + width &&
+            point.y >= node.position.y &&
+            point.y <= node.position.y + height
+          );
+        });
+        const nextHoveredNodeId = hoveredNode?.id;
+        setHoveredNodeId((currentHoveredNodeId) =>
+          currentHoveredNodeId === nextHoveredNodeId
+            ? currentHoveredNodeId
+            : nextHoveredNodeId
         );
       });
-      const nextHoveredNodeId = hoveredNode?.id;
-      setHoveredNodeId((currentHoveredNodeId) =>
-        currentHoveredNodeId === nextHoveredNodeId
-          ? currentHoveredNodeId
-          : nextHoveredNodeId
-      );
     },
-    [nodes, reactFlowInstance]
+    [reactFlowInstance]
   );
 
   const handleCanvasMouseLeave = useCallback(() => {
+    pendingHoverPointRef.current = undefined;
+    if (hoverFrameRef.current) {
+      window.cancelAnimationFrame(hoverFrameRef.current);
+      hoverFrameRef.current = undefined;
+    }
     setHoveredNodeId(undefined);
   }, []);
 
   if (loading && !scene) {
     return <LineageSkeleton />;
+  }
+
+  if (sceneError && !scene) {
+    return (
+      <Box className="lineage-map-empty">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography>{t('message.something-went-wrong')}</Typography>
+          <Button
+            data-testid="lineage-map-retry"
+            onClick={() =>
+              fetchScene(request, {
+                bypassCache: true,
+              })
+            }>
+            {t('label.try-again')}
+          </Button>
+        </ErrorPlaceHolder>
+      </Box>
+    );
   }
 
   if (!scene) {
@@ -1412,6 +1989,21 @@ const LineageMapCanvas = ({
       </Box>
     );
   }
+
+  if (scene.nodes.length === 0) {
+    return (
+      <Box className="lineage-map-empty">
+        <ErrorPlaceHolder
+          placeholderText={t('message.no-lineage-data-available')}
+          type={ERROR_PLACEHOLDER_TYPE.FILTER}
+        />
+      </Box>
+    );
+  }
+
+  const canDrillScene = scene.nodes.some(isSceneNodeDrillable);
+  const visibleAssetCount = scene.nodes.length;
+  const totalAssetCount = visibleAssetCount + (scene.hiddenNodeCount ?? 0);
 
   return (
     <Box
@@ -1440,14 +2032,20 @@ const LineageMapCanvas = ({
         minZoom={MIN_ZOOM_VALUE}
         nodeTypes={nodeTypes}
         nodes={renderedNodes}
-        nodesConnectable={false}
+        nodesConnectable={isEditMode && scene.band !== LineageBand.Layer}
         selectNodesOnDrag={false}
+        onConnect={handleConnect}
+        onConnectEnd={() => setIsCreatingEdge(false)}
+        onConnectStart={() => setIsCreatingEdge(true)}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onInit={setReactFlowInstance}
         onMove={handleMove}
         onNodeClick={handleNodeClick}
         onNodesChange={(changes) =>
           setNodes((currentNodes) => applyNodeChanges(changes, currentNodes))
-        }>
+        }
+        onPaneClick={handlePaneClick}>
         <Background gap={18} size={1} />
         {miniMapVisible && (
           <MiniMap
@@ -1464,13 +2062,52 @@ const LineageMapCanvas = ({
           isPathHighlightActive={Boolean(pathHighlight)}
           nodes={renderedNodes}
           pathHighlightedEdgeIds={pathHighlight?.edgeIds}
+          onEdgeClick={handleEdgeClick}
           onEdgeHover={setHoveredEdge}
+          onEdgeRemove={onColumnEdgeRemove}
+          onPipelineClick={onAddPipelineClick}
         />
-        <LineageMapControls scene={scene} onBandChange={handleBandChange} />
+        <LineageMapControls
+          canDrill={canDrillScene}
+          isEditMode={isEditMode}
+          scene={scene}
+          onBandChange={handleBandChange}
+        />
         <LineageMapBreadcrumbs
+          isEditMode={isEditMode}
           scene={scene}
           onBreadcrumbFocus={handleBreadcrumbFocus}
         />
+        {(scene.hiddenNodeCount ?? 0) > 0 || scene.sampled || sceneError ? (
+          <Panel className="lineage-map-status-panel" position="top-right">
+            {(scene.hiddenNodeCount ?? 0) > 0 && (
+              <Badge color="gray" size="sm" type="color">
+                {t('label.plus-count-more', {
+                  count: scene.hiddenNodeCount,
+                })}
+              </Badge>
+            )}
+            {(scene.sampled || (scene.hiddenNodeCount ?? 0) > 0) && (
+              <Alert
+                title={
+                  scene.sampled
+                    ? t('message.showing-count-of-total-assets', {
+                        count: visibleAssetCount,
+                        total: totalAssetCount,
+                      })
+                    : t('message.knowledge-graph-truncated')
+                }
+                variant="warning"
+              />
+            )}
+            {sceneError && (
+              <Alert
+                title={t('message.something-went-wrong')}
+                variant="error"
+              />
+            )}
+          </Panel>
+        ) : null}
         <LineageMapOnboardingDialog
           open={showOnboarding}
           onClose={handleOnboardingClose}
@@ -1510,25 +2147,21 @@ const LineageMap = ({
   entityType,
   isPlatformLineage,
 }: LineageProps) => {
-  const { appPreferences } = useApplicationStore();
-  const defaultLineageConfig = appPreferences?.lineageConfig as
-    | LineageSettings
-    | undefined;
+  const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const config = useMemo<LineageConfig>(
     () => ({
       upstreamDepth: Math.min(
-        defaultLineageConfig?.upstreamDepth ?? 1,
+        lineageConfig.upstreamDepth ?? 1,
         MAX_SCENE_DEPTH
       ),
       downstreamDepth: Math.min(
-        defaultLineageConfig?.downstreamDepth ?? 1,
+        lineageConfig.downstreamDepth ?? 1,
         MAX_SCENE_DEPTH
       ),
       nodesPerLayer: 200,
-      pipelineViewMode:
-        defaultLineageConfig?.pipelineViewMode ?? PipelineViewMode.Node,
+      pipelineViewMode: lineageConfig.pipelineViewMode,
     }),
-    [defaultLineageConfig]
+    [lineageConfig]
   );
 
   return (

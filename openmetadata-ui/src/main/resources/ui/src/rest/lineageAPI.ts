@@ -32,6 +32,7 @@ import {
   LineageScene,
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
+import { LineageDetails } from '../generated/type/entityLineage';
 import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
@@ -149,6 +150,17 @@ export const getLineageScene = async ({
   });
 
   return response.data;
+};
+
+export const getLineageEdgeDetails = async (
+  fromId: string,
+  toId: string
+): Promise<LineageDetails> => {
+  const response = await APIClient.get<{ edge: LineageDetails }>(
+    `lineage/getLineageEdge/${fromId}/${toId}`
+  );
+
+  return response.data.edge;
 };
 
 export const getPlatformLineage = async ({

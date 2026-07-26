@@ -53,6 +53,7 @@ import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -101,6 +102,7 @@ const CustomControls: FC<{
     toggleEditMode,
     isEditMode,
     platformView,
+    sceneBand,
     setLineageConfig,
   } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
@@ -377,16 +379,22 @@ const CustomControls: FC<{
       platformView === LineagePlatformView.None &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
+    const isLayerBand = sceneBand === LineageBand.Layer;
 
     return showEditOption ? (
       <Tooltip
         placement="top"
-        title={t('label.edit-entity', { entity: t('label.lineage') })}>
+        title={
+          isLayerBand
+            ? t('label.zoom-in')
+            : t('label.edit-entity', { entity: t('label.lineage') })
+        }>
         <TooltipTrigger>
           <Button
             color={isEditMode ? 'primary' : 'secondary'}
             data-testid="edit-lineage"
             iconLeading={EditIcon}
+            isDisabled={isLayerBand}
             onClick={toggleEditMode}
           />
         </TooltipTrigger>
@@ -398,6 +406,7 @@ const CustomControls: FC<{
     platformView,
     entityType,
     isEditMode,
+    sceneBand,
     toggleEditMode,
     t,
   ]);

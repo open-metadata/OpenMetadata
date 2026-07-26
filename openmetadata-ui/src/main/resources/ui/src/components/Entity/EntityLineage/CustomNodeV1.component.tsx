@@ -191,7 +191,8 @@ const CustomNodeV1 = (props: NodeProps) => {
     sceneDrillLabel,
     onSceneColumnHover,
     onSceneColumnSelect,
-    isPathHighlighted = false,
+    onSceneNodeRemove,
+    isNodeRemovable = true,
   } = data;
 
   // sync expand state based on edit or column layer active
@@ -249,7 +250,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       isChildrenListExpanded: columnsExpanded || isColumnLevelLineage,
     }),
     {
-      'lineage-path-highlight': isPathHighlighted,
       'lineage-scene-node': Boolean(sceneNode),
       'lineage-scene-layer-node':
         Boolean(sceneNode) && sceneBand === LineageBand.Layer,
@@ -280,8 +280,13 @@ const CustomNodeV1 = (props: NodeProps) => {
   }, [showColumnsWithLineageOnly, setNodeFilterState, node.id]);
 
   const handleNodeRemove = useCallback(() => {
+    if (onSceneNodeRemove) {
+      onSceneNodeRemove(props);
+
+      return;
+    }
     removeNodeHandler(props);
-  }, [removeNodeHandler, props]);
+  }, [onSceneNodeRemove, props, removeNodeHandler]);
 
   const handleSceneDrill = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -309,7 +314,7 @@ const CustomNodeV1 = (props: NodeProps) => {
             toggleShowColumnsWithLineageOnly
           }
         />
-        {isSelected && isEditMode && !isRootNode && (
+        {isSelected && isEditMode && !isRootNode && isNodeRemovable && (
           <LineageNodeRemoveButton onRemove={handleNodeRemove} />
         )}
       </>
@@ -320,6 +325,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     label,
     isSelected,
     isRootNode,
+    isNodeRemovable,
     columnsExpanded,
     showColumnsWithLineageOnly,
     toggleShowColumnsWithLineageOnly,
@@ -398,7 +404,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         </div>
       )}
       <div className="lineage-node-content">
-        {isSceneNodeDrillable && (
+        {isSceneNodeDrillable && !isEditMode && (
           <button
             aria-label={sceneDrillLabel}
             className="lineage-scene-drill-button nodrag nopan"

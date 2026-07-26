@@ -25,8 +25,10 @@ const ASSET_LEVEL_KINDS = new Set<LineageLevelKind>([
   LineageLevelKind.Table,
   LineageLevelKind.Topic,
   LineageLevelKind.Dashboard,
+  LineageLevelKind.DashboardDataModel,
   LineageLevelKind.Model,
   LineageLevelKind.Pipeline,
+  LineageLevelKind.StoredProcedure,
   LineageLevelKind.Container,
   LineageLevelKind.SearchIndex,
   LineageLevelKind.APIEndpoint,
@@ -56,8 +58,10 @@ const COUNT_KIND_PRIORITY = [
   LineageLevelKind.Table,
   LineageLevelKind.Topic,
   LineageLevelKind.Dashboard,
+  LineageLevelKind.DashboardDataModel,
   LineageLevelKind.Model,
   LineageLevelKind.Pipeline,
+  LineageLevelKind.StoredProcedure,
   LineageLevelKind.Container,
   LineageLevelKind.SearchIndex,
   LineageLevelKind.APIEndpoint,
@@ -105,6 +109,10 @@ const LEVEL_ENTITY_LABEL_KEYS: Record<
     singular: 'label.dashboard',
     plural: 'label.dashboard-plural',
   },
+  [LineageLevelKind.DashboardDataModel]: {
+    singular: 'label.dashboard-data-model',
+    plural: 'label.dashboard-data-model-plural',
+  },
   [LineageLevelKind.Chart]: {
     singular: 'label.chart',
     plural: 'label.chart-plural',
@@ -120,6 +128,10 @@ const LEVEL_ENTITY_LABEL_KEYS: Record<
   [LineageLevelKind.Pipeline]: {
     singular: 'label.pipeline',
     plural: 'label.pipeline-plural',
+  },
+  [LineageLevelKind.StoredProcedure]: {
+    singular: 'label.stored-procedure',
+    plural: 'label.stored-procedure-plural',
   },
   [LineageLevelKind.Task]: {
     singular: 'label.task',

@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { EntityReference } from '../../type/entityReference';
+
 /**
  * Semantic lineage scene response for map-style lineage navigation.
  */
@@ -39,6 +41,10 @@ export interface LineageScene {
      * Originally opened asset FQN.
      */
     originFqn?: string;
+    /**
+     * Whether the scene was built from a sampled subset of matching assets.
+     */
+    sampled?: boolean;
 }
 
 /**
@@ -84,6 +90,7 @@ export enum LineageLevelKind {
     Column = "column",
     Container = "container",
     Dashboard = "dashboard",
+    DashboardDataModel = "dashboardDataModel",
     DataProduct = "dataProduct",
     Database = "database",
     Directory = "directory",
@@ -98,6 +105,7 @@ export enum LineageLevelKind {
     SearchIndex = "searchIndex",
     Service = "service",
     Spreadsheet = "spreadsheet",
+    StoredProcedure = "storedProcedure",
     Table = "table",
     Task = "task",
     Topic = "topic",
@@ -109,6 +117,10 @@ export enum LineageLevelKind {
  */
 export interface LineageSceneEdge {
     band: LineageBand;
+    /**
+     * Description associated with this concrete lineage edge.
+     */
+    description?: string;
     /**
      * Source node id or field id.
      */
@@ -125,6 +137,10 @@ export interface LineageSceneEdge {
      * Optional edge label.
      */
     label?: string;
+    /**
+     * Pipeline or stored procedure associated with this concrete lineage edge.
+     */
+    pipeline?: EntityReference;
     /**
      * Lineage source.
      */

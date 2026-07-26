@@ -22,6 +22,7 @@ import {
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -219,10 +220,12 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         )}`;
 
         await addPipelineBetweenNodes(page, table1, table2);
+        await editLineageClick(page);
         await activateColumnLayer(page);
+        await editLineageClick(page);
         await addColumnLineage(page, sourceColName, targetColName);
 
-        const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        const lineageReq = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageReq;
 
@@ -249,9 +252,7 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await expect(page.getByTestId('sql-function')).toContainText('count');
 
-        const lineageReq1 = page.waitForResponse(
-          '/api/v1/lineage/getLineage?*'
-        );
+        const lineageReq1 = page.waitForResponse('**/api/v1/lineage/scene?*');
         await page.reload();
         await lineageReq1;
 
@@ -692,6 +693,139 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       await editLineageClick(page);
+    });
+  });
+
+  test.describe('Hierarchical map edit guards', () => {
+    test('disables lineage editing in the LAYER band', async ({ page }) => {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+
+      const layerScene = page.waitForResponse(
+        '**/api/v1/lineage/scene?*band=LAYER*'
+      );
+      await page.getByTestId('lineage-map-band-LAYER').click();
+      await layerScene;
+
+      await expect(page.getByTestId('edit-lineage')).toBeDisabled();
+    });
+
+    test('suppresses semantic zoom and node drill while editing', async ({
+      page,
+    }) => {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+      await editLineageClick(page);
+
+      const initialUrl = new URL(page.url());
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      const topicNode = page.getByTestId(`lineage-node-${topicFqn}`);
+
+      await topicNode.click({ position: { x: 10, y: 10 } });
+      for (let index = 0; index < 6; index++) {
+        await page.getByTestId('zoom-in').dispatchEvent('click');
+      }
+
+      await expect(
+        page.getByTestId('lineage-map-band-ASSET').locator('.active')
+      ).toBeVisible();
+      await expect
+        .poll(() => {
+          const currentUrl = new URL(page.url());
+
+          return {
+            band: currentUrl.searchParams.get('lineageBand'),
+            focus: currentUrl.searchParams.get('lineageFocus'),
+          };
+        })
+        .toEqual({
+          band: initialUrl.searchParams.get('lineageBand'),
+          focus: initialUrl.searchParams.get('lineageFocus'),
+        });
+    });
+
+    test('directs aggregated-edge edits to a deeper band', async ({ page }) => {
+      const sourceFqn = get(
+        table1,
+        'entityResponseData.fullyQualifiedName',
+        ''
+      );
+      const targetFqn = get(topic, 'entityResponseData.fullyQualifiedName', '');
+      const sourceNodeId = `table:${table1.entityResponseData.id}`;
+      const targetNodeId = `topic:${topic.entityResponseData.id}`;
+
+      await page.route('**/api/v1/lineage/scene?*', async (route) => {
+        const requestUrl = new URL(route.request().url());
+        if (requestUrl.searchParams.get('band') !== 'ASSET') {
+          await route.continue();
+
+          return;
+        }
+
+        await route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            lens: 'service',
+            band: 'ASSET',
+            focusFqn: sourceFqn,
+            focusEntityType: 'table',
+            originFqn: sourceFqn,
+            originEntityType: 'table',
+            nodes: [
+              {
+                id: sourceNodeId,
+                label: sourceFqn,
+                band: 'ASSET',
+                levelKind: 'table',
+                entityType: 'table',
+                fullyQualifiedName: sourceFqn,
+                isFocus: true,
+                isOrigin: true,
+                sourceEntity: {
+                  id: table1.entityResponseData.id,
+                  entityType: 'table',
+                  fullyQualifiedName: sourceFqn,
+                },
+              },
+              {
+                id: targetNodeId,
+                label: targetFqn,
+                band: 'ASSET',
+                levelKind: 'topic',
+                entityType: 'topic',
+                fullyQualifiedName: targetFqn,
+                sourceEntity: {
+                  id: topic.entityResponseData.id,
+                  entityType: 'topic',
+                  fullyQualifiedName: targetFqn,
+                },
+              },
+            ],
+            edges: [
+              {
+                id: 'aggregated-edge',
+                from: sourceNodeId,
+                to: targetNodeId,
+                band: 'ASSET',
+                isRollup: true,
+                weight: 2,
+              },
+            ],
+            breadcrumb: [],
+            hiddenNodeCount: 0,
+            sampled: false,
+          }),
+        });
+      });
+
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+      await editLineageClick(page);
+      await clickEdgeBetweenNodes(page, table1, topic);
+
+      await toastNotification(page, 'Zoom In');
     });
   });
 

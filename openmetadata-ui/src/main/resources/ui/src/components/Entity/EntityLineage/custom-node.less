@@ -26,6 +26,16 @@
 
 .react-flow__node {
   box-shadow: none;
+
+  &.lineage-path-highlight > .lineage-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 3px @primary-1, @box-shadow-base;
+  }
+
+  &.lineage-path-highlight > .lineage-scene-layer-node {
+    border-color: @primary-color;
+    box-shadow: 0 0 0 1px @primary-color, 0 2px 8px rgba(16, 24, 40, 0.12);
+  }
 }
 
 // Node default state
