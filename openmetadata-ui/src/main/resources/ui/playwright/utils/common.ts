@@ -437,7 +437,8 @@ export const assignDomain = async (
 
 export const assignSingleSelectDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  patchEndpoint?: string
 ) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
@@ -460,12 +461,14 @@ export const assignSingleSelectDomain = async (
   await tagSelector.waitFor({ state: 'visible' });
 
   const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      (!patchEndpoint || response.url().includes(patchEndpoint))
   );
 
   await tagSelector.click();
 
-  await patchReq;
+  expect((await patchReq).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -560,7 +563,8 @@ export const removeDomain = async (
 export const removeSingleSelectDomain = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  showDashPlaceholder = true
+  showDashPlaceholder = true,
+  patchEndpoint?: string
 ) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
@@ -582,12 +586,14 @@ export const removeSingleSelectDomain = async (
   await searchDomain;
 
   const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      (!patchEndpoint || response.url().includes(patchEndpoint))
   );
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await patchReq;
+  expect((await patchReq).status()).toBe(200);
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('no-domain-text')).toContainText(
@@ -892,7 +898,7 @@ export const verifyDomainPropagation = async (
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
   const domainLink = entityCard.getByTestId('domain-link').first();
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink, 90_000);
+  await waitForSearchResult(page, childFqnSearchTerm, domainLink);
   await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -104,11 +105,17 @@ class TestCaseStaleDefinitionReindexIT {
       assertNoRecordsDropped(stats.getJobStats(), "jobStats");
       assertNoRecordsDropped(stats.getReaderStats(), "readerStats");
     } finally {
-      try {
-        Entity.getCollectionDAO().testCaseDAO().delete(broken.getId());
-      } catch (Exception ignored) {
-        // best-effort: the broken relationship can trip namespace cleanup
-      }
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              broken.getTestDefinition().getId(),
+              broken.getId(),
+              Entity.TEST_DEFINITION,
+              Entity.TEST_CASE,
+              Relationship.CONTAINS.ordinal());
+      SdkClients.adminClient()
+          .testCases()
+          .delete(broken.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
     }
   }
 

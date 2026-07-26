@@ -193,7 +193,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
         await assignSingleSelectDomain(
           page,
-          EntityDataClass.domain1.responseData
+          EntityDataClass.domain1.responseData,
+          '/api/v1/services/'
         );
         await verifyDomainPropagation(
           page,
@@ -212,7 +213,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
         );
         await removeSingleSelectDomain(
           page,
-          EntityDataClass.domain1.responseData
+          EntityDataClass.domain1.responseData,
+          true,
+          '/api/v1/services/'
         );
       }
     });
