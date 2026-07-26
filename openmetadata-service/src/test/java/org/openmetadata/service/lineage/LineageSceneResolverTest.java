@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,10 +35,13 @@ import org.openmetadata.schema.api.lineage.LineageSceneEdge;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class LineageSceneResolverTest {
   private static final LineageSceneResolver RESOLVER = new LineageSceneResolver();
@@ -490,6 +495,46 @@ class LineageSceneResolverTest {
             Map.of(Entity.TABLE, 10, Entity.STORED_PROCEDURE.toLowerCase(), 2)),
         LineageSceneResolver.parseNestedAggregationCounts(response));
     assertTrue(LineageSceneResolver.isNestedAggregationTruncated(response));
+  }
+
+  @Test
+  void domainAccessClauseIncludesAssignedDescendantsAndDomainlessAssets() {
+    SubjectContext subjectContext =
+        new SubjectContext(
+            new User()
+                .withName("restricted-user")
+                .withRoles(List.of(new EntityReference().withName("DomainOnlyAccessRole")))
+                .withDomains(List.of(new EntityReference().withFullyQualifiedName("Engineering"))),
+            null);
+
+    JsonNode clause =
+        JsonUtils.readTree(
+            JsonUtils.pojoToJson(LineageSceneResolver.domainAccessClause(subjectContext)));
+    JsonNode conditions = clause.path("bool").path("should");
+
+    assertEquals(3, conditions.size());
+    assertEquals(1, clause.path("bool").path("minimum_should_match").asInt());
+    assertEquals(
+        "domains.fullyQualifiedName",
+        conditions.get(0).at("/bool/must_not/0/exists/field").asText());
+    assertEquals("Engineering", conditions.get(1).at("/term/domains.fullyQualifiedName").asText());
+    assertEquals(
+        "Engineering.", conditions.get(2).at("/prefix/domains.fullyQualifiedName").asText());
+  }
+
+  @Test
+  void bestEffortTasksSkipIndividualIoFailures() throws IOException {
+    List<LineageSceneResolver.IOTask<String>> tasks =
+        List.of(
+            LineageSceneResolver.bestEffortTask("first child", () -> "first"),
+            LineageSceneResolver.bestEffortTask(
+                "failed child",
+                () -> {
+                  throw new IOException("transient search failure");
+                }),
+            LineageSceneResolver.bestEffortTask("last child", () -> "last"));
+
+    assertEquals(List.of("first", "last"), LineageSceneResolver.runBounded(tasks, 2));
   }
 
   @Test

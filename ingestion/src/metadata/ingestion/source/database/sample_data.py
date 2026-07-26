@@ -272,7 +272,7 @@ def get_lineage_details(
 
     columns_lineage = [
         ColumnLineage(**column_lineage)
-        for column_lineage in edge.get("columnsLineage", edge.get("columns_lineage", []))
+        for column_lineage in (edge.get("columnsLineage") or edge.get("columns_lineage") or [])
     ]
     created_at = get_lineage_timestamp(edge, "createdAt", "created_at_days_ago", reference_time)
     updated_at = get_lineage_timestamp(edge, "updatedAt", "updated_at_days_ago", reference_time)

@@ -109,7 +109,6 @@ public class LineageSceneResolver {
           Entity.WORKSHEET);
   private static final String SERVICE_FQN_KEYWORD_FIELD = "service.fullyQualifiedName.keyword";
   private static final String DATABASE_FQN_KEYWORD_FIELD = "database.fullyQualifiedName.keyword";
-  private static final String DATABASE_FQN_FIELD = "database.fullyQualifiedName";
   private static final String DATABASE_SCHEMA_FQN_KEYWORD_FIELD =
       "databaseSchema.fullyQualifiedName.keyword";
   private static final String DOMAINS_FQN_FIELD = "domains.fullyQualifiedName";
@@ -313,15 +312,12 @@ public class LineageSceneResolver {
       return false;
     }
 
-    if (LineageDomainFilter.shouldApply(subjectContext)) {
-      return false;
-    }
     String fieldName = rootAssetFieldName(lens);
     if (nullOrEmpty(fieldName)) {
       return false;
     }
     RootAssetCounts rootAssetCounts =
-        fetchRootAssetCountsByLens(fieldName, queryFilter, includeDeleted);
+        fetchRootAssetCountsByLens(fieldName, queryFilter, includeDeleted, subjectContext);
     if (rootAssetCounts.truncated()) {
       LOG.warn(
           "Lineage scene root aggregation exceeded its bucket limit for lens field {}", fieldName);
@@ -381,7 +377,11 @@ public class LineageSceneResolver {
   }
 
   private static RootAssetCounts fetchRootAssetCountsByLens(
-      String rootFieldName, String queryFilter, boolean includeDeleted) throws IOException {
+      String rootFieldName,
+      String queryFilter,
+      boolean includeDeleted,
+      SubjectContext subjectContext)
+      throws IOException {
     String aggregation =
         "bucketName=roots:aggType=terms:field="
             + rootFieldName
@@ -389,7 +389,7 @@ public class LineageSceneResolver {
     JsonObject response =
         Entity.getSearchRepository()
             .aggregate(
-                rootAssetQuery(queryFilter, includeDeleted),
+                rootAssetQuery(queryFilter, includeDeleted, subjectContext),
                 "dataAsset",
                 SearchIndexUtils.buildAggregationTree(aggregation),
                 new SearchListFilter());
@@ -399,10 +399,12 @@ public class LineageSceneResolver {
     return parseNestedAggregationResult(response.toString());
   }
 
-  private static String rootAssetQuery(String queryFilter, boolean includeDeleted) {
+  private static String rootAssetQuery(
+      String queryFilter, boolean includeDeleted, SubjectContext subjectContext) {
     List<Object> must = new ArrayList<>();
     must.add(Map.of("term", Map.of("deleted", includeDeleted)));
     addQueryFilterClause(must, queryFilter);
+    addDomainAccessClause(must, subjectContext);
     return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
@@ -425,6 +427,33 @@ public class LineageSceneResolver {
         LOG.warn("Ignoring invalid lineage scene query filter", exception);
       }
     }
+  }
+
+  private static void addDomainAccessClause(List<Object> must, SubjectContext subjectContext) {
+    Map<String, Object> clause = domainAccessClause(subjectContext);
+    if (!clause.isEmpty()) {
+      must.add(clause);
+    }
+  }
+
+  static Map<String, Object> domainAccessClause(SubjectContext subjectContext) {
+    if (!LineageDomainFilter.shouldApply(subjectContext)) {
+      return Map.of();
+    }
+    List<Object> allowedDomains = new ArrayList<>();
+    allowedDomains.add(
+        Map.of(
+            "bool",
+            Map.of("must_not", List.of(Map.of("exists", Map.of("field", DOMAINS_FQN_FIELD))))));
+    for (EntityReference domain : subjectContext.getUserDomains()) {
+      if (domain == null || nullOrEmpty(domain.getFullyQualifiedName())) {
+        continue;
+      }
+      String domainFqn = domain.getFullyQualifiedName();
+      allowedDomains.add(Map.of("term", Map.of(DOMAINS_FQN_FIELD, domainFqn)));
+      allowedDomains.add(Map.of("prefix", Map.of(DOMAINS_FQN_FIELD, domainFqn + ".")));
+    }
+    return Map.of("bool", Map.of("should", allowedDomains, "minimum_should_match", 1));
   }
 
   static Map<String, Map<String, Integer>> parseNestedAggregationCounts(String responseJson) {
@@ -687,7 +716,7 @@ public class LineageSceneResolver {
       throws IOException {
     SearchRootAssetsResult schemas =
         searchRootAssets(
-            DATABASE_FQN_FIELD,
+            DATABASE_FQN_KEYWORD_FIELD,
             databaseFqn,
             Entity.DATABASE_SCHEMA,
             includeDeleted,
@@ -738,9 +767,6 @@ public class LineageSceneResolver {
     if (nullOrEmpty(parentFieldName) || nullOrEmpty(parentFqn) || nullOrEmpty(bucketFieldName)) {
       return Map.of();
     }
-    if (LineageDomainFilter.shouldApply(subjectContext)) {
-      return Map.of();
-    }
     if (DATABASE_FQN_KEYWORD_FIELD.equals(bucketFieldName) && !isDatabaseKeywordFieldMapped()) {
       logDatabaseReindexRequired();
       return Map.of();
@@ -750,7 +776,7 @@ public class LineageSceneResolver {
             .aggregate(
                 new AggregationRequest()
                     .withIndex(entityType)
-                    .withQuery(parentFieldQuery(parentFieldName, parentFqn))
+                    .withQuery(parentFieldQuery(parentFieldName, parentFqn, subjectContext))
                     .withFieldName(bucketFieldName)
                     .withFieldValue(".*")
                     .withDeleted(includeDeleted)
@@ -761,13 +787,12 @@ public class LineageSceneResolver {
     return parseAggregationCounts(responseJson, bucketFieldName);
   }
 
-  private static String parentFieldQuery(String fieldName, String fieldValue) {
-    return JsonUtils.pojoToJson(
-        Map.of(
-            "query",
-            Map.of(
-                "bool",
-                Map.of("must", List.of(Map.of("wildcard", Map.of(fieldName, fieldValue)))))));
+  private static String parentFieldQuery(
+      String fieldName, String fieldValue, SubjectContext subjectContext) {
+    List<Object> must = new ArrayList<>();
+    must.add(Map.of("wildcard", Map.of(fieldName, fieldValue)));
+    addDomainAccessClause(must, subjectContext);
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
   static Map<String, Integer> parseAggregationCounts(String responseJson, String fieldName) {
@@ -870,7 +895,8 @@ public class LineageSceneResolver {
         seeds.stream()
             .map(
                 seed ->
-                    (IOTask<SearchLineageResult>)
+                    bestEffortTask(
+                        "child lineage for " + seed.entityType() + " " + seed.fqn(),
                         () ->
                             fetchLineage(
                                 seed.fqn(),
@@ -882,14 +908,25 @@ public class LineageSceneResolver {
                                 band,
                                 queryFilter,
                                 includeDeleted,
-                                subjectContext))
+                                subjectContext)))
             .toList();
     for (SearchLineageResult childLineage : runBounded(tasks, FOCUSED_CHILD_LINEAGE_PARALLELISM)) {
       mergeLineage(lineage, childLineage);
     }
   }
 
-  private static <T> List<T> runBounded(List<IOTask<T>> tasks, int parallelism) throws IOException {
+  static <T> IOTask<T> bestEffortTask(String description, IOTask<T> task) {
+    return () -> {
+      try {
+        return task.call();
+      } catch (IOException exception) {
+        LOG.warn("Failed to load {}; skipping result: {}", description, exception.getMessage());
+        return null;
+      }
+    };
+  }
+
+  static <T> List<T> runBounded(List<IOTask<T>> tasks, int parallelism) throws IOException {
     if (tasks.isEmpty()) {
       return List.of();
     }
@@ -2281,7 +2318,7 @@ public class LineageSceneResolver {
   private record RootAssetCounts(Map<String, Map<String, Integer>> counts, boolean truncated) {}
 
   @FunctionalInterface
-  private interface IOTask<T> {
+  interface IOTask<T> {
     T call() throws IOException;
   }
 

@@ -1065,6 +1065,21 @@ public class LineageResourceIT {
             "allowed_target",
             columns("id"),
             List.of(allowedDomain.getFullyQualifiedName()));
+    createTableInSchema(
+        admin,
+        namespace,
+        allowedSchema,
+        "allowed_standalone",
+        columns("id"),
+        List.of(allowedDomain.getFullyQualifiedName()));
+    createTableInSchema(admin, namespace, allowedSchema, "allowed_domainless", columns("id"));
+    createTableInSchema(
+        admin,
+        namespace,
+        allowedSchema,
+        "blocked_in_allowed_service",
+        columns("id"),
+        List.of(blockedDomain.getFullyQualifiedName()));
 
     DatabaseService blockedService = DatabaseServiceTestFactory.createSnowflake(namespace);
     Database blockedDatabase =
@@ -1121,12 +1136,51 @@ public class LineageResourceIT {
             LineageLens.SERVICE,
             LineageBand.LAYER,
             995,
-            scene -> hasSceneNode(scene, allowedService.getFullyQualifiedName()));
+            scene ->
+                hasSceneNode(scene, allowedService.getFullyQualifiedName())
+                    && sceneNodeCount(
+                            scene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                        == 4);
     assertFalse(hasSceneNode(restrictedScene, blockedService.getFullyQualifiedName()));
     assertEquals(
-        2,
+        4,
         sceneNodeCount(
             restrictedScene, allowedService.getFullyQualifiedName(), LineageLevelKind.TABLE));
+
+    LineageScene restrictedServiceScene =
+        getLineageSceneWithRetry(
+            restrictedClient,
+            allowedService.getFullyQualifiedName(),
+            Entity.DATABASE_SERVICE,
+            LineageBand.ASSET,
+            995,
+            scene ->
+                sceneNodeCount(
+                        scene, allowedDatabase.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                    == 4);
+    assertEquals(
+        4,
+        sceneNodeCount(
+            restrictedServiceScene,
+            allowedDatabase.getFullyQualifiedName(),
+            LineageLevelKind.TABLE));
+
+    LineageScene restrictedDatabaseScene =
+        getLineageSceneWithRetry(
+            restrictedClient,
+            allowedDatabase.getFullyQualifiedName(),
+            Entity.DATABASE,
+            LineageBand.ASSET,
+            995,
+            scene ->
+                sceneNodeCount(scene, allowedSchema.getFullyQualifiedName(), LineageLevelKind.TABLE)
+                    == 4);
+    assertEquals(
+        4,
+        sceneNodeCount(
+            restrictedDatabaseScene,
+            allowedSchema.getFullyQualifiedName(),
+            LineageLevelKind.TABLE));
 
     admin.users().delete(restrictedUser.getId().toString());
     deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
