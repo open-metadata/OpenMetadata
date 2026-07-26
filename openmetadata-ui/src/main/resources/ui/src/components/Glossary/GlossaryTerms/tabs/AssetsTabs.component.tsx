@@ -843,7 +843,9 @@ const AssetsTabs = forwardRef(
             />
           </div>
         ) : (
-          <div className="h-full tw:relative">{assetErrorPlaceHolder}</div>
+          <div className="h-full tw:relative tw:min-h-90">
+            {assetErrorPlaceHolder}
+          </div>
         ),
       [
         type,

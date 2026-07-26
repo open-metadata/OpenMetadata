@@ -226,7 +226,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full tw:relative">
+      <div className="h-full tw:relative tw:min-h-90">
         <CreatePlaceholder
           description={
             <Transi18next
