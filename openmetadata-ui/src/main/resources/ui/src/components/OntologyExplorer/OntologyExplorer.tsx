@@ -341,10 +341,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       }
 
       return (
-        <GraphEmptyState
-          message={t('message.no-glossary-terms-found')}
-          testId="ontology-graph-empty"
-        />
+        <div
+          className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+          data-testid="ontology-graph-empty">
+          <EmptyPlaceholder
+            description={t('message.no-glossary-terms-found')}
+            icon={<Cube02 className="tw:text-fg-brand-primary" />}
+            title={t('message.ontology-empty-title')}
+          />
+        </div>
       );
     }
 
@@ -452,7 +457,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // chrome (filter toolbar, mode/search/export bar, zoom controls) has nothing
   // to act on, so it is hidden to match the clean empty layout.
   const showOnboardingEmptyState =
-    scope === 'global' &&
     !loading &&
     graphDataToShow !== null &&
     graphDataToShow.nodes.length === 0 &&
@@ -472,7 +476,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       style={{ height }}>
       {scope === 'global' && !showOnboardingEmptyState && (
         <Card
-          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:shadow-none"
+          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:shadow-none tw:mt-px tw:mx-px"
           data-testid="ontology-explorer-header">
           <FilterToolbar
             filters={filters}
@@ -497,11 +501,25 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         </Card>
       )}
 
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
+      <div
+        className={classNames(
+          'tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden',
+          // 1px inset clears the container's overflow clip so the panel border
+          // isn't shaved. When the toolbar is shown (global), drop the TOP inset
+          // so the graph connects flush to the toolbar's bottom border; the
+          // standalone graph (glossary/term) keeps the inset on all sides.
+          scope === 'global' && !showOnboardingEmptyState
+            ? 'tw:px-px tw:pb-px'
+            : 'tw:px-px tw:pb-px tw:pt-0.5'
+        )}>
         <div
           className={classNames(
-            'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
-            'tw:border tw:border-utility-gray-blue-100',
+            // `tw:isolate` forces a stacking/compositing context so WebKit
+            // clips the absolutely-positioned dotted backdrop + graph to this
+            // element's `border-radius` — without it the corners spill square.
+            'tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
+            !showOnboardingEmptyState &&
+              'tw:border tw:border-utility-gray-blue-100',
             scope === 'global' && !showOnboardingEmptyState
               ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
               : 'tw:rounded-lg'
