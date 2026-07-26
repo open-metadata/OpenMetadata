@@ -32,14 +32,24 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 
 class BoundedAsyncExecutorTest {
   private static final Duration TEST_TIMEOUT = Duration.ofSeconds(10);
 
+  @BeforeEach
+  void resetAsyncServiceBeforeTest() throws Exception {
+    resetAsyncService();
+  }
+
   @AfterEach
-  void resetAsyncService() throws Exception {
+  void resetAsyncServiceAfterTest() throws Exception {
+    resetAsyncService();
+  }
+
+  private static void resetAsyncService() throws Exception {
     Field instanceField = AsyncService.class.getDeclaredField("instance");
     instanceField.setAccessible(true);
     AsyncService service = (AsyncService) instanceField.get(null);

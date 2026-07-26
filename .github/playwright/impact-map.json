@@ -218,7 +218,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC"],
+      "projects": ["auto"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",

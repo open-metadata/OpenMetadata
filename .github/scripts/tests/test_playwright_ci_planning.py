@@ -1336,6 +1336,25 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
     assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
 
 
+def test_security_impact_mapping_uses_each_permission_specs_project():
+    selector = load_script("select_playwright_tests")
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/security/**"
+        in entry["sources"]
+    )
+
+    assert mapping["projects"] == ["auto"]
+    assert selector.matches(
+        "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        mapping["specs"],
+    )
+
+
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
