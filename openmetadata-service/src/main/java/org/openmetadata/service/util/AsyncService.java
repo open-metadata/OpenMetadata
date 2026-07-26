@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -10,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
 
 /**
@@ -56,6 +58,7 @@ public class AsyncService {
   }
 
   public static synchronized void initialize(AsyncOperationsConfiguration config) {
+    Objects.requireNonNull(config, "AsyncOperationsConfiguration cannot be null");
     if (instance == null) {
       instance = new AsyncService(config);
       instance.registerMetrics();
@@ -64,8 +67,15 @@ public class AsyncService {
 
   public static synchronized AsyncService getInstance() {
     if (instance == null) {
-      LOG.warn("AsyncService not initialized, using defaults");
-      initialize(new AsyncOperationsConfiguration());
+      AsyncOperationsConfiguration config;
+      if (OpenMetadataApplicationConfigHolder.isInitialized()) {
+        config =
+            OpenMetadataApplicationConfigHolder.getInstance().getAsyncOperationsConfiguration();
+      } else {
+        LOG.warn("AsyncService not initialized, using defaults");
+        config = new AsyncOperationsConfiguration();
+      }
+      initialize(config);
     }
     return instance;
   }

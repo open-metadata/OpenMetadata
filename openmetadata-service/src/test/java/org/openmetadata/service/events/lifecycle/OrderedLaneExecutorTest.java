@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.lifecycle;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
@@ -88,6 +89,14 @@ class OrderedLaneExecutorTest {
     try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {}, 5)) {
       assertEquals(5, executor.getLaneCount());
     }
+  }
+
+  @Test
+  void configuredLaneCountRejectsValuesOutsideSupportedRange() {
+    assertThrows(
+        IllegalArgumentException.class, () -> new OrderedLaneExecutor((task, failure) -> {}, -1));
+    assertThrows(
+        IllegalArgumentException.class, () -> new OrderedLaneExecutor((task, failure) -> {}, 33));
   }
 
   @Test

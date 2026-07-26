@@ -124,6 +124,10 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   }
 
   private static int resolveLaneCount(int configuredLaneCount) {
+    if (configuredLaneCount < 0 || configuredLaneCount > MAX_AUTO_LANES) {
+      throw new IllegalArgumentException(
+          "configuredLaneCount must be 0 or between 1 and " + MAX_AUTO_LANES);
+    }
     int resolvedLaneCount = configuredLaneCount;
     if (resolvedLaneCount == 0) {
       resolvedLaneCount = computeAutomaticLaneCount();

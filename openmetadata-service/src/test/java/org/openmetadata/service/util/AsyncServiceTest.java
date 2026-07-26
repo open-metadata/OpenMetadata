@@ -189,6 +189,27 @@ class AsyncServiceTest {
   }
 
   @Test
+  void testInitializeRejectsNullConfiguration() {
+    NullPointerException exception =
+        assertThrows(NullPointerException.class, () -> AsyncService.initialize(null));
+
+    assertEquals("AsyncOperationsConfiguration cannot be null", exception.getMessage());
+  }
+
+  @Test
+  void testGetInstanceUsesConfigurationFromApplicationConfigHolder() throws Exception {
+    OpenMetadataApplicationConfig applicationConfig = new OpenMetadataApplicationConfig();
+    AsyncOperationsConfiguration asyncConfig = new AsyncOperationsConfiguration();
+    asyncConfig.setMaxConcurrentDbTasks(0);
+    applicationConfig.setAsyncOperationsConfiguration(asyncConfig);
+    setConfigHolderInstance(applicationConfig);
+
+    AsyncService service = AsyncService.getInstance();
+
+    assertSame(service.getExecutorService(), service.getBoundedExecutorService());
+  }
+
+  @Test
   void testBoundedViewIsSingletonAndRawExecutorRemainsUngated() throws Exception {
     AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
     config.setMaxConcurrentDbTasks(1);

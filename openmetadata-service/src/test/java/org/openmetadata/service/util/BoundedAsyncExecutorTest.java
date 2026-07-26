@@ -21,6 +21,7 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -130,6 +131,71 @@ class BoundedAsyncExecutorTest {
       assertTrue(followUpRan.await(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS));
       awaitEmpty(executor);
     } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  void interruptedPermitWaitCancelsSubmittedFuture() throws InterruptedException {
+    ConcurrentLinkedQueue<Thread> delegateThreads = new ConcurrentLinkedQueue<>();
+    ExecutorService delegate =
+        Executors.newThreadPerTaskExecutor(
+            runnable -> {
+              Thread thread = Thread.ofVirtual().unstarted(runnable);
+              delegateThreads.add(thread);
+              return thread;
+            });
+    BoundedAsyncExecutor executor = new BoundedAsyncExecutor(delegate, 1);
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+    AtomicInteger queuedTaskRuns = new AtomicInteger();
+
+    try {
+      executor.submit(
+          () -> {
+            firstStarted.countDown();
+            awaitLatch(releaseFirst);
+          });
+      assertTrue(firstStarted.await(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS));
+
+      Future<?> queuedTask = executor.submit(queuedTaskRuns::incrementAndGet);
+      Awaitility.await().atMost(TEST_TIMEOUT).until(() -> executor.getQueuedCount() == 1);
+
+      List<Thread> threads = new ArrayList<>(delegateThreads);
+      threads.get(1).interrupt();
+
+      Awaitility.await().atMost(TEST_TIMEOUT).until(queuedTask::isCancelled);
+      assertThrows(CancellationException.class, queuedTask::get);
+      assertEquals(0, queuedTaskRuns.get());
+    } finally {
+      releaseFirst.countDown();
+      executor.shutdownNow();
+    }
+  }
+
+  @Test
+  void shutdownNowCancelsAndReturnsTasksThatNeverStarted() throws InterruptedException {
+    ExecutorService delegate = Executors.newSingleThreadExecutor(Thread.ofVirtual().factory());
+    BoundedAsyncExecutor executor = new BoundedAsyncExecutor(delegate, 1);
+    CountDownLatch firstStarted = new CountDownLatch(1);
+    CountDownLatch releaseFirst = new CountDownLatch(1);
+
+    try {
+      executor.submit(
+          () -> {
+            firstStarted.countDown();
+            awaitLatch(releaseFirst);
+          });
+      assertTrue(firstStarted.await(TEST_TIMEOUT.toSeconds(), TimeUnit.SECONDS));
+
+      Future<?> queuedTask = executor.submit(() -> {});
+      List<Runnable> pendingTasks = executor.shutdownNow();
+
+      assertTrue(queuedTask.isCancelled());
+      assertEquals(1, pendingTasks.size());
+      assertSame(queuedTask, pendingTasks.get(0));
+    } finally {
+      releaseFirst.countDown();
       executor.shutdownNow();
     }
   }

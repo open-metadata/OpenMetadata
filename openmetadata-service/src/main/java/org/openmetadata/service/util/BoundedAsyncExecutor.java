@@ -12,10 +12,12 @@
  */
 package org.openmetadata.service.util;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -37,13 +39,14 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
   @Override
   public void execute(Runnable command) {
     Objects.requireNonNull(command);
-    delegate.execute(() -> runWithPermit(command));
+    delegate.execute(new PermitRunnable(command));
   }
 
   private void runWithPermit(Runnable command) {
     try {
       semaphore.acquire();
     } catch (InterruptedException e) {
+      cancelIfFuture(command);
       Thread.currentThread().interrupt();
       return;
     }
@@ -51,6 +54,12 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
       command.run();
     } finally {
       semaphore.release();
+    }
+  }
+
+  private static void cancelIfFuture(Runnable command) {
+    if (command instanceof Future<?> future) {
+      future.cancel(false);
     }
   }
 
@@ -69,7 +78,17 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
 
   @Override
   public List<Runnable> shutdownNow() {
-    return delegate.shutdownNow();
+    List<Runnable> pendingTasks = delegate.shutdownNow();
+    List<Runnable> unwrappedTasks = new ArrayList<>(pendingTasks.size());
+    for (Runnable pendingTask : pendingTasks) {
+      if (pendingTask instanceof PermitRunnable permitTask) {
+        permitTask.cancel();
+        unwrappedTasks.add(permitTask.command);
+      } else {
+        unwrappedTasks.add(pendingTask);
+      }
+    }
+    return unwrappedTasks;
   }
 
   @Override
@@ -85,5 +104,22 @@ public final class BoundedAsyncExecutor extends AbstractExecutorService {
   @Override
   public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
     return delegate.awaitTermination(timeout, unit);
+  }
+
+  private final class PermitRunnable implements Runnable {
+    private final Runnable command;
+
+    private PermitRunnable(Runnable command) {
+      this.command = command;
+    }
+
+    @Override
+    public void run() {
+      runWithPermit(command);
+    }
+
+    private void cancel() {
+      cancelIfFuture(command);
+    }
   }
 }

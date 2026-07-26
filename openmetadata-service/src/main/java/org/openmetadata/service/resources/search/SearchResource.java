@@ -47,6 +47,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -98,6 +100,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  private static final long EXECUTION_START_POLL_MILLIS = 100L;
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -949,11 +952,14 @@ public class SearchResource {
           .build();
     }
 
+    CountDownLatch executionStarted = new CountDownLatch(1);
+    AsyncService asyncService = AsyncService.getInstance();
     Future<?> future =
-        AsyncService.getInstance()
+        asyncService
             .getBoundedExecutorService()
             .submit(
                 () -> {
+                  executionStarted.countDown();
                   int totalEntities = entities.size();
                   int successCount = 0;
                   int failureCount = 0;
@@ -1090,16 +1096,22 @@ public class SearchResource {
                 });
 
     // The watchdog waits on the worker future and must not consume a DB-task permit.
-    AsyncService.getInstance()
+    asyncService
         .getExecutorService()
         .submit(
             () -> {
               try {
+                awaitExecutionStartOrCompletion(executionStarted, future);
                 future.get(timeoutMinutes, TimeUnit.MINUTES);
               } catch (TimeoutException e) {
                 future.cancel(true);
                 LOG.error(
                     "Reindex job timed out after {} minutes and was cancelled", timeoutMinutes);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOG.warn("Reindex job watchdog was interrupted");
+              } catch (CancellationException e) {
+                LOG.info("Reindex job was cancelled before completion");
               } catch (Exception e) {
                 LOG.error("Reindex job failed with error: {}", e.getMessage(), e);
               }
@@ -1111,6 +1123,13 @@ public class SearchResource {
                 "Reindex process started for %d entities with %d minute timeout. Check logs for progress updates.",
                 entities.size(), timeoutMinutes))
         .build();
+  }
+
+  static void awaitExecutionStartOrCompletion(CountDownLatch executionStarted, Future<?> future)
+      throws InterruptedException {
+    while (executionStarted.getCount() > 0 && !future.isDone()) {
+      executionStarted.await(EXECUTION_START_POLL_MILLIS, TimeUnit.MILLISECONDS);
+    }
   }
 
   private String formatBytes(long bytes) {
