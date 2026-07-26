@@ -46,7 +46,6 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
@@ -92,7 +91,7 @@ import {
 } from '../../../../utils/StringUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -723,17 +722,26 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolder
-            buttonId="data-assets-add-button"
-            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
-            className="border-none"
-            heading={t('message.no-data-message', {
+          <CreatePlaceholder
+            actions={
+              permissions.Create
+                ? [
+                    {
+                      key: 'add-asset',
+                      id: 'data-assets-add-button',
+                      label: t('label.add-entity', {
+                        entity: t('label.asset'),
+                      }),
+                      color: 'primary',
+                      onPress: onAddAsset,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-data-message', {
               entity: t('label.data-asset-lowercase-plural'),
             })}
             icon={<FolderEmptyIcon />}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-            onClick={onAddAsset}
           />
         );
       }
