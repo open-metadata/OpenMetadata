@@ -144,7 +144,13 @@ public class LineageSceneResolver {
     boolean cacheable = nullOrEmpty(focusFqn) && !LineageDomainFilter.shouldApply(subjectContext);
     LineageSceneCache.Key cacheKey =
         new LineageSceneCache.Key(
-            sceneLens, sceneBand, size, queryFilter == null ? "" : queryFilter, includeDeleted);
+            sceneLens,
+            sceneBand,
+            upstreamDepth,
+            downstreamDepth,
+            size,
+            queryFilter == null ? "" : queryFilter,
+            includeDeleted);
     if (cacheable) {
       Optional<LineageScene> cached = LineageSceneCache.getInstance().get(cacheKey);
       if (cached.isPresent()) {

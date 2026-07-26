@@ -15,6 +15,7 @@ package org.openmetadata.service.lineage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -520,6 +521,19 @@ class LineageSceneResolverTest {
     assertEquals("Engineering", conditions.get(1).at("/term/domains.fullyQualifiedName").asText());
     assertEquals(
         "Engineering.", conditions.get(2).at("/prefix/domains.fullyQualifiedName").asText());
+  }
+
+  @Test
+  void sceneCacheKeyIncludesTraversalDepths() {
+    LineageSceneCache.Key shallow =
+        new LineageSceneCache.Key(LineageLens.SERVICE, LineageBand.LAYER, 1, 1, 100, "", false);
+    LineageSceneCache.Key deeperUpstream =
+        new LineageSceneCache.Key(LineageLens.SERVICE, LineageBand.LAYER, 2, 1, 100, "", false);
+    LineageSceneCache.Key deeperDownstream =
+        new LineageSceneCache.Key(LineageLens.SERVICE, LineageBand.LAYER, 1, 2, 100, "", false);
+
+    assertNotEquals(shallow, deeperUpstream);
+    assertNotEquals(shallow, deeperDownstream);
   }
 
   @Test

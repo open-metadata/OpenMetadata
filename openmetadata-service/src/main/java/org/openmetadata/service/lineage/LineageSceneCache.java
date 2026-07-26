@@ -57,5 +57,11 @@ public final class LineageSceneCache {
   }
 
   public record Key(
-      LineageLens lens, LineageBand band, int size, String queryFilter, boolean includeDeleted) {}
+      LineageLens lens,
+      LineageBand band,
+      int upstreamDepth,
+      int downstreamDepth,
+      int size,
+      String queryFilter,
+      boolean includeDeleted) {}
 }
