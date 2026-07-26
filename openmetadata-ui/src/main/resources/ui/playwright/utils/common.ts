@@ -859,22 +859,46 @@ export const waitForSearchResult = async (
   result: Locator,
   timeout = 45_000
 ) => {
+  let hasSubmittedSearch = false;
+  const searchBox = page.getByTestId('searchBox');
+  const submitSearch = async (term: string) => {
+    const searchResponse = page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        const query = url.searchParams.get('q')?.replaceAll('\\', '') ?? '';
+
+        return (
+          url.pathname.endsWith('/api/v1/search/query') &&
+          response.request().method() === 'GET' &&
+          query === term
+        );
+      },
+      { timeout: 15_000 }
+    );
+
+    await searchBox.fill(term);
+    await Promise.all([searchResponse, searchBox.press('Enter')]);
+    await waitForAllLoadersToDisappear(page);
+  };
+
   await expect
     .poll(
       async () => {
-        const searchResponse = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.request().method() === 'GET',
-          { timeout: 15_000 }
-        );
-        const searchBox = page.getByTestId('searchBox');
+        if (await result.isVisible()) {
+          return true;
+        }
 
-        await searchBox.fill(searchTerm);
-        await Promise.all([searchResponse, searchBox.press('Enter')]);
-        await waitForAllLoadersToDisappear(page);
+        if (hasSubmittedSearch) {
+          await submitSearch(crypto.randomUUID().replaceAll('-', ''));
+        }
 
-        return result.isVisible();
+        await submitSearch(searchTerm);
+        hasSubmittedSearch = true;
+
+        return result
+          .waitFor({ state: 'visible', timeout: 5_000 })
+          .then(() => true)
+          .catch(() => false);
       },
       { timeout, intervals: [1_000, 2_000, 5_000] }
     )
