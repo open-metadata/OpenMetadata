@@ -840,9 +840,13 @@ export const verifyDomainLinkInCard = async (
   entityCard: Locator,
   domain: Domain['responseData']
 ) => {
-  const domainLink = entityCard.getByTestId('domain-link').filter({
-    hasText: domain.displayName,
-  });
+  const domainLink = entityCard
+    .getByTestId('domain-link')
+    .filter({
+      hasText: domain.displayName,
+      visible: true,
+    })
+    .first();
 
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);
@@ -911,7 +915,10 @@ export const verifyDomainPropagation = async (
   childFqnSearchTerm: string
 ) => {
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-  const domainLink = entityCard.getByTestId('domain-link').first();
+  const domainLink = entityCard
+    .getByTestId('domain-link')
+    .filter({ hasText: domain.displayName, visible: true })
+    .first();
 
   await waitForSearchResult(page, childFqnSearchTerm, domainLink, 90_000);
   await expect(entityCard).toBeVisible();
