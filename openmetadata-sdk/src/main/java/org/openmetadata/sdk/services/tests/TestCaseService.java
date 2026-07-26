@@ -121,6 +121,22 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
         Void.class);
   }
 
+  /**
+   * Delete test cases from a logical test suite in bulk.
+   *
+   * @param testSuiteId The logical test suite ID
+   * @param testCaseIds The list of test case IDs to remove
+   * @return The updated test suite
+   */
+  public org.openmetadata.schema.tests.TestSuite deleteFromLogicalTestSuite(
+      UUID testSuiteId, List<UUID> testCaseIds) throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/logicalTestCases/" + testSuiteId + "/delete",
+        testCaseIds,
+        org.openmetadata.schema.tests.TestSuite.class);
+  }
+
   // ===================================================================
   // FAILED ROWS SAMPLE OPERATIONS
   // ===================================================================

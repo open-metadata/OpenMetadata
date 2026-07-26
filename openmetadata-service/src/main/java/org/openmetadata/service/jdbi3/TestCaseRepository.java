@@ -1320,6 +1320,33 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
+  public RestUtil.DeleteResponse<TestSuite> deleteTestCasesFromLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds) {
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
+    flushInOneTransaction(
+        () ->
+            relationshipChange.set(
+                deleteTestCasesFromLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
+
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
+    return new RestUtil.DeleteResponse<>(testSuite, ENTITY_DELETED);
+  }
+
+  private LogicalSuiteRelationshipChange deleteTestCasesFromLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
+    List<EntityReference> testCaseReferences = new ArrayList<>();
+    for (UUID id : testCaseIds) {
+      TestCase tc = Entity.getEntity(Entity.TEST_CASE, id, null, null);
+      if (tc != null) {
+        testCaseReferences.add(tc.getEntityReference());
+      }
+      deleteRelationship(testSuiteId, TEST_SUITE, id, TEST_CASE, Relationship.CONTAINS);
+    }
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, testCaseReferences);
+  }
+
   private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
     List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
     testCases.forEach(

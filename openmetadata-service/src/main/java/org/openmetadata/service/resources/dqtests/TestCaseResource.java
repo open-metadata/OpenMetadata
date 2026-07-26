@@ -1005,6 +1005,69 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return response.toResponse();
   }
 
+  @POST
+  @Path("/logicalTestCases/{testSuiteId}/delete")
+  @Operation(
+      operationId = "deleteTestCasesFromLogicalTestSuite",
+      summary = "Delete test cases from a logical test suite",
+      description = "Delete test cases from a logical test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted test cases from the logical test suite.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response deleteTestCasesFromLogicalTestSuite(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("testSuiteId") UUID testSuiteId,
+      List<UUID> testCaseIds) {
+
+    TestSuite testSuite =
+        Entity.getEntity(
+            Entity.TEST_SUITE,
+            testSuiteId,
+            "domains,owners",
+            null,
+            false);
+
+    if (testCaseIds == null || testCaseIds.isEmpty()) {
+      return new RestUtil.DeleteResponse<>(testSuite, ENTITY_NO_CHANGE).toResponse();
+    }
+
+    int existingTestCaseCount = repository.getTestCaseCount(testCaseIds);
+    if (existingTestCaseCount != testCaseIds.size()) {
+      throw new IllegalArgumentException(
+          "You are trying to remove one or more test cases that do not exist.");
+    }
+
+    ResourceContextInterface testSuiteRC =
+        TestCaseResourceContext.builder().entity(testSuite).build();
+    OperationContext testSuiteEditAllOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+    OperationContext testSuiteEditTestsOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+
+    OperationContext testCaseDeleteOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
+
+    List<AuthRequest> requests = new ArrayList<>();
+    requests.add(new AuthRequest(testSuiteEditAllOpContext, testSuiteRC));
+    requests.add(new AuthRequest(testSuiteEditTestsOpContext, testSuiteRC));
+    for (UUID id : testCaseIds) {
+      requests.add(
+          new AuthRequest(testCaseDeleteOpContext, TestCaseResourceContext.builder().id(id).build()));
+    }
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
+    DeleteResponse<TestSuite> response =
+        repository.deleteTestCasesFromLogicalTestSuite(testSuite, testCaseIds);
+    return response.toResponse();
+  }
+
   @PUT
   @Path("/restore")
   @Operation(

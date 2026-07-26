@@ -1130,6 +1130,49 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_deleteTestCasesFromLogicalTestSuite(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_del_1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase testCase2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("bulk_del_2"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
+            .create();
+
+    CreateTestSuite suiteReq = new CreateTestSuite();
+    suiteReq.setName(ns.prefix("logical_bulk_del"));
+    TestSuite logicalSuite = client.testSuites().create(suiteReq);
+
+    addTestCasesToLogicalTestSuite(
+        client, logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
+
+    TestSuite updatedSuite = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertNotNull(updatedSuite.getTests());
+    assertEquals(2, updatedSuite.getTests().size());
+
+    client
+        .testCases()
+        .deleteFromLogicalTestSuite(
+            logicalSuite.getId(), List.of(testCase1.getId(), testCase2.getId()));
+
+    TestSuite suiteAfterDel = client.testSuites().get(logicalSuite.getId().toString(), "tests");
+    assertTrue(
+        suiteAfterDel.getTests() == null || suiteAfterDel.getTests().isEmpty(),
+        "Logical suite should have no test cases after bulk deletion");
+  }
+
+  @Test
   void test_concurrentLogicalSuiteAddsPreserveEverySearchMembership(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
