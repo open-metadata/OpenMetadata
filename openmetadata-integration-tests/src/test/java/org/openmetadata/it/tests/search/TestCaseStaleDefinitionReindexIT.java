@@ -67,7 +67,8 @@ class TestCaseStaleDefinitionReindexIT {
   }
 
   @Test
-  void brokenTestDefinitionRelationshipIsReportedNotSilentlyDropped(final TestNamespace ns) {
+  void brokenTestDefinitionRelationshipIsReportedNotSilentlyDropped(final TestNamespace ns)
+      throws Exception {
     assumeTrue(
         !OssTestServer.isExternalMode(),
         "Deleting a single entity_relationship row (without removing the test definition) needs the "
@@ -77,15 +78,15 @@ class TestCaseStaleDefinitionReindexIT {
     final TestCase broken = testCase(ns, table, "broken");
     seedResult(broken);
 
-    Entity.getCollectionDAO()
-        .relationshipDAO()
-        .deleteTo(
-            broken.getId(),
-            Entity.TEST_CASE,
-            Relationship.CONTAINS.ordinal(),
-            Entity.TEST_DEFINITION);
+    try (AutoCloseable cleanup = () -> cleanupBrokenTestCase(broken)) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .deleteTo(
+              broken.getId(),
+              Entity.TEST_CASE,
+              Relationship.CONTAINS.ordinal(),
+              Entity.TEST_DEFINITION);
 
-    try {
       // Not recreateAllAndWait: the broken record makes the run report "failed", and that helper
       // throws on non-success. We want the run record (with stats) regardless of status.
       final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server, REINDEX_TIMEOUT);
@@ -104,7 +105,12 @@ class TestCaseStaleDefinitionReindexIT {
 
       assertNoRecordsDropped(stats.getJobStats(), "jobStats");
       assertNoRecordsDropped(stats.getReaderStats(), "readerStats");
-    } finally {
+    }
+  }
+
+  private static void cleanupBrokenTestCase(final TestCase broken) {
+    RuntimeException cleanupFailure = null;
+    try {
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
@@ -113,9 +119,24 @@ class TestCaseStaleDefinitionReindexIT {
               Entity.TEST_DEFINITION,
               Entity.TEST_CASE,
               Relationship.CONTAINS.ordinal());
+    } catch (RuntimeException failure) {
+      cleanupFailure = failure;
+    }
+
+    try {
       SdkClients.adminClient()
           .testCases()
           .delete(broken.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    } catch (RuntimeException failure) {
+      if (cleanupFailure == null) {
+        cleanupFailure = failure;
+      } else {
+        cleanupFailure.addSuppressed(failure);
+      }
+    }
+
+    if (cleanupFailure != null) {
+      throw cleanupFailure;
     }
   }
 

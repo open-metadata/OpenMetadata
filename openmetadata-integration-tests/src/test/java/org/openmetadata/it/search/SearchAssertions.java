@@ -51,6 +51,23 @@ public final class SearchAssertions {
     return response.path("count").asLong();
   }
 
+  public long countByEntityIdAndTerm(
+      final String indexOrAlias, final String entityId, final String field, final String value) {
+    final String body =
+        "{\"query\":{\"bool\":{\"must\":["
+            + "{\"term\":{\"id.keyword\":\""
+            + escape(entityId)
+            + "\"}},"
+            + "{\"term\":{\""
+            + escape(field)
+            + "\":\""
+            + escape(value)
+            + "\"}}"
+            + "]}}}";
+    final JsonNode response = search.count(indexOrAlias, body);
+    return response.path("count").asLong();
+  }
+
   public List<String> indicesForAlias(final String alias) {
     final JsonNode body = search.alias(alias);
     final List<String> indices = new ArrayList<>();

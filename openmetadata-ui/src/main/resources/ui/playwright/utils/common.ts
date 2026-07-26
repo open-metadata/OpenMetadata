@@ -859,8 +859,6 @@ export const waitForSearchResult = async (
   result: Locator,
   timeout = 45_000
 ) => {
-  let hasSubmittedSearch = false;
-
   await expect
     .poll(
       async () => {
@@ -870,17 +868,10 @@ export const waitForSearchResult = async (
             response.request().method() === 'GET',
           { timeout: 15_000 }
         );
+        const searchBox = page.getByTestId('searchBox');
 
-        if (hasSubmittedSearch) {
-          await Promise.all([searchResponse, page.reload()]);
-        } else {
-          await page.getByTestId('searchBox').fill(searchTerm);
-          await Promise.all([
-            searchResponse,
-            page.getByTestId('searchBox').press('Enter'),
-          ]);
-          hasSubmittedSearch = true;
-        }
+        await searchBox.fill(searchTerm);
+        await Promise.all([searchResponse, searchBox.press('Enter')]);
         await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();

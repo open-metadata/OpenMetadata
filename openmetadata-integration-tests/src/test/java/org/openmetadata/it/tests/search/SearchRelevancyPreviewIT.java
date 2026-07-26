@@ -70,6 +70,8 @@ class SearchRelevancyPreviewIT {
     final Table tier1Table = RelevancyFixtures.createTable(schema, marker + "a", marker, TIER_1);
     final Table tier2Table = RelevancyFixtures.createTable(schema, marker + "b", marker, TIER_2);
     awaitIndexed(marker, 2);
+    awaitTierIndexed(tier1Table, TIER_1);
+    awaitTierIndexed(tier2Table, TIER_2);
 
     final SearchSettings base = currentSettings();
 
@@ -236,6 +238,8 @@ class SearchRelevancyPreviewIT {
     final Table tier1Table = RelevancyFixtures.createTable(schema, marker + "a", marker, TIER_1);
     final Table tier2Table = RelevancyFixtures.createTable(schema, marker + "b", marker, TIER_2);
     awaitIndexed(marker, 2);
+    awaitTierIndexed(tier1Table, TIER_1);
+    awaitTierIndexed(tier2Table, TIER_2);
 
     final SearchSettings base = currentSettings();
 
@@ -273,5 +277,20 @@ class SearchRelevancyPreviewIT {
 
   private static void awaitIndexed(final String namePrefix, final int expected) {
     RelevancyFixtures.awaitTablesIndexed(indices, search, namePrefix, expected, INDEXED_TIMEOUT);
+  }
+
+  private static void awaitTierIndexed(final Table table, final String tierFqn) {
+    final String index = indices.indexNameFor(TABLE_INDEX);
+    Awaitility.await("table " + table.getId() + " indexed with tier " + tierFqn)
+        .atMost(INDEXED_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertThat(
+                        search.countByEntityIdAndTerm(
+                            index, table.getId().toString(), TIER_FIELD, tierFqn))
+                    .isEqualTo(1));
   }
 }

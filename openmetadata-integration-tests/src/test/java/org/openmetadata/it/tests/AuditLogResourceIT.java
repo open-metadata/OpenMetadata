@@ -846,7 +846,7 @@ public class AuditLogResourceIT {
   private java.util.List<String> createGlossaryBurst(
       OpenMetadataClient client, int count, String burstToken) throws Exception {
     java.util.List<String> ids = new java.util.ArrayList<>();
-    String lastFqn = null;
+    java.util.List<String> entityFqns = new java.util.ArrayList<>();
     for (int i = 0; i < count; i++) {
       // Use '-' instead of '_' so the FQN tokenizes into a standalone `burstToken` lexeme on
       // both MySQL InnoDB FTS (which keeps '_' inside a token) and Postgres tsvector. A
@@ -864,9 +864,11 @@ public class AuditLogResourceIT {
                   HttpMethod.POST, "/v1/glossaries", createJson, RequestOptions.builder().build());
       Map<String, Object> glossary = MAPPER.readValue(createResponse, new TypeReference<>() {});
       ids.add(glossary.get("id").toString());
-      lastFqn = glossary.get("fullyQualifiedName").toString();
+      entityFqns.add(glossary.get("fullyQualifiedName").toString());
     }
-    waitForAuditLogEntry(client, lastFqn, "glossary", "entityCreated");
+    for (String entityFqn : entityFqns) {
+      waitForAuditLogEntry(client, entityFqn, "glossary", "entityCreated");
+    }
     return ids;
   }
 

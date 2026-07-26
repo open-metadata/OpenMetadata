@@ -151,18 +151,10 @@ public class RdfGlossaryGraphIT {
     GlossaryTerm termB1 = GlossaryTermTestFactory.createWithName(ns, glossaryB, "b1");
     GlossaryTerm termB2 = GlossaryTermTestFactory.createWithName(ns, glossaryB, "b2");
 
-    // Wait for RDF projection of all four terms before asserting against SPARQL.
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofMillis(500))
-        .untilAsserted(
-            () -> {
-              Set<UUID> ids = nodeIds(fetchGlossaryGraph(null));
-              assertTrue(ids.contains(termA1.getId()), "RDF should contain termA1");
-              assertTrue(ids.contains(termA2.getId()), "RDF should contain termA2");
-              assertTrue(ids.contains(termB1.getId()), "RDF should contain termB1");
-              assertTrue(ids.contains(termB2.getId()), "RDF should contain termB2");
-            });
+    awaitTermInGraph(glossaryA.getId(), termA1.getId());
+    awaitTermInGraph(glossaryA.getId(), termA2.getId());
+    awaitTermInGraph(glossaryB.getId(), termB1.getId());
+    awaitTermInGraph(glossaryB.getId(), termB2.getId());
 
     JsonNode scoped = fetchGlossaryGraph(glossaryA.getId());
     Set<UUID> scopedIds = nodeIds(scoped);
@@ -238,14 +230,7 @@ public class RdfGlossaryGraphIT {
     Glossary glossary = GlossaryTestFactory.createWithName(ns, "labels");
     GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "noDisplayName");
 
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofMillis(500))
-        .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(glossary.getId())).contains(term.getId()),
-                    "Term should be projected to RDF before assertion"));
+    awaitTermInGraph(glossary.getId(), term.getId());
 
     JsonNode scoped = fetchGlossaryGraph(glossary.getId());
     JsonNode termNode = null;
@@ -282,14 +267,7 @@ public class RdfGlossaryGraphIT {
 
     Glossary emptyGlossary = GlossaryTestFactory.createWithName(ns, "empty");
 
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofMillis(500))
-        .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(null)).contains(populatedTerm.getId()),
-                    "Populated glossary's term should be projected to RDF"));
+    awaitTermInGraph(populatedGlossary.getId(), populatedTerm.getId());
 
     JsonNode scoped = fetchGlossaryGraph(emptyGlossary.getId());
     Set<UUID> scopedIds = nodeIds(scoped);
@@ -671,10 +649,14 @@ public class RdfGlossaryGraphIT {
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(glossaryId)).contains(termId),
-                    () -> "Term " + termId + " should be projected to RDF"));
+            () -> {
+              JsonNode node = findNode(fetchGlossaryGraph(glossaryId), termId);
+              assertNotNull(node.get("id"), () -> "Term " + termId + " should be projected to RDF");
+              assertEquals(
+                  glossaryId.toString(),
+                  node.path("glossaryId").asText(null),
+                  () -> "Term " + termId + " should carry its RDF glossary projection");
+            });
   }
 
   /**
