@@ -162,6 +162,20 @@ class BaseModel(PydanticBaseModel):
         if "warnings" not in kwargs:
             kwargs["warnings"] = warnings
 
+        # Under `defer_build=True`, a nested model exposed as a field of a
+        # validated parent never has its own class-level schema built — the
+        # parent's schema handles serialization via composition. When user code
+        # then calls `.model_dump()` on the nested instance directly, pydantic
+        # tries `type(self).__pydantic_serializer__.to_python(...)` and hits a
+        # MockValSer whose lazy rebuild (parent_namespace_depth=5) is fragile
+        # from inside this override and can fail with
+        # `'MockValSer' object cannot be converted to 'SchemaSerializer'`.
+        # Force the one-time rebuild here so serialization of top-level
+        # nested models (Source, ServiceConnection, ...) works reliably.
+        cls = type(self)
+        if type(cls.__pydantic_serializer__).__name__ == "MockValSer":
+            cls.model_rebuild(force=True)
+
         return super().model_dump(**kwargs)
 
 
