@@ -1152,10 +1152,7 @@ public class SearchRepository {
     }
 
     if (!Entity.isSearchIndexable(entity)) {
-      LOG.debug(
-          "Skipping search index create for non-indexable {} [{}]",
-          entity.getEntityReference().getType(),
-          entity.getId());
+      deleteEntityIndex(entity);
       return;
     }
 

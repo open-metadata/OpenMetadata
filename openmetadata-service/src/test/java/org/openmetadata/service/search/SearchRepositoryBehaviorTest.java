@@ -539,6 +539,28 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntityIndexDeletesStaleDocumentForNonIndexableEntity() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    Table entity = mock(Table.class);
+    when(entity.getEntityReference())
+        .thenReturn(
+            new EntityReference()
+                .withId(entityId)
+                .withType(Entity.TABLE)
+                .withName("private-memory"));
+    when(entity.getId()).thenReturn(entityId);
+    when(entity.getFullyQualifiedName()).thenReturn("svc.db.schema.private-memory");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(entity);
+
+    repository.createEntityIndex(entity);
+
+    verify(searchClient).deleteEntity("cluster_table_search_index", entityId.toString());
+    verify(searchClient, never())
+        .createEntity(any(String.class), any(String.class), any(String.class));
+  }
+
+  @Test
   void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
     UUID entityId = UUID.randomUUID();
     EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
