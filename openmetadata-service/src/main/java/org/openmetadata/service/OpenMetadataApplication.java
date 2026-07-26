@@ -284,8 +284,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setJdbi(jdbi);
     CsvAsyncJobManager.initialize(jdbi.onDemand(JobDAO.class));
 
-    // Initialize bulk operation executor
+    // Apply database concurrency budgets before repositories can start background work.
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
+    AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
+    EntityLifecycleEventDispatcher.initialize(catalogConfig.getBackgroundExecutorsConfiguration());
+    UserActivityTracker.initialize(catalogConfig.getBackgroundExecutorsConfiguration());
 
     // Phase 1: Core search infrastructure (needed by repositories)
     initializeCoreSearchInfrastructure(catalogConfig);
@@ -404,7 +407,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JobHandlerRegistry registry = getJobHandlerRegistry();
     environment
         .lifecycle()
-        .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+        .manage(
+            new GenericBackgroundWorker(
+                jdbi.onDemand(JobDAO.class),
+                registry,
+                catalogConfig.getBackgroundExecutorsConfiguration().getBackgroundJobWorkers()));
 
     environment
         .lifecycle()
@@ -1072,9 +1079,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .manage(
             new Managed() {
               @Override
-              public void start() {
-                // UserActivityTracker starts automatically on first use
-              }
+              public void start() {}
 
               @Override
               public void stop() {

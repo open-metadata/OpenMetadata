@@ -23,6 +23,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
   - [Python Ingestion Topology](#python-ingestion-topology)
   - [Frontend Patterns](#frontend-patterns)
 - [Cross-Cutting Patterns](#cross-cutting-patterns)
+  - [Database Connection Budget](#database-connection-budget)
 
 ---
 
@@ -550,6 +551,34 @@ Always import from `generated/` for API response types. Never hand-write interfa
 - **Build lookup dictionaries in `prepare()`** for O(1) access instead of repeated iteration
 - **Use `computeIfAbsent()`** instead of `containsKey()` + `get()` double lookups
 - **No `Thread.sleep()` in tests** — use condition-based waiting
+
+### Database Connection Budget
+
+Database concurrency is budgeted per server pod. Most application work borrows from the shared
+HikariCP pool configured by `database.maxSize`; Flowable and the two Quartz schedulers create
+separate pools to the same database.
+
+| Subsystem | Worst-case concurrent DB borrowers | Config key | Notes |
+|---------|---------|---------|---------|
+| Interactive requests | `≤ server.maxThreads` | `server.maxThreads` | Each synchronous request holds at most one Hikari connection at a time. |
+| Async DB lane | 25 | `asyncOperations.maxConcurrentDbTasks` | Top-level async delete/restore, bulk asset or tag work, CSV, app delete, and audit packs. `0` disables the bound. |
+| Bulk executor | 10 | `bulkOperation.maxThreads` | Bounded worker pool with admission control. |
+| Change-event filter | 20 | `backgroundExecutors.changeEventParallelism` | EventFilter ForkJoinPool. |
+| Entity lifecycle lanes | `≤ 32` | `backgroundExecutors.lifecycleLanes` | `0` selects `min(32, max(8, availableProcessors))`. |
+| User activity tracker | 10 | `backgroundExecutors.userActivityDbPermits` | Semaphore around activity flushes. |
+| Background jobs | 3 | `backgroundExecutors.backgroundJobWorkers` | GenericBackgroundWorker pool. |
+| Entity cache repair | 2 | Fixed | Deferred cache-repair scheduler. |
+| Flowable MyBatis | `~10` | Flowable pool | Separate, non-Hikari connection pool. |
+| App Quartz JobStoreTX | 5 | Quartz `myDS.maxConnections` | Separate connection pool. |
+| Event Quartz JobStoreTX | 5 | Quartz `myDS.maxConnections` | Separate connection pool. |
+
+The Hikari-backed rows describe competing demand, not additional physical pools: together they
+cannot exceed `database.maxSize` physical connections. With the default 100-connection Hikari pool,
+Flowable's approximately 10 connections, and two five-connection Quartz pools, a pod can open about
+120 database connections. MySQL commonly defaults to `max_connections=151`, leaving little room for
+multiple pods, migrations, or operator clients. Multiply the per-pod ceiling by the replica count,
+include all other database clients, and lower background limits when needed so interactive traffic
+retains headroom.
 
 ### Adding a New Entity (End-to-End Checklist)
 

@@ -25,23 +25,29 @@ public class GenericBackgroundWorker implements Managed {
   // must not head-of-line-block every other queued job, so jobs execute on a
   // small pool. Jobs are claimed atomically before submission, which also
   // prevents double execution across pool threads and across servers.
-  public static final int WORKER_POOL_SIZE = 3;
 
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
-  private final Semaphore workerSlots = new Semaphore(WORKER_POOL_SIZE);
+  private final int workerPoolSize;
+  private final Semaphore workerSlots;
   private volatile boolean running = true;
   private Thread pollerThread;
   private ExecutorService workerPool;
 
-  public GenericBackgroundWorker(JobDAO jobDao, JobHandlerRegistry handlerRegistry) {
+  public GenericBackgroundWorker(
+      JobDAO jobDao, JobHandlerRegistry handlerRegistry, int workerPoolSize) {
+    if (workerPoolSize < 1) {
+      throw new IllegalArgumentException("workerPoolSize must be positive");
+    }
     this.jobDao = jobDao;
     this.handlerRegistry = handlerRegistry;
+    this.workerPoolSize = workerPoolSize;
+    this.workerSlots = new Semaphore(workerPoolSize);
   }
 
   @Override
   public void start() {
-    LOG.info("Starting background job worker with {} executor threads", WORKER_POOL_SIZE);
+    LOG.info("Starting background job worker with {} executor threads", workerPoolSize);
     running = true;
     workerPool = createWorkerPool();
     pollerThread = new Thread(this::runWorker, "background-job-poller");
@@ -78,13 +84,21 @@ public class GenericBackgroundWorker implements Managed {
   private ExecutorService createWorkerPool() {
     AtomicInteger threadSequence = new AtomicInteger();
     return Executors.newFixedThreadPool(
-        WORKER_POOL_SIZE,
+        workerPoolSize,
         runnable -> {
           Thread thread =
               new Thread(runnable, "background-job-worker-" + threadSequence.incrementAndGet());
           thread.setDaemon(true);
           return thread;
         });
+  }
+
+  int getWorkerPoolSize() {
+    return workerPoolSize;
+  }
+
+  int getAvailableWorkerSlots() {
+    return workerSlots.availablePermits();
   }
 
   private void runWorker() {

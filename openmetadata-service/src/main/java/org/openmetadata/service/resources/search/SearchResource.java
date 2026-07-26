@@ -951,7 +951,7 @@ public class SearchResource {
 
     Future<?> future =
         AsyncService.getInstance()
-            .getExecutorService()
+            .getBoundedExecutorService()
             .submit(
                 () -> {
                   int totalEntities = entities.size();
@@ -1089,6 +1089,7 @@ public class SearchResource {
                   }
                 });
 
+    // The watchdog waits on the worker future and must not consume a DB-task permit.
     AsyncService.getInstance()
         .getExecutorService()
         .submit(

@@ -36,6 +36,7 @@ class LoggingConfigurationYamlTest {
   private static final List<String> CONFIG_PATHS =
       List.of(
           "../conf/openmetadata.yaml",
+          "../conf/openmetadata-h2-test.yaml",
           "../docker/development/distributed-test/local/server1.yaml",
           "../docker/development/distributed-test/local/server2.yaml",
           "../docker/development/distributed-test/local/server3.yaml",

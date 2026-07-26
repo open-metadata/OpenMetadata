@@ -1671,7 +1671,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {

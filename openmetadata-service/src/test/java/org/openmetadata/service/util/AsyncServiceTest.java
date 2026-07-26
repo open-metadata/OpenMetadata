@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 
 class AsyncServiceTest {
 
@@ -184,6 +186,38 @@ class AsyncServiceTest {
     AsyncService second = AsyncService.getInstance();
 
     assertSame(first, second);
+  }
+
+  @Test
+  void testBoundedViewIsSingletonAndRawExecutorRemainsUngated() throws Exception {
+    AsyncOperationsConfiguration config = new AsyncOperationsConfiguration();
+    config.setMaxConcurrentDbTasks(1);
+    AsyncService.initialize(config);
+    AsyncService service = AsyncService.getInstance();
+    ExecutorService boundedExecutor = service.getBoundedExecutorService();
+    CountDownLatch boundedStarted = new CountDownLatch(1);
+    CountDownLatch releaseBounded = new CountDownLatch(1);
+    CountDownLatch rawTaskRan = new CountDownLatch(1);
+
+    assertSame(boundedExecutor, service.getBoundedExecutorService());
+    assertNotSame(service.getExecutorService(), boundedExecutor);
+    try {
+      boundedExecutor.execute(
+          () -> {
+            boundedStarted.countDown();
+            try {
+              releaseBounded.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          });
+      assertTrue(boundedStarted.await(5, TimeUnit.SECONDS));
+
+      service.getExecutorService().execute(rawTaskRan::countDown);
+      assertTrue(rawTaskRan.await(5, TimeUnit.SECONDS));
+    } finally {
+      releaseBounded.countDown();
+    }
   }
 
   @Test

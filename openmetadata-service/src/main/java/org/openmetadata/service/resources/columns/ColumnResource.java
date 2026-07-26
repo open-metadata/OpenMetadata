@@ -554,7 +554,7 @@ public class ColumnResource {
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {
@@ -621,7 +621,7 @@ public class ColumnResource {
     Response response =
         Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {

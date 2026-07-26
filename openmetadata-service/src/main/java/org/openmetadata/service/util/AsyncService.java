@@ -1,5 +1,7 @@
 package org.openmetadata.service.util;
 
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Metrics;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -8,46 +10,100 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 
 /**
- * Single virtual-thread executor for all server-side async dispatch (CSV export/import,
- * bulk asset ops, async delete/restore).
+ * Shared virtual-thread executor with separate raw and bounded views.
  *
- * <p>Back-pressure is intentionally <em>not</em> enforced here. The old semaphore-based
- * bounded wrapper was fighting Project Loom — virtual threads scale to millions and are
- * basically free, while the real bottleneck under load is the JDBI connection pool. Letting
- * tasks queue on connection acquisition (with the pool's own timeout) is both simpler and
- * more accurate than guessing at "how many concurrent tasks ≈ connection pool capacity".
+ * <p>{@link #getExecutorService()} is the raw lane for internal fire-and-forget work and chained
+ * continuations. It is never gated. {@link #getBoundedExecutorService()} is the bounded lane for
+ * top-level DB-heavy operations.
  *
- * <p>If a future use case genuinely needs admission control, it should live at the caller
- * boundary (e.g., a token bucket per user, or a per-operation queue with rejection) rather
- * than at this shared executor.
+ * <p><em>permits are acquired only at top-level entry points, once per operation; a permitted task
+ * must never block on completion of another task needing a permit; submissions made from inside a
+ * permitted task use the raw executor.</em>
  */
 @Slf4j
 public class AsyncService {
   private static AsyncService instance;
   private final ExecutorService executorService;
+  private final ExecutorService boundedExecutorService;
+  private final int maxConcurrentDbTasks;
 
   private static final int DEFAULT_MAX_RETRIES = 3;
   private static final long DEFAULT_INITIAL_RETRY_DELAY_MS = 1000;
   private static final long DEFAULT_OPERATION_TIMEOUT_SECONDS = 60;
   private static final long SHUTDOWN_TIMEOUT_SECONDS = 30;
+  private static final String ACTIVE_TASKS_METRIC = "async.operations.db.active";
+  private static final String QUEUED_TASKS_METRIC = "async.operations.db.queued";
+  private static final String TASK_LIMIT_METRIC = "async.operations.db.limit";
 
   private AsyncService() {
+    this(new AsyncOperationsConfiguration());
+  }
+
+  private AsyncService(AsyncOperationsConfiguration config) {
+    maxConcurrentDbTasks = config.getMaxConcurrentDbTasks();
     executorService =
         Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("om-async-", 0).factory());
-    LOG.info("AsyncService initialized (virtual-thread-per-task executor)");
+    boundedExecutorService =
+        maxConcurrentDbTasks == 0
+            ? executorService
+            : new BoundedAsyncExecutor(executorService, maxConcurrentDbTasks);
+    LOG.info(
+        "AsyncService initialized (virtual-thread-per-task executor, DB task limit={})",
+        maxConcurrentDbTasks);
+  }
+
+  public static synchronized void initialize(AsyncOperationsConfiguration config) {
+    if (instance == null) {
+      instance = new AsyncService(config);
+      instance.registerMetrics();
+    }
   }
 
   public static synchronized AsyncService getInstance() {
     if (instance == null) {
-      instance = new AsyncService();
+      LOG.warn("AsyncService not initialized, using defaults");
+      initialize(new AsyncOperationsConfiguration());
     }
     return instance;
   }
 
   public ExecutorService getExecutorService() {
     return executorService;
+  }
+
+  public ExecutorService getBoundedExecutorService() {
+    return boundedExecutorService;
+  }
+
+  private void registerMetrics() {
+    Gauge.builder(ACTIVE_TASKS_METRIC, this, AsyncService::getActiveDbTaskCount)
+        .description("Running DB-heavy asynchronous operations")
+        .register(Metrics.globalRegistry);
+    Gauge.builder(QUEUED_TASKS_METRIC, this, AsyncService::getQueuedDbTaskCount)
+        .description("Queued DB-heavy asynchronous operations")
+        .register(Metrics.globalRegistry);
+    Gauge.builder(TASK_LIMIT_METRIC, this, service -> service.maxConcurrentDbTasks)
+        .description("Configured DB-heavy asynchronous operation limit")
+        .register(Metrics.globalRegistry);
+  }
+
+  private int getActiveDbTaskCount() {
+    int activeCount = 0;
+    if (boundedExecutorService instanceof BoundedAsyncExecutor boundedExecutor) {
+      activeCount = boundedExecutor.getActiveCount();
+    }
+    return activeCount;
+  }
+
+  private int getQueuedDbTaskCount() {
+    int queuedCount = 0;
+    if (boundedExecutorService instanceof BoundedAsyncExecutor boundedExecutor) {
+      queuedCount = boundedExecutor.getQueuedCount();
+    }
+    return queuedCount;
   }
 
   public void execute(Runnable task) {

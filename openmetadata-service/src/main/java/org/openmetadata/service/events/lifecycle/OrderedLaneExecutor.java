@@ -55,8 +55,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class OrderedLaneExecutor implements AutoCloseable {
 
-  private static final int MIN_LANES = 8;
-  private static final int MAX_LANES = 32;
+  private static final int MIN_AUTO_LANES = 8;
+  private static final int MAX_AUTO_LANES = 32;
   private static final int DEFAULT_LANE_QUEUE_CAPACITY = 2000;
   private static final long LANE_KEEP_ALIVE_SECONDS = 60L;
   private static final long DEFAULT_SHUTDOWN_TIMEOUT_SECONDS = 30L;
@@ -82,7 +82,16 @@ public final class OrderedLaneExecutor implements AutoCloseable {
   private final BiConsumer<OrderedTask, Throwable> laneFailureHandler;
 
   public OrderedLaneExecutor(BiConsumer<OrderedTask, Throwable> laneFailureHandler) {
-    this(laneFailureHandler, DEFAULT_LANE_QUEUE_CAPACITY, DEFAULT_SHUTDOWN_TIMEOUT_SECONDS);
+    this(laneFailureHandler, 0);
+  }
+
+  public OrderedLaneExecutor(
+      BiConsumer<OrderedTask, Throwable> laneFailureHandler, int configuredLaneCount) {
+    this(
+        laneFailureHandler,
+        configuredLaneCount,
+        DEFAULT_LANE_QUEUE_CAPACITY,
+        DEFAULT_SHUTDOWN_TIMEOUT_SECONDS);
   }
 
   /** Test-only constructor for exercising overflow shedding and shutdown draining quickly. */
@@ -90,20 +99,41 @@ public final class OrderedLaneExecutor implements AutoCloseable {
       BiConsumer<OrderedTask, Throwable> laneFailureHandler,
       int laneQueueCapacity,
       long shutdownTimeoutSeconds) {
+    this(laneFailureHandler, 0, laneQueueCapacity, shutdownTimeoutSeconds);
+  }
+
+  private OrderedLaneExecutor(
+      BiConsumer<OrderedTask, Throwable> laneFailureHandler,
+      int configuredLaneCount,
+      int laneQueueCapacity,
+      long shutdownTimeoutSeconds) {
     this.laneFailureHandler = laneFailureHandler;
     this.laneQueueCapacity = laneQueueCapacity;
     this.shutdownTimeoutSeconds = shutdownTimeoutSeconds;
-    this.laneCount = computeLaneCount();
-    this.lanes = new ThreadPoolExecutor[laneCount];
-    for (int index = 0; index < laneCount; index++) {
-      lanes[index] = newLane(index);
-    }
+    this.laneCount = resolveLaneCount(configuredLaneCount);
+    this.lanes = createLanes();
     LOG.info("OrderedLaneExecutor initialized with {} single-consumer lanes", laneCount);
   }
 
-  private static int computeLaneCount() {
+  private ThreadPoolExecutor[] createLanes() {
+    ThreadPoolExecutor[] executors = new ThreadPoolExecutor[laneCount];
+    for (int index = 0; index < laneCount; index++) {
+      executors[index] = newLane(index);
+    }
+    return executors;
+  }
+
+  private static int resolveLaneCount(int configuredLaneCount) {
+    int resolvedLaneCount = configuredLaneCount;
+    if (resolvedLaneCount == 0) {
+      resolvedLaneCount = computeAutomaticLaneCount();
+    }
+    return resolvedLaneCount;
+  }
+
+  private static int computeAutomaticLaneCount() {
     int processors = Runtime.getRuntime().availableProcessors();
-    return Math.min(MAX_LANES, Math.max(MIN_LANES, processors));
+    return Math.min(MAX_AUTO_LANES, Math.max(MIN_AUTO_LANES, processors));
   }
 
   private ThreadPoolExecutor newLane(int index) {

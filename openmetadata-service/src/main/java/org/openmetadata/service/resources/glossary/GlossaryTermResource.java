@@ -1073,7 +1073,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {

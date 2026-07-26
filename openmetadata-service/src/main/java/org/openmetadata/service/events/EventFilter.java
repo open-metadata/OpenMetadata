@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.JwtFilter;
@@ -36,25 +37,27 @@ import org.openmetadata.service.util.ParallelStreamUtil;
 public class EventFilter implements ContainerResponseFilter {
   private static final List<String> AUDITABLE_METHODS =
       Arrays.asList("POST", "PUT", "PATCH", "DELETE");
-  private static final int FORK_JOIN_POOL_PARALLELISM = 20;
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
   public EventFilter(OpenMetadataApplicationConfig config) {
-    this.forkJoinPool =
-        new ForkJoinPool(
-            FORK_JOIN_POOL_PARALLELISM,
-            pool -> {
-              ForkJoinPool.ForkJoinWorkerThreadFactory defaultFactory =
-                  ForkJoinPool.defaultForkJoinWorkerThreadFactory;
-              java.util.concurrent.ForkJoinWorkerThread thread = defaultFactory.newThread(pool);
-              thread.setName("om-event-filter-" + thread.getPoolIndex());
-              return thread;
-            },
-            null,
-            false);
+    int parallelism = config.getBackgroundExecutorsConfiguration().getChangeEventParallelism();
+    this.forkJoinPool = createForkJoinPool(parallelism);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config);
+  }
+
+  private static ForkJoinPool createForkJoinPool(int parallelism) {
+    return new ForkJoinPool(
+        parallelism,
+        pool -> {
+          ForkJoinWorkerThread thread =
+              ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+          thread.setName("om-event-filter-" + thread.getPoolIndex());
+          return thread;
+        },
+        null,
+        false);
   }
 
   @SuppressWarnings("unchecked")

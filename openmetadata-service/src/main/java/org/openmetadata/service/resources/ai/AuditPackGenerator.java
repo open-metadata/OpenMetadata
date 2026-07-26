@@ -82,7 +82,7 @@ public final class AuditPackGenerator {
   private AuditPackGenerator() {}
 
   static void submit(UUID reportId) {
-    AsyncService.getInstance().execute(() -> run(reportId));
+    AsyncService.getInstance().getBoundedExecutorService().execute(() -> run(reportId));
   }
 
   private static void run(UUID reportId) {

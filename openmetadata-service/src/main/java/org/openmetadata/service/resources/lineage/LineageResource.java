@@ -556,7 +556,7 @@ public class LineageResource {
     validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {
@@ -715,7 +715,7 @@ public class LineageResource {
     validateTemporalBounds(startTime, endTime);
     String jobId = UUID.randomUUID().toString();
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {

@@ -808,7 +808,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         () -> {
           try {

@@ -727,7 +727,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     entity = repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
     String userName = securityContext.getUserPrincipal().getName();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         RequestLatencyContext.wrapWithContext(
             () -> {
@@ -862,7 +862,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
     // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
     UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
     // WebSocket notification only needs name/status, not HREFs.
     executorService.submit(
@@ -978,7 +978,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
 
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         RequestLatencyContext.wrapWithContext(
             () -> {
@@ -1029,7 +1029,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               user, List.of(MetadataOperation.EDIT_TAGS), unauthorizedEntityTypes));
     }
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    ExecutorService executorService = AsyncService.getInstance().getBoundedExecutorService();
     executorService.submit(
         RequestLatencyContext.wrapWithContext(
             () -> {

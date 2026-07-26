@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.BackgroundExecutorsConfiguration;
 import org.openmetadata.service.jdbi3.UserRepository;
 
 /**
@@ -60,27 +61,38 @@ public class UserActivityTracker {
 
   private static volatile UserActivityTracker INSTANCE;
 
-  private UserActivityTracker() {
+  private UserActivityTracker(BackgroundExecutorsConfiguration config) {
     this.minUpdateIntervalMs = 60000; // 1 minute minimum between local cache updates for same user
     this.batchUpdateIntervalSeconds =
         3600; // 1 hour batch flush to database (since we only care about daily)
-    int maxConcurrentDbOperations = 10;
-    this.dbOperationPermits = new Semaphore(maxConcurrentDbOperations);
+    this.dbOperationPermits = new Semaphore(config.getUserActivityDbPermits());
+  }
+
+  public static void initialize(BackgroundExecutorsConfiguration config) {
+    if (INSTANCE == null) {
+      synchronized (UserActivityTracker.class) {
+        if (INSTANCE == null) {
+          INSTANCE = new UserActivityTracker(config);
+          INSTANCE.start();
+        }
+      }
+    }
   }
 
   public static UserActivityTracker getInstance() {
     if (INSTANCE == null) {
       synchronized (UserActivityTracker.class) {
         if (INSTANCE == null) {
-          INSTANCE = new UserActivityTracker();
-          INSTANCE.initialize();
+          LOG.warn("UserActivityTracker not initialized, using defaults");
+          INSTANCE = new UserActivityTracker(new BackgroundExecutorsConfiguration());
+          INSTANCE.start();
         }
       }
     }
     return INSTANCE;
   }
 
-  private void initialize() {
+  private void start() {
     scheduler.scheduleWithFixedDelay(
         this::performBatchUpdate,
         batchUpdateIntervalSeconds,

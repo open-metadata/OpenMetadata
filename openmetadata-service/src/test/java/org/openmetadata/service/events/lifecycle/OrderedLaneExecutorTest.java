@@ -84,6 +84,13 @@ class OrderedLaneExecutorTest {
   }
 
   @Test
+  void configuredLaneCountOverridesAutomaticSizing() {
+    try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {}, 5)) {
+      assertEquals(5, executor.getLaneCount());
+    }
+  }
+
+  @Test
   void burstWithinLaneCapacityRunsAllInOrderWithNoRejection() throws InterruptedException {
     try (OrderedLaneExecutor executor = new OrderedLaneExecutor((task, failure) -> {})) {
       UUID entityId = UUID.randomUUID();

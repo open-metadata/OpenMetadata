@@ -26,6 +26,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.BackgroundExecutorsConfiguration;
 import org.openmetadata.service.events.lifecycle.OrderedLaneExecutor.OrderedTask;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -47,16 +48,28 @@ public class EntityLifecycleEventDispatcher {
   private final List<EntityLifecycleEventHandler> handlers;
   private final OrderedLaneExecutor orderedLaneExecutor;
 
-  private EntityLifecycleEventDispatcher() {
+  private EntityLifecycleEventDispatcher(BackgroundExecutorsConfiguration config) {
     this.handlers = new ArrayList<>();
-    this.orderedLaneExecutor = new OrderedLaneExecutor(this::enqueueLaneFailureRetry);
+    this.orderedLaneExecutor =
+        new OrderedLaneExecutor(this::enqueueLaneFailureRetry, config.getLifecycleLanes());
+  }
+
+  public static void initialize(BackgroundExecutorsConfiguration config) {
+    if (instance == null) {
+      synchronized (EntityLifecycleEventDispatcher.class) {
+        if (instance == null) {
+          instance = new EntityLifecycleEventDispatcher(config);
+        }
+      }
+    }
   }
 
   public static EntityLifecycleEventDispatcher getInstance() {
     if (instance == null) {
       synchronized (EntityLifecycleEventDispatcher.class) {
         if (instance == null) {
-          instance = new EntityLifecycleEventDispatcher();
+          LOG.warn("EntityLifecycleEventDispatcher not initialized, using defaults");
+          instance = new EntityLifecycleEventDispatcher(new BackgroundExecutorsConfiguration());
         }
       }
     }

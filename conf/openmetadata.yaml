@@ -91,8 +91,8 @@ server:
     enabled: true
 
   # Thread pool configuration
-  # With virtual threads enabled (Java 21+), these settings become less critical
-  # as blocking operations are handled efficiently by the JVM
+  # With virtual threads enabled, maxThreads remains the concurrency bound on Jetty's
+  # VirtualThreadPool.
   maxThreads: ${SERVER_MAX_THREADS:-150}
   minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
@@ -333,27 +333,21 @@ database:
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
 
-  # HikariCP Connection Pool Settings - Optimized for Performance
+  # HikariCP Connection Pool Settings
   maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-100}  # Increased from 50 for better concurrency
-  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-20}   # Increased from 10 to reduce connection creation overhead
   minimumIdle: ${DB_CONNECTION_POOL_MIN_IDLE:-20}  # HikariCP specific minimum idle connections
-  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-20}  # Start with more connections ready
-  checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
-  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-false}  # Disable for performance
-  evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
-  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-5 minute}
 
-
-  # JDBC Driver Properties - Critical for Performance
-  # These work across both PostgreSQL and MySQL drivers
+  # HikariCP pool and JDBC driver properties
   properties:
-    # HikariCP connection pool settings
+    # HikariCP pool settings consumed by HikariCPDataSourceFactory
     connectionTimeout: ${DB_CONNECTION_TIMEOUT:-30000}  # 30 seconds - fail fast if pool exhausted
     idleTimeout: ${DB_IDLE_TIMEOUT:-120000}  # 2 minutes - reclaim idle connections faster
     maxLifetime: ${DB_MAX_LIFETIME:-600000}  # 10 minutes - rotate connections (cloud DB friendly)
     leakDetectionThreshold: ${DB_LEAK_DETECTION_THRESHOLD:-60000}  # 1 minute - detect leaks early
     keepaliveTime: ${DB_KEEPALIVE_TIME:-0}  # 0 = disabled (set to 30000 for Aurora)
     validationTimeout: ${DB_VALIDATION_TIMEOUT:-5000}  # 5 seconds - HikariCP default
+
+    # JDBC driver properties
     # PostgreSQL specific - these are ignored by MySQL driver
     prepareThreshold: ${DB_PG_PREPARE_THRESHOLD:-1}  # Use prepared statements immediately
     preparedStatementCacheQueries: ${DB_PG_PREP_STMT_CACHE_QUERIES:-500}  # Cache more statements
@@ -789,6 +783,21 @@ bulkOperation:
   queueSize: ${BULK_OPERATION_QUEUE_SIZE:-1000}
   # Timeout in seconds for entire bulk operation
   timeoutSeconds: ${BULK_OPERATION_TIMEOUT_SECONDS:-300}
+
+asyncOperations:
+  # Max concurrently RUNNING DB-heavy async tasks (async delete/restore, bulk tag/asset
+  # ops, glossary move, column/lineage CSV, app delete, audit packs). Excess tasks queue
+  # (parked virtual threads, FIFO) — nothing is rejected. 0 = unbounded.
+  maxConcurrentDbTasks: ${ASYNC_OPERATIONS_MAX_CONCURRENT_DB_TASKS:-25}
+
+# Connection budget — bounded concurrency for background DB work. The worst-case sum of
+# these bounds (plus asyncOperations.maxConcurrentDbTasks and bulkOperation.maxThreads)
+# should stay comfortably below database.maxSize. See DEVELOPER.md "Database connection budget".
+backgroundExecutors:
+  changeEventParallelism: ${CHANGE_EVENT_PARALLELISM:-20}     # EventFilter ForkJoinPool
+  lifecycleLanes: ${LIFECYCLE_LANES:-0}                       # 0 = auto: min(32, max(8, cpus))
+  userActivityDbPermits: ${USER_ACTIVITY_DB_PERMITS:-10}      # UserActivityTracker semaphore
+  backgroundJobWorkers: ${BACKGROUND_JOB_WORKERS:-3}          # GenericBackgroundWorker pool
 
 web:
   uriPath: ${WEB_CONF_URI_PATH:-"/api"}
