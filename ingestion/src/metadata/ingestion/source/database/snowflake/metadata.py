@@ -105,7 +105,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_SCHEMATA,
     SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
     SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
-    SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
@@ -218,7 +217,6 @@ def _show_column(row, name: str):
 SEMANTIC_VIEW_COLUMN_QUERIES = (
     ("Dimension", SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS),
     ("Fact", SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS),
-    ("Metric", SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS),
 )
 
 
@@ -243,17 +241,15 @@ def _resolve_semantic_column_type(data_type: Optional[str]):  # noqa: UP045
 def _build_semantic_column_description(
     kinds: List[str],  # noqa: UP006
     logical_table: Optional[str],  # noqa: UP045
-    expression: Optional[str],  # noqa: UP045
     synonyms: Optional[str],  # noqa: UP045
     comment: Optional[str],  # noqa: UP045
 ) -> str:
-    """Compose a column description capturing the semantic object's kind(s),
-    owning logical table, defining expression, synonyms and original comment."""
+    """Compose a lightweight column description: the semantic object's kind(s),
+    owning logical table, synonyms and original comment. The defining expression
+    is intentionally omitted — it lives on the Metric entity."""
     parts = [f"[{', '.join(kinds)}]"]
     if logical_table:
         parts.append(f"Logical table: {logical_table}.")
-    if expression:
-        parts.append(f"Expression: {expression}.")
     if synonyms:
         parts.append(f"Synonyms: {synonyms}.")
     if comment:
@@ -300,7 +296,6 @@ def _build_semantic_view_column(entry: dict) -> dict:
         "comment": _build_semantic_column_description(
             entry["kinds"],
             entry["logical_table"],
-            entry["expression"],
             entry["synonyms"],
             entry["comment"],
         ),
