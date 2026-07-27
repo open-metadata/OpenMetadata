@@ -63,6 +63,7 @@ runs:
 
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
+      id: setup-python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
@@ -70,9 +71,21 @@ runs:
     - name: Install uv
       uses: astral-sh/setup-uv@v4
 
+    # Cache only an exact environment: partial restores can retain dependencies
+    # removed from the manifests and mask undeclared imports.
+    - name: Cache ingestion Python venv
+      id: cache-python-venv
+      uses: actions/cache@v4
+      with:
+        path: env
+        key: ${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}
+
     - name: Generate Models
       run: |
-        python3 -m venv env
+        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
+          rm -rf env
+          python3 -m venv env
+        fi
         source env/bin/activate
         sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
