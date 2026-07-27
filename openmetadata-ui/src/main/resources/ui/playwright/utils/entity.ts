@@ -1569,11 +1569,24 @@ const announcementForm = async (
       response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
-  await announcementSubmit;
+  const announcementResponse = await announcementSubmit;
+  const announcement: unknown = await announcementResponse.json();
+
+  if (
+    typeof announcement !== 'object' ||
+    announcement === null ||
+    !('id' in announcement) ||
+    typeof announcement.id !== 'string'
+  ) {
+    throw new Error('Announcement creation response did not include an id');
+  }
+
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
     await toastNotification(page, /Announcement created successfully/i);
   }
+
+  return announcement.id;
 };
 
 export const createAnnouncement = async (
@@ -1788,9 +1801,27 @@ export const createInactiveAnnouncement = async (
     'Make an announcement'
   );
 
-  await announcementForm(page, { ...data, startDate, endDate }, hideAlert);
-  await page.getByTestId('inActive-announcements').isVisible();
-  await page.reload();
+  const announcementId = await announcementForm(
+    page,
+    { ...data, startDate, endDate },
+    hideAlert
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('announcement-button').click();
+
+  const announcementDrawer = page.getByTestId('announcement-drawer');
+  const inactiveAnnouncement = announcementDrawer
+    .getByTestId('announcement-card')
+    .filter({ hasText: data.title });
+
+  await expect(
+    announcementDrawer.getByTestId('inActive-announcements')
+  ).toBeVisible();
+  await expect(inactiveAnnouncement).toBeVisible();
+  await page.getByTestId('announcement-close').click();
+
+  return announcementId;
 };
 
 export const updateDisplayNameForEntity = async (

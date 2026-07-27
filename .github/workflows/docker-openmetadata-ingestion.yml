@@ -39,7 +39,7 @@ jobs:
           swap-storage: true
           docker-images: false
       - name: Check out the Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Prepare for Docker Build&Push
         id: prepare
@@ -55,8 +55,8 @@ jobs:
 
       - name: Build and push if event is workflow_dispatch and input is checked
         env:
-          DOCKER_BUILD_NO_SUMMARY: true
-        uses: docker/build-push-action@v6
+          DOCKER_BUILD_SUMMARY: false
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -79,8 +79,8 @@ jobs:
 
       - name: Build and push Slim if event is workflow_dispatch and input is checked
         env:
-          DOCKER_BUILD_NO_SUMMARY: true
-        uses: docker/build-push-action@v6
+          DOCKER_BUILD_SUMMARY: false
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64

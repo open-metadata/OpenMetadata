@@ -107,7 +107,7 @@ const ContractDetail: React.FC<{
   hasEditPermission?: boolean;
   onEdit: () => void;
   onDelete: () => void;
-  onContractUpdated?: () => void;
+  onContractUpdated?: () => void | Promise<void>;
 }> = ({
   contract,
   entityId,
@@ -227,6 +227,7 @@ const ContractDetail: React.FC<{
       } else if (contract.id) {
         await validateContractById(contract.id);
       }
+      await onContractUpdated?.();
       showSuccessToast(t('message.contract-validation-trigger-successfully'));
     } catch (err) {
       showErrorToast(err as AxiosError);

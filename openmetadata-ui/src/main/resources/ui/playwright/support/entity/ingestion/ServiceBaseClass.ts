@@ -162,7 +162,21 @@ class ServiceBaseClass {
   async serviceStep2(serviceName: string, page: Page) {
     // Service name + connection details now share the Configure & Connect step;
     // the connection form's submit button advances to the next step.
+    const encodedServiceName = encodeURIComponent(serviceName);
+    const serviceNameValidationResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes(`/name/${encodedServiceName}`)
+    );
+
     await page.fill('#service-name', serviceName);
+
+    const response = await serviceNameValidationResponse;
+
+    expect(
+      response.status(),
+      `Expected "${serviceName}" to be available, but service-name validation returned ${response.status()}`
+    ).toBe(404);
   }
 
   async fillConnectionDetails(_page: Page) {
@@ -301,17 +315,10 @@ class ServiceBaseClass {
 
     await selectOnDemandSchedule(page);
 
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'true'
-    );
+    await expect(page.getByLabel('Raise on Error')).toBeChecked();
+    await page.getByTestId('raise-on-error').click();
 
-    await page.click('#root\\/raiseOnError');
-
-    await expect(page.locator('#root\\/raiseOnError')).toHaveAttribute(
-      'aria-checked',
-      'false'
-    );
+    await expect(page.getByLabel('Raise on Error')).not.toBeChecked();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`

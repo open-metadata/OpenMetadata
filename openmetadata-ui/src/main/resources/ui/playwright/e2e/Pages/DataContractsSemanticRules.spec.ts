@@ -893,15 +893,15 @@ test.describe('Data Contracts Semantics Rule Description', () => {
         '/api/v1/dataContracts/*/validate'
       );
       await page.getByTestId('contract-run-now-button').click();
-      await runNowResponse;
+      const response = await runNowResponse;
+      expect(response.ok()).toBe(true);
 
-      await expect(async () => {
-        await page.reload();
-        await waitForAllLoadersToDisappear(page);
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed', { timeout: 5_000 });
-      }).toPass({ timeout: 30_000, intervals: [5_000, 10_000] });
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
+
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
 
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
@@ -2061,6 +2061,8 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 });
 
 test.describe('Data Contracts Semantics Rule DataProduct', () => {
+  test.describe.configure({ mode: 'default' });
+
   const domain = new Domain();
   const testDataProducts = [
     new DataProduct([domain]),

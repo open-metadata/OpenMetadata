@@ -14,18 +14,27 @@
 import { AgentStatus } from '../enums/ServiceInsights.enum';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  TIER_AUTOMATION_TEMPLATE,
 } from './Applications.constant';
+
+// The AI Automation templates that back AutoPilot's Collate agents. Also the
+// source list for resolving an automation's template from its
+// `{serviceName}_{template}` name.
+export const AUTOPILOT_AUTOMATION_TEMPLATES = [
+  TIER_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
+];
 
 export const AUTOPILOT_AGENTS_ORDERED_LIST = [
   PipelineType.Metadata,
   PipelineType.Lineage,
   PipelineType.Usage,
-  COLLATE_AUTO_TIER_APP_NAME,
-  COLLATE_DOCUMENTATION_APP_NAME,
-  COLLATE_DATA_QUALITY_APP_NAME,
+  TIER_AUTOMATION_TEMPLATE,
+  DOCUMENTATION_AUTOMATION_TEMPLATE,
+  DATA_QUALITY_AUTOMATION_TEMPLATE,
   PipelineType.AutoClassification,
   PipelineType.Profiler,
 ];

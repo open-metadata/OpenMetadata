@@ -291,7 +291,7 @@ const AgentCard: FC<AgentCardProps> = ({
             </Button>
           ) : (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="logs-button"
               iconLeading={<AlignLeft size={15} />}
@@ -302,7 +302,7 @@ const AgentCard: FC<AgentCardProps> = ({
           )}
           {canRunAgent(agent, permissions) && (
             <Button
-              className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+              className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
               iconLeading={<PlayIcon height={14} width={14} />}

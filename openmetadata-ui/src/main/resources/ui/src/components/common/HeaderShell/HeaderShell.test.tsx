@@ -80,8 +80,23 @@ describe('HeaderShell', () => {
       />
     );
 
-    expect(container.querySelector('.tw\\:ml-auto')).not.toBeNull();
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass('tw:shrink-0');
     expect(screen.getByTestId('actions')).toBeInTheDocument();
+  });
+
+  it('applies a custom class name to the actions container', () => {
+    const { container } = render(
+      <HeaderShell
+        actions={<button data-testid="actions">Add</button>}
+        actionsClassName="tw:min-w-0 tw:flex-1"
+        title="With Custom Actions"
+      />
+    );
+
+    expect(container.querySelector('.tw\\:ml-auto')).toHaveClass(
+      'tw:min-w-0',
+      'tw:flex-1'
+    );
   });
 
   it('applies the Figma gradient and brand border on the gradient variant', () => {

@@ -18,7 +18,7 @@ import {
 } from '../constant/customPropertyAdvancedSearch';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { selectOption } from './advancedSearch';
+import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { getApiContext, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
@@ -43,6 +43,16 @@ export interface CPASTestData {
   types: { name: string; id: string }[];
   cpMetadataType: { name: string; id: string };
   createdCPData: CustomPropertyDetails[];
+}
+
+interface SearchResponseData {
+  hits: {
+    hits: Array<{
+      _source?: {
+        fullyQualifiedName?: string;
+      };
+    }>;
+  };
 }
 
 export const getCustomPropertyCreationData = (types: CPASTestData['types']) => {
@@ -508,22 +518,52 @@ export const verifySearchResults = async (
   shouldBeVisible: boolean,
   filterValue?: string
 ) => {
-  const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
-  );
+  const searchResponsePattern =
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*';
+  const searchResponse = page.waitForResponse(searchResponsePattern);
   await page.getByTestId('apply-btn').click();
-  await searchResponse;
+  const response = await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
 
   const dashboardCardSelector = `table-data-card_${dashboardFQN}`;
+  const dashboardCard = page.getByTestId(dashboardCardSelector);
 
   if (shouldBeVisible) {
-    await expect(page.getByTestId(dashboardCardSelector)).toBeVisible({
-      timeout: 30000,
-    });
+    if (!(await dashboardCard.isVisible())) {
+      await expect
+        .poll(
+          async () => {
+            const retryResponse = await page.request.get(response.url());
+
+            if (!retryResponse.ok()) {
+              return false;
+            }
+
+            const searchData =
+              (await retryResponse.json()) as SearchResponseData;
+
+            return searchData.hits.hits.some(
+              (hit) => hit._source?.fullyQualifiedName === dashboardFQN
+            );
+          },
+          {
+            intervals: [1000, 2000, 5000],
+            timeout: 30000,
+          }
+        )
+        .toBe(true);
+
+      await showAdvancedSearchDialog(page);
+      const retrySearchResponse = page.waitForResponse(searchResponsePattern);
+      await page.getByTestId('apply-btn').click();
+      await retrySearchResponse;
+      await waitForAllLoadersToDisappear(page);
+    }
+
+    await expect(dashboardCard).toBeVisible({ timeout: 10000 });
   } else {
-    await expect(page.getByTestId(dashboardCardSelector)).not.toBeVisible({
+    await expect(dashboardCard).not.toBeVisible({
       timeout: 30000,
     });
   }

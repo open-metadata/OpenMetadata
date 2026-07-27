@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
@@ -138,10 +139,12 @@ test.describe('Data Contracts', () => {
   entitiesWithDataContracts.forEach((EntityClass) => {
     const entity = new EntityClass();
     const entityType = entity.getType();
+    const testDetails = entitySupportsQuality(entityType)
+      ? PLAYWRIGHT_INGESTION_TAG_OBJ
+      : {};
+    const testTitle = `Create Data Contract and validate for ${entityType}`;
 
-    test(`Create Data Contract and validate for ${entityType}`, async ({
-      page,
-    }) => {
+    test(testTitle, testDetails, async ({ page }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
       test.setTimeout(900_000);
 
