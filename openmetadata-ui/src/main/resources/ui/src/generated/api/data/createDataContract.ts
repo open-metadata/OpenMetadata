@@ -572,9 +572,6 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
-    /**
-     * Cardinality distribution showing top categories with an 'Others' bucket.
-     */
     cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
