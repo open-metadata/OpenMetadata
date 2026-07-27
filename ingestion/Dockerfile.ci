@@ -154,18 +154,24 @@ RUN [ $(uname -m) = "x86_64" ] \
 # 10.16.1.2) were never published upstream, so no drop-in Java-17 fix exists. The CVE is
 # an LDAP-authenticator injection; OM's embedded Derby metastore uses no LDAP auth, so the
 # vulnerable path is unreachable. Revisit if PySpark bumps Derby or the image moves to Java 21.
-RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))')" \
-  && cd "${JARS_DIR}" \
-  && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
-           jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
-  && for entry in \
-       "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|3b7c2c26b697094fc29e5a78a522cffa1a55b26d" \
-       "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|1ca84725b0e581c8fef7c54e5355f3b8f7e44410" \
-     ; do \
-       name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
-       wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
-       && echo "${sha}  ${name}" | sha1sum -c - || exit 1; \
-     done
+# Skips cleanly when pyspark is absent (e.g. an INGESTION_DEPENDENCY build without
+# the deltalake/pyspark deps); only patches jars when the pyspark jars dir exists.
+RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))' 2>/dev/null || true)" \
+  && if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then \
+       echo "pyspark not installed; skipping Hive-metastore jar patch"; \
+     else \
+       cd "${JARS_DIR}" \
+       && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
+                jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
+       && for entry in \
+            "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|3b7c2c26b697094fc29e5a78a522cffa1a55b26d" \
+            "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|1ca84725b0e581c8fef7c54e5355f3b8f7e44410" \
+          ; do \
+            name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
+            wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
+            && echo "${sha}  ${name}" | sha1sum -c - || exit 1; \
+          done; \
+     fi
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
