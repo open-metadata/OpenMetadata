@@ -333,4 +333,22 @@ describe('EntityUtilClassBase', () => {
       expect(result).toEqual({ entityFqn: fqn, columnFqn: undefined });
     });
   });
+
+  describe('getEntityTypeFromString', () => {
+    it('should return the matching EntityType for a known type string', () => {
+      expect(entityUtil.getEntityTypeFromString(EntityType.TABLE)).toBe(
+        EntityType.TABLE
+      );
+      expect(entityUtil.getEntityTypeFromString('glossaryTerm')).toBe(
+        EntityType.GLOSSARY_TERM
+      );
+    });
+
+    it('should return undefined for a type string absent from the enum', () => {
+      expect(
+        entityUtil.getEntityTypeFromString('aiAutomation')
+      ).toBeUndefined();
+      expect(entityUtil.getEntityTypeFromString('')).toBeUndefined();
+    });
+  });
 });
