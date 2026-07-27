@@ -281,7 +281,7 @@ const WorkflowsPage = () => {
   const isWorkflowsEmpty = workflows.length === 0;
 
   const emptyPlaceholder = (
-    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
           allowCreateWorkflow

@@ -13,10 +13,11 @@
  */
 
 /**
- * Integrity check: every var(--om-*) / var(--ds-*) referenced by a component
- * style or a spec file must be defined in tokens.css. Fails (exit 1) on any
- * undefined token reference — catches a migration or a hand-written spec that
- * points at a token that does not exist.
+ * Integrity check: every var(--om-*) referenced by a component style or a spec
+ * file must be defined in tokens.css. Fails (exit 1) on any undefined token
+ * reference — catches a migration or a hand-written spec that points at a token
+ * that does not exist. (Upstream globals.css tokens like var(--color-*) are the
+ * Layer 1 source and are not defined here, so they are not checked.)
  *
  * Run: node scripts/design-tokens/validate-tokens.js
  */
@@ -48,7 +49,7 @@ function walk(dir, exts, acc) {
 
 function definedTokens(css) {
   const set = new Set();
-  const re = /(--(?:om|ds)-[\w-]+)\s*:/g;
+  const re = /(--om-[\w-]+)\s*:/g;
   let m;
   while ((m = re.exec(css))) {
     set.add(m[1]);
@@ -66,8 +67,8 @@ function main() {
   const missing = new Map(); // token -> Set(files)
   // Only count complete references: the token must be immediately followed by
   // `)`, `,`, or whitespace. This skips doc-prose placeholders such as
-  // `var(--ds-space-<n>, ...)` or `var(--ds-radius-*, ...)`.
-  const re = /var\(\s*(--(?:om|ds)-[\w-]+)\s*(?=[),\s])/g;
+  // `var(--om-space-<n>, ...)` or `var(--om-radius-*, ...)`.
+  const re = /var\(\s*(--om-[\w-]+)\s*(?=[),\s])/g;
   for (const file of files) {
     const text = fs.readFileSync(file, 'utf8');
     let m;
@@ -92,7 +93,7 @@ function main() {
     }
     process.exit(1);
   }
-  process.stdout.write('\x1b[32m✔ Every var(--om-*/--ds-*) reference is defined in tokens.css.\x1b[0m\n');
+  process.stdout.write('\x1b[32m✔ Every var(--om-*) reference is defined in tokens.css.\x1b[0m\n');
 }
 
 main();

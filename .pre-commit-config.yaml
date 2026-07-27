@@ -71,3 +71,18 @@ repos:
         files: ^(openmetadata-ui/src/main/resources/ui/(src|playwright)|openmetadata-ui-core-components/src/main/resources/ui/src)/.*\.(ts|tsx|js|jsx)$
         exclude: /generated/
         require_serial: true
+      - id: tw-audit
+        name: Tailwind audit (no hardcoded values in TSX)
+        description: Fails if committed .tsx/.ts uses arbitrary Tailwind color/spacing/radius values that map to a design-system utility (e.g. tw:bg-[#2e90fa] -> tw:bg-brand-500).
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js)$
+        require_serial: true
+      - id: tw-deprecation-guard
+        name: Antd + Less deprecation guard (no new debt)
+        description: Fails if a change adds a new .less file or a new `import ... from 'antd'`. Existing usage is fine; use UntitledUI + Tailwind for new work.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/tw-deprecation-guard.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js|less)$
+        pass_filenames: false
+        require_serial: true

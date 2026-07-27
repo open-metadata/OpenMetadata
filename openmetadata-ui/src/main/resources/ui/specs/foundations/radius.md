@@ -23,9 +23,9 @@ Off-scale values in use (`--om-radius-10`, `-999`, and fractional such as
 
 ## Layers
 
-- **Layer 1** `--ds-radius-*: var(--radius-*, <raw>)`.
-- **Layer 2** `--om-radius-*: var(--ds-radius-*, <raw>)`.
-- **Layer 3** `border-radius: var(--om-radius-lg);`
+- **Layer 1** `globals.css` upstream `--radius-*`.
+- **Layer 2** `--om-radius-*: var(--radius-*, <raw>)`.
+- **Components** `border-radius: var(--om-radius-lg);`
 
 ## Do / Don't
 
