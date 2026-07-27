@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
@@ -66,7 +67,9 @@ public class MigrationUtil {
                     .bind("toId", contractId.toString())
                     .execute();
             insertedInBatch += rc;
-          } catch (Exception e) {
+          } catch (RuntimeException e) {
+            // Any failure on a single row (JDBI UnableToExecuteStatementException, constraint,
+            // driver quirk) is logged and skipped so the rest of the backfill still runs.
             LOG.warn(
                 "v1133: failed to insert relationship testSuite={} -> dataContract={}: {}",
                 testSuiteId,
@@ -74,8 +77,11 @@ public class MigrationUtil {
                 e.getMessage());
           }
         }
-      } catch (Exception e) {
-        LOG.error("v1133: batch at offset={} failed, aborting backfill", offset, e);
+      } catch (RuntimeException e) {
+        // Batch-level failure (e.g. SELECT throws): log and stop iterating so the same failing
+        // offset does not loop forever. Migration.java's outer try/catch prevents the whole
+        // migration from halting, so subsequent versions still run.
+        LOG.error("v1133: batch at offset={} failed, aborting backfill loop", offset, e);
         break;
       }
       totalScanned += scannedInBatch;
@@ -121,7 +127,7 @@ public class MigrationUtil {
           }
         }
       }
-    } catch (Exception e) {
+    } catch (JsonParsingException e) {
       LOG.warn("v1133: failed to parse data_contract JSON: {}", e.getMessage());
     }
     return id;

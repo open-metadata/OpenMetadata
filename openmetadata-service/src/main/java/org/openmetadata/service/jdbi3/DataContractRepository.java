@@ -269,7 +269,11 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           // The user can re-deploy via /validate later.
           try {
             prepareAndDeployIngestionPipeline(pipeline, testSuite);
-          } catch (Exception e) {
+          } catch (RuntimeException e) {
+            // Narrow to RuntimeException: deployPipeline throws
+            // IngestionPipelineDeploymentException (WebServiceException) on transport failures
+            // and NPE when the pipeline client is not wired (test harness). Both are recoverable
+            // at /validate time. Checked exceptions still propagate.
             LOG.warn(
                 "Failed to deploy DQ pipeline for data contract {}: {}",
                 dataContract.getFullyQualifiedName(),
