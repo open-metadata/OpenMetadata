@@ -104,6 +104,9 @@
   .ant-tabs.tabs-new {
     .ant-tabs-tabpane {
       background-color: @grey-9;
+      &:has([data-testid='ontology-explorer']) {
+        background-color: transparent;
+      }
     }
   }
 }
