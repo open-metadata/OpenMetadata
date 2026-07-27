@@ -3641,6 +3641,7 @@
     "most-used-assets-widget-description": "Топ-5 наиболее используемых объектов данных в сервисе. <0>Узнать больше.</0>",
     "most-used-assets-widget-subheader": "Определите наиболее востребованные данные в сервисе",
     "most-viewed-data-assets": "Отображает наиболее просматриваемые объекты данных.",
+    "move-page-to-top-level-message": "Переместить страницу «<0>{{entity}}</0>» на верхний уровень?",
     "multi-object-contract-detected": "This contract contains multiple schema objects",
     "must-start-with-letter-alphanumeric": "Должно начинаться с буквы и содержать только буквенно-цифровые символы.",
     "mutually-exclusive-alert": "Если вы включите «Единичный выбор» для объекта «{{entity}}», пользователи смогут применить только один {{child-entity}} к объекту. После активации этой опции ее нельзя будет отключить.",

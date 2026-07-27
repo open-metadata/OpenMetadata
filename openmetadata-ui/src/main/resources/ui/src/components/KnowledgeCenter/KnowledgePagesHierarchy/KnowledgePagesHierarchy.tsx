@@ -915,17 +915,25 @@ const KnowledgePagesHierarchy = forwardRef<
                   })}
                 />
                 <Dialog.Content className="tw:block">
-                  <Transi18next
-                    i18nKey="message.entity-transfer-message"
-                    renderElement={<strong />}
-                    values={{
-                      from: getEntityName(movedPage?.sourceNode),
-                      to: movedPage?.targetNode
-                        ? getEntityName(movedPage.targetNode)
-                        : t('label.top-level'),
-                      entity: t('label.page-lowercase'),
-                    }}
-                  />
+                  {movedPage?.targetNode ? (
+                    <Transi18next
+                      i18nKey="message.entity-transfer-message"
+                      renderElement={<strong />}
+                      values={{
+                        from: getEntityName(movedPage?.sourceNode),
+                        to: getEntityName(movedPage.targetNode),
+                        entity: t('label.page-lowercase'),
+                      }}
+                    />
+                  ) : (
+                    <Transi18next
+                      i18nKey="message.move-page-to-top-level-message"
+                      renderElement={<strong />}
+                      values={{
+                        entity: getEntityName(movedPage?.sourceNode),
+                      }}
+                    />
+                  )}
                 </Dialog.Content>
                 <Dialog.Footer className="quick-link-modal-footer">
                   <Button
