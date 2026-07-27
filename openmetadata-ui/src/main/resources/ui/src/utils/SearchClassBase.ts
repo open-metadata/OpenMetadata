@@ -65,7 +65,7 @@ import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
-import { getEntityIcon, getServiceIcon } from './TableUtils';
+import { EntityIconSize, getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
@@ -728,8 +728,13 @@ class SearchClassBase {
     return getServiceIcon(source);
   }
 
-  public getEntityIcon(indexType: string, iconClass = '', iconStyle = {}) {
-    return getEntityIcon(indexType, iconClass, iconStyle);
+  public getEntityIcon(
+    indexType: string,
+    iconClass = '',
+    iconStyle = {},
+    size?: EntityIconSize
+  ) {
+    return getEntityIcon(indexType, iconClass, iconStyle, size);
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {

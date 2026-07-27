@@ -26,7 +26,6 @@ import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
-import { PagingResponse } from 'Models';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Selection, SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +44,6 @@ import {
 import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
@@ -349,33 +347,27 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     return cols;
   }, [showTableColumn, t]);
 
-  const fetchTestCaseStatus = async () => {
-    try {
-      setIsStatusLoading(true);
-      const promises = testCases.reduce((acc, testCase) => {
-        if (testCase.incidentId) {
-          return [
-            ...acc,
-            getListTestCaseIncidentByStateId(testCase.incidentId ?? ''),
-          ];
-        }
+  const collectInlineIncidentStatuses = () => {
+    const data = testCases.reduce((acc, testCase) => {
+      if (testCase.incidentStatus) {
+        return [
+          ...acc,
+          {
+            ...testCase.incidentStatus,
+            testCaseReference: testCase.incidentStatus.testCaseReference ?? {
+              id: testCase.id ?? '',
+              type: EntityType.TEST_CASE,
+              name: testCase.name,
+              fullyQualifiedName: testCase.fullyQualifiedName,
+            },
+          } as TestCaseResolutionStatus,
+        ];
+      }
 
-        return acc;
-      }, [] as Promise<PagingResponse<TestCaseResolutionStatus[]>>[]);
-      const testCaseStatusResults = await Promise.allSettled(promises);
-      const data = testCaseStatusResults.reduce((acc, status) => {
-        if (status.status === 'fulfilled' && status.value.data.length) {
-          return [...acc, status.value.data[0]];
-        }
-
-        return acc;
-      }, [] as TestCaseResolutionStatus[]);
-      setTestCaseStatus(data);
-    } catch {
-      // do nothing
-    } finally {
-      setIsStatusLoading(false);
-    }
+      return acc;
+    }, [] as TestCaseResolutionStatus[]);
+    setTestCaseStatus(data);
+    setIsStatusLoading(false);
   };
 
   const fetchTestCasePermissions = async () => {
@@ -412,7 +404,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   useEffect(() => {
     if (testCases.length) {
-      fetchTestCaseStatus();
+      collectInlineIncidentStatuses();
       fetchTestCasePermissions();
     } else {
       setIsStatusLoading(false);

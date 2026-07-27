@@ -31,7 +31,9 @@ test.describe(
       test(`${name}`, async ({ browser }) => {
         test.slow(true);
 
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
 
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.EXPLORE);

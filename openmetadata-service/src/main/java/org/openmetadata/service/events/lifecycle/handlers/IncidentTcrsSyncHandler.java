@@ -20,20 +20,22 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
-import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Mirrors task-first incident lifecycle events into the legacy {@code
@@ -147,6 +149,17 @@ public final class IncidentTcrsSyncHandler {
         return;
       }
 
+      EntityReference updatedByRef = null;
+      if (!nullOrEmpty(task.getUpdatedBy())) {
+        try {
+          User updatedBy =
+              Entity.getEntityByName(Entity.USER, task.getUpdatedBy(), null, Include.ALL);
+          updatedByRef = updatedBy.getEntityReference();
+        } catch (EntityNotFoundException e) {
+          LOG.error("Updated by user {}: could not find user reference", task.getUpdatedBy());
+        }
+      }
+
       TestCaseResolutionStatus record =
           new TestCaseResolutionStatus()
               .withId(UUID.randomUUID())
@@ -156,10 +169,7 @@ public final class IncidentTcrsSyncHandler {
               .withTestCaseReference(task.getAbout())
               .withTimestamp(task.getUpdatedAt())
               .withUpdatedAt(task.getUpdatedAt())
-              .withUpdatedBy(
-                  task.getUpdatedBy() != null
-                      ? EntityUtil.getEntityReference(Entity.USER, task.getUpdatedBy())
-                      : null);
+              .withUpdatedBy(updatedByRef);
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
       repo.syncFromTask(record, testCaseFqn);
