@@ -18,6 +18,8 @@ import jakarta.ws.rs.core.Response;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.util.EntityETag;
 
 class ETagResponseFilterTest {
@@ -69,6 +71,24 @@ class ETagResponseFilterTest {
   }
 
   @Test
+  void staleIfNoneMatchIsNotShortCircuitedAfterVoteChangesBody() {
+    // Regression for the up/down vote P0: a vote repopulates the votes block without bumping
+    // version/updatedAt. The ETag the client cached before voting must no longer match the
+    // post-vote entity, so the conditional GET is answered 200 (fresh body) rather than 304
+    // (stale body). Before the content-based ETag fix this returned 304 and the header stuck.
+    UUID id = UUID.randomUUID();
+    String staleEtag = EntityETag.generateETag(table(id, 1.0, 100L, 0));
+    EntityInterface afterVote = table(id, 1.0, 100L, 1);
+    ContainerResponseContext res = response(OK, afterVote);
+
+    filter.filter(request("GET", staleEtag), res);
+
+    verify(res, never()).setStatus(anyInt());
+    verify(res, never()).setEntity(null);
+    assertEquals(EntityETag.generateETag(afterVote), res.getHeaders().getFirst(HttpHeaders.ETAG));
+  }
+
+  @Test
   void mutationWithMatchingIfNoneMatchIsNotShortCircuited() {
     EntityInterface entity = entity(3.1, 333L);
     String etag = EntityETag.generateETag(entity);
@@ -117,10 +137,19 @@ class ETagResponseFilterTest {
   }
 
   private static EntityInterface entity(double version, long updatedAt) {
-    EntityInterface entity = mock(EntityInterface.class);
-    when(entity.getVersion()).thenReturn(version);
-    when(entity.getUpdatedAt()).thenReturn(updatedAt);
-    when(entity.getId()).thenReturn(UUID.randomUUID());
-    return entity;
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("etag_table")
+        .withVersion(version)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static EntityInterface table(UUID id, double version, long updatedAt, int upVotes) {
+    return new Table()
+        .withId(id)
+        .withName("etag_table")
+        .withVersion(version)
+        .withUpdatedAt(updatedAt)
+        .withVotes(new Votes().withUpVotes(upVotes).withDownVotes(0));
   }
 }

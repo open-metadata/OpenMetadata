@@ -81,7 +81,7 @@ const compactPageInputClassName = cx(
 // The Select trigger's border is an outline now (it replaced a ring, which WebKit does not
 // pixel-snap). The old `outline-none!` only suppressed the native focus outline and was
 // harmless; keeping it would erase the border itself. `focus-visible:outline-none!` stays —
-// it reproduces what `focus-visible:ring-0` used to do (no edge while focused).
+// it reproduces what `[&>button]:focus-visible:outline-none!` used to do (no edge while focused).
 const compactRowsPerPageSelectClassName =
   'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 

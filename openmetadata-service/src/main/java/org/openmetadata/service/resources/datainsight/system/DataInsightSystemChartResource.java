@@ -209,6 +209,11 @@ public class DataInsightSystemChartResource
           @QueryParam("serviceName")
           String serviceName,
       @Parameter(
+              description = "Service entity type, pins the automation lookup to one service",
+              schema = @Schema(type = "String", example = "databaseService"))
+          @QueryParam("serviceType")
+          String serviceType,
+      @Parameter(
               description = "Any additional filter to fetch the data",
               schema = @Schema(type = "string", example = "{\"query\":{...}}"))
           @QueryParam("filter")
@@ -238,7 +243,14 @@ public class DataInsightSystemChartResource
       // Call repository method to handle streaming
       Map<String, Object> response =
           repository.startChartDataStreaming(
-              chartNames, serviceName, filter, entityLink, user.getId(), startTime, endTime);
+              chartNames,
+              serviceName,
+              serviceType,
+              filter,
+              entityLink,
+              user.getId(),
+              startTime,
+              endTime);
 
       // Check if there's an error in the response
       if (response.containsKey("error")) {

@@ -21,7 +21,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Globe01, SearchLg } from '@untitledui/icons';
 import { debounce, isEmpty } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -29,7 +36,6 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -39,6 +45,10 @@ import {
   getGlossaryTags,
 } from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import {
+  COMPACT_CELL_WRAP_CLASS,
+  NAME_CELL_WRAP_CLASS,
+} from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
@@ -53,6 +63,7 @@ import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.compon
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -185,9 +196,13 @@ const DataProductListPage = ({
             entity.displayName !== entity.name;
 
           return (
-            <Box align="center" direction="row" gap={3}>
+            <Box
+              align="start"
+              className={NAME_CELL_WRAP_CLASS}
+              direction="row"
+              gap={3}>
               <Avatar size="md" {...getEntityAvatarProps(entity)} />
-              <Box direction="col">
+              <Box className="tw:min-w-0" direction="col">
                 <Typography size="text-sm" weight="medium">
                   {entityName}
                 </Typography>
@@ -217,7 +232,11 @@ const DataProductListPage = ({
           const domain = domains[0];
 
           return (
-            <Box align="center" direction="row" gap={1}>
+            <Box
+              align="start"
+              className={COMPACT_CELL_WRAP_CLASS}
+              direction="row"
+              gap={1}>
               <Globe01 size={16} style={{ flexShrink: 0 }} />
               <Typography size="text-sm">
                 {domain.displayName || domain.name}
@@ -323,6 +342,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
+          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
           renderCard={renderDataProductCard}
@@ -391,6 +411,18 @@ const DataProductListPage = ({
   );
 };
 
+const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DataProductListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DataProductListPage };
 
-export default withPageLayout(DataProductListPage);
+export default DataProductListPageWithLayout;

@@ -140,8 +140,13 @@ Gotchas:
 - Consumers overriding a border must match where it's drawn: `::after` for
   Button/ButtonUtility/Tab, the element for Input/Select/Badge/Card.
 
-Rings legitimately remain only where `ring-offset-*` fills the gap with a colour
-(`color-picker-field`, `icon-picker-field`) — `outline-offset` leaves it transparent.
+There are **no** remaining `ring-*` usages and the ESLint rule has **no allow-list**. Even
+`ring-offset-*` halos convert: the offset gap uses `--tw-ring-offset-color` (default `#fff`),
+so when the ring colour is also white the two merge into one `(ring + offset)`px band —
+`ring-2 ring-white ring-offset-2` is exactly `outline-4 outline-white`. Where the colours
+differ, `outline-offset-N` matches the geometry with a transparent gap. Consumer focus rings
+on `Button` are usually pure duplicates of its built-in
+`focus-visible:outline-2 focus-visible:outline-offset-2` — delete rather than convert.
 
 Full rationale, measurements, and the anti-pattern table:
 [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](../openmetadata-ui/src/main/resources/ui/docs/colors.md) §2.3.1.

@@ -21,6 +21,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -28,9 +29,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -67,6 +66,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
@@ -74,6 +74,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -90,7 +91,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  */
 @Slf4j
 public class CreateTask implements TaskListener {
-  static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
   private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
@@ -123,14 +123,15 @@ public class CreateTask implements TaskListener {
   public void notify(DelegateTask delegateTask) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
+      InputNamespaces inputNamespaces =
+          InputNamespaces.read(inputNamespaceMapExpr.getValue(delegateTask));
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
@@ -147,7 +148,7 @@ public class CreateTask implements TaskListener {
       UUID workflowInstanceId = getWorkflowInstanceId(delegateTask);
 
       // Build workflow-specific payload for task types that need richer context.
-      Object payload = buildWorkflowPayload(taskType, inputNamespaceMap, varHandler);
+      Object payload = buildWorkflowPayload(taskType, inputNamespaces, varHandler);
 
       // Create or update the Task entity for the current workflow stage
       Task task =
@@ -195,49 +196,45 @@ public class CreateTask implements TaskListener {
   }
 
   private TaskEntityType getTaskType(DelegateTask delegateTask) {
-    String variableTaskType = WorkflowVariableResolver.stringVariable(delegateTask, "taskType");
+    String variableTaskType =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_TYPE);
     if (variableTaskType != null && !variableTaskType.isEmpty()) {
       return TaskEntityType.fromValue(variableTaskType);
     }
-
     if (taskTypeExpr != null) {
       String typeStr = (String) taskTypeExpr.getValue(delegateTask);
       if (typeStr != null && !typeStr.isEmpty()) {
         return TaskEntityType.fromValue(typeStr);
       }
     }
-
     TaskEntityType inferredTaskType = inferTaskTypeFromWorkflow(delegateTask);
     if (inferredTaskType != null) {
       return inferredTaskType;
     }
-
-    return TaskEntityType.GlossaryApproval; // Default for backward compatibility
+    return TaskEntityType.GlossaryApproval; // Backward-compat default
   }
 
   private TaskCategory getTaskCategory(DelegateTask delegateTask) {
     String variableTaskCategory =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskCategory");
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_CATEGORY);
     if (variableTaskCategory != null && !variableTaskCategory.isEmpty()) {
       return TaskCategory.fromValue(variableTaskCategory);
     }
-
     if (taskCategoryExpr != null) {
       String categoryStr = (String) taskCategoryExpr.getValue(delegateTask);
       if (categoryStr != null && !categoryStr.isEmpty()) {
         return TaskCategory.fromValue(categoryStr);
       }
     }
-
     TaskEntityType inferredTaskType = inferTaskTypeFromWorkflow(delegateTask);
     if (inferredTaskType != null) {
-      return TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
+      String workflowRef =
           inferredTaskType == TaskEntityType.CustomTask
               ? "CustomTaskWorkflow"
-              : inferWorkflowDefinitionRef(delegateTask));
+              : inferWorkflowDefinitionRef(delegateTask);
+      return TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(workflowRef);
     }
-
-    return TaskCategory.Approval; // Default for backward compatibility
+    return TaskCategory.Approval; // Backward-compat default
   }
 
   private TaskEntityType inferTaskTypeFromWorkflow(DelegateTask delegateTask) {
@@ -245,7 +242,6 @@ public class CreateTask implements TaskListener {
     if (workflowDefinitionRef == null || workflowDefinitionRef.isBlank()) {
       return null;
     }
-
     return TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
         workflowDefinitionRef);
   }
@@ -256,7 +252,6 @@ public class CreateTask implements TaskListener {
     if (processDefinitionKey == null || processDefinitionKey.isBlank()) {
       return null;
     }
-
     return processDefinitionKey.endsWith("Trigger")
         ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(processDefinitionKey)
         : processDefinitionKey;
@@ -267,12 +262,10 @@ public class CreateTask implements TaskListener {
     if (workflowDefinitionIdValue != null && !workflowDefinitionIdValue.isBlank()) {
       return UUID.fromString(workflowDefinitionIdValue);
     }
-
     String workflowDefinitionRef = inferWorkflowDefinitionRef(delegateTask);
     if (workflowDefinitionRef == null || workflowDefinitionRef.isBlank()) {
       return null;
     }
-
     WorkflowDefinition workflowDefinition =
         Entity.findByNameOrNull(
             Entity.WORKFLOW_DEFINITION, workflowDefinitionRef, Include.NON_DELETED);
@@ -280,30 +273,25 @@ public class CreateTask implements TaskListener {
   }
 
   private UUID getWorkflowInstanceId(DelegateTask delegateTask) {
-    // First prefer an explicit runtime variable when one is present.
     Object workflowInstanceIdObj = delegateTask.getVariable("workflowInstanceId");
     if (workflowInstanceIdObj != null) {
       return UUID.fromString(workflowInstanceIdObj.toString());
     }
+    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    return businessKey != null && !businessKey.isBlank() ? UUID.fromString(businessKey) : null;
+  }
 
-    String processInstanceId = delegateTask.getProcessInstanceId();
+  private static String resolveProcessBusinessKey(String processInstanceId) {
     if (processInstanceId == null || processInstanceId.isBlank()) {
       return null;
     }
-
     org.flowable.engine.runtime.ProcessInstance processInstance =
         WorkflowHandler.getInstance()
             .getRuntimeService()
             .createProcessInstanceQuery()
             .processInstanceId(processInstanceId)
             .singleResult();
-
-    String businessKey = processInstance != null ? processInstance.getBusinessKey() : null;
-    if (businessKey == null || businessKey.isBlank()) {
-      return null;
-    }
-
-    return UUID.fromString(businessKey);
+    return processInstance != null ? processInstance.getBusinessKey() : null;
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
@@ -380,38 +368,53 @@ public class CreateTask implements TaskListener {
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
-    String taskName = WorkflowVariableResolver.stringVariable(delegateTask, "taskName");
+    String taskName =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_NAME);
     String taskDisplayName =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskDisplayName");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DISPLAY_NAME);
     String taskDescription =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskDescription");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DESCRIPTION);
     String manualGrantReason = resolveManualGrantReason(delegateTask);
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
     Object requestedPayload =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskPayload");
-    Long requestedDueDate = WorkflowVariableResolver.longVariable(delegateTask, "taskDueDate");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_PAYLOAD);
+    Long requestedDueDate =
+        WorkflowVariableResolver.longVariable(delegateTask, WorkflowStartVariables.TASK_DUE_DATE);
     Object requestedExternalReference =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskExternalReference");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_EXTERNAL_REFERENCE);
     Object requestedTags =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskTags");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_TAGS);
     List<EntityReference> requestedReviewers =
-        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskReviewers");
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_REVIEWERS);
     List<EntityReference> requestedAssignees =
-        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskAssignees");
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_ASSIGNEES);
     EntityReference requestedCreatedBy =
-        WorkflowVariableResolver.entityReferenceVariable(delegateTask, "taskCreatedBy");
+        WorkflowVariableResolver.entityReferenceVariable(
+            delegateTask, WorkflowStartVariables.TASK_CREATED_BY);
     String requestedUpdatedBy =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskUpdatedBy");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_UPDATED_BY);
     String workflowDefinitionId =
-        WorkflowVariableResolver.stringVariable(delegateTask, "workflowDefinitionId");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
     boolean workflowManagedDraftTask =
-        WorkflowVariableResolver.booleanVariable(delegateTask, "taskWorkflowManaged");
+        WorkflowVariableResolver.booleanVariable(
+            delegateTask, WorkflowStartVariables.TASK_WORKFLOW_MANAGED);
     String taskFormSchemaId =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskFormSchemaId");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_ID);
     Double taskFormSchemaVersion =
-        WorkflowVariableResolver.doubleVariable(delegateTask, "taskFormSchemaVersion");
+        WorkflowVariableResolver.doubleVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION);
     String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
     String workflowStageDisplayName =
         WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
@@ -434,7 +437,8 @@ public class CreateTask implements TaskListener {
             .withFullyQualifiedName(entity.getFullyQualifiedName());
 
     // Build createdBy reference
-    EntityReference createdByRef = resolveCreatedByReference(requestedCreatedBy, entity, payload);
+    EntityReference createdByRef =
+        resolveCreatedByReference(requestedCreatedBy, entity, payload, taskType);
     String updatedBy =
         requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
             ? requestedUpdatedBy
@@ -524,11 +528,12 @@ public class CreateTask implements TaskListener {
         updatedTask.setPriority(requestedPriority);
       }
       Long effectiveDueDate =
-          resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+          resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
       if (effectiveDueDate != null) {
         updatedTask.setDueDate(effectiveDueDate);
       }
-      updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
+      updatedTask.setPayload(
+          withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
           applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
@@ -594,11 +599,11 @@ public class CreateTask implements TaskListener {
       task.setTaskFormSchemaVersion(taskFormSchemaVersion);
     }
     Long effectiveDueDate =
-        resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+        resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
     if (effectiveDueDate != null) {
       task.setDueDate(effectiveDueDate);
     }
-    task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
+    task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
     task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
     if (requestedExternalReference != null) {
@@ -785,23 +790,20 @@ public class CreateTask implements TaskListener {
       List<EntityReference> requestedAssignees) {
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
-
-    // For API-created workflow-managed tasks, taskAssignees is seeded into the workflow start
-    // variables. Subsequent workflow callbacks must not overwrite the task row's current
-    // assignees with BPMN candidate users or the original start-variable snapshot; the persisted
-    // task row is the source of truth once assignees are present.
-    if (requestedAssignees != null && !requestedAssignees.isEmpty() && hasExistingAssignees) {
+    boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();
+    boolean hasWorkflowAssignees = workflowAssignees != null && !workflowAssignees.isEmpty();
+    // API-created workflow-managed tasks seed taskAssignees into workflow start variables. The
+    // persisted task row is the source of truth once assignees are set — subsequent workflow
+    // callbacks must not overwrite it with BPMN candidates or the original snapshot.
+    if (hasRequestedAssignees && hasExistingAssignees) {
       return null;
     }
-
-    if (workflowAssignees != null && !workflowAssignees.isEmpty()) {
+    if (hasWorkflowAssignees) {
       return workflowAssignees;
     }
-
-    if (requestedAssignees != null && !requestedAssignees.isEmpty() && !hasExistingAssignees) {
+    if (hasRequestedAssignees) {
       return requestedAssignees;
     }
-
     return existingAssignees;
   }
 
@@ -857,31 +859,18 @@ public class CreateTask implements TaskListener {
   }
 
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
-    String taskId = WorkflowVariableResolver.stringVariable(delegateTask, "taskEntityId");
+    String taskId =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_ENTITY_ID);
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
-
-    String processInstanceId = delegateTask.getProcessInstanceId();
-    if (processInstanceId == null || processInstanceId.isBlank()) {
-      return null;
-    }
-
-    org.flowable.engine.runtime.ProcessInstance processInstance =
-        WorkflowHandler.getInstance()
-            .getRuntimeService()
-            .createProcessInstanceQuery()
-            .processInstanceId(processInstanceId)
-            .singleResult();
-    String businessKey = processInstance != null ? processInstance.getBusinessKey() : null;
-
+    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
     if (businessKey == null || businessKey.isBlank()) {
       return null;
     }
-
     LOG.debug(
         "[CreateTask] Falling back to process business key '{}' as requested task id", businessKey);
-
     return UUID.fromString(businessKey);
   }
 
@@ -894,66 +883,85 @@ public class CreateTask implements TaskListener {
   }
 
   static Long resolveEffectiveDueDate(
-      TaskEntityStatus stageStatus, Object payload, Long requestedDueDate) {
-    if (stageStatus != TaskEntityStatus.Granted || payload == null) {
+      TaskEntityStatus stageStatus,
+      TaskEntityType taskType,
+      Object payload,
+      Long requestedDueDate) {
+    if (!isGrantedDataAccessRequest(stageStatus, taskType, payload)) {
       return requestedDueDate;
     }
-    if (!(payload instanceof Map<?, ?> rawMap)) {
-      return requestedDueDate;
-    }
-    Object durationValue = rawMap.get("duration");
-    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+    String duration = readDataAccessRequestPayload(payload).getDuration();
+    if (duration == null || duration.isBlank()) {
       return requestedDueDate;
     }
     return parseMillisFromIso8601Duration(duration, requestedDueDate);
   }
 
   /**
-   * Compute {@code payload.expirationDate} when the workflow enters the Granted stage.
-   *
-   * <p>Anchoring this on stage entry (instead of on the user-invoked transition) makes
-   * both the manual path (Approved → markAsGranted → Granted) and the automated PolicyAgent
-   * path (Review → approve → PolicyAgent[granted] → Granted) populate expirationDate, since
-   * both routes funnel through this listener.
-   *
-   * <p>Returns null when the stage isn't Granted or the payload doesn't carry a parseable
-   * duration. When the payload already carries a numeric {@code expirationDate} (re-entry into
-   * the Granted stage, or upstream-set value), returns that existing value unchanged — silent
-   * overwrites would extend access on every workflow listener fire.
+   * Compute {@code payload.expirationDate} when the workflow enters the Granted stage. Anchoring
+   * on stage entry (instead of on the user-invoked transition) covers both the manual path
+   * (Approved → markAsGranted → Granted) and the PolicyAgent path (Review → approve →
+   * PolicyAgent[granted] → Granted). Returns null when the stage isn't Granted or the payload
+   * doesn't carry a parseable duration. Preserves an already-set {@code expirationDate} so a
+   * re-entry into Granted doesn't silently extend access.
    */
-  static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
-    if (stageStatus != TaskEntityStatus.Granted || !(payload instanceof Map<?, ?> rawMap)) {
+  static Long resolveEffectiveExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    if (!isGrantedDataAccessRequest(stageStatus, taskType, payload)) {
       return null;
     }
-    Object existing = rawMap.get("expirationDate");
-    if (existing instanceof Number existingNum) {
-      return existingNum.longValue();
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload.getExpirationDate() != null) {
+      return darPayload.getExpirationDate();
     }
-    Object durationValue = rawMap.get("duration");
-    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+    String duration = darPayload.getDuration();
+    if (duration == null || duration.isBlank()) {
       return null;
     }
     return parseMillisFromIso8601Duration(duration, null);
   }
 
   /**
-   * Returns the payload with {@code expirationDate} merged in when the task enters
-   * Granted. Returns the original reference unchanged when there's nothing to add, so
-   * non-DAR workflows that target Granted aren't penalised and the input map is never
-   * mutated.
+   * Returns the payload with {@code expirationDate} merged in when the task enters Granted.
+   * Returns the original reference unchanged when there's nothing to add, so non-DAR workflows
+   * that target Granted aren't penalised and the input map is never mutated.
    */
-  static Object withGrantExpirationDate(TaskEntityStatus stageStatus, Object payload) {
-    Long expiration = resolveEffectiveExpirationDate(stageStatus, payload);
-    if (expiration == null || !(payload instanceof Map<?, ?> rawMap)) {
+  static Object withGrantExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    Long expiration = resolveEffectiveExpirationDate(stageStatus, taskType, payload);
+    if (expiration == null) {
       return payload;
     }
-    if (rawMap.get("expirationDate") instanceof Number) {
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload.getExpirationDate() != null) {
       return payload;
     }
-    Map<String, Object> merged = new LinkedHashMap<>();
-    rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
-    merged.put("expirationDate", expiration);
-    return merged;
+    return darPayload.withExpirationDate(expiration);
+  }
+
+  private static boolean isGrantedDataAccessRequest(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    return stageStatus == TaskEntityStatus.Granted
+        && taskType == TaskEntityType.DataAccessRequest
+        && payload != null;
+  }
+
+  private static DataAccessRequestPayload readDataAccessRequestPayload(Object payload) {
+    // Task.payload is Object in the schema because the shape varies per taskType. The value
+    // reaches this method as a raw JSON String (Flowable variable serialization) or as a
+    // deserialized Map/POJO (repository read); handle both here rather than at every caller.
+    try {
+      DataAccessRequestPayload dar =
+          payload instanceof String json
+              ? JsonUtils.readValue(json, DataAccessRequestPayload.class)
+              : JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
+      // Deserializing a literal JSON null yields a null POJO; hand back an empty payload so
+      // callers can null-check getters instead of guarding every readDataAccessRequestPayload(...).
+      return dar != null ? dar : new DataAccessRequestPayload();
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
+      throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
+    }
   }
 
   /**
@@ -988,7 +996,8 @@ public class CreateTask implements TaskListener {
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
-    String priority = WorkflowVariableResolver.stringVariable(delegateTask, "taskPriority");
+    String priority =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_PRIORITY);
     if (priority == null || priority.isBlank()) {
       return null;
     }
@@ -1029,33 +1038,30 @@ public class CreateTask implements TaskListener {
   static Object mergeManualGrantReason(Object payload, String reason) {
     Object result = payload;
     if (reason != null && !reason.isBlank()) {
-      // manualGrantReason is only ever set on the DAR path, so the payload is a
-      // DataAccessRequestPayload — bind the typed POJO and set the field instead of hand-merging a
-      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field. A
-      // null payload (convertValue returns null) yields a fresh payload carrying only the reason.
-      DataAccessRequestPayload dar =
-          JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
-      result = (dar != null ? dar : new DataAccessRequestPayload()).withManualGrantReason(reason);
+      // manualGrantReason is only ever set on the DAR path. Reuse the tolerant reader that
+      // handles raw JSON String (Flowable variable serialization) and Map/POJO (repository read)
+      // payloads and never returns null; strict convertValue would throw on a String payload.
+      result = readDataAccessRequestPayload(payload).withManualGrantReason(reason);
     }
     return result;
   }
 
   private EntityReference resolveCreatedByReference(
-      EntityReference requestedCreatedBy, EntityInterface entity, Object payload) {
+      EntityReference requestedCreatedBy,
+      EntityInterface entity,
+      Object payload,
+      TaskEntityType taskType) {
     if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
       return requestedCreatedBy;
     }
-
-    EntityReference payloadCreator = extractPayloadCreatedBy(payload);
+    EntityReference payloadCreator = extractPayloadCreatedBy(payload, taskType);
     if (payloadCreator != null) {
       return payloadCreator;
     }
-
     String userName = entity != null ? entity.getUpdatedBy() : null;
     if (userName == null || userName.isEmpty()) {
       userName = DEFAULT_SYSTEM_USER;
     }
-
     try {
       return Entity.getEntityReferenceByName(Entity.USER, userName, Include.NON_DELETED);
     } catch (Exception e) {
@@ -1063,25 +1069,35 @@ public class CreateTask implements TaskListener {
     }
   }
 
-  private EntityReference extractPayloadCreatedBy(Object payload) {
-    if (!(payload instanceof Map<?, ?> payloadMap)) {
+  static EntityReference extractPayloadCreatedBy(Object payload, TaskEntityType taskType) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
       return null;
     }
-
-    Object feedback = payloadMap.get("feedback");
-    if (feedback == null) {
+    RecognizerFeedbackTaskPayload feedbackPayload = readRecognizerFeedbackTaskPayload(payload);
+    RecognizerFeedback feedback = feedbackPayload != null ? feedbackPayload.feedback() : null;
+    if (feedback == null || feedback.getCreatedBy() == null) {
       return null;
     }
+    return feedback.getCreatedBy();
+  }
 
+  private static RecognizerFeedbackTaskPayload readRecognizerFeedbackTaskPayload(Object payload) {
+    // Task.payload is Object in the schema because the shape varies per taskType. The value
+    // reaches this method as a raw JSON String (Flowable variable serialization), the concrete
+    // POJO (in-process reuse), or a deserialized Map (repository read); handle all three here.
     try {
-      RecognizerFeedback recognizerFeedback =
-          JsonUtils.convertValue(feedback, RecognizerFeedback.class);
-      if (recognizerFeedback == null || recognizerFeedback.getCreatedBy() == null) {
-        return null;
+      if (payload instanceof RecognizerFeedbackTaskPayload feedbackPayload) {
+        return feedbackPayload;
       }
-      return recognizerFeedback.getCreatedBy();
-    } catch (Exception e) {
-      return null;
+      if (payload instanceof String json) {
+        return JsonUtils.readValueLenient(json, RecognizerFeedbackTaskPayload.class);
+      }
+      return JsonUtils.convertValueLenient(payload, RecognizerFeedbackTaskPayload.class);
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a RecognizerFeedbackTaskPayload", invalidPayload);
+      throw new IllegalArgumentException(
+          "Invalid recognizer feedback task payload", invalidPayload);
     }
   }
 
@@ -1099,38 +1115,31 @@ public class CreateTask implements TaskListener {
 
   private Object buildWorkflowPayload(
       TaskEntityType taskType,
-      Map<String, String> inputNamespaceMap,
+      InputNamespaces inputNamespaces,
       WorkflowVariableHandler varHandler) {
-    if ((taskType != TaskEntityType.RecognizerFeedbackApproval
-            && taskType != TaskEntityType.DataQualityReview)
-        || inputNamespaceMap == null) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
       return null;
     }
-
     String recognizerNamespace =
-        inputNamespaceMap.getOrDefault(RECOGNIZER_FEEDBACK, GLOBAL_NAMESPACE);
-
+        inputNamespaces.namespaceForOrDefault(RECOGNIZER_FEEDBACK, GLOBAL_NAMESPACE);
     try {
       String feedbackJson =
           (String) varHandler.getNamespacedVariable(recognizerNamespace, RECOGNIZER_FEEDBACK);
       if (feedbackJson == null || feedbackJson.isEmpty()) {
         return null;
       }
-
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
-      Map<String, Object> payload = new LinkedHashMap<>();
-      payload.put("feedback", feedback);
-
-      TagLabelRecognizerMetadata recognizer = resolveRecognizerMetadata(feedback);
-      if (recognizer != null) {
-        payload.put("recognizer", recognizer);
-      }
-      return payload;
+      return new RecognizerFeedbackTaskPayload(feedback, resolveRecognizerMetadata(feedback));
     } catch (Exception e) {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
   }
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private record RecognizerFeedbackTaskPayload(
+      RecognizerFeedback feedback, TagLabelRecognizerMetadata recognizer) {}
 
   private void terminateDeletedWorkflowManagedDraftTask(
       DelegateTask delegateTask, UUID requestedTaskId) {

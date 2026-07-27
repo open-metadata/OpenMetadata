@@ -1000,15 +1000,10 @@ public class WorkflowHandler {
           taskThread.getTask().setAssignees(currentAssignees);
           taskThread.withUpdatedBy(currentUser).withUpdatedAt(System.currentTimeMillis());
 
-          // Persist the changes
-          org.openmetadata.schema.entity.feed.Thread finalTaskThread = taskThread;
-          Entity.getJdbi()
-              .useHandle(
-                  handle -> {
-                    CollectionDAO dao = handle.attach(CollectionDAO.class);
-                    dao.feedDAO()
-                        .update(finalTaskThread.getId(), JsonUtils.pojoToJson(finalTaskThread));
-                  });
+          // Route through FeedRepository so the write targets the resolver-picked legacy table
+          // (thread_entity_legacy on 2.0, thread_entity_archived on 2.1+) instead of the pre-2.0
+          // hardcoded 'thread_entity' overload which no longer exists after migration.
+          feedRepository.updateLegacyThread(taskThread);
 
           LOG.info(
               "[WorkflowTask] Successfully removed user '{}' from Thread '{}' assignees. Remaining assignees: {}",

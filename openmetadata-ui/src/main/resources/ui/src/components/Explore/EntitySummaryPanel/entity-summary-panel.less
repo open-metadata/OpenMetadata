@@ -18,12 +18,21 @@
 .column-detail-panel-container {
   height: 100%;
   background: var(--tw-color-bg-primary);
-  &.explore,
+
+  &.explore {
+    background: transparent;
+  }
+
   &.lineage,
   &.glossary-term-assets-tab,
   &.ontology-explorer {
     background: var(--tw-color-utility-gray-blue-50);
+  }
 
+  &.explore,
+  &.lineage,
+  &.glossary-term-assets-tab,
+  &.ontology-explorer {
     .summary-panel-container.drawer-summary-panel-container {
       flex: 1;
       min-width: 0;

@@ -60,7 +60,9 @@ const test = base.extend<{
 
 test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
-  const { page, apiContext, afterAction } = await performAdminLogin(browser);
+  const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+    navigate: true,
+  });
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await testUser.create(apiContext);

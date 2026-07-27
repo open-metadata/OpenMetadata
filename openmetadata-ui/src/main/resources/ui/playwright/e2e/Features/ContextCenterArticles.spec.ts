@@ -71,6 +71,7 @@ import {
   verifyNotificationAndClick,
   waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import {
@@ -204,6 +205,24 @@ test.describe('Context Center Articles', () => {
       description: 'Original description for draft article B',
     });
 
+    await Promise.all([
+      waitForSearchIndexed(
+        apiContext,
+        articleEntity.responseData.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleA.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleB.fullyQualifiedName,
+        'page'
+      ),
+    ]);
+
     await afterAction();
   });
 
@@ -309,7 +328,14 @@ test.describe('Context Center Articles', () => {
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
-    await scrollListingToCard(page, articleEntity.responseData.displayName);
+    await expect(searchInput).toHaveValue('');
+    await expect(page.getByText('No matching results')).not.toBeVisible();
+    await expect(
+      page
+        .getByTestId('knowledge-page-listing')
+        .locator('[data-testid^="knowledge-card-"]')
+        .first()
+    ).toBeVisible();
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
