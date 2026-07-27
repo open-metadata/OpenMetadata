@@ -4556,4 +4556,81 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   "workflow transitions should be available before bulk resolution");
             });
   }
+
+  // ==================== statusGroup buckets for DAR Granted (row-aware) ====================
+  //
+  // A Data Access Request task in status "Granted" reads as done from the user's perspective —
+  // requester's work complete, reviewer's work complete, access provisioned. The row-aware
+  // TaskBucketSql routes DAR-Granted to the Closed bucket and non-DAR-Granted (defensive
+  // fallback) to Open, mirroring how Approved is dispatched. Revoke stays reachable from the
+  // closed task via availableTransitions — GitHub-issue-reopen model. See TaskBucketSql for
+  // bucket definitions and the invariant openCount + completedCount = total.
+
+  private Task createGrantedDarTask(TestNamespace ns, String label) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix(label + "-" + UUID.randomUUID()))
+            .withDescription("DAR pushed to Granted for group-filter test")
+            .withCategory(TaskCategory.DataAccess)
+            .withType(TaskEntityType.DataAccessRequest)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(
+                new DataAccessRequestPayload()
+                    .withAccessType(DataAccessType.FullAccess)
+                    .withRequestedAccess(DataAccessPermission.Read)
+                    .withReason("integration-test")
+                    .withExpirationDate(System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000));
+    Task task = SdkClients.adminClient().tasks().create(request);
+    task.setStatus(TaskEntityStatus.Granted);
+    return SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+  }
+
+  @Test
+  void testStatusGroupClosed_includesDarGrantedTasks(TestNamespace ns) {
+    Task granted = createGrantedDarTask(ns, "closed-granted");
+    assertEquals(TaskEntityStatus.Granted, granted.getStatus());
+
+    ListResponse<Task> closed =
+        SdkClients.adminClient()
+            .tasks()
+            .listWithFilters(Map.of("statusGroup", "closed", "limit", "1000"));
+
+    assertNotNull(closed);
+    assertTrue(
+        closed.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        "statusGroup=closed must include Granted tasks (Slack-thread regression guard)");
+  }
+
+  @Test
+  void testStatusGroupOpen_excludesGrantedTasks(TestNamespace ns) {
+    Task granted = createGrantedDarTask(ns, "open-granted");
+
+    ListResponse<Task> open =
+        SdkClients.adminClient()
+            .tasks()
+            .listWithFilters(Map.of("statusGroup", "open", "limit", "1000"));
+
+    assertNotNull(open);
+    assertFalse(
+        open.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        "statusGroup=open must NOT include Granted DAR-shaped tasks — the reported bug");
+  }
+
+  @Test
+  void testStatusGroupActive_stillIncludesGrantedForLiveAccessLookup(TestNamespace ns) {
+    Task granted = createGrantedDarTask(ns, "active-granted");
+
+    ListResponse<Task> active =
+        SdkClients.adminClient()
+            .tasks()
+            .listWithFilters(Map.of("statusGroup", "active", "limit", "1000"));
+
+    assertNotNull(active);
+    assertTrue(
+        active.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        "statusGroup=active must still include Granted — useDataAccessRequest depends on it");
+  }
 }

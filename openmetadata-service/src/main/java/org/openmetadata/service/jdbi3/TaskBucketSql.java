@@ -22,24 +22,38 @@ package org.openmetadata.service.jdbi3;
  * <p>Bucket definitions ({@code type} is the task-type column):
  *
  * <ul>
- *   <li>{@code open}   = {@code status IN SHARED_OPEN_STATUSES} OR
- *       {@code (type = DataAccessRequest AND status = Approved)}
- *   <li>{@code closed} = {@code status IN SHARED_TERMINAL_STATUSES} OR
- *       {@code (type <> DataAccessRequest AND status = Approved)}
+ *   <li>{@code open}   = {@code status IN SHARED_OPEN_STATUSES}
+ *       OR {@code (type = DataAccessRequest AND status = Approved)}
+ *       OR {@code (type <> DataAccessRequest AND status = Granted)}
+ *   <li>{@code closed} = {@code status IN SHARED_TERMINAL_STATUSES}
+ *       OR {@code (type <> DataAccessRequest AND status = Approved)}
+ *       OR {@code (type = DataAccessRequest AND status = Granted)}
  *   <li>{@code active} = {@code status IN ACTIVE_STATUSES} (superset of {@code open}; kept for
- *       DAR-scoped callers that pre-narrow the query)
+ *       DAR-scoped callers that pre-narrow the query — includes Granted and ManualRevoke so the
+ *       {@code useDataAccessRequest} live-access lookup still finds granted DAR tasks)
  * </ul>
  *
- * <p>Bucket predicates are row-aware on {@code type}: {@code Approved} is terminal for non-DAR
- * task types (Glossary/DescriptionUpdate/etc.) and non-terminal for DataAccessRequest (means
- * "awaiting grant"). {@code Granted} and {@code ManualRevoke} live in {@code SHARED_OPEN_STATUSES}
- * so any hypothetical future task type reaching those statuses still lands in a bucket rather
- * than silently breaking the {@code openCount + completedCount = total} invariant.
+ * <p>Bucket predicates are row-aware on {@code type} for the two ambiguous statuses:
+ *
+ * <ul>
+ *   <li>{@code Approved}: terminal for non-DAR task types
+ *       (Glossary/DescriptionUpdate/etc. — belongs in the Closed tab) and non-terminal for
+ *       DataAccessRequest (means "awaiting grant" — belongs in the Open tab).
+ *   <li>{@code Granted}: for DAR the requester's / reviewer's work is done and the task should
+ *       read as closed (GitHub-issue model — revoke stays available from the closed task via
+ *       {@code availableTransitions}, mirroring "reopen a closed issue"). For any hypothetical
+ *       non-DAR task type that reaches Granted, we default to Open so the row still lands in a
+ *       bucket rather than silently breaking the {@code openCount + completedCount = total}
+ *       invariant.
+ * </ul>
+ *
+ * <p>{@code ManualRevoke} lives in {@code SHARED_OPEN_STATUSES} for the same defensive reason —
+ * DAR-only in practice but any future task type reaching that status lands in Open by default.
  */
 public final class TaskBucketSql {
 
   public static final String SHARED_OPEN_STATUSES =
-      "'Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke'";
+      "'Open', 'InProgress', 'Pending', 'ManualRevoke'";
 
   public static final String SHARED_TERMINAL_STATUSES =
       "'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired'";
