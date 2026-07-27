@@ -713,7 +713,7 @@ const MetricListPage = () => {
     !statusFilter;
 
   const metricEmptyState = (
-    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
           permission.Create
@@ -797,7 +797,10 @@ const MetricListPage = () => {
           )}
         </div>
         <div>
-          <div className="metric-list-table-card">
+          <div
+            className={`metric-list-table-card${
+              isMetricListEmpty ? ' metric-list-table-card--borderless' : ''
+            }`}>
             {isMetricListEmpty ? (
               metricEmptyState
             ) : (
