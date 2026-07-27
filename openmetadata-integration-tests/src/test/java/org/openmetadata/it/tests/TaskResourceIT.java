@@ -4565,18 +4565,25 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   // fallback) to Open, mirroring how Approved is dispatched. Revoke stays reachable from the
   // closed task via availableTransitions — GitHub-issue-reopen model. See TaskBucketSql for
   // bucket definitions and the invariant openCount + completedCount = total.
+  //
+  // Every task created below is scoped to a fresh table (a unique aboutEntity FQN) and every
+  // list/count query filters on that FQN. Pagination limits therefore cannot miss the row
+  // and prior-run task residue in the shared testcontainer cannot flip the assertions.
 
-  private Task createGrantedDarTask(TestNamespace ns, String label) {
+  private record GrantedDarFixture(Task task, String aboutEntityFqn) {}
+
+  private GrantedDarFixture createGrantedDarFixture(TestNamespace ns, String label) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
     Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String tableFqn = table.getFullyQualifiedName();
     CreateTask request =
         new CreateTask()
             .withName(ns.prefix(label + "-" + UUID.randomUUID()))
             .withDescription("DAR pushed to Granted for group-filter test")
             .withCategory(TaskCategory.DataAccess)
             .withType(TaskEntityType.DataAccessRequest)
-            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withAbout(entityLink("table", tableFqn))
             .withPayload(
                 new DataAccessRequestPayload()
                     .withAccessType(DataAccessType.FullAccess)
@@ -4585,52 +4592,91 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withExpirationDate(System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000));
     Task task = SdkClients.adminClient().tasks().create(request);
     task.setStatus(TaskEntityStatus.Granted);
-    return SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    Task granted = SdkClients.adminClient().tasks().update(task.getId().toString(), task);
+    return new GrantedDarFixture(granted, tableFqn);
   }
 
   @Test
   void testStatusGroupClosed_includesDarGrantedTasks(TestNamespace ns) {
-    Task granted = createGrantedDarTask(ns, "closed-granted");
-    assertEquals(TaskEntityStatus.Granted, granted.getStatus());
+    GrantedDarFixture fixture = createGrantedDarFixture(ns, "closed-granted");
+    assertEquals(TaskEntityStatus.Granted, fixture.task().getStatus());
 
     ListResponse<Task> closed =
         SdkClients.adminClient()
             .tasks()
-            .listWithFilters(Map.of("statusGroup", "closed", "limit", "1000"));
+            .listWithFilters(
+                Map.of("statusGroup", "closed", "aboutEntity", fixture.aboutEntityFqn()));
 
     assertNotNull(closed);
     assertTrue(
-        closed.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        closed.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
         "statusGroup=closed must include Granted tasks (Slack-thread regression guard)");
   }
 
   @Test
   void testStatusGroupOpen_excludesGrantedTasks(TestNamespace ns) {
-    Task granted = createGrantedDarTask(ns, "open-granted");
+    GrantedDarFixture fixture = createGrantedDarFixture(ns, "open-granted");
 
     ListResponse<Task> open =
         SdkClients.adminClient()
             .tasks()
-            .listWithFilters(Map.of("statusGroup", "open", "limit", "1000"));
+            .listWithFilters(
+                Map.of("statusGroup", "open", "aboutEntity", fixture.aboutEntityFqn()));
 
     assertNotNull(open);
     assertFalse(
-        open.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        open.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
         "statusGroup=open must NOT include Granted DAR-shaped tasks — the reported bug");
   }
 
   @Test
   void testStatusGroupActive_stillIncludesGrantedForLiveAccessLookup(TestNamespace ns) {
-    Task granted = createGrantedDarTask(ns, "active-granted");
+    GrantedDarFixture fixture = createGrantedDarFixture(ns, "active-granted");
 
     ListResponse<Task> active =
         SdkClients.adminClient()
             .tasks()
-            .listWithFilters(Map.of("statusGroup", "active", "limit", "1000"));
+            .listWithFilters(
+                Map.of("statusGroup", "active", "aboutEntity", fixture.aboutEntityFqn()));
 
     assertNotNull(active);
     assertTrue(
-        active.getData().stream().anyMatch(t -> t.getId().equals(granted.getId())),
+        active.getData().stream().anyMatch(t -> t.getId().equals(fixture.task().getId())),
         "statusGroup=active must still include Granted — useDataAccessRequest depends on it");
+  }
+
+  /**
+   * Independent guard on the {@code getTaskCountSummary} CASE arms. The row-aware buckets in
+   * {@link org.openmetadata.service.jdbi3.ListFilter#buildTaskStatusGroupCondition} and the
+   * count-summary SQL in {@link
+   * org.openmetadata.service.jdbi3.CollectionDAO.TaskDAO#getTaskCountSummary} are two
+   * hand-maintained SQL sites. The other DAR-Granted tests here exercise the first site — this
+   * one exercises the second so a divergence between the two cannot leave list-view and
+   * tab-count answers inconsistent while every other test passes. Scoping via {@code
+   * aboutEntity} keeps the count deterministic even with shared-testcontainer residue.
+   */
+  @Test
+  void testGetCount_DarGrantedLandsInCompletedAndPreservesTotalInvariant(TestNamespace ns) {
+    GrantedDarFixture fixture = createGrantedDarFixture(ns, "count-granted");
+
+    TaskCount count =
+        SdkClients.adminClient().tasks().getCount(null, null, fixture.aboutEntityFqn());
+
+    assertNotNull(count);
+    assertEquals(
+        1,
+        count.getTotal(),
+        "Fresh table scope should return exactly the one DAR-Granted task just created");
+    assertEquals(
+        1,
+        count.getCompleted(),
+        "DAR + Granted must land in completedCount (GitHub-issue-closed model)");
+    assertEquals(0, count.getOpen(), "DAR + Granted must not double-count into openCount");
+    assertEquals(
+        1, count.getGranted(), "Standalone grantedCount metric should still bump for reporting");
+    assertEquals(
+        count.getTotal(),
+        count.getOpen() + count.getCompleted(),
+        "openCount + completedCount = total invariant must hold across the new Granted CASE arm");
   }
 }
