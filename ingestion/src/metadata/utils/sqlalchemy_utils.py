@@ -66,6 +66,15 @@ def get_all_column_comments(self, connection, query):
     per-table catalog join while keeping the memory footprint bounded by the number
     of commented columns.
 
+    Scope and bound: this is a complete per-database lookup table, not a
+    demand-filled cache -- ``get_columns`` runs for every table and must be able to
+    resolve any commented column, so the whole result set stays resident for that
+    database's reflection. It is bounded by lifetime rather than by eviction: the
+    dict is rebuilt and replaced wholesale when the database changes (see the
+    ``current_db`` check in ``get_column_comment_wrapper``), so nothing accumulates
+    across databases. Size eviction is deliberately not used, as dropping an entry
+    would silently omit a column comment that exists in the catalog.
+
     Keys are lower-cased on both storage and lookup: the bulk query returns the
     catalog-original case from ``v_catalog.comments`` while the reflection wrapper
     is called with the un-normalized ``schema``/``table_name`` arguments, so
