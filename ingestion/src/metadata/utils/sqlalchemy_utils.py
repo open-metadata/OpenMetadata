@@ -55,6 +55,12 @@ def get_all_column_comments(self, connection, query):
     row), so bulk-loading them once and caching by (schema, table, column) avoids a
     per-table catalog join while keeping the memory footprint bounded by the number
     of commented columns.
+
+    Keys are lower-cased on both storage and lookup: the bulk query returns the
+    catalog-original case from ``v_catalog.comments`` while the reflection wrapper
+    is called with the un-normalized ``schema``/``table_name`` arguments, so
+    mixed-case identifiers would otherwise miss the cache and silently drop
+    comments that actually exist.
     """
     self.all_column_comments: Dict[Tuple[str, str, str], str] = {}  # noqa: UP006
     self.current_db: str = connection.engine.url.database
@@ -62,14 +68,23 @@ def get_all_column_comments(self, connection, query):
     for row in result:
         row_dict = {k.lower(): v for k, v in dict(row._mapping).items()}
         self.all_column_comments[
-            (row_dict["schema"], row_dict["table_name"], row_dict["column_name"])
+            (
+                (row_dict["schema"] or "").lower(),
+                (row_dict["table_name"] or "").lower(),
+                (row_dict["column_name"] or "").lower(),
+            )
         ] = row_dict["column_comment"]
 
 
 def get_column_comment_wrapper(self, connection, query, table_name, column_name, schema=None):
     if not hasattr(self, "all_column_comments") or self.current_db != connection.engine.url.database:
         self.get_all_column_comments(connection, query)
-    return self.all_column_comments.get((schema, table_name, column_name))
+    key = (
+        (schema or "").lower(),
+        (table_name or "").lower(),
+        (column_name or "").lower(),
+    )
+    return self.all_column_comments.get(key)
 
 
 @reflection.cache

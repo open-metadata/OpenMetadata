@@ -143,6 +143,22 @@ def test_bulk_comment_query_runs_once_across_tables():
     assert _comment_query_count(connection) == 1
 
 
+def test_comment_lookup_is_case_insensitive():
+    # v_catalog.comments returns catalog-original case, while get_columns is
+    # reflected with mixed-case schema/table arguments. Keys are normalized to
+    # lowercase on both sides so the comment is not silently dropped.
+    dialect = _new_dialect()
+    connection = _make_connection(
+        columns_by_table={"t1": [_column_row("MyCol")]},
+        comment_rows=[_comment_row("public", "t1", "mycol", "case-folded comment")],
+    )
+
+    columns = list(dialect.get_columns(connection, "T1", schema="Public"))
+    comment_by_name = {c["name"]: c["comment"] for c in columns}
+
+    assert comment_by_name["MyCol"] == "case-folded comment"
+
+
 def test_get_columns_query_does_not_join_comments():
     dialect = _new_dialect()
     connection = _make_connection(
