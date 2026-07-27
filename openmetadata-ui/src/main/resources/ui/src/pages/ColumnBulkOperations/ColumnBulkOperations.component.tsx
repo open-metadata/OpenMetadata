@@ -34,7 +34,7 @@ const ColumnBulkOperations = () => {
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
       variant={isAiMode ? 'compact' : 'default'}>
-      <div>
+      <div className="tw:flex tw:flex-col tw:gap-4">
         {isAiMode ? (
           <HeaderShell
             breadcrumb={
@@ -44,7 +44,8 @@ const ColumnBulkOperations = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-5"
+            className="tw:mb-0!"
+            padding="comfortable"
             subtitle={t('message.column-bulk-operations-subtitle')}
             title={t('label.column-bulk-operations')}
             variant="gradient"
