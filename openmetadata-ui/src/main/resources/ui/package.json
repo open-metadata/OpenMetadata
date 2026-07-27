@@ -40,7 +40,6 @@
     "token-test": "node scripts/design-tokens/scanner.test.js",
     "tw-audit": "node scripts/tw-audit.js",
     "tw-audit:report": "node scripts/tw-audit.js --report",
-    "tw-migrate": "node scripts/tw-migrate.js --write",
     "tw-guard": "node scripts/tw-deprecation-guard.js",
     "lint:playwright": "yarn lint:base './playwright/**/*.{ts,tsx,js,jsx}'",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",

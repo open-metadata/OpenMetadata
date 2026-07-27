@@ -267,7 +267,7 @@ yarn tw-guard    # CI: fails on NEW antd imports or NEW .less files
 ```
 
 Supporting: `yarn tw-audit:report` (full inventory + which token each raw hex
-matches), `yarn tw-migrate` (codemod exact-match arbitrary values → utilities).
+matches).
 
 ### Legacy styling: LESS/CSS `--om-*` tokens (deprecated Antd/Less stack)
 
@@ -284,14 +284,15 @@ component you are touching.
 
 **Use only tokens from
 [`openmetadata-ui/src/main/resources/ui/src/styles/tokens.css`](openmetadata-ui/src/main/resources/ui/src/styles/tokens.css)**
-(the three-layer design token file: Layer 1 `--ds-*` primitives → Layer 2
-`--om-*` aliases → components reference Layer 2). In any `.less`/`.css`
-component style, reference `var(--om-*)` — never a raw hex, `rgb()`/`rgba()`,
-px spacing, raw font-size/weight, border-radius, box-shadow color, z-index, or
-transition duration. If a value has no token, add it to `tokens.css` (Layer 1 +
-Layer 2), not to the component. Existing LESS `@variable` usage
-(`variables.less`) is still allowed as the legacy bridge layer; prefer
-`var(--om-*)` for new work.
+(the two-layer design token file: Layer 1 = upstream `globals.css` primitives →
+Layer 2 = `--om-*` aliases that reference them, which components use). In any
+`.less`/`.css` component style, reference `var(--om-*)` — never a raw hex,
+`rgb()`/`rgba()`, px spacing, raw font-size/weight, border-radius, box-shadow
+color, z-index, or transition duration. If a value has no token, add it to
+`tokens.css` as an `--om-*` alias (referencing the upstream `globals.css` token,
+or holding the raw value if there is no upstream equivalent), not to the
+component. Existing LESS `@variable` usage (`variables.less`) is still allowed as
+the legacy bridge layer; prefer `var(--om-*)` for new work.
 
 **Run the token audit before committing — zero errors required:**
 

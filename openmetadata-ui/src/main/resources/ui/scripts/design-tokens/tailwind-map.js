@@ -48,9 +48,15 @@ const COLOR_PREFIXES = [
   'from',
   'via',
   'to',
-  'ring', // banned separately, but map so the audit can still suggest
-  'shadow',
+  'ring', // eslint-banned; surfaced as a warning (→ border/outline), never auto-fixed
+  'shadow', // box-shadow colour; surfaced as a warning (→ shadow token), never auto-fixed
 ];
+
+// Colour-bearing prefixes that must NOT be auto-fixed to `tw:<prefix>-<palette>`:
+// `tw:ring-*` is eslint-banned (use border/outline) and an arbitrary `tw:shadow`
+// colour should use an elevation token. The audit still surfaces them — as a
+// warning with a manual hint — but never as an auto-applicable error.
+const BANNED_COLOR_PREFIXES = new Set(['ring', 'shadow']);
 
 const SPACING_PREFIXES = [
   'p', 'px', 'py', 'pt', 'pr', 'pb', 'pl', 'ps', 'pe',
@@ -90,8 +96,6 @@ function classifyPrefix(prefix) {
     kind = 'spacing';
   } else if (RADIUS_PREFIXES.includes(prefix)) {
     kind = 'radius';
-  } else if (prefix === 'text' ) {
-    kind = 'color';
   } else if (SIZING_PREFIXES.has(prefix)) {
     kind = 'sizing';
   }
@@ -148,6 +152,7 @@ module.exports = {
   resolveSpacingUtility,
   resolveRadiusUtility,
   COLOR_PREFIXES,
+  BANNED_COLOR_PREFIXES,
   SPACING_PREFIXES,
   RADIUS_PREFIXES,
   SIZING_PREFIXES,

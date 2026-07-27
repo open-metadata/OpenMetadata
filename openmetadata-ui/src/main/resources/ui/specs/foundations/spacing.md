@@ -49,9 +49,10 @@ margin-top: calc(-1 * var(--om-space-8)); /* was: -8px */
 
 ## Layers
 
-- **Layer 1** `--ds-space-<n>: <n>px` (raw values).
-- **Layer 2** `--om-space-<n>: var(--ds-space-<n>, <n>px)`.
-- **Layer 3** `padding: var(--om-space-16);`
+- **Layer 1** `globals.css` upstream (Tailwind's `--spacing` scale). Spacing has
+  no per-step upstream var, so the project tokens hold the raw px value.
+- **Layer 2** `--om-space-<n>: <n>px` (the raw value lives here).
+- **Components** `padding: var(--om-space-16);`
 
 ## Do / Don't
 

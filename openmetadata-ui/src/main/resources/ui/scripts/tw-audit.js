@@ -104,7 +104,9 @@ function printSummary(findings, scanned, t, lessCount) {
   }
   process.stdout.write(`\n${C.bold('Migration debt (deprecated stacks)')}\n`);
   process.stdout.write(`  ${C.yellow('Antd')}: ${t.antdFiles.size} files import 'antd'\n`);
-  process.stdout.write(`  ${C.yellow('Less')}: ${lessCount} .less files\n`);
+  if (lessCount !== null) {
+    process.stdout.write(`  ${C.yellow('Less')}: ${lessCount} .less files\n`);
+  }
   const topFiles = Object.entries(t.byFile).sort((a, b) => b[1] - a[1]).slice(0, 12);
   if (topFiles.length) {
     process.stdout.write(`\n${C.bold('Files with the most errors')}\n`);
@@ -148,7 +150,7 @@ function main() {
     findings.push(...scanText(fs.readFileSync(file, 'utf8'), rel));
   }
   const t = tally(findings);
-  const lessCount = args.some((a) => !a.startsWith('-')) ? -1 : countLessFiles();
+  const lessCount = args.some((a) => !a.startsWith('-')) ? null : countLessFiles();
 
   if (args.includes('--json')) {
     process.stdout.write(JSON.stringify({ findings, scanned: files.length }, null, 2) + '\n');

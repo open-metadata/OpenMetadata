@@ -60,8 +60,6 @@ eslint rule. Full rationale: [../../docs/colors.md §2.3.1](../../docs/colors.md
 | No new `antd` import / new `.less` file | `yarn tw-guard` (error) |
 | No `tw:ring-*` | eslint `no-restricted-syntax` (error) |
 
-Exact-match arbitrary values are auto-fixable: `yarn tw-migrate`.
-
 ## Cross-references
 
 - [Utility reference](../tokens/tailwind-utility-reference.md) · [../README.md](../README.md)

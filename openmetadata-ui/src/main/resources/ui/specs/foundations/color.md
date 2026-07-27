@@ -1,6 +1,6 @@
 # Color
 
-Colors are tokenized in three layers. Components reference **Layer 2 semantic
+Colors are tokenized in two layers. Components reference **Layer 2 semantic
 tokens** (`--om-color-*`); raw hex/rgb/rgba are not allowed in component styles
 and are flagged as **errors** by `yarn token-audit`.
 
@@ -31,12 +31,13 @@ only to hold migrated one-off values until they can be re-expressed).
 
 ## Layers
 
-- **Layer 1** `--ds-color-*` — maps to the upstream semantic tokens
-  (`--color-text-primary`, `--color-bg-primary`, …) from `globals.css`, with a
-  raw fallback. Also the full palette `--ds-color-{scale}-{step}`.
-- **Layer 2** `--om-color-*` — semantic aliases + full palette passthrough +
+- **Layer 1** `globals.css` — the upstream semantic tokens
+  (`--color-text-primary`, `--color-bg-primary`, …) and full palette
+  (`--color-{scale}-{step}`) from `@openmetadata/ui-core-components`. Source of truth.
+- **Layer 2** `--om-color-*` — project aliases that reference the matching
+  Layer 1 token with a raw fallback: semantic aliases + full palette passthrough +
   `--om-legacy-color-*` (exact migrated values). **Components use these.**
-- **Layer 3** — components: `color: var(--om-color-text-primary);`
+- **Components** — `color: var(--om-color-text-primary);`
 
 ## Palette scales
 
@@ -53,7 +54,8 @@ system: `brand`, `error`, `warning`, `success`, `gray`, `gray-blue`,
 
 Semantic tokens flip automatically: the upstream `--color-*` custom properties
 are redefined under `.dark-mode` in `globals.css`, and `--om-color-*` inherit
-that through Layer 1. **This is the reason to use semantic tokens** — a palette
+that by referencing `--color-*` directly. **This is the reason to use semantic
+tokens** — a palette
 token like `--om-color-gray-900` is a fixed color and will not adapt. See
 [`../../docs/colors.md`](../../docs/colors.md) for the full dark-mode guide.
 

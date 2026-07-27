@@ -59,7 +59,16 @@ function classifyArbitrary(prefix, value) {
   const kind = map.classifyPrefix(prefix);
   let finding = null;
 
-  if (kind === 'color') {
+  if (kind === 'color' && map.BANNED_COLOR_PREFIXES.has(prefix)) {
+    finding = {
+      category: 'banned-arbitrary-color',
+      severity: SEVERITY.WARNING,
+      suggestion:
+        prefix === 'ring'
+          ? 'use tw:border-* / tw:outline-* (tw:ring-* is banned)'
+          : 'use a tw:shadow-* elevation token',
+    };
+  } else if (kind === 'color') {
     const util = map.resolveColorUtility(prefix, value);
     finding = util
       ? { category: 'arbitrary-color', severity: SEVERITY.ERROR, suggestion: util }

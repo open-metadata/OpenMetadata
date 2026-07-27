@@ -144,7 +144,7 @@ const Z_LADDER = {
 // Registry — records tokens actually referenced during a scan/migration.
 // ---------------------------------------------------------------------------
 const registry = {
-  paletteColors: new Map(), // omName -> { dsName, upstreamVar, fallback }
+  paletteColors: new Map(), // omName -> { upstreamVar, fallback }
   legacyColors: new Map(), // omName -> raw value
   spacing: new Map(), // px(number) -> true
   radius: new Map(), // suffix or px -> value
@@ -172,9 +172,6 @@ function omPaletteName(upstreamVar) {
   // --color-gray-900 -> --om-color-gray-900
   return upstreamVar.replace(/^--color-/, '--om-color-');
 }
-function dsPaletteName(upstreamVar) {
-  return upstreamVar.replace(/^--color-/, '--ds-color-');
-}
 
 /**
  * @param {string} raw a hex or rgb()/rgba() literal
@@ -188,7 +185,6 @@ function resolveColor(raw) {
       const upstreamVar = UPSTREAM[canon];
       const omName = omPaletteName(upstreamVar);
       registry.paletteColors.set(omName, {
-        dsName: dsPaletteName(upstreamVar),
         upstreamVar,
         fallback: canon.startsWith('#') ? canon : rawFromCanon(canon),
       });
@@ -369,27 +365,22 @@ function sortByNum(map) {
 
 function emitPaletteBlock() {
   // Full upstream palette (stable API) so any --om-color-<scale> resolves,
-  // regardless of whether the codebase currently references it.
+  // regardless of whether the codebase currently references it. Each alias
+  // references the upstream palette token in globals.css with a raw fallback.
   const entries = Object.entries(UPSTREAM)
     .map(([canon, upstreamVar]) => ({
       canon,
       upstreamVar,
-      dsName: dsPaletteName(upstreamVar),
       omName: omPaletteName(upstreamVar),
     }))
     .sort((a, b) => a.omName.localeCompare(b.omName));
-  const l1 = entries
-    .map((e) => `  ${e.dsName}: var(${e.upstreamVar}, ${e.canon});`)
-    .join('\n');
-  const l2 = entries
-    .map((e) => `  ${e.omName}: var(${e.dsName});`)
+  const lines = entries
+    .map((e) => `  ${e.omName}: var(${e.upstreamVar}, ${e.canon});`)
     .join('\n');
   return (
-    `  /* Palette passthrough — Layer 1 references upstream globals.css with a\n` +
-    `     raw fallback; Layer 2 aliases are what components reference. */\n` +
-    l1 +
-    '\n\n' +
-    l2
+    `  /* Palette passthrough — --om-* aliases reference the upstream palette in\n` +
+    `     globals.css with a raw fallback. Components reference these. */\n` +
+    lines
   );
 }
 

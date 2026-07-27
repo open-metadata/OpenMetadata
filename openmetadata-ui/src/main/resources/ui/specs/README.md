@@ -19,17 +19,17 @@ either stack: use a `tw:` token utility (or `var(--color-*)`) in TSX, and
 ## How the (legacy) LESS system is layered
 
 ```
-Layer 1  --ds-*   Upstream primitives. Reference the design system
-                  (openmetadata-ui-core-components/.../globals.css) with a raw
-                  fallback. The ONLY place raw values live.
-Layer 2  --om-*   Project aliases. Reference Layer 1 with a fallback. Components
-                  reference ONLY these.
-Layer 3           Components (.less / .css). Reference Layer 2 via var(--om-*).
-                  Never raw hex / px / etc.
+Layer 1  globals.css  Upstream primitives (--color-*, --radius-*, --text-*,
+                      --shadow-*, semantic --color-{text,bg,...}) from
+                      @openmetadata/ui-core-components. The source of truth.
+Layer 2  --om-*       Project aliases in tokens.css. Reference the matching
+                      Layer 1 token with a raw fallback (off-scale / legacy
+                      values hold the raw value directly). Components use these.
+Components (.less/.css)  Reference Layer 2 via var(--om-*). Never raw hex / px.
 ```
 
 The legacy LESS bridge — [`src/styles/variables.less`](../src/styles/variables.less)
-— is also a token-definition file (Layer 1/2). Existing `@variable` usage is not
+— is also a token-definition file. Existing `@variable` usage is not
 a violation; new work should prefer `var(--om-*)`.
 
 ## Contents
@@ -38,8 +38,9 @@ a violation; new work should prefer `var(--om-*)`.
 | --- | --- |
 | **Tailwind (go-forward)** ✅ | [foundations/tailwind.md](foundations/tailwind.md) |
 | **Tailwind utilities** | [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) |
-| UntitledUI components | [components/](components/) |
+| **UntitledUI components** ✅ | [untitled/](untitled/README.md) |
 | _Legacy LESS below_ | |
+| Legacy app components | [components/](components/) |
 | Colors | [foundations/color.md](foundations/color.md) |
 | Spacing | [foundations/spacing.md](foundations/spacing.md) |
 | Typography | [foundations/typography.md](foundations/typography.md) |
@@ -55,7 +56,6 @@ a violation; new work should prefer `var(--om-*)`.
 | --- | --- |
 | `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded Tailwind values. Exit 1 on error. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
-| `yarn tw-migrate` | Codemod exact-match arbitrary `tw:` values → utilities. |
 | `yarn tw-guard` | Fails on NEW `antd` imports / NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory of every value + its suggested token. |
@@ -74,5 +74,6 @@ Warnings: uncommon values (fractional off-grid sizes, exotic durations).
 3. Prefer semantic tokens (`--om-color-text-primary`, `--om-space-16`) over
    palette/legacy tokens where one fits.
 4. Run `yarn token-audit` before committing. **Zero errors required.**
-5. If a needed value has no token, add it to `tokens.css` (Layer 1 + Layer 2),
-   not to the component.
+5. If a needed value has no token, add it to `tokens.css` as an `--om-*` alias
+   (referencing the upstream `globals.css` token, or holding the raw value when
+   there is no upstream equivalent), not to the component.
