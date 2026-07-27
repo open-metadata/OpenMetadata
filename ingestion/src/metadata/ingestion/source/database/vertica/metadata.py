@@ -101,13 +101,17 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
         dtype = row.data_type.lower()
         default = row.column_default
         nullable = row.is_nullable
+        # Key the comment lookup by the row's own schema rather than the reflection
+        # argument: when get_columns is called with schema=None the query spans all
+        # schemas, so only the per-row table_schema aligns with the cache key (the
+        # old per-table join matched schema-to-schema, and this preserves that).
         comment = get_column_comment_wrapper(
             self,
             connection,
             query=VERTICA_COLUMN_COMMENTS,
             table_name=table_name,
             column_name=name,
-            schema=schema,
+            schema=row.table_schema,
         )
 
         column_info = self._get_column_info(  # pylint: disable=protected-access

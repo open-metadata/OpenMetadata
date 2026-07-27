@@ -44,13 +44,14 @@ from metadata.utils.sqlalchemy_utils import (  # noqa: E402
 )
 
 
-def _column_row(name, data_type="varchar", default=None, nullable=True):
+def _column_row(name, data_type="varchar", default=None, nullable=True, schema="public"):
     """Row shape returned by VERTICA_GET_COLUMNS (attribute access)."""
     return SimpleNamespace(
         column_name=name,
         data_type=data_type,
         column_default=default,
         is_nullable=nullable,
+        table_schema=schema,
     )
 
 
@@ -149,7 +150,7 @@ def test_comment_lookup_is_case_insensitive():
     # lowercase on both sides so the comment is not silently dropped.
     dialect = _new_dialect()
     connection = _make_connection(
-        columns_by_table={"t1": [_column_row("MyCol")]},
+        columns_by_table={"t1": [_column_row("MyCol", schema="Public")]},
         comment_rows=[_comment_row("public", "t1", "mycol", "case-folded comment")],
     )
 
@@ -157,6 +158,49 @@ def test_comment_lookup_is_case_insensitive():
     comment_by_name = {c["name"]: c["comment"] for c in columns}
 
     assert comment_by_name["MyCol"] == "case-folded comment"
+
+
+def test_get_columns_resolves_comments_when_schema_is_none():
+    # When reflected with schema=None, VERTICA_GET_COLUMNS spans every schema, so
+    # the comment key must be taken from each row's own table_schema rather than
+    # the (missing) argument, otherwise comments are silently dropped.
+    dialect = _new_dialect()
+    connection = _make_connection(
+        columns_by_table={"t1": [_column_row("c1", schema="realschema")]},
+        comment_rows=[_comment_row("realschema", "t1", "c1", "the comment")],
+    )
+
+    columns = list(dialect.get_columns(connection, "t1", schema=None))
+    comment_by_name = {c["name"]: c["comment"] for c in columns}
+
+    assert comment_by_name["c1"] == "the comment"
+
+
+def test_bulk_population_is_atomic():
+    # The dialect is shared across the worker threads that reflect schemas in
+    # parallel, so the cache must be published in a single assignment: a reader
+    # must never observe a half-built dict. We assert the dialect does not expose
+    # the new dict until every row has been consumed.
+    dialect = _new_dialect()
+    observed = []
+
+    def rows():
+        # Produced lazily as the loop iterates. At this point the cache must still
+        # be built in a local variable, not yet assigned onto the dialect.
+        observed.append(getattr(dialect, "all_column_comments", None))
+        yield _comment_row("public", "t1", "c1", "c1 comment")
+        yield _comment_row("public", "t1", "c2", "c2 comment")
+
+    connection = MagicMock()
+    connection.engine.url.database = "db"
+    connection.execute.return_value = rows()
+
+    get_all_column_comments(dialect, connection, VERTICA_COLUMN_COMMENTS)
+
+    # Nothing was published while rows were still being read (atomic publish).
+    assert observed == [None]
+    assert dialect.all_column_comments[("public", "t1", "c1")] == "c1 comment"
+    assert dialect.all_column_comments[("public", "t1", "c2")] == "c2 comment"
 
 
 def test_get_columns_query_does_not_join_comments():

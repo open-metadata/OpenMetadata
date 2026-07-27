@@ -26,7 +26,8 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
           column_name,
           data_type,
           column_default,
-          is_nullable
+          is_nullable,
+          table_schema
         FROM v_catalog.columns
         WHERE lower(table_name) = '{table}'
           AND {schema_condition}
@@ -35,7 +36,8 @@ VERTICA_GET_COLUMNS = textwrap.dedent(
           column_name,
           data_type,
           '' AS column_default,
-          true AS is_nullable
+          true AS is_nullable,
+          table_schema
         FROM v_catalog.view_columns
         WHERE lower(table_name) = '{table}'
           AND {schema_condition}

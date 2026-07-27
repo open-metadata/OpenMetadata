@@ -61,30 +61,44 @@ def get_all_column_comments(self, connection, query):
     is called with the un-normalized ``schema``/``table_name`` arguments, so
     mixed-case identifiers would otherwise miss the cache and silently drop
     comments that actually exist.
+
+    The dialect is shared across the worker threads that reflect schemas in
+    parallel, so the fully-built dict is published in a single assignment: a
+    concurrent reader sees either the previous cache or the complete new one,
+    never a half-populated dict. ``current_db`` is assigned last so the wrapper's
+    freshness check only passes once the data is in place.
     """
-    self.all_column_comments: Dict[Tuple[str, str, str], str] = {}  # noqa: UP006
-    self.current_db: str = connection.engine.url.database
+    all_column_comments: Dict[Tuple[str, str, str], str] = {}  # noqa: UP006
+    current_db = connection.engine.url.database
     result = connection.execute(text(query) if isinstance(query, str) else query)
     for row in result:
         row_dict = {k.lower(): v for k, v in dict(row._mapping).items()}
-        self.all_column_comments[
+        all_column_comments[
             (
                 (row_dict["schema"] or "").lower(),
                 (row_dict["table_name"] or "").lower(),
                 (row_dict["column_name"] or "").lower(),
             )
         ] = row_dict["column_comment"]
+    # Atomic publish (see docstring): data first, freshness flag last.
+    self.all_column_comments = all_column_comments
+    self.current_db = current_db
 
 
 def get_column_comment_wrapper(self, connection, query, table_name, column_name, schema=None):
-    if not hasattr(self, "all_column_comments") or self.current_db != connection.engine.url.database:
+    # Snapshot the shared attributes once. getattr avoids racing with the atomic
+    # publish above (all_column_comments is assigned before current_db, so a reader
+    # in that window harmlessly sees an unset current_db and rebuilds).
+    cache = getattr(self, "all_column_comments", None)
+    if cache is None or getattr(self, "current_db", None) != connection.engine.url.database:
         self.get_all_column_comments(connection, query)
+        cache = self.all_column_comments
     key = (
         (schema or "").lower(),
         (table_name or "").lower(),
         (column_name or "").lower(),
     )
-    return self.all_column_comments.get(key)
+    return cache.get(key)
 
 
 @reflection.cache
