@@ -967,11 +967,20 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await waitForAllLoadersToDisappear(adminPage);
 
-    // Remove the Description widget to create an unsaved change
-    await adminPage
-      .locator('#KnowledgePanel\\.Description')
-      .getByTestId('remove-widget-button')
-      .click();
+    // Remove the Description widget to create an unsaved change. The remove
+    // click intermittently doesn't register while react-grid-layout is still
+    // settling (the button takes focus but the widget stays), so retry until
+    // the widget is actually gone — otherwise the layout stays pristine and the
+    // save button never enables.
+    const descriptionWidget = adminPage.locator(
+      '#KnowledgePanel\\.Description'
+    );
+    await expect(async () => {
+      if (await descriptionWidget.isVisible()) {
+        await descriptionWidget.getByTestId('remove-widget-button').click();
+      }
+      await expect(descriptionWidget).toBeHidden({ timeout: 2000 });
+    }).toPass({ timeout: 15000, intervals: [500, 1000, 2000] });
 
     // Wait for the dirty state to propagate so NavigationBlocker has
     // installed its pushState override before we click cancel — otherwise
