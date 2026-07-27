@@ -38,6 +38,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.static.unique_count import VALUE_COUNT_ALIAS
 from metadata.profiler.orm.functions.unique_count import _unique_count_dimensional_cte
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -75,7 +76,7 @@ class ColumnValuesToBeUniqueValidator(
         """
         count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
-            select(count.label(column.name)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")  # type: ignore
+            select(count.label(VALUE_COUNT_ALIAS)).select_from(self.runner.dataset).group_by(column).cte("grouped_cte")  # type: ignore
         )
         unique_count = Metrics.uniqueCount.value(column).query(
             sample=self.runner.dataset,
@@ -90,7 +91,7 @@ class ColumnValuesToBeUniqueValidator(
 
             row = self.runner._select_from_dataset(
                 grouped_cte,
-                func.sum(grouped_cte.c[column.name]).label(Metrics.valuesCount.name),
+                func.sum(grouped_cte.c[VALUE_COUNT_ALIAS]).label(Metrics.valuesCount.name),
                 unique_count.label(Metrics.uniqueCount.name),
                 query_group_by_=query_group_by_,
             ).first()

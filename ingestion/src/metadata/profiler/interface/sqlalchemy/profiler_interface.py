@@ -54,6 +54,7 @@ from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.static.unique_count import VALUE_COUNT_ALIAS
 from metadata.profiler.metrics.system.system import System, SystemMetricsRegistry
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
@@ -290,7 +291,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 # hotfix to handle transition of unique count implementation
                 sample_column = sample.__table__.c[column.key] if hasattr(sample, "__table__") else sample.c[column.key]
                 subquery = (
-                    self.session.query(Count(sample_column).fn().label(column.name))
+                    self.session.query(Count(sample_column).fn().label(VALUE_COUNT_ALIAS))
                     .select_from(sample)
                     .group_by(sample_column)
                     .subquery()
