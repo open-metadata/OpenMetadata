@@ -82,6 +82,7 @@ import { ELEMENT_DELETE_STATE } from '../../constants/Lineage.constants';
 import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { LineageBand } from '../../generated/api/lineage/lineageScene';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { Table } from '../../generated/entity/data/table';
 import { LineageLayer } from '../../generated/settings/settings';
@@ -240,6 +241,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     isColumnLevelLineage,
     selectedColumn,
     setSelectedColumn,
+    sceneBand,
     setIsRepositioning,
     isDQEnabled,
     bumpLineageMutationTick,
@@ -1056,7 +1058,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   useEffect(() => {
-    if (!selectedColumn) {
+    if (!selectedColumn || sceneBand === LineageBand.Field) {
       return;
     }
 
@@ -1068,17 +1070,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setTracedColumns(connectedColumnEdges);
     setTracedNodes(new Set());
     setSelectedEdge(undefined);
-  }, [selectedColumn, columnEdges]);
+  }, [selectedColumn, columnEdges, sceneBand]);
 
   const onColumnMouseEnter = useCallback(
     (column: string) => {
+      if (sceneBand === LineageBand.Field) {
+        return;
+      }
       const { connectedColumnEdges } = getAllTracedColumnEdge(
         column,
         columnEdges
       );
       setTracedColumns(connectedColumnEdges);
     },
-    [columnEdges]
+    [columnEdges, sceneBand]
   );
 
   const removeEdgeHandler = async (
@@ -2269,7 +2274,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal
-            loading={loading}
+            loading={sceneBand === undefined ? loading : status === 'waiting'}
             selectedEdge={selectedEdge}
             showAddEdgeModal={showAddEdgeModal}
             onModalCancel={handleModalCancel}

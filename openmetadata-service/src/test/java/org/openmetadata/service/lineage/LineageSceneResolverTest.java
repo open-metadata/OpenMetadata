@@ -16,6 +16,7 @@ package org.openmetadata.service.lineage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,7 +25,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -33,12 +36,14 @@ import org.openmetadata.schema.api.lineage.LineageLens;
 import org.openmetadata.schema.api.lineage.LineageLevelKind;
 import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.lineage.LineageSceneEdge;
+import org.openmetadata.schema.api.lineage.LineageSceneField;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -524,6 +529,26 @@ class LineageSceneResolverTest {
   }
 
   @Test
+  void rootLineageParticipantQueryIncludesDomainAccessClause() {
+    SubjectContext subjectContext =
+        new SubjectContext(
+            new User()
+                .withName("restricted-user")
+                .withRoles(List.of(new EntityReference().withName("DomainOnlyAccessRole")))
+                .withDomains(List.of(new EntityReference().withFullyQualifiedName("Engineering"))),
+            null);
+
+    JsonNode must =
+        JsonUtils.readTree(LineageSceneResolver.rootLineageParticipantQuery("", subjectContext))
+            .at("/query/bool/must");
+
+    assertEquals(2, must.size());
+    assertEquals("upstreamLineage.docId", must.get(0).at("/exists/field").asText());
+    assertEquals(
+        "Engineering", must.get(1).at("/bool/should/1/term/domains.fullyQualifiedName").asText());
+  }
+
+  @Test
   void sceneCacheKeyIncludesTraversalDepths() {
     LineageSceneCache.Key shallow =
         new LineageSceneCache.Key(LineageLens.SERVICE, LineageBand.LAYER, 1, 1, 100, "", false);
@@ -595,6 +620,91 @@ class LineageSceneResolverTest {
 
     assertEquals("Curated orders", scene.getEdges().get(0).getDescription());
     assertEquals(pipeline, scene.getEdges().get(0).getPipeline());
+  }
+
+  @Test
+  void assetSceneExpandsTemporaryLineageTableHops() {
+    String rawOrders = "sample_data.ecommerce_db.shopify.raw_order";
+    String factOrders = "sample_data.ecommerce_db.shopify.fact_orders";
+    EsLineageData concreteEdge =
+        edge("temp-lineage", rawOrders, Entity.TABLE, factOrders, Entity.TABLE)
+            .withTempLineageTables(
+                List.of(
+                    new TempLineageTable()
+                        .withFromEntity(rawOrders)
+                        .withToEntity("tmp_order_staging"),
+                    new TempLineageTable()
+                        .withFromEntity("tmp_order_staging")
+                        .withToEntity("tmp_order_enriched"),
+                    new TempLineageTable()
+                        .withFromEntity("tmp_order_enriched")
+                        .withToEntity(factOrders)));
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(rawOrders, "sample_data", "ecommerce_db", "shopify", List.of("id")),
+                table(factOrders, "sample_data", "ecommerce_db", "shopify", List.of("id"))),
+            List.of(concreteEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            rawOrders, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    Map<String, String> nodeIds = nodeIdsByFqn(scene);
+    Set<String> sceneEdges =
+        scene.getEdges().stream()
+            .map(edge -> edge.getFrom() + "->" + edge.getTo())
+            .collect(Collectors.toSet());
+
+    assertEquals(4, scene.getNodes().size());
+    assertEquals(3, scene.getEdges().size());
+    assertTrue(
+        Boolean.TRUE.equals(
+            nodeByFqn(scene, "tmp_order_staging").getSourceEntity().get("isTempTable")));
+    assertTrue(
+        Boolean.TRUE.equals(
+            nodeByFqn(scene, "tmp_order_enriched").getSourceEntity().get("isTempTable")));
+    assertTrue(
+        sceneEdges.contains(nodeIds.get(rawOrders) + "->" + nodeIds.get("tmp_order_staging")));
+    assertTrue(
+        sceneEdges.contains(
+            nodeIds.get("tmp_order_staging") + "->" + nodeIds.get("tmp_order_enriched")));
+    assertTrue(
+        sceneEdges.contains(nodeIds.get("tmp_order_enriched") + "->" + nodeIds.get(factOrders)));
+    assertFalse(sceneEdges.contains(nodeIds.get(rawOrders) + "->" + nodeIds.get(factOrders)));
+  }
+
+  @Test
+  void concreteEdgeIgnoresAdditionalPipelineFields() {
+    UUID pipelineId = uuid("daily-pipeline");
+    Map<String, Object> pipeline =
+        Map.of(
+            "id",
+            pipelineId.toString(),
+            "type",
+            Entity.PIPELINE,
+            "name",
+            "daily-pipeline",
+            "serviceType",
+            "Airflow");
+    EsLineageData concreteEdge =
+        edge("edge-details", ORDERS, Entity.TABLE, CUSTOMERS, Entity.TABLE).withPipeline(pipeline);
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")),
+                table(CUSTOMERS, SNOWFLAKE_SERVICE, List.of("customer_id"))),
+            List.of(concreteEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 200);
+
+    EntityReference scenePipeline = scene.getEdges().get(0).getPipeline();
+    assertNotNull(scenePipeline);
+    assertEquals(pipelineId, scenePipeline.getId());
+    assertEquals(Entity.PIPELINE, scenePipeline.getType());
+    assertEquals("daily-pipeline", scenePipeline.getName());
   }
 
   @Test
@@ -901,6 +1011,73 @@ class LineageSceneResolverTest {
     LineageSceneEdge fieldEdge = scene.getEdges().get(0);
     assertTrue(fieldEdge.getFrom().endsWith("::field::" + ORDERS + ".id"));
     assertTrue(fieldEdge.getTo().endsWith("::field::" + CUSTOMERS + ".customer_id"));
+  }
+
+  @Test
+  void fieldSceneIncludesApiEndpointRequestAndResponseSchemaFields() {
+    String endpointFqn = "api.service.collection.endpoint";
+    Map<String, Object> endpoint = asset(Entity.API_ENDPOINT, endpointFqn, "api-service", "rest");
+    endpoint.put(
+        "requestSchema", Map.of("schemaFields", List.of(column(endpointFqn, "request_id"))));
+    endpoint.put(
+        "responseSchema", Map.of("schemaFields", List.of(column(endpointFqn, "response_id"))));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            endpointFqn,
+            Entity.API_ENDPOINT,
+            LineageLens.SERVICE,
+            LineageBand.FIELD,
+            result(List.of(endpoint), List.of()),
+            200);
+
+    LineageSceneNode endpointNode = nodeByFqn(scene, endpointFqn);
+    assertEquals(
+        Set.of("request_id", "response_id"),
+        endpointNode.getFields().stream()
+            .map(LineageSceneField::getName)
+            .collect(Collectors.toSet()));
+
+    Map<String, Object> fieldPayload =
+        LineageSceneResolver.trimSourceEntity(endpoint, LineageBand.FIELD);
+    assertTrue(fieldPayload.containsKey("requestSchema"));
+    assertTrue(fieldPayload.containsKey("responseSchema"));
+  }
+
+  @Test
+  void fieldScenePrefersExactApiEndpointFieldFqnWhenSchemaFieldsShareName() {
+    String endpointFqn = "api.service.collection.endpoint";
+    String requestFieldFqn = endpointFqn + ".requestSchema.default";
+    String responseFieldFqn = endpointFqn + ".responseSchema.default";
+    Map<String, Object> endpoint = asset(Entity.API_ENDPOINT, endpointFqn, "api-service", "rest");
+    endpoint.put(
+        "requestSchema",
+        Map.of("schemaFields", List.of(column(endpointFqn + ".requestSchema", "default"))));
+    endpoint.put(
+        "responseSchema",
+        Map.of("schemaFields", List.of(column(endpointFqn + ".responseSchema", "default"))));
+
+    SearchLineageResult lineage =
+        result(
+            List.of(table(ORDERS, SNOWFLAKE_SERVICE, List.of("id")), endpoint),
+            List.of(
+                edge(
+                    "api-column-edge",
+                    ORDERS,
+                    Entity.TABLE,
+                    endpointFqn,
+                    Entity.API_ENDPOINT,
+                    new ColumnLineage()
+                        .withFromColumns(List.of(ORDERS + ".id"))
+                        .withToColumn(responseFieldFqn))));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            ORDERS, Entity.TABLE, LineageLens.SERVICE, LineageBand.FIELD, lineage, 200);
+
+    LineageSceneEdge fieldEdge = scene.getEdges().get(0);
+    assertTrue(fieldEdge.getTo().endsWith("::field::" + responseFieldFqn));
+    assertFalse(fieldEdge.getTo().endsWith("::field::" + requestFieldFqn));
   }
 
   @Test

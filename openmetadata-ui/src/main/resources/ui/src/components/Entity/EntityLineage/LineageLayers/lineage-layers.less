@@ -14,55 +14,35 @@
 @import (reference) '../../../../styles/variables.less';
 
 .lineage-layers-popover {
-  &.ant-popover-placement-right {
-    padding-left: 8px;
-  }
-
-  .ant-popover-arrow {
-    display: none;
-  }
-  .ant-popover-inner-content {
-    padding: 0;
-  }
-  .lineage-layer-button {
-    padding: 4px 12px;
-    width: 90px;
-    &.active {
-      color: @primary-color;
-      border-color: @primary-color;
-      z-index: 2;
-      background-color: @radio-button-checked-bg;
-    }
-  }
-  .layer-icon {
-    width: 20px;
-    height: 20px;
-  }
+  z-index: 13;
 }
 
-.MuiToggleButton-root.lineage-scene-layer-trigger {
-  flex-direction: row;
+.lineage-scene-layer-trigger {
   align-items: center;
+  justify-content: flex-start;
   min-width: 248px;
   min-height: 62px;
-  justify-content: flex-start;
   padding: 8px 12px;
   gap: 10px;
-  border: 1px solid @grey-200;
   border-radius: 14px;
-  background: @white;
+  background: var(--color-bg-primary);
   box-shadow: @box-shadow-base;
   text-align: left;
-  text-transform: none;
 
-  > svg:not(.lineage-scene-layer-trigger-caret) {
+  > [data-text] {
+    min-width: 0;
+    flex: 1;
+    padding: 0;
+  }
+
+  .lineage-scene-layer-trigger-icon {
     width: 42px;
     height: 42px;
     flex: 0 0 auto;
     padding: 10px;
     border-radius: 12px;
-    background-color: @radio-button-checked-bg;
-    color: @primary-color;
+    background-color: var(--color-bg-brand-primary);
+    color: var(--color-fg-brand-primary);
   }
 
   .lineage-scene-layer-trigger-label {
@@ -73,7 +53,7 @@
   }
 
   .lineage-scene-layer-trigger-eyebrow {
-    color: @grey-500;
+    color: var(--color-text-quaternary);
     font-size: 10px;
     font-weight: 700;
     line-height: 13px;
@@ -81,7 +61,7 @@
   }
 
   .lineage-scene-layer-trigger-value {
-    color: @grey-800;
+    color: var(--color-text-primary);
     font-size: 14px;
     font-weight: 700;
     line-height: 19px;
@@ -109,11 +89,11 @@
 
   .lineage-scene-layer-menu-section + .lineage-scene-layer-menu-section {
     padding-top: 10px;
-    border-top: 1px solid @grey-200;
+    border-top: 1px solid var(--color-border-secondary);
   }
 
   .lineage-scene-layer-menu-title {
-    color: @grey-500;
+    color: var(--color-text-quaternary);
     font-size: 11px;
     font-weight: 700;
     line-height: 16px;
@@ -124,42 +104,47 @@
   .lineage-scene-layer-menu-options {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    margin: 0;
     gap: 6px;
+    box-shadow: none;
+
+    > * + * {
+      margin-left: 0;
+    }
   }
 
-  .MuiToggleButton-root.lineage-scene-layer-menu-option {
+  .lineage-scene-layer-menu-option {
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) 16px;
     width: 100%;
     align-items: center;
-    border: 0 !important;
-    border-radius: 8px !important;
+    border-radius: 8px;
     gap: 10px;
     justify-content: flex-start;
     padding: 9px 12px;
     text-align: left;
-    text-transform: none;
 
     &::after {
-      border: 0;
+      outline-color: transparent;
     }
 
-    > svg:not(.lineage-scene-layer-menu-check) {
+    .lineage-scene-layer-menu-icon {
       width: 34px;
       height: 34px;
       padding: 7px;
       border-radius: 8px;
-      background-color: @grey-100;
-      color: @grey-700;
+      background-color: var(--color-bg-tertiary);
+      color: var(--color-fg-secondary);
     }
 
-    &.Mui-selected {
-      background-color: @radio-button-checked-bg;
-      color: @primary-color;
+    &[data-selected] {
+      background-color: var(--color-bg-brand-primary);
+      color: var(--color-text-brand-tertiary);
 
-      > svg:not(.lineage-scene-layer-menu-check) {
-        background-color: @primary-color;
-        color: @white;
+      .lineage-scene-layer-menu-icon {
+        background-color: var(--color-bg-brand-solid);
+        color: var(--color-fg-white);
       }
     }
 
@@ -170,14 +155,14 @@
     }
 
     .lineage-scene-layer-menu-option-title {
-      color: @grey-900;
+      color: var(--color-text-primary);
       font-size: 14px;
       font-weight: 700;
       line-height: 20px;
     }
 
     .lineage-scene-layer-menu-option-description {
-      color: @grey-600;
+      color: var(--color-text-tertiary);
       font-size: 12px;
       font-weight: 500;
       line-height: 18px;
@@ -186,7 +171,7 @@
     .lineage-scene-layer-menu-check {
       width: 16px;
       height: 16px;
-      color: @primary-color;
+      color: var(--color-fg-brand-primary);
     }
   }
 }

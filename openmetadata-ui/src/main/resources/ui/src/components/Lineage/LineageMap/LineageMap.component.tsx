@@ -12,18 +12,15 @@
  */
 
 import {
-  Box,
+  Alert,
+  Badge,
   Breadcrumbs,
   Button,
-  CircularProgress,
+  ButtonUtility,
   Dialog,
-  DialogContent,
-  IconButton,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material';
-import { Alert, Badge } from '@openmetadata/ui-core-components';
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -90,6 +87,7 @@ import {
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -563,68 +561,77 @@ const LineageMapOnboardingDialog = ({
   const { t } = useTranslation();
 
   return (
-    <Dialog
-      fullWidth
-      className="lineage-map-onboarding-dialog"
-      data-testid="lineage-map-onboarding-dialog"
-      maxWidth="sm"
-      open={open}
-      onClose={onClose}>
-      <DialogContent className="lineage-map-onboarding-content">
-        <Box className="lineage-map-onboarding-header">
-          <Typography className="lineage-map-onboarding-eyebrow">
-            {t('label.lineage-map-onboarding-eyebrow')}
-          </Typography>
-          <Typography className="lineage-map-onboarding-title">
-            {t('label.lineage-map-onboarding-title')}
-          </Typography>
-          <Typography className="lineage-map-onboarding-description">
-            {t('message.lineage-map-onboarding-description')}
-          </Typography>
-        </Box>
-        <Box className="lineage-map-onboarding-body">
-          <Box className="lineage-map-onboarding-row">
-            <span
-              aria-hidden="true"
-              className="lineage-map-onboarding-icon altitude"
-            />
-            <Box>
-              <Typography className="lineage-map-onboarding-row-title">
-                {t('label.altitude')}
-              </Typography>
-              <Typography className="lineage-map-onboarding-row-description">
-                {t('message.lineage-map-onboarding-altitude-description')}
-              </Typography>
-            </Box>
-          </Box>
-          <Box className="lineage-map-onboarding-row">
-            <span
-              aria-hidden="true"
-              className="lineage-map-onboarding-icon layer"
-            />
-            <Box>
-              <Typography className="lineage-map-onboarding-row-title">
-                {t('label.layer')}
-              </Typography>
-              <Typography className="lineage-map-onboarding-row-description">
-                {t('message.lineage-map-onboarding-layer-description')}
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-        <Box className="lineage-map-onboarding-footer">
-          <Typography className="lineage-map-onboarding-hint">
-            {t('message.lineage-map-onboarding-hint')}
-          </Typography>
-          <Button
-            className="lineage-map-onboarding-action"
-            variant="contained"
-            onClick={onClose}>
-            {t('label.explore')}
-          </Button>
-        </Box>
-      </DialogContent>
-    </Dialog>
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onClose();
+        }
+      }}>
+      <Modal>
+        <Dialog
+          className="lineage-map-onboarding-dialog"
+          data-testid="lineage-map-onboarding-dialog"
+          width={560}
+          onClose={onClose}>
+          <Dialog.Content className="lineage-map-onboarding-content">
+            <div className="lineage-map-onboarding-header">
+              <span className="lineage-map-onboarding-eyebrow">
+                {t('label.lineage-map-onboarding-eyebrow')}
+              </span>
+              <span className="lineage-map-onboarding-title">
+                {t('label.lineage-map-onboarding-title')}
+              </span>
+              <span className="lineage-map-onboarding-description">
+                {t('message.lineage-map-onboarding-description')}
+              </span>
+            </div>
+            <div className="lineage-map-onboarding-body">
+              <div className="lineage-map-onboarding-row">
+                <span
+                  aria-hidden="true"
+                  className="lineage-map-onboarding-icon altitude"
+                />
+                <div>
+                  <span className="lineage-map-onboarding-row-title">
+                    {t('label.altitude')}
+                  </span>
+                  <span className="lineage-map-onboarding-row-description">
+                    {t('message.lineage-map-onboarding-altitude-description')}
+                  </span>
+                </div>
+              </div>
+              <div className="lineage-map-onboarding-row">
+                <span
+                  aria-hidden="true"
+                  className="lineage-map-onboarding-icon layer"
+                />
+                <div>
+                  <span className="lineage-map-onboarding-row-title">
+                    {t('label.layer')}
+                  </span>
+                  <span className="lineage-map-onboarding-row-description">
+                    {t('message.lineage-map-onboarding-layer-description')}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="lineage-map-onboarding-footer">
+              <span className="lineage-map-onboarding-hint">
+                {t('message.lineage-map-onboarding-hint')}
+              </span>
+              <Button
+                className="lineage-map-onboarding-action"
+                color="primary"
+                onClick={onClose}>
+                {t('label.explore')}
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
@@ -640,56 +647,48 @@ const LineageMapControls = ({
   onBandChange: (band: LineageBand) => void;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const bandOptions = [LineageBand.Layer, LineageBand.Asset, LineageBand.Field];
 
   return (
-    <Box className="lineage-map-rail">
+    <div className="lineage-map-rail">
       {bandOptions.map((band) => {
         const isDeeperBandUnavailable =
           isDeeperBand(scene.band, band) && !canDrill;
         const isDisabled = isEditMode || isDeeperBandUnavailable;
 
         return (
-          <Tooltip
+          <ButtonUtility
+            className="lineage-map-rail-button"
+            color="tertiary"
+            data-testid={`lineage-map-band-${band}`}
+            icon={
+              <span
+                className={
+                  scene.band === band
+                    ? 'lineage-map-rail-dot active'
+                    : 'lineage-map-rail-dot'
+                }
+              />
+            }
+            isDisabled={isDisabled}
             key={band}
-            placement="left"
-            title={
+            tooltip={
               isDeeperBandUnavailable
                 ? t('label.zoom-in')
                 : t(getBandLabelKey(band))
-            }>
-            <span>
-              <IconButton
-                className="lineage-map-rail-button"
-                data-testid={`lineage-map-band-${band}`}
-                disabled={isDisabled}
-                sx={{
-                  color:
-                    scene.band === band
-                      ? theme.palette.primary.main
-                      : theme.palette.text.secondary,
-                }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onBandChange(band);
-                }}>
-                <span
-                  className={
-                    scene.band === band
-                      ? 'lineage-map-rail-dot active'
-                      : 'lineage-map-rail-dot'
-                  }
-                />
-              </IconButton>
-            </span>
-          </Tooltip>
+            }
+            tooltipPlacement="left"
+            onClick={(event) => {
+              event.stopPropagation();
+              onBandChange(band);
+            }}
+          />
         );
       })}
-      <Typography className="lineage-map-rail-label">
+      <span className="lineage-map-rail-label">
         {t(getSceneLevelLabelKey(scene))}
-      </Typography>
-    </Box>
+      </span>
+    </div>
   );
 };
 
@@ -708,39 +707,47 @@ const LineageMapBreadcrumbs = ({
     return null;
   }
 
+  const breadcrumbById = new Map(
+    scene.breadcrumb.map((breadcrumb) => [breadcrumb.id, breadcrumb])
+  );
+  const items = scene.breadcrumb.map((breadcrumb, index) => {
+    const isRootBreadcrumb = !breadcrumb.fullyQualifiedName;
+    const label = isRootBreadcrumb
+      ? t(getLensRootLabelKey(scene.lens))
+      : breadcrumb.label;
+
+    return {
+      id: breadcrumb.id,
+      icon: isRootBreadcrumb ? Home02 : undefined,
+      label: (
+        <span data-testid={`lineage-map-breadcrumb-${index}`} title={label}>
+          {label}
+        </span>
+      ),
+    };
+  });
+
   return (
     <Panel className="lineage-map-breadcrumb-panel" position="top-left">
       <Breadcrumbs
+        autoCollapse
         aria-label={t('label.navigation')}
         className="lineage-map-breadcrumbs"
         data-testid="lineage-map-breadcrumbs"
-        separator={<span className="lineage-map-breadcrumb-separator" />}>
-        {scene.breadcrumb.map((breadcrumb, index) => {
-          const isRootBreadcrumb = !breadcrumb.fullyQualifiedName;
-          const label = isRootBreadcrumb
-            ? t(getLensRootLabelKey(scene.lens))
-            : breadcrumb.label;
-          const isCurrent = isRootBreadcrumb
-            ? scene.band === LineageBand.Layer && !scene.focusFqn
-            : breadcrumb.fullyQualifiedName === scene.focusFqn;
-
-          return (
-            <button
-              className={classNames('lineage-map-breadcrumb-item', {
-                active: isCurrent,
-              })}
-              data-testid={`lineage-map-breadcrumb-${index}`}
-              disabled={isCurrent || isEditMode}
-              key={breadcrumb.id}
-              title={label}
-              type="button"
-              onClick={() => onBreadcrumbFocus(breadcrumb)}>
-              {isRootBreadcrumb && <Home02 size={14} />}
-              <span>{label}</span>
-            </button>
-          );
-        })}
-      </Breadcrumbs>
+        items={items}
+        maxItemWidth={180}
+        size="sm"
+        onAction={
+          isEditMode
+            ? undefined
+            : (id) => {
+                const breadcrumb = breadcrumbById.get(String(id));
+                if (breadcrumb) {
+                  onBreadcrumbFocus(breadcrumb);
+                }
+              }
+        }
+      />
     </Panel>
   );
 };
@@ -1498,8 +1505,17 @@ const LineageMapCanvas = ({
   }, [edges, nodes, request.band, scene?.band]);
 
   const pathHighlightIndex = useMemo(
-    () => buildLineagePathHighlightIndex(edges),
-    [edges]
+    () =>
+      buildLineagePathHighlightIndex(
+        (scene?.edges ?? []).map((edge) => ({
+          id: edge.id,
+          source: getEndpointNodeId(edge.from),
+          target: getEndpointNodeId(edge.to),
+          sourceHandle: getEndpointHandle(edge.from),
+          targetHandle: getEndpointHandle(edge.to),
+        }))
+      ),
+    [scene?.edges]
   );
   const activeFieldId =
     scene?.band === LineageBand.Field ? selectedColumn ?? hoveredFieldId : '';
@@ -1965,9 +1981,9 @@ const LineageMapCanvas = ({
 
   if (sceneError && !scene) {
     return (
-      <Box className="lineage-map-empty">
+      <div className="lineage-map-empty">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography>{t('message.something-went-wrong')}</Typography>
+          <span>{t('message.something-went-wrong')}</span>
           <Button
             data-testid="lineage-map-retry"
             onClick={() =>
@@ -1978,26 +1994,26 @@ const LineageMapCanvas = ({
             {t('label.try-again')}
           </Button>
         </ErrorPlaceHolder>
-      </Box>
+      </div>
     );
   }
 
   if (!scene) {
     return (
-      <Box className="lineage-map-empty">
-        <Typography>{t('message.no-lineage-data-available')}</Typography>
-      </Box>
+      <div className="lineage-map-empty">
+        <span>{t('message.no-lineage-data-available')}</span>
+      </div>
     );
   }
 
   if (scene.nodes.length === 0) {
     return (
-      <Box className="lineage-map-empty">
+      <div className="lineage-map-empty">
         <ErrorPlaceHolder
           placeholderText={t('message.no-lineage-data-available')}
           type={ERROR_PLACEHOLDER_TYPE.FILTER}
         />
-      </Box>
+      </div>
     );
   }
 
@@ -2006,16 +2022,16 @@ const LineageMapCanvas = ({
   const totalAssetCount = visibleAssetCount + (scene.hiddenNodeCount ?? 0);
 
   return (
-    <Box
+    <div
       className="lineage-map-canvas"
       data-testid="lineage-map-canvas"
       ref={wrapperRef}
       onMouseLeave={handleCanvasMouseLeave}
       onMouseMove={handleCanvasMouseMove}>
       {loading && (
-        <Box className="lineage-map-loading">
-          <CircularProgress size={24} />
-        </Box>
+        <div className="lineage-map-loading">
+          <Loader size="small" />
+        </div>
       )}
       <ReactFlow
         fitView
@@ -2124,7 +2140,7 @@ const LineageMapCanvas = ({
           />
         </Panel>
       </ReactFlow>
-      <Box
+      <div
         className={classNames('lineage-map-layer-control', {
           'edit-mode': isEditMode,
         })}>
@@ -2137,8 +2153,8 @@ const LineageMapCanvas = ({
           onSceneBandChange={handleBandChange}
           onSceneLensChange={handleLensChange}
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 };
 

@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import {
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
   Popover,
-  styled,
-  ToggleButton,
-  ToggleButtonGroup,
-  ToggleButtonProps,
-} from '@mui/material';
+  PopoverTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, xor } from 'lodash';
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
@@ -42,6 +43,12 @@ import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import './lineage-layers.less';
 import { LineageLayersProps } from './LineageLayers.interface';
+
+const LAYER_BUTTON_CLASSES = [
+  'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary',
+  'tw:whitespace-normal tw:break-words tw:hover:after:outline-brand tw:hover:z-10',
+  'tw:selected:bg-brand-primary tw:selected:text-primary',
+].join(' ');
 
 const getSceneLensLabelKey = (lens: LineageLens) => {
   switch (lens) {
@@ -76,62 +83,6 @@ const getSceneBandLabelKey = (band: LineageBand) => {
   }
 };
 
-const TOGGLE_BUTTON_BACKGROUND = '#ffffff';
-const TOGGLE_BUTTON_SELECTED_BACKGROUND = '#d1e9ff';
-
-const StyledButton = styled((props: ToggleButtonProps) => (
-  <ToggleButton {...props} />
-))(({ theme }) => ({
-  display: 'inline-flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '4px',
-  backgroundColor: TOGGLE_BUTTON_BACKGROUND,
-  fontSize: theme.typography.pxToRem(10),
-  color: theme.palette.text.primary,
-  wordBreak: 'break-word',
-  padding: '8px 16px',
-
-  svg: {
-    height: 20,
-  },
-
-  '&:hover': {
-    border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
-    zIndex: 1,
-    margin: '0',
-    backgroundColor: TOGGLE_BUTTON_BACKGROUND,
-
-    svg: {
-      color: theme.palette.primary.main,
-    },
-  },
-
-  '&.Mui-selected': {
-    backgroundColor: TOGGLE_BUTTON_SELECTED_BACKGROUND,
-
-    '&:hover': {
-      border: '1px solid' + ' ' + theme.palette.primary.main,
-      backgroundColor: TOGGLE_BUTTON_SELECTED_BACKGROUND,
-    },
-  },
-
-  '&.highlight': {
-    border: '1px solid',
-    borderColor: theme.palette.primary.main + ' !important',
-    // To show all the border on hover
-    zIndex: 1,
-    margin: '0',
-    backgroundColor: TOGGLE_BUTTON_BACKGROUND,
-
-    svg: {
-      color: theme.palette.primary.main,
-    },
-  },
-}));
-
 const LineageLayers = ({
   entityType,
   entity,
@@ -149,37 +100,24 @@ const LineageLayers = ({
     setActiveLayer,
   } = useLineageStore();
   const { t } = useTranslation();
-  const [layersAnchorEl, setLayersAnchorEl] =
-    React.useState<null | HTMLElement>(null);
+  const [isLayersOpen, setIsLayersOpen] = useState(false);
   const hasSceneControls = Boolean(
     sceneBand && sceneLens && onSceneBandChange && onSceneLensChange
   );
-  const legacySelectedValues = React.useMemo(
-    () => [...activeLayer, platformView],
-    [activeLayer, platformView]
-  );
 
-  const handleLayerClick = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      layer: LineageLayer
-    ) => {
-      const value = layer;
-      const index = activeLayer.indexOf(value);
-      if (index === -1) {
-        setActiveLayer([...activeLayer, value]);
+  const handleLayerClick = useCallback(
+    (layer: LineageLayer) => {
+      if (activeLayer.indexOf(layer) === -1) {
+        setActiveLayer([...activeLayer, layer]);
       } else {
-        setActiveLayer(activeLayer.filter((layer) => layer !== value));
+        setActiveLayer(activeLayer.filter((value) => value !== layer));
       }
     },
     [activeLayer, setActiveLayer]
   );
 
-  const handlePlatformViewChange = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      view: string | null
-    ) => {
+  const handlePlatformViewChange = useCallback(
+    (view: string) => {
       setPlatformView(
         platformView === view
           ? LineagePlatformView.None
@@ -189,47 +127,24 @@ const LineageLayers = ({
     [platformView, setPlatformView]
   );
 
-  const handleSelection = (
-    _event: React.MouseEvent<HTMLElement, MouseEvent>,
-    newSelection: (LineageLayer | LineagePlatformView)[]
-  ) => {
-    const newlyAddedValue = xor(legacySelectedValues, newSelection);
-
-    if (
-      Object.values(LineagePlatformView).includes(
-        newlyAddedValue[0] as LineagePlatformView
-      )
-    ) {
-      handlePlatformViewChange(_event, newlyAddedValue[0]);
-    } else {
-      handleLayerClick(_event, newlyAddedValue[0] as LineageLayer);
-    }
-  };
-
-  const handleSceneLensChange = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      lens: LineageLens | null
-    ) => {
-      if (!lens || !onSceneLensChange) {
-        return;
+  const handleSceneLensSelection = useCallback(
+    (keys: Selection) => {
+      const [lens] = [...keys];
+      if (lens && onSceneLensChange) {
+        onSceneLensChange(lens as LineageLens);
+        setIsLayersOpen(false);
       }
-      onSceneLensChange(lens);
-      setLayersAnchorEl(null);
     },
     [onSceneLensChange]
   );
 
-  const handleSceneBandChange = React.useCallback(
-    (
-      _event: React.MouseEvent<HTMLElement, MouseEvent>,
-      band: LineageBand | null
-    ) => {
-      if (!band || !onSceneBandChange) {
-        return;
+  const handleSceneBandSelection = useCallback(
+    (keys: Selection) => {
+      const [band] = [...keys];
+      if (band && onSceneBandChange) {
+        onSceneBandChange(band as LineageBand);
+        setIsLayersOpen(false);
       }
-      onSceneBandChange(band);
-      setLayersAnchorEl(null);
     },
     [onSceneBandChange]
   );
@@ -248,236 +163,270 @@ const LineageLayers = ({
       entityType !== EntityType.DOMAIN &&
       ((entity as Table)?.dataProducts ?? []).length > 0);
 
-  const buttonContent = React.useMemo(() => {
-    if (hasSceneControls && sceneLens && onSceneLensChange) {
-      const sceneLensOptions = [
-        LineageLens.Service,
-        LineageLens.Domain,
-        LineageLens.DataProduct,
-      ];
-      const sceneBandOptions = [
-        LineageBand.Layer,
-        LineageBand.Asset,
-        LineageBand.Field,
-      ];
+  const { layerButtons, renderedValues } = useMemo(() => {
+    const buttons = [];
+    const values: string[] = [];
 
-      return (
-        <div className="lineage-scene-layer-menu">
-          <div className="lineage-scene-layer-menu-section">
-            <span className="lineage-scene-layer-menu-title">
-              {t('label.lineage-layer')}
-            </span>
-            <ToggleButtonGroup
-              exclusive
-              className="lineage-scene-layer-menu-options"
-              value={sceneLens}
-              onChange={handleSceneLensChange}>
-              {sceneLensOptions.map((lens) => (
-                <StyledButton
-                  className="lineage-scene-layer-menu-option"
-                  data-testid={`lineage-layer-lens-${lens}`}
-                  key={lens}
-                  value={lens}>
-                  {lens === LineageLens.Domain ? (
-                    <DomainIcon />
-                  ) : lens === LineageLens.DataProduct ? (
-                    <DataProductIcon />
-                  ) : (
-                    <ServiceView />
-                  )}
-                  <span className="lineage-scene-layer-menu-copy">
-                    <span className="lineage-scene-layer-menu-option-title">
-                      {t(getSceneLensLabelKey(lens))}
-                    </span>
-                    <span className="lineage-scene-layer-menu-option-description">
-                      {t(getSceneLensDescriptionKey(lens))}
-                    </span>
-                  </span>
-                  {sceneLens === lens && (
-                    <CheckIcon className="lineage-scene-layer-menu-check" />
-                  )}
-                </StyledButton>
-              ))}
-            </ToggleButtonGroup>
-          </div>
-
-          {sceneBand && onSceneBandChange && (
-            <div className="lineage-scene-layer-menu-section">
-              <span className="lineage-scene-layer-menu-title">
-                {t('label.level')}
-              </span>
-              <ToggleButtonGroup
-                exclusive
-                className="lineage-scene-layer-menu-options"
-                value={sceneBand}
-                onChange={handleSceneBandChange}>
-                {sceneBandOptions.map((band) => (
-                  <StyledButton
-                    className="lineage-scene-layer-menu-option"
-                    data-testid={`lineage-layer-band-${band}`}
-                    key={band}
-                    value={band}>
-                    {band === LineageBand.Layer ? <Layers /> : <TableIcon />}
-                    <span className="lineage-scene-layer-menu-copy">
-                      <span className="lineage-scene-layer-menu-option-title">
-                        {t(getSceneBandLabelKey(band))}
-                      </span>
-                    </span>
-                    {sceneBand === band && (
-                      <CheckIcon className="lineage-scene-layer-menu-check" />
-                    )}
-                  </StyledButton>
-                ))}
-              </ToggleButtonGroup>
-            </div>
-          )}
-        </div>
+    if (showColumnAndObservability) {
+      values.push(
+        LineageLayer.ColumnLevelLineage,
+        LineageLayer.DataObservability
+      );
+      buttons.push(
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-column-btn"
+          id={LineageLayer.ColumnLevelLineage}
+          key={LineageLayer.ColumnLevelLineage}>
+          <TableIcon className="tw:size-5" />
+          {t('label.column')}
+        </ButtonGroupItem>,
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
+          data-testid="lineage-layer-observability-btn"
+          id={LineageLayer.DataObservability}
+          key={LineageLayer.DataObservability}>
+          <DataQualityIcon className="tw:size-5" />
+          {t('label.observability')}
+        </ButtonGroupItem>
       );
     }
 
-    const buttons = [];
-
-    if (showColumnAndObservability) {
-      buttons.push([
-        <StyledButton
-          data-testid="lineage-layer-column-btn"
-          key={LineageLayer.ColumnLevelLineage}
-          value={LineageLayer.ColumnLevelLineage}>
-          <TableIcon />
-          {t('label.column')}
-        </StyledButton>,
-        <StyledButton
-          data-testid="lineage-layer-observability-btn"
-          key={LineageLayer.DataObservability}
-          value={LineageLayer.DataObservability}>
-          <DataQualityIcon />
-          {t('label.observability')}
-        </StyledButton>,
-      ]);
-    }
-
     if (showService) {
+      values.push(LineagePlatformView.Service);
       buttons.push(
-        <StyledButton
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
           data-testid="lineage-layer-service-btn"
-          key={LineagePlatformView.Service}
-          value={LineagePlatformView.Service}>
-          <ServiceView />
+          id={LineagePlatformView.Service}
+          key={LineagePlatformView.Service}>
+          <ServiceView className="tw:size-5" />
           {t('label.service')}
-        </StyledButton>
+        </ButtonGroupItem>
       );
     }
 
     if (showDomain) {
+      values.push(LineagePlatformView.Domain);
       buttons.push(
-        <StyledButton
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
           data-testid="lineage-layer-domain-btn"
-          key={LineagePlatformView.Domain}
-          value={LineagePlatformView.Domain}>
-          <DomainIcon />
+          id={LineagePlatformView.Domain}
+          key={LineagePlatformView.Domain}>
+          <DomainIcon className="tw:size-5" />
           {t('label.domain')}
-        </StyledButton>
+        </ButtonGroupItem>
       );
     }
 
     if (showDataProduct) {
+      values.push(LineagePlatformView.DataProduct);
       buttons.push(
-        <StyledButton
+        <ButtonGroupItem
+          className={LAYER_BUTTON_CLASSES}
           data-testid="lineage-layer-data-product-btn"
-          key={LineagePlatformView.DataProduct}
-          value={LineagePlatformView.DataProduct}>
-          <DataProductIcon />
+          id={LineagePlatformView.DataProduct}
+          key={LineagePlatformView.DataProduct}>
+          <DataProductIcon className="tw:size-5" />
           {t('label.data-product')}
-        </StyledButton>
+        </ButtonGroupItem>
       );
     }
 
+    return { layerButtons: buttons, renderedValues: values };
+  }, [t, showColumnAndObservability, showService, showDomain, showDataProduct]);
+
+  const selectedKeys = useMemo(
+    () =>
+      new Set(
+        [...activeLayer, platformView].filter((value) =>
+          renderedValues.includes(value as string)
+        )
+      ),
+    [activeLayer, platformView, renderedValues]
+  );
+
+  const handleSelectionChange = useCallback(
+    (keys: Selection) => {
+      const nextSelection = [...(keys as Set<string>)];
+      const [changed] = xor([...selectedKeys], nextSelection);
+
+      if (changed) {
+        if (
+          Object.values(LineagePlatformView).includes(
+            changed as LineagePlatformView
+          )
+        ) {
+          handlePlatformViewChange(changed);
+        } else {
+          handleLayerClick(changed as LineageLayer);
+        }
+      }
+    },
+    [selectedKeys, handlePlatformViewChange, handleLayerClick]
+  );
+
+  const sceneControls = useMemo(() => {
+    if (!hasSceneControls || !sceneLens || !sceneBand) {
+      return null;
+    }
+
+    const sceneLensOptions = [
+      LineageLens.Service,
+      LineageLens.Domain,
+      LineageLens.DataProduct,
+    ];
+    const sceneBandOptions = [
+      LineageBand.Layer,
+      LineageBand.Asset,
+      LineageBand.Field,
+    ];
+
     return (
-      <ToggleButtonGroup
-        value={legacySelectedValues}
-        onChange={handleSelection}>
-        {buttons}
-      </ToggleButtonGroup>
+      <div className="lineage-scene-layer-menu">
+        <div className="lineage-scene-layer-menu-section">
+          <span className="lineage-scene-layer-menu-title">
+            {t('label.lineage-layer')}
+          </span>
+          <ButtonGroup
+            disallowEmptySelection
+            aria-label={t('label.lineage-layer')}
+            className="lineage-scene-layer-menu-options"
+            selectedKeys={new Set([sceneLens])}
+            size="sm"
+            onSelectionChange={handleSceneLensSelection}>
+            {sceneLensOptions.map((lens) => (
+              <ButtonGroupItem
+                className="lineage-scene-layer-menu-option"
+                data-testid={`lineage-layer-lens-${lens}`}
+                id={lens}
+                key={lens}>
+                {lens === LineageLens.Domain ? (
+                  <DomainIcon className="lineage-scene-layer-menu-icon" />
+                ) : lens === LineageLens.DataProduct ? (
+                  <DataProductIcon className="lineage-scene-layer-menu-icon" />
+                ) : (
+                  <ServiceView className="lineage-scene-layer-menu-icon" />
+                )}
+                <span className="lineage-scene-layer-menu-copy">
+                  <span className="lineage-scene-layer-menu-option-title">
+                    {t(getSceneLensLabelKey(lens))}
+                  </span>
+                  <span className="lineage-scene-layer-menu-option-description">
+                    {t(getSceneLensDescriptionKey(lens))}
+                  </span>
+                </span>
+                {sceneLens === lens && (
+                  <CheckIcon className="lineage-scene-layer-menu-check" />
+                )}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
+        </div>
+
+        <div className="lineage-scene-layer-menu-section">
+          <span className="lineage-scene-layer-menu-title">
+            {t('label.level')}
+          </span>
+          <ButtonGroup
+            disallowEmptySelection
+            aria-label={t('label.level')}
+            className="lineage-scene-layer-menu-options"
+            selectedKeys={new Set([sceneBand])}
+            size="sm"
+            onSelectionChange={handleSceneBandSelection}>
+            {sceneBandOptions.map((band) => (
+              <ButtonGroupItem
+                className="lineage-scene-layer-menu-option"
+                data-testid={`lineage-layer-band-${band}`}
+                id={band}
+                key={band}>
+                {band === LineageBand.Layer ? (
+                  <Layers className="lineage-scene-layer-menu-icon" />
+                ) : (
+                  <TableIcon className="lineage-scene-layer-menu-icon" />
+                )}
+                <span className="lineage-scene-layer-menu-copy">
+                  <span className="lineage-scene-layer-menu-option-title">
+                    {t(getSceneBandLabelKey(band))}
+                  </span>
+                </span>
+                {sceneBand === band && (
+                  <CheckIcon className="lineage-scene-layer-menu-check" />
+                )}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
+        </div>
+      </div>
     );
   }, [
-    legacySelectedValues,
-    activeLayer,
-    platformView,
-    handleSelection,
-    showColumnAndObservability,
-    showService,
-    showDomain,
-    showDataProduct,
+    handleSceneBandSelection,
+    handleSceneLensSelection,
     hasSceneControls,
     sceneBand,
     sceneLens,
-    handleSceneBandChange,
-    handleSceneLensChange,
-    onSceneBandChange,
-    onSceneLensChange,
+    t,
   ]);
 
-  const triggerContent = React.useMemo(() => {
-    if (hasSceneControls && sceneLens) {
-      return (
-        <>
-          <Layers width={20} />
-          <span className="lineage-scene-layer-trigger-label">
-            <span className="lineage-scene-layer-trigger-eyebrow">
-              {t('label.layer-plural')}
-            </span>
-            <span className="lineage-scene-layer-trigger-value">
-              {t(sceneLevelLabelKey ?? getSceneLensLabelKey(sceneLens))}
-            </span>
-          </span>
+  const trigger =
+    hasSceneControls && sceneLens ? (
+      <Button
+        className={classNames('lineage-scene-layer-trigger', {
+          'tw:after:outline-brand': isLayersOpen,
+        })}
+        color="secondary"
+        data-testid="lineage-layer-btn"
+        iconLeading={<Layers className="lineage-scene-layer-trigger-icon" />}
+        iconTrailing={
           <DropdownIcon className="lineage-scene-layer-trigger-caret" />
-        </>
-      );
-    }
-
-    return (
-      <>
-        <Layers width={20} />
-
+        }
+        size="sm">
+        <span className="lineage-scene-layer-trigger-label">
+          <span className="lineage-scene-layer-trigger-eyebrow">
+            {t('label.layer-plural')}
+          </span>
+          <span className="lineage-scene-layer-trigger-value">
+            {t(sceneLevelLabelKey ?? getSceneLensLabelKey(sceneLens))}
+          </span>
+        </span>
+      </Button>
+    ) : (
+      <Button
+        className={classNames(LAYER_BUTTON_CLASSES, 'tw:bg-primary', {
+          'tw:after:outline-brand tw:z-10 tw:[&>svg]:text-fg-brand-primary':
+            isLayersOpen,
+        })}
+        color="secondary"
+        data-testid="lineage-layer-btn"
+        iconLeading={<Layers className="tw:size-5" />}
+        size="sm">
         {t('label.layer-plural')}
-      </>
+      </Button>
     );
-  }, [hasSceneControls, sceneLens, sceneLevelLabelKey, t]);
 
   return (
-    <>
-      <StyledButton
-        className={classNames({
-          highlight: Boolean(layersAnchorEl),
-          'lineage-scene-layer-trigger': hasSceneControls,
-        })}
-        data-testid="lineage-layer-btn"
-        value=""
-        onClick={(e) => setLayersAnchorEl(e.currentTarget)}>
-        {triggerContent}
-      </StyledButton>
+    <PopoverTrigger isOpen={isLayersOpen} onOpenChange={setIsLayersOpen}>
+      {trigger}
       <Popover
-        anchorEl={layersAnchorEl}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: hasSceneControls ? 'left' : 'right',
-        }}
         className="lineage-layers-popover"
-        id="lineage-layers-popover"
-        open={Boolean(layersAnchorEl)}
-        sx={hasSceneControls ? undefined : { marginLeft: '16px' }}
-        transformOrigin={
-          hasSceneControls
-            ? {
-                vertical: 'bottom',
-                horizontal: 'left',
-              }
-            : undefined
+        containerClassName={
+          hasSceneControls ? 'lineage-scene-layer-popover-content' : undefined
         }
-        onClose={() => setLayersAnchorEl(null)}>
-        {buttonContent}
+        placement={hasSceneControls ? 'top' : 'right'}>
+        {sceneControls ?? (
+          <ButtonGroup
+            aria-label={t('label.layer-plural')}
+            selectedKeys={selectedKeys}
+            selectionMode="multiple"
+            size="sm"
+            onSelectionChange={handleSelectionChange}>
+            {layerButtons}
+          </ButtonGroup>
+        )}
       </Popover>
-    </>
+    </PopoverTrigger>
   );
 };
 

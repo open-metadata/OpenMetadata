@@ -58,6 +58,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -73,7 +74,8 @@ public class LineageSceneResolver {
       "id,name,displayName,fullyQualifiedName,entityType,service,serviceType,database,"
           + "databaseSchema,domains,dataProducts,deleted,certification";
   private static final String FIELD_BAND_SOURCE_FIELDS =
-      BASE_SOURCE_FIELDS + ",columns,messageSchema,charts,mlFeatures,fields,dataModel";
+      BASE_SOURCE_FIELDS
+          + ",columns,messageSchema,charts,mlFeatures,fields,dataModel,requestSchema,responseSchema";
   private static final String FIELD_SEPARATOR = "::field::";
   private static final Set<String> SERVICE_ENTITY_TYPES =
       Set.of(
@@ -123,6 +125,17 @@ public class LineageSceneResolver {
   private static final int FOCUSED_CHILD_LINEAGE_SIZE = 25;
   private static final int CONTAINER_TOTAL_LOOKUP_LIMIT = 100;
   private static final int FIELD_ENDPOINTS_PER_NODE = 10;
+  private static final List<String> ENTITY_REFERENCE_FIELDS =
+      List.of(
+          "deleted",
+          "type",
+          "id",
+          "description",
+          "fullyQualifiedName",
+          "name",
+          "displayName",
+          "inherited",
+          "href");
   private static final int FIELD_EDGE_LIMIT = 120;
   private static final int ROOT_LINEAGE_HYDRATION_BATCH_SIZE = 1000;
   private static final long LOOKUP_TIMEOUT_SECONDS = 15;
@@ -276,7 +289,10 @@ public class LineageSceneResolver {
         SearchLineageResult lineage =
             Entity.getSearchRepository()
                 .searchPlatformLineage(
-                    "dataAsset", rootLineageParticipantQuery(queryFilter), includeDeleted);
+                    "dataAsset",
+                    rootLineageParticipantQuery(queryFilter, subjectContext),
+                    includeDeleted,
+                    subjectContext);
         hydrateMissingRootLineageAssets(lineage, band, includeDeleted);
         return lineage;
       }
@@ -414,10 +430,11 @@ public class LineageSceneResolver {
     return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
-  private static String rootLineageParticipantQuery(String queryFilter) {
+  static String rootLineageParticipantQuery(String queryFilter, SubjectContext subjectContext) {
     List<Object> must = new ArrayList<>();
     must.add(Map.of("exists", Map.of("field", UPSTREAM_LINEAGE_DOC_ID_FIELD)));
     addQueryFilterClause(must, queryFilter);
+    addDomainAccessClause(must, subjectContext);
     return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("must", must))));
   }
 
@@ -1460,7 +1477,11 @@ public class LineageSceneResolver {
           band,
           focusRef,
           isGhost(toAsset, focusRef));
-      addEdges(edgeByKey, edge, fromRef, toRef, fromAsset, toAsset, band);
+      if (shouldExpandTemporaryLineage(edge, fromRef, toRef, fromAsset, toAsset, band)) {
+        addTemporaryLineage(nodes, edgeByKey, edge);
+      } else {
+        addEdges(edgeByKey, edge, fromRef, toRef, fromAsset, toAsset, band);
+      }
     }
     if (nodes.isEmpty() && !assets.isEmpty()) {
       for (SceneAsset asset : assets.values()) {
@@ -1946,6 +1967,76 @@ public class LineageSceneResolver {
     addRollup(edgeByKey, edge, fromRef.nodeId(), toRef.nodeId(), band, rollup);
   }
 
+  private static boolean shouldExpandTemporaryLineage(
+      EsLineageData edge,
+      Ref fromRef,
+      Ref toRef,
+      SceneAsset fromAsset,
+      SceneAsset toAsset,
+      LineageBand band) {
+    return band == LineageBand.ASSET
+        && Objects.equals(fromRef.nodeId(), fromAsset.self().nodeId())
+        && Objects.equals(toRef.nodeId(), toAsset.self().nodeId())
+        && edge.getTempLineageTables() != null
+        && edge.getTempLineageTables().stream()
+            .anyMatch(
+                hop ->
+                    hop != null
+                        && !nullOrEmpty(hop.getFromEntity())
+                        && !nullOrEmpty(hop.getToEntity()));
+  }
+
+  private static void addTemporaryLineage(
+      Map<String, LineageSceneNode> nodes, Map<String, RollupEdge> edgeByKey, EsLineageData edge) {
+    for (TempLineageTable hop : edge.getTempLineageTables()) {
+      if (hop == null || nullOrEmpty(hop.getFromEntity()) || nullOrEmpty(hop.getToEntity())) {
+        continue;
+      }
+      String from = temporaryLineageNodeId(nodes, hop.getFromEntity());
+      String to = temporaryLineageNodeId(nodes, hop.getToEntity());
+      addRollup(edgeByKey, edge, from, to, LineageBand.ASSET, false);
+    }
+  }
+
+  private static String temporaryLineageNodeId(
+      Map<String, LineageSceneNode> nodes, String fullyQualifiedName) {
+    for (LineageSceneNode node : nodes.values()) {
+      if (Objects.equals(node.getFullyQualifiedName(), fullyQualifiedName)) {
+        return node.getId();
+      }
+    }
+
+    String nodeId = "temp_" + fullyQualifiedName;
+    Map<String, Object> sourceEntity = new LinkedHashMap<>();
+    sourceEntity.put("name", fullyQualifiedName);
+    sourceEntity.put("displayName", fullyQualifiedName);
+    sourceEntity.put("fullyQualifiedName", fullyQualifiedName);
+    sourceEntity.put("type", Entity.TABLE);
+    sourceEntity.put("entityType", Entity.TABLE);
+    sourceEntity.put("isTempTable", true);
+    sourceEntity.put("columns", List.of());
+    nodes.computeIfAbsent(
+        nodeId,
+        ignored ->
+            new LineageSceneNode()
+                .withId(nodeId)
+                .withFullyQualifiedName(fullyQualifiedName)
+                .withEntityType(Entity.TABLE)
+                .withLevelKind(LineageLevelKind.TABLE)
+                .withBand(LineageBand.ASSET)
+                .withLabel(fullyQualifiedName)
+                .withDisplayName(fullyQualifiedName)
+                .withChildrenCount(0)
+                .withCounts(new LinkedHashMap<>())
+                .withFields(List.of())
+                .withIsFocus(false)
+                .withIsOrigin(false)
+                .withIsExpandable(false)
+                .withIsGhost(false)
+                .withSourceEntity(sourceEntity));
+    return nodeId;
+  }
+
   private static void addRollup(
       Map<String, RollupEdge> edgeByKey,
       EsLineageData edge,
@@ -1966,9 +2057,19 @@ public class LineageSceneResolver {
 
   private static String fieldEndpoint(SceneAsset asset, String column) {
     for (LineageSceneField field : asset.fields()) {
-      if (Objects.equals(field.getFullyQualifiedName(), column)
-          || Objects.equals(field.getName(), column)
-          || Objects.equals(field.getName(), lastFqnPart(column))) {
+      if (Objects.equals(field.getId(), column)
+          || Objects.equals(field.getFullyQualifiedName(), column)) {
+        return field.getId();
+      }
+    }
+    for (LineageSceneField field : asset.fields()) {
+      if (Objects.equals(field.getName(), column)) {
+        return field.getId();
+      }
+    }
+    String columnName = lastFqnPart(column);
+    for (LineageSceneField field : asset.fields()) {
+      if (Objects.equals(field.getName(), columnName)) {
         return field.getId();
       }
     }
@@ -2120,6 +2221,8 @@ public class LineageSceneResolver {
     addFields(fields, listValue(entity, "mlFeatures"));
     addFields(fields, listValue(entity, "fields"));
     addFields(fields, nestedList(entity, "messageSchema", "schemaFields"));
+    addFields(fields, nestedList(entity, "requestSchema", "schemaFields"));
+    addFields(fields, nestedList(entity, "responseSchema", "schemaFields"));
     return fields.stream()
         .collect(
             LinkedHashMap<String, LineageSceneField>::new,
@@ -2239,6 +2342,26 @@ public class LineageSceneResolver {
   @SuppressWarnings("unchecked")
   private static Map<String, Object> mapValue(Object value) {
     return value instanceof Map<?, ?> map ? (Map<String, Object>) map : null;
+  }
+
+  private static EntityReference entityReferenceValue(Object value) {
+    if (value instanceof EntityReference entityReference) {
+      return entityReference;
+    }
+    try {
+      Map<String, Object> source =
+          JsonUtils.convertValue(value, new TypeReference<Map<String, Object>>() {});
+      Map<String, Object> reference = new LinkedHashMap<>();
+      for (String field : ENTITY_REFERENCE_FIELDS) {
+        if (source.containsKey(field)) {
+          reference.put(field, source.get(field));
+        }
+      }
+      return JsonUtils.convertValue(reference, EntityReference.class);
+    } catch (IllegalArgumentException exception) {
+      LOG.warn("Unable to parse lineage pipeline reference: {}", exception.getMessage());
+      return null;
+    }
   }
 
   private static String stringValue(Map<?, ?> map, String key) {
@@ -2397,10 +2520,7 @@ public class LineageSceneResolver {
         sqlQuery = firstNonBlank(sqlQuery, edge.getSqlQuery());
         description = firstNonBlank(description, edge.getDescription());
         if (pipeline == null && edge.getPipeline() != null) {
-          pipeline =
-              edge.getPipeline() instanceof EntityReference entityReference
-                  ? entityReference
-                  : JsonUtils.convertValue(edge.getPipeline(), EntityReference.class);
+          pipeline = entityReferenceValue(edge.getPipeline());
         }
       }
     }

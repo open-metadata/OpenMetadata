@@ -18,7 +18,7 @@
   height: 100%;
   min-height: 640px;
   overflow: hidden;
-  background: @white;
+  background: var(--color-bg-primary);
 }
 
 .lineage-map-react-flow {
@@ -28,7 +28,7 @@
   .react-flow__minimap {
     right: 16px;
     bottom: 88px;
-    border: 1px solid @grey-200;
+    border: 1px solid var(--color-border-secondary);
     border-radius: 8px;
     box-shadow: @box-shadow-base;
   }
@@ -45,56 +45,10 @@
 .lineage-map-breadcrumbs {
   max-width: min(760px, calc(100vw - 520px));
   padding: 8px 12px;
-  border: 1px solid @grey-200;
+  border: 1px solid var(--color-border-secondary);
   border-radius: 999px;
-  background: @white;
+  background: var(--color-bg-primary);
   box-shadow: @box-shadow-base;
-
-  .MuiBreadcrumbs-ol {
-    flex-wrap: nowrap;
-  }
-}
-
-.lineage-map-breadcrumb-item {
-  display: inline-flex;
-  align-items: center;
-  max-width: 180px;
-  gap: 6px;
-  padding: 2px 6px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: @grey-600;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
-  cursor: pointer;
-
-  span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  &:hover:not(:disabled) {
-    background: @primary-1;
-    color: @primary-color;
-  }
-
-  &.active,
-  &:disabled {
-    color: @text-color;
-    cursor: default;
-  }
-}
-
-.lineage-map-breadcrumb-separator {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-top: 1px solid @grey-400;
-  border-right: 1px solid @grey-400;
-  transform: rotate(45deg);
 }
 
 .lineage-map-layer-control {
@@ -118,9 +72,9 @@
   align-items: center;
   width: 32px;
   padding: 7px 0;
-  border: 1px solid @grey-200;
+  border: 1px solid var(--color-border-secondary);
   border-radius: 999px;
-  background: @white;
+  background: var(--color-bg-primary);
   box-shadow: @box-shadow-base;
   transform: translateY(-50%);
   flex-direction: column;
@@ -132,7 +86,7 @@
   bottom: 20px;
   left: 50%;
   width: 1px;
-  background: @grey-200;
+  background: var(--color-border-secondary);
   content: '';
   transform: translateX(-50%);
 }
@@ -147,60 +101,53 @@
 .lineage-map-rail-dot {
   width: 7px;
   height: 7px;
-  border: 2px solid @grey-400;
+  border: 2px solid var(--color-border-primary);
   border-radius: 999px;
-  background: @white;
+  background: var(--color-bg-primary);
   transition: width 0.15s ease, height 0.15s ease, background-color 0.15s ease;
 }
 
 .lineage-map-rail-dot.active {
   width: 14px;
   height: 14px;
-  border-color: @primary-color;
-  background: @primary-color;
+  border-color: var(--color-border-brand);
+  background: var(--color-bg-brand-solid);
 }
 
-.lineage-map-rail-label.MuiTypography-root {
+.lineage-map-rail-label {
   position: absolute;
   right: 40px;
   max-width: 164px;
   padding: 3px 10px;
-  border: 1px solid @primary-color;
+  border: 1px solid var(--color-border-brand);
   border-radius: 999px;
-  background: @white;
-  color: @primary-color;
+  background: var(--color-bg-primary);
+  color: var(--color-text-brand-tertiary);
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
   white-space: nowrap;
 }
 
-.lineage-map-onboarding-dialog {
-  .MuiBackdrop-root {
-    background-color: rgba(24, 29, 39, 0.46);
-    backdrop-filter: blur(3px);
-  }
-
-  .MuiPaper-root {
-    overflow: hidden;
-    border-radius: 16px;
-    box-shadow: 0 18px 52px rgba(16, 24, 40, 0.28);
-  }
-}
-
-.lineage-map-onboarding-content.MuiDialogContent-root {
+.lineage-map-onboarding-content {
+  gap: 0;
   padding: 0;
 }
 
 .lineage-map-onboarding-header {
   padding: 28px 32px 24px;
-  background: linear-gradient(135deg, #1f2b5f 0%, #2f6fed 100%);
-  color: @white;
+  background: linear-gradient(
+    135deg,
+    var(--color-bg-brand-section) 0%,
+    var(--color-bg-brand-solid) 100%
+  );
+  color: var(--color-text-primary_on-brand);
 }
 
-.lineage-map-onboarding-eyebrow.MuiTypography-root {
+.lineage-map-onboarding-eyebrow {
+  display: block;
   margin-bottom: 8px;
-  color: rgba(255, 255, 255, 0.76);
+  color: var(--color-text-secondary_on-brand);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -208,23 +155,25 @@
   text-transform: uppercase;
 }
 
-.lineage-map-onboarding-title.MuiTypography-root {
-  color: @white;
+.lineage-map-onboarding-title {
+  display: block;
+  color: var(--color-text-primary_on-brand);
   font-size: 26px;
   font-weight: 700;
   line-height: 34px;
 }
 
-.lineage-map-onboarding-description.MuiTypography-root {
+.lineage-map-onboarding-description {
+  display: block;
   margin-top: 8px;
-  color: rgba(255, 255, 255, 0.88);
+  color: var(--color-text-secondary_on-brand);
   font-size: 15px;
   line-height: 24px;
 }
 
 .lineage-map-onboarding-body {
   padding: 22px 32px 4px;
-  background: @white;
+  background: var(--color-bg-primary);
 }
 
 .lineage-map-onboarding-row {
@@ -232,7 +181,7 @@
   grid-template-columns: 44px 1fr;
   gap: 18px;
   padding: 12px 0 20px;
-  border-bottom: 1px solid @grey-200;
+  border-bottom: 1px solid var(--color-border-secondary);
 
   &:last-child {
     border-bottom: none;
@@ -244,7 +193,7 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: @primary-1;
+  background: var(--color-bg-brand-primary);
 }
 
 .lineage-map-onboarding-icon.altitude::before,
@@ -253,7 +202,7 @@
   left: 17px;
   width: 2px;
   height: 18px;
-  background: @primary-color;
+  background: var(--color-fg-brand-primary);
   content: '';
 }
 
@@ -264,7 +213,8 @@
 
 .lineage-map-onboarding-icon.altitude::after {
   top: 8px;
-  box-shadow: -6px 5px 0 -1px @primary-color, 6px -5px 0 -1px @primary-color;
+  box-shadow: -6px 5px 0 -1px var(--color-fg-brand-primary),
+    6px -5px 0 -1px var(--color-fg-brand-primary);
   transform: rotate(90deg);
 }
 
@@ -274,7 +224,7 @@
   left: 9px;
   width: 18px;
   height: 18px;
-  border: 2px solid @primary-color;
+  border: 2px solid var(--color-fg-brand-primary);
   border-radius: 4px;
   content: '';
   transform: rotate(45deg) skew(-8deg, -8deg);
@@ -289,16 +239,18 @@
   opacity: 0.62;
 }
 
-.lineage-map-onboarding-row-title.MuiTypography-root {
-  color: @grey-900;
+.lineage-map-onboarding-row-title {
+  display: block;
+  color: var(--color-text-primary);
   font-size: 16px;
   font-weight: 700;
   line-height: 22px;
 }
 
-.lineage-map-onboarding-row-description.MuiTypography-root {
+.lineage-map-onboarding-row-description {
+  display: block;
   margin-top: 2px;
-  color: @grey-600;
+  color: var(--color-text-tertiary);
   font-size: 14px;
   line-height: 22px;
 }
@@ -309,20 +261,18 @@
   justify-content: space-between;
   gap: 20px;
   padding: 18px 32px 28px;
-  background: @white;
+  background: var(--color-bg-primary);
 }
 
-.lineage-map-onboarding-hint.MuiTypography-root {
-  color: @grey-500;
+.lineage-map-onboarding-hint {
+  color: var(--color-text-quaternary);
   font-size: 13px;
   line-height: 20px;
 }
 
-.lineage-map-onboarding-action.MuiButton-root {
+.lineage-map-onboarding-action {
   min-width: 112px;
-  border-radius: 8px;
   font-weight: 700;
-  text-transform: none;
 }
 
 .lineage-map-loading,
@@ -331,12 +281,12 @@
   inset: 0;
   z-index: 30;
   display: grid;
-  background: rgba(255, 255, 255, 0.54);
+  background: color-mix(in srgb, var(--color-bg-primary) 54%, transparent);
   place-items: center;
 }
 
 .lineage-map-empty {
   z-index: 1;
   background: transparent;
-  color: @grey-600;
+  color: var(--color-text-tertiary);
 }
