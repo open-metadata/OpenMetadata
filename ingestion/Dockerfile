@@ -108,25 +108,26 @@ RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https:/
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Patch vulnerable Hive-metastore jars bundled inside PySpark 3.5.6 (the Deltalake
-# connector calls .enableHiveSupport()). Swap in fixed derby/zookeeper and drop the
-# legacy jackson-asl jars (no patched release exists). SHA1-pinned to Maven Central.
-#   derby 10.14.2.0 -> 10.17.1.0    CVE-2022-46337 (LDAP auth bypass); Java 17 in this image
-#   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass)
+# connector calls .enableHiveSupport()). SHA1-pinned to Maven Central.
+#   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass); ZK 3.7 runs on Java 8+
 #   jackson-mapper/core-asl 1.9.13  CVE-2019-10202 (deserialization RCE) -- removed, no fix upstream
+# Derby (CVE-2022-46337) is deliberately left at the bundled 10.14.2.0. The only fixed
+# release on Maven Central is 10.17.1.0, which requires Java 21 — this image ships Java 17
+# (default-jre-headless), and the Java-8/11/17 backport jars (10.14.3.0 / 10.15.2.1 /
+# 10.16.1.2) were never published upstream, so no drop-in Java-17 fix exists. The CVE is
+# an LDAP-authenticator injection; OM's embedded Derby metastore uses no LDAP auth, so the
+# vulnerable path is unreachable. Revisit if PySpark bumps Derby or the image moves to Java 21.
 RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))')" \
   && cd "${JARS_DIR}" \
-  && rm -f derby-*.jar zookeeper-*.jar zookeeper-jute-*.jar \
+  && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
            jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
   && for entry in \
-       "derby-10.17.1.0.jar|org/apache/derby/derby/10.17.1.0/derby-10.17.1.0.jar|e90e61e8ee731614a9bafd3d81155e09fff5e80c" \
-       "derbyshared-10.17.1.0.jar|org/apache/derby/derbyshared/10.17.1.0/derbyshared-10.17.1.0.jar|e6eac60d1b80b3781dff97ccef88fa131043f2a5" \
-       "derbytools-10.17.1.0.jar|org/apache/derby/derbytools/10.17.1.0/derbytools-10.17.1.0.jar|6d1a4e5e0f5c26516abbba85ece081506b9ad2e1" \
        "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|3b7c2c26b697094fc29e5a78a522cffa1a55b26d" \
        "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|1ca84725b0e581c8fef7c54e5355f3b8f7e44410" \
      ; do \
        name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
        wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
-       && echo "${sha}  ${name}" | sha1sum -c - ; \
+       && echo "${sha}  ${name}" | sha1sum -c - || exit 1; \
      done
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
