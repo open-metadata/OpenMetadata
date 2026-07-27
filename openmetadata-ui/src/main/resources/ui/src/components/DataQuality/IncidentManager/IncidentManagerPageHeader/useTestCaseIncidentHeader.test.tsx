@@ -12,7 +12,11 @@
  */
 import { renderHook, waitFor } from '@testing-library/react';
 import { act } from 'react';
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import {
+  Severities,
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TASK_DATA,
   MOCK_TEST_CASE_DATA,
@@ -100,7 +104,10 @@ jest.mock('react-router-dom', () => ({
 
 const mockUseTestCaseStore = {
   testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' } as
-    | (typeof MOCK_TEST_CASE_DATA & { incidentId?: string })
+    | (typeof MOCK_TEST_CASE_DATA & {
+        incidentId?: string;
+        incidentStatus?: TestCaseResolutionStatus;
+      })
     | undefined,
   testCasePermission: mockEntityPermissions,
   setTestCase: jest.fn(),
@@ -181,6 +188,68 @@ describe('useTestCaseIncidentHeader', () => {
     expect(getIncidentTaskByStateId).not.toHaveBeenCalled();
     expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
     expect(result.current.testCaseStatusData).toBeUndefined();
+  });
+
+  it('should render the resolved inline status when there is no incident id', async () => {
+    const resolvedInlineStatus = {
+      ...MOCK_TEST_CASE_INCIDENT.data[0],
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+    } as unknown as TestCaseResolutionStatus;
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentStatus: resolvedInlineStatus,
+    };
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
+    expect(getIncidentTaskByStateId).toHaveBeenCalledWith(
+      resolvedInlineStatus.stateId
+    );
+    expect(result.current.testCaseStatusData).toEqual(resolvedInlineStatus);
+    expect(result.current.incidentTask).toEqual(MOCK_TASK_DATA[1]);
+  });
+
+  it('should ignore a non-resolved inline status when there is no incident id', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentStatus: MOCK_TEST_CASE_INCIDENT
+        .data[0] as unknown as TestCaseResolutionStatus,
+    };
+
+    const { result } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(getIncidentTaskByStateId).not.toHaveBeenCalled();
+    expect(getListTestCaseIncidentByStateId).not.toHaveBeenCalled();
+    expect(result.current.testCaseStatusData).toBeUndefined();
+  });
+
+  it('should clear stale incident state when moving to a test case without an incident', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      incidentId: '123',
+    };
+
+    const { result, rerender } = renderIncidentHeaderHook();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toEqual(
+        MOCK_TEST_CASE_INCIDENT.data[0]
+      )
+    );
+
+    mockUseTestCaseStore.testCase = { ...MOCK_TEST_CASE_DATA };
+    rerender();
+
+    await waitFor(() =>
+      expect(result.current.testCaseStatusData).toBeUndefined()
+    );
+
+    expect(result.current.incidentTask).toBeNull();
   });
 
   it('should expose the owner version diff only on the version page', async () => {
