@@ -684,9 +684,15 @@ const TableV2 = <T extends object>(
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
+                      {...(rest.resizableColumns && colType.width !== undefined
+                        ? {
+                            defaultWidth: colType.width as number,
+                            minWidth: colType.width as number,
+                          }
+                        : {})}
                       style={{
                         ...(rest.size === 'small' ? { padding: '8px' } : {}),
-                        ...(colWidth !== undefined
+                        ...(!rest.resizableColumns && colWidth !== undefined
                           ? { width: colWidth, minWidth: colWidth }
                           : {}),
                         ...(rest.resizableColumns
@@ -846,8 +852,9 @@ const TableV2 = <T extends object>(
                               ...(rest.size === 'small' && !rest.cellClassName
                                 ? { padding: '8px' }
                                 : {}),
-                              ...(columnWidths[cellKey] !== undefined ||
-                              colType.width !== undefined
+                              ...(!rest.resizableColumns &&
+                              (columnWidths[cellKey] !== undefined ||
+                                colType.width !== undefined)
                                 ? {
                                     width:
                                       columnWidths[cellKey] ??

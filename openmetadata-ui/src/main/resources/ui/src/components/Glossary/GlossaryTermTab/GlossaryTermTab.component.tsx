@@ -133,7 +133,7 @@ const WorkflowHistory = withSuspenseFallback(
 
 const GLOSSARY_TERM_DRAG_TYPE = 'application/x-om-glossary-term';
 
-const GLOSSARY_TABLE_SCROLL = { y: 'calc(100vh - 350px)' };
+const GLOSSARY_TABLE_SCROLL = { x: 'max-content', y: 'calc(100vh - 350px)' };
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
@@ -142,7 +142,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const fetchRequestSeqRef = useRef(0);
-  const [containerWidth, setContainerWidth] = useState(0);
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -655,8 +654,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(containerWidth, permissions.Create),
-    [permissions.Create, containerWidth]
+    () => glossaryTermTableColumnsWidth(permissions.Create),
+    [permissions.Create]
   );
 
   const updateGlossaryTermStatus = (
@@ -1010,6 +1009,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       },
       ...ownerTableObject<ModifiedGlossaryTerm>().map((col) => ({
         ...col,
+        width: tableColumnsWidth.owners,
         render: (owners: EntityReference[], record: ModifiedGlossaryTerm) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -1708,13 +1708,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       });
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
-
-  useEffect(() => {
-    if (!tableContainerRef.current) {
-      return;
-    }
-    setContainerWidth(tableContainerRef.current.offsetWidth);
-  }, []);
 
   // Trigger new fetch when search term or status filter changes
   useEffect(() => {
