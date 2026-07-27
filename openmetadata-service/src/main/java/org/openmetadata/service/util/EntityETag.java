@@ -66,6 +66,13 @@ public class EntityETag {
    * Content the ETag hashes: the serialized entity. Falls back to {@code version}+{@code updatedAt}
    * if serialization fails, so a serializer hiccup degrades to the old ETag rather than failing the
    * response this decorates.
+   *
+   * <p>Best-effort cache-validation key, not a canonical digest: it relies on the entity serializing
+   * in a stable field/element order across requests. If a map-typed field or a DB-ordered collection
+   * ever serializes differently for otherwise-identical state, the ETag differs and the conditional
+   * GET is answered {@code 200} with the full body instead of {@code 304} — a missed optimization,
+   * never a stale or incorrect body. OpenMetadata map fields (e.g. {@code extension}) deserialize
+   * into order-preserving structures, so this stays stable in practice.
    */
   private static String fingerprint(EntityInterface entity) {
     String result;
