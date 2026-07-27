@@ -145,7 +145,7 @@ RUN [ $(uname -m) = "x86_64" ] \
   || echo "DB2 not supported on ARM architectures."
 
 # Patch vulnerable Hive-metastore jars bundled inside PySpark 3.5.6 (the Deltalake
-# connector calls .enableHiveSupport()). SHA1-pinned to Maven Central.
+# connector calls .enableHiveSupport()). SHA256-pinned to Maven Central.
 #   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass); ZK 3.7 runs on Java 8+
 #   jackson-mapper/core-asl 1.9.13  CVE-2019-10202 (deserialization RCE) -- removed, no fix upstream
 # Derby (CVE-2022-46337) is deliberately left at the bundled 10.14.2.0. The only fixed
@@ -164,12 +164,12 @@ RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(
        && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
                 jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
        && for entry in \
-            "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|3b7c2c26b697094fc29e5a78a522cffa1a55b26d" \
-            "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|1ca84725b0e581c8fef7c54e5355f3b8f7e44410" \
+            "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|b12d6fb4afd7b3849d3a9a5a38b9260c23a12e1ea58ca8c8d775880249cb8eac" \
+            "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|ad15d812b1f01f373638443adcda0e23fda549d65ced2be8c4f64bef33b5d774" \
           ; do \
             name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
             wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
-            && echo "${sha}  ${name}" | sha1sum -c - || exit 1; \
+            && echo "${sha}  ${name}" | sha256sum -c - || exit 1; \
           done; \
      fi
 
