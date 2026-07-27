@@ -19,6 +19,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 /**
@@ -38,25 +40,45 @@ public class EntityETag {
   private static final String WEAK_PREFIX = "W/";
 
   /**
-   * Generate an ETag for an entity based on its version and last updated timestamp.
-   * Format: "version-updatedAt" wrapped in quotes as per HTTP ETag specification.
+   * Generate a strong ETag for an entity from a hash of its serialized representation.
+   *
+   * <p>An ETag must change whenever the representation the client would receive changes (RFC 7232
+   * §2.3). Hashing only {@code version}+{@code updatedAt} is not enough: relationship-only
+   * mutations — {@code updateVote}, {@code addFollower}/{@code removeFollower},
+   * {@code DataContractRepository.updateLatestResult} — rewrite the response body (e.g. the
+   * {@code votes} block) without bumping either field. A version-based ETag therefore stayed
+   * constant across such a mutation, so a conditional GET was wrongly answered {@code 304 Not
+   * Modified} and the client rendered the stale pre-mutation body (the up/down vote regression).
+   * Hashing the serialized entity ties the ETag to the exact bytes returned.
    *
    * @param entity The entity to generate ETag for
-   * @return ETag string in format "version-updatedAt"
+   * @return quoted strong ETag, or {@code null} if entity is null
    */
   public static String generateETag(EntityInterface entity) {
-    if (entity == null) {
-      return null;
+    String etag = null;
+    if (entity != null) {
+      etag = ETAG_PREFIX + generateHash(fingerprint(entity)) + ETAG_SUFFIX;
     }
+    return etag;
+  }
 
-    // Use version and updatedAt to generate a unique ETag
-    String etagValue = entity.getVersion() + "-" + entity.getUpdatedAt();
-
-    // Generate SHA-256 hash for consistency and to handle special characters
-    String hash = generateHash(etagValue);
-
-    // Return ETag wrapped in quotes as per HTTP specification
-    return ETAG_PREFIX + hash + ETAG_SUFFIX;
+  /**
+   * Content the ETag hashes: the serialized entity. Falls back to {@code version}+{@code updatedAt}
+   * if serialization fails, so a serializer hiccup degrades to the old ETag rather than failing the
+   * response this decorates.
+   */
+  private static String fingerprint(EntityInterface entity) {
+    String result;
+    try {
+      result = JsonUtils.pojoToJson(entity);
+    } catch (JsonParsingException e) {
+      LOG.warn(
+          "ETag falling back to version+updatedAt; entity {} failed to serialize: {}",
+          entity.getId(),
+          e.getMessage());
+      result = entity.getVersion() + "-" + entity.getUpdatedAt();
+    }
+    return result;
   }
 
   /**
