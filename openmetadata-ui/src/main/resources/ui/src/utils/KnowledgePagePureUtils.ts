@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { DataNode } from 'antd/lib/tree';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, unionBy } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -220,10 +220,11 @@ export const updateTreeData = (
   ): boolean => {
     for (const page of pages) {
       if (page.fullyQualifiedName === key) {
-        if (!page.children) {
-          page.children = [];
-        }
-        page.children.push(...children);
+        page.children = unionBy(
+          page.children ?? [],
+          children,
+          'fullyQualifiedName'
+        );
 
         return true;
       }
