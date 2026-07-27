@@ -243,6 +243,11 @@
     overflow-y: auto;
   }
 
+  .ant-tabs-tabpane:has(.glossary-terms-empty-container) {
+    display: flex;
+    flex-direction: column;
+  }
+
   .activity-feed-tab {
     height: 100%;
 
@@ -289,7 +294,7 @@
 
 .glossary-terms-empty-container {
   flex: 1 1 auto;
-  min-height: 300px;
+  min-height: 360px;
   overflow: auto;
 }
 
