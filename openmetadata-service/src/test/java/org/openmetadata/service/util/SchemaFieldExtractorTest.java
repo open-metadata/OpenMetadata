@@ -20,6 +20,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.everit.json.schema.ArraySchema;
@@ -71,6 +72,43 @@ class SchemaFieldExtractorTest {
         entityFieldsCache();
     assertTrue(entityFieldsCache.containsKey("learningResource"));
     assertTrue(entityFieldsCache.containsKey("aiApplication"));
+  }
+
+  @Test
+  void extractFieldsSupportsMcpSchemas() throws Throwable {
+    SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+
+    Map<String, SchemaFieldExtractor.FieldDefinition> serverFields =
+        toMap(extractor.extractFields(new Type(), "mcpServer"));
+    Map<String, SchemaFieldExtractor.FieldDefinition> executionFields =
+        toMap(extractor.extractFields(new Type(), "mcpExecution"));
+
+    assertEquals("string", serverFields.get("protocolVersion").getType());
+    assertEquals("serverType", serverFields.get("serverType").getType());
+    assertEquals("array<mcpTool>", serverFields.get("tools").getType());
+    assertEquals("string", executionFields.get("sessionId").getType());
+    assertEquals("executionStatus", executionFields.get("status").getType());
+    assertEquals("array<toolCallRecord>", executionFields.get("toolCalls").getType());
+  }
+
+  @Test
+  void everyDiscoveredEntityTypeResolvesToAnExistingSchemaResource() throws Throwable {
+    List<String> unresolved = new ArrayList<>();
+
+    for (String entityType : SchemaFieldExtractor.getAllEntityTypes()) {
+      String schemaPath =
+          (String)
+              invokePrivateStatic("determineSchemaPath", new Class<?>[] {String.class}, entityType);
+      if (SchemaFieldExtractor.class.getClassLoader().getResource(schemaPath) == null) {
+        unresolved.add(entityType + " -> " + schemaPath);
+      }
+    }
+
+    assertTrue(
+        unresolved.isEmpty(),
+        "Entity types discovered under json/schema/entity/ whose schema path does not exist. "
+            + "They are most likely missing from getEntitySubdirectory(): "
+            + unresolved);
   }
 
   @Test
