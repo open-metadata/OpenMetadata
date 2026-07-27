@@ -12,15 +12,31 @@
  */
 
 import { act, findByTestId, fireEvent, render } from '@testing-library/react';
+import { KeyboardEventHandler } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
 
 const onSave = jest.fn();
 const onChangeHandler = jest.fn();
 
+// Minimal shape of the quill-mention module config the tests drive.
+interface MentionModule {
+  onOpen: () => void;
+  onClose: () => void;
+  onSelect: (
+    item: Record<string, unknown>,
+    insertItem: (item: unknown) => void
+  ) => void;
+}
+
+interface CapturedQuillProps {
+  modules?: { mention: MentionModule };
+  onKeyDown?: KeyboardEventHandler;
+}
+
 // Captures the props ReactQuill is rendered with so tests can drive the real
 // quill-mention handlers (onOpen/onClose/onSelect) that toggle isMentionListOpen.
-const mockCaptureQuillProps = jest.fn();
+const mockCaptureQuillProps = jest.fn<void, [CapturedQuillProps]>();
 
 const mockFeedEditorProp = {
   onChangeHandler: onChangeHandler,
@@ -28,10 +44,19 @@ const mockFeedEditorProp = {
 };
 
 // Latest ReactQuill render props (module config + the real onKeyDown handler).
-const latestQuillProps = () =>
+const latestQuillProps = (): CapturedQuillProps =>
   mockCaptureQuillProps.mock.calls[
     mockCaptureQuillProps.mock.calls.length - 1
   ][0];
+
+const mentionModule = (): MentionModule => {
+  const { modules } = latestQuillProps();
+  if (!modules) {
+    throw new Error('ReactQuill rendered without a mention module');
+  }
+
+  return modules.mention;
+};
 
 // setupTests.js globally mocks FeedEditor with a stub; test the real component.
 jest.unmock('./FeedEditor');
@@ -52,13 +77,11 @@ jest.mock('react-quill-new', () => ({
   Quill: { register: () => undefined, import: (val: string) => val },
   // Render a keydown-able node wired to the REAL onKeyDown so handleKeyDown (and
   // its isMentionListOpen check) is exercised, not a test reimplementation.
-  default: (props: { modules?: unknown; onKeyDown?: unknown }) => {
+  default: (props: CapturedQuillProps) => {
     mockCaptureQuillProps(props);
 
     return (
-      <div
-        data-testid="react-quill"
-        onKeyDown={props.onKeyDown as React.KeyboardEventHandler}>
+      <div data-testid="react-quill" onKeyDown={props.onKeyDown}>
         editor
       </div>
     );
@@ -157,7 +180,7 @@ describe('Test FeedEditor Component', () => {
 
     // The mention suggestion list is open (user is picking a mention).
     act(() => {
-      (latestQuillProps().modules as any).mention.onOpen();
+      mentionModule().onOpen();
     });
 
     // The Enter that selects the mention must NOT send the message.
@@ -173,12 +196,11 @@ describe('Test FeedEditor Component', () => {
         wrapper: MemoryRouter,
       });
       const reactQuill = await findByTestId(container, 'react-quill');
-      const mention = () => (latestQuillProps().modules as any).mention;
 
       // Open the list, pick a mention (insert only), then the list closes.
-      act(() => mention().onOpen());
-      act(() => mention().onSelect({}, jest.fn()));
-      act(() => mention().onClose());
+      act(() => mentionModule().onOpen());
+      act(() => mentionModule().onSelect({}, jest.fn()));
+      act(() => mentionModule().onClose());
       // onClose defers toggling the flag a tick — flush it.
       act(() => {
         jest.runAllTimers();
