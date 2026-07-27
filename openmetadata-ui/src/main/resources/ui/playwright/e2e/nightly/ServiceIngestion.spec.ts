@@ -68,11 +68,6 @@ test.use({
 Object.entries(services).forEach(([key, ServiceClass]) => {
   const service = new ServiceClass();
 
-  test.describe.configure({
-    // 11 minutes max for ingestion tests
-    timeout: 11 * 60 * 1000,
-  });
-
   test.describe.serial(key, PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
@@ -93,6 +88,7 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
      * @description Creates the service and triggers ingestion
      */
     test(`Create & Ingest ${key} service`, async ({ page }) => {
+      test.slow();
       await service.createService(page);
     });
 
