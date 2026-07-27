@@ -200,7 +200,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           page,
           EntityDataClass.domain1.responseData,
           entity.entityResponseData?.['fullyQualifiedName'] ??
-            entity.entityResponseData?.['name']
+            entity.entityResponseData?.['name'],
+          entity.entityResponseData?.['name']
         );
 
         await visitServiceDetailsPage(

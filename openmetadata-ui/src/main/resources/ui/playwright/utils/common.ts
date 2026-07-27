@@ -912,15 +912,16 @@ export const waitForSearchResult = async (
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
-  childFqnSearchTerm: string
+  childFqn: string,
+  childSearchTerm: string
 ) => {
-  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+  const entityCard = page.getByTestId(`table-data-card_${childFqn}`);
   const domainLink = entityCard
     .getByTestId('domain-link')
     .filter({ hasText: domain.displayName, visible: true })
     .first();
 
-  await waitForSearchResult(page, childFqnSearchTerm, domainLink, 90_000);
+  await waitForSearchResult(page, childSearchTerm, domainLink, 90_000);
   await expect(entityCard).toBeVisible();
   await expect(domainLink).toBeVisible();
   await expect(domainLink).toContainText(domain.displayName);

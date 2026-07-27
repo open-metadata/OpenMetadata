@@ -249,11 +249,13 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await pageSizeDropdown.scrollIntoViewIfNeeded();
     await expect(pageSizeDropdown).toBeVisible();
     await expect(pageSizeDropdown).toBeEnabled();
-    await pageSizeDropdown.click();
-
     const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
+      .getByRole('menuitem', { name: '15 / Page', exact: true })
+      .filter({ visible: true });
+    await pageSizeDropdown.hover();
+    if (!(await pageSizeOption.isVisible())) {
+      await pageSizeDropdown.click();
+    }
     await expect(pageSizeOption).toBeVisible();
     await pageSizeOption.click();
     await waitForAllLoadersToDisappear(page);
