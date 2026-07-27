@@ -255,6 +255,7 @@ class SearchRepositoryBehaviorTest {
         List<PropagationDescriptor> descriptors = buildDescriptorsFor(entityType);
         EntityRepository<?> mockRepo = mock(EntityRepository.class);
         doReturn(descriptors).when(mockRepo).getSearchPropagationDescriptors();
+        doReturn(true).when(mockRepo).isSearchIndexable(any());
         repoMap.put(entityType, mockRepo);
         org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry.register(
             org.openmetadata.service.search.capability.EntityIndexCapability.forEntity(entityType));
@@ -538,6 +539,28 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntityIndexDeletesStaleDocumentForNonIndexableEntity() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    Table entity = mock(Table.class);
+    when(entity.getEntityReference())
+        .thenReturn(
+            new EntityReference()
+                .withId(entityId)
+                .withType(Entity.TABLE)
+                .withName("private-memory"));
+    when(entity.getId()).thenReturn(entityId);
+    when(entity.getFullyQualifiedName()).thenReturn("svc.db.schema.private-memory");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(entity);
+
+    repository.createEntityIndex(entity);
+
+    verify(searchClient).deleteEntity("cluster_table_search_index", entityId.toString());
+    verify(searchClient, never())
+        .createEntity(any(String.class), any(String.class), any(String.class));
+  }
+
+  @Test
   void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
     UUID entityId = UUID.randomUUID();
     EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
@@ -576,11 +599,60 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
+      throws IOException {
+    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
+    doReturn(false).when(tableRepository).isSearchIndexable(hidden);
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntitiesIndex(List.of(hidden, visible));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  visible.getId().toString(),
+                  visible.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  hidden.getId().toString(),
+                  hidden.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntitiesIndex: Search client unavailable"),
+          never());
+    }
+  }
+
+  @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
     EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
     EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
         .thenThrow(new IllegalStateException("cannot index broken entity"));
+    when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
+        .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
+
+    repository.createEntitiesIndex(List.of(broken, valid));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_table_search_index"), docsCaptor.capture());
+    assertEquals(1, docsCaptor.getValue().size());
+    assertEquals(
+        valid.getId().toString(), docsCaptor.getValue().getFirst().keySet().iterator().next());
+  }
+
+  @Test
+  void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
+    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    when(broken.getEntityReference())
+        .thenThrow(new IllegalStateException("cannot resolve entity reference"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
         .thenReturn(new MapBackedSearchIndex(valid, Map.of("name", "customers")));
 
