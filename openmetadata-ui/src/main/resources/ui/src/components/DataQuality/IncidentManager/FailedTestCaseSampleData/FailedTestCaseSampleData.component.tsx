@@ -27,7 +27,10 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../../enums/Axios.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { TableData, TestCaseStatus } from '../../../../generated/tests/testCase';
+import {
+  TableData,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import {
   deleteTestCaseFailedSampleData,
@@ -205,6 +208,10 @@ const FailedTestCaseSampleData = ({
   useEffect(() => {
     if (hasViewSampleDataPermission && isTestCaseFailed) {
       fetchFailedTestCaseSampleData();
+    } else {
+      // Clear any previously loaded sample so it doesn't linger when the test
+      // case is no longer failing (e.g. a status change on the mounted page).
+      setSampleData(undefined);
     }
   }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
 

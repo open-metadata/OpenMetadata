@@ -14,10 +14,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React, { Fragment } from 'react';
-import {
-  TestCase,
-  TestCaseStatus,
-} from '../../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getTestCaseFailedSampleData } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -255,9 +252,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
 
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
-    await waitFor(() =>
-      expect(getTestCaseFailedSampleData).toHaveBeenCalled()
-    );
+    await waitFor(() => expect(getTestCaseFailedSampleData).toHaveBeenCalled());
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 
@@ -269,6 +264,29 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
 
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
-    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(serverError));
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(serverError)
+    );
+  });
+
+  it('should clear stale sample data when the status changes to non-failed', async () => {
+    const { rerender } = render(
+      <FailedTestCaseSampleData testCaseData={mockTestCase} />
+    );
+
+    // Sample loaded for the failing test case.
+    await screen.findByTestId('explore-with-query');
+
+    // The same mounted component now reflects a passing result.
+    const passingTestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+    } as TestCase;
+    rerender(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
+
+    // The previously loaded sample must not linger for the passing result.
+    await waitFor(() =>
+      expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument()
+    );
   });
 });

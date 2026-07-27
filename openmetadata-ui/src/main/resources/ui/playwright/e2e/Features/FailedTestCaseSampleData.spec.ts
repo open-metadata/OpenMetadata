@@ -138,43 +138,43 @@ test(
   async ({ page }) => {
     const { apiContext } = await getApiContext(page);
     const table = new TableClass();
-    await table.create(apiContext);
 
-    // A passing test case — a failed-rows sample can never exist for it, so the
-    // UI must not request one.
-    const passingTestCase = await table.createTestCase(apiContext, {
-      name: `pw_passing_row_count_${uuid()}`,
-    });
-    await table.addTestCaseResult(
-      apiContext,
-      passingTestCase.fullyQualifiedName,
-      {
-        result: 'Passing (fixture)',
-        testCaseStatus: 'Success',
-        testResultValue: [{ name: 'rowCount', value: '100' }],
-        timestamp: Date.now(),
-      }
-    );
+    try {
+      await table.create(apiContext);
 
-    // A failing test case with no computed failed-rows sample stored — the UI
-    // still requests it (status is Failed) but the backend answers 404.
-    const failedTestCase = await table.createTestCase(apiContext, {
-      name: `pw_failing_no_sample_${uuid()}`,
-    });
-    await table.addTestCaseResult(
-      apiContext,
-      failedTestCase.fullyQualifiedName,
-      {
-        result: 'Failed (fixture)',
-        testCaseStatus: 'Failed',
-        testResultValue: [{ name: 'rowCount', value: '0' }],
-        timestamp: Date.now(),
-      }
-    );
+      // A passing test case — a failed-rows sample can never exist for it, so the
+      // UI must not request one.
+      const passingTestCase = await table.createTestCase(apiContext, {
+        name: `pw_passing_row_count_${uuid()}`,
+      });
+      await table.addTestCaseResult(
+        apiContext,
+        passingTestCase.fullyQualifiedName,
+        {
+          result: 'Passing (fixture)',
+          testCaseStatus: 'Success',
+          testResultValue: [{ name: 'rowCount', value: '100' }],
+          timestamp: Date.now(),
+        }
+      );
 
-    await test.step(
-      'passing test case does not request the failed-rows sample',
-      async () => {
+      // A failing test case with no computed failed-rows sample stored — the UI
+      // still requests it (status is Failed) but the backend answers 404.
+      const failedTestCase = await table.createTestCase(apiContext, {
+        name: `pw_failing_no_sample_${uuid()}`,
+      });
+      await table.addTestCaseResult(
+        apiContext,
+        failedTestCase.fullyQualifiedName,
+        {
+          result: 'Failed (fixture)',
+          testCaseStatus: 'Failed',
+          testResultValue: [{ name: 'rowCount', value: '0' }],
+          timestamp: Date.now(),
+        }
+      );
+
+      await test.step('passing test case does not request the failed-rows sample', async () => {
         // Intercept so any failed-rows request is caught the moment it starts,
         // independent of response timing.
         let sampleRequested = false;
@@ -209,12 +209,9 @@ test(
 
         await page.unroute('**/failedRowsSample');
         expect(sampleRequested).toBe(false);
-      }
-    );
+      });
 
-    await test.step(
-      'failed test case without a sample gets a 404 and shows no error toast',
-      async () => {
+      await test.step('failed test case without a sample gets a 404 and shows no error toast', async () => {
         const failedRowsSample = page.waitForResponse((res) =>
           res.url().includes('/failedRowsSample')
         );
@@ -233,10 +230,11 @@ test(
         // The 404 is the expected "no sample stored" empty state — it must not
         // surface as an error toast.
         await expect(page.getByTestId('alert-bar')).not.toBeVisible();
-      }
-    );
-
-    // Cleanup
-    await table.delete(apiContext);
+      });
+    } finally {
+      // Cleanup runs even if a step above fails, so a failed run doesn't leak
+      // the service/table/test cases into later E2E runs.
+      await table.delete(apiContext);
+    }
   }
 );
