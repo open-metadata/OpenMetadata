@@ -112,7 +112,14 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Explore/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
       ],
-      "projects": ["chromium", "Basic", "search-nightly", "Reindex", "GlobalSettings"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "search-nightly",
+        "Reindex",
+        "GlobalSettings"
+      ],
       "specs": [
         "playwright/e2e/Pages/Explore*.spec.ts",
         "playwright/e2e/Features/*Search*.spec.ts",
