@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from typing import Dict, Optional, Union
+
+from typing import Optional
 
 import requests
 from requests.models import Response
@@ -30,11 +31,13 @@ from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL 
     OpenAPISchemaURL,
 )
 from metadata.generated.schema.entity.services.connections.api.restConnection import (
-    RestConnection,
+    RestConnection as RestConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.rest.parser import (
@@ -60,83 +63,81 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnection) -> Union[Response, Dict]:
-    """
-    Create connection.
-    If openAPISchemaURL is provided, fetches the schema via HTTP.
-    Otherwise, reads from the local openAPISchemaFilePath.
-    """
-    schema_conn = connection.openAPISchemaConnection
-    if isinstance(schema_conn, OpenAPISchemaURL):
-        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
-        verify = verify_ssl_fn(connection.sslConfig)
-        if verify is None:
-            verify = True
-        headers = {}
-        if connection.token:
-            headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
-        return requests.get(
-            schema_conn.openAPISchemaURL, headers=headers, verify=verify
-        )
+class RestConnection(BaseConnection[RestConnectionConfig, Response | dict]):
+    def _get_client(self) -> Response | dict:
+        """
+        Create connection.
+        If openAPISchemaURL is provided, fetches the schema via HTTP.
+        Otherwise, reads from the local openAPISchemaFilePath.
+        """
+        connection = self.service_connection
+        schema_conn = connection.openAPISchemaConnection
+        if isinstance(schema_conn, OpenAPISchemaURL):
+            verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL or VerifySSL.no_ssl)
+            verify = verify_ssl_fn(connection.sslConfig)
+            if verify is None:
+                verify = True
+            headers = {}
+            if connection.token:
+                headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
+            return requests.get(str(schema_conn.openAPISchemaURL), headers=headers, verify=verify)
 
-    if isinstance(schema_conn, OpenAPISchemaFilePath):
-        return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
+        if isinstance(schema_conn, OpenAPISchemaFilePath):
+            return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
 
-    if isinstance(schema_conn, OpenAPISchemaS3):
-        return parse_openapi_schema_from_s3(
-            s3_url=str(schema_conn.openAPISchemaS3URL),
-            aws_credentials=schema_conn.awsCredentials,
-        )
-
-    raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    client: Union[Response, Dict],
-    service_connection: RestConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    is_local_file = isinstance(client, dict)
-
-    def custom_url_exec():
-        if is_local_file:
-            return []
-        if client.status_code == 200:
-            return []
-        raise SchemaURLError(
-            "Failed to connect to the JSON schema url. "
-            "Please check the url and credentials. "
-            f"Status Code was: {client.status_code}"
-        )
-
-    def custom_schema_exec():
-        try:
-            schema = client if is_local_file else parse_openapi_schema(client)
-            if validate_openapi_schema(schema):
-                return []
-
-            raise InvalidOpenAPISchemaError(
-                "Provided schema is not valid OpenAPI specification"
+        if isinstance(schema_conn, OpenAPISchemaS3):
+            return parse_openapi_schema_from_s3(
+                s3_url=str(schema_conn.openAPISchemaS3URL),
+                aws_credentials=schema_conn.awsCredentials,
             )
-        except OpenAPIParseError as e:
-            raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")
-        except InvalidOpenAPISchemaError:
-            raise
-        except Exception as e:
-            raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")
 
-    test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
+        raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
+        is_local_file = isinstance(client, dict)
+
+        def custom_url_exec():
+            if is_local_file:
+                return []
+            if client.status_code == 200:  # pyright: ignore[reportAttributeAccessIssue]
+                return []
+            raise SchemaURLError(
+                "Failed to connect to the JSON schema url. "
+                "Please check the url and credentials. "
+                f"Status Code was: {client.status_code}"  # pyright: ignore[reportAttributeAccessIssue]
+            )
+
+        def custom_schema_exec():
+            try:
+                schema = client if is_local_file else parse_openapi_schema(client)  # pyright: ignore[reportArgumentType]
+                if validate_openapi_schema(schema):  # pyright: ignore[reportArgumentType]
+                    return []
+
+                raise InvalidOpenAPISchemaError("Provided schema is not valid OpenAPI specification")  # noqa: TRY301
+            except OpenAPIParseError as e:
+                raise InvalidOpenAPISchemaError(f"Failed to parse OpenAPI schema: {e}")  # noqa: B904
+            except InvalidOpenAPISchemaError:
+                raise
+            except Exception as e:
+                raise InvalidOpenAPISchemaError(f"Error validating OpenAPI schema: {e}")  # noqa: B904
+
+        test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

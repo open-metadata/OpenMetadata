@@ -84,7 +84,7 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
   TIME_BASED_PARTITION: ['TIME-UNIT'],
 }));
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/ObjectUtils', () => ({
   reducerWithoutAction: jest.fn(),
 }));
 

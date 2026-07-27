@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,12 +24,11 @@ import {
 import {
   getDimensionIcon,
   transformToTestCaseStatusByDimension,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import StatusByDimensionWidget from '../StatusCardWidget/StatusCardWidget.component';
 import './status-by-dimension-card-widget.less';
-
 const StatusByDimensionCardWidget = ({
   chartFilter,
 }: PieChartWidgetCommonProps) => {
@@ -73,26 +71,24 @@ const StatusByDimensionCardWidget = ({
   }, [chartFilter]);
 
   return (
-    <Row gutter={[24, 40]}>
+    <div className="tw:grid tw:grid-cols-1 tw:gap-x-6 tw:gap-y-10 tw:md:grid-cols-2 tw:lg:grid-cols-4">
       {dqDimensions.map((dimension) => (
-        <Col key={dimension.title} lg={6} md={12} span={24}>
-          <StatusByDimensionWidget
-            icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
-            isLoading={isDqByDimensionLoading}
-            key={dimension.title}
-            redirectPath={{
-              pathname: observabilityRouterClassBase.getDataQualityPagePath(
-                DataQualityPageTabs.TEST_CASES
-              ),
-              search: QueryString.stringify({
-                dataQualityDimension: dimension.title,
-              }),
-            }}
-            statusData={dimension}
-          />
-        </Col>
+        <StatusByDimensionWidget
+          icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
+          isLoading={isDqByDimensionLoading}
+          key={dimension.title}
+          redirectPath={{
+            pathname: observabilityRouterClassBase.getDataQualityPagePath(
+              DataQualityPageTabs.TEST_CASES
+            ),
+            search: QueryString.stringify({
+              dataQualityDimension: dimension.title,
+            }),
+          }}
+          statusData={dimension}
+        />
       ))}
-    </Row>
+    </div>
   );
 };
 

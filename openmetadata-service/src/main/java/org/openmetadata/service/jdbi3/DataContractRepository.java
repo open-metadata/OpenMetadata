@@ -1143,12 +1143,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         SecretsManagerFactory.getSecretsManager()
             .encryptOpenMetadataConnection(openMetadataServerConnection, false));
 
+    IngestionPipelineRepository ingestionPipelineRepository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     PipelineServiceClientResponse response =
-        pipelineServiceClient.deployPipeline(pipeline, testSuite);
+        ingestionPipelineRepository.deployIngestionPipeline(pipeline, testSuite);
     if (response.getCode() == 200) {
       pipeline.setDeployed(true);
-      IngestionPipelineRepository ingestionPipelineRepository =
-          (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       ingestionPipelineRepository.createOrUpdate(null, pipeline, ADMIN_USER_NAME);
     }
   }

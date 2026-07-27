@@ -12,7 +12,6 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { LazyLog } from '@melloware/react-logviewer';
 import {
   Badge,
   Button,
@@ -24,16 +23,20 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { capitalize, isEmpty, isNil } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { capitalize, isEmpty, toString } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { StepStats } from '../../../../generated/entity/applications/appRunRecord';
-import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
+import {
+  formatLatencyAverage,
+  formatThroughput,
+  getAppRunFailureLogs,
+  getEntityStatsData,
+} from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
-import { formatJsonString } from '../../../../utils/StringsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
-import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import './app-logs-viewer.less';
 import {
   AppLogsViewerProps,
@@ -45,8 +48,16 @@ import ReindexFailures from './ReindexFailures.component';
 const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
-  const { successContext, failureContext, timestamp, status } = data;
+  const {
+    successContext,
+    failureContext,
+    timestamp,
+    status,
+    startTime,
+    endTime,
+  } = data;
 
   const hasFailures = useMemo(() => {
     const jobStats =
@@ -55,149 +66,186 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     return (jobStats?.failedRecords ?? 0) > 0;
   }, [successContext, failureContext]);
 
-  const handleJumpToEnd = () => {
-    const logsBody = document.getElementsByClassName(
-      'ReactVirtualized__Grid'
-    )[0];
+  // Wall-clock duration of the run, used as the rate basis on the overall
+  // stats card. Stage cards keep using stepStats.totalTimeMs (stage-CPU time)
+  // so engineers can still see per-stage cost. The overall card answers the
+  // operator question "how fast is reindex actually going?" — which is
+  // successRecords / wall_clock, not the inflated stage-CPU rate that sums
+  // parallel worker time. For in-flight runs (no endTime yet) we tick a
+  // local `now` state every 5s so the rate moves with the job; React's
+  // dependency rules require the bumping value to be a state, not Date.now()
+  // captured inside useMemo.
+  const [now, setNow] = useState<number>(() => Date.now());
 
-    if (!isNil(logsBody)) {
-      logsBody.scrollTop = logsBody.scrollHeight;
+  useEffect(() => {
+    if (!startTime || endTime) {
+      return undefined;
     }
-  };
+    const id = setInterval(() => setNow(Date.now()), 5000);
 
-  const logsRender = useCallback(
-    (logs: string) =>
-      logs && (
-        <Row className="p-t-sm">
-          <Col className="d-flex justify-end" span={24}>
-            <Space size="small">
-              <Button
-                ghost
-                data-testid="jump-to-end-button"
-                type="primary"
-                onClick={handleJumpToEnd}>
-                {t('label.jump-to-end')}
-              </Button>
+    return () => clearInterval(id);
+  }, [startTime, endTime]);
 
-              <CopyToClipboardButton copyText={logs} />
-            </Space>
-          </Col>
+  const wallClockMs = useMemo<number | undefined>(() => {
+    if (!startTime) {
+      return undefined;
+    }
+    const end = endTime ?? now;
 
-          <Col
-            className="p-t-md h-min-400 lazy-log-container"
-            data-testid="lazy-log"
-            span={24}>
-            <LazyLog
-              caseInsensitive
-              enableSearch
-              selectableLines
-              extraLines={1} // 1 is to be add so that linux users can see last line of the log
-              text={logs}
-            />
-          </Col>
-        </Row>
-      ),
-    [handleJumpToEnd]
-  );
+    return Math.max(0, end - startTime);
+  }, [startTime, endTime, now]);
+
+  const failureLogs = useMemo(() => getAppRunFailureLogs(data), [data]);
 
   const statsRender = useCallback(
-    (stepStats: StepStats, title?: string, showStatus = true) => (
-      <Card
-        data-testid={`stats-component${title ? `-${title.toLowerCase()}` : ''}`}
-        size="small"
-        title={title}>
-        <Row gutter={[16, 8]}>
-          <Col span={24}>
-            <Space wrap direction="horizontal" size={0}>
-              {showStatus && (
-                <>
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.status'
-                    )}:`}</span>
+    (
+      stepStats: StepStats,
+      title?: string,
+      options: {
+        showStatus?: boolean;
+        effectiveTimeMs?: number;
+        latencyLabelKey?: string;
+      } = {}
+    ) => {
+      const { showStatus = true, effectiveTimeMs, latencyLabelKey } = options;
 
-                    <Space align="center" className="m-l-xs" size={8}>
-                      <Icon
-                        component={
-                          STATUS_ICON[status as keyof typeof STATUS_ICON]
-                        }
-                        style={ICON_DIMENSION}
-                      />
-                      <span>{capitalize(status)}</span>
-                    </Space>
-                  </div>
-                  <Divider type="vertical" />
-                </>
-              )}
-              <div className="flex">
-                <span className="text-grey-muted">{`${t(
-                  'label.index-states'
-                )}:`}</span>
-                <span className="m-l-xs">
-                  <Space size={8}>
-                    <Badge
-                      showZero
-                      className="request-badge running"
-                      count={stepStats.totalRecords}
-                      overflowCount={99999999}
-                      title={`${t('label.total-index-sent')}: ${
-                        stepStats.totalRecords
-                      }`}
-                    />
+      return (
+        <Card
+          data-testid={`stats-component${
+            title ? `-${title.toLowerCase()}` : ''
+          }`}
+          size="small"
+          title={title}>
+          <Row gutter={[16, 8]}>
+            <Col span={24}>
+              <Space wrap direction="horizontal" size={0}>
+                {showStatus && (
+                  <>
+                    <div className="flex">
+                      <span className="text-grey-muted">{`${t(
+                        'label.status'
+                      )}:`}</span>
 
-                    <Badge
-                      showZero
-                      className="request-badge success"
-                      count={stepStats.successRecords}
-                      overflowCount={99999999}
-                      title={`${t('label.entity-index', {
-                        entity: t('label.success'),
-                      })}: ${stepStats.successRecords}`}
-                    />
-
-                    <Badge
-                      showZero
-                      className="request-badge failed"
-                      count={stepStats.failedRecords}
-                      overflowCount={99999999}
-                      title={`${t('label.entity-index', {
-                        entity: t('label.failed'),
-                      })}: ${stepStats.failedRecords}`}
-                    />
-
-                    {stepStats.warningRecords !== undefined &&
-                      stepStats.warningRecords > 0 && (
-                        <Badge
-                          showZero
-                          className="request-badge warning"
-                          count={stepStats.warningRecords}
-                          overflowCount={99999999}
-                          title={`${t('label.entity-index', {
-                            entity: t('label.warning-plural'),
-                          })}: ${stepStats.warningRecords}`}
+                      <Space align="center" className="m-l-xs" size={8}>
+                        <Icon
+                          component={
+                            STATUS_ICON[status as keyof typeof STATUS_ICON]
+                          }
+                          style={ICON_DIMENSION}
                         />
-                      )}
-                  </Space>
-                </span>
-              </div>
-              {showStatus && (
-                <>
-                  <Divider type="vertical" />
-                  <div className="flex">
-                    <span className="text-grey-muted">{`${t(
-                      'label.last-updated'
-                    )}:`}</span>
-                    <span className="m-l-xs">
-                      {timestamp ? formatDateTimeWithTimezone(timestamp) : '--'}
-                    </span>
-                  </div>
-                </>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-    ),
+                        <span>{capitalize(status)}</span>
+                      </Space>
+                    </div>
+                    <Divider type="vertical" />
+                  </>
+                )}
+                <div className="flex">
+                  <span className="text-grey-muted">{`${t(
+                    'label.index-states'
+                  )}:`}</span>
+                  <span className="m-l-xs">
+                    <Space size={8}>
+                      <Badge
+                        showZero
+                        className="request-badge running"
+                        count={stepStats.totalRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.total-index-sent')}: ${
+                          stepStats.totalRecords
+                        }`}
+                      />
+
+                      <Badge
+                        showZero
+                        className="request-badge success"
+                        count={stepStats.successRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.entity-index', {
+                          entity: t('label.success'),
+                        })}: ${stepStats.successRecords}`}
+                      />
+
+                      <Badge
+                        showZero
+                        className="request-badge failed"
+                        count={stepStats.failedRecords}
+                        overflowCount={99999999}
+                        title={`${t('label.entity-index', {
+                          entity: t('label.failed'),
+                        })}: ${stepStats.failedRecords}`}
+                      />
+
+                      {stepStats.warningRecords !== undefined &&
+                        stepStats.warningRecords > 0 && (
+                          <Badge
+                            showZero
+                            className="request-badge warning"
+                            count={stepStats.warningRecords}
+                            overflowCount={99999999}
+                            title={`${t('label.entity-index', {
+                              entity: t('label.warning-plural'),
+                            })}: ${stepStats.warningRecords}`}
+                          />
+                        )}
+                    </Space>
+                  </span>
+                </div>
+                {(() => {
+                  // effectiveTimeMs (e.g. wall-clock for the overall card) takes
+                  // precedence over stepStats.totalTimeMs (stage-CPU time). This
+                  // is also what avoids the misleading ">85k r/s" the overall
+                  // card would otherwise show when jobStats.totalTimeMs is 0
+                  // because stage timings aren't aggregated up to the job level.
+                  const timeMs = effectiveTimeMs ?? stepStats.totalTimeMs;
+                  if (
+                    timeMs === undefined ||
+                    stepStats.successRecords === undefined ||
+                    stepStats.successRecords <= 0
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <>
+                      <Divider type="vertical" />
+                      <div className="flex">
+                        <span className="text-grey-muted">{`${t(
+                          latencyLabelKey ?? 'label.latency'
+                        )}:`}</span>
+                        <span className="m-l-xs" data-testid="stage-latency">
+                          {`${formatLatencyAverage(
+                            timeMs,
+                            stepStats.successRecords
+                          )} · ${formatThroughput(
+                            timeMs,
+                            stepStats.successRecords
+                          )}`}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
+                {showStatus && (
+                  <>
+                    <Divider type="vertical" />
+                    <div className="flex">
+                      <span className="text-grey-muted">{`${t(
+                        'label.last-updated'
+                      )}:`}</span>
+                      <span className="m-l-xs">
+                        {timestamp
+                          ? formatDateTimeWithTimezone(timestamp)
+                          : '--'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+      );
+    },
     [timestamp, formatDateTimeWithTimezone, status]
   );
 
@@ -288,6 +336,50 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
                 },
               ]
             : []),
+          {
+            title: t('label.reader-avg'),
+            dataIndex: 'readerAvgMs',
+            key: 'readerAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-reader-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.process-avg'),
+            dataIndex: 'processAvgMs',
+            key: 'processAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-process-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          {
+            title: t('label.sink-avg'),
+            dataIndex: 'sinkAvgMs',
+            key: 'sinkAvgMs',
+            render: (value: string) => (
+              <Typography.Text data-testid="entity-sink-avg">
+                {value}
+              </Typography.Text>
+            ),
+          },
+          ...(successContext?.stats?.vectorStats?.totalRecords
+            ? [
+                {
+                  title: t('label.vector-avg'),
+                  dataIndex: 'vectorAvgMs',
+                  key: 'vectorAvgMs',
+                  render: (value: string) => (
+                    <Typography.Text data-testid="entity-vector-avg">
+                      {value}
+                    </Typography.Text>
+                  ),
+                },
+              ]
+            : []),
         ];
   }, [successContext, failureContext]);
 
@@ -365,7 +457,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats total m-l-sm"
-              label={totalProcessed}
+              label={toString(totalProcessed)}
             />
           </div>
         ),
@@ -385,7 +477,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats success m-l-sm"
-              label={totalSuccess}
+              label={toString(totalSuccess)}
             />
           </div>
         ),
@@ -405,7 +497,7 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             </Typography.Text>
             <AppBadge
               className="entity-stats failure m-l-sm"
-              label={totalFailed}
+              label={toString(totalFailed)}
             />
           </div>
         ),
@@ -465,12 +557,20 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {successContext?.stats?.jobStats &&
         statsRender(
           successContext?.stats.jobStats,
-          t('label.overall-stat-plural')
+          t('label.overall-stat-plural'),
+          {
+            effectiveTimeMs: wallClockMs,
+            latencyLabelKey: 'label.wall-clock',
+          }
         )}
       {failureContext?.stats?.jobStats &&
         statsRender(
           failureContext?.stats.jobStats,
-          t('label.overall-stat-plural')
+          t('label.overall-stat-plural'),
+          {
+            effectiveTimeMs: wallClockMs,
+            latencyLabelKey: 'label.wall-clock',
+          }
         )}
 
       <Row className="m-t-md" gutter={[16, 16]}>
@@ -479,7 +579,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               successContext.stats.readerStats,
               t('label.reader-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -488,7 +590,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               failureContext.stats.readerStats,
               t('label.reader-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -498,7 +602,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               successContext.stats.processStats,
               t('label.process-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -507,7 +613,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               failureContext.stats.processStats,
               t('label.process-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -517,7 +625,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               successContext.stats.sinkStats,
               t('label.sink-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -526,7 +636,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               failureContext.stats.sinkStats,
               t('label.sink-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -536,7 +648,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               successContext.stats.vectorStats,
               t('label.vector-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -545,7 +659,9 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
             {statsRender(
               failureContext.stats.vectorStats,
               t('label.vector-stat-plural'),
-              false
+              {
+                showStatus: false,
+              }
             )}
           </Col>
         )}
@@ -558,12 +674,15 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       {failureContext?.stats?.entityStats &&
         entityStatsRenderer(failureContext.stats.entityStats)}
 
-      {logsRender(
-        formatJsonString(
-          JSON.stringify(
-            failureContext?.stackTrace ?? failureContext?.failure ?? {}
-          )
-        )
+      {failureLogs && (
+        <div className="m-t-md">
+          <Button
+            data-testid="view-logs-button"
+            type="link"
+            onClick={() => setShowLogsModal(true)}>
+            {t('label.view-entity', { entity: t('label.log-plural') })}
+          </Button>
+        </div>
       )}
 
       {hasFailures && (
@@ -580,6 +699,13 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
       <ReindexFailures
         visible={showFailuresDrawer}
         onClose={() => setShowFailuresDrawer(false)}
+      />
+
+      <LogViewerModal
+        logs={failureLogs}
+        open={showLogsModal}
+        title={t('label.log-plural')}
+        onClose={() => setShowLogsModal(false)}
       />
     </>
   );

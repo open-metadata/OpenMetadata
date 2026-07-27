@@ -175,6 +175,11 @@ public final class Classifications {
     public ClassificationDeleter delete() {
       return new ClassificationDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Classification> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.classifications(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -290,5 +295,15 @@ public final class Classifications {
     public ClassificationDeleter delete() {
       return new ClassificationDeleter(client, classification.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().classifications().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().classifications().getContextByName(fqn);
   }
 }

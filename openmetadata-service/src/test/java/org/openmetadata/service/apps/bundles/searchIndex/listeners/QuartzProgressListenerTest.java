@@ -274,8 +274,6 @@ class QuartzProgressListenerTest {
         .queueSize(100)
         .maxConcurrentRequests(5)
         .payloadSize(4_096)
-        .recreateIndex(true)
-        .useDistributedIndexing(true)
         .build();
   }
 

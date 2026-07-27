@@ -1,6 +1,7 @@
 """
 Unit tests for SDK API operations (Search, Lineage)
 """
+
 import asyncio
 import unittest
 from unittest.mock import MagicMock
@@ -67,13 +68,8 @@ class TestSDKAPIs(unittest.TestCase):
         mock_results = {"hits": {"hits": []}}
         self.mock_ometa.es_search_from_es.return_value = mock_results
 
-        results = (
-            Search.builder()
-            .query("customer")
-            .index("table_index")
-            .size(50)
-            .sort_field("name")
-            .execute()
+        results = (  # noqa: F841
+            Search.builder().query("customer").index("table_index").size(50).sort_field("name").execute()
         )
 
         self.mock_ometa.es_search_from_es.assert_called_once()
@@ -131,11 +127,7 @@ class TestSDKAPIs(unittest.TestCase):
         self.mock_ometa.get_lineage_by_name.return_value = mock_lineage
 
         result = (
-            Lineage.builder()
-            .entity("service.database.schema.table")
-            .upstream_depth(3)
-            .downstream_depth(2)
-            .execute()
+            Lineage.builder().entity("service.database.schema.table").upstream_depth(3).downstream_depth(2).execute()
         )
 
         self.assertEqual(result, mock_lineage)

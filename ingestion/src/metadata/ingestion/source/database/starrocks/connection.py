@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -20,16 +21,13 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
-    StarRocksConnection,
+    StarRocksConnection as StarRocksConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    get_connection_url_common,
-)
+from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.strategies import BasicAuthStrategy
 from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
@@ -40,35 +38,29 @@ from metadata.ingestion.source.database.starrocks.queries import (
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: StarRocksConnection) -> Engine:
-    """
-    Create connection
-    """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url_common,
-        get_connection_args_fn=get_connection_args_common,
-    )
+class StarRocksConnection(BaseConnection[StarRocksConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        """
+        Return the SQLAlchemy Engine for StarRocks.
+        """
+        return BasicAuthStrategy(self.service_connection).build()
 
-
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: StarRocksConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    queries = {"GetQueries": STARROCKS_SQL_STATEMENT_TEST}
-
-    return test_connection_db_schema_sources(
-        metadata=metadata,
-        engine=engine,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        queries=queries,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        queries = {"GetQueries": STARROCKS_SQL_STATEMENT_TEST}
+        return test_connection_db_schema_sources(
+            metadata=metadata,
+            engine=self.client,
+            service_connection=self.service_connection,
+            automation_workflow=automation_workflow,
+            queries=queries,
+            timeout_seconds=timeout_seconds,
+        )

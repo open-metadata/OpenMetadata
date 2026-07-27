@@ -11,6 +11,7 @@
 """
 Vertica lineage module
 """
+
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.ingestion.source.database.vertica.queries import VERTICA_SQL_STATEMENT
 from metadata.ingestion.source.database.vertica.query_parser import (

@@ -90,7 +90,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 

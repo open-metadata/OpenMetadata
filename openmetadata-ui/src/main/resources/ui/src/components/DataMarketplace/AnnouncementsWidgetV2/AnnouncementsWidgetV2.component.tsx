@@ -26,10 +26,9 @@ import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
-
 const DISPLAY_COUNT = 4;
 
 const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
@@ -118,7 +117,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
   if (loading) {
     return (
       <div
-        className="tw:rounded-xl tw:border tw:border-border-primary tw:bg-utility-blue-100 tw:px-1 tw:pt-3 tw:pb-1"
+        className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1"
         data-testid="announcements-widget-v2">
         <Loader size="small" />
       </div>
@@ -131,7 +130,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
 
   return (
     <div
-      className="tw:rounded-xl tw:border tw:border-border-primary tw:bg-utility-blue-100 tw:px-1 tw:pt-3 tw:pb-1 tw:mb-5"
+      className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1 tw:mb-5"
       data-testid="announcements-widget-v2">
       <div className="tw:flex tw:items-center tw:justify-between tw:mb-2 tw:px-3">
         <div className="tw:flex tw:items-center tw:gap-2">
@@ -148,7 +147,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
             className="tw:rounded-md tw:bg-bg-primary tw:px-2 tw:py-0.5 tw:text-text-tertiary"
             size="text-sm"
             weight="medium">
-            {String(announcements.length).padStart(2, '0')}
+            {announcements.length}
           </Typography>
         </div>
       </div>

@@ -30,9 +30,7 @@ class RuleLibrarySqlExpressionParamsSetter(RuntimeParameterSetter):
         )
 
         if not test_definition:
-            raise ValueError(
-                f"TestDefinition {test_case.testDefinition.fullyQualifiedName} not found"
-            )
+            raise ValueError(f"TestDefinition {test_case.testDefinition.fullyQualifiedName} not found")
 
         return RuleLibrarySqlExpressionRuntimeParameters(
             conn_config=DatabaseConnection(

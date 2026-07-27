@@ -12,48 +12,49 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.metadata.atlasConnection import (
-    AtlasConnection,
+    AtlasConnection as AtlasConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: AtlasConnection) -> AtlasClient:
-    """
-    Create connection
-    """
-    return AtlasClient(connection)
+class AtlasConnection(BaseConnection[AtlasConnectionConfig, AtlasClient]):
+    def _get_client(self) -> AtlasClient:
+        connection = self.service_connection
+        return AtlasClient(connection)
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: AtlasClient,
-    service_connection: AtlasConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        test_fn = {"CheckAccess": client.list_entities}
 
-    test_fn = {"CheckAccess": client.list_entities}
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

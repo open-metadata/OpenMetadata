@@ -88,8 +88,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
       // Create DescriptionUpdate task for entity level
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: container.entityResponseData?.fullyQualifiedName,
-          aboutType: 'container',
+          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -152,8 +151,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
       // Format: dataModel::columnName::description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: container.entityResponseData?.fullyQualifiedName,
-          aboutType: 'container',
+          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -206,8 +204,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
       // Create OwnershipUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: container.entityResponseData?.fullyQualifiedName,
-          aboutType: 'container',
+          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
           type: 'OwnershipUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -255,8 +252,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
       // Create TierUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: container.entityResponseData?.fullyQualifiedName,
-          aboutType: 'container',
+          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
           type: 'TierUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -307,8 +303,7 @@ test.describe('Task Creation and Resolution - Container Entity', () => {
       // Create DomainUpdate task
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: container.entityResponseData?.fullyQualifiedName,
-          aboutType: 'container',
+          about: `<#E::container::${container.entityResponseData?.fullyQualifiedName}>`,
           type: 'DomainUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

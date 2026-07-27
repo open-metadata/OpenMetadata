@@ -13,12 +13,6 @@ Metadata DAG function builder
 """
 
 from airflow import DAG
-from openmetadata_managed_apis.workflows.ingestion.common import (
-    build_dag,
-    build_source,
-    build_workflow_config_property,
-    metadata_ingestion_workflow,
-)
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -26,6 +20,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
     Sink,
+)
+from openmetadata_managed_apis.workflows.ingestion.common import (
+    build_dag,
+    build_source,
+    build_workflow_config_property,
+    metadata_ingestion_workflow,
 )
 
 
@@ -50,7 +50,7 @@ def build_lineage_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return workflow_config
+    return workflow_config  # noqa: RET504
 
 
 def build_lineage_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -65,4 +65,4 @@ def build_lineage_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=metadata_ingestion_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

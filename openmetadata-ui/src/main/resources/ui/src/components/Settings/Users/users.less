@@ -13,66 +13,6 @@
 
 @import '../../../styles/variables.less';
 
-.roles-container {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.user-layout {
-  > .ant-col {
-    padding-top: 0;
-  }
-
-  .user-profile-container {
-    .ant-collapse-item > .ant-collapse-header {
-      align-items: center;
-    }
-
-    .profile-image-container {
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      overflow: hidden;
-    }
-
-    .ant-card {
-      background: none;
-    }
-  }
-
-  .user-page-layout-right-panel {
-    padding-right: 0 !important;
-    background-color: @white;
-    border: 1px solid @border-color;
-    border-radius: 0;
-    padding-left: 0 !important;
-    border-top: 0;
-  }
-
-  .activity-feed-tab {
-    .center-container {
-      height: @users-page-tabs-height;
-    }
-
-    .right-container {
-      height: @users-page-tabs-height;
-    }
-  }
-
-  .summary-panel-container {
-    padding: 20px;
-    border-radius: 12px;
-    background-color: @white;
-  }
-
-  .explore-search-card {
-    margin: 0 12px;
-  }
-}
-
 .user-layout-scroll {
   height: @profile-entity-details-tab-height;
   overflow-y: scroll;
@@ -81,7 +21,7 @@
 .summary-panel-container {
   border-radius: 12px;
   border: 1px solid #eaecf5;
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
 
   .ant-card-body {
     padding: 20px;
@@ -95,7 +35,7 @@
   .profile-section-user-details-card {
     padding: 20px;
     margin-bottom: 20px;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     justify-content: center;
     align-items: center;
     border-radius: 12px;
@@ -143,29 +83,10 @@
   box-shadow: '0 2px 8px rgba(0, 0, 0, 0.1)';
   margin-bottom: 16px;
   padding: 20px;
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   margin: 8px 0px;
   width: 100%;
   gap: 10px;
-}
-
-.profile-section-card-title {
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 24px;
-  color: #414654;
-}
-
-.profile-section-card-list {
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: @text-color;
-  text-decoration: none;
-
-  &:hover {
-    color: @primary-heading-color;
-  }
 }
 
 .users-tabs-container {
@@ -184,7 +105,7 @@
 }
 
 .users-page-activity-feed {
-  background: @white;
+  background: var(--tw-color-bg-primary);
   border-radius: 8px;
   padding: 20px;
 }
@@ -452,7 +373,7 @@
   max-width: 140px;
 }
 .inherit-icon-container {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   border-color: @primary-color;
   color: @primary-color;
   border: 1px solid @primary-color;

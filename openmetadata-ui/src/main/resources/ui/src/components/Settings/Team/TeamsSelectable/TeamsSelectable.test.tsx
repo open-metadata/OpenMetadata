@@ -39,7 +39,7 @@ jest.mock('../../../../rest/teamsAPI', () => ({
   ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'entityName'),
 }));
 

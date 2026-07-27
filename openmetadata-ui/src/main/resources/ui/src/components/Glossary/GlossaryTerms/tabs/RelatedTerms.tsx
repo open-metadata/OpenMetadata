@@ -19,12 +19,12 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Tag01 } from '@untitledui/icons';
 import { groupBy, isEmpty } from 'lodash';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 
 import {
   NO_DATA_PLACEHOLDER,
@@ -44,12 +44,13 @@ import {
   getGlossaryTermRelationSettings,
   searchGlossaryTermsPaginated,
 } from '../../../../rest/glossaryAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
@@ -58,7 +59,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
   RelatedTermTagButtonProps,
@@ -66,7 +67,6 @@ import {
   TermsRowEditorProps,
 } from './RelatedTerms.interface';
 import TermsRowEditor from './TermsRowEditor.component';
-
 const MAX_VISIBLE_BADGES = 5;
 
 const BadgeList: React.FC<{ items: ReactNode[] }> = ({ items }) => {
@@ -91,26 +91,27 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
   getRelationDisplayName,
   onRelatedTermClick,
 }) => {
+  const descriptionText = getTextFromHtmlString(entity.description);
   const tooltipContent = (
     <div className="tw:p-2 tw:space-y-1">
-      <Typography as="p" weight="semibold">
+      <Typography as="p" className="tw:text-white" weight="semibold">
         {entity.fullyQualifiedName}
       </Typography>
       {relationType && (
-        <Typography as="p" size="text-xs">
+        <Typography as="p" className="tw:text-white" size="text-xs">
           {getRelationDisplayName(relationType)}
         </Typography>
       )}
-      {entity.description && (
-        <Typography as="p" size="text-xs">
-          {entity.description}
+      {descriptionText && (
+        <Typography as="p" className="tw:text-white" size="text-xs">
+          {descriptionText}
         </Typography>
       )}
     </div>
   );
 
   return (
-    <Tooltip placement="bottom left" title={tooltipContent}>
+    <Tooltip arrow placement="bottom left" title={tooltipContent}>
       <TooltipTrigger
         className={
           versionStatus?.added
@@ -121,7 +122,11 @@ const RelatedTermTagButton: React.FC<RelatedTermTagButtonProps> = ({
         }
         data-testid={getEntityName(entity)}
         onPress={() => onRelatedTermClick(entity.fullyQualifiedName ?? '')}>
-        <BadgeWithIcon color="gray" iconLeading={Tag01} size="md" type="color">
+        <BadgeWithIcon
+          color="gray"
+          iconLeading={IconTerm}
+          size="md"
+          type="color">
           {getEntityName(entity)}
         </BadgeWithIcon>
       </TooltipTrigger>

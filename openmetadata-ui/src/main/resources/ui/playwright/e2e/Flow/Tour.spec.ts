@@ -70,16 +70,18 @@ const validateTourSteps = async (page: Page) => {
 
   await page.getByTestId('searchBox').fill('dim_a');
 
-  const [searchResponse] = await Promise.all([
-    page.waitForResponse((res) => res.url().includes('/search/query')),
-    page.getByTestId('searchBox').press('Enter'),
-  ]);
-
-  expect(searchResponse.status()).toBe(200);
+  // The tour search is fully mock-driven and fires no API call; pressing Enter
+  // advances the tour to the Explore step, which must render the mocked result
+  // card without hitting the backend.
+  await page.getByTestId('searchBox').press('Enter');
 
   await waitForAllLoadersToDisappear(page);
 
   await expectTourBadge(page, '4');
+
+  await expect(
+    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
+  ).toBeVisible();
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
@@ -189,14 +191,28 @@ test.describe(
     });
 
     test('Tour should work from welcome screen', async ({ page }) => {
-      await page
+      test.slow();
+
+      const isAlertVisible = await page
         .getByTestId('whats-new-alert-card')
-        .locator('.whats-new-alert-close')
-        .click();
+        .isVisible();
+      if (isAlertVisible) {
+        await page
+          .getByTestId('whats-new-alert-card')
+          .locator('.whats-new-alert-close')
+          .click();
+      }
       await page.getByText('Take a product tour to get started!').click();
       await page.waitForURL('**/tour');
       await waitForAllLoadersToDisappear(page);
       await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+      const isWelcomeScreenVisible = await page
+        .getByTestId('welcome-screen')
+        .isVisible();
+      if (isWelcomeScreenVisible) {
+        await page.getByTestId('welcome-screen-close-btn').click();
+      }
 
       await page.locator('#feedWidgetData').waitFor();
       // Since the tour steps are already tested in the first test,

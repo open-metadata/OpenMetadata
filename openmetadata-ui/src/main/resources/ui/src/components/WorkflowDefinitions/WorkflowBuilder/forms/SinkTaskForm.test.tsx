@@ -100,24 +100,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return { Input, Select: SelectWithItem };
 });
 
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  useTheme: () => ({
-    palette: {
-      allShades: {
-        gray: {
-          300: '#d1d5db',
-          700: '#374151',
-          900: '#111827',
-        },
-      },
-      error: {
-        main: '#ef4444',
-      },
-    },
-  }),
-}));
-
 jest.mock('../../../../contexts/WorkflowModeContext', () => ({
   WorkflowModeProvider: jest
     .fn()

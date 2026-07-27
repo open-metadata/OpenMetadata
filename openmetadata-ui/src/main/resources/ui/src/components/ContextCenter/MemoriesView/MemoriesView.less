@@ -1,0 +1,36 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@keyframes pinDrop {
+  0% {
+    transform: scale(0.5) rotate(-15deg);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.15) rotate(5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.pin-icon-pinned {
+  animation: pinDrop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pin-icon-unpinned {
+  transform: rotate(35deg);
+  transition: transform 0.25s ease;
+}

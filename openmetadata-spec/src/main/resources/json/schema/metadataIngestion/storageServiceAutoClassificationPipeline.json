@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/storageServiceAutoClassificationPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StorageServiceAutoClassificationPipeline",
+  "description": "StorageService AutoClassification Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "autoClassificationConfigType": {
+      "description": "Storage Service Auto Classification Pipeline type",
+      "type": "string",
+      "enum": ["AutoClassification"],
+      "default": "AutoClassification"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/autoClassificationConfigType",
+      "default": "AutoClassification"
+    },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for containers that matches the given tag, tiers, glossary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
+    },
+    "bucketFilterPattern": {
+      "description": "Regex to only fetch buckets (top-level containers) that match the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Bucket Filter Pattern"
+    },
+    "containerFilterPattern": {
+      "description": "Regex to only fetch containers that matches the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Container Filter Pattern"
+    },
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.container_name) instead of raw name (e.g. container_name)",
+      "type": "boolean",
+      "default": false,
+      "title": "Use FQN For Filtering"
+    },
+    "storeSampleData": {
+      "description": "Option to turn on/off storing sample data. If enabled, we will ingest sample data for each structured container.",
+      "type": "boolean",
+      "default": false,
+      "title": "Store Sample Data"
+    },
+    "enableAutoClassification": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+      "type": "boolean",
+      "default": true,
+      "title": "Enable Auto Classification"
+    },
+    "confidence": {
+      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will yield less false positives but more false negatives. A lower number will yield more false positives but less false negatives.",
+      "type": "number",
+      "default": 80,
+      "title": "Auto Classification Inference Confidence Level"
+    },
+    "sampleDataCount": {
+      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
+      "type": "integer",
+      "default": 50,
+      "title": "Sample Data Rows Count"
+    },
+    "classificationLanguage": {
+      "description": "Language to use for auto classification recognizers. Use 'any' to run all recognizers regardless of their configured language. For specific languages, only recognizers that support that language will be used.",
+      "$ref": "../type/classificationLanguages.json",
+      "default": "en",
+      "title": "Classification Language"
+    }
+  },
+  "additionalProperties": false
+}

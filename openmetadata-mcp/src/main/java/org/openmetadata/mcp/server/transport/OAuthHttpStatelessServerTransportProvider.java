@@ -32,6 +32,8 @@ import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
+import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -125,10 +127,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setScopesSupported(supportedScopes);
     metadata.setResponseTypesSupported(List.of("code"));
     metadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
-    metadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    metadata.setTokenEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post", "none"));
     metadata.setCodeChallengeMethodsSupported(List.of("S256"));
     metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
-    metadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    metadata.setRevocationEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post"));
 
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
@@ -196,10 +200,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     newMetadata.setScopesSupported(supportedScopes);
     newMetadata.setResponseTypesSupported(List.of("code"));
     newMetadata.setGrantTypesSupported(List.of("authorization_code", "refresh_token"));
-    newMetadata.setTokenEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    newMetadata.setTokenEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post", "none"));
     newMetadata.setCodeChallengeMethodsSupported(List.of("S256"));
     newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
-    newMetadata.setRevocationEndpointAuthMethodsSupported(List.of("client_secret_post"));
+    newMetadata.setRevocationEndpointAuthMethodsSupported(
+        List.of("client_secret_basic", "client_secret_post"));
     this.oauthMetadata = newMetadata;
 
     ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
@@ -490,11 +496,25 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
           authorizationHandler.handle(params).join();
 
       String redirectUrl = authResponse.getRedirectUrl();
-      if (redirectUrl != null) {
+      if (redirectUrl != null && response.isCommitted()) {
+        // The SSO provider (active-session shortcut) already committed the response with a
+        // redirect to /mcp/callback. Any error redirect URL produced by AuthorizationHandler
+        // cannot be sent — the browser is already navigating away. Log and bail out.
+        LOG.warn(
+            "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
+                + "Redirect target (sanitized): {}",
+            sanitizeRedirectUrlForLogging(redirectUrl));
+      } else if (redirectUrl != null) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (response.isCommitted()) {
+        // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
+        // already wrote the login redirect straight to the browser and committed the response.
+        // There is no redirect URL to return and nothing more to write — attempting to write here
+        // would hit a closed stream (EofException).
+        LOG.debug("SSO login redirect already initiated by provider; response committed");
       } else {
         // No redirect URL — error case where redirect_uri is invalid or client is unknown.
         // Per RFC 6749, display the error to the user instead of redirecting.
@@ -570,8 +590,16 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     try {
       String grantType = params.get("grant_type");
-      String clientId = params.get("client_id");
-      String clientSecret = params.get("client_secret");
+      ClientCredentialsExtractor.Credentials credentials;
+      try {
+        credentials =
+            ClientCredentialsExtractor.extract(
+                request, params.get("client_id"), params.get("client_secret"));
+      } catch (InvalidClientCredentialsException e) {
+        throw new TokenException("invalid_request", e.getMessage());
+      }
+      String clientId = credentials.clientId();
+      String clientSecret = credentials.clientSecret();
       OAuthToken token = null;
 
       // Authenticate the client before processing any grant type
@@ -880,19 +908,21 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               });
 
       // Authenticate client before revocation (RFC 7009 Section 2.1)
-      String clientId = params.get("client_id");
-      String clientSecret = params.get("client_secret");
+      ClientCredentialsExtractor.Credentials credentials;
       try {
-        clientAuthenticator.authenticate(clientId, clientSecret).join();
+        credentials =
+            ClientCredentialsExtractor.extract(
+                request, params.get("client_id"), params.get("client_secret"));
+      } catch (InvalidClientCredentialsException e) {
+        LOG.warn("Malformed client credentials on revocation request: {}", e.getMessage());
+        sendOAuthError(request, response, 400, "invalid_request", e.getMessage());
+        return;
+      }
+      try {
+        clientAuthenticator.authenticate(credentials.clientId(), credentials.clientSecret()).join();
       } catch (Exception e) {
         LOG.warn("Client authentication failed for revocation request");
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(401);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_client");
-        error.put("error_description", "Client authentication failed");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        sendOAuthError(request, response, 401, "invalid_client", "Client authentication failed");
         return;
       }
 
@@ -901,14 +931,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       if (token == null || token.trim().isEmpty()) {
         LOG.warn("Revocation request missing token parameter");
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(400);
-
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "invalid_request");
-        error.put("error_description", "token parameter is required");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        sendOAuthError(request, response, 400, "invalid_request", "token parameter is required");
         return;
       }
 
@@ -930,23 +953,41 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       } else {
         // Actual server error
         LOG.error("Token revocation failed with server error", ex);
-        setCorsHeaders(request, response);
-        response.setContentType("application/json");
-        response.setStatus(500);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "server_error");
-        error.put("error_description", "Token revocation failed due to server error");
-        getObjectMapper().writeValue(response.getOutputStream(), error);
+        sendOAuthError(
+            request, response, 500, "server_error", "Token revocation failed due to server error");
       }
     } catch (Exception ex) {
       LOG.error("Unexpected error during token revocation", ex);
-      setCorsHeaders(request, response);
-      response.setContentType("application/json");
-      response.setStatus(500);
-      Map<String, String> error = new HashMap<>();
-      error.put("error", "server_error");
-      error.put("error_description", "Unexpected error during token revocation");
-      getObjectMapper().writeValue(response.getOutputStream(), error);
+      sendOAuthError(
+          request, response, 500, "server_error", "Unexpected error during token revocation");
     }
+  }
+
+  /**
+   * Sends a uniform OAuth error response per RFC 6749 §5.2 / RFC 7009 §2.2.1: JSON body with
+   * {@code error} and {@code error_description}, plus standard CORS + content-type headers.
+   */
+  private void sendOAuthError(
+      HttpServletRequest request,
+      HttpServletResponse response,
+      int status,
+      String error,
+      String description)
+      throws IOException {
+    setCorsHeaders(request, response);
+    response.setContentType("application/json");
+    response.setStatus(status);
+    Map<String, String> body = new HashMap<>();
+    body.put("error", error);
+    body.put("error_description", description);
+    getObjectMapper().writeValue(response.getOutputStream(), body);
+  }
+
+  private static String sanitizeRedirectUrlForLogging(String url) {
+    if (url == null) {
+      return "null";
+    }
+    int qIdx = url.indexOf('?');
+    return qIdx >= 0 ? url.substring(0, qIdx) + "?[params_redacted]" : url;
   }
 }

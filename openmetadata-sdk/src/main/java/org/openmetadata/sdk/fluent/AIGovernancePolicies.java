@@ -215,6 +215,11 @@ public final class AIGovernancePolicies {
     public AIGovernancePolicyDeleter delete() {
       return new AIGovernancePolicyDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<AIGovernancePolicy> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.aiGovernancePolicies(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -334,5 +339,15 @@ public final class AIGovernancePolicies {
     public AIGovernancePolicyDeleter delete() {
       return new AIGovernancePolicyDeleter(client, entity.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().aiGovernancePolicies().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().aiGovernancePolicies().getContextByName(fqn);
   }
 }

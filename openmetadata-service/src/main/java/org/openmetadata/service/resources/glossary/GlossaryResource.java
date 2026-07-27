@@ -62,9 +62,13 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.GlossaryRdfImporter;
+import org.openmetadata.service.rdf.OntologyImportResult;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/glossaries")
@@ -251,24 +255,8 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the glossary", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -662,5 +650,55 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("true")
           boolean dryRun) {
     return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importRdf")
+  @Consumes({MediaType.TEXT_PLAIN, "text/turtle", "application/rdf+xml", "application/n-triples"})
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "importGlossaryRdf",
+      summary = "Import an OWL/SKOS ontology (RDF) into glossaries",
+      description =
+          "Materialize an external OWL/SKOS ontology (Turtle, RDF/XML or N-Triples) as "
+              + "glossary terms and typed relations through the glossary repository. SKOS concepts / "
+              + "OWL classes become GlossaryTerms, skos:broader / rdfs:subClassOf become the parent "
+              + "hierarchy, skos:*Match become concept mappings, and owl:ObjectProperty edges become "
+              + "typed relatedTerms. The RDF triplestore is optional; when enabled the created terms "
+              + "are mirrored automatically.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ontology import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = OntologyImportResult.class)))
+      })
+  public OntologyImportResult importRdf(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the target glossary", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "RDF syntax of the payload (turtle, rdfxml, ntriples)")
+          @QueryParam("format")
+          @DefaultValue("turtle")
+          String format,
+      @Parameter(
+              description = "Dry-run validates the ontology without persisting it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String rdf) {
+    OperationContext operationContext =
+        new OperationContext(Entity.GLOSSARY, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String updatedBy = securityContext.getUserPrincipal().getName();
+    boolean allowGlobalSchemaChanges =
+        DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
+    return new GlossaryRdfImporter(uriInfo, updatedBy, allowGlobalSchemaChanges)
+        .importRdf(rdf, format, name, dryRun);
   }
 }

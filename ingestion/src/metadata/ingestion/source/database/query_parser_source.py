@@ -11,9 +11,10 @@
 """
 Query Parser Source module. Parent class for Lineage & Usage workflows
 """
+
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -26,6 +27,11 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -43,6 +49,14 @@ class QueryParserSource(Source, ABC):
     from the Source to its children, while providing
     some utilities to be overwritten when necessary
     """
+
+    progress_mode = ProgressMode.MANUAL
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state; these query sources are MANUAL,
+        so they drive ``progress_tracking.manual`` directly."""
+        return attach_progress_tracking(self)
 
     sql_stmt: str
     dialect: str
@@ -65,7 +79,7 @@ class QueryParserSource(Source, ABC):
         connection_type = self.service_connection.type.value
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
-        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
+        self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)  # pyright: ignore[reportAttributeAccessIssue]
         self.graph = None
         self.procedure_graph_map = None
 
@@ -107,13 +121,13 @@ class QueryParserSource(Source, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )
 
     def check_life_cycle_query(
         self,
-        query_type: Optional[str],  # pylint: disable=unused-argument
-        query_text: Optional[str],  # pylint: disable=unused-argument
+        query_type: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
+        query_text: Optional[str],  # pylint: disable=unused-argument  # noqa: UP045
     ) -> bool:
         """
         returns true if query is to be used for life cycle processing.
@@ -123,8 +137,8 @@ class QueryParserSource(Source, ABC):
         return False
 
     def get_filters(self) -> str:
-        if self.source_config.filterCondition:
-            return f"{self.filters} AND ({self.source_config.filterCondition})"
+        if self.source_config.filterCondition:  # pyright: ignore[reportAttributeAccessIssue]
+            return f"{self.filters} AND ({self.source_config.filterCondition})"  # pyright: ignore[reportAttributeAccessIssue]
         return self.filters
 
     def get_query_parser_type(self) -> QueryParserType:
@@ -135,10 +149,10 @@ class QueryParserSource(Source, ABC):
         """
         if (
             hasattr(self.source_config, "queryParserConfig")
-            and self.source_config.queryParserConfig
-            and self.source_config.queryParserConfig.type
+            and self.source_config.queryParserConfig  # pyright: ignore[reportAttributeAccessIssue]
+            and self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
         ):
-            return self.source_config.queryParserConfig.type
+            return self.source_config.queryParserConfig.type  # pyright: ignore[reportAttributeAccessIssue]
         return QueryParserType.Auto
 
     def get_engine(self):

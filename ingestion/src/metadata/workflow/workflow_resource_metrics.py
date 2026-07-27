@@ -22,7 +22,7 @@ import psutil
 class WorkflowResourceMetrics:
     """Captures CPU and memory metrics for a workflow process and all its children."""
 
-    def __init__(self, pid: Optional[int] = None):
+    def __init__(self, pid: Optional[int] = None):  # noqa: UP045
         """Initialize metrics for the given process ID (defaults to current process)."""
         self.pid: int = pid or os.getpid()
         self._collect_metrics()
@@ -48,9 +48,7 @@ class WorkflowResourceMetrics:
                     try:
                         total_mem_rss += child.memory_info().rss
                         total_cpu += child.cpu_percent(interval=0.1)
-                        total_threads += (
-                            child.num_threads()
-                        )  # Add thread count for each child
+                        total_threads += child.num_threads()  # Add thread count for each child
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
             except Exception:
@@ -61,9 +59,7 @@ class WorkflowResourceMetrics:
 
             # Get CPU core information
             cpu_cores = psutil.cpu_count(logical=False)  # Physical cores
-            cpu_logical = psutil.cpu_count(
-                logical=True
-            )  # Logical cores (with hyperthreading)
+            cpu_logical = psutil.cpu_count(logical=True)  # Logical cores (with hyperthreading)
 
             # Store computed metrics
             self.cpu_usage_percent: float = total_cpu

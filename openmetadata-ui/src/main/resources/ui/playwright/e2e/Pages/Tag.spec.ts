@@ -168,7 +168,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
-    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Cube01', exact: true })
+      .click();
     await adminPage
       .getByRole('button', { name: 'Select color #F14C75' })
       .click();
@@ -196,8 +198,6 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
-
-    await adminPage.getByTestId('confirmation-text-input').fill('DELETE');
 
     const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.getByTestId('confirm-button').click();
@@ -368,11 +368,11 @@ test.describe('Tag Page with Admin Roles', () => {
     const openClassification = async () => {
       await redirectToHomePage(adminPage);
       await sidebarClick(adminPage, SidebarItem.TAGS);
-      await adminPage
-        .locator(
+      await expect(
+        adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
         )
-        .waitFor({ state: 'detached' });
+      ).toHaveCount(0, { timeout: 30000 });
 
       const classificationEntry = adminPage
         .locator('[data-testid="side-panel-classification"]')
@@ -416,11 +416,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage
-        .locator(
+      await expect(
+        adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
         )
-        .waitFor({ state: 'detached' });
+      ).toHaveCount(0, { timeout: 30000 });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeDisabled();
 
@@ -441,11 +441,11 @@ test.describe('Tag Page with Admin Roles', () => {
       );
 
       await adminPage.reload();
-      await adminPage
-        .locator(
+      await expect(
+        adminPage.locator(
           '[data-testid="tags-container"] .table-container [data-testid="loader"]'
         )
-        .waitFor({ state: 'detached' });
+      ).toHaveCount(0, { timeout: 30000 });
       await expect(tagToggle).toBeVisible({ timeout: 60000 });
       await expect(tagToggle).toBeEnabled();
     } finally {

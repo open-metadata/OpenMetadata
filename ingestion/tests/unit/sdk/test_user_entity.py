@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for User entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -69,9 +70,7 @@ class TestUserEntity(unittest.TestCase):
         # Assert
         self.assertEqual(str(result.id), self.user_id)
         self.assertEqual(result.name, "john.doe")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=UserEntity, entity_id=self.user_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=UserEntity, entity_id=self.user_id, fields=None)
 
     def test_retrieve_user_with_teams(self):
         """Test retrieving user with team memberships"""
@@ -104,9 +103,7 @@ class TestUserEntity(unittest.TestCase):
         self.assertIsNotNone(result.teams)
         self.assertEqual(len(result.teams), 2)
         self.assertEqual(result.teams[0].name, "data-engineering")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=UserEntity, entity_id=self.user_id, fields=fields
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=UserEntity, entity_id=self.user_id, fields=fields)
 
     def test_retrieve_user_by_name(self):
         """Test retrieving a user by name"""
@@ -123,9 +120,7 @@ class TestUserEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.user_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=UserEntity, fqn=self.user_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=UserEntity, fqn=self.user_fqn, fields=None)
 
     def test_update_user(self):
         """Test updating a user"""
@@ -137,9 +132,7 @@ class TestUserEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(user_to_update))
-        current_entity.id = (
-            user_to_update.id if hasattr(user_to_update, "id") else UUID(self.entity_id)
-        )
+        current_entity.id = user_to_update.id if hasattr(user_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -192,9 +185,7 @@ class TestUserEntity(unittest.TestCase):
             type="role",
             name="DataEngineer",
         )
-        role2 = EntityReference(
-            id=UUID("650e8400-e29b-41d4-a716-446655440000"), type="role", name="Admin"
-        )
+        role2 = EntityReference(id=UUID("650e8400-e29b-41d4-a716-446655440000"), type="role", name="Admin")
 
         expected_user = MagicMock(spec=UserEntity)
         expected_user.id = UUID(self.user_id)
@@ -259,9 +250,7 @@ class TestUserEntity(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(result.profile)
-        self.assertEqual(
-            result.profile.images.image, "https://company.com/avatars/john.doe.png"
-        )
+        self.assertEqual(result.profile.images.image, "https://company.com/avatars/john.doe.png")
 
     def test_list_users(self):
         """Test listing users with pagination"""

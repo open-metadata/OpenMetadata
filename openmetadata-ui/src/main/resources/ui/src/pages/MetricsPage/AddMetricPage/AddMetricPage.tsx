@@ -13,14 +13,14 @@
 import { Button, Col, Form, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { omit, startCase } from 'lodash';
-import { FocusEvent, useCallback, useMemo, useState } from 'react';
+import { FocusEvent, lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import CustomUnitSelect from '../../../components/common/CustomUnitSelect/CustomUnitSelect';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import SchemaEditor from '../../../components/Database/SchemaEditor/SchemaEditor';
 import { ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
@@ -39,6 +39,10 @@ import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../components/Database/SchemaEditor/SchemaEditor'))
+);
 
 const AddMetricPage = () => {
   const navigate = useNavigate();

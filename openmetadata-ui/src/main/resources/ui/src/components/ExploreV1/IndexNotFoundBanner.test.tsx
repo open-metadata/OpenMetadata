@@ -53,7 +53,7 @@ jest.mock('antd', () => ({
     description?: React.ReactNode;
     [key: string]: unknown;
   }) => (
-    <div data-testid="index-not-found-alert" {...props}>
+    <div data-testid="index-not-found-banner" {...props}>
       {description}
     </div>
   ),
@@ -71,7 +71,7 @@ describe('IndexNotFoundBanner', () => {
   it('renders indexing error details and re-index help text', async () => {
     render(<IndexNotFoundBanner />);
 
-    expect(screen.getByTestId('index-not-found-alert')).toBeInTheDocument();
+    expect(screen.getByTestId('index-not-found-banner')).toBeInTheDocument();
     expect(screen.getByText('server.indexing-error')).toBeInTheDocument();
     expect(
       await screen.findByText(/message.configure-search-re-index/)

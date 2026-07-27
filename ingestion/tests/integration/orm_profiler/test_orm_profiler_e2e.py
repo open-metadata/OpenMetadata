@@ -16,6 +16,7 @@ To run this we need OpenMetadata server up and running.
 
 No sample data is required beforehand
 """
+
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
@@ -45,7 +46,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -137,7 +138,7 @@ def create_data(engine, session):
     try:
         User.__table__.create(bind=engine)
         NewUser.__table__.create(bind=engine)
-    except:
+    except:  # noqa: E722
         logger.warning("Table Already exists, clearing existing data")
         session.query(User).delete()
         session.query(NewUser).delete()
@@ -228,9 +229,7 @@ def test_ingestion(ingest, metadata, service_name):
     Validate that the ingestion ran correctly
     """
 
-    table_entity: Table = metadata.get_by_name(
-        entity=Table, fqn=f"{service_name}.main.main.users"
-    )
+    table_entity: Table = metadata.get_by_name(entity=Table, fqn=f"{service_name}.main.main.users")
     assert table_entity.fullyQualifiedName.root == f"{service_name}.main.main.users"
 
 
@@ -282,9 +281,7 @@ def test_profiler_workflow(ingest, metadata, service_name):
     assert profile.profileSample == 75.0
     assert profile.profileSampleType.root == ProfileSampleType.PERCENTAGE
 
-    workflow_config["processor"]["config"]["tableConfig"][0][
-        "profileSampleType"
-    ] = ProfileSampleType.ROWS
+    workflow_config["processor"]["config"]["tableConfig"][0]["profileSampleType"] = ProfileSampleType.ROWS
     workflow_config["processor"]["config"]["tableConfig"][0]["profileSample"] = 3
     profiler_workflow = ProfilerWorkflow.create(workflow_config)
     profiler_workflow.execute()
@@ -558,7 +555,7 @@ def test_workflow_values_partition(ingest, metadata, service_name):
     profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
 
     assert profile.rowCount == 4.0
-    assert profile.profileSample == None
+    assert profile.profileSample == None  # noqa: E711
 
     workflow_config["processor"] = {
         "type": "orm-profiler",
@@ -710,9 +707,7 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
     profiler_workflow.stop()
 
     sample_data = metadata.get_sample_data(table)
-    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
-        ["id", "age"]
-    )
+    assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(["id", "age"])
 
 
 def test_sample_data_ingestion(ingest, metadata, service_name):

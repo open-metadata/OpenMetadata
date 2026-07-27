@@ -46,13 +46,14 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
+import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
@@ -72,31 +73,31 @@ import {
 } from '../../../../rest/glossaryAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
+import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../../utils/ExploreUtils';
+} from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../../utils/StringsUtils';
-import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
+} from '../../../../utils/StringUtils';
+import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import DomainAssetDryRunModal from '../../../DataAssets/DomainAssetDryRunModal/DomainAssetDryRunModal.component';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../../Explore/ExploreQuickFilters';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
@@ -189,6 +190,10 @@ const AssetsTabs = forwardRef(
     const [confirmationBodyText, setConfirmationBodyText] =
       useState<ReactNode>('');
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+    const [removeDryRunWarnings, setRemoveDryRunWarnings] =
+      useState<BulkResponse[]>();
+    const [pendingRemoveEntities, setPendingRemoveEntities] =
+      useState<EntityReference[]>();
 
     const entityTypeString = getEntityTypeString(type);
 
@@ -515,6 +520,7 @@ const AssetsTabs = forwardRef(
         }
 
         setAssetRemoving(true);
+        let dryRunImpactDetected = false;
 
         try {
           const entities = [...(assetsData?.values() ?? [])].map((item) => {
@@ -523,6 +529,22 @@ const AssetsTabs = forwardRef(
               (item as EntityDetailUnion).entityType
             );
           });
+
+          if (type === AssetsOfEntity.DOMAIN) {
+            const dryRunResult = await removeAssetsFromDomain(
+              activeEntity.fullyQualifiedName ?? '',
+              entities,
+              { dryRun: true }
+            );
+            const impacts = getDomainDryRunImpacts(dryRunResult);
+            if (impacts.length > 0) {
+              setRemoveDryRunWarnings(impacts);
+              setPendingRemoveEntities(entities);
+              dryRunImpactDetected = true;
+
+              return;
+            }
+          }
 
           switch (type) {
             case AssetsOfEntity.DATA_PRODUCT:
@@ -576,17 +598,52 @@ const AssetsTabs = forwardRef(
           showErrorToast(err as AxiosError);
         } finally {
           setShowDeleteModal(false);
-          onRemoveAsset?.();
+          setShowBulkDeleteModal(false);
           setAssetRemoving(false);
-          hideNotification();
-          setSelectedItems(new Map()); // Reset selected items
-          if (type === AssetsOfEntity.DATA_PRODUCT) {
-            fetchOutputPorts();
+          if (!dryRunImpactDetected) {
+            onRemoveAsset?.();
+            hideNotification();
+            setSelectedItems(new Map()); // Reset selected items
+            if (type === AssetsOfEntity.DATA_PRODUCT) {
+              fetchOutputPorts();
+            }
           }
         }
       },
       [type, activeEntity, entityFqn, fetchOutputPorts]
     );
+
+    const confirmDomainAssetRemove = useCallback(async () => {
+      if (!activeEntity || !pendingRemoveEntities) {
+        return;
+      }
+      setAssetRemoving(true);
+      try {
+        await removeAssetsFromDomain(
+          activeEntity.fullyQualifiedName ?? '',
+          pendingRemoveEntities
+        );
+        setRemoveDryRunWarnings(undefined);
+        setPendingRemoveEntities(undefined);
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve('');
+          }, ES_UPDATE_DELAY);
+        });
+        onRemoveAsset?.();
+        hideNotification();
+        setSelectedItems(new Map());
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setAssetRemoving(false);
+      }
+    }, [activeEntity, pendingRemoveEntities, onRemoveAsset]);
+
+    const cancelDomainAssetRemove = useCallback(() => {
+      setRemoveDryRunWarnings(undefined);
+      setPendingRemoveEntities(undefined);
+    }, []);
 
     const deleteSelectedItems = useCallback(() => {
       if (selectedItems) {
@@ -665,17 +722,26 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolder
-            buttonId="data-assets-add-button"
-            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
-            className="border-none"
-            heading={t('message.no-data-message', {
+          <CreatePlaceholder
+            actions={
+              permissions.Create
+                ? [
+                    {
+                      key: 'add-asset',
+                      id: 'data-assets-add-button',
+                      label: t('label.add-entity', {
+                        entity: t('label.asset'),
+                      }),
+                      color: 'primary',
+                      onPress: onAddAsset,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-data-message', {
               entity: t('label.data-asset-lowercase-plural'),
             })}
             icon={<FolderEmptyIcon />}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-            onClick={onAddAsset}
           />
         );
       }
@@ -719,7 +785,7 @@ const AssetsTabs = forwardRef(
       () =>
         data.length ? (
           <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }) => (
+            {data.map(({ _source, _id = '', highlight }) => (
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
@@ -753,9 +819,9 @@ const AssetsTabs = forwardRef(
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
+                highlight={highlight}
                 id={_id}
                 key={'assets_' + _id}
-                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
@@ -777,7 +843,9 @@ const AssetsTabs = forwardRef(
             />
           </div>
         ) : (
-          <div className="h-full">{assetErrorPlaceHolder}</div>
+          <div className="h-full tw:relative tw:min-h-90">
+            {assetErrorPlaceHolder}
+          </div>
         ),
       [
         type,
@@ -1061,6 +1129,17 @@ const AssetsTabs = forwardRef(
             visible={showBulkDeleteModal}
             onCancel={() => setShowBulkDeleteModal(false)}
             onConfirm={confirmBulkDelete}
+          />
+
+          <DomainAssetDryRunModal
+            confirmText={t('label.remove-anyway')}
+            header={t('label.confirm-asset-remove')}
+            isLoading={assetRemoving}
+            visible={removeDryRunWarnings !== undefined}
+            warnings={removeDryRunWarnings ?? []}
+            warningsTestId="remove-dry-run-warnings"
+            onCancel={cancelDomainAssetRemove}
+            onConfirm={confirmDomainAssetRemove}
           />
         </div>
         {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (

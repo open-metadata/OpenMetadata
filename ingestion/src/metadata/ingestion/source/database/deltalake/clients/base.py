@@ -12,9 +12,10 @@
 """
 Deltalake Base Client
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -33,36 +34,28 @@ class TableInfo:
     schema: str
     name: str
     _type: TableType
-    location: Optional[str] = None
-    description: Optional[str] = None
-    columns: Optional[List[Column]] = None
-    table_partitions: Optional[List[PartitionColumnDetails]] = None
+    location: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    columns: Optional[List[Column]] = None  # noqa: UP006, UP045
+    table_partitions: Optional[List[PartitionColumnDetails]] = None  # noqa: UP006, UP045
 
 
 class DeltalakeBaseClient(ABC):
     @classmethod
     @abstractmethod
-    def from_config(
-        cls, service_connection: DeltaLakeConnection
-    ) -> "DeltalakeBaseClient":
+    def from_config(cls, service_connection: DeltaLakeConnection) -> "DeltalakeBaseClient":
         """Returns a Deltalake Client based on the DatalakeConfig passed."""
 
     @abstractmethod
-    def get_database_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the Database Names, based on the underlying client."""
 
     @abstractmethod
-    def get_database_schema_names(
-        self, service_connection: DeltaLakeConnection
-    ) -> Iterable[str]:
+    def get_database_schema_names(self, service_connection: DeltaLakeConnection) -> Iterable[str]:
         """Returns the RAW database schema names, based on the underlying client."""
 
     @abstractmethod
-    def get_table_info(
-        self, service_connection: DeltaLakeConnection, schema_name: str
-    ) -> Iterable[TableInfo]:
+    def get_table_info(self, service_connection: DeltaLakeConnection, schema_name: str) -> Iterable[TableInfo]:
         """Returns the TableInfo, based on the underlying client."""
 
     @abstractmethod

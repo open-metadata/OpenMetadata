@@ -17,6 +17,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -29,6 +30,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 from metadata.ingestion.source.database.mysql.models import MysqlRoutine
+from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_ROUTINES
 
 mock_mysql_config = {
     "source": {
@@ -90,10 +92,8 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 
 class MysqlUnitTest(TestCase):
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_mysql_config)
@@ -102,25 +102,17 @@ class MysqlUnitTest(TestCase):
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.mysql_source.context.get().__dict__[
-            "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mysql_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.mysql_source.context.get().__dict__["database"] = "test_db"
-        self.mysql_source.context.get().__dict__[
-            "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.mysql_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch("sqlalchemy.engine.base.Engine")
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.mysql_source.close()
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
-    )
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
     def test_get_stored_procedures(self, connection):
         """Test fetching stored procedures"""
         connection.return_value = True
@@ -132,6 +124,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN SELECT 1; END",
                     "routine_type": "PROCEDURE",
+                    "language": "SQL",
                     "description": "Test stored procedure",
                 }
             ),
@@ -141,6 +134,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN RETURN 1; END",
                     "routine_type": "FUNCTION",
+                    "language": "SQL",
                     "description": "Test function",
                 }
             ),
@@ -150,6 +144,7 @@ class MysqlUnitTest(TestCase):
                     "schema_name": "test_schema",
                     "definition": "BEGIN RETURN 1; END",
                     "routine_type": "PROCEDURE",
+                    "language": "SQL",
                     "description": "Test exclude",
                 }
             ),
@@ -164,9 +159,7 @@ class MysqlUnitTest(TestCase):
 
         # Enable stored procedures in config
         self.mysql_source.source_config.includeStoredProcedures = True
-        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(
-            excludes=["exclude_procedure"]
-        )
+        self.mysql_source.source_config.storedProcedureFilterPattern = FilterPattern(excludes=["exclude_procedure"])
 
         # Get stored procedures
         stored_procedures = list(self.mysql_source.get_stored_procedures())
@@ -176,3 +169,52 @@ class MysqlUnitTest(TestCase):
         self.assertIsInstance(stored_procedures[0], MysqlRoutine)
         self.assertEqual(stored_procedures[0].name, "test_procedure")
         self.assertEqual(stored_procedures[0].routine_type, "PROCEDURE")
+
+        executed_clause = mock_conn.execute.call_args[0][0]
+        self.assertEqual(
+            executed_clause.compile().params.get("schema_name"),
+            MOCK_DATABASE_SCHEMA.name.root,
+        )
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
+    def test_get_stored_procedures_binds_schema_name(self, connection):
+        """A schema name with a quote is bound, never interpolated into the SQL text"""
+        connection.return_value = True
+        malicious_schema = "my'schema"
+
+        mock_engine = MagicMock()
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = []
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.mysql_source.engine = mock_engine
+
+        self.mysql_source.source_config.includeStoredProcedures = True
+        self.mysql_source.context.get().__dict__["database_schema"] = malicious_schema
+
+        list(self.mysql_source.get_stored_procedures())
+
+        executed_clause = mock_conn.execute.call_args[0][0]
+        self.assertEqual(executed_clause.compile().params.get("schema_name"), malicious_schema)
+        self.assertIn(":schema_name", MYSQL_GET_ROUTINES)
+        self.assertNotIn(malicious_schema, str(executed_clause))
+
+    def _yield_language(self, language: str) -> Language:
+        routine = MysqlRoutine(
+            routine_name="proc",
+            schema_name="test_schema",
+            definition="BEGIN SELECT 1; END",
+            routine_type="PROCEDURE",
+            language=language,
+        )
+        request = next(self.mysql_source.yield_stored_procedure(routine)).right
+        return request.storedProcedureCode.language
+
+    def test_yield_stored_procedure_maps_db_reported_language(self):
+        """SQL and EXTERNAL routine bodies map to their respective languages"""
+        self.assertEqual(self._yield_language("SQL"), Language.SQL)
+        self.assertEqual(self._yield_language("EXTERNAL"), Language.External)
+
+    def test_yield_stored_procedure_unknown_language_defaults_to_sql(self):
+        """An unmapped routine body falls back to SQL rather than None"""
+        self.assertEqual(self._yield_language("UNKNOWN_LANG"), Language.SQL)

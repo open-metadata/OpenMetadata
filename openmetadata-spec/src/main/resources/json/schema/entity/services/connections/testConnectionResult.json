@@ -33,6 +33,47 @@
           "description": "In case of failed step, this field would contain the actual error faced during the step.",
           "type": "string",
           "default": null
+        },
+        "status": {
+          "description": "Lifecycle state of this step.",
+          "type": "string",
+          "enum": ["Queued", "Running", "Passed", "Failed", "Skipped", "Warning"]
+        },
+        "skipReason": {
+          "description": "Why a step did not run, when status is Skipped.",
+          "type": "string",
+          "enum": ["NotImplemented", "ConnectionNotEstablished"]
+        },
+        "diagnosis": {
+          "description": "Classified, actionable explanation of a failure, separate from the raw errorLog.",
+          "type": "object",
+          "properties": {
+            "title": {
+              "description": "Short statement of what went wrong.",
+              "type": "string"
+            },
+            "remediation": {
+              "description": "What the user can do to fix it.",
+              "type": "string"
+            },
+            "docUrl": {
+              "description": "Link to relevant documentation.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "durationMs": {
+          "description": "Wall-clock time the step took, in milliseconds.",
+          "type": "integer"
+        },
+        "executedCommand": {
+          "description": "The command or statement the step actually ran, when applicable.",
+          "type": "string"
+        },
+        "resultSummary": {
+          "description": "Human-readable summary of what the step found on success.",
+          "type": "string"
         }
       },
       "additionalProperties": false,

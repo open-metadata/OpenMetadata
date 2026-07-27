@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +41,14 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
@@ -103,6 +107,28 @@ public class IncidentTaskIntegrationIT {
         JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
     assertEquals(task.getId(), payload.getTestCaseResolutionStatusId());
     assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.New);
+  }
+
+  @Test
+  void testPatch_PreservesComments(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TestCase testCase = createTestCase(client, ns, "incident-comment-patch");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+
+    client.tasks().addComment(task.getId().toString(), "keep me across a patch");
+
+    // A generic PATCH that does not touch comments must not drop them (they live in the task JSON).
+    JsonNode patch =
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"investigating\"}]");
+    client.tasks().patch(task.getId().toString(), patch);
+
+    Task afterPatch = client.tasks().get(task.getId().toString(), "comments");
+    assertNotNull(afterPatch.getComments(), "comments must not be dropped by a task patch");
+    assertEquals(1, afterPatch.getComments().size(), "the comment must survive the patch");
+    assertEquals("keep me across a patch", afterPatch.getComments().get(0).getMessage());
   }
 
   @Test
@@ -311,6 +337,149 @@ public class IncidentTaskIntegrationIT {
     assertEquals(TaskCategory.Incident, ourTask.getCategory());
   }
 
+  @Test
+  void testLegacyResolvedThenAck_ReopensSameIncidentTask(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TestCase testCase = createTestCase(client, ns, "incident-reopen-ack");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    UUID stateId = task.getId();
+
+    resolveIncidentTask(client, stateId);
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+    awaitTestCaseIncidentId(client, testCase, null);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+
+    Task reopened = awaitIncidentTask(client, stateId, TaskEntityStatus.InProgress, "ack", null);
+    assertEquals(stateId, reopened.getId(), "reopen must reuse the same incident task");
+    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Ack);
+    assertEquals(
+        1,
+        countIncidentTasksForTestCase(client, testCase),
+        "reopen must not mint a second incident task");
+    awaitTestCaseIncidentId(client, testCase, stateId);
+  }
+
+  @Test
+  void testLegacyResolvedThenAssigned_ReopensAndAssigns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    TestCase testCase = createTestCase(client, ns, "incident-reopen-assign");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    UUID stateId = task.getId();
+
+    resolveIncidentTask(client, stateId);
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                .withTestCaseResolutionStatusDetails(
+                    new Assigned().withAssignee(shared.USER1_REF)));
+
+    Task reopened =
+        awaitIncidentTask(
+            client, stateId, TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+    assertEquals(stateId, reopened.getId(), "reopen must reuse the same incident task");
+    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Assigned);
+    assertEquals(
+        1,
+        countIncidentTasksForTestCase(client, testCase),
+        "reopen must not mint a second incident task");
+    awaitTestCaseIncidentId(client, testCase, stateId);
+  }
+
+  @Test
+  void testResolveAfterReopen_CompletesSameTask(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TestCase testCase = createTestCase(client, ns, "incident-reresolve");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    UUID stateId = task.getId();
+
+    resolveIncidentTask(client, stateId);
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+    awaitIncidentTask(client, stateId, TaskEntityStatus.InProgress, "ack", null);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+                .withTestCaseResolutionStatusDetails(
+                    new Resolved()
+                        .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
+                        .withTestCaseFailureComment("Final resolution")));
+
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved);
+    awaitTestCaseIncidentId(client, testCase, null);
+    assertEquals(
+        1,
+        countIncidentTasksForTestCase(client, testCase),
+        "the full resolve-reopen-resolve cycle must stay on one task");
+  }
+
+  @Test
+  void testReopenedIncident_NewFailureReusesTask(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TestCase testCase = createTestCase(client, ns, "incident-reopen-refail");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    UUID stateId = task.getId();
+
+    resolveIncidentTask(client, stateId);
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+    awaitIncidentTask(client, stateId, TaskEntityStatus.InProgress, "ack", null);
+
+    createFailedTestResult(client, testCase);
+
+    await()
+        .atMost(TASK_TIMEOUT)
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(testCase.getId().toString(), "incidentId,testCaseResult");
+              assertEquals(stateId, fetched.getIncidentId());
+              assertNotNull(fetched.getTestCaseResult());
+              assertEquals(stateId, fetched.getTestCaseResult().getIncidentId());
+            });
+    assertEquals(
+        1,
+        countIncidentTasksForTestCase(client, testCase),
+        "a failure on a reopened incident must reuse its task");
+  }
+
   private TestCase createTestCase(OpenMetadataClient client, TestNamespace ns, String prefix) {
     String id = ns.shortPrefix();
     DatabaseService service =
@@ -327,6 +496,47 @@ public class IncidentTaskIntegrationIT {
         .testDefinition("tableRowCountToEqual")
         .parameter("value", "100")
         .create();
+  }
+
+  private void resolveIncidentTask(OpenMetadataClient client, UUID stateId) {
+    client
+        .tasks()
+        .resolve(
+            stateId.toString(),
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("Resolved by mistake")
+                .withPayload(
+                    resolutionPayload(
+                        "Mistake",
+                        "Resolved by mistake",
+                        TestCaseFailureReasonType.FalsePositive)));
+  }
+
+  private void awaitTestCaseIncidentId(
+      OpenMetadataClient client, TestCase testCase, UUID expectedIncidentId) {
+    await()
+        .atMost(TASK_TIMEOUT)
+        .pollInterval(Duration.ofMillis(250))
+        .untilAsserted(
+            () -> {
+              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
+              assertEquals(expectedIncidentId, fetched.getIncidentId());
+            });
+  }
+
+  private long countIncidentTasksForTestCase(OpenMetadataClient client, TestCase testCase) {
+    ListParams params =
+        new ListParams().setLimit(200).setFields("about").addFilter("category", "Incident");
+    ListResponse<Task> tasks = client.tasks().list(params);
+
+    return tasks.getData().stream()
+        .filter(task -> task.getAbout() != null)
+        .filter(
+            task ->
+                testCase.getFullyQualifiedName().equals(task.getAbout().getFullyQualifiedName()))
+        .count();
   }
 
   private void createFailedTestResult(OpenMetadataClient client, TestCase testCase) {

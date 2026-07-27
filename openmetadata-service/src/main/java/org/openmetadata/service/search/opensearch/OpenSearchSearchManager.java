@@ -61,9 +61,12 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -94,9 +97,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final boolean isClientAvailable;
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final ContextMemorySearchVisibility contextMemoryVisibility =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
+  private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
+  private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -189,7 +196,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   }
 
   @Override
-  public Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
+  public Response searchByField(
+      String fieldName, String fieldValue, String index, Boolean deleted, int from, int size)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -199,6 +207,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(index))
+                    .from(from)
+                    .size(size)
                     .query(
                         q ->
                             q.bool(
@@ -399,6 +409,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         }
       }
     }
+
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -626,6 +638,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       // Apply RBAC constraints with caching
       applyRbacQueryWithCaching(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations if needed
       OpenSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -687,11 +700,17 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
     Map<String, Object> responseMap = new HashMap<>();
     Set<EsLineageData> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     searchDataQualityLineageInternal(fqn, upstreamDepth, queryFilter, deleted, edges, nodes);
+    LineageDomainFilter.pruneDataQualityLineage(nodes, edges, subjectContext);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return Response.status(OK).entity(responseMap).build();
@@ -851,6 +870,36 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
+  }
+
+  /**
+   * Enforces ContextMemory shareConfig visibility on search results for non-admin subjects. Applied
+   * independently of {@code shouldApplyRbacConditions} because memory visibility is a per-memory
+   * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
+   * memories. Non-memory documents are left untouched.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder =
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query visibilityQuery = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      Query existingQuery = requestBuilder.query();
+      if (existingQuery != null) {
+        Query combinedQuery =
+            Query.of(
+                qb ->
+                    qb.bool(
+                        b -> {
+                          b.must(existingQuery);
+                          b.filter(visibilityQuery);
+                          return b;
+                        }));
+        requestBuilder.query(combinedQuery);
+      } else {
+        requestBuilder.query(visibilityQuery);
       }
     }
   }
@@ -1023,7 +1072,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1060,7 +1109,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1099,12 +1148,21 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  private void appendDeterministicTiebreak(
+      OpenSearchRequestBuilder requestBuilder, String sortField) {
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_NAME_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_ID_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+  }
+
   private OpenSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1123,6 +1181,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
 
+    requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
+
     LOG.debug(
         "OpenSearch query for index '{}' with sanitized query '{}': {}",
         request.getIndex(),
@@ -1131,6 +1191,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
 
     // Apply query filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
@@ -1228,27 +1289,30 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder.query(deletedQuery);
     }
 
-    // Handle sorting
-    if (!nullOrEmpty(request.getSortFieldParam())
-        && !Boolean.TRUE.equals(request.getIsHierarchy())) {
-      String sortField =
-          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
-      String sortTypeCapitalized =
-          request.getSortOrder().substring(0, 1).toUpperCase()
-              + request.getSortOrder().substring(1).toLowerCase();
-      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
+    // Handle sorting — always append a deterministic tiebreaker so equal-ranked docs order
+    // identically across shards/replicas; without it the same query bounces between copies.
+    if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
+      if (!nullOrEmpty(request.getSortFieldParam())) {
+        String sortField =
+            SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(
+                request.getSortFieldParam());
+        String sortTypeCapitalized =
+            request.getSortOrder().substring(0, 1).toUpperCase()
+                + request.getSortOrder().substring(1).toLowerCase();
+        SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
-        boolean isKeywordField =
-            sortField.endsWith(".keyword")
-                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
-        requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
+        if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
+          boolean isKeywordField =
+              sortField.endsWith(".keyword")
+                  || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+          requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
+        } else {
+          requestBuilder.sort(sortField, sortOrder, null);
+        }
+        appendDeterministicTiebreak(requestBuilder, sortField);
       } else {
-        requestBuilder.sort(sortField, sortOrder, null);
-      }
-
-      if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        requestBuilder.sort(SORT_FIELD_SCORE, SortOrder.Desc, null);
+        appendDeterministicTiebreak(requestBuilder, SORT_FIELD_SCORE);
       }
     }
 
@@ -1570,6 +1634,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       // Apply RBAC constraints using applyRbacQueryWithCaching
       applyRbacQueryWithCaching(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());

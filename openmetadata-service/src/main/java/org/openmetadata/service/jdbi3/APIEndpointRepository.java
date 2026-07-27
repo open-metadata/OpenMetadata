@@ -80,6 +80,11 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         "",
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the API service / API collection delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root
+    // cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetSchemaFieldTags);
@@ -313,6 +318,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
   private void setFieldFQN(String parentFQN, List<Field> fields) {
     fields.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(fieldFqn);
           if (c.getChildren() != null) {

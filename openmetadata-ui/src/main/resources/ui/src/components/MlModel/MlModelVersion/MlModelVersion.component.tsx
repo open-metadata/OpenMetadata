@@ -35,14 +35,14 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -55,7 +55,6 @@ import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import SourceList from '../MlModelDetail/SourceList.component';
 import { MlModelVersionProp } from './MlModelVersion.interface';
-
 const MlModelVersion: FC<MlModelVersionProp> = ({
   version,
   currentVersionData,
@@ -66,9 +65,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   tier,
   slashedMlModelName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -163,7 +159,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
-                  <DescriptionV1
+                  <Description
                     description={description}
                     entityType={EntityType.PIPELINE}
                     showActions={false}
@@ -395,12 +391,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.MLMODEL}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

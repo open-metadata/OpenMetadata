@@ -44,8 +44,8 @@ class TestAthenaUtils(unittest.TestCase):
         current_columns = []
         for col in [current_column, non_current_column, column_without_params]:
             col_name = col["Name"]
-            col_type = col["Type"]
-            col_comment = col.get("Comment", "")
+            col_type = col["Type"]  # noqa: F841
+            col_comment = col.get("Comment", "")  # noqa: F841
             col_parameters = col.get("Parameters", {})
 
             # Check if this is a non-current Iceberg column

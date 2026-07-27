@@ -63,6 +63,14 @@
 
     .ant-drawer-header-title {
       width: 100%;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .ant-drawer-title {
+      width: 100%;
+      min-width: 0;
+      overflow: hidden;
     }
   }
 
@@ -73,6 +81,9 @@
 
   .title-section {
     padding-bottom: 0;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
     .data-type-chip {
       width: fit-content;
       border: 1px solid @blue-30;
@@ -90,6 +101,7 @@
       padding: 16px 12px;
       padding-top: 8px;
       border-radius: 6px;
+      overflow: hidden;
 
       background-color: @grey-9;
 
@@ -98,7 +110,30 @@
         font-weight: 600;
         color: @grey-900;
         text-decoration: none;
+        min-width: 0;
+        flex: 1;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 95%;
       }
+    }
+
+    .title-row {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .title-text-column {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .title-name-row {
+      min-width: 0;
+      overflow: hidden;
     }
   }
 

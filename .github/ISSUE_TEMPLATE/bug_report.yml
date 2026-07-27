@@ -1,0 +1,87 @@
+name: Bug report
+description: Create a report to help us improve
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Bug in a specific connector?** (Snowflake, Databricks, BigQuery, etc.) — use the **[Connector Bug](https://github.com/open-metadata/OpenMetadata/issues/new?template=connector_bug.yml)** template instead for faster triage.
+
+        Thanks for taking the time to file a bug! Before you go further:
+        - Search [existing issues](https://github.com/open-metadata/OpenMetadata/issues) for duplicates.
+        - Check the [docs](https://docs.open-metadata.org/) and [Slack](https://slack.open-metadata.org/) for known workarounds.
+        - **Redact credentials, hostnames, emails, and other sensitive data** from logs and config before submitting.
+  - type: dropdown
+    id: affected_module
+    attributes:
+      label: Affected module
+      description: Which area of OpenMetadata does this bug affect?
+      options:
+        - UI
+        - Backend
+        - Ingestion Framework
+        - Connector
+        - Data Quality / Profiler
+        - Lineage
+        - Search / Discovery
+        - Authentication / Security
+        - Governance (Glossary / Classification / Domains)
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: describe
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Screenshots or steps to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 14.4 / Ubuntu 22.04 / Windows 11"
+  - type: input
+    id: python_version
+    attributes:
+      label: Python version
+      placeholder: "3.11.7"
+  - type: input
+    id: om_version
+    attributes:
+      label: OpenMetadata version
+      placeholder: "1.9.2"
+  - type: input
+    id: ingestion_version
+    attributes:
+      label: OpenMetadata Ingestion package version
+      placeholder: "openmetadata-ingestion==1.9.2"
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here. Redact sensitive data.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched for duplicate issues.
+          required: true
+        - label: I removed credentials, hostnames, emails, and other sensitive data from logs and config.
+          required: true

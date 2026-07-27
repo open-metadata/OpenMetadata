@@ -31,11 +31,9 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { fileDefaultFields } from '../../utils/FileDetailsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import FileDetailsPage from './FileDetailsPage';
@@ -206,25 +204,34 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     )
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Component) => Component),
 }));
 
 // Mock utils
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('File not found'),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../utils/FileDetailsUtils', () => ({
   fileDefaultFields: 'owners,tags,followers,dataProducts,domains',
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test File'),
 }));
 

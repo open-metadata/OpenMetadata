@@ -15,10 +15,10 @@ import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { debounce, startCase } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getRoles } from '../../../rest/rolesAPIV1';
+import { searchRoles } from '../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './sso-configuration-form-array-field-template.less';
 
@@ -28,12 +28,24 @@ const SsoRolesSelectField = (props: FieldProps) => {
   const [roleOptions, setRoleOptions] = useState<
     { label: string; value: string }[]
   >([]);
+  const id = props.idSchema.$id;
+  const value: string[] = props.formData ?? [];
+  const hasError = props.rawErrors && props.rawErrors.length > 0;
+
+  const placeholder =
+    props.uiSchema?.['ui:placeholder'] ?? t('label.select-field');
+  const searchStateRef = useRef({
+    roleOptions: [] as { label: string; value: string }[],
+    value: [] as string[],
+  });
+
+  searchStateRef.current = { roleOptions, value };
 
   useEffect(() => {
-    getRoles('*', undefined, undefined, true, 1000)
-      .then((response) => {
+    searchRoles('')
+      .then((roles) => {
         setRoleOptions(
-          (response.data || []).map((role) => ({
+          (roles ?? []).map((role) => ({
             label: role.displayName || role.name,
             value: role.name,
           }))
@@ -42,12 +54,37 @@ const SsoRolesSelectField = (props: FieldProps) => {
       .catch((error: AxiosError) => showErrorToast(error));
   }, []);
 
-  const id = props.idSchema.$id;
-  const value: string[] = props.formData ?? [];
-  const hasError = props.rawErrors && props.rawErrors.length > 0;
+  const debouncedSearchRoles = useMemo(
+    () =>
+      debounce(async (searchText: string) => {
+        try {
+          const results = await searchRoles(searchText);
+          const searchOpts = (results ?? []).map((role) => ({
+            label: role.displayName || role.name,
+            value: role.name,
+          }));
+          const { roleOptions, value } = searchStateRef.current;
+          const selectedSet = new Set(value);
+          const kept = roleOptions.filter((option) =>
+            selectedSet.has(option.value)
+          );
 
-  const placeholder =
-    props.uiSchema?.['ui:placeholder'] ?? t('label.select-field');
+          setRoleOptions([
+            ...kept,
+            ...searchOpts.filter((option) => !selectedSet.has(option.value)),
+          ]);
+        } catch (err) {
+          showErrorToast(err as AxiosError);
+        }
+      }, 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSearchRoles.cancel();
+    };
+  }, [debouncedSearchRoles]);
 
   const handleChange = useCallback(
     (newValue: string[]) => {
@@ -86,9 +123,9 @@ const SsoRolesSelectField = (props: FieldProps) => {
           })}
           data-testid={`sso-configuration-form-array-field-template-${props.name}`}
           disabled={props.disabled}
+          filterOption={false}
           id={id}
           mode="multiple"
-          optionFilterProp="label"
           options={roleOptions}
           placeholder={placeholder}
           status={hasError ? 'error' : undefined}
@@ -96,6 +133,7 @@ const SsoRolesSelectField = (props: FieldProps) => {
           onBlur={handleBlur}
           onChange={handleChange}
           onFocus={handleFocus}
+          onSearch={debouncedSearchRoles}
         />
       </Col>
     </Row>

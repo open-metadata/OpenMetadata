@@ -12,6 +12,7 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/tests/testCase';
 
 export type SampleDataType =
@@ -33,4 +34,5 @@ export interface SampleDataProps {
   tableId: string;
   owners: EntityReference[];
   permissions: OperationPermission;
+  entityType?: EntityType.TABLE | EntityType.CONTAINER;
 }

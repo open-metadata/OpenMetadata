@@ -75,7 +75,7 @@ public class McpServerResource extends EntityResource<McpServer, McpServerReposi
   public static final String COLLECTION_PATH = "/v1/mcpServers/";
   private final McpServerMapper mapper = new McpServerMapper();
   static final String FIELDS =
-      "owners,followers,tags,extension,domains,tools,resources,prompts,service";
+      "owners,followers,tags,extension,domains,reviewers,tools,resources,prompts,service";
 
   @Override
   public McpServer addHref(UriInfo uriInfo, McpServer mcpServer) {

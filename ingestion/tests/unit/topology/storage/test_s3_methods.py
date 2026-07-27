@@ -16,6 +16,7 @@ _get_full_path, _get_sample_file_path, get_aws_bucket_region, etc.
 These tests mock the S3Source instance to test methods in isolation
 without needing a running OpenMetadata server.
 """
+
 import datetime
 from unittest.mock import Mock, patch
 
@@ -53,12 +54,8 @@ def _make_s3_source():
     # No instance binding needed.
     source.get_aws_bucket_region = S3Source.get_aws_bucket_region.__get__(source)
     source.fetch_buckets = S3Source.fetch_buckets.__get__(source)
-    source._generate_unstructured_container = (
-        S3Source._generate_unstructured_container.__get__(source)
-    )
-    source.is_valid_unstructured_file = S3Source.is_valid_unstructured_file.__get__(
-        source
-    )
+    source._generate_unstructured_container = S3Source._generate_unstructured_container.__get__(source)
+    source.is_valid_unstructured_file = S3Source.is_valid_unstructured_file.__get__(source)
     return source
 
 
@@ -184,10 +181,7 @@ class TestGetFullPath:
 
     def test_bucket_with_prefix(self):
         source = _make_s3_source()
-        assert (
-            source._get_full_path("my-bucket", "data/events")
-            == "s3://my-bucket/data/events"
-        )
+        assert source._get_full_path("my-bucket", "data/events") == "s3://my-bucket/data/events"
 
     def test_strips_slashes(self):
         source = _make_s3_source()
@@ -283,9 +277,7 @@ class TestGetBucketRegion:
 
     def test_returns_location_constraint(self):
         source = _make_s3_source()
-        source.s3_client.get_bucket_location.return_value = {
-            "LocationConstraint": "eu-west-1"
-        }
+        source.s3_client.get_bucket_location.return_value = {"LocationConstraint": "eu-west-1"}
 
         assert source.get_aws_bucket_region("bucket") == "eu-west-1"
 
@@ -419,9 +411,7 @@ class TestGetBucketNameAndKey:
 
     def _bind(self):
         source = _make_s3_source()
-        source._get_bucket_name_and_key = S3Source._get_bucket_name_and_key.__get__(
-            source
-        )
+        source._get_bucket_name_and_key = S3Source._get_bucket_name_and_key.__get__(source)
         return source
 
     def test_full_path(self):
@@ -477,9 +467,7 @@ class TestGenerateContainerDetails:
         source.service_connection.awsConfig = Mock()
         source.s3_client = Mock()
         source.status = Mock()
-        source._generate_container_details = (
-            S3Source._generate_container_details.__get__(source)
-        )
+        source._generate_container_details = S3Source._generate_container_details.__get__(source)
         source._get_sample_file_prefix = S3Source._get_sample_file_prefix
         source._get_sample_file_path = Mock()
         source._get_columns = Mock()
@@ -513,12 +501,8 @@ class TestGenerateContainerDetails:
             Column(name="id", dataType=DataType.INT),
             Column(name="value", dataType=DataType.STRING),
         ]
-        entry = MetadataEntry(
-            dataPath="data", structureFormat="parquet", isPartitioned=False
-        )
-        bucket = S3BucketResponse(
-            Name="bucket", CreationDate=datetime.datetime(2024, 1, 1)
-        )
+        entry = MetadataEntry(dataPath="data", structureFormat="parquet", isPartitioned=False)
+        bucket = S3BucketResponse(Name="bucket", CreationDate=datetime.datetime(2024, 1, 1))
 
         result = source._generate_container_details(bucket, entry)
 
@@ -559,9 +543,7 @@ class TestGenerateStructuredContainers:
 
     def _bind(self):
         source = _make_s3_source()
-        source._generate_structured_containers = (
-            S3Source._generate_structured_containers.__get__(source)
-        )
+        source._generate_structured_containers = S3Source._generate_structured_containers.__get__(source)
         source._generate_container_details = Mock()
         source._generate_structured_containers_by_depth = Mock(return_value=[])
         return source
@@ -605,12 +587,10 @@ class TestGenerateStructuredContainersByDepth:
     @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
     def test_discovers_nested_directories(self, mock_list):
         source = _make_s3_source()
-        source._generate_structured_containers_by_depth = (
-            S3Source._generate_structured_containers_by_depth.__get__(source)
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
         )
-        source._generate_container_details = Mock(
-            return_value=Mock(spec=S3ContainerDetails)
-        )
+        source._generate_container_details = Mock(return_value=Mock(spec=S3ContainerDetails))
 
         mock_list.return_value = [
             {"Key": "data/raw/users/part-00000.parquet"},
@@ -620,19 +600,17 @@ class TestGenerateStructuredContainersByDepth:
         entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
         bucket = S3BucketResponse(Name="bucket")
 
-        results = list(source._generate_structured_containers_by_depth(bucket, entry))
+        results = list(source._generate_structured_containers_by_depth(bucket, entry))  # noqa: F841
 
         assert source._generate_container_details.call_count == 2
 
     @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
     def test_filters_delta_log_in_depth_scan(self, mock_list):
         source = _make_s3_source()
-        source._generate_structured_containers_by_depth = (
-            S3Source._generate_structured_containers_by_depth.__get__(source)
+        source._generate_structured_containers_by_depth = S3Source._generate_structured_containers_by_depth.__get__(
+            source
         )
-        source._generate_container_details = Mock(
-            return_value=Mock(spec=S3ContainerDetails)
-        )
+        source._generate_container_details = Mock(return_value=Mock(spec=S3ContainerDetails))
 
         mock_list.return_value = [
             {"Key": "data/raw/users/part.parquet"},
@@ -642,7 +620,7 @@ class TestGenerateStructuredContainersByDepth:
         entry = MetadataEntry(dataPath="data/raw", structureFormat="parquet", depth=1)
         bucket = S3BucketResponse(Name="bucket")
 
-        results = list(source._generate_structured_containers_by_depth(bucket, entry))
+        results = list(source._generate_structured_containers_by_depth(bucket, entry))  # noqa: F841
 
         # Only users should be discovered, _delta_log filtered
         assert source._generate_container_details.call_count == 1
@@ -653,9 +631,7 @@ class TestGenerateUnstructuredContainers:
 
     def _bind(self):
         source = _make_s3_source()
-        source._generate_unstructured_containers = (
-            S3Source._generate_unstructured_containers.__get__(source)
-        )
+        source._generate_unstructured_containers = S3Source._generate_unstructured_containers.__get__(source)
         source._yield_nested_unstructured_containers = Mock(return_value=[])
         return source
 
@@ -664,7 +640,7 @@ class TestGenerateUnstructuredContainers:
         entry = MetadataEntry(dataPath="data", structureFormat="parquet")
         bucket = S3BucketResponse(Name="bucket")
 
-        results = list(
+        results = list(  # noqa: F841
             source._generate_unstructured_containers(bucket, [entry], parent=None)
         )
 
@@ -686,13 +662,9 @@ class TestGenerateUnstructuredContainers:
         source._clean_path = S3Source._clean_path.__get__(source)
         source.get_size = Mock(return_value=0)
         entry = MetadataEntry(dataPath="docs")
-        bucket = S3BucketResponse(
-            Name="bucket", CreationDate=datetime.datetime(2024, 1, 1)
-        )
+        bucket = S3BucketResponse(Name="bucket", CreationDate=datetime.datetime(2024, 1, 1))
 
-        results = list(
-            source._generate_unstructured_containers(bucket, [entry], parent=None)
-        )
+        results = list(source._generate_unstructured_containers(bucket, [entry], parent=None))
 
         assert len(results) == 1
         assert results[0].name == "docs"
@@ -788,9 +760,7 @@ class TestLoadMetadataFile:
 
         source = self._bind()
         # Valid JSON, but entry is missing required dataPath.
-        source.s3_reader.read.return_value = _json.dumps(
-            {"entries": [{"structureFormat": "parquet"}]}
-        ).encode()
+        source.s3_reader.read.return_value = _json.dumps({"entries": [{"structureFormat": "parquet"}]}).encode()
 
         result = source._load_metadata_file(bucket_name="bucket-bad-schema")
 

@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Container test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
@@ -94,9 +95,7 @@ class TestOMetaStorageAPI:
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
-    def test_get_name(
-        self, metadata, container_request, expected_fqn, create_container
-    ):
+    def test_get_name(self, metadata, container_request, expected_fqn, create_container):
         """
         We can fetch a Container by name and get it back as Entity
         """
@@ -133,9 +132,7 @@ class TestOMetaStorageAPI:
         """
         created = create_container(container_request)
 
-        metadata.delete(
-            entity=Container, entity_id=str(created.id.root), recursive=True
-        )
+        metadata.delete(entity=Container, entity_id=str(created.id.root), recursive=True)
 
         deleted = metadata.get_by_name(entity=Container, fqn=expected_fqn)
         assert deleted is None
@@ -146,9 +143,7 @@ class TestOMetaStorageAPI:
         """
         created = create_container(container_request)
 
-        res = metadata.get_list_entity_versions(
-            entity=Container, entity_id=created.id.root
-        )
+        res = metadata.get_list_entity_versions(entity=Container, entity_id=created.id.root)
         assert res is not None
         assert len(res.versions) >= 1
 
@@ -158,9 +153,7 @@ class TestOMetaStorageAPI:
         """
         created = create_container(container_request)
 
-        res = metadata.get_entity_version(
-            entity=Container, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Container, entity_id=created.id.root, version=0.1)
 
         assert res.version.root == 0.1
         assert res.id == created.id
@@ -170,8 +163,6 @@ class TestOMetaStorageAPI:
         Test retrieving EntityReference for a container
         """
         created = create_container(container_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Container, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Container, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

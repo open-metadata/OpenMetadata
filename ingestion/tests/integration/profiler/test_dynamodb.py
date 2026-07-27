@@ -19,9 +19,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(autouse=True, scope="module")
-def ingest_metadata(
-    db_service: DatabaseService, metadata: OpenMetadata, ingest_sample_data
-):
+def ingest_metadata(db_service: DatabaseService, metadata: OpenMetadata, ingest_sample_data):
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.serviceType.name.lower(),

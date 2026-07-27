@@ -12,11 +12,11 @@ from docker.models.containers import Container
 def try_bind(container, container_port, host_port):
     """Try to bind a port to the container, if it is already in use try another port."""
     try:
-        with container.with_bind_ports(container_port, host_port) as container:
+        with container.with_bind_ports(container_port, host_port) as container:  # noqa: PLR1704
             yield container
     except docker.errors.APIError as e:
         if not re.search(rf"Bind for .+:{host_port} failed", e.explanation):
-            raise e
+            raise e  # noqa: TRY201
 
         logging.warning("Port %s is already in use, trying another port", host_port)
         with container.with_bind_ports(container_port, None) as container:
@@ -34,9 +34,9 @@ def copy_dir_to_container(dir_path: str, container: Container, container_path: s
     """
     tar_path = dir_path + ".tar"
     with tarfile.open(tar_path, "w") as tar:
-        for item in os.listdir(dir_path):
-            tar.add(os.path.join(dir_path, item), arcname=item)
+        for item in os.listdir(dir_path):  # noqa: PTH208
+            tar.add(os.path.join(dir_path, item), arcname=item)  # noqa: PTH118
     container.exec_run(["mkdir", "-p", container_path])
-    with open(tar_path, "rb") as tar_file:
+    with open(tar_path, "rb") as tar_file:  # noqa: PTH123
         container.put_archive(container_path, tar_file)
-    os.remove(tar_path)
+    os.remove(tar_path)  # noqa: PTH107

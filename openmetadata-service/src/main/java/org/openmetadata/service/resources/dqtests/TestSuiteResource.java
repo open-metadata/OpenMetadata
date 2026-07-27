@@ -42,7 +42,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -88,6 +91,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
 
   static final String FIELDS = "owners,reviewers,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
+  private static final int MAX_DATA_QUALITY_REPORT_BATCH_SIZE = 50;
 
   public TestSuiteResource(Authorizer authorizer, Limits limits) {
     super(Entity.TEST_SUITE, authorizer, limits);
@@ -338,24 +342,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -560,6 +548,58 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     SubjectContext subjectContext = getSubjectContext(securityContext);
     return repository.getDataQualityReport(query, aggregationQuery, index, domain, subjectContext);
+  }
+
+  @POST
+  @Path("/dataQualityReport/batch")
+  @Operation(
+      operationId = "getDataQualityReportBatch",
+      summary = "Run a batch of Data Quality Reports",
+      description =
+          """
+            Run multiple data quality report aggregations in a single request. Each item is executed
+            concurrently on the server and the results are returned keyed by the request `key`. Use
+            this to avoid N+1 round trips when a dashboard needs many aggregations at once. A failure
+            in one item does not fail the batch; that item's result carries an `error` instead of a `report`.
+            """,
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Data Quality Report batch results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataQualityReportBatchResponse.class)))
+      })
+  public DataQualityReportBatchResponse getDataQualityReportBatch(
+      @Context SecurityContext securityContext, @Valid DataQualityReportBatchRequest request) {
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    validateDataQualityReportBatch(request);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return repository.getDataQualityReportBatch(request, subjectContext);
+  }
+
+  private void validateDataQualityReportBatch(DataQualityReportBatchRequest request) {
+    List<DataQualityReportRequest> requests = request.getRequests();
+    if (nullOrEmpty(requests)) {
+      throw new IllegalArgumentException("requests must contain at least one item");
+    }
+    if (requests.size() > MAX_DATA_QUALITY_REPORT_BATCH_SIZE) {
+      throw new IllegalArgumentException(
+          String.format(
+              "requests cannot exceed %d items per batch", MAX_DATA_QUALITY_REPORT_BATCH_SIZE));
+    }
+    requests.forEach(this::validateDataQualityReportRequestItem);
+  }
+
+  private void validateDataQualityReportRequestItem(DataQualityReportRequest item) {
+    if (nullOrEmpty(item.getKey())
+        || nullOrEmpty(item.getAggregationQuery())
+        || nullOrEmpty(item.getIndex())) {
+      throw new IllegalArgumentException(
+          "key, aggregationQuery and index are required for each batch item");
+    }
   }
 
   @POST

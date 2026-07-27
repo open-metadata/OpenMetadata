@@ -14,7 +14,7 @@ Count Duplicates Composed Metric definition
 """
 # pylint: disable=duplicate-code
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import ComposedMetric
@@ -35,14 +35,14 @@ class DuplicateCount(ComposedMetric):
         return MetricType.duplicateCount.value
 
     @classmethod
-    def required_metrics(cls) -> Tuple[str, ...]:
+    def required_metrics(cls) -> Tuple[str, ...]:  # noqa: UP006
         return Count.name(), DistinctCount.name()
 
     @property
     def metric_type(self):
         return int
 
-    def fn(self, res: Dict[str, Any]) -> Optional[float]:
+    def fn(self, res: Dict[str, Any]) -> Optional[float]:  # noqa: UP006, UP045
         """
         Safely compute duplicate count based on the profiler
         results of other Metrics

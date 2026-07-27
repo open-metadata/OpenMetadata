@@ -12,6 +12,7 @@
 """
 Test looker local repository path support
 """
+
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -45,9 +46,7 @@ class LookerLocalRepoTest(TestCase):
     @patch("lkml.load")
     @patch("builtins.open")
     @patch("pathlib.Path.exists")
-    def test_read_manifest_with_local_path_no_remote_deps(
-        self, mock_exists, mock_open, mock_lkml_load, mock_isfile
-    ):
+    def test_read_manifest_with_local_path_no_remote_deps(self, mock_exists, mock_open, mock_lkml_load, mock_isfile):
         """
         Test __read_manifest with LocalRepositoryPath and no remote dependencies
         """
@@ -76,9 +75,7 @@ class LookerLocalRepoTest(TestCase):
     @patch("pathlib.Path.is_file")
     @patch("builtins.open")
     @patch("metadata.ingestion.source.dashboard.looker.metadata.logger")
-    def test_read_manifest_with_local_path_missing_file(
-        self, mock_logger, mock_open, mock_isfile
-    ):
+    def test_read_manifest_with_local_path_missing_file(self, mock_logger, mock_open, mock_isfile):
         """
         Test __read_manifest with LocalRepositoryPath when manifest file is missing
         """
@@ -112,9 +109,7 @@ class LookerLocalRepoTest(TestCase):
     @patch("pathlib.Path.is_file")
     @patch("builtins.open")
     @patch("metadata.ingestion.source.dashboard.looker.metadata.logger")
-    def test_read_manifest_with_local_path_remote_deps_warning(
-        self, mock_logger, mock_open, mock_isfile
-    ):
+    def test_read_manifest_with_local_path_remote_deps_warning(self, mock_logger, mock_open, mock_isfile):
         """
         Test __read_manifest with LocalRepositoryPath warns about remote dependencies
         """
@@ -130,9 +125,7 @@ class LookerLocalRepoTest(TestCase):
             }
 
             # Create LookerSource instance with mocked repo
-            with patch.object(
-                LookerSource, "_LookerSource__init_repo"
-            ) as mock_init_repo:
+            with patch.object(LookerSource, "_LookerSource__init_repo") as mock_init_repo:
                 from metadata.ingestion.source.dashboard.looker.models import LookMLRepo
 
                 mock_repo = LookMLRepo(name="test", path="/tmp/test-repo")
@@ -144,9 +137,7 @@ class LookerLocalRepoTest(TestCase):
                 local_repo_creds = LocalRepositoryPath(root="/tmp/test-repo")
 
                 # This should log a warning about remote dependencies
-                manifest = source._LookerSource__read_manifest(
-                    local_repo_creds, mock_repo
-                )
+                manifest = source._LookerSource__read_manifest(local_repo_creds, mock_repo)
 
                 # Should return the manifest despite the warning
                 self.assertIsNotNone(manifest)
@@ -155,6 +146,4 @@ class LookerLocalRepoTest(TestCase):
                 mock_logger.warning.assert_called_once()
                 warning_call = mock_logger.warning.call_args[0][0]
                 self.assertIn("Remote dependency 'remote_project' found", warning_call)
-                self.assertIn(
-                    "remote dependencies are not automatically fetched", warning_call
-                )
+                self.assertIn("remote dependencies are not automatically fetched", warning_call)

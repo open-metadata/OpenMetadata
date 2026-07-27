@@ -1,0 +1,79 @@
+{
+  "id": "11111111-1111-4111-8111-111111111102",
+  "name": "claude_3_hr_screening",
+  "displayName": "Claude 3 HR Screening Review",
+  "description": "Pending-review model proposed for resume summarization and screening support. Governance review is open because the workflow influences employment-related decisions.",
+  "modelType": "BaseModel",
+  "baseModel": "claude-3-5-sonnet",
+  "modelProvider": "Anthropic",
+  "modelVersion": "2025-02-19",
+  "providerModelId": "claude-3-5-sonnet-20250219",
+  "capabilities": ["Chat", "ToolUse"],
+  "governanceStatus": "PendingReview",
+  "deploymentInfo": {
+    "deploymentType": "API",
+    "endpoint": "https://api.anthropic.com/v1/messages",
+    "region": "us-west-2"
+  },
+  "costMetrics": {
+    "inputCostPer1kTokens": 0.003,
+    "outputCostPer1kTokens": 0.015,
+    "currency": "USD",
+    "estimatedMonthlyUsage": 26000000,
+    "estimatedMonthlyCost": 3120
+  },
+  "modelEvaluation": {
+    "evaluatedAt": 1775606400000,
+    "biasMetrics": {
+      "overallBiasScore": 0.34,
+      "demographicParity": 0.79,
+      "equalizedOdds": 0.75,
+      "dimensionScores": {
+        "gender": 0.31,
+        "race": 0.37,
+        "age": 0.28
+      },
+      "testMethod": "EEOC adverse impact prompt suite"
+    },
+    "safetyMetrics": {
+      "toxicityScore": 0.02,
+      "harmfulContentRate": 0.02,
+      "piiLeakageRisk": 0.08
+    }
+  },
+  "regulatoryCompliance": ["EU_AI_Act"],
+  "remediationActions": [
+    {
+      "id": "22222222-2222-4222-8222-222222222401",
+      "label": "Complete employment-impact bias assessment",
+      "frameworkRef": "EU_AI_Act",
+      "controlCode": "art-10",
+      "dueDate": 1778198400000,
+      "priority": "High",
+      "status": "Open",
+      "createdAt": 1775606400000,
+      "createdBy": "ai-governance@acme.example"
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222402",
+      "label": "Add mandatory recruiter review before ranking output is accepted",
+      "frameworkRef": "EU_AI_Act",
+      "controlCode": "art-14",
+      "dueDate": 1778803200000,
+      "priority": "High",
+      "status": "InProgress",
+      "createdAt": 1775606400000,
+      "createdBy": "ai-governance@acme.example"
+    }
+  ],
+  "tags": [
+    {
+      "tagFQN": "PII.Sensitive",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

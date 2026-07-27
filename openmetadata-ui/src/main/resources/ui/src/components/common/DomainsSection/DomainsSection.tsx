@@ -24,7 +24,7 @@ import {
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';

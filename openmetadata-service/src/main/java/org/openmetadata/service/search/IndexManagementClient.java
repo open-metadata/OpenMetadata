@@ -98,16 +98,30 @@ public interface IndexManagementClient {
   void removeAliases(String indexName, Set<String> aliases);
 
   /**
-   * Atomically swap aliases from old indices to a new index.
-   * This operation removes the specified aliases from any old indices and adds them to the new index
-   * in a single atomic operation, ensuring zero-downtime during index promotion.
+   * Atomically swap aliases from old indices to a new index, optionally deleting concrete indices
+   * in the same request. Removing the aliases from old indices, deleting any {@code indicesToRemove}
+   * (via {@code remove_index}) and adding the aliases to the new index all happen in a single atomic
+   * {@code updateAliases} call.
+   *
+   * <p>{@code indicesToRemove} is for the first-install / post-orphan shape where the canonical name
+   * (e.g. {@code table_search_index}) is still a <em>concrete</em> index sharing the alias name.
+   * Deleting it separately before the swap would orphan the alias if the alias add then failed;
+   * folding the delete into the atomic request means a failure is a no-op — the concrete index and
+   * its live aliases survive — instead of leaving the canonical name pointing at nothing.
    *
    * @param oldIndices the set of old index names to remove aliases from
    * @param newIndex the new index name to add aliases to
    * @param aliases the set of aliases to swap
+   * @param indicesToRemove concrete indices to delete atomically within the same request
    * @return true if the swap was successful, false otherwise
    */
-  boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases);
+  boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove);
+
+  /** Swap aliases without atomically removing any concrete index. */
+  default boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+    return swapAliases(oldIndices, newIndex, aliases, Set.of());
+  }
 
   /**
    * Get all aliases for an index.
@@ -133,9 +147,41 @@ public interface IndexManagementClient {
    */
   Set<String> listIndicesByPrefix(String prefix);
 
+  /**
+   * Update mutable index settings on an existing index. Used to flip refresh_interval,
+   * number_of_replicas, and translog durability between bulk-build and live-serving values
+   * during a reindex. number_of_shards cannot be changed and must be set at creation time.
+   *
+   * @param indexName the name of the index to update
+   * @param settingsJson the inner settings object the OS/ES typed {@code IndexSettings} model
+   *     accepts (no outer {@code "index"} wrapper), e.g.
+   *     {@code {"refresh_interval": "1s", "number_of_replicas": 1,
+   *     "translog": {"durability": "request", "sync_interval": "5s"}}}. Translog fields are
+   *     a nested object (NOT dot notation) — the typed {@code IndexSettings._DESERIALIZER}
+   *     does not parse {@code "translog.durability"} keys. Implementations bind this to the
+   *     search client's {@code IndexSettings} type and submit via {@code PutIndicesSettings}.
+   */
+  default void updateIndexSettings(String indexName, String settingsJson) {
+    throw new UnsupportedOperationException(
+        "updateIndexSettings is not implemented for this search client");
+  }
+
+  /**
+   * Force-merge an index down to the given number of segments. Should be called only on
+   * read-mostly or freshly-built indexes (e.g. a staged reindex output, just before alias
+   * swap). Force-merging a live, write-heavy index hurts performance.
+   *
+   * @param indexName the index to force-merge
+   * @param maxNumSegments target segment count (typically 1 for fully-merged)
+   */
+  default void forceMerge(String indexName, int maxNumSegments) {
+    throw new UnsupportedOperationException("forceMerge is not implemented for this search client");
+  }
+
   record IndexStats(
       String name,
       long documents,
+      long indexedOperations,
       int primaryShards,
       int replicaShards,
       long sizeInBytes,
@@ -145,16 +191,41 @@ public interface IndexManagementClient {
   List<IndexStats> getAllIndexStats() throws IOException;
 
   /**
-   * Get the document count for a specific index.
+   * Get the document count for a specific index. Reads {@code _stats docs.count}, which reflects
+   * only documents that have been refreshed into searchable Lucene segments.
    *
    * @param indexName the name of the index
-   * @return the number of documents in the index, or -1 if count cannot be determined
+   * @return the number of searchable documents in the index, or -1 if count cannot be determined
    */
   default long getDocumentCount(String indexName) {
     try {
       for (IndexStats stats : getAllIndexStats()) {
         if (stats.name().equals(indexName)) {
           return stats.documents();
+        }
+      }
+    } catch (Exception e) {
+      return -1;
+    }
+    return 0;
+  }
+
+  /**
+   * Get the count of index operations applied to an index ({@code _stats indexing.index_total}).
+   * Unlike {@link #getDocumentCount}, this counter increments on every write and is independent of
+   * refresh — documents bulk-written with {@code refresh=false} to an index whose
+   * {@code refresh_interval} is disabled (as during a staged reindex build) are reflected here even
+   * though they are not yet in a searchable segment. Used to decide whether a staged index actually
+   * received documents without having to refresh it before promotion.
+   *
+   * @param indexName the name of the index
+   * @return the number of index operations applied, or -1 if it cannot be determined
+   */
+  default long getIndexedDocumentCount(String indexName) {
+    try {
+      for (IndexStats stats : getAllIndexStats()) {
+        if (stats.name().equals(indexName)) {
+          return stats.indexedOperations();
         }
       }
     } catch (Exception e) {

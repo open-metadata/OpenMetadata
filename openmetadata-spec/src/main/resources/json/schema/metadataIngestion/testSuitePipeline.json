@@ -45,19 +45,8 @@
       },
       "default": null
     },
-    "profileSample": {
-      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-      "type": "number",
-      "default": null,
-      "title": "Profile Sample"
-    },
-    "profileSampleType": {
-      "$ref": "../type/basic.json#/definitions/profileSampleType",
-      "title": "Profile Sample Type"
-    },
-    "samplingMethodType": {
-      "$ref": "../type/basic.json#/definitions/samplingMethodType",
-      "title": "Sampling Method Type"
+    "profileSampleConfig": {
+      "$ref": "../type/samplingConfig.json#/definitions/profileSampleConfig"
     },
     "testCases": {
       "description": "List of test cases to be executed on the entity. If null, all test cases will be executed.",

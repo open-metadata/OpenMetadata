@@ -17,6 +17,7 @@ import { EntityUtilClassBase } from './EntityUtilClassBase';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getServiceDetailsPath,
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -29,7 +30,7 @@ jest.mock('../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
@@ -49,7 +50,7 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TableDropdownOptions', () => ({
   ExtraTableDropdownOptions: jest.fn(),
 }));
 
@@ -217,6 +218,43 @@ describe('EntityUtilClassBase', () => {
   it('should return table details path for default case', () => {
     const fqn = 'test.default';
     entityUtil.getEntityLink('default', fqn);
+
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
+  it('should return service details path for driveService entity type', () => {
+    const fqn = 'test.driveService';
+    entityUtil.getEntityLink(EntityType.DRIVE_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'driveServices');
+  });
+
+  it('should return service details path for securityService entity type', () => {
+    const fqn = 'test.securityService';
+    entityUtil.getEntityLink(EntityType.SECURITY_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
+  });
+
+  it('should fall through to the default table path for ingestion pipelines', () => {
+    // The logs viewer is now an in-place modal (no route), so ingestion-pipeline
+    // entity links resolve to the default entity path instead of a `/logs` URL.
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseServices',
+      'bigquery-beta'
+    );
 
     expect(getEntityDetailsPath).toHaveBeenCalledWith(
       EntityType.TABLE,

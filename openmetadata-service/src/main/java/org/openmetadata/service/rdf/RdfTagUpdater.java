@@ -2,6 +2,8 @@ package org.openmetadata.service.rdf;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -17,8 +19,90 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class RdfTagUpdater {
 
+  /**
+   * When a deferral scope is open on the calling thread, {@link #applyTag} captures the SPARQL
+   * closure here instead of issuing the (synchronous, blocking) {@code executeSparqlUpdate} round
+   * trip inline. The create flush opens a scope before its DB transaction so no Fuseki call runs
+   * while a pooled connection is held, then drains the captured closures after commit. {@code null}
+   * means "no scope active" and {@code applyTag} executes inline as before.
+   */
+  private static final ThreadLocal<List<Runnable>> DEFERRED_RDF = new ThreadLocal<>();
+
   private RdfTagUpdater() {
     // Private constructor for utility class
+  }
+
+  /**
+   * Open a deferral scope on the current thread. While open, {@link #applyTag} enqueues its SPARQL
+   * work instead of running it inline. Returns {@code true} if this call opened the scope (caller
+   * owns draining/closing it), {@code false} if a scope was already open (nested call — the outer
+   * owner stays responsible). Always pair a {@code true} result with a {@code finally} that calls
+   * {@link #drainDeferred()} after the transaction commits and {@link #clearDeferred()} on failure.
+   */
+  public static boolean beginDeferral() {
+    boolean opened = DEFERRED_RDF.get() == null;
+    if (opened) {
+      DEFERRED_RDF.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open.
+   * A nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackToCheckpoint(int)} its own contributions on a deadlock replay without disturbing
+   * closures the outer owner captured.
+   */
+  public static int checkpoint() {
+    List<Runnable> deferred = DEFERRED_RDF.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackToCheckpoint(int checkpoint) {
+    List<Runnable> deferred = DEFERRED_RDF.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Run every closure captured since {@link #beginDeferral} and close the scope. */
+  public static void drainDeferred() {
+    runDeferredClosures(drainDeferredToList());
+  }
+
+  /**
+   * Remove and return the closures captured since {@link #beginDeferral} (closing the scope) without
+   * running them. The caller drains and runs them via {@link #runDeferredClosures(List)}
+   * synchronously after the wrapped transaction commits, so the SPARQL round trips run post-commit
+   * (outside the DB transaction handle) rather than while it is held.
+   */
+  public static List<Runnable> drainDeferredToList() {
+    List<Runnable> deferred = DEFERRED_RDF.get();
+    DEFERRED_RDF.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Run a previously-drained closure list, each guarded so one failure does not abort the rest. */
+  public static void runDeferredClosures(List<Runnable> closures) {
+    for (Runnable closure : closures) {
+      runDeferredClosure(closure);
+    }
+  }
+
+  private static void runDeferredClosure(Runnable closure) {
+    try {
+      closure.run();
+    } catch (Exception e) {
+      LOG.warn("Deferred RDF tag update failed", e);
+    }
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearDeferred() {
+    DEFERRED_RDF.remove();
   }
 
   /**
@@ -42,10 +126,18 @@ public class RdfTagUpdater {
 
   public static void applyTag(
       TagLabel tagLabel, String targetFQN, String targetType, UUID targetId) {
-    if (!RdfUpdater.isEnabled()) {
-      return;
+    if (RdfUpdater.isEnabled()) {
+      List<Runnable> deferred = DEFERRED_RDF.get();
+      if (deferred != null) {
+        deferred.add(() -> applyTagInline(tagLabel, targetFQN, targetType, targetId));
+      } else {
+        applyTagInline(tagLabel, targetFQN, targetType, targetId);
+      }
     }
+  }
 
+  private static void applyTagInline(
+      TagLabel tagLabel, String targetFQN, String targetType, UUID targetId) {
     try {
       RdfRepository repository = RdfRepository.getInstance();
       String baseUri = repository.getBaseUri();
@@ -105,10 +197,18 @@ public class RdfTagUpdater {
 
   public static void removeTag(
       TagLabel tagLabel, String targetFQN, String targetType, UUID targetId) {
-    if (!RdfUpdater.isEnabled()) {
-      return;
+    if (RdfUpdater.isEnabled()) {
+      List<Runnable> deferred = DEFERRED_RDF.get();
+      if (deferred != null) {
+        deferred.add(() -> removeTagInline(tagLabel, targetFQN, targetType, targetId));
+      } else {
+        removeTagInline(tagLabel, targetFQN, targetType, targetId);
+      }
     }
+  }
 
+  private static void removeTagInline(
+      TagLabel tagLabel, String targetFQN, String targetType, UUID targetId) {
     try {
       RdfRepository repository = RdfRepository.getInstance();
       String baseUri = repository.getBaseUri();

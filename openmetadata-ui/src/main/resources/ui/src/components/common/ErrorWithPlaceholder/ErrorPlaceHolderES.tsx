@@ -33,7 +33,6 @@ import {
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
@@ -73,7 +72,8 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
-  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
+  const { showDeleted, search, queryFilter, quickFilter, browsePath } =
+    query ?? {};
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -82,8 +82,14 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
   const isQuery = useMemo(
     () =>
-      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
-    [search, queryFilter, quickFilter, showDeleted]
+      Boolean(
+        search ||
+          queryFilter ||
+          quickFilter ||
+          browsePath ||
+          showDeleted === 'true'
+      ),
+    [search, queryFilter, quickFilter, browsePath, showDeleted]
   );
 
   const noRecordForES = useMemo(() => {
@@ -172,11 +178,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
       <div data-testid="es-error">
         <div className="m-b-lg text-center">
           <p>
-            <span>
-              {t('message.welcome-to-open-metadata', {
-                brandName: brandClassBase.getPageTitle(),
-              })}{' '}
-            </span>
+            <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
               {t('message.unable-to-error-elasticsearch', { error: errorText })}
             </span>

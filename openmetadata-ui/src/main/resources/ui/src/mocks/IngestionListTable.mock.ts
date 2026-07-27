@@ -208,9 +208,7 @@ export const mockPipelineActionsProps: PipelineActionsProps = {
   pipeline: mockESIngestionData,
   handleDeleteSelection: jest.fn(),
   handleIsConfirmationModalOpen: jest.fn(),
-  ingestionPipelinePermissions: {
-    OpenMetadata_elasticSearchReIndex: ENTITY_PERMISSIONS,
-  },
+  ingestionPipelinePermissions: ENTITY_PERMISSIONS,
   triggerIngestion: jest.fn(),
   deployIngestion: jest.fn(),
   handleEnableDisableIngestion: jest.fn(),
@@ -230,7 +228,5 @@ export const mockPipelineActionsDropdownProps: PipelineActionsDropdownProps = {
   handleDeleteSelection: jest.fn(),
   handleIsConfirmationModalOpen: jest.fn(),
   onIngestionWorkflowsUpdate: jest.fn(),
-  ingestionPipelinePermissions: {
-    OpenMetadata_elasticSearchReIndex: ENTITY_PERMISSIONS,
-  },
+  ingestionPipelinePermissions: ENTITY_PERMISSIONS,
 };

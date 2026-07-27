@@ -12,13 +12,14 @@
 """
 Get and test connection utilities
 """
+
 from functools import partial
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional  # noqa: UP035
 from urllib.parse import quote_plus
 
 from pydantic import SecretStr
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Dialect, Engine
 from sqlalchemy.event import listen
 from sqlalchemy.pool import QueuePool
 
@@ -40,7 +41,7 @@ logger = cli_logger()
 
 
 @connection_with_options_secrets
-def get_connection_args_common(connection) -> Dict[str, Any]:
+def get_connection_args_common(connection) -> Dict[str, Any]:  # noqa: UP006
     """
     Read the connection arguments of a connection.
 
@@ -53,6 +54,24 @@ def get_connection_args_common(connection) -> Dict[str, Any]:
         if connection.connectionArguments and connection.connectionArguments.root
         else {}
     )
+
+
+def _dialect_supports_autocommit(dialect: Dialect) -> bool:
+    """
+    Return True when the SQLAlchemy dialect accepts isolation_level='AUTOCOMMIT'.
+    Uses get_isolation_level_values(None), which the transactional dialects
+    evaluate without a live connection. Non-transactional dialects (Hive, Impala,
+    Druid, Pinot) may not implement it, in which case we treat it as unsupported.
+    """
+    supported = False
+    # Transactional dialects report their isolation levels without reading the
+    # connection, so None is safe here; others raise and are handled below.
+    no_connection: Any = None
+    try:
+        supported = "AUTOCOMMIT" in dialect.get_isolation_level_values(no_connection)
+    except Exception:  # pylint: disable=broad-except
+        supported = False
+    return supported
 
 
 def create_generic_db_connection(
@@ -81,6 +100,14 @@ def create_generic_db_connection(
         **kwargs,
     )
 
+    # Read-only metadata/profiler ingestion must not hold a transaction open for
+    # the whole run. On Redshift/Postgres that pins AccessShareLock on every
+    # crawled table and blocks other users' DDL for hours (issue #29092).
+    # AUTOCOMMIT releases locks after each statement. Skip dialects that do not
+    # support it (non-transactional engines do not hold these locks anyway).
+    if "isolation_level" not in kwargs and _dialect_supports_autocommit(engine.dialect):
+        engine.update_execution_options(isolation_level="AUTOCOMMIT")
+
     attach_query_tracker(engine)
 
     if hasattr(connection, "supportsQueryComment"):
@@ -94,7 +121,7 @@ def create_generic_db_connection(
     return engine
 
 
-def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:
+def get_connection_options_dict(connection) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
     """
     Given a connection object, returns the connection options
     dictionary if exists
@@ -144,14 +171,10 @@ def get_password_secret(connection) -> SecretStr:
 
         # Check if IamAuth exists - specific to Mysql and Postgres connection.
         if hasattr(connection, "authType"):
-            password = getattr(
-                connection.authType, BUILDER_PASSWORD_ATTR, SecretStr("")
-            )
+            password = getattr(connection.authType, BUILDER_PASSWORD_ATTR, SecretStr(""))
             if isinstance(connection.authType, IamAuthConfigurationSource):
                 # if IAM based, fetch rds client and generate db auth token.
-                aws_client = AWSClient(
-                    config=connection.authType.awsConfig
-                ).get_rds_client()
+                aws_client = AWSClient(config=connection.authType.awsConfig).get_rds_client()
                 host, port = connection.hostPort.split(":")
                 password = SecretStr(
                     aws_client.generate_db_auth_token(
@@ -201,8 +224,6 @@ def get_connection_url_common(connection) -> str:
             hasattr(connection, "databaseSchema") and not connection.databaseSchema
         ):
             url += "/"
-        params = "&".join(
-            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
-        )
+        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
         url = f"{url}?{params}"
     return url

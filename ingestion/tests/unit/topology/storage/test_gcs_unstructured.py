@@ -11,6 +11,7 @@
 """
 Unit tests for GCS Object store source - Unstructured Formats Support
 """
+
 import datetime
 import uuid
 from collections import namedtuple
@@ -78,9 +79,7 @@ class TestGCSUnstructuredFormats(TestCase):
     Test GCS unstructured formats support
     """
 
-    @patch(
-        "metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"
-    )
+    @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
     def setUp(self, test_connection):
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_GCS_CONFIG)
@@ -90,9 +89,7 @@ class TestGCSUnstructuredFormats(TestCase):
         )
         # Mock the context
         mock_context = MagicMock()
-        mock_context.get.return_value = MagicMock(
-            objectstore_service="test_service", container="test_container"
-        )
+        mock_context.get.return_value = MagicMock(objectstore_service="test_service", container="test_container")
         self.gcs_source.context = mock_context
 
         # Mock metadata client
@@ -102,25 +99,15 @@ class TestGCSUnstructuredFormats(TestCase):
         """Test file validation for unstructured formats"""
         # Test with wildcard
         self.assertTrue(self.gcs_source.is_valid_unstructured_file(["*"], "test.pdf"))
-        self.assertTrue(
-            self.gcs_source.is_valid_unstructured_file(["*"], "anything.txt")
-        )
+        self.assertTrue(self.gcs_source.is_valid_unstructured_file(["*"], "anything.txt"))
 
         # Test with specific extensions
-        self.assertTrue(
-            self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.pdf")
-        )
-        self.assertTrue(
-            self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.txt")
-        )
-        self.assertFalse(
-            self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.doc")
-        )
+        self.assertTrue(self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.pdf"))
+        self.assertTrue(self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.txt"))
+        self.assertFalse(self.gcs_source.is_valid_unstructured_file([".pdf", ".txt"], "test.doc"))
 
         # Test without extension dot
-        self.assertTrue(
-            self.gcs_source.is_valid_unstructured_file(["pdf", "txt"], "test.pdf")
-        )
+        self.assertTrue(self.gcs_source.is_valid_unstructured_file(["pdf", "txt"], "test.pdf"))
 
     def test_get_size(self):
         """Test getting file size from GCS"""
@@ -133,9 +120,7 @@ class TestGCSUnstructuredFormats(TestCase):
         mock_client.get_bucket.return_value = mock_bucket
         mock_bucket.blob.return_value = mock_blob
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         size = self.gcs_source.get_size("test-bucket", "my-gcp-project", "test.pdf")
         self.assertEqual(size, 1024)
@@ -154,9 +139,7 @@ class TestGCSUnstructuredFormats(TestCase):
         )
 
         # Test with unstructuredFormats specified
-        metadata_entry = MetadataEntry(
-            dataPath="documents/", unstructuredFormats=[".pdf", ".txt"]
-        )
+        metadata_entry = MetadataEntry(dataPath="documents/", unstructuredFormats=[".pdf", ".txt"])
 
         # Mock list_blobs response
         mock_client = MagicMock()
@@ -168,9 +151,7 @@ class TestGCSUnstructuredFormats(TestCase):
         ]
         mock_client.list_blobs.return_value = mock_blobs
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         # Mock the container entity lookup
         mock_container = MagicMock()
@@ -181,11 +162,7 @@ class TestGCSUnstructuredFormats(TestCase):
         self.gcs_source.get_size = MagicMock(return_value=1024)
 
         parent = EntityReference(id=uuid.uuid4(), type="container")
-        containers = list(
-            self.gcs_source._generate_unstructured_containers(
-                bucket_response, [metadata_entry], parent
-            )
-        )
+        containers = list(self.gcs_source._generate_unstructured_containers(bucket_response, [metadata_entry], parent))
 
         # Check we got the right number of containers (files + intermediate directories)
         self.assertGreater(len(containers), 0)
@@ -193,9 +170,7 @@ class TestGCSUnstructuredFormats(TestCase):
         # Check that we only processed valid extensions
         for container in containers:
             if container.leaf_container:
-                self.assertTrue(
-                    container.name.endswith(".pdf") or container.name.endswith(".txt")
-                )
+                self.assertTrue(container.name.endswith(".pdf") or container.name.endswith(".txt"))
 
     def test_generate_unstructured_containers_wildcard(self):
         """Test generating unstructured containers with wildcard"""
@@ -213,15 +188,11 @@ class TestGCSUnstructuredFormats(TestCase):
         mock_blobs = [
             MockBlob(name="files/file1.pdf", size=1024),
             MockBlob(name="files/file2.docx", size=2048),
-            MockBlob(
-                name="files/file3.xyz", size=512
-            ),  # Should be accepted with wildcard
+            MockBlob(name="files/file3.xyz", size=512),  # Should be accepted with wildcard
         ]
         mock_client.list_blobs.return_value = mock_blobs
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         # Mock the container entity lookup
         mock_container = MagicMock()
@@ -232,11 +203,7 @@ class TestGCSUnstructuredFormats(TestCase):
         self.gcs_source.get_size = MagicMock(return_value=1024)
 
         parent = EntityReference(id=uuid.uuid4(), type="container")
-        containers = list(
-            self.gcs_source._generate_unstructured_containers(
-                bucket_response, [metadata_entry], parent
-            )
-        )
+        containers = list(self.gcs_source._generate_unstructured_containers(bucket_response, [metadata_entry], parent))
 
         # With wildcard, all files should be processed
         leaf_containers = [c for c in containers if c.leaf_container]
@@ -257,9 +224,7 @@ class TestGCSUnstructuredFormats(TestCase):
 
         # Generate parent containers
         parents = list(
-            self.gcs_source._yield_parents_of_unstructured_container(
-                bucket_name, project_id, list_of_parent, parent
-            )
+            self.gcs_source._yield_parents_of_unstructured_container(bucket_name, project_id, list_of_parent, parent)
         )
 
         # Should create containers for: documents, 2025, january (not report.pdf as it's the leaf)
@@ -281,9 +246,7 @@ class TestGCSUnstructuredFormats(TestCase):
             creation_date=datetime.datetime(2025, 1, 1),
         )
 
-        metadata_entry = MetadataEntry(
-            dataPath="data/", unstructuredFormats=[".csv", ".json"]
-        )
+        metadata_entry = MetadataEntry(dataPath="data/", unstructuredFormats=[".csv", ".json"])
 
         # Mock list_blobs response with nested structure
         mock_client = MagicMock()
@@ -295,9 +258,7 @@ class TestGCSUnstructuredFormats(TestCase):
         ]
         mock_client.list_blobs.return_value = mock_blobs
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         # Mock container entity
         mock_container = MagicMock()
@@ -310,9 +271,7 @@ class TestGCSUnstructuredFormats(TestCase):
         parent = EntityReference(id=uuid.uuid4(), type="container")
 
         containers = list(
-            self.gcs_source._yield_nested_unstructured_containers(
-                bucket_response, metadata_entry, parent
-            )
+            self.gcs_source._yield_nested_unstructured_containers(bucket_response, metadata_entry, parent)
         )
 
         # Check that containers were created for the nested structure
@@ -337,18 +296,14 @@ class TestGCSUnstructuredFormats(TestCase):
 
         entries = [
             # Structured entry
-            MetadataEntry(
-                dataPath="tables/", structureFormat="parquet", isPartitioned=False
-            ),
+            MetadataEntry(dataPath="tables/", structureFormat="parquet", isPartitioned=False),
             # Unstructured entry
             MetadataEntry(dataPath="documents/", unstructuredFormats=[".pdf", ".docx"]),
             # Mixed - should only process as unstructured
             MetadataEntry(
                 dataPath="reports/",
                 structureFormat="csv",
-                unstructuredFormats=[
-                    ".txt"
-                ],  # Should be ignored when structureFormat is set
+                unstructuredFormats=[".txt"],  # Should be ignored when structureFormat is set
             ),
         ]
 
@@ -360,9 +315,7 @@ class TestGCSUnstructuredFormats(TestCase):
         ]
         mock_client.list_blobs.return_value = mock_blobs
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         # Mock container entity
         mock_container = MagicMock()
@@ -376,9 +329,7 @@ class TestGCSUnstructuredFormats(TestCase):
 
         # Test _generate_unstructured_containers
         unstructured_containers = list(
-            self.gcs_source._generate_unstructured_containers(
-                bucket_response, entries, parent
-            )
+            self.gcs_source._generate_unstructured_containers(bucket_response, entries, parent)
         )
 
         # Should only process the second entry (documents/) as unstructured
@@ -431,9 +382,7 @@ class TestGCSUnstructuredFormats(TestCase):
         ]
         mock_client.list_blobs.return_value = mock_blobs
 
-        self.gcs_source.gcs_clients.storage_client.clients = {
-            "my-gcp-project": mock_client
-        }
+        self.gcs_source.gcs_clients.storage_client.clients = {"my-gcp-project": mock_client}
 
         # Mock _get_sample_file_prefix
         self.gcs_source._get_sample_file_prefix = MagicMock(return_value="data/")
@@ -442,16 +391,12 @@ class TestGCSUnstructuredFormats(TestCase):
         mock_container_details = GCSContainerDetails(
             name="test-container", prefix="/data/2025/01/", file_formats=[], size=1024
         )
-        self.gcs_source._generate_container_details = MagicMock(
-            return_value=mock_container_details
-        )
+        self.gcs_source._generate_container_details = MagicMock(return_value=mock_container_details)
 
         parent = EntityReference(id=uuid.uuid4(), type="container")
 
         containers = list(
-            self.gcs_source._generate_structured_containers_by_depth(
-                bucket_response, metadata_entry, parent
-            )
+            self.gcs_source._generate_structured_containers_by_depth(bucket_response, metadata_entry, parent)
         )
 
         # Should create containers for unique paths at depth 2

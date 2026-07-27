@@ -18,12 +18,12 @@ import { DataProduct } from '../../../../../generated/entity/domains/dataProduct
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { TagLabel } from '../../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../../../utils/IconUtils';
 import {
   getClassificationTags,
   getGlossaryTags,
-} from '../../../../../utils/TagsUtils';
+} from '../../../../../utils/TagsPureUtils';
 import { DomainTypeChip } from '../../../../DomainListing/components/DomainTypeChip';
 import { OwnerLabel } from '../../../OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../../../TagBadgeList/TagBadgeList.component';
@@ -38,10 +38,19 @@ interface OwnedEntity {
   owners?: EntityReference[];
 }
 
+// Long entity names (including no-space strings) must wrap within a capped
+// width instead of overflowing the row. `overflow-wrap:anywhere` both adds
+// break points and lets the flex item shrink below its content width.
+export const NAME_CELL_WRAP_CLASS =
+  'tw:max-w-[480px] tw:[overflow-wrap:anywhere]';
+export const COMPACT_CELL_WRAP_CLASS =
+  'tw:max-w-[320px] tw:[overflow-wrap:anywhere]';
+export const CARD_NAME_WRAP_CLASS = 'tw:min-w-0 tw:[overflow-wrap:anywhere]';
+
 export const renderDomainNameCell = (
   entity: Domain | DataProduct
 ): ReactNode => (
-  <Box align="center" direction="row" gap={3}>
+  <Box align="start" className={NAME_CELL_WRAP_CLASS} direction="row" gap={3}>
     <Avatar size="md" {...getEntityAvatarProps(entity)} />
     <Typography size="text-sm" weight="medium">
       {getEntityName(entity)}

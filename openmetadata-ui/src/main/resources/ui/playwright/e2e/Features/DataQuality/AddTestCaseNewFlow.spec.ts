@@ -53,9 +53,9 @@ test.describe(
       await page.fill('[id="root\\/table"]', table.entity.name);
       await tableResponse;
       await page
-        .locator(
-          `.ant-select-dropdown [title="${table.entityResponseData.fullyQualifiedName}"]`
-        )
+        .getByRole('option')
+        .filter({ hasText: table.entityResponseData.fullyQualifiedName })
+        .first()
         .click();
 
       await page.locator('[data-id="selected-entity"]').waitFor({
@@ -67,14 +67,14 @@ test.describe(
 
     const selectColumn = async (page: Page, columnName: string) => {
       await page.click('[id="root\\/column"]');
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .waitFor({
-          state: 'visible',
-        });
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .click();
+      const columnOption = page
+        .getByRole('option')
+        .filter({ hasText: columnName })
+        .first();
+      await columnOption.waitFor({
+        state: 'visible',
+      });
+      await columnOption.click();
     };
 
     // Helper function to create test case
@@ -100,26 +100,35 @@ test.describe(
       // test case name restriction for `:: " >` character
       const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
       for (const name of invalidTestCaseNames) {
-        await page.getByTestId('test-case-name').fill(name);
-        await page.locator('#testCaseFormV1_testName_help').waitFor({
+        await page.getByTestId('test-case-name').locator('input').fill(name);
+        const nameErrorMessage = page
+          .getByTestId('test-case-form-v1')
+          .getByText(
+            'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+          );
+        await nameErrorMessage.waitFor({
           state: 'visible',
         });
 
-        await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
-          'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
-        );
+        await expect(nameErrorMessage).toBeVisible();
 
-        await page.getByTestId('test-case-name').clear();
+        await page.getByTestId('test-case-name').locator('input').clear();
       }
 
-      await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(`${testTypeId}_test_case`);
       await page.click('[id="root\\/testType"]');
       await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await page.fill('[id="root\\/testType"]', testType);
-      await page.getByTestId(testTypeId).click();
+      await page
+        .getByRole('option')
+        .filter({ hasText: testType })
+        .first()
+        .click();
 
       await page.locator(`[data-id="${testTypeId}"]`).waitFor({
         state: 'visible',
@@ -211,7 +220,7 @@ test.describe(
     });
 
     const tableTestCaseDetails = {
-      testType: 'table row count to equal',
+      testType: 'Table Row Count To Equal',
       testTypeId: 'tableRowCountToEqual',
       paramsValue: '10',
     };
@@ -459,10 +468,12 @@ test.describe(
         await page.getByTestId('create-btn').click();
 
         await expect(
-          page.locator('#testCaseFormV1_selectedTable_help')
-        ).toContainText(
-          'You do not have the necessary permissions to create a test case on this table.'
-        );
+          page
+            .getByTestId('test-case-form-v1')
+            .getByText(
+              'You do not have the necessary permissions to create a test case on this table.'
+            )
+        ).toBeVisible();
       }
     });
   }

@@ -24,6 +24,8 @@ import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
+import { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
+import { DataQualityReportBatchResponse } from '../generated/tests/dataQualityReportBatchResponse';
 import {
   TableData,
   TestCase,
@@ -43,7 +45,7 @@ import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type ListTestSuitePrams = ListParams & {
@@ -83,6 +85,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   serviceName?: string;
   dataQualityDimension?: string;
   followedBy?: string;
+  dataProductFqn?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -258,13 +261,10 @@ export const removeTestCaseFromTestSuite = async (
   return response.data;
 };
 
-export const getTestCaseVersionList = async (
-  id: string,
-  params?: { limit?: number; offset?: number; fieldChanged?: string }
-) => {
+export const getTestCaseVersionList = async (id: string) => {
   const url = `${testCaseUrl}/${id}/versions`;
 
-  const response = await APIClient.get<EntityHistory>(url, { params });
+  const response = await APIClient.get<EntityHistory>(url);
 
   return response.data;
 };
@@ -435,6 +435,17 @@ export const getDataQualityReport = async (
     `${testSuiteUrl}/dataQualityReport`,
     { params }
   );
+
+  return response.data;
+};
+
+export const getDataQualityReportBatch = async (
+  data: DataQualityReportBatchRequest
+): Promise<DataQualityReportBatchResponse> => {
+  const response = await APIClient.post<
+    DataQualityReportBatchRequest,
+    AxiosResponse<DataQualityReportBatchResponse>
+  >(`${testSuiteUrl}/dataQualityReport/batch`, data);
 
   return response.data;
 };

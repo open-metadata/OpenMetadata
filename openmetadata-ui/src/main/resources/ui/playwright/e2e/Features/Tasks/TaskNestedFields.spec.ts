@@ -127,8 +127,7 @@ test.describe('Task Resolution - ApiEndpoint Schema Fields', () => {
       // Create DescriptionUpdate task for requestSchema field
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: apiEndpoint.entityResponseData?.fullyQualifiedName,
-          aboutType: 'apiEndpoint',
+          about: `<#E::apiEndpoint::${apiEndpoint.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -211,8 +210,7 @@ test.describe('Task Resolution - ApiEndpoint Schema Fields', () => {
       // Create DescriptionUpdate task for responseSchema field
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: apiEndpoint.entityResponseData?.fullyQualifiedName,
-          aboutType: 'apiEndpoint',
+          about: `<#E::apiEndpoint::${apiEndpoint.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -311,8 +309,7 @@ test.describe('Task Resolution - DashboardDataModel Columns', () => {
       // Create DescriptionUpdate task for column
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: dashboardDataModel.entityResponseData?.fullyQualifiedName,
-          aboutType: 'dashboardDataModel',
+          about: `<#E::dashboardDataModel::${dashboardDataModel.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -421,8 +418,7 @@ test.describe('Task Resolution - MlModel Features', () => {
       // Create DescriptionUpdate task for mlFeature
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: mlModel.entityResponseData?.fullyQualifiedName,
-          aboutType: 'mlmodel',
+          about: `<#E::mlmodel::${mlModel.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -561,8 +557,7 @@ test.describe('Task Resolution - SearchIndex Fields', () => {
       // Create DescriptionUpdate task for field
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: searchIndex.entityResponseData?.fullyQualifiedName,
-          aboutType: 'searchIndex',
+          about: `<#E::searchIndex::${searchIndex.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
@@ -670,8 +665,7 @@ test.describe('Task Resolution - SearchIndex Fields', () => {
       // Create DescriptionUpdate task for nested field
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: searchIndex.entityResponseData?.fullyQualifiedName,
-          aboutType: 'searchIndex',
+          about: `<#E::searchIndex::${searchIndex.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],

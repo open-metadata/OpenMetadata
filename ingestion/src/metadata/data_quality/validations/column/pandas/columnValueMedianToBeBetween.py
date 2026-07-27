@@ -12,9 +12,10 @@
 """
 Validator for column value median to be between test case
 """
+
 from collections import defaultdict
 from itertools import chain
-from typing import List, Optional, cast
+from typing import List, Optional, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -40,12 +41,10 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 logger = test_suite_logger()
 
 
-class ColumnValueMedianToBeBetweenValidator(
-    BaseColumnValueMedianToBeBetweenValidator, PandasValidatorMixin
-):
+class ColumnValueMedianToBeBetweenValidator(BaseColumnValueMedianToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value median to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
         """compute result of the test case
 
         Args:
@@ -61,7 +60,7 @@ class ColumnValueMedianToBeBetweenValidator(
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation for median with proper weighted aggregation
 
         Follows the iterate pattern from the Median metric's df_fn method to handle
@@ -101,28 +100,22 @@ class ColumnValueMedianToBeBetweenValidator(
             )
 
             for df in dfs:
-                df_typed = cast(pd.DataFrame, df)
+                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
                 grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)
+                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
 
-                    dimension_aggregates[dimension_value][
-                        Metrics.median.name
-                    ] = median_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.median.name] = median_impl.update_accumulator(
                         dimension_aggregates[dimension_value][Metrics.median.name],
                         group_df,
                     )
 
-                    dimension_aggregates[dimension_value][
-                        DIMENSION_TOTAL_COUNT_KEY
-                    ] += len(group_df)
+                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                median_value = median_impl.aggregate_accumulator(
-                    agg[Metrics.median.name]
-                )
+                median_value = median_impl.aggregate_accumulator(agg[Metrics.median.name])
 
                 if median_value is None:
                     logger.warning(
@@ -135,11 +128,7 @@ class ColumnValueMedianToBeBetweenValidator(
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = (
-                    total_rows
-                    if checker.violates_pandas({Metrics.median.name: median_value})
-                    else 0
-                )
+                failed_count = total_rows if checker.violates_pandas({Metrics.median.name: median_value}) else 0
 
                 results_data.append(
                     {
@@ -164,17 +153,11 @@ class ColumnValueMedianToBeBetweenValidator(
                 def recalculate_median(df_aggregated, others_mask, metric_column):
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
-                        others_arrays = df_aggregated.loc[
-                            others_mask, "RAW_MEDIAN_ARRAYS"
-                        ].iloc[0]
-                        others_count = df_aggregated.loc[
-                            others_mask, Metrics.valuesCount.name
-                        ].iloc[0]
+                        others_arrays = df_aggregated.loc[others_mask, "RAW_MEDIAN_ARRAYS"].iloc[0]
+                        others_count = df_aggregated.loc[others_mask, Metrics.valuesCount.name].iloc[0]
                         if others_count > 0:
                             result.loc[others_mask] = median_impl.aggregate_accumulator(
-                                MedianAccumulator(
-                                    arrays=others_arrays, count_value=others_count
-                                )
+                                MedianAccumulator(arrays=others_arrays, count_value=others_count)
                             )
                     return result
 

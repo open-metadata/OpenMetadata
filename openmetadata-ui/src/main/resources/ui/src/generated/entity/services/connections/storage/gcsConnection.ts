@@ -29,6 +29,7 @@ export interface GcsConnection {
      */
     credentials:                 GCPCredentials;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

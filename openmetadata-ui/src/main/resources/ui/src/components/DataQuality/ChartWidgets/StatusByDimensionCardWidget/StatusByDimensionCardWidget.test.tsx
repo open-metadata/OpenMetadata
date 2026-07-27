@@ -53,6 +53,7 @@ jest.mock('../StatusCardWidget/StatusCardWidget.component', () =>
     .mockImplementation(() => <div>StatusByDimensionWidget.component</div>)
 );
 jest.mock('../../../../constants/DataQuality.constants', () => ({
+  ...jest.requireActual('../../../../constants/DataQuality.constants'),
   DIMENSIONS_DATA: [
     DataQualityDimensions.Accuracy,
     DataQualityDimensions.Completeness,

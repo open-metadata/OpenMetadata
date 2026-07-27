@@ -71,9 +71,7 @@ class RegexCount(StaticMetric):
         return SumFn(
             case(
                 (
-                    RegexpMatchFn(
-                        column(self.col.name, self.col.type), self.expression
-                    ),
+                    RegexpMatchFn(column(self.col.name, self.col.type), self.expression),
                     1,
                 ),
                 else_=0,
@@ -91,9 +89,7 @@ class RegexCount(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error trying to run RegExp Match Count for {self.col.name}: {err}"
-                )
+                logger.warning(f"Error trying to run RegExp Match Count for {self.col.name}: {err}")
                 return None
         return computation.aggregate_accumulator(accumulator)
 
@@ -106,26 +102,18 @@ class RegexCount(StaticMetric):
 
         return PandasComputation[int, int](
             create_accumulator=lambda: 0,
-            update_accumulator=lambda acc, df: RegexCount.update_accumulator(
-                acc, df, self.col, self.expression
-            ),
+            update_accumulator=lambda acc, df: RegexCount.update_accumulator(acc, df, self.col, self.expression),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(
-        running_count: int, df: "pd.DataFrame", column, expression: str
-    ) -> int:
+    def update_accumulator(running_count: int, df: "pd.DataFrame", column, expression: str) -> int:
         """Computes one DataFrame chunk and updates the running count
 
         Maintains a single running total (not a list). Adds chunk's count
         to the current total and returns the updated sum.
         """
         if not is_concatenable(column.type):
-            raise TypeError(
-                f"Don't know how to process type {column.type} when computing RegExp Match Count"
-            )
-        chunk_count = (
-            df[column.name].astype(str).str.contains(expression, na=False).sum()
-        )
+            raise TypeError(f"Don't know how to process type {column.type} when computing RegExp Match Count")
+        chunk_count = df[column.name].astype(str).str.contains(expression, na=False).sum()
         return running_count + chunk_count

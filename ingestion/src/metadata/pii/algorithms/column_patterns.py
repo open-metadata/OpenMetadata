@@ -13,15 +13,16 @@ Definition of custom patterns for the PII detection.
 Only patterns for column names are implemented here; for content,
 we rely on the Presidio library.
 """
+
 import re
 from collections import defaultdict
 from functools import lru_cache
-from typing import DefaultDict, List, Mapping, Union
+from typing import DefaultDict, List, Mapping, Union  # noqa: UP035
 
 from metadata.pii.algorithms.tags import PIITag
 
 # Regex patterns for PII detection in column names, not for content
-_pii_column_name_regexes: Mapping[PIITag, Union[str, List[str]]] = {
+_pii_column_name_regexes: Mapping[PIITag, Union[str, List[str]]] = {  # noqa: UP006, UP007
     PIITag.US_SSN: "^.*(ssn|social).*$",
     PIITag.CREDIT_CARD: "^.*(credit).*(card).*$",
     PIITag.US_BANK_NUMBER: [
@@ -45,16 +46,16 @@ _pii_column_name_regexes: Mapping[PIITag, Union[str, List[str]]] = {
 
 
 @lru_cache
-def get_pii_column_name_patterns() -> Mapping[PIITag, List[re.Pattern[str]]]:
+def get_pii_column_name_patterns() -> Mapping[PIITag, List[re.Pattern[str]]]:  # noqa: UP006
     """
     Returns the regex patterns for PII detection in column names.
     The patterns are cached for performance.
     """
-    patterns: DefaultDict[PIITag, List[re.Pattern[str]]] = defaultdict(list)
+    patterns: DefaultDict[PIITag, List[re.Pattern[str]]] = defaultdict(list)  # noqa: UP006
 
     for pii_type, regexes in _pii_column_name_regexes.items():
         if isinstance(regexes, str):
-            regexes = [regexes]
+            regexes = [regexes]  # noqa: PLW2901
         for regex in regexes:
             patterns[pii_type].append(re.compile(regex, re.IGNORECASE))
 

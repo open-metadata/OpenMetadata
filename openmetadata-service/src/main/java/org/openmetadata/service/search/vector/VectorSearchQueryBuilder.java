@@ -14,6 +14,7 @@ public class VectorSearchQueryBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(VectorSearchQueryBuilder.class);
   private static final String ANY = "__ANY__";
   private static final String NONE = "__NONE__";
+  public static final int DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER = 2;
 
   /** Build a full search request body (size + _source + query) for standalone vector search. */
   public static String build(
@@ -66,17 +67,60 @@ public class VectorSearchQueryBuilder {
 
     // Build filter inside knn for efficient k-NN filtering
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
+    appendFilterMustClauses(sb, filters);
+    sb.append("]}}"); // close must array and bool
 
-    // Only include documents where deleted=false
+    sb.append("}}}"); // close embedding, knn, query
+  }
+
+  public static String buildNativeESQuery(
+      float[] vector, int size, int from, int k, Map<String, List<String>> filters) {
+    return buildNativeESQuery(
+        vector, size, from, k, filters, DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER);
+  }
+
+  public static String buildNativeESQuery(
+      float[] vector,
+      int size,
+      int from,
+      int k,
+      Map<String, List<String>> filters,
+      int numCandidatesMultiplier) {
+    // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
+    // Integer.MAX_VALUE; clamp to Integer.MAX_VALUE so num_candidates is always positive.
+    long candidatesLong = (long) k * (long) numCandidatesMultiplier;
+    int numCandidates = (int) Math.max(100, Math.min(candidatesLong, (long) Integer.MAX_VALUE));
+    StringBuilder sb =
+        new StringBuilder(512)
+            .append("{\"size\":")
+            .append(size)
+            .append(",\"from\":")
+            .append(from)
+            .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
+            .append(",\"knn\":{")
+            .append("\"field\":\"embedding\"")
+            .append(",\"query_vector\":")
+            .append(Arrays.toString(vector))
+            .append(",\"k\":")
+            .append(k)
+            .append(",\"num_candidates\":")
+            .append(numCandidates);
+
+    sb.append(",\"filter\":{\"bool\":{\"must\":[");
+    appendFilterMustClauses(sb, filters);
+    sb.append("]}}"); // close must array and bool
+
+    sb.append("}}"); // close knn object
+    return sb.toString();
+  }
+
+  private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
     sb.append("{\"term\":{\"deleted\":false}}");
-
-    // Then add user-specified filters
-    for (var e : filters.entrySet()) {
+    Map<String, List<String>> safeFilters = filters == null ? Map.of() : filters;
+    for (var e : safeFilters.entrySet()) {
       String field = e.getKey();
       List<String> values = e.getValue();
       if (values == null || values.isEmpty()) continue;
-
-      // Handle custom properties that will come with "customProperties.<name>"
       if (field.startsWith("customProperties.")) {
         sb.append(',');
         appendCustomPropertiesFilter(sb, field, values);
@@ -122,14 +166,18 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "databaseSchema.name", values);
           }
+          case "primaryEntityId" -> {
+            sb.append(',');
+            appendFlat(sb, "primaryEntity.id", values);
+          }
+          case "parentId" -> {
+            sb.append(',');
+            appendFlat(sb, "parentId", values);
+          }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }
     }
-
-    sb.append("]}}"); // close must array and bool
-
-    sb.append("}}}"); // close embedding, knn, wrapper
   }
 
   private static void appendFlat(StringBuilder sb, String field, List<String> vals) {

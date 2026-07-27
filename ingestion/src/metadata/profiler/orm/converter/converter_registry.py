@@ -12,6 +12,7 @@
 """
 Dispatch logic to map an Converter base based on dialect
 """
+
 from collections import defaultdict
 
 from metadata.generated.schema.entity.services.databaseService import (

@@ -12,7 +12,8 @@
 """
 Table Count Metric definition
 """
-from typing import TYPE_CHECKING, Callable, Optional
+
+from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
 
 from sqlalchemy import func
 
@@ -78,7 +79,7 @@ class RowCount(StaticMetric):
         """Returns the logic to compute this metrics using Pandas"""
         return PandasComputation[int, int](
             create_accumulator=lambda: 0,
-            update_accumulator=lambda acc, df: RowCount.update_accumulator(acc, df),
+            update_accumulator=lambda acc, df: RowCount.update_accumulator(acc, df),  # noqa: PLW0108
             aggregate_accumulator=lambda acc: acc,
         )
 

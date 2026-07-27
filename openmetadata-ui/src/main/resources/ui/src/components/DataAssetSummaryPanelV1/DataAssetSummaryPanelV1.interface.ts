@@ -15,7 +15,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityPureUtils';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 
 export type DataAssetSummaryPanelProps = {

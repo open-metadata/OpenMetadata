@@ -24,16 +24,13 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import './user-select-dropdown.less';

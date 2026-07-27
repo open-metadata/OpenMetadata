@@ -12,7 +12,7 @@
 """Validate column value at location."""
 
 from datetime import datetime
-from typing import Dict, Iterator
+from typing import Dict, Iterator  # noqa: UP035
 from unittest.mock import patch
 
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeAtExpectedLocation import (
@@ -22,7 +22,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.type.basic import Timestamp
 
 
-def _fetch_data() -> Iterator[Dict]:
+def _fetch_data() -> Iterator[Dict]:  # noqa: UP006
     rows = [
         {"postal_code": 60001, "lon": "1,7743058", "lat": "49,6852237"},
         {"postal_code": 44001, "lon": "-1,5244159", "lat": "47,5546432"},

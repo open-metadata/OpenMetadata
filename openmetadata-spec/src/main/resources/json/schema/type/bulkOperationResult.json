@@ -34,6 +34,11 @@
         "status": {
           "description": "HTTP status code for the request.",
           "type": "integer"
+        },
+        "hasSideEffects": {
+          "description": "True when a dryRun preview detected a side effect on this request (e.g., a domain move or broken data product relationship). UI clients can use this flag to decide whether to show a confirmation prompt before committing.",
+          "type": "boolean",
+          "default": false
         }
       },
       "additionalProperties": false

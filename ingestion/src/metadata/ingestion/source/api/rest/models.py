@@ -11,6 +11,7 @@
 """
 OpenAPI REST API Models
 """
+
 from typing import Optional
 
 from pydantic import AnyUrl, BaseModel
@@ -24,19 +25,19 @@ class RESTCollection(BaseModel):
     """REST colleciton model"""
 
     name: basic.EntityName
-    display_name: Optional[str] = None
-    description: Optional[basic.Markdown] = None
-    url: Optional[AnyUrl] = None
+    display_name: Optional[str] = None  # noqa: UP045
+    description: Optional[basic.Markdown] = None  # noqa: UP045
+    url: Optional[AnyUrl] = None  # noqa: UP045
 
 
 class RESTEndpoint(BaseModel):
     """REST endpoint model"""
 
-    name: Optional[str] = None
-    display_name: Optional[str] = None
-    description: Optional[basic.Markdown] = None
-    url: Optional[AnyUrl] = None
-    operationId: Optional[str] = None
-    request_method: Optional[ApiRequestMethod] = None
-    request_schema: Optional[APISchema] = None
-    response_schema: Optional[APISchema] = None
+    name: Optional[str] = None  # noqa: UP045
+    display_name: Optional[str] = None  # noqa: UP045
+    description: Optional[basic.Markdown] = None  # noqa: UP045
+    url: Optional[AnyUrl] = None  # noqa: UP045
+    operationId: Optional[str] = None  # noqa: N815, UP045
+    request_method: Optional[ApiRequestMethod] = None  # noqa: UP045
+    request_schema: Optional[APISchema] = None  # noqa: UP045
+    response_schema: Optional[APISchema] = None  # noqa: UP045

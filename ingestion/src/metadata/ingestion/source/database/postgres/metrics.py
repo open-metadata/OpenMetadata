@@ -13,7 +13,7 @@ def avg(element, compiler, **kw):
     Cast to decimal to get around potential integer overflow error
     """
     proc = compiler.process(element.clauses, **kw)
-    if isinstance(list(element.clauses)[0].type, PostgresMoney):
+    if isinstance(list(element.clauses)[0].type, PostgresMoney):  # noqa: RUF015
         return f"{element.name}({PostgresMoney.compile_as_float(proc)})"
     return f"{element.name}({proc})"
 
@@ -24,18 +24,16 @@ def stddev(element, compiler, **kw):
     If table is empty, clickhouse returns NaN.
     """
     proc = compiler.process(element.clauses, **kw)
-    if isinstance(list(element.clauses)[0].type, PostgresMoney):
+    if isinstance(list(element.clauses)[0].type, PostgresMoney):  # noqa: RUF015
         return f"STDDEV_POP({PostgresMoney.compile_as_float(proc)})"
     return f"STDDEV_POP({proc})"
 
 
 @compiles(MedianFn, Dialects.Postgres)
 def median(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col, _, percentile = [
-        compiler.process(element, **kwargs) for element in elements.clauses
-    ]
-    if isinstance(list(elements.clauses)[0], PostgresMoney):
-        return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
+    col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
+    if isinstance(list(elements.clauses)[0], PostgresMoney):  # noqa: RUF015
+        return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (  # noqa: UP031
             percentile,
             PostgresMoney.compile_as_float(col),
         )

@@ -46,7 +46,7 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   })),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => ({
     data: {
       id: 'table-1',
@@ -85,20 +85,24 @@ jest.mock('../../common/Table/Table', () => {
 });
 
 jest.mock(
-  '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1',
+  '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => {
-    return function MockTestCaseFormV1({
-      drawerProps,
-      onCancel,
+    return function MockTestCaseFormDrawer({
+      open,
+      onClose,
       onFormSubmit,
-    }: any) {
-      if (!drawerProps.open) {
+    }: {
+      open: boolean;
+      onClose: () => void;
+      onFormSubmit: () => void;
+    }) {
+      if (!open) {
         return null;
       }
 
       return (
         <div data-testid="test-case-form">
-          <button data-testid="cancel-test-form" onClick={onCancel}>
+          <button data-testid="cancel-test-form" onClick={onClose}>
             Cancel
           </button>
           <button data-testid="submit-test-form" onClick={onFormSubmit}>
@@ -246,7 +250,7 @@ describe('ContractQualityFormTab', () => {
 
     it('should not fetch data when table FQN is missing', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValueOnce({
         data: { fullyQualifiedName: undefined },
@@ -428,7 +432,7 @@ describe('ContractQualityFormTab', () => {
   describe('Error Handling', () => {
     it('should handle missing table context', () => {
       const mockUseGenericContext = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       ).useGenericContext;
       mockUseGenericContext.mockReturnValue({ data: undefined });
 

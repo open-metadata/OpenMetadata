@@ -30,13 +30,17 @@ import {
   WorkflowInstance,
   WorkflowStatus,
 } from '../../generated/governance/workflows/workflowInstance';
-import { getAgentRuns } from '../../rest/applicationAPI';
+import { getAiAutomationRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import {
+  automationRunToAppRunRecord,
+  getAutomationTemplate,
+} from '../../utils/AgentsStatusWidgetPureUtils';
 import {
   getFormattedAgentsList,
   getFormattedAgentsListFromAgentsLiveInfo,
@@ -46,19 +50,20 @@ import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink, getEntityNameLabel } from '../../utils/EntityUtils';
+import { getEntityNameLabel } from '../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import {
   filterDistributionChartItem,
   getAssetsByServiceType,
   getChartsDataFromWidgetName,
-  getFormattedTotalAssetsDataFromSocketData,
   getPlatformInsightsChartDataFormattingMethod,
-} from '../../utils/ServiceInsightsTabUtils';
-import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+} from '../../utils/ServiceInsightsTabPureUtils';
+import { getFormattedTotalAssetsDataFromSocketData } from '../../utils/ServiceInsightsTabUtils';
 import {
   getEntityTypeFromServiceCategory,
   getServiceNameQueryFilter,
-} from '../../utils/ServiceUtils';
+} from '../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -69,7 +74,6 @@ import {
   ServiceInsightsTabProps,
   TotalAssetsCount,
 } from './ServiceInsightsTab.interface';
-
 const ServiceInsightsTab = ({
   serviceDetails,
   workflowStatesData,
@@ -102,6 +106,9 @@ const ServiceInsightsTab = ({
       const response = await searchQuery({
         queryFilter: getServiceNameQueryFilter(serviceName),
         searchIndex: SearchIndex.ALL,
+        // Aggregation-only query: skip the hit payload entirely (no source, zero hits).
+        pageSize: 0,
+        fetchSource: false,
       });
 
       const assets = getAssetsByServiceType(serviceCategory);
@@ -199,6 +206,7 @@ const ServiceInsightsTab = ({
       const { sessionId } = await setChartDataStreamConnection({
         chartNames: LIVE_CHARTS_LIST,
         serviceName,
+        serviceType: entityType,
         startTime: getCurrentDayStartGMTinMillis(),
         endTime: getCurrentDayStartGMTinMillis() + 360000000,
         entityLink: getEntityFeedLink(
@@ -209,7 +217,10 @@ const ServiceInsightsTab = ({
 
       sessionIdRef.current = sessionId;
     }
-  }, [serviceName, sessionIdRef.current]);
+    // The entity link is built from the service FQN, so the callback has to be
+    // rebuilt once the service resolves. Without it the session opens with an
+    // empty link and the stream reports no workflow instances.
+  }, [serviceName, serviceCategory, serviceDetails.fullyQualifiedName]);
 
   const getAgentStatuses = async () => {
     try {
@@ -221,22 +232,23 @@ const ServiceInsightsTab = ({
         const startTs = workflowStatesData?.mainInstanceState?.startedAt
           ? workflowStatesData.mainInstanceState.startedAt
           : getDayAgoStartGMTinMillis(6);
-        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
-          getAgentRuns(app.name, {
-            service: serviceDetails.id,
-            startTs,
-            endTs,
-          })
+        const recentRunStatusesPromise = collateAIagentsList.map((automation) =>
+          getAiAutomationRuns(automation.id, startTs, endTs)
         );
 
         const statusData = await Promise.allSettled(recentRunStatusesPromise);
 
         recentRunStatuses = statusData.reduce((acc, cv, index) => {
-          const app = collateAIagentsList[index];
+          const automation = collateAIagentsList[index];
+          const template =
+            getAutomationTemplate(automation.name) ?? automation.name;
 
           return {
             ...acc,
-            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
+            [template]:
+              cv.status === 'fulfilled'
+                ? cv.value.map(automationRunToAppRunRecord)
+                : [],
           };
         }, {});
       }
@@ -264,10 +276,11 @@ const ServiceInsightsTab = ({
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 
-          setAgentsInfo(
+          setAgentsInfo((prev) =>
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
-              data.appStatus
+              data.appStatus,
+              prev.filter((agent) => agent.isCollateAgent)
             )
           );
 

@@ -12,6 +12,7 @@
 """
 Check context operations
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.api.classification.createClassification import (
@@ -47,7 +48,6 @@ TABLE_STAGE = NodeStage(
     context="table",
     processor="yield_table",
     consumer=["database_service", "database", "database_schema"],
-    use_cache=True,
 )
 
 TAGS_STAGE = NodeStage(
@@ -65,7 +65,6 @@ PROCEDURES_STAGE = NodeStage(
     consumer=["database_service", "database", "database_schema"],
     store_all_in_context=True,
     store_fqn=True,
-    use_cache=True,
 )
 
 
@@ -172,6 +171,4 @@ class TopologyContextTest(TestCase):
             ),
         )
 
-        self.assertEqual(
-            context.stored_procedures, ["service.database.schema.stored_proc"]
-        )
+        self.assertEqual(context.stored_procedures, ["service.database.schema.stored_proc"])

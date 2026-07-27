@@ -14,7 +14,7 @@ import json
 
 from testcontainers.postgres import PostgresContainer
 
-from .database_test_container import DataBaseTestContainer
+from .database_test_container import DataBaseTestContainer  # noqa: TID252
 
 
 class PostgresTestContainer(DataBaseTestContainer):

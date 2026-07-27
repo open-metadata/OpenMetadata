@@ -36,7 +36,7 @@ SELECT  T.DatabaseName AS database_schema,
 FROM    DBC.TablesVX T
 WHERE T.TableKind in ('P', 'E')
   and T.DatabaseName = '{schema_name}'
-"""
+"""  # noqa: W291
 
 TERADATA_SHOW_STORED_PROCEDURE = """
 SHOW PROCEDURE {schema_name}.{procedure_name};

@@ -21,7 +21,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   border: 1px solid;
 
   &.success {
@@ -52,7 +53,7 @@
   &.pending {
     color: @yellow-11;
     background-color: @yellow-10;
-    border-color: @white;
+    border-color: var(--tw-color-bg-primary);
   }
 
   &.aborted {
@@ -80,7 +81,7 @@
   &.acknowledged {
     color: @blue-3;
     background-color: @blue-1;
-    border-color: @white;
+    border-color: var(--tw-color-bg-primary);
   }
   &.running {
     color: @primary-heading-color;
@@ -92,7 +93,7 @@
   &.inReview {
     color: @purple-2;
     background-color: @purple-1;
-    border-color: @white;
+    border-color: var(--tw-color-bg-primary);
   }
 
   &.deprecated,

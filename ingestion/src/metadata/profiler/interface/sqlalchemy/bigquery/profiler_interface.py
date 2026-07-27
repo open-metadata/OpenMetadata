@@ -13,8 +13,9 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
+
 from copy import deepcopy
-from typing import List, Type, cast
+from typing import List, Type, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect
 
@@ -40,27 +41,20 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def create_session(self):
         connection_config = deepcopy(self.service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if (
-            hasattr(connection_config.credentials.gcpConfig, "projectId")
-            and self.table_entity.database
-        ):
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(
-                root=self.table_entity.database.name
-            )
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.table_entity.database:
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.table_entity.database.name)
             self.connection = get_ssl_connection(connection_config)
         return super().create_session()
 
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(
-            Type[BigQuerySystemMetricsComputer], self.system_metrics_class
-        )
+        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,
@@ -72,7 +66,7 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
     def _get_struct_columns(self, columns: dict, parent: str):
         """"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         columns_list = []
         for key, value in columns:
@@ -83,25 +77,19 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
                 # pylint: enable=protected-access
                 columns_list.append(col)
             else:
-                col = self._get_struct_columns(
-                    value.__dict__.get("_STRUCT_fields"), f"{parent}.{key}"
-                )
+                col = self._get_struct_columns(value.__dict__.get("_STRUCT_fields"), f"{parent}.{key}")
                 columns_list.extend(col)
         return columns_list
 
     def get_columns(self) -> Column:
         """Get columns from table"""
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT
+        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
 
         columns = []
         for column in inspect(self.table).c:
             if isinstance(column.type, STRUCT):
-                columns.extend(
-                    self._get_struct_columns(
-                        column.type.__dict__.get("_STRUCT_fields"), column.name
-                    )
-                )
+                columns.extend(self._get_struct_columns(column.type.__dict__.get("_STRUCT_fields"), column.name))
             else:
                 columns.append(column)
         return columns

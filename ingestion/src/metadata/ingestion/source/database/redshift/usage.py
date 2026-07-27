@@ -11,6 +11,7 @@
 """
 Redshift usage module
 """
+
 from metadata.ingestion.source.database.redshift.connection import (
     get_redshift_instance_type,
 )

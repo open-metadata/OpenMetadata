@@ -63,8 +63,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [assigneeUser.responseData.name],
@@ -95,15 +94,11 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await assigneeUser.login(page);
     await table.visitEntityPage(page);
 
+    // Stay on the default "All" activity-feed view (do NOT switch to the
+    // Tasks-only split layout) — there each task renders as a single
+    // task-feed-card with its approve/reject buttons inline.
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
-
-    // Navigate to Tasks tab
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
@@ -126,7 +121,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -152,8 +147,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
 
     const taskResponse = await apiContext.post('/api/v1/tasks', {
       data: {
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [assigneeUser.responseData.name],
@@ -172,7 +166,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -215,8 +209,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     try {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: tableFqn,
-          aboutType: 'table',
+          about: `<#E::table::${tableFqn}>`,
           type: 'DataQualityReview',
           category: 'Review',
           assignees: [createdByName],
@@ -317,8 +310,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       // Create task assigned to team
       await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [team.responseData.name],
@@ -356,7 +348,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -381,7 +373,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -446,8 +438,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to user without edit permission
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithoutEditPermission.responseData.name],
@@ -494,8 +485,7 @@ test.describe('Task Resolution - Permission Validation', () => {
       // Create task assigned to owner (who has edit permission)
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [userWithEditPermission.responseData.name],
@@ -573,8 +563,7 @@ test.describe('Task Resolution - Close by Creator', () => {
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task Close - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           priority: 'Medium',

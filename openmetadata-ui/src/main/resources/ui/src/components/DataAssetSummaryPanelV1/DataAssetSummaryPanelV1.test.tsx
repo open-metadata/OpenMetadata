@@ -36,15 +36,15 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { generateEntityLink } from '../../utils/TableUtils';
+import { generateEntityLink } from '../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { DataAssetSummaryPanelV1 } from './DataAssetSummaryPanelV1';
 import { DataAssetSummaryPanelProps } from './DataAssetSummaryPanelV1.interface';
 
 type DataAssetType = DataAssetSummaryPanelProps['dataAsset'];
 
-// Mock TableUtils first to ensure getTierTags is available
-jest.mock('../../utils/TableUtils', () => {
+// Mock TablePureUtils to ensure functions are available
+jest.mock('../../utils/TablePureUtils', () => {
   const mockGetTierTags = jest.fn(() => null);
   const mockGetTagsWithoutTier = jest.fn(() => []);
   const mockGetUsagePercentile = jest.fn(() => 0);

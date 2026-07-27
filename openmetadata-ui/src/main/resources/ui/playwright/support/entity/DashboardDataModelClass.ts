@@ -15,7 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import {
   EntityReference,
   EntityTypeEndpoint,
@@ -173,8 +173,15 @@ export class DashboardDataModelClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
+    const dataModelFqn = this.entityResponseData.fullyQualifiedName;
+    if (!dataModelFqn) {
+      throw new Error(
+        'Dashboard data model response is missing its fully qualified name'
+      );
+    }
     this.childrenSelectorId =
-      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
+      this.entityResponseData.columns?.[0]?.fullyQualifiedName ??
+      `${dataModelFqn}.${this.children[0].name}`;
 
     return {
       service: serviceResponse.body,
@@ -222,12 +229,10 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm: this.entityResponseData?.fullyQualifiedName ?? '',
-      dataTestId: `${
-        this.entityResponseData.service?.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+      endpoint: this.endpoint,
+      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
     });
   }
 

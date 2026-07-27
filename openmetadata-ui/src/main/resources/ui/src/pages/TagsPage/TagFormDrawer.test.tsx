@@ -12,8 +12,9 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FormInstance } from 'antd';
+import { UseFormReturn } from 'react-hook-form';
 import TagFormDrawer from './TagFormDrawer';
+import { TagFormValues } from './TagsPage.interface';
 
 jest.mock('./TagsForm', () => {
   return jest.fn(() => <div data-testid="tags-form">Tags Form</div>);
@@ -93,12 +94,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 const mockForm = {
-  submit: jest.fn(),
-  resetFields: jest.fn(),
-  getFieldsValue: jest.fn(),
-  setFieldsValue: jest.fn(),
-  validateFields: jest.fn(),
-} as unknown as FormInstance;
+  control: {},
+  handleSubmit: jest.fn(),
+  reset: jest.fn(),
+  formState: { isSubmitSuccessful: false },
+} as unknown as UseFormReturn<TagFormValues>;
 
 describe('TagFormDrawer', () => {
   const mockOnClose = jest.fn();
@@ -106,7 +106,7 @@ describe('TagFormDrawer', () => {
 
   const defaultProps = {
     open: true,
-    formRef: mockForm,
+    form: mockForm,
     isTier: false,
     isLoading: false,
     permissions: {

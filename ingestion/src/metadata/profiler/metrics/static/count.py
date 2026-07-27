@@ -74,9 +74,7 @@ class Count(StaticMetric):
         """Returns the logic to compute this metric using Pandas"""
         return PandasComputation[int, int](
             create_accumulator=lambda: 0,
-            update_accumulator=lambda acc, df: Count.update_accumulator(
-                acc, df, self.col
-            ),
+            update_accumulator=lambda acc, df: Count.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 

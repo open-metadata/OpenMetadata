@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreateDirectory;
 import org.openmetadata.schema.api.services.CreateDriveService;
 import org.openmetadata.schema.api.services.CreateDriveService.DriveServiceType;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -31,6 +32,22 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .directories()
+            .create(
+                new CreateDirectory()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName()));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of(new SearchDoc("directory_search_index", child.getId().toString())));
   }
 
   @Override
@@ -154,17 +171,6 @@ public class DriveServiceResourceIT extends BaseServiceIT<DriveService, CreateDr
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().driveServices().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().driveServices().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().driveServices().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

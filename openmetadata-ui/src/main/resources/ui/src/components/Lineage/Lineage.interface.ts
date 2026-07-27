@@ -21,7 +21,10 @@ import { MessageSchemaObject } from '../../generated/entity/data/topic';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
 import { APISchema } from '../../generated/type/apiSchema';
-import { ColumnLineage } from '../../generated/type/entityLineage';
+import {
+  ColumnLineage,
+  TempLineageTable,
+} from '../../generated/type/entityLineage';
 import {
   SearchSourceAlias,
   TableSearchSource,
@@ -38,6 +41,7 @@ export interface LineageProps {
   entity?: SourceType;
   isPlatformLineage?: boolean;
   platformHeader?: React.ReactNode;
+  showControls?: boolean;
 }
 
 export interface EntityLineageResponse {
@@ -65,6 +69,11 @@ export interface EdgeDetails {
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;
   extraInfo?: EdgeDetails;
+  tempLineageTables?: TempLineageTable[];
+  createdAt?: number;
+  createdBy?: string;
+  updatedAt?: number;
+  updatedBy?: string;
 }
 
 export interface ColumnLevelLineageNode
@@ -168,4 +177,5 @@ export interface LineageNodeType
   responseSchema?: APISchema;
   requestSchema?: APISchema;
   fields?: SearchIndexField[];
+  isTempTable?: boolean;
 }

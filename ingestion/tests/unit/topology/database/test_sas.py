@@ -90,8 +90,7 @@ LAS_TRAIN_VIEW = {
             "type": ["Table", "dataSet"],
             "name": "LAS_TRAIN",
             "resourceId": (
-                "/dataTables/dataSources/Compute~fs~"
-                "49736234-36b3-48d2-b2e2-e12aa365ce05~fs~PUBLIC/tables/LAS_TRAIN"
+                "/dataTables/dataSources/Compute~fs~49736234-36b3-48d2-b2e2-e12aa365ce05~fs~PUBLIC/tables/LAS_TRAIN"
             ),
             "creationTimeStamp": None,
             "attributes": {
@@ -123,11 +122,10 @@ LAS_TRAIN_VIEW = {
 @pytest.fixture
 def sas_source():
     """Build a SasSource with every network call mocked out."""
-    with patch.object(SASClient, "get_token", return_value="token"), patch(
-        "metadata.ingestion.source.database.sas.metadata.SasSource.test_connection"
-    ), patch(
-        "metadata.ingestion.source.database.sas.metadata."
-        "SasSource.add_table_custom_attributes"
+    with (
+        patch.object(SASClient, "get_token", return_value="token"),
+        patch("metadata.ingestion.source.database.sas.metadata.SasSource.test_connection"),
+        patch("metadata.ingestion.source.database.sas.metadata.SasSource.add_table_custom_attributes"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_SAS_CONFIG)
         source = SasSource.create(
@@ -149,24 +147,21 @@ class TestParseResourceId:
 
     def test_cas_table(self):
         ctx = parse_resource_id(
-            "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples"
-            "/tables/WATER_CLUSTER?ext=sashdat"
+            "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat"
         )
         assert ctx == SASResourceContext(
             provider="cas",
             host="cas-shared-default",
             library="Samples",
             raw_resource_id=(
-                "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples"
-                "/tables/WATER_CLUSTER?ext=sashdat"
+                "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat"
             ),
         )
         assert ctx.database_name == "cas.cas-shared-default"
 
     def test_compute_table(self):
         ctx = parse_resource_id(
-            "/dataTables/dataSources/Compute~fs~"
-            "49736234-36b3-48d2-b2e2-e12aa365ce05~fs~PUBLIC/tables/LAS_TRAIN"
+            "/dataTables/dataSources/Compute~fs~49736234-36b3-48d2-b2e2-e12aa365ce05~fs~PUBLIC/tables/LAS_TRAIN"
         )
         assert ctx.provider == "Compute"
         assert ctx.host == "49736234-36b3-48d2-b2e2-e12aa365ce05"
@@ -177,10 +172,7 @@ class TestParseResourceId:
         assert parse_resource_id("/too/short") is None
 
     def test_missing_field_separator_returns_none(self):
-        assert (
-            parse_resource_id("/dataTables/dataSources/no-separators-here/tables/T")
-            is None
-        )
+        assert parse_resource_id("/dataTables/dataSources/no-separators-here/tables/T") is None
 
     def test_only_two_fields_returns_none(self):
         assert parse_resource_id("/dataTables/dataSources/cas~fs~host/tables/T") is None
@@ -199,13 +191,10 @@ class TestCreateDatabaseSchema:
 
     def test_well_formed_resource_id_sets_db_and_schema(self, sas_source):
         sas_source.metadata = MagicMock()
-        sas_source.metadata.create_or_update.return_value = MagicMock(
-            fullyQualifiedName="cas.cas-shared-default"
-        )
+        sas_source.metadata.create_or_update.return_value = MagicMock(fullyQualifiedName="cas.cas-shared-default")
         table = {
             "resourceId": (
-                "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples"
-                "/tables/WATER_CLUSTER?ext=sashdat"
+                "/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER?ext=sashdat"
             ),
         }
 
@@ -222,9 +211,7 @@ class TestCreateDatabaseSchema:
             "resourceId": "/dataSources/some/parent",
             "links": [{"rel": "parent", "uri": "/parent"}],
         }
-        sas_source.create_database_alt = MagicMock(
-            return_value=MagicMock(fullyQualifiedName="fallback_db")
-        )
+        sas_source.create_database_alt = MagicMock(return_value=MagicMock(fullyQualifiedName="fallback_db"))
 
         table = {
             "resourceId": "/too/short",
@@ -259,21 +246,22 @@ class TestExtensionAttributeFiltering:
 
     def _run_create_table_entity(self, sas_source):
         sas_source.sas_client = MagicMock()
-        sas_source.sas_client.get_information_catalog_link.return_value = (
-            "http://sas/catalog/LAS_TRAIN"
-        )
+        sas_source.sas_client.get_information_catalog_link.return_value = "http://sas/catalog/LAS_TRAIN"
         sas_source.metadata = MagicMock()
         # Table does not exist yet, so the source should yield a Create.
         sas_source.metadata.get_by_name.return_value = None
 
-        with patch.object(
-            SasSource,
-            "get_entities_using_view",
-            return_value=(LAS_TRAIN_VIEW["entities"], LAS_TRAIN_VIEW["entities"][0]),
-        ), patch.object(
-            SasSource,
-            "create_database_schema",
-            return_value=MagicMock(fullyQualifiedName="cas.49736234.PUBLIC"),
+        with (
+            patch.object(
+                SasSource,
+                "get_entities_using_view",
+                return_value=(LAS_TRAIN_VIEW["entities"], LAS_TRAIN_VIEW["entities"][0]),
+            ),
+            patch.object(
+                SasSource,
+                "create_database_schema",
+                return_value=MagicMock(fullyQualifiedName="cas.49736234.PUBLIC"),
+            ),
         ):
             return list(sas_source.create_table_entity(LAS_TRAIN_SEARCH_HIT))
 
@@ -282,18 +270,13 @@ class TestExtensionAttributeFiltering:
         up in the CreateTableRequest extension."""
         results = self._run_create_table_entity(sas_source)
 
-        create_requests = [
-            r.right
-            for r in results
-            if r.right is not None and isinstance(r.right, CreateTableRequest)
-        ]
+        create_requests = [r.right for r in results if r.right is not None and isinstance(r.right, CreateTableRequest)]
         assert create_requests, f"No CreateTableRequest yielded: {results}"
         request = create_requests[0]
         assert request.extension is not None
         extension = request.extension.root
         assert "casHost" not in extension, (
-            "Null casHost must be stripped so the backend does not reject "
-            "the create with 'null found, string expected'"
+            "Null casHost must be stripped so the backend does not reject the create with 'null found, string expected'"
         )
         # Non-null custom attributes should still be kept.
         assert extension.get("CASLIB") == "PUBLIC"
@@ -308,25 +291,25 @@ class TestSinkFailureGuard:
         """Simulates the log in #16888: get_by_name returns None after the
         yield because the sink 400'd. We must NOT crash on `None.id`."""
         sas_source.sas_client = MagicMock()
-        sas_source.sas_client.get_information_catalog_link.return_value = (
-            "http://sas/catalog/LAS_TRAIN"
-        )
+        sas_source.sas_client.get_information_catalog_link.return_value = "http://sas/catalog/LAS_TRAIN"
         sas_source.metadata = MagicMock()
         # Two get_by_name calls:
         #   1. Check-before-create → None (table does not exist yet)
         #   2. Re-fetch after yield → None (sink rejected create)
         sas_source.metadata.get_by_name.return_value = None
 
-        with patch.object(
-            SasSource,
-            "get_entities_using_view",
-            return_value=(LAS_TRAIN_VIEW["entities"], LAS_TRAIN_VIEW["entities"][0]),
-        ), patch.object(
-            SasSource,
-            "create_database_schema",
-            return_value=MagicMock(fullyQualifiedName="cas.49736234.PUBLIC"),
-        ), patch.object(
-            SasSource, "create_lineage_table_source", return_value=iter([])
+        with (
+            patch.object(
+                SasSource,
+                "get_entities_using_view",
+                return_value=(LAS_TRAIN_VIEW["entities"], LAS_TRAIN_VIEW["entities"][0]),
+            ),
+            patch.object(
+                SasSource,
+                "create_database_schema",
+                return_value=MagicMock(fullyQualifiedName="cas.49736234.PUBLIC"),
+            ),
+            patch.object(SasSource, "create_lineage_table_source", return_value=iter([])),
         ):
             results = list(sas_source.create_table_entity(LAS_TRAIN_SEARCH_HIT))
 
@@ -335,8 +318,7 @@ class TestSinkFailureGuard:
         # StackTraceError (AttributeError) on the follow-up patch calls.
         stack_trace_errors = [r for r in results if r.left is not None]
         assert not stack_trace_errors, (
-            f"Source should not raise after sink-side failure, got: "
-            f"{[e.left.error for e in stack_trace_errors]}"
+            f"Source should not raise after sink-side failure, got: {[e.left.error for e in stack_trace_errors]}"
         )
         # The PATCH/profile calls must not have been invoked because we
         # returned early.
@@ -374,9 +356,7 @@ class TestExceptionHandlerSafety:
         """Defensive: even if `table` is not a dict, the except block
         should still produce a valid StackTraceError."""
         sas_source.sas_client = MagicMock()
-        sas_source.sas_client.get_information_catalog_link.side_effect = RuntimeError(
-            "kaboom"
-        )
+        sas_source.sas_client.get_information_catalog_link.side_effect = RuntimeError("kaboom")
         sas_source.metadata = MagicMock()
 
         results = list(sas_source.create_table_entity({"id": "abc"}))

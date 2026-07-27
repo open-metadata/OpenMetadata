@@ -131,7 +131,7 @@ DASHBOARD_DETAILS_RESPONSE = {
                             WHERE order_date >= NOW() - INTERVAL '12 months'
                             GROUP BY 1
                             ORDER BY 1
-                        """,
+                        """,  # noqa: W291
                         "format": "time_series",
                     }
                 ],
@@ -171,7 +171,7 @@ DASHBOARD_DETAILS_RESPONSE = {
                             GROUP BY 1, 2
                             ORDER BY revenue DESC
                             LIMIT 20
-                        """,
+                        """,  # noqa: W291
                         "format": "table",
                     }
                 ],
@@ -267,7 +267,7 @@ DASHBOARD_DETAILS_RESPONSE = {
                             FROM analytics.category_revenue
                             WHERE date >= CURDATE() - INTERVAL 30 DAY
                             GROUP BY category
-                        """,
+                        """,  # noqa: W291
                         "format": "table",
                     }
                 ],
@@ -474,7 +474,7 @@ COMPLEX_DASHBOARD_RESPONSE = {
                             FROM predictions
                             GROUP BY date
                             ORDER BY date
-                        """,
+                        """,  # noqa: W291
                     }
                 ],
             },
@@ -495,7 +495,7 @@ COMPLEX_DASHBOARD_RESPONSE = {
                             WHERE timestamp >= now() - INTERVAL 24 HOUR
                             GROUP BY time, error_category
                             ORDER BY time
-                        """,
+                        """,  # noqa: W291
                     }
                 ],
             },

@@ -12,7 +12,9 @@
 """
 OpenMetadata high-level API endpoint test
 """
+
 from unittest import TestCase
+from unittest.mock import MagicMock
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -99,18 +101,10 @@ class OMetaEndpointTest(TestCase):
         """
         Pass Services and test their suffix generation
         """
-        self.assertEqual(
-            self.metadata.get_suffix(DashboardService), "/services/dashboardServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(DatabaseService), "/services/databaseServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(MessagingService), "/services/messagingServices"
-        )
-        self.assertEqual(
-            self.metadata.get_suffix(PipelineService), "/services/pipelineServices"
-        )
+        self.assertEqual(self.metadata.get_suffix(DashboardService), "/services/dashboardServices")
+        self.assertEqual(self.metadata.get_suffix(DatabaseService), "/services/databaseServices")
+        self.assertEqual(self.metadata.get_suffix(MessagingService), "/services/messagingServices")
+        self.assertEqual(self.metadata.get_suffix(PipelineService), "/services/pipelineServices")
 
     def test_teams_suffix(self):
         """
@@ -140,3 +134,18 @@ class OMetaEndpointTest(TestCase):
 
         entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
         assert entity is TableProfile
+
+
+def test_get_context_builds_okf_markdown_path():
+    """get_context targets the per-entity /name/{fqn}/context endpoint, threads the
+    optional query, and returns the raw OKF markdown body."""
+    metadata = OpenMetadata(OMetaEndpointTest.server_config)
+    metadata.client = MagicMock()
+    response = MagicMock()
+    response.text = '---\ntype: "table"\n---\n'
+    metadata.client.get.return_value = response
+
+    result = metadata.get_context(Table, "svc.db.sch.orders", query="refund rules")
+
+    metadata.client.get.assert_called_once_with("/tables/name/svc.db.sch.orders/context?query=refund%20rules")
+    assert result == '---\ntype: "table"\n---\n'

@@ -12,6 +12,7 @@
 """
 Test Workflow pydantic parsing
 """
+
 from unittest import TestCase
 
 from pydantic import ValidationError
@@ -252,9 +253,7 @@ class TestWorkflowParse(TestCase):
                         "hostPort": "localhost:1433",
                     }
                 },
-                "sourceConfig": {
-                    "config": {"type": "DatabaseMetadata", "random": "extra"}
-                },
+                "sourceConfig": {"config": {"type": "DatabaseMetadata", "random": "extra"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -322,12 +321,8 @@ class TestWorkflowParse(TestCase):
             "source": {
                 "type": "airbyte",
                 "serviceName": "local_airbyte",
-                "serviceConnection": {
-                    "config": {"type": "Airbyte", "hostPort": "http://localhost:8000"}
-                },
-                "sourceConfig": {
-                    "config": {"type": "PipelineMetadata", "random": "extra"}
-                },
+                "serviceConnection": {"config": {"type": "Airbyte", "hostPort": "http://localhost:8000"}},
+                "sourceConfig": {"config": {"type": "PipelineMetadata", "random": "extra"}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -369,9 +364,7 @@ class TestWorkflowParse(TestCase):
                         },
                     }
                 },
-                "sourceConfig": {
-                    "config": {"type": "PipelineMetadata", "includeLineage": True}
-                },
+                "sourceConfig": {"config": {"type": "PipelineMetadata", "includeLineage": True}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {
@@ -387,19 +380,11 @@ class TestWorkflowParse(TestCase):
         }
         self.assertTrue(parse_workflow_config_gracefully(config_dict))
 
-        del config_dict["source"]["serviceConnection"]["config"]["connection"][
-            "sslConfig"
-        ]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"]["sslConfig"]
         self.assertTrue(parse_workflow_config_gracefully(config_dict))
-        del config_dict["source"]["serviceConnection"]["config"]["connection"][
-            "username"
-        ]
-        del config_dict["source"]["serviceConnection"]["config"]["connection"][
-            "hostPort"
-        ]
-        del config_dict["source"]["serviceConnection"]["config"]["connection"][
-            "password"
-        ]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"]["username"]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"]["hostPort"]
+        del config_dict["source"]["serviceConnection"]["config"]["connection"]["password"]
         with self.assertRaises(ParsingConfigurationError) as err:
             parse_workflow_config_gracefully(config_dict)
 

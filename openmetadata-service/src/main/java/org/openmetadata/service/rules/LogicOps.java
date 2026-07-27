@@ -17,9 +17,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -198,14 +198,9 @@ public class LogicOps {
           Set<UUID> entityDomainIds =
               domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
 
-          // Get all data product entities in bulk instead of using a loop
           try {
-            List<DataProduct> dpEntities =
-                Entity.getEntities(dataProducts, "domains", Include.NON_DELETED);
-
-            for (DataProduct dpEntity : dpEntities) {
-              List<EntityReference> dpDomains = dpEntity.getDomains();
-
+            for (EntityReference dataProduct : dataProducts) {
+              List<EntityReference> dpDomains = getDataProductDomains(dataProduct);
               if (nullOrEmpty(dpDomains)) {
                 continue; // If data product has no domains, skip validation
               }
@@ -270,5 +265,21 @@ public class LogicOps {
    */
   public static List<String> getCustomOpsKeys() {
     return Arrays.stream(CustomLogicOps.values()).map(op -> op.key).toList();
+  }
+
+  private static List<EntityReference> getDataProductDomains(EntityReference dataProduct) {
+    if (dataProduct == null || dataProduct.getId() == null) {
+      return Collections.emptyList();
+    }
+    return Entity.getEntityRelationshipRepository()
+        .getEntityReferences(
+            Entity.getCollectionDAO()
+                .relationshipDAO()
+                .findFrom(
+                    dataProduct.getId(), Entity.DATA_PRODUCT, Relationship.CONTAINS.ordinal()),
+            Include.NON_DELETED)
+        .stream()
+        .filter(ref -> Entity.DOMAIN.equals(ref.getType()))
+        .toList();
   }
 }

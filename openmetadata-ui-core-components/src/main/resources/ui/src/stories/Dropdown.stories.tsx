@@ -51,7 +51,7 @@ export const WithSections: StoryObj = {
       <Dropdown.Popover>
         <Dropdown.Menu aria-label="Actions with sections">
           <Dropdown.Section>
-            <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-fg-quaternary">
+            <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-fg-quaternary">
               Account
             </Dropdown.SectionHeader>
             <Dropdown.Item icon={User01} label="Profile" />
@@ -59,7 +59,7 @@ export const WithSections: StoryObj = {
           </Dropdown.Section>
           <Dropdown.Separator />
           <Dropdown.Section>
-            <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold tw:text-fg-quaternary">
+            <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-fg-quaternary">
               Danger Zone
             </Dropdown.SectionHeader>
             <Dropdown.Item icon={Trash01} label="Delete" />

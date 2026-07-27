@@ -227,69 +227,81 @@ export class TableClass extends EntityClass {
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0]['name']}`;
   }
 
-  async create(apiContext: APIRequestContext) {
-    // Create database service with 409 conflict handling for sharded test runs
-    let serviceResponse = await apiContext.post(
-      '/api/v1/services/databaseServices',
-      {
-        data: this.service,
-      }
-    );
+  private async createOrFetch<T>(
+    apiContext: APIRequestContext,
+    createPath: string,
+    fetchPath: string,
+    entityFqn: string,
+    entityName: string,
+    data: object
+  ): Promise<T> {
+    const createResponse = await apiContext.post(createPath, { data });
 
-    let service;
-    if (serviceResponse.status() === 409) {
-      // Service already exists, fetch it by name
-      const serviceName = this.service.name;
-      const getServiceResponse = await apiContext.get(
-        `/api/v1/services/databaseServices/name/${serviceName}`
+    if (createResponse.status() === 409) {
+      const getResponse = await apiContext.get(
+        `${fetchPath}/${encodeURIComponent(entityFqn)}`
       );
-      if (!getServiceResponse.ok()) {
+
+      if (!getResponse.ok()) {
         throw new Error(
-          `TableClass: failed to fetch existing service "${serviceName}" (${getServiceResponse.status()}): ${await getServiceResponse.text()}`
+          `TableClass: failed to fetch existing ${entityName} "${entityFqn}" (${getResponse.status()}): ${await getResponse.text()}`
         );
       }
-      service = await getServiceResponse.json();
-    } else if (!serviceResponse.ok()) {
-      throw new Error(
-        `TableClass: service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
-      );
-    } else {
-      service = await serviceResponse.json();
+
+      return await getResponse.json();
     }
 
-    const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: { ...this.database, service: service.fullyQualifiedName },
-    });
-    if (!databaseResponse.ok()) {
+    if (!createResponse.ok()) {
       throw new Error(
-        `TableClass: database create failed (${databaseResponse.status()}): ${await databaseResponse.text()}`
+        `TableClass: ${entityName} create failed (${createResponse.status()}): ${await createResponse.text()}`
       );
     }
-    const database = await databaseResponse.json();
 
-    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: { ...this.schema, database: database.fullyQualifiedName },
-    });
-    if (!schemaResponse.ok()) {
-      throw new Error(
-        `TableClass: schema create failed (${schemaResponse.status()}): ${await schemaResponse.text()}`
-      );
-    }
-    const schema = await schemaResponse.json();
+    return await createResponse.json();
+  }
 
-    const entityResponse = await apiContext.post('/api/v1/tables', {
-      data: {
+  async create(apiContext: APIRequestContext) {
+    const service = await this.createOrFetch<ResponseDataType>(
+      apiContext,
+      '/api/v1/services/databaseServices',
+      '/api/v1/services/databaseServices/name',
+      this.service.name,
+      'service',
+      this.service
+    );
+
+    const databaseFqn = `${service.fullyQualifiedName}.${this.database.name}`;
+    const database = await this.createOrFetch<ResponseDataWithServiceType>(
+      apiContext,
+      '/api/v1/databases',
+      '/api/v1/databases/name',
+      databaseFqn,
+      'database',
+      { ...this.database, service: service.fullyQualifiedName }
+    );
+
+    const schemaFqn = `${database.fullyQualifiedName}.${this.schema.name}`;
+    const schema = await this.createOrFetch<ResponseDataWithServiceType>(
+      apiContext,
+      '/api/v1/databaseSchemas',
+      '/api/v1/databaseSchemas/name',
+      schemaFqn,
+      'schema',
+      { ...this.schema, database: database.fullyQualifiedName }
+    );
+
+    const tableFqn = `${schema.fullyQualifiedName}.${this.entity.name}`;
+    const entity = await this.createOrFetch<Table>(
+      apiContext,
+      '/api/v1/tables',
+      '/api/v1/tables/name',
+      tableFqn,
+      'table',
+      {
         ...this.entity,
         databaseSchema: schema.fullyQualifiedName,
-      },
-    });
-    if (!entityResponse.ok()) {
-      throw new Error(
-        `TableClass: table create failed (${entityResponse.status()}): ${await entityResponse.text()}`
-      );
-    }
-
-    const entity = await entityResponse.json();
+      }
+    );
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;

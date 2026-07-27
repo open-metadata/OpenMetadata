@@ -63,4 +63,5 @@ export enum WorkflowStatus {
     Failure = "FAILURE",
     Finished = "FINISHED",
     Running = "RUNNING",
+    Superseded = "SUPERSEDED",
 }

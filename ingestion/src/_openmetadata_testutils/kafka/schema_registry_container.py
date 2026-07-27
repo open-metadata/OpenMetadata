@@ -26,6 +26,4 @@ class SchemaRegistryContainer(DockerContainer):
         return self
 
     def get_connection_url(self):
-        return (
-            f"http://{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}"
-        )
+        return f"http://{self.get_container_host_ip()}:{self.get_exposed_port(self.port)}"

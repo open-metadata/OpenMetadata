@@ -11,6 +11,7 @@
 """
 Helper class to handle FQN splitting logic
 """
+
 from metadata.generated.antlr.EntityLinkListener import EntityLinkListener
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
 from metadata.generated.antlr.FqnListener import FqnListener
@@ -21,10 +22,10 @@ class FqnSplitListener(FqnListener):
     def __init__(self):
         self._list = []
 
-    def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):
+    def enterQuotedName(self, ctx: FqnParser.QuotedNameContext):  # noqa: N802
         self._list.append(ctx.getText())
 
-    def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):
+    def enterUnquotedName(self, ctx: FqnParser.UnquotedNameContext):  # noqa: N802
         self._list.append(ctx.getText())
 
     def split(self):
@@ -35,13 +36,13 @@ class EntityLinkSplitListener(EntityLinkListener):
     def __init__(self):
         self._list = []
 
-    def enterNameOrFqn(self, ctx: EntityLinkParser.NameOrFqnContext):
+    def enterNameOrFqn(self, ctx: EntityLinkParser.NameOrFqnContext):  # noqa: N802
         self._list.append(ctx.getText())
 
-    def enterEntityType(self, ctx: EntityLinkParser.EntityTypeContext):
+    def enterEntityType(self, ctx: EntityLinkParser.EntityTypeContext):  # noqa: N802
         self._list.append(ctx.getText())
 
-    def enterEntityField(self, ctx: EntityLinkParser.EntityFieldContext):
+    def enterEntityField(self, ctx: EntityLinkParser.EntityFieldContext):  # noqa: N802
         self._list.append(ctx.getText())
 
     def split(self):

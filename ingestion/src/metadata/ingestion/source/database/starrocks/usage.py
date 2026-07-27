@@ -11,6 +11,7 @@
 """
 StarRocks usage module
 """
+
 from metadata.ingestion.source.database.starrocks.queries import STARROCKS_SQL_STATEMENT
 from metadata.ingestion.source.database.starrocks.query_parser import (
     StarRocksQueryParserSource,

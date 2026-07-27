@@ -15,7 +15,7 @@ import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
@@ -43,8 +43,8 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
@@ -53,6 +53,10 @@ import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSema
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
 import ContractTermsOfService from '../ContractTermOfService/ContractTermsOfService.component';
 import './add-data-contract.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 export interface FormStepProps {
   onNext: () => void;

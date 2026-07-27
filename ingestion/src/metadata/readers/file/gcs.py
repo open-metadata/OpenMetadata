@@ -12,8 +12,9 @@
 """
 Read files as string from S3
 """
+
 import traceback
-from typing import List
+from typing import List  # noqa: UP035
 
 from metadata.readers.file.base import Reader, ReadException
 from metadata.utils.logger import ingestion_logger
@@ -29,19 +30,15 @@ class GCSReader(Reader):
     def __init__(self, client):
         self.client = client
 
-    def read(
-        self, path: str, *, bucket_name: str = None, verbose: bool = True, **__
-    ) -> bytes:
+    def read(self, path: str, *, bucket_name: str = None, verbose: bool = True, **__) -> bytes:  # noqa: RUF013
         try:
-            return (
-                self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
-            )
+            return self.client.get_bucket(bucket_name).get_blob(path).download_as_string()
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error fetching file [{path}] from GCS: {err}")
+            raise ReadException(f"Error fetching file [{path}] from GCS: {err}")  # noqa: B904
 
-    def _get_tree(self) -> List[str]:
+    def _get_tree(self) -> List[str]:  # noqa: UP006
         """
         We are not implementing this yet. This should
         only be needed for now for the Datalake where we don't need
@@ -54,15 +51,13 @@ class GCSReader(Reader):
         path: str,
         local_file_path: str,
         *,
-        bucket_name: str = None,
+        bucket_name: str = None,  # noqa: RUF013
         verbose: bool = True,
         **__,
     ) -> bytes:
         try:
-            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(
-                local_file_path
-            )
+            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(local_file_path)
         except Exception as err:
             if verbose:
                 logger.debug(traceback.format_exc())
-            raise ReadException(f"Error downloading file [{path}] from GCS: {err}")
+            raise ReadException(f"Error downloading file [{path}] from GCS: {err}")  # noqa: B904

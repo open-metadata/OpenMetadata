@@ -19,6 +19,7 @@ import {
   removeSingleSelectDomain,
   uuid,
   verifyDomainLinkInCard,
+  waitForSearchResult,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -169,11 +170,17 @@ export class DatabaseClass extends EntityClass {
     };
   }
 
-  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
     const serviceResponse = await apiContext.patch(
       `/api/v1/databases/${this.entityResponseData?.['id']}`,
       {
-        data: payload,
+        data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
@@ -254,28 +261,26 @@ export class DatabaseClass extends EntityClass {
   }
 
   async verifyOwnerChangeInES(page: Page, owner: string) {
-    // Verify owner change in ES
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
-    await page.getByTestId('searchBox').fill(searchTerm);
-    await page.getByTestId('searchBox').press('Enter');
+    const ownerLink = page
+      .getByTestId(`table-data-card_${searchTerm}`)
+      .getByTestId('owner-label')
+      .getByTestId('owner-link')
+      .getByTestId(owner);
 
-    await expect(
-      page
-        .getByTestId(`table-data-card_${searchTerm}`)
-        .getByTestId('owner-label')
-        .getByTestId('owner-link')
-        .getByTestId(owner)
-    ).toBeVisible();
+    await waitForSearchResult(page, searchTerm, ownerLink);
+    await expect(ownerLink).toBeVisible();
   }
 
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
-    await page.getByTestId('searchBox').fill(searchTerm);
-    await page.getByTestId('searchBox').press('Enter');
-
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
 
     for (const domain of domains) {
+      const domainLink = entityCard
+        .getByTestId('domain-link')
+        .filter({ hasText: domain.displayName });
+      await waitForSearchResult(page, searchTerm, domainLink);
       await verifyDomainLinkInCard(entityCard, domain);
     }
 

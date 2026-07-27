@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,26 @@ class UriUtilsTest {
 
     assertThat(result).doesNotContain("https://other.com?a=1&b=2");
     assertThat(result).contains("redirect=");
+  }
+
+  @Test
+  void testConstructRedirectUri_opaqueStateRoundTripsWithSingleEncoding() {
+    // Regression: a base64 state with '+' and '=' padding must survive byte-for-byte after a
+    // single URL-decode. Previously the encoded query was re-quoted by the multi-arg URI
+    // constructor ("a==" -> "a%3D%3D" -> "a%253D%253D"), breaking clients that compare state
+    // exactly (e.g. VS Code's loopback redirect -> "State does not match").
+    String state = "n+eBY2DPiNEk3xEe7rqmtg==";
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+    params.put("state", state);
+
+    String result = UriUtils.constructRedirectUri("http://127.0.0.1:33418/", params);
+
+    String returnedState =
+        URLDecoder.decode(
+            result.replaceAll(".*[?&]state=", "").replaceAll("&.*", ""), StandardCharsets.UTF_8);
+    assertThat(returnedState).isEqualTo(state);
+    assertThat(result).doesNotContain("%25");
   }
 
   @Test

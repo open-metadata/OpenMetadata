@@ -1,6 +1,6 @@
 """SQLAlchemy utilities for testing purposes."""
 
-from typing import Sequence
+from typing import Sequence  # noqa: UP035
 
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session

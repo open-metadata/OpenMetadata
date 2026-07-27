@@ -1,4 +1,5 @@
 """OpenMetadata SDK Client - Main client class."""
+
 from __future__ import annotations
 
 from typing import ClassVar, Optional, cast
@@ -10,15 +11,15 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
-from metadata.sdk.config import OpenMetadataConfig
+from metadata.sdk.config import OpenMetadataConfig  # noqa: TC001
 from metadata.sdk.types import OMetaClient
 
 
 class OpenMetadata:
     """Main SDK client for OpenMetadata."""
 
-    _instance: ClassVar[Optional["OpenMetadata"]] = None
-    _default_client: ClassVar[Optional[OMetaClient]] = None
+    _instance: ClassVar[Optional["OpenMetadata"]] = None  # noqa: UP037, UP045
+    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
 
     def __init__(self, config: OpenMetadataConfig):
         """Initialize OpenMetadata client."""
@@ -45,31 +46,27 @@ class OpenMetadata:
             clusterName="openmetadata",
         )
 
-        self._ometa: OMetaClient = cast(OMetaClient, OMeta(config=om_connection))
+        self._ometa: OMetaClient = cast(OMetaClient, OMeta(config=om_connection))  # noqa: TC006
 
     @classmethod
-    def initialize(cls, config: OpenMetadataConfig) -> "OpenMetadata":
+    def initialize(cls, config: OpenMetadataConfig) -> "OpenMetadata":  # noqa: UP037
         """Initialize the default client instance."""
         cls._instance = cls(config)
         cls._default_client = cls._instance.ometa
         return cls._instance
 
     @classmethod
-    def get_instance(cls) -> "OpenMetadata":
+    def get_instance(cls) -> "OpenMetadata":  # noqa: UP037
         """Get the default client instance."""
         if cls._instance is None:
-            raise RuntimeError(
-                "OpenMetadata client not initialized. Call initialize() first"
-            )
+            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
         return cls._instance
 
     @classmethod
     def get_default_client(cls) -> OMetaClient:
         """Get the default OMeta client for internal use."""
         if cls._default_client is None:
-            raise RuntimeError(
-                "OpenMetadata client not initialized. Call initialize() first"
-            )
+            raise RuntimeError("OpenMetadata client not initialized. Call initialize() first")
         return cls._default_client
 
     @property

@@ -1,0 +1,88 @@
+{
+  "id": "22222222-2222-4222-8222-222222222203",
+  "name": "security_ticket_triage",
+  "displayName": "Security Ticket Triage",
+  "description": "Approved security MCP server that classifies and enriches security tickets with SIEM and vulnerability context.",
+  "serverType": "Security",
+  "transportType": "StreamableHTTP",
+  "protocolVersion": "2025-03-26",
+  "developmentStage": "Production",
+  "deploymentUrl": "https://mcp.acme.example/security-ticket-triage",
+  "capabilities": {
+    "toolsSupported": true,
+    "resourcesSupported": true,
+    "promptsSupported": true,
+    "loggingSupported": true
+  },
+  "tools": [
+    {
+      "name": "enrich_security_ticket",
+      "displayName": "Enrich Security Ticket",
+      "description": "Adds asset criticality, known CVEs, and alert history to a security ticket.",
+      "toolCategory": "SecurityOperation",
+      "riskLevel": "Medium",
+      "riskFactors": ["Security incident metadata", "Internal asset inventory"],
+      "dataAccess": {
+        "readsData": true,
+        "writesData": true,
+        "deletesData": false,
+        "sensitivityLevel": "Confidential",
+        "piiAccess": false,
+        "dataTypes": ["Security tickets", "Asset inventory", "Vulnerability findings"]
+      },
+      "requiredPermissions": ["security.ticket.enrich"],
+      "sideEffects": true,
+      "idempotent": false,
+      "reversible": true,
+      "usageCount": 7300
+    }
+  ],
+  "governanceMetadata": {
+    "registrationStatus": "Approved",
+    "registeredBy": "security@acme.example",
+    "registeredAt": 1773100800000,
+    "approvedBy": "risk-council@acme.example",
+    "approvedAt": 1775001600000,
+    "riskAssessment": {
+      "riskLevel": "Medium",
+      "riskFactors": ["Writes ticket annotations", "Reads sensitive security context"],
+      "mitigations": ["Service account scoped to triage queue", "Audit logs retained one year"],
+      "assessedBy": "security@acme.example",
+      "assessedAt": 1775001600000
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Security findings", "Asset inventory"],
+      "dataRetentionPeriod": "365 days"
+    }
+  },
+  "dataAccessSummary": {
+    "accessPatterns": ["Read", "Write"],
+    "sensitivityLevel": "Confidential",
+    "piiAccess": false,
+    "externalApiAccess": true,
+    "fileSystemAccess": false,
+    "networkAccess": true,
+    "databaseAccess": false
+  },
+  "usageMetrics": {
+    "totalInvocations": 7300,
+    "successRate": 0.986,
+    "averageLatencyMs": 210,
+    "p95LatencyMs": 590,
+    "lastInvokedAt": 1775606400000,
+    "uniqueUsers": 54,
+    "dailyActiveUsers": 18
+  },
+  "securityMetrics": {
+    "authenticationRequired": true,
+    "authorizationEnforced": true,
+    "auditLoggingEnabled": true,
+    "encryptionInTransit": true,
+    "sandboxed": true,
+    "secretsManagement": "Secrets manager"
+  },
+  "updatedBy": "admin",
+  "updatedAt": 1775001600000
+}

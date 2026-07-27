@@ -14,7 +14,7 @@
 import { isNumber, isString } from 'lodash';
 import type { SVGProps } from 'react';
 import type { Props as CartesianGridProps } from 'recharts/types/cartesian/CartesianGrid';
-import { digitFormatter, getStatisticsDisplayValue } from './CommonUtils';
+import { digitFormatter, getStatisticsDisplayValue } from './NumberUtils';
 
 export const tooltipFormatter = (
   value: string | number,

@@ -11,6 +11,7 @@
 """
 Handle big query usage extraction
 """
+
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_STATEMENT
 from metadata.ingestion.source.database.bigquery.query_parser import (
     BigqueryQueryParserSource,

@@ -18,6 +18,10 @@ export interface BulkAssets {
      * List of assets to be created against which the glossary needs to be added.
      */
     assets?: EntityReference[];
+    /**
+     * If true, returns a preview of what would change without applying any modifications.
+     */
+    dryRun?: boolean;
 }
 
 /**

@@ -21,9 +21,7 @@ from metadata.generated.schema.entity.data.table import TableData
         ),
         TableData(
             columns=[],
-            rows=[
-                [b"\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"]
-            ],
+            rows=[[b"\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"]],
         ),
     ],
 )
@@ -42,11 +40,7 @@ def test_table_data_serialization(parameter):
         xfail_param(
             TableData(
                 columns=[],
-                rows=[
-                    [
-                        b"\xe6\x10\x00\x00\x01\x0c\xae\x8b\xfc(\xbc\xe4G@g\xa8\x91\x89\x89\x8a^\xc0"
-                    ]
-                ],
+                rows=[[b"\xe6\x10\x00\x00\x01\x0c\xae\x8b\xfc(\xbc\xe4G@g\xa8\x91\x89\x89\x8a^\xc0"]],
             ),
             reason="TODO: change TableData.rows to List[List[str]]",
         ),

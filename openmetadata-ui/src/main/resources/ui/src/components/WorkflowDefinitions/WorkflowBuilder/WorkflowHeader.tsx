@@ -12,12 +12,15 @@
  */
 
 import {
+  Badge,
   Button,
   Card,
   Dialog,
   Input,
   Modal,
   ModalOverlay,
+  Tooltip,
+  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -51,6 +54,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     enterEditMode,
     enterViewMode,
     isViewMode,
+    isNoOp,
   } = useWorkflowModeContext();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [displayNameInput, setDisplayNameInput] = useState(title ?? '');
@@ -103,7 +107,22 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                 weight="semibold">
                 {title}
               </Typography>
-              {!isViewMode && (
+              {isNoOp && (
+                <Tooltip
+                  placement="top"
+                  title={t('message.system-workflow-edit-restriction')}>
+                  <TooltipTrigger>
+                    <Badge
+                      color="gray"
+                      data-testid="system-workflow-badge"
+                      size="sm"
+                      type="color">
+                      {t('label.system')}
+                    </Badge>
+                  </TooltipTrigger>
+                </Tooltip>
+              )}
+              {!isViewMode && !isNoOp && (
                 <Button
                   color="tertiary"
                   data-testid="edit-workflow-title-button"

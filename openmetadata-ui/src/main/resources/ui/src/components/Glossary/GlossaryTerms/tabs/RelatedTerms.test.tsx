@@ -105,7 +105,7 @@ jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 

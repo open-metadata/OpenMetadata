@@ -71,9 +71,7 @@ class TestFQNSpecialCharacters(unittest.TestCase):
             skip_es_search=True,
         )
 
-        expected = (
-            f"postgres.analytics.reporting.report{RESERVED_COLON_KEYWORD}daily_summary"
-        )
+        expected = f"postgres.analytics.reporting.report{RESERVED_COLON_KEYWORD}daily_summary"
         self.assertEqual(result, expected)
 
     def test_table_name_with_arrows(self):
@@ -88,9 +86,7 @@ class TestFQNSpecialCharacters(unittest.TestCase):
             skip_es_search=True,
         )
 
-        expected = (
-            f"snowflake.warehouse.staging.stage{RESERVED_ARROW_KEYWORD}production_data"
-        )
+        expected = f"snowflake.warehouse.staging.stage{RESERVED_ARROW_KEYWORD}production_data"
         self.assertEqual(result, expected)
 
     def test_column_name_with_quotes(self):
@@ -138,12 +134,8 @@ class TestFQNSpecialCharacters(unittest.TestCase):
             column_name="column::data>info",
         )
 
-        table_transformed = (
-            f"table {RESERVED_QUOTE_KEYWORD}2024{RESERVED_QUOTE_KEYWORD}"
-        )
-        column_transformed = (
-            f"column{RESERVED_COLON_KEYWORD}data{RESERVED_ARROW_KEYWORD}info"
-        )
+        table_transformed = f"table {RESERVED_QUOTE_KEYWORD}2024{RESERVED_QUOTE_KEYWORD}"
+        column_transformed = f"column{RESERVED_COLON_KEYWORD}data{RESERVED_ARROW_KEYWORD}info"
         expected = f"mysql.test.schema.{table_transformed}.{column_transformed}"
         self.assertEqual(result, expected)
 
@@ -525,9 +517,7 @@ class TestFQNSpecialCharsRealWorldScenarios(unittest.TestCase):
             column_name="typname::text",
         )
 
-        expected = (
-            f"postgres.mydb.pg_catalog.pg_type.typname{RESERVED_COLON_KEYWORD}text"
-        )
+        expected = f"postgres.mydb.pg_catalog.pg_type.typname{RESERVED_COLON_KEYWORD}text"
         self.assertEqual(result, expected)
 
     def test_bigquery_dataset_table_notation(self):
@@ -543,7 +533,9 @@ class TestFQNSpecialCharsRealWorldScenarios(unittest.TestCase):
         )
 
         # Dollar signs are not transformed, only quotes
-        expected = f"bigquery.my-project.dataset.table_2024_01_01${RESERVED_QUOTE_KEYWORD}partition{RESERVED_QUOTE_KEYWORD}"
+        expected = (
+            f"bigquery.my-project.dataset.table_2024_01_01${RESERVED_QUOTE_KEYWORD}partition{RESERVED_QUOTE_KEYWORD}"
+        )
         self.assertEqual(result, expected)
 
     def test_mysql_backtick_conversion(self):

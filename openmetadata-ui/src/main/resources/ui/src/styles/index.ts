@@ -11,23 +11,12 @@
  *  limitations under the License.
  */
 
-import '@fontsource/poppins'; // Font 400
-import '@fontsource/poppins/300.css'; // Font 300
-import '@fontsource/poppins/500.css'; // Font 500
-import '@fontsource/poppins/600.css'; // Font 600
 import '@fontsource/source-code-pro'; // Font 400
 
-import '@fontsource/inter'; // Font 400
-import '@fontsource/inter/400.css'; // Font 400
-import '@fontsource/inter/500.css'; // Font 500
-import '@fontsource/inter/600.css'; // Font 600
-import '@fontsource/inter/700.css'; // Font 700
-import '@fontsource/inter/800.css'; // Font 800
-import '@fontsource/inter/900.css'; // Font 900
-
-import '@react-awesome-query-builder/antd/css/styles.css';
-import 'reactflow/dist/base.css';
-import 'reactflow/dist/style.css';
+// Variable Inter aliased under the "Inter" family name. Loads one woff2 per
+// Unicode subset covering the full 100–900 weight axis, replacing the prior
+// 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
+// header in {@link ./inter-variable.css} for context.
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';
@@ -35,6 +24,7 @@ import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
 import './components/entity-version-time-line.less';
+import './components/form-hint-doc.less';
 import './components/glossary.less';
 import './components/menu.less';
 import './components/pagination.less';
@@ -51,6 +41,9 @@ import './components/slider.less';
 import './components/step.less';
 import './components/tags.less';
 import './fonts.less';
+import './geist-mono-variable.css';
+import './inter-variable.css';
+import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
 import './temp.css';

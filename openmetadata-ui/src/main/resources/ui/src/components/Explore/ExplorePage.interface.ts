@@ -80,7 +80,8 @@ export type ExploreSearchIndex =
   | SearchIndex.DIRECTORY
   | SearchIndex.FILE
   | SearchIndex.SPREADSHEET
-  | SearchIndex.WORKSHEET;
+  | SearchIndex.WORKSHEET
+  | SearchIndex.KNOWLEDGE_PAGE_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
@@ -90,6 +91,8 @@ export interface ExploreProps {
   tabItems: ItemType[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
+  showRankingDetails?: boolean;
+  onChangeShowRankingDetails?: (showRankingDetails: boolean) => void;
 
   onChangeAdvancedSearchQuickFilters: (
     queryFilter: QueryFilterInterface | undefined
@@ -107,12 +110,24 @@ export interface ExploreProps {
   showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
-  onChangePage?: (page: number, size?: number) => void;
+  currentPage?: number;
+  pageSize?: number;
+  onChangePage?: (page: number) => void;
+  onChangePageSize?: (size: number) => void;
 
   loading?: boolean;
 
   quickFilters?: QueryFilterInterface;
   isElasticSearchIssue?: boolean;
+
+  // Browse-tree location (from the `browsePath` URL param) and its ES filter.
+  // It ANDs with quickFilters; a tree click updates both in one navigation.
+  browseFields?: ExploreQuickFilterField[];
+  browseQueryFilter?: QueryFilterInterface;
+  onTreeSelect?: (payload: {
+    browseFields: ExploreQuickFilterField[];
+    quickFilter?: QueryFilterInterface;
+  }) => void;
 }
 
 export interface ExploreQuickFilterField {

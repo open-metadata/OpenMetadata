@@ -11,7 +11,7 @@
 """Lightdash source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -58,15 +58,11 @@ class LightdashSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: LightdashConnection = config.serviceConnection.root.config
         if not isinstance(connection, LightdashConnection):
-            raise InvalidSourceException(
-                f"Expected LightdashConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected LightdashConnection, but got {connection}")
         return cls(config, metadata)
 
     def __init__(
@@ -75,18 +71,18 @@ class LightdashSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.spaces: List[LightdashSpace] = []
-        self.charts: List[LightdashChart] = []
+        self.spaces: List[LightdashSpace] = []  # noqa: UP006
+        self.charts: List[LightdashChart] = []  # noqa: UP006
 
     def prepare(self):
         self.spaces = self.client.get_spaces()
         self.charts = self.client.get_charts_list()
         return super().prepare()
 
-    def get_project_name(self, dashboard_details: Any) -> Optional[str]:
+    def get_project_name(self, dashboard_details: Any) -> Optional[str]:  # noqa: UP045
         return self.client.get_project_name(dashboard_details.projectUuid)
 
-    def get_dashboards_list(self) -> Optional[List[LightdashDashboard]]:
+    def get_dashboards_list(self) -> Optional[List[LightdashDashboard]]:  # noqa: UP006, UP045
         """
         Get List of all dashboards
         """
@@ -98,17 +94,13 @@ class LightdashSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(
-        self, dashboard: LightdashDashboard
-    ) -> LightdashDashboard:
+    def get_dashboard_details(self, dashboard: LightdashDashboard) -> LightdashDashboard:
         """
         Get Dashboard Details
         """
         return dashboard
 
-    def yield_dashboard(
-        self, dashboard_details: LightdashDashboard
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def yield_dashboard(self, dashboard_details: LightdashDashboard) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
         """
@@ -124,11 +116,7 @@ class LightdashSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_url),
                 project=self.client.get_project_name(dashboard_details.projectUuid),
                 displayName=dashboard_details.name,
-                description=(
-                    Markdown(dashboard_details.description)
-                    if dashboard_details.description
-                    else None
-                ),
+                description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -147,13 +135,9 @@ class LightdashSource(DashboardServiceSource):
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error creating dashboard [{dashboard_details.name}]: {exc}"
-            )
+            logger.warning(f"Error creating dashboard [{dashboard_details.name}]: {exc}")
 
-    def yield_dashboard_chart(
-        self, dashboard_details: LightdashDashboard
-    ) -> Iterable[Either[CreateChartRequest]]:
+    def yield_dashboard_chart(self, dashboard_details: LightdashDashboard) -> Iterable[Either[CreateChartRequest]]:
         """Get chart method
 
         Args:
@@ -162,9 +146,7 @@ class LightdashSource(DashboardServiceSource):
             Iterable[CreateChartRequest]
         """
         # charts = self.charts
-        logger.info(
-            f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}"
-        )
+        logger.info(f"Processing ChartRequests for dashboard {dashboard_details.spaceName}:{dashboard_details.name}")
         for chart in dashboard_details.charts:
             try:
                 chart_url = (
@@ -179,9 +161,7 @@ class LightdashSource(DashboardServiceSource):
                 chart_request = CreateChartRequest(
                     name=EntityName(chart.uuid),
                     displayName=chart.name,
-                    description=(
-                        Markdown(chart.description) if chart.description else None
-                    ),
+                    description=(Markdown(chart.description) if chart.description else None),
                     sourceUrl=SourceUrl(chart_url),
                     service=self.context.get().dashboard_service,
                     chartType=chart_type,
@@ -196,9 +176,9 @@ class LightdashSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: LightdashDashboard,
-        db_service_prefix: Optional[str] = None,
-        _: Optional[str] = None,
-    ) -> Optional[Iterable[AddLineageRequest]]:
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        _: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[Iterable[AddLineageRequest]]:  # noqa: UP045
         """Get lineage method
 
         Args:

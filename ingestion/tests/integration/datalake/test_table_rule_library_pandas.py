@@ -11,8 +11,9 @@
 """
 Integration tests for Table Rule Library Pandas Expression validator on Datalake (S3/MinIO)
 """
+
 from copy import deepcopy
-from typing import List
+from typing import List  # noqa: UP035
 
 import pytest
 
@@ -30,7 +31,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.type.basic import Markdown, SqlQuery, TestCaseEntityName
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
-from ..integration_base import generate_name
+from ..integration_base import generate_name  # noqa: TID252
 
 BUCKET_NAME = "my-bucket"
 
@@ -66,12 +67,10 @@ def table_rule_library_pandas_test_definition(metadata) -> TestDefinition:
     )
     yield test_def
     try:
-        test_cases = metadata.list_entities(
-            TestCase, fields=["*"], skip_on_failure=True
-        ).entities
+        test_cases = metadata.list_entities(TestCase, fields=["*"], skip_on_failure=True).entities
         for tc in test_cases:
             if tc.testDefinition and tc.testDefinition.name == test_def.name:
-                try:
+                try:  # noqa: SIM105
                     metadata.delete(TestCase, tc.id, hard_delete=True)
                 except Exception:
                     pass
@@ -136,9 +135,9 @@ class TestTableRuleLibraryPandas:
         workflow_config = deepcopy(TABLE_RULE_LIBRARY_DATA_QUALITY_CONFIG)
         service_name = ingestion_config["source"]["serviceName"]
         workflow_config["source"]["serviceName"] = service_name
-        workflow_config["source"]["sourceConfig"]["config"][
-            "entityFullyQualifiedName"
-        ] = f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        workflow_config["source"]["sourceConfig"]["config"]["entityFullyQualifiedName"] = (
+            f'{service_name}.default.{BUCKET_NAME}."users/users.csv"'
+        )
         workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
             {
                 "serviceName": service_name,
@@ -188,17 +187,15 @@ class TestTableRuleLibraryPandas:
         4. Test case status is correctly determined based on row count (0 = success)
         """
         table_fqn = f'{datalake_service_name}.default.{BUCKET_NAME}."users/users.csv"'
-        test_cases: List[TestCase] = metadata.list_entities(
+        test_cases: List[TestCase] = metadata.list_entities(  # noqa: UP006
             TestCase,
             fields=["*"],
             skip_on_failure=True,
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities
-        test_case: TestCase = next(
-            (t for t in test_cases if t.name.root == test_case_name), None
-        )
+        test_case: TestCase = next((t for t in test_cases if t.name.root == test_case_name), None)
         assert test_case is not None, f"Test case {test_case_name} not found"
         assert test_case.testCaseResult is not None, "Test case result is None"
-        assert (
-            test_case.testCaseResult.testCaseStatus == expected_status
-        ), f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        assert test_case.testCaseResult.testCaseStatus == expected_status, (
+            f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
+        )

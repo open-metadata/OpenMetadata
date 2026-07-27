@@ -39,6 +39,7 @@ export interface EntitySummaryPanelProps {
   readonly downstreamDepth?: number;
   readonly nodesPerLayer?: number;
   readonly onEntityUpdate?: (updatedEntity: Partial<EntityData>) => void;
+  readonly afterEntityUpdate?: (updatedData: EntityData) => void;
   readonly ontologyExplorerRelationsSlot?: ReactNode;
   readonly sideDrawerOverviewOnly?: boolean;
 }

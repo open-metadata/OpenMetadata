@@ -12,6 +12,7 @@
 """
 Test import utilities
 """
+
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
@@ -49,9 +50,7 @@ class ImporterTest(TestCase):
         from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
         self.assertEqual(
-            import_from_module(
-                "metadata.ingestion.source.database.mysql.metadata.MysqlSource"
-            ),
+            import_from_module("metadata.ingestion.source.database.mysql.metadata.MysqlSource"),
             MysqlSource,
         )
 

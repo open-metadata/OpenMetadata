@@ -12,13 +12,14 @@
 """
 Test Bigquery connector with CLI
 """
-from typing import List
+
+from typing import List  # noqa: UP035
 
 from metadata.ingestion.api.status import Status
 
-from .base.e2e_types import E2EType
-from .common.test_cli_db import CliCommonDB
-from .common_e2e_sqa_mixins import SQACommonMethods
+from .base.e2e_types import E2EType  # noqa: TID252
+from .common.test_cli_db import CliCommonDB  # noqa: TID252
+from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
 
 
 class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -35,7 +36,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                        FROM `modified-leaf-330420`.do_not_touch.orders;
     """
 
-    insert_data_queries: List[str] = [
+    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
         "INSERT INTO `modified-leaf-330420.do_not_touch`.orders (id, order_name) VALUES (1,'XBOX');",
         "INSERT INTO `modified-leaf-330420.do_not_touch`.orders (id, order_name) VALUES (2,'PS');",
     ]
@@ -90,15 +91,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "local_bigquery_multiple.modified-leaf-330420.do_not_touch.orders"
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:
+    def get_includes_schemas() -> List[str]:  # noqa: UP006
         return ["do_not_touch"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:
+    def get_includes_tables() -> List[str]:  # noqa: UP006
         return ["exclude_table"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:
+    def get_excludes_tables() -> List[str]:  # noqa: UP006
         return ["testtable"]
 
     @staticmethod
@@ -122,7 +123,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return 19
 
     @staticmethod
-    def delete_queries() -> List[str]:
+    def delete_queries() -> List[str]:  # noqa: UP006
         return [
             """
             DELETE FROM `modified-leaf-330420.do_not_touch`.orders WHERE id IN (1)
@@ -130,29 +131,21 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     @staticmethod
-    def update_queries() -> List[str]:
+    def update_queries() -> List[str]:  # noqa: UP006
         return [
             """
             UPDATE `modified-leaf-330420.do_not_touch`.orders SET order_name = 'NINTENDO' WHERE id = 2
             """,
         ]
 
-    def assert_for_vanilla_ingestion(
-        self, source_status: Status, sink_status: Status
-    ) -> None:
+    def assert_for_vanilla_ingestion(self, source_status: Status, sink_status: Status) -> None:
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) >= 9)
-        self.assertTrue(
-            (len(source_status.records) + len(source_status.updated_records))
-            >= self.expected_tables()
-        )
+        self.assertTrue((len(source_status.records) + len(source_status.updated_records)) >= self.expected_tables())
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(
-            (len(sink_status.records) + len(sink_status.updated_records))
-            > self.expected_tables()
-        )
+        self.assertTrue((len(sink_status.records) + len(sink_status.updated_records)) > self.expected_tables())
 
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists

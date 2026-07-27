@@ -12,40 +12,41 @@
 """
 Athena Models
 """
+
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 class QueryExecutionIdsResponse(BaseModel):
-    QueryExecutionIds: Optional[List[str]] = None
+    QueryExecutionIds: Optional[List[str]] = None  # noqa: UP006, UP045
 
 
 class AthenaStatus(BaseModel):
-    State: Optional[str] = "FAILED"  # Default value
-    SubmissionDateTime: Optional[datetime] = None
+    State: Optional[str] = "FAILED"  # Default value  # noqa: UP045
+    SubmissionDateTime: Optional[datetime] = None  # noqa: UP045
 
 
 class AthenaStatistics(BaseModel):
-    TotalExecutionTimeInMillis: Optional[int] = None
+    TotalExecutionTimeInMillis: Optional[int] = None  # noqa: UP045
 
 
 class AthenaQueryExecution(BaseModel):
-    Query: Optional[str] = None
-    Statistics: Optional[AthenaStatistics] = None
-    Status: Optional[AthenaStatus] = None
+    Query: Optional[str] = None  # noqa: UP045
+    Statistics: Optional[AthenaStatistics] = None  # noqa: UP045
+    Status: Optional[AthenaStatus] = None  # noqa: UP045
 
 
 class AthenaQueryExecutionList(BaseModel):
-    QueryExecutions: Optional[List[AthenaQueryExecution]] = None
+    QueryExecutions: Optional[List[AthenaQueryExecution]] = None  # noqa: UP006, UP045
 
 
 class WorkGroup(BaseModel):
-    Name: Optional[str] = None
-    State: Optional[str] = None
+    Name: Optional[str] = None  # noqa: UP045
+    State: Optional[str] = None  # noqa: UP045
 
 
 class WorkGroupsList(BaseModel):
-    WorkGroups: Optional[List[WorkGroup]] = []
-    NextToken: Optional[str] = None
+    WorkGroups: Optional[List[WorkGroup]] = []  # noqa: UP006, UP045
+    NextToken: Optional[str] = None  # noqa: UP045

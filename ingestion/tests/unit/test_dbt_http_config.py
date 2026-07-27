@@ -12,6 +12,7 @@
 Unit tests for DbtHttpConfig — verifies that custom HTTP headers and SSL
 verification settings are correctly forwarded to requests.get() calls.
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -72,9 +73,7 @@ class TestDbtHttpConfigNoAuth:
         ) as mock_get:
             list(get_dbt_details(config))
 
-        mock_get.assert_called_once_with(
-            MANIFEST_URL, headers={}, verify=True, timeout=30
-        )
+        mock_get.assert_called_once_with(MANIFEST_URL, headers={}, verify=True, timeout=30)
 
 
 class TestDbtHttpConfigCustomHeaders:
@@ -145,11 +144,7 @@ class TestDbtHttpConfigSSLVerify:
         assert kwargs["verify"] is False
 
     def test_verify_ssl_validate_passes_ca_cert_path(self):
-        ssl_config = SslConfig(
-            root=ValidateSslClientConfig(
-                caCertificate=CustomSecretStr("/path/to/ca.pem")
-            )
-        )
+        ssl_config = SslConfig(root=ValidateSslClientConfig(caCertificate=CustomSecretStr("/path/to/ca.pem")))
         config = _base_config(
             dbtVerifySSL=VerifySSL.validate,
             dbtSSLConfig=ssl_config,
@@ -183,17 +178,13 @@ class TestDbtHttpConfigErrorHandling:
     """SSL and auth errors raise DBTConfigException with informative messages."""
 
     def test_ssl_error_raises_dbt_config_exception(self):
-        ssl_config = SslConfig(
-            root=ValidateSslClientConfig(
-                caCertificate=CustomSecretStr("/path/to/ca.pem")
-            )
-        )
+        ssl_config = SslConfig(root=ValidateSslClientConfig(caCertificate=CustomSecretStr("/path/to/ca.pem")))
         config = _base_config(
             dbtVerifySSL=VerifySSL.validate,
             dbtSSLConfig=ssl_config,
         )
 
-        with patch(
+        with patch(  # noqa: SIM117
             "requests.get",
             side_effect=requests.exceptions.SSLError("cert verify failed"),
         ):
@@ -210,7 +201,7 @@ class TestDbtHttpConfigErrorHandling:
         http_error = requests.exceptions.HTTPError(response=mock_resp)
         mock_resp.raise_for_status.side_effect = http_error
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
             return_value=mock_resp,
         ):
@@ -226,7 +217,7 @@ class TestDbtHttpConfigErrorHandling:
         http_error = requests.exceptions.HTTPError(response=mock_resp)
         mock_resp.raise_for_status.side_effect = http_error
 
-        with patch(
+        with patch(  # noqa: SIM117
             "metadata.ingestion.source.database.dbt.dbt_config.requests.get",
             return_value=mock_resp,
         ):

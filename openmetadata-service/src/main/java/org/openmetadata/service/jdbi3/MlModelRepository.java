@@ -49,6 +49,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -74,6 +75,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         MODEL_UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
@@ -194,13 +199,26 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID mlModelId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              Entity.MLMODEL_SERVICE, UUID.fromString(record.getFromId()), NON_DELETED);
-      serviceMap.put(mlModelId, serviceRef);
+      EntityReference serviceRef = resolveServiceRefLeniently(UUID.fromString(record.getFromId()));
+      if (serviceRef != null) {
+        serviceMap.put(mlModelId, serviceRef);
+      }
     }
 
     return serviceMap;
+  }
+
+  private EntityReference resolveServiceRefLeniently(UUID serviceId) {
+    EntityReference serviceRef = null;
+    try {
+      serviceRef = Entity.getEntityReferenceById(Entity.MLMODEL_SERVICE, serviceId, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      // The parent service can be hard-deleted concurrently (e.g. a sibling test's cascade delete)
+      // between the relationship lookup above and this resolution. The ml model row is mid-cascade
+      // and about to be removed, so tolerate the missing service rather than failing the read.
+      LOG.debug("MlModel service {} not found (concurrent delete); skipping", serviceId);
+    }
+    return serviceRef;
   }
 
   @Override
@@ -219,6 +237,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureSourcesFQN(List<MlFeatureSource> mlSources) {
     mlSources.forEach(
         s -> {
+          FullyQualifiedName.validateFqnName(s.getName());
           if (s.getDataSource() != null) {
             s.setFullyQualifiedName(
                 FullyQualifiedName.add(s.getDataSource().getFullyQualifiedName(), s.getName()));
@@ -231,6 +250,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private void setMlFeatureFQN(String parentFQN, List<MlFeature> mlFeatures) {
     mlFeatures.forEach(
         f -> {
+          FullyQualifiedName.validateFqnName(f.getName());
           String featureFqn = FullyQualifiedName.add(parentFQN, f.getName());
           f.setFullyQualifiedName(featureFqn);
           if (f.getFeatureSources() != null) {

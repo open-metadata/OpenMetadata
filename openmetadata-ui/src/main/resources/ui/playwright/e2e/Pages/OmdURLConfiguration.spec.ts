@@ -40,7 +40,7 @@ test.describe('OM URL configuration', () => {
 
     await toastNotification(
       page,
-      /OpenMetadata URL Configuration updated successfully./
+      /(OpenMetadata|Collate) URL Configuration updated successfully./
     );
 
     await expect(page.locator('[data-testid="open-metadata-url"]')).toHaveText(

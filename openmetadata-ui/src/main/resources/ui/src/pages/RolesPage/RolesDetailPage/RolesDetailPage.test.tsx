@@ -36,7 +36,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../../components/common/EntityDescription/Description', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 
@@ -70,7 +70,7 @@ jest.mock('../../../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -83,10 +83,6 @@ jest.mock('../../../utils/RouterUtils', () => ({
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(),
-}));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),

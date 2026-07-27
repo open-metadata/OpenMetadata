@@ -31,9 +31,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
             execution_date=self.mock_execution_date,
         )
 
-    def _create_mock_param_values(
-        self, operator, threshold, sql_expression="SELECT * FROM test"
-    ):
+    def _create_mock_param_values(self, operator, threshold, sql_expression="SELECT * FROM test"):
         """Helper to create mock parameter values"""
         import json
 
@@ -94,9 +92,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_greater_than_operator_success(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_greater_than_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test > operator when test passes"""
         self.mock_test_case.parameterValues = self._create_mock_param_values(">", 5)
         mock_run_results.return_value = 10
@@ -118,9 +114,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_greater_than_operator_failure(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_greater_than_operator_failure(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test > operator when test fails (got fewer rows than expected)"""
         self.mock_test_case.parameterValues = self._create_mock_param_values(">", 10)
         mock_run_results.return_value = 5
@@ -190,9 +184,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_less_than_operator_success(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_less_than_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test < operator when test passes"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("<", 10)
         mock_run_results.return_value = 5
@@ -214,9 +206,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_less_than_operator_failure(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_less_than_operator_failure(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test < operator when test fails (got more rows than expected)"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("<", 5)
         mock_run_results.return_value = 12
@@ -238,9 +228,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_less_than_equal_operator_success(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_less_than_equal_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test <= operator when test passes"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("<=", 10)
         mock_run_results.return_value = 10
@@ -262,9 +250,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_less_than_equal_operator_failure(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_less_than_equal_operator_failure(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test <= operator when test fails"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("<=", 8)
         mock_run_results.return_value = 15
@@ -286,9 +272,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_equal_operator_success(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_equal_operator_success(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test == operator when test passes"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 10
@@ -310,9 +294,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_equal_operator_failure_more_rows(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_equal_operator_failure_more_rows(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test == operator when test fails with more rows than expected"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 15
@@ -334,9 +316,7 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.compute_row_count"
     )
-    def test_equal_operator_failure_fewer_rows(
-        self, mock_compute_row_count, mock_run_results, mock_get_runtime_params
-    ):
+    def test_equal_operator_failure_fewer_rows(self, mock_compute_row_count, mock_run_results, mock_get_runtime_params):
         """Test == operator when test fails with fewer rows than expected"""
         self.mock_test_case.parameterValues = self._create_mock_param_values("==", 10)
         mock_run_results.return_value = 3

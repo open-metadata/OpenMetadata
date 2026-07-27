@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   # Detect whether relevant paths changed. When no Java service files
@@ -37,16 +37,16 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
       k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         if: ${{ github.event_name != 'workflow_dispatch' }}
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         if: ${{ github.event_name != 'workflow_dispatch' }}
         with:
@@ -64,23 +64,26 @@ jobs:
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
 
+  # The openmetadata-service unit tests are pure JVM tests with no database
+  # interaction (no testcontainers, no JDBC). The {mysql, postgresql} matrix used
+  # to run the suite twice with different `-Pmysql` / `-Ppostgresql` profiles, but
+  # those profiles are only defined in openmetadata-sdk/pom.xml and only affect
+  # failsafe (integration) tests that aren't enabled in this workflow. Result:
+  # both matrix jobs ran an identical surefire suite. DB-specific coverage
+  # belongs in `openmetadata-integration-tests`, not here.
   openmetadata-service-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     needs: changes
     if: ${{ needs.changes.outputs.java == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        database: [mysql, postgresql]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -88,7 +91,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
@@ -100,20 +103,20 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Run openmetadata-service unit tests (${{ matrix.database }})
+      - name: Run openmetadata-service unit tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis,${{ matrix.database }} \
+            -Pstatic-code-analysis \
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: openmetadata-service-surefire-reports-${{ matrix.database }}
+          name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
 
       - name: Publish Test Report
@@ -123,7 +126,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
           report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
-          check_name: "Test Report (${{ matrix.database }})"
+          check_name: "Test Report"
 
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
@@ -132,12 +135,12 @@ jobs:
     if: ${{ needs.changes.outputs.k8s_operator == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -145,7 +148,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: "21"
           distribution: "temurin"
@@ -160,7 +163,7 @@ jobs:
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: k8s-operator-surefire-reports
           path: openmetadata-k8s-operator/target/surefire-reports/

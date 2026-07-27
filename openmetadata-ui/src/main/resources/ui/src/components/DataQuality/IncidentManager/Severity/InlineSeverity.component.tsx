@@ -12,17 +12,16 @@
  */
 
 import { Dropdown, Typography } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown as ArrowDownIcon,
-  ChevronUp as ArrowUpIcon,
-} from '@untitledui/icons';
-import classNames from 'classnames';
-import { startCase, toLower } from 'lodash';
-import { useCallback, useState } from 'react';
+import { startCase } from 'lodash';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { ChipTrigger } from '../TestCaseStatus/InlineIncidentStatus/ChipTrigger.component';
 import { InlineSeverityProps } from './Severity.interface';
+
+const SELECTED_ITEM_CLASS =
+  'tw:[&[data-selected]>div]:!bg-brand-solid tw:[&[data-selected]>div_*]:!text-white';
 
 const InlineSeverity = ({
   severity,
@@ -30,6 +29,7 @@ const InlineSeverity = ({
   onSubmit,
 }: InlineSeverityProps) => {
   const { t } = useTranslation();
+  const chipRef = useRef<HTMLButtonElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,11 +40,16 @@ const InlineSeverity = ({
     ? startCase(severity)
     : t('label.no-entity', { entity: t('label.severity') });
 
+  const palette = {
+    bg: severityColor.bg,
+    border: severityColor.color,
+    color: severityColor.color,
+  };
+
   const handleSeverityChange = useCallback(
     async (newSeverity: Severities | undefined) => {
       setShowMenu(false);
       setIsLoading(true);
-
       try {
         await onSubmit?.(newSeverity);
       } finally {
@@ -54,42 +59,27 @@ const InlineSeverity = ({
     [onSubmit]
   );
 
-  const chipButton = (
-    <button
-      className={classNames(
-        'severity tw:inline-flex tw:items-center tw:gap-1 tw:rounded-2xl tw:border tw:px-2 tw:py-0.5',
-        severity && toLower(severity)
-      )}
-      data-testid="severity-chip"
-      disabled={!hasEditPermission || isLoading}
-      style={{
-        backgroundColor: severityColor.bg,
-        borderColor: severityColor.color,
-        color: severityColor.color,
-        cursor: hasEditPermission && !isLoading ? 'pointer' : 'default',
-      }}
-      type="button">
-      <Typography as="span" className="tw:px-0.5 tw:text-xs tw:font-medium">
-        {label}
-      </Typography>
-      {hasEditPermission &&
-        (showMenu ? (
-          <ArrowUpIcon className="tw:size-4 tw:shrink-0" />
-        ) : (
-          <ArrowDownIcon className="tw:size-4 tw:shrink-0" />
-        ))}
-    </button>
+  const chipTrigger = (
+    <ChipTrigger
+      attachPressHandler={false}
+      chipLabel={label}
+      chipRef={chipRef}
+      dataTestId="severity-chip"
+      hasEditPermission={hasEditPermission && !isLoading}
+      overlayOpen={showMenu}
+      palette={palette}
+    />
   );
 
   if (!hasEditPermission) {
-    return <div className="tw:inline-flex tw:items-center">{chipButton}</div>;
+    return <div className="tw:inline-flex tw:items-center">{chipTrigger}</div>;
   }
 
   return (
     <div className="tw:inline-flex tw:items-center">
       <Dropdown.Root onOpenChange={setShowMenu}>
-        {chipButton}
-        <Dropdown.Popover className="tw:w-max">
+        {chipTrigger}
+        <Dropdown.Popover className="tw:w-max" placement="top">
           <Dropdown.Menu
             selectedKeys={severity ? [severity] : ['none']}
             selectionMode="single"
@@ -99,12 +89,24 @@ const InlineSeverity = ({
               )
             }>
             <Dropdown.Item
+              className={SELECTED_ITEM_CLASS}
               id="none"
-              label={t('label.no-entity', { entity: t('label.severity') })}
-            />
+              textValue={t('label.no-entity', { entity: t('label.severity') })}>
+              <Typography as="span" size="text-sm" weight="regular">
+                {t('label.no-entity', { entity: t('label.severity') })}
+              </Typography>
+            </Dropdown.Item>
             <Dropdown.Separator />
             {Object.values(Severities).map((sev) => (
-              <Dropdown.Item id={sev} key={sev} label={startCase(sev)} />
+              <Dropdown.Item
+                className={SELECTED_ITEM_CLASS}
+                id={sev}
+                key={sev}
+                textValue={startCase(sev)}>
+                <Typography as="span" size="text-sm" weight="regular">
+                  {startCase(sev)}
+                </Typography>
+              </Dropdown.Item>
             ))}
           </Dropdown.Menu>
         </Dropdown.Popover>

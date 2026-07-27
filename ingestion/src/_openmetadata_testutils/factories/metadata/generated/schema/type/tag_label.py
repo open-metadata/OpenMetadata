@@ -22,10 +22,10 @@ class TagFQNFactory(RootModelFactory):
 
 
 class TagLabelFactory(factory.Factory):
-    tagFQN = factory.LazyAttribute(lambda o: TagFQNFactory(tag=o.name, parent=o.parent))
+    tagFQN = factory.LazyAttribute(lambda o: TagFQNFactory(tag=o.name, parent=o.parent))  # noqa: N815
     name = factory.fuzzy.FuzzyText(prefix="Tag-", length=3)
     source = factory.fuzzy.FuzzyChoice(TagSource)
-    labelType = factory.fuzzy.FuzzyChoice(LabelType)
+    labelType = factory.fuzzy.FuzzyChoice(LabelType)  # noqa: N815
     state = factory.fuzzy.FuzzyChoice(State)
     reason = factory.Faker("text")
 

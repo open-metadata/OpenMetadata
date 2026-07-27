@@ -22,6 +22,7 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
+import jakarta.json.JsonException;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.ProcessingException;
@@ -48,6 +49,8 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
     } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
+      return getResponse(BAD_REQUEST, ex.getMessage());
+    } else if (ex instanceof JsonException) {
       return getResponse(BAD_REQUEST, ex.getMessage());
     } else if (ex instanceof ProcessingException) {
       return getResponse(BAD_REQUEST, "Invalid request parameter");

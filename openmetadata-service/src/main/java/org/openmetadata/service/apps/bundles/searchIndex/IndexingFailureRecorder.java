@@ -15,7 +15,14 @@ public class IndexingFailureRecorder implements AutoCloseable {
     READER_EXCEPTION,
     SINK,
     PROCESS,
-    VECTOR_SINK
+    VECTOR_SINK,
+
+    /**
+     * Not a failure — a record that was read but could not be indexed because of a stale
+     * relationship (e.g. an orphaned {@code testCaseResolutionStatus} whose parent test case was
+     * hard-deleted). Recorded so operators can find and clean up the orphaned rows.
+     */
+    READER_RELATIONSHIP_WARNING
   }
 
   private static final int DEFAULT_BATCH_SIZE = 100;
@@ -59,6 +66,21 @@ public class IndexingFailureRecorder implements AutoCloseable {
   public void recordReaderEntityFailure(
       String entityType, String entityId, String entityFqn, String errorMessage) {
     recordFailure(entityType, entityId, entityFqn, FailureStage.READER, errorMessage, null);
+  }
+
+  /**
+   * Record a stale-relationship warning — a record read but not indexed because its parent is
+   * gone. Not a failure; surfaced separately so it does not count against the job's failure total.
+   */
+  public void recordRelationshipWarning(
+      String entityType, String entityId, String entityFqn, String warningMessage) {
+    recordFailure(
+        entityType,
+        entityId,
+        entityFqn,
+        FailureStage.READER_RELATIONSHIP_WARNING,
+        warningMessage,
+        null);
   }
 
   public void recordSinkFailure(

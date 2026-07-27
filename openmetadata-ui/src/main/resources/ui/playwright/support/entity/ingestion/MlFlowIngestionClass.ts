@@ -55,19 +55,27 @@ class MlFlowIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    await page.fill('#root\\/trackingUri', 'mlModelTrackingUri');
+    // MLflow 3.13+ rejects the filesystem backend, which is what a non-URI
+    // string resolves to. SQLite is a supported backend and bootstraps itself,
+    // yielding an empty registry the agent can walk without a live MLflow.
+    await page.fill('#root\\/trackingUri', 'sqlite:////tmp/mlflow_tracking.db');
     await checkServiceFieldSectionHighlighting(page, 'trackingUri');
-    await page.fill('#root\\/registryUri', 'mlModelRegistryUri');
+    await page.fill('#root\\/registryUri', 'sqlite:////tmp/mlflow_registry.db');
     await checkServiceFieldSectionHighlighting(page, 'registryUri');
   }
 
   async fillIngestionDetails(page: Page) {
+    await page.getByTestId('mlModelFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/mlModelFilterPattern\\/includes')
+      .getByTestId('filter-section-mlModelFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.entityName);
 
     await page
-      .locator('#root\\/mlModelFilterPattern\\/includes')
+      .getByTestId('filter-section-mlModelFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

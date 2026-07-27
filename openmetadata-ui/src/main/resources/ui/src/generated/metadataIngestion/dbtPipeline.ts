@@ -35,6 +35,10 @@ export interface DbtPipeline {
      */
     dbtUpdateOwners?: boolean;
     /**
+     * Optional configuration to toggle the ingestion of dbt semantic layer metrics.
+     */
+    includeMetrics?: boolean;
+    /**
      * Optional configuration to toggle the tags ingestion.
      */
     includeTags?: boolean;

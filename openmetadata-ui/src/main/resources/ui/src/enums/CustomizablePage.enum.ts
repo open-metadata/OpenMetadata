@@ -32,6 +32,7 @@ export enum LandingPageWidgetKeys {
   PIPELINE = 'KnowledgePanel.Pipeline',
   RECENTLY_VIEWED = 'KnowledgePanel.RecentlyViewed',
   TOTAL_DATA_ASSETS = 'KnowledgePanel.TotalAssets',
+  KNOWLEDGE_CENTER = 'KnowledgePanel.KnowledgeCenter',
 }
 
 export enum CustomiseHomeModalSelectedKey {

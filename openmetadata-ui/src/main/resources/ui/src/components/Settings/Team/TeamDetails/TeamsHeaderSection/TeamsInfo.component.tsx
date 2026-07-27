@@ -36,8 +36,8 @@ import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useEntityRules } from '../../../../../hooks/useEntityRules';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   showErrorToast,

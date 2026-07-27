@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -50,7 +50,7 @@ def parse_databricks_native_query_source(
     source_expression: str,
     dataset: Dataset,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[List[dict]]:
+) -> Optional[List[dict]]:  # noqa: UP006, UP045
     # cleanup new lines and excessive spaces
     source_expression = source_expression.replace("\n", " ")
     source_expression = re.sub(r"\s+", " ", source_expression).strip()
@@ -64,9 +64,7 @@ def parse_databricks_native_query_source(
         if catalog_info:
             catalog_info = catalog_info.replace("\n", " ")
             catalog_info = re.sub(r"\s+", " ", catalog_info).strip()
-            catalog_info_match = re.search(
-                r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info
-            )
+            catalog_info_match = re.search(r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info)
         if not catalog_info_match:
             logger.error(f"Could not find catalog in info: {catalog_info}")
             catalog = None
@@ -101,20 +99,14 @@ def parse_databricks_native_query_source(
         # 4. Clean up excessive whitespace
         parser_query = re.sub(r"\s+", " ", parser_query).strip()
 
-        logger.debug(
-            f"Attempting LineageParser with cleaned query: {parser_query[:200]}"
-        )
+        logger.debug(f"Attempting LineageParser with cleaned query: {parser_query[:200]}")
         if re.match(
-            "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",
+            "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",  # noqa: W605
             parser_query,
         ):
-            logger.debug(
-                "Query appears to be a simple table reference, skipping LineageParser."
-            )
+            logger.debug("Query appears to be a simple table reference, skipping LineageParser.")
             schema_table = parser_query.split(".")
-            schema, table = (
-                schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]]
-            )
+            schema, table = schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]]
 
             return [{"database": database, "schema": schema, "table": table}]
         try:
@@ -126,7 +118,7 @@ def parse_databricks_native_query_source(
             )
             query_hash = parser.query_hash
             if parser.query_parsing_success is False:
-                raise Exception(parser.query_parsing_failure_reason)
+                raise Exception(parser.query_parsing_failure_reason)  # noqa: TRY002, TRY301
         except Exception as parser_exc:
             hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
             logger.error(
@@ -137,7 +129,7 @@ def parse_databricks_native_query_source(
 
         lineage_tables_list = []
         for source_table in parser.source_tables:
-            lineage_tables_list.append(
+            lineage_tables_list.append(  # noqa: PERF401
                 {
                     "database": database,
                     "schema": source_table.schema.raw_name,
@@ -146,7 +138,7 @@ def parse_databricks_native_query_source(
             )
         return lineage_tables_list
 
-    else:
+    else:  # noqa: RET505
         logger.error(
             f"Invalid Databricks Native Query Syntax: {source_expression} in dataset {dataset.name}[{dataset.id}]"
         )

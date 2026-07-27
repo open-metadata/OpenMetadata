@@ -14,7 +14,7 @@ s3 utils module
 """
 
 import traceback
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from metadata.utils.logger import utils_logger
 

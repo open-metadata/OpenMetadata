@@ -119,6 +119,19 @@
       "type": "boolean",
       "default": false
     },
+    "sessionExpiry": {
+      "title": "Session Expiry",
+      "description": "Validity for the authenticated session across all auth providers. Minimum is 3600 seconds. If unset, OpenMetadata falls back to the legacy OIDC-specific sessionExpiry when present, then to the default 604800-second expiry.",
+      "type": "integer",
+      "minimum": 3600
+    },
+    "maxActiveSessionsPerUser": {
+      "title": "Max Active Sessions Per User",
+      "description": "Maximum number of active authenticated sessions allowed per user. When the limit is exceeded, the least recently used active sessions are revoked. If unset, OpenMetadata uses the default of 5.",
+      "type": "integer",
+      "minimum": 1,
+      "default": 5
+    },
     "enableAutoRedirect": {
       "title": "Enable Auto Redirect",
       "description": "Enable automatic redirect from the sign-in page to the configured SSO provider.",

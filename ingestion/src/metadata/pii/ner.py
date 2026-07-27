@@ -13,6 +13,7 @@ NER Scanner based on Presidio.
 
 Supported Entities https://microsoft.github.io/presidio/supported_entities/
 """
+
 from enum import Enum
 
 from metadata.pii.models import TagType
@@ -28,58 +29,58 @@ class NEREntity(Enum):
 
     # Global
     CREDIT_CARD = TagType.SENSITIVE.value
-    CRYPTO = TagType.SENSITIVE.value
+    CRYPTO = TagType.SENSITIVE.value  # noqa: PIE796
     DATE_TIME = TagType.NONSENSITIVE.value
-    EMAIL_ADDRESS = TagType.SENSITIVE.value
-    IBAN_CODE = TagType.SENSITIVE.value
-    IP_ADDRESS = TagType.SENSITIVE.value
-    NRP = TagType.NONSENSITIVE.value
-    LOCATION = TagType.NONSENSITIVE.value
-    PERSON = TagType.SENSITIVE.value
-    PHONE_NUMBER = TagType.NONSENSITIVE.value
-    MEDICAL_LICENSE = TagType.SENSITIVE.value
-    URL = TagType.NONSENSITIVE.value
+    EMAIL_ADDRESS = TagType.SENSITIVE.value  # noqa: PIE796
+    IBAN_CODE = TagType.SENSITIVE.value  # noqa: PIE796
+    IP_ADDRESS = TagType.SENSITIVE.value  # noqa: PIE796
+    NRP = TagType.NONSENSITIVE.value  # noqa: PIE796
+    LOCATION = TagType.NONSENSITIVE.value  # noqa: PIE796
+    PERSON = TagType.SENSITIVE.value  # noqa: PIE796
+    PHONE_NUMBER = TagType.NONSENSITIVE.value  # noqa: PIE796
+    MEDICAL_LICENSE = TagType.SENSITIVE.value  # noqa: PIE796
+    URL = TagType.NONSENSITIVE.value  # noqa: PIE796
 
     # USA
-    US_BANK_NUMBER = TagType.SENSITIVE.value
-    US_DRIVER_LICENSE = TagType.SENSITIVE.value
-    US_ITIN = TagType.SENSITIVE.value
-    US_PASSPORT = TagType.SENSITIVE.value
-    US_SSN = TagType.SENSITIVE.value
+    US_BANK_NUMBER = TagType.SENSITIVE.value  # noqa: PIE796
+    US_DRIVER_LICENSE = TagType.SENSITIVE.value  # noqa: PIE796
+    US_ITIN = TagType.SENSITIVE.value  # noqa: PIE796
+    US_PASSPORT = TagType.SENSITIVE.value  # noqa: PIE796
+    US_SSN = TagType.SENSITIVE.value  # noqa: PIE796
 
     # UK
-    UK_NHS = TagType.SENSITIVE.value
+    UK_NHS = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Spain
-    ES_NIF = TagType.SENSITIVE.value
-    ES_NIE = TagType.SENSITIVE.value
+    ES_NIF = TagType.SENSITIVE.value  # noqa: PIE796
+    ES_NIE = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Italy
-    IT_FISCAL_CODE = TagType.SENSITIVE.value
-    IT_DRIVER_LICENSE = TagType.SENSITIVE.value
-    IT_VAT_CODE = TagType.SENSITIVE.value
-    IT_PASSPORT = TagType.SENSITIVE.value
-    IT_IDENTITY_CARD = TagType.SENSITIVE.value
+    IT_FISCAL_CODE = TagType.SENSITIVE.value  # noqa: PIE796
+    IT_DRIVER_LICENSE = TagType.SENSITIVE.value  # noqa: PIE796
+    IT_VAT_CODE = TagType.SENSITIVE.value  # noqa: PIE796
+    IT_PASSPORT = TagType.SENSITIVE.value  # noqa: PIE796
+    IT_IDENTITY_CARD = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Poland
-    PL_PESEL = TagType.SENSITIVE.value
+    PL_PESEL = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Singapore
-    SG_NRIC_FIN = TagType.SENSITIVE.value
-    SG_UEN = TagType.SENSITIVE.value
+    SG_NRIC_FIN = TagType.SENSITIVE.value  # noqa: PIE796
+    SG_UEN = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Australia
-    AU_ABN = TagType.SENSITIVE.value
-    AU_ACN = TagType.SENSITIVE.value
-    AU_TFN = TagType.SENSITIVE.value
-    AU_MEDICARE = TagType.SENSITIVE.value
+    AU_ABN = TagType.SENSITIVE.value  # noqa: PIE796
+    AU_ACN = TagType.SENSITIVE.value  # noqa: PIE796
+    AU_TFN = TagType.SENSITIVE.value  # noqa: PIE796
+    AU_MEDICARE = TagType.SENSITIVE.value  # noqa: PIE796
 
     # India
-    IN_PAN = TagType.SENSITIVE.value
-    IN_AADHAAR = TagType.SENSITIVE.value
-    IN_VEHICLE_REGISTRATION = TagType.SENSITIVE.value
-    IN_VOTER = TagType.SENSITIVE.value
-    IN_PASSPORT = TagType.SENSITIVE.value
+    IN_PAN = TagType.SENSITIVE.value  # noqa: PIE796
+    IN_AADHAAR = TagType.SENSITIVE.value  # noqa: PIE796
+    IN_VEHICLE_REGISTRATION = TagType.SENSITIVE.value  # noqa: PIE796
+    IN_VOTER = TagType.SENSITIVE.value  # noqa: PIE796
+    IN_PASSPORT = TagType.SENSITIVE.value  # noqa: PIE796
 
     # Finland
-    FI_PERSONAL_IDENTITY_CODE = TagType.SENSITIVE.value
+    FI_PERSONAL_IDENTITY_CODE = TagType.SENSITIVE.value  # noqa: PIE796

@@ -12,6 +12,7 @@
 """
 Test cross database lineage functionality in SQL lineage module
 """
+
 import uuid
 from datetime import datetime
 from unittest import TestCase
@@ -116,9 +117,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         self.mock_metadata.es_search_from_fqn.side_effect = [None, [self.mock_table2]]
 
         # Mock fqn.build to return empty list for first service, list with FQN for second service
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.fqn.build"
-        ) as mock_fqn_build:
+        with patch("metadata.ingestion.lineage.sql_lineage.fqn.build") as mock_fqn_build:
             mock_fqn_build.side_effect = [[], ["service2.db2.schema2.test_table"]]
 
             # Mock metadata.get_by_name to return the table for second service
@@ -145,9 +144,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         self.mock_metadata.es_search_from_fqn.return_value = None
 
         # Mock fqn.build to return empty list
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.fqn.build"
-        ) as mock_fqn_build:
+        with patch("metadata.ingestion.lineage.sql_lineage.fqn.build") as mock_fqn_build:
             mock_fqn_build.return_value = []
 
             # Test with multiple service names
@@ -165,9 +162,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_table_entities_from_query_single_service(self):
         """Test get_table_entities_from_query with single service (backward compatibility)"""
         # Mock search_table_entities to return a table
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-        ) as mock_search:
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
             mock_search.return_value = [self.mock_table1]
 
             result = get_table_entities_from_query(
@@ -193,9 +188,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_table_entities_from_query_multiple_services(self):
         """Test get_table_entities_from_query with multiple services (cross-database)"""
         # Mock search_table_entities to return a table from second service
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-        ) as mock_search:
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
             mock_search.return_value = [self.mock_table2]
 
             result = get_table_entities_from_query(
@@ -221,9 +214,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_lineage_by_query_single_service(self):
         """Test get_lineage_by_query with single service (backward compatibility)"""
         # Mock the lineage parser and other dependencies
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
             mock_parser_instance.masked_query = "SELECT * FROM test"
             mock_parser_instance.column_lineage = []
@@ -234,9 +225,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return empty
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = []
 
                 result = list(
@@ -256,9 +245,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_lineage_by_query_multiple_services(self):
         """Test get_lineage_by_query with multiple services (cross-database)"""
         # Mock the lineage parser and other dependencies
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
             mock_parser_instance.masked_query = "SELECT * FROM test"
             mock_parser_instance.column_lineage = []
@@ -269,9 +256,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return empty
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = []
 
                 result = list(
@@ -291,13 +276,9 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_lineage_by_query_with_source_tables(self):
         """Test get_lineage_by_query with actual source tables (query lineage)"""
         # Mock the lineage parser with source and target tables
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
-            mock_parser_instance.masked_query = (
-                "CREATE TABLE target AS SELECT * FROM source"
-            )
+            mock_parser_instance.masked_query = "CREATE TABLE target AS SELECT * FROM source"
             mock_parser_instance.column_lineage = []
             mock_parser_instance.intermediate_tables = []
             mock_parser_instance.source_tables = ["source"]
@@ -306,15 +287,11 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return a source table
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = [("", "source_table")]
 
                 # Mock search_table_entities to return a table
-                with patch(
-                    "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-                ) as mock_search:
+                with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
                     mock_search.return_value = [self.mock_table1]
 
                     result = list(
@@ -335,9 +312,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_lineage_via_table_entity_single_service(self):
         """Test get_lineage_via_table_entity with single service (backward compatibility)"""
         # Mock the lineage parser
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
             mock_parser_instance.masked_query = "SELECT * FROM source"
             mock_parser_instance.column_lineage = []
@@ -346,9 +321,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return empty
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = []
 
                 result = list(
@@ -369,9 +342,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
     def test_get_lineage_via_table_entity_multiple_services(self):
         """Test get_lineage_via_table_entity with multiple services (cross-database)"""
         # Mock the lineage parser
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
             mock_parser_instance.masked_query = "SELECT * FROM source"
             mock_parser_instance.column_lineage = []
@@ -380,15 +351,11 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return a source table
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = [("", "source_table")]
 
                 # Mock search_table_entities to return a table from second service
-                with patch(
-                    "metadata.ingestion.lineage.sql_lineage.search_table_entities"
-                ) as mock_search:
+                with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
                     mock_search.return_value = [self.mock_table2]
 
                     result = list(
@@ -428,9 +395,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             # Mock the lineage parser
             with patch("metadata.utils.db_utils.LineageParser") as mock_parser:
                 mock_parser_instance = MagicMock()
-                mock_parser_instance.masked_query = (
-                    "CREATE VIEW test_view AS SELECT * FROM source_table"
-                )
+                mock_parser_instance.masked_query = "CREATE VIEW test_view AS SELECT * FROM source_table"
                 mock_parser_instance.column_lineage = []
                 mock_parser_instance.source_tables = ["source_table"]
                 mock_parser_instance.target_tables = ["test_view"]
@@ -438,9 +403,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 mock_parser.return_value = mock_parser_instance
 
                 # Mock get_source_table_names to return empty (from sql_lineage module)
-                with patch(
-                    "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-                ) as mock_source:
+                with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                     mock_source.return_value = []
 
                     result = list(
@@ -477,9 +440,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             # Mock the lineage parser
             with patch("metadata.utils.db_utils.LineageParser") as mock_parser:
                 mock_parser_instance = MagicMock()
-                mock_parser_instance.masked_query = (
-                    "CREATE VIEW test_view AS SELECT * FROM source_table"
-                )
+                mock_parser_instance.masked_query = "CREATE VIEW test_view AS SELECT * FROM source_table"
                 mock_parser_instance.column_lineage = []
                 mock_parser_instance.source_tables = ["source_table"]
                 mock_parser_instance.target_tables = ["test_view"]
@@ -488,9 +449,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
 
                 # Mock get_lineage_by_query which is what get_view_lineage actually calls
                 # Since get_view_lineage imports it, we need to patch it where it's used
-                with patch(
-                    "metadata.utils.db_utils.get_lineage_by_query"
-                ) as mock_get_lineage:
+                with patch("metadata.utils.db_utils.get_lineage_by_query") as mock_get_lineage:
                     # Return empty list to simulate successful lineage processing
                     mock_get_lineage.return_value = []
 
@@ -511,9 +470,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
                     mock_get_lineage.assert_called()
                     call_kwargs = mock_get_lineage.call_args.kwargs
                     # Check that service_names was passed as a list
-                    self.assertEqual(
-                        call_kwargs["service_names"], ["service1", "service2"]
-                    )
+                    self.assertEqual(call_kwargs["service_names"], ["service1", "service2"])
 
     def test_get_view_lineage_with_postgres_schema_fallback(self):
         """Test get_view_lineage with Postgres schema fallback"""
@@ -522,9 +479,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         mock_view.table_name = "test_view"
         mock_view.schema_name = None  # No schema specified
         mock_view.db_name = "db1"
-        mock_view.view_definition = (
-            "CREATE VIEW test_view AS SELECT * FROM source_table"
-        )
+        mock_view.view_definition = "CREATE VIEW test_view AS SELECT * FROM source_table"
 
         # Mock the metadata methods
         self.mock_metadata.get_by_name.return_value = self.mock_table1
@@ -536,9 +491,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             # Mock the lineage parser
             with patch("metadata.utils.db_utils.LineageParser") as mock_parser:
                 mock_parser_instance = MagicMock()
-                mock_parser_instance.masked_query = (
-                    "CREATE VIEW test_view AS SELECT * FROM source_table"
-                )
+                mock_parser_instance.masked_query = "CREATE VIEW test_view AS SELECT * FROM source_table"
                 mock_parser_instance.column_lineage = []
                 mock_parser_instance.source_tables = ["source_table"]
                 mock_parser_instance.target_tables = ["test_view"]
@@ -546,9 +499,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 mock_parser.return_value = mock_parser_instance
 
                 # Mock get_lineage_by_query which is what get_view_lineage actually calls
-                with patch(
-                    "metadata.utils.db_utils.get_lineage_by_query"
-                ) as mock_get_lineage:
+                with patch("metadata.utils.db_utils.get_lineage_by_query") as mock_get_lineage:
                     # Return empty list to simulate successful lineage processing
                     mock_get_lineage.return_value = []
 
@@ -620,13 +571,9 @@ class CrossDatabaseLineageSQLTest(TestCase):
         mixin = MockStoredProcedureMixin(self.mock_metadata)
 
         # Mock the lineage parser and other dependencies
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.LineageParser"
-        ) as mock_parser:
+        with patch("metadata.ingestion.lineage.sql_lineage.LineageParser") as mock_parser:
             mock_parser_instance = MagicMock()
-            mock_parser_instance.masked_query = (
-                "CREATE TABLE target AS SELECT * FROM source"
-            )
+            mock_parser_instance.masked_query = "CREATE TABLE target AS SELECT * FROM source"
             mock_parser_instance.column_lineage = []
             mock_parser_instance.intermediate_tables = []
             mock_parser_instance.source_tables = ["source"]
@@ -635,9 +582,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             mock_parser.return_value = mock_parser_instance
 
             # Mock get_source_table_names to return empty
-            with patch(
-                "metadata.ingestion.lineage.sql_lineage.get_source_table_names"
-            ) as mock_source:
+            with patch("metadata.ingestion.lineage.sql_lineage.get_source_table_names") as mock_source:
                 mock_source.return_value = []
 
                 # Test the _yield_procedure_lineage method
@@ -680,9 +625,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
         source_table = DataFunction("test_function")
 
         # Mock build_es_fqn_search_string to capture how it's called
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string"
-        ) as mock_build:
+        with patch("metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string") as mock_build:
             mock_build.return_value = "test.fqn.string"
 
             # Test with list of service names - this is the bug scenario
@@ -711,9 +654,7 @@ class CrossDatabaseLineageSQLTest(TestCase):
             )
 
         # Test with single service name
-        with patch(
-            "metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string"
-        ) as mock_build:
+        with patch("metadata.ingestion.lineage.sql_lineage.build_es_fqn_search_string") as mock_build:
             mock_build.return_value = "test.fqn.string"
 
             service_names = "single_service"

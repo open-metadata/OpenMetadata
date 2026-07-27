@@ -27,6 +27,7 @@ import DomainImg from '../../assets/img/widgets/domain.png';
 import ExpertsImg from '../../assets/img/widgets/experts.png';
 import FrequentlyJoinedTablesImg from '../../assets/img/widgets/frequently-joined-tables.png';
 import GlossaryTermImg from '../../assets/img/widgets/glossary-terms.png';
+import KnowledgeArticleImg from '../../assets/img/widgets/knowledge-center-widget.png';
 import MlModelFeaturesImg from '../../assets/img/widgets/ml-features.png';
 import OwnersImg from '../../assets/img/widgets/owners.png';
 import PipelineTasksImg from '../../assets/img/widgets/pipeline-tasks.png';
@@ -146,6 +147,8 @@ class CustomizeDetailPageClassBase {
         return TopicSchemaImg;
       case DetailPageWidgetKeys.DOMAIN_TYPE:
         return DomainTypeImg;
+      case DetailPageWidgetKeys.KNOWLEDGE_ARTICLE:
+        return KnowledgeArticleImg;
       default:
         return '';
     }

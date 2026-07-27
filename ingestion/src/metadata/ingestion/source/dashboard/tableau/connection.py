@@ -8,42 +8,142 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
 Source connection handler
 """
+
+from __future__ import annotations
+
 import traceback
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union  # noqa: UP035
 
-import tableauserverclient as TSC
-
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+import tableauserverclient as TSC  # noqa: N812
+from requests.exceptions import SSLError
+from tableauserverclient.server.endpoint.exceptions import (
+    InternalServerError,
+    ServerResponseError,
 )
+
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
+)
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
+    call_endpoint,
+    http_status,
+    verify_access,
+)
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
-    TableauConnection,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
+    TableauConnection as TableauConnectionConfig,
 )
 from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    test_connection_steps,
+from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.dashboard.tableau.client import (
+    TableauChartsException,
+    TableauClient,
+    TableauDataModelsException,
+    TableauOwnersNotFound,
+    TableauWorkBookException,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.tableau.client import TableauClient
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+
 logger = ingestion_logger()
 
+METADATA_API_DOC = (
+    "https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html"
+    "#enable-the-tableau-metadata-api-for-tableau-server"
+)
 
-def get_connection(connection: TableauConnection) -> TableauClient:
+
+def _status_of(error: BaseException) -> int | None:
+    """Return the HTTP status a Tableau error carries, if any.
+
+    Only the two Tableau error types whose ``.code`` is HTTP-ish are trusted -
+    ``ServerResponseError.code`` is a string whose first three digits are the
+    status (e.g. ``401002``), ``InternalServerError.code`` is the status itself -
+    plus a raw ``requests`` error's ``.response.status_code``. Reading ``.code``
+    off any exception would misclassify an unrelated app code the chain happens
+    to carry.
+    """
+    if isinstance(error, ServerResponseError) and error.code[:3].isdigit():
+        status = int(error.code[:3])
+    elif isinstance(error, InternalServerError) and isinstance(error.code, int):
+        status = error.code
+    else:
+        response = getattr(error, "response", None)
+        status = getattr(response, "status_code", None)
+    return status if isinstance(status, int) else None
+
+
+TABLEAU_ERRORS = ErrorPack(
+    when(http_status(401, extract=_status_of)).diagnose(
+        "Authentication failed",
+        fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
+        "secret (or the username and password) and that it has not expired, and that the Site "
+        "Name matches the site those credentials belong to.",
+    ),
+    when(http_status(403, extract=_status_of)).diagnose(
+        "Insufficient permissions",
+        fix="The credentials are valid but not authorized for this resource (403). Grant the user "
+        "at least the Viewer site role and read access to the projects to ingest.",
+    ),
+    when(http_status(404, extract=_status_of)).diagnose(
+        "Resource not found",
+        fix="Tableau could not find the requested resource (404). Check that Host Port points at "
+        "the Tableau server or Tableau Cloud pod, and that the Site Name exists - for "
+        "https://<server>/#/site/MarketingTeam/home the Site Name is 'MarketingTeam'.",
+    ),
+    when(Matchers.exception(SSLError)).diagnose(
+        "TLS verification failed",
+        fix="The server's certificate could not be verified. Provide the CA certificate under SSL "
+        "Config with Verify SSL set to 'validate', or set Verify SSL to 'ignore' for a "
+        "self-signed certificate.",
+    ),
+    when(Matchers.exception(TableauWorkBookException)).diagnose(
+        "No workbooks visible",
+        fix="The user is authenticated but no workbook could be read. Grant it access to at least "
+        "one project containing workbooks.",
+    ),
+    when(Matchers.exception(TableauChartsException)).diagnose(
+        "No views visible",
+        fix="Workbooks are readable but their views are not. Grant the user the View permission on "
+        "the workbooks to ingest; charts are ingested from workbook views.",
+    ),
+    when(Matchers.exception(TableauOwnersNotFound)).diagnose(
+        "Owner information not available",
+        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
+        "disable owner ingestion in the service configuration.",
+    ),
+    when(Matchers.exception(TableauDataModelsException)).diagnose(
+        "Data sources could not be read",
+        fix="The Tableau Metadata API returned no data sources for the workbook. Enable the "
+        "Metadata API on the Tableau instance.",
+        doc=METADATA_API_DOC,
+    ),
+    when(Matchers.contains("in incorrect format")).diagnose(
+        "Invalid Site Name",
+        fix="The Site Name must be the site identifier, not a URL - for "
+        "https://<server>/#/site/MarketingTeam/home enter 'MarketingTeam'.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+def get_connection(connection: TableauConnectionConfig) -> TableauClient:
     """
     Create connection
     """
@@ -59,14 +159,12 @@ def get_connection(connection: TableauConnection) -> TableauClient:
         )
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise SourceConnectionException(
-            f"Unknown error connecting with {connection}: {exc}."
-        )
+        raise SourceConnectionException(f"Unknown error connecting with {connection}: {exc}.")  # noqa: B904
 
 
 def set_verify_ssl(
-    connection: TableauConnection,
-) -> tuple[Union[bool, str], Optional[SSLManager]]:
+    connection: TableauConnectionConfig,
+) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
     """
     Set verify ssl based on connection configuration
     ref: https://tableau.github.io/server-client-python/docs/sign-in-out#handling-ssl-certificates-for-tableau-server
@@ -78,66 +176,29 @@ def set_verify_ssl(
         return False, None
 
     if connection.verifySSL.value == "validate":
-        # Use SSLManager to create temporary certificate files
         if not connection.sslConfig:
             raise ValueError(
                 "SSL Config is required when verifySSL is set to 'validate'. "
                 "Please provide CA certificate, SSL certificate, or SSL key."
             )
 
-        # Create SSLManager to handle certificate files
         ssl_manager = SSLManager(
             ca=connection.sslConfig.root.caCertificate,
             cert=connection.sslConfig.root.sslCertificate,
             key=connection.sslConfig.root.sslKey,
         )
 
-        # Return the CA certificate file path for verification
-        # If no CA certificate is provided, use default verification
         if ssl_manager.ca_file_path:
             return ssl_manager.ca_file_path, ssl_manager
-        else:
-            # If no CA certificate is provided but SSL is enabled, use default verification
+        else:  # noqa: RET505
             return True, ssl_manager
 
     raise ValueError(
-        f"Unsupported verifySSL value: {connection.verifySSL.value}. "
-        "Expected one of ['no-ssl', 'ignore', 'validate']."
+        f"Unsupported verifySSL value: {connection.verifySSL.value}. Expected one of ['no-ssl', 'ignore', 'validate']."
     )
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: TableauClient,
-    service_connection: TableauConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-
-    test_fn = {
-        "ServerInfo": client.server_info,
-        "ValidateApiVersion": client.server_api_version,
-        "ValidateSiteUrl": client.test_site_url,
-        "GetWorkbooks": client.test_get_workbooks,
-        "GetViews": client.test_get_workbook_views,
-        "GetOwners": client.test_get_owners,
-        "GetDataModels": client.test_get_datamodels,
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
-
-
-def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:
+def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
     """
     Build client configuration
     Args:
@@ -159,6 +220,88 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
             site_id=connection.siteName if connection.siteName else "",
         )
     else:
-        raise ValueError("Unsupported authentication type")
+        raise ValueError("Unsupported authentication type")  # noqa: TRY004
 
     return tableau_auth
+
+
+class TableauChecks:
+    """Test-connection checks for Tableau.
+
+    ``ServerInfo`` is the gate: reading the borrowed client signs in, so bad
+    credentials or an unreachable server fail there and the rest are skipped.
+    """
+
+    errors = TABLEAU_ERRORS
+
+    def __init__(self, server: Borrowed[TableauClient]) -> None:
+        self._server = server
+
+    @check(DashboardStep.ServerInfo)
+    def server_info(self) -> Evidence:
+        # Lambda, not a bound method: the sign-in must happen inside verify_access's
+        # try, or a bad credential escapes unclassified.
+        return verify_access(
+            lambda: self._server.client.server_info(),  # noqa: PLW0108
+            command="sign in and read server info",
+        )
+
+    @check(DashboardStep.ValidateApiVersion)
+    def validate_api_version(self) -> Evidence:
+        command = "read the server REST API version"
+        version = call_endpoint(lambda: self._server.client.server_api_version(), command=command)  # noqa: PLW0108
+        return Evidence(summary=f"REST API version {version}", command=command)
+
+    @check(DashboardStep.ValidateSiteUrl)
+    def validate_site_url(self) -> Evidence:
+        command = "validate the configured site name"
+        call_endpoint(lambda: self._server.client.test_site_url(), command=command)  # noqa: PLW0108
+        return Evidence(summary="site name is well formed", command=command)
+
+    @check(DashboardStep.GetWorkbooks)
+    def get_workbooks(self) -> Evidence:
+        command = "fetch workbooks"
+        call_endpoint(lambda: self._server.client.test_get_workbooks(), command=command)  # noqa: PLW0108
+        return Evidence(summary="workbooks are readable", command=command)
+
+    @check(DashboardStep.GetViews)
+    def get_views(self) -> Evidence:
+        command = "fetch the views of a workbook"
+        call_endpoint(lambda: self._server.client.test_get_workbook_views(), command=command)  # noqa: PLW0108
+        return Evidence(summary="workbook views are readable", command=command)
+
+    @check(DashboardStep.GetOwners)
+    def get_owners(self) -> Evidence:
+        command = "fetch the owner of a workbook"
+        call_endpoint(lambda: self._server.client.test_get_owners(), command=command)  # noqa: PLW0108
+        return Evidence(summary="workbook owners are resolvable", command=command)
+
+    @check(DashboardStep.GetDataModels)
+    def get_data_models(self) -> Evidence:
+        command = "query the Metadata API for the data sources of a workbook"
+        call_endpoint(lambda: self._server.client.test_get_datamodels(), command=command)  # noqa: PLW0108
+        return Evidence(summary="data sources are readable", command=command)
+
+
+def _sign_out(client: TableauClient) -> None:
+    """Best-effort: close() unwinds teardowns without catching, so a failed sign-out
+    must not replace the error being unwound."""
+    try:
+        client.sign_out()
+    except Exception:
+        logger.warning("Tableau sign-out failed while closing the connection", exc_info=True)
+
+
+class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
+    # The workbook and Metadata API steps can be slow on large servers; keep the
+    # legacy 3-minute budget the imperative handler used, now applied per step.
+    step_timeout_seconds = THREE_MIN
+
+    def _get_client(self) -> TableauClient:
+        client = get_connection(self.service_connection)
+        # sign_out releases the server session and clears the SSL temp files.
+        self._on_close(lambda: _sign_out(client))
+        return client
+
+    def checks(self) -> ChecksProvider:
+        return TableauChecks(server=self.borrow())

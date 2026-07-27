@@ -22,7 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateType;
@@ -32,7 +35,9 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 
 /**
  * Integration tests for Type entity operations.
@@ -325,6 +330,227 @@ public class TypeResourceIT {
   }
 
   @Test
+  void test_customPropertyNameAllowedCharacters_succeeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "safeCharsType").getId();
+    String prefix = ns.prefix("safe");
+
+    String[] allowedNames = {
+      prefix + "Plain",
+      prefix + "_underscore",
+      prefix + "-hyphen",
+      prefix + ".dot",
+      prefix + "with space",
+      prefix + "with%percent",
+      prefix + "with#hash",
+      prefix + "with@at",
+      prefix + "with!bang",
+      prefix + "with,comma",
+      prefix + "with;semi",
+      prefix + "with=eq",
+      prefix + "with|pipe",
+      prefix + "with'quote",
+      prefix + "with(lparen",
+      prefix + "with)rparen",
+      prefix + "with[lbrack",
+      prefix + "with]rbrack",
+      prefix + "with{lbrace",
+      prefix + "with}rbrace",
+      prefix + "with+plus",
+      prefix + "with?question",
+      prefix + "with`backtick",
+      prefix + "withMatched(pair)",
+      prefix + "withDigits123",
+    };
+
+    for (String name : allowedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Allowed-charset test for custom property name");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      Type updatedType = addCustomProperty(client, tableTypeId, property);
+      assertNotNull(updatedType, "Allowed name '" + name + "' must be accepted");
+
+      boolean present =
+          updatedType.getCustomProperties().stream().anyMatch(cp -> name.equals(cp.getName()));
+      assertTrue(present, "Custom property '" + name + "' should be saved on the type");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameDisallowedCharacters_fails(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "badCharsType").getId();
+    String prefix = ns.prefix("bad");
+
+    String[] disallowedNames = {
+      prefix + "with\"dquote",
+      prefix + "with:colon",
+      prefix + "with^caret",
+      prefix + "with$dollar",
+      prefix + "with\\backslash",
+      prefix + "with&amp",
+      prefix + "with<lt",
+      prefix + "with>gt",
+      prefix + "with*asterisk",
+      // / and ~ are reserved by JSON Pointer (RFC 6901). Allowing them in a
+      // property name silently corrupts JSON Patch paths like
+      // /extension/<propertyName>/rows when the name is interpolated raw.
+      prefix + "with/slash",
+      prefix + "with~tilde",
+    };
+
+    for (String name : disallowedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Disallowed-charset test for custom property name");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      assertThrows(
+          InvalidRequestException.class,
+          () -> addCustomProperty(client, tableTypeId, property),
+          "Custom property name '" + name + "' should be rejected with HTTP 400");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameMustStartWithAlphanumeric_fails(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "leadCharType").getId();
+    String prefix = ns.prefix("lead");
+
+    String[] invalidLeads = {
+      "_" + prefix, "-" + prefix, "." + prefix, " " + prefix, "(" + prefix,
+    };
+
+    for (String name : invalidLeads) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Leading-character validation");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      assertThrows(
+          InvalidRequestException.class,
+          () -> addCustomProperty(client, tableTypeId, property),
+          "Custom property name '" + name + "' must start with alphanumeric (HTTP 400 expected)");
+    }
+  }
+
+  @Test
+  void test_customPropertyNameTooLong_fails(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "longNameType").getId();
+
+    StringBuilder longName = new StringBuilder(ns.prefix("long"));
+    while (longName.length() <= 256) {
+      longName.append('a');
+    }
+
+    CustomProperty property = new CustomProperty();
+    property.setName(longName.toString());
+    property.setDescription("Length validation");
+    property.setPropertyType(STRING_TYPE.getEntityReference());
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> addCustomProperty(client, tableTypeId, property),
+        "Custom property name longer than 256 characters should be rejected with HTTP 400");
+  }
+
+  @Test
+  void test_customPropertyNameUnbalancedBrackets_succeeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    UUID tableTypeId = createEntityTypeForTest(client, ns, "bracketType").getId();
+    String prefix = ns.prefix("bracket");
+
+    String[] unbalancedNames = {
+      prefix + "openParen(",
+      prefix + "closeParen)",
+      prefix + "openLbrack[",
+      prefix + "closeRbrack]",
+      prefix + "openLbrace{",
+      prefix + "closeRbrace}",
+    };
+
+    for (String name : unbalancedNames) {
+      CustomProperty property = new CustomProperty();
+      property.setName(name);
+      property.setDescription("Unbalanced-bracket validation");
+      property.setPropertyType(STRING_TYPE.getEntityReference());
+
+      Type updatedType = addCustomProperty(client, tableTypeId, property);
+      assertNotNull(updatedType);
+
+      boolean present =
+          updatedType.getCustomProperties().stream().anyMatch(cp -> name.equals(cp.getName()));
+      assertTrue(present, "Unbalanced bracket name '" + name + "' should be saved");
+    }
+  }
+
+  @Test
+  void test_patchCannotAddCustomPropertyWithDisallowedName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type fresh = createEntityTypeForTest(client, ns, "patchBadType");
+
+    String badName = ns.prefix("patched:bad");
+    String patchJson =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/customProperties\","
+                + "\"value\":[{\"name\":\"%s\",\"description\":\"probe\","
+                + "\"propertyType\":{\"id\":\"%s\",\"type\":\"type\",\"name\":\"string\"}}]}]",
+            badName, STRING_TYPE.getId());
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH,
+                    "/v1/metadata/types/" + fresh.getId(),
+                    patchJson,
+                    RequestOptions.builder()
+                        .header("Content-Type", "application/json-patch+json")
+                        .build()),
+        "PATCH that adds a custom property with disallowed character must return 400");
+
+    Type after = getTypeById(client, fresh.getId(), "customProperties");
+    boolean persisted =
+        after.getCustomProperties() != null
+            && after.getCustomProperties().stream().anyMatch(cp -> badName.equals(cp.getName()));
+    assertFalse(persisted, "Bad-name custom property must not be persisted via PATCH");
+  }
+
+  @Test
+  void test_patchCanAddCustomPropertyWithValidName(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type fresh = createEntityTypeForTest(client, ns, "patchGoodType");
+
+    String goodName = ns.prefix("patchedGood");
+    String patchJson =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/customProperties\","
+                + "\"value\":[{\"name\":\"%s\",\"description\":\"probe\","
+                + "\"propertyType\":{\"id\":\"%s\",\"type\":\"type\",\"name\":\"string\"}}]}]",
+            goodName, STRING_TYPE.getId());
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/metadata/types/" + fresh.getId(),
+            patchJson,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+
+    Type after = getTypeById(client, fresh.getId(), "customProperties");
+    boolean persisted =
+        after.getCustomProperties() != null
+            && after.getCustomProperties().stream().anyMatch(cp -> goodName.equals(cp.getName()));
+    assertTrue(persisted, "Valid-name custom property added via PATCH should be persisted");
+  }
+
+  @Test
   void test_getEntityTypeFields() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -612,6 +838,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToTableColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -633,6 +862,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToDashboardDataModelColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -656,6 +888,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_columnCustomPropertiesAreIsolated(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -705,6 +940,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_getAllCustomPropertiesIncludesColumnTypes(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -770,11 +1008,38 @@ public class TypeResourceIT {
         .execute(HttpMethod.POST, "/v1/metadata/types", createRequest, Type.class);
   }
 
+  /**
+   * Create a unique entity-category Type per test so PATCH-driven tests can mutate
+   * customProperties without racing against other tests on shared built-in types.
+   */
+  private static Type createEntityTypeForTest(
+      OpenMetadataClient client, TestNamespace ns, String label) throws Exception {
+    CreateType req = new CreateType();
+    req.setName(ns.prefix(label));
+    req.setCategory(Category.Entity);
+    req.setDescription("Per-test entity type for PATCH IT");
+    req.setNameSpace("data");
+    req.setSchema("{}");
+    return createType(client, req);
+  }
+
   private static Type getTypeById(OpenMetadataClient client, UUID typeId) throws Exception {
     String response =
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, "/v1/metadata/types/" + typeId.toString(), null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private static Type getTypeById(OpenMetadataClient client, UUID typeId, String fields)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/" + typeId.toString() + "?fields=" + fields,
+                null);
     return OBJECT_MAPPER.readValue(response, Type.class);
   }
 

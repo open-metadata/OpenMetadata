@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import { RefSelectProps as BaseSelectRef } from 'antd/es/select';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -30,7 +29,6 @@ const DomainSelectableListNew = ({
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const selectedDomainsList = useMemo(() => {
     if (selectedDomain) {
@@ -62,40 +60,6 @@ const DomainSelectableListNew = ({
     }
   };
 
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
-  const dropdownRef = useRef<BaseSelectRef>(null);
-
-  useEffect(() => {
-    setIsDropdownOpen(popupVisible);
-  }, [popupVisible]);
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.domain-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        const newHeight = Math.min(dropdown.scrollHeight + 161, 350);
-        setPopoverHeight(newHeight);
-      }
-    });
-
-    const dropdown = document.querySelector('.domain-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen]);
-  const handleDropdownChange = (open: boolean) => {
-    setIsDropdownOpen(open);
-  };
-
   return (
     <Button
       className="remove-button-default-styling"
@@ -105,10 +69,7 @@ const DomainSelectableListNew = ({
         content={
           <div
             data-react-aria-top-layer
-            className="user-profile-edit-popover-card"
-            style={{
-              height: `${popoverHeight}px`,
-            }}>
+            className="user-profile-edit-popover-card">
             <div className="d-flex justify-start items-center gap-2 m-b-sm">
               <div className="d-flex flex-start items-center">
                 <DomainIcon height={16} />
@@ -119,12 +80,9 @@ const DomainSelectableListNew = ({
               </Typography.Text>
             </div>
             <DomainSelectablTreeNew
-              dropdownRef={dropdownRef}
-              handleDropdownChange={handleDropdownChange}
               initialDomains={initialDomains}
               isClearable={isClearable}
               isMultiple={multiple}
-              open={isDropdownOpen}
               value={selectedDomainsList as string[]}
               visible={popupVisible}
               onCancel={() => setPopupVisible(false)}

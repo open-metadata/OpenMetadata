@@ -11,7 +11,8 @@
 """
 Alation Sink Data Models
 """
-from typing import List, Optional
+
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -24,9 +25,9 @@ class CreateDatasourceRequest(BaseModel):
     uri: str
     connector_id: int
     db_username: str
-    db_password: Optional[str] = None
+    db_password: Optional[str] = None  # noqa: UP045
     title: str
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
 
 
 class DataSource(BaseModel):
@@ -46,7 +47,7 @@ class CreateSchemaRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
 
 
 class CreateSchemaRequestList(BaseModel):
@@ -54,7 +55,7 @@ class CreateSchemaRequestList(BaseModel):
     Alation CreateSchemaRequestList Model
     """
 
-    root: List[CreateSchemaRequest]
+    root: List[CreateSchemaRequest]  # noqa: UP006
 
 
 class Schema(BaseModel):
@@ -64,8 +65,8 @@ class Schema(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
 
 
 class CreateTableRequest(BaseModel):
@@ -75,9 +76,9 @@ class CreateTableRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None
-    table_type: Optional[str] = None
-    sql: Optional[str] = None
+    description: Optional[str] = None  # noqa: UP045
+    table_type: Optional[str] = None  # noqa: UP045
+    sql: Optional[str] = None  # noqa: UP045
 
 
 class CreateTableRequestList(BaseModel):
@@ -85,7 +86,7 @@ class CreateTableRequestList(BaseModel):
     Alation CreateTableRequestList Model
     """
 
-    root: List[CreateTableRequest]
+    root: List[CreateTableRequest]  # noqa: UP006
 
 
 class Table(BaseModel):
@@ -95,7 +96,7 @@ class Table(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
+    title: Optional[str] = None  # noqa: UP045
 
 
 class ColumnIndex(BaseModel):
@@ -103,10 +104,10 @@ class ColumnIndex(BaseModel):
     Alation Index Model
     """
 
-    isPrimaryKey: Optional[bool] = None
-    isForeignKey: Optional[bool] = None
-    referencedColumnId: Optional[str] = None
-    isOtherIndex: Optional[bool] = None
+    isPrimaryKey: Optional[bool] = None  # noqa: N815, UP045
+    isForeignKey: Optional[bool] = None  # noqa: N815, UP045
+    referencedColumnId: Optional[str] = None  # noqa: N815, UP045
+    isOtherIndex: Optional[bool] = None  # noqa: N815, UP045
 
 
 class CreateColumnRequest(BaseModel):
@@ -116,12 +117,12 @@ class CreateColumnRequest(BaseModel):
 
     key: str
     column_type: str
-    title: Optional[str]
-    description: Optional[str] = None
-    nullable: Optional[bool] = None
-    position: Optional[str] = None
-    index: Optional[ColumnIndex] = None
-    nullable: Optional[bool] = None
+    title: Optional[str]  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    nullable: Optional[bool] = None  # noqa: UP045
+    position: Optional[str] = None  # noqa: UP045
+    index: Optional[ColumnIndex] = None  # noqa: UP045
+    nullable: Optional[bool] = None  # noqa: PIE794, UP045
 
 
 class CreateColumnRequestList(BaseModel):
@@ -129,7 +130,7 @@ class CreateColumnRequestList(BaseModel):
     Alation CreateColumnRequestList Model
     """
 
-    root: List[CreateColumnRequest]
+    root: List[CreateColumnRequest]  # noqa: UP006
 
 
 class Column(BaseModel):
@@ -139,10 +140,10 @@ class Column(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    column_comment: Optional[str] = None
+    title: Optional[str] = None  # noqa: UP045
+    description: Optional[str] = None  # noqa: UP045
+    column_comment: Optional[str] = None  # noqa: UP045
     column_type: str
-    position: Optional[str] = None
-    nullable: Optional[bool] = None
-    index: Optional[ColumnIndex] = None
+    position: Optional[str] = None  # noqa: UP045
+    nullable: Optional[bool] = None  # noqa: UP045
+    index: Optional[ColumnIndex] = None  # noqa: UP045

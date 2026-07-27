@@ -60,7 +60,7 @@ from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from metadata.profiler.api.models import ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse  # noqa: TC001
 from metadata.sampler.models import SampleData, SamplerResponse
 
 table_data = TableData(
@@ -179,20 +179,14 @@ class PiiProcessorTest(TestCase):
     )
 
     metadata = OpenMetadata(server_config)
-    pii_processor = PIIProcessor(
-        config=workflow_config, metadata=OpenMetadata(server_config)
-    )
+    pii_processor = PIIProcessor(config=workflow_config, metadata=OpenMetadata(server_config))
 
     @classmethod
     def tearDownClass(cls) -> None:
         """
         Clean up
         """
-        service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test-service-table-patch"
-            ).id.root
-        )
+        service_id = str(cls.metadata.get_by_name(entity=DatabaseService, fqn="test-service-table-patch").id.root)
 
         cls.metadata.delete(
             entity=DatabaseService,
@@ -260,12 +254,12 @@ class PiiProcessorTest(TestCase):
         )
 
         updated_record: ProfilerResponse = self.pii_processor.run(record)
-        for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):
+        for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):  # noqa: B905
             self.assertEqual(expected.column_fqn, updated.column_fqn)
             self.assertEqual(expected.tag_label.tagFQN, updated.tag_label.tagFQN)
             self.assertRegex(
                 updated.tag_label.reason,
                 expected_regex=re.compile(
-                    f"Detected by `[A-Za-z]+Recognizer` \d+ times? with an average score of \d+([.,]?\d{{1,2}})?"
+                    f"Detected by `[A-Za-z]+Recognizer` \d+ times? with an average score of \d+([.,]?\d{{1,2}})?"  # noqa: F541, W605
                 ),
             )

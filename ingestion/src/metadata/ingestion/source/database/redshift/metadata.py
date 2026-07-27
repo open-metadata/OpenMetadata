@@ -11,8 +11,9 @@
 """
 Redshift source ingestion
 """
+
 import traceback
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional  # noqa: UP035
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -53,6 +54,7 @@ from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -75,6 +77,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_EXTERNAL_TABLE_LOCATION,
     REDSHIFT_GET_ALL_CONSTRAINTS,
     REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_ALL_SCHEMAS,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
@@ -94,8 +97,6 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.execution_time_tracker import calculate_execution_time_generator
-from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -134,9 +135,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class RedshiftSource(
-    ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource
-):
+class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Redshift Source
@@ -149,15 +148,11 @@ class RedshiftSource(
         incremental_configuration: IncrementalConfig,
     ):
         super().__init__(config, metadata)
-        self.constraint_details: dict[
-            str, dict[str, set[str] | list[dict[str, str]]]
-        ] = {}
+        self.constraint_details: dict[str, dict[str, set[str] | list[dict[str, str]]]] = {}
         self.life_cycle_query = REDSHIFT_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.incremental = incremental_configuration
-        self.incremental_table_processor: Optional[
-            RedshiftIncrementalTableProcessor
-        ] = None
+        self.incremental_table_processor: Optional[RedshiftIncrementalTableProcessor] = None  # noqa: UP045
         self.external_location_map = {}
 
         if self.incremental.enabled:
@@ -167,27 +162,19 @@ class RedshiftSource(
             )
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
-            raise InvalidSourceException(
-                f"Expected RedshiftConnection, but got {connection}"
-            )
-        incremental_config = IncrementalConfig.create(
-            config.sourceConfig.config.incremental, pipeline_name, metadata
-        )
+            raise InvalidSourceException(f"Expected RedshiftConnection, but got {connection}")
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportAttributeAccessIssue]
         return cls(config, metadata, incremental_config)
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
         """
         Method to fetch the location path of the table
         """
-        return self.external_location_map.get(
-            (self.context.get().database, schema_name, table_name)
-        )
+        return self.external_location_map.get((self.context.get().database, schema_name, table_name))
 
     def _clear_reflection_cache(self) -> None:
         """Clear the SQLAlchemy inspector's info_cache to release
@@ -203,9 +190,7 @@ class RedshiftSource(
         except Exception as exc:
             logger.debug(f"Failed to clear reflection cache: {exc}")
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Handle custom table types
         """
@@ -232,22 +217,15 @@ class RedshiftSource(
             result = [
                 (name, relkind)
                 for name, relkind in result
-                if name
-                in self.incremental_table_processor.get_not_deleted(
-                    schema_name=schema_name
-                )
+                if name in self.incremental_table_processor.get_not_deleted(schema_name=schema_name)
             ]
 
         return [
-            TableNameAndType(
-                name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular)
-            )
+            TableNameAndType(name=name, type_=STANDARD_TABLE_TYPES.get(relkind, TableType.Regular))
             for name, relkind in result
         ]
 
-    def query_view_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the view
         name and type. By default, use the inspector method
@@ -258,7 +236,7 @@ class RedshiftSource(
         """
         return []
 
-    def get_configured_database(self) -> Optional[str]:
+    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -297,39 +275,76 @@ class RedshiftSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         with self.engine.connect() as conn:
-            results = conn.execute(
-                text(
-                    REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name)
-                )
-            ).all()
-        self.external_location_map = {
-            (database_name, row.schemaname, row.tablename): row.location
-            for row in results
-        }
+            results = conn.execute(text(REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name))).all()
+        self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
+
+    def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
+        """Filtered database names for the progress denominator. Single configured
+        database when ``ingestAllDatabases`` is off, else the filtered result of the
+        lightweight ``pg_database`` enumeration. Emits no status side effects."""
+        configured_db = self.get_configured_database()
+        if configured_db:
+            result = [configured_db]
+        else:
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+        return result
+
+    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+        """``{database: [schema_names]}`` for every visible database from a single
+        cross-database ``SVV_ALL_SCHEMAS`` — one round-trip, no per-database
+        reconnect. Returns ``None`` when the view is unavailable (older cluster or
+        restricted role) so the caller falls back to reconcile-only."""
+        try:
+            rows = self.connection.execute(text(REDSHIFT_GET_ALL_SCHEMAS)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "SVV_ALL_SCHEMAS unavailable (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        by_database: Dict[str, List[str]] = {}  # noqa: UP006
+        for row in rows:
+            database_name = row[0]
+            schema_name = row[1]
+            if database_name is not None and schema_name is not None:
+                by_database.setdefault(str(database_name), []).append(str(schema_name))
+        return by_database
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` counters upfront.
+        ``Database`` is the filtered DB count; ``DatabaseSchema`` is the post-filter
+        schema count per database from the cross-database ``SVV_ALL_SCHEMAS``. When
+        that view is unavailable the schema counter is marked reconcilable so the
+        walk fills its total instead."""
+        database_names = self._filtered_database_names_for_totals()
+        totals.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_database.get(database_name, [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.root.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
             self._set_incremental_table_processor(configured_db)
             self.set_external_location_map(configured_db)
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=new_database,
-                )
-
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    (
-                        database_fqn
-                        if self.source_config.useFqnForFiltering
-                        else new_database
-                    ),
-                ):
+                if self._is_database_filtered(new_database):
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=new_database,
+                    )
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
@@ -340,13 +355,9 @@ class RedshiftSource(
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
-                    logger.error(
-                        f"Error trying to connect to database {new_database}: {exc}"
-                    )
+                    logger.error(f"Error trying to connect to database {new_database}: {exc}")
 
-    def process_additional_table_constraints(
-        self, column: dict, table_constraints: List[TableConstraint]
-    ) -> None:
+    def process_additional_table_constraints(self, column: dict, table_constraints: List[TableConstraint]) -> None:  # noqa: UP006
         """
         Process DIST_KEY & SORT_KEY column properties
         """
@@ -383,7 +394,6 @@ class RedshiftSource(
                     continue
                 yield stored_procedure
 
-    @calculate_execution_time_generator()
     def yield_stored_procedure(
         self, stored_procedure: RedshiftStoredProcedure
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
@@ -423,19 +433,15 @@ class RedshiftSource(
         """
         if self.incremental.enabled:
             if not self.context.get().__dict__.get("database"):
-                raise ValueError(
-                    "No Database found in the context. We cannot run the table deletion."
-                )
+                raise ValueError("No Database found in the context. We cannot run the table deletion.")
 
             if self.source_config.markDeletedTables:
-                logger.info(
-                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
-                )
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.get_global().deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()
@@ -459,14 +465,8 @@ class RedshiftSource(
         constraints = self.constraint_details.get(f"{schema_name}.{table_name}", {})
         if not constraints:
             return [], [], []
-        pkeys = [
-            clean_up_starting_ending_double_quotes_in_string(p)
-            for p in constraints.get("pkey", set())
-        ]
-        ukeys = [
-            clean_up_starting_ending_double_quotes_in_string(p)
-            for p in constraints.get("ukey", set())
-        ]
+        pkeys = [clean_up_starting_ending_double_quotes_in_string(p) for p in constraints.get("pkey", set())]
+        ukeys = [clean_up_starting_ending_double_quotes_in_string(p) for p in constraints.get("ukey", set())]
 
         fkeys = []
         fkey_constraints: list[dict[str, str]] = constraints.get("fkey", [])
@@ -493,9 +493,7 @@ class RedshiftSource(
         Args:
             schema_name (str): schema name
         """
-        self.constraint_details = (
-            {}
-        )  # reset constraint_details dict when fetching for a new schema
+        self.constraint_details = {}  # reset constraint_details dict when fetching for a new schema
 
         rows = self.connection.execute(
             sql.text(REDSHIFT_GET_ALL_CONSTRAINTS),
@@ -513,9 +511,7 @@ class RedshiftSource(
 
         for row in rows or []:
             schema_table_name = f"{row.schema}.{row.table_name}"
-            schema_table_constraints = self.constraint_details.setdefault(
-                schema_table_name, {}
-            )
+            schema_table_constraints = self.constraint_details.setdefault(schema_table_name, {})
             if row.constraint_type == "p":
                 pkey = schema_table_constraints.setdefault("pkey", set())
                 pkey.add(row.column_name)
@@ -530,9 +526,7 @@ class RedshiftSource(
                     "database": database,
                 }
                 extracted_fkey = self._extract_fkeys(fkey_constraint)
-                fkey: list[dict[str, str]] = schema_table_constraints.setdefault(
-                    "fkey", []
-                )
+                fkey: list[dict[str, str]] = schema_table_constraints.setdefault("fkey", [])
                 fkey.extend(extracted_fkey)
             if row.constraint_type == "u":
                 ukey = schema_table_constraints.setdefault("ukey", set())

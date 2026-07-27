@@ -11,6 +11,7 @@
 """
 Test Column Name Scanner
 """
+
 import pytest
 
 from metadata.pii.models import TagAndConfidence

@@ -88,10 +88,10 @@ describe('ContractYaml', () => {
   });
 
   describe('Basic Rendering', () => {
-    it('should render the component with schema editor', () => {
+    it('should render the component with schema editor', async () => {
       render(<ContractYaml contract={mockContract} />);
 
-      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId('schema-editor')).toBeInTheDocument();
     });
 
     it('should render with correct container class', () => {

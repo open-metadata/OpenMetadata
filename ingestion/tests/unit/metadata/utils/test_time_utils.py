@@ -44,11 +44,11 @@ def test_timestamp_to_datetime(timestamp, expected_datetime):
     assert timestamp_to_datetime(timestamp) == expected_datetime
 
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone  # noqa: E402
 
-import pytest
+import pytest  # noqa: E402
 
-from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp
+from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp  # noqa: E402
 
 
 @pytest.mark.parametrize(

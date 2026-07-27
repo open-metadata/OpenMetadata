@@ -14,12 +14,13 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LogoMonogram } from '../../../assets/svg/logo-monogram.svg';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { TourEndModalProps } from './TourEndModal.interface';
 
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
   const { t } = useTranslation();
+
+  const { svg } = brandClassBase.getMonogram();
 
   return (
     <Modal
@@ -39,9 +40,9 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
       <Row className="text-center" gutter={[16, 16]}>
         <Col className="mt-4" span={24}>
           <Icon
-            alt={t('label.open-metadata-logo')}
+            alt={t('label.brand-name-logo')}
             className="align-middle"
-            component={LogoMonogram}
+            component={svg}
             data-testid="omd-logo"
             style={{ fontSize: '70px' }}
           />
@@ -52,9 +53,7 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
             data-testid="tour-complete-message">
             {t('message.successfully-completed-the-tour')}
             <br />
-            {t('message.get-started-with-open-metadata', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
+            {t('message.get-started-with-open-metadata')}
           </Typography>
         </Col>
       </Row>

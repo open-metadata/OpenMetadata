@@ -33,25 +33,27 @@
       "title": "Batch Size",
       "description": "Number of entities to process in each batch.",
       "type": "integer",
-      "default": 100,
+      "default": 1000,
       "minimum": 10,
       "maximum": 1000
     },
-    "consumerThreads": {
-      "title": "Consumer Threads",
-      "description": "Number of parallel threads for processing entities and warming cache.",
-      "type": "integer",
-      "default": 4,
-      "minimum": 1,
-      "maximum": 10
+    "warmBundles": {
+      "title": "Warm Read Bundles",
+      "description": "Pre-warm the per-entity bundle cache (tags + certification) so the first read after deploy doesn't fan out to the DB. Disable for very large installs.",
+      "type": "boolean",
+      "default": true
     },
-    "queueSize": {
-      "title": "Queue Size",
-      "description": "Internal queue size for entity processing pipeline.",
-      "type": "integer",
-      "default": 1000,
-      "minimum": 100,
-      "maximum": 10000
+    "warmRelationships": {
+      "title": "Warm Relationships",
+      "description": "Optionally pre-warm common relationship fields in the read bundle cache. Requires Warm Read Bundles. This adds extra relationship-table and entity-reference reads during warmup, so enable it only when first-read relationship latency matters.",
+      "type": "boolean",
+      "default": false
+    },
+    "enableDistributedClaim": {
+      "title": "Enable Distributed Claim",
+      "description": "In multi-instance deployments, claim each entity type via Redis SETNX so only one instance warms it. Disable to let every instance warm independently (idempotent but redundant).",
+      "type": "boolean",
+      "default": false
     },
     "force": {
       "title": "Force Warmup",

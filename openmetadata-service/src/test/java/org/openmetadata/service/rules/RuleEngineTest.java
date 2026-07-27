@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.service.Entity;
@@ -24,6 +26,19 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 class RuleEngineTest {
+
+  @Test
+  void applyRegistersIsReviewerForWorkflowJsonLogicRules() {
+    String rule = "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}";
+    Map<String, Object> context =
+        Map.of(
+            "updatedBy",
+            "alice",
+            "reviewers",
+            List.of(new EntityReference().withType(Entity.USER).withName("alice")));
+
+    assertEquals(true, RuleEngine.getInstance().apply(rule, context));
+  }
 
   @Test
   void evaluateAndReturnSkipsPlatformRulesWhenSettingsAreUnavailable() {

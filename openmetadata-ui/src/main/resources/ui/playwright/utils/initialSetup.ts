@@ -20,6 +20,7 @@ import {
   updateDefaultDataConsumerPolicy,
   updateDefaultOrganizationPolicy,
 } from './permission';
+import { setRemoteRunnerAsDefault } from './serviceIngestion';
 import { removeOrganizationPolicyAndRole } from './team';
 
 const initialSetup = async (page: Page) => {
@@ -36,6 +37,10 @@ const initialSetup = async (page: Page) => {
   if (process.env.PLAYWRIGHT_IN_NIGHTLY) {
     // disable the AutoPilot application
     await enableDisableAutoPilotApplication(apiContext, false);
+  }
+
+  if (!process.env.PLAYWRIGHT_IS_OSS) {
+    await setRemoteRunnerAsDefault(apiContext);
   }
 
   await afterAction();

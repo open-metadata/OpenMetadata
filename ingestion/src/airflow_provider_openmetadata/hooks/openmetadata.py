@@ -13,7 +13,8 @@ This hook allows storing the connection to
 an OpenMetadata server and use it for your
 operators.
 """
-from typing import Any, Dict
+
+from typing import Any, Dict  # noqa: UP035
 
 from airflow.hooks.base import BaseHook
 from airflow.models import Connection
@@ -103,18 +104,18 @@ class OpenMetadataHook(BaseHook):
             sslConfig=ssl_config,
         )
 
-        return om_conn
+        return om_conn  # noqa: RET504
 
     def test_connection(self):
         """Test that we can instantiate the ometa client with the given connection"""
         try:
             OpenMetadata(self.get_conn())
-            return True, "Connection successful"
+            return True, "Connection successful"  # noqa: TRY300
         except Exception as err:
             return False, str(err)
 
     @staticmethod
-    def get_ui_field_behaviour() -> Dict[str, Any]:
+    def get_ui_field_behaviour() -> Dict[str, Any]:  # noqa: UP006
         """Returns custom field behaviour"""
         return {
             "hidden_fields": ["login"],

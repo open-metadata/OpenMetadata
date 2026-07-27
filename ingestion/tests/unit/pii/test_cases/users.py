@@ -37,9 +37,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.user_id"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.user_id"),
         ),
         Column(
             name=ColumnName(root="email"),
@@ -50,9 +48,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.email"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.email"),
         ),
         Column(
             name=ColumnName(root="full_name"),
@@ -63,9 +59,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.full_name"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.full_name"),
         ),
         Column(
             name=ColumnName(root="phone_number"),
@@ -76,9 +70,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.phone_number"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.phone_number"),
         ),
         Column(
             name=ColumnName(root="iban"),
@@ -89,9 +81,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="string",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.iban"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.iban"),
         ),
         Column(
             name=ColumnName(root="registration_date"),
@@ -102,9 +92,7 @@ table = Table(
             precision=1,
             scale=None,
             dataTypeDisplay="date",
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="Service.database.schema.users.registration_date"
-            ),
+            fullyQualifiedName=FullyQualifiedEntityName(root="Service.database.schema.users.registration_date"),
         ),
     ],
 )

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Domain entity.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -51,9 +52,7 @@ class TestDomainEntity(unittest.TestCase):
         result = Domains.retrieve(self.entity_id)
 
         self.assertEqual(str(result.id), self.entity_id)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=DomainEntity, entity_id=self.entity_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=DomainEntity, entity_id=self.entity_id, fields=None)
 
     def test_retrieve_domain_by_name(self):
         """Test retrieving a domain by name"""
@@ -65,9 +64,7 @@ class TestDomainEntity(unittest.TestCase):
         result = Domains.retrieve_by_name(self.entity_fqn)
 
         self.assertEqual(result.fullyQualifiedName, self.entity_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=DomainEntity, fqn=self.entity_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=DomainEntity, fqn=self.entity_fqn, fields=None)
 
     def test_update_domain(self):
         """Test updating a domain"""
@@ -77,11 +74,7 @@ class TestDomainEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(entity_to_update))
-        current_entity.id = (
-            entity_to_update.id
-            if hasattr(entity_to_update, "id")
-            else UUID(self.entity_id)
-        )
+        current_entity.id = entity_to_update.id if hasattr(entity_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity

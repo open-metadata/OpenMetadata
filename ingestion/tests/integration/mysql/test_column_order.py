@@ -43,9 +43,7 @@ def test_column_order_preserved_after_adding_column_in_middle(
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
 
-    table_fqn = (
-        f"{db_service.fullyQualifiedName.root}.default.employees.column_order_test"
-    )
+    table_fqn = f"{db_service.fullyQualifiedName.root}.default.employees.column_order_test"
     table = metadata.get_by_name(entity=Table, fqn=table_fqn)
     assert table is not None
     assert len(table.columns) == 3
@@ -54,12 +52,7 @@ def test_column_order_preserved_after_adding_column_in_middle(
     assert table.columns[2].name.root == "created_at"
 
     with mysql_engine.connect() as conn:
-        conn.execute(
-            text(
-                "ALTER TABLE employees.column_order_test "
-                "ADD COLUMN email VARCHAR(255) AFTER name"
-            )
-        )
+        conn.execute(text("ALTER TABLE employees.column_order_test ADD COLUMN email VARCHAR(255) AFTER name"))
         conn.commit()
 
     run_workflow(MetadataWorkflow, ingestion_config)

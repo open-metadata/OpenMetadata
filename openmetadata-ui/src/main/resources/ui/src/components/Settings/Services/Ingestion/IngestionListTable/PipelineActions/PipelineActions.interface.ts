@@ -12,14 +12,14 @@
  */
 
 import { ButtonProps } from 'antd';
-import { IngestionServicePermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../../../enums/service.enum';
 import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { SelectedRowDetails } from '../../ingestion.interface';
 
 export interface PipelineActionsProps {
   pipeline: IngestionPipeline;
-  ingestionPipelinePermissions?: IngestionServicePermission;
+  ingestionPipelinePermissions?: OperationPermission;
   serviceCategory?: ServiceCategory;
   serviceName?: string;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;

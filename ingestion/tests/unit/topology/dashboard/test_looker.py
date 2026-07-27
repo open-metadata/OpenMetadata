@@ -11,10 +11,12 @@
 """
 Test looker source
 """
+
 import uuid
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -46,6 +48,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -104,9 +107,7 @@ MOCK_DASHBOARD_ELEMENTS = [
         body_text="Some body text",
         note_text="Some note",
         type="line",
-        query=Query(
-            model="model", view="view", share_url="https://my-looker.com/hello"
-        ),
+        query=Query(model="model", view="view", share_url="https://my-looker.com/hello"),
     )
 ]
 
@@ -141,10 +142,8 @@ class LookerUnitTest(TestCase):
     Validate how we work with Looker metadata
     """
 
-    @patch(
-        "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
@@ -155,9 +154,7 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.get().__dict__[
-            "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.looker.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -196,19 +193,15 @@ class LookerUnitTest(TestCase):
         """
 
         # Check the right return works
-        with patch.object(
-            Looker40SDK, "all_dashboards", return_value=MOCK_DASHBOARD_BASE
-        ):
+        with patch.object(Looker40SDK, "all_dashboards", return_value=MOCK_DASHBOARD_BASE):
             self.assertEqual(self.looker.get_dashboards_list(), MOCK_DASHBOARD_BASE)
 
         # Check What happens if we have an exception
         def raise_something_bad():
             raise RuntimeError("Something bad")
 
-        with patch.object(
-            Looker40SDK, "all_dashboards", side_effect=raise_something_bad
-        ):
-            self.assertRaises(Exception, LookerSource.get_dashboards_list)
+        with patch.object(Looker40SDK, "all_dashboards", side_effect=raise_something_bad):
+            self.assertRaises(Exception, LookerSource.get_dashboards_list)  # noqa: B017
 
     def test_get_dashboard_name(self):
         """
@@ -277,7 +270,7 @@ class LookerUnitTest(TestCase):
             raise RuntimeError("Something bad")
 
         with patch.object(Looker40SDK, "user", side_effect=raise_something_bad):
-            self.assertRaises(Exception, LookerSource.get_owner_ref)
+            self.assertRaises(Exception, LookerSource.get_owner_ref)  # noqa: B017
 
     def test_yield_dashboard(self):
         """
@@ -306,26 +299,16 @@ class LookerUnitTest(TestCase):
         """
         Check table cleaning
         """
-        self.assertEqual(
-            self.looker._clean_table_name("MY_TABLE", Dialect.MYSQL), "my_table"
-        )
+        self.assertEqual(self.looker._clean_table_name("MY_TABLE", Dialect.MYSQL), "my_table")
+
+        self.assertEqual(self.looker._clean_table_name("  MY_TABLE  ", Dialect.REDSHIFT), "my_table")
+
+        self.assertEqual(self.looker._clean_table_name("  my_table", Dialect.SNOWFLAKE), "my_table")
+
+        self.assertEqual(self.looker._clean_table_name("TABLE AS ALIAS", Dialect.BIGQUERY), "table")
 
         self.assertEqual(
-            self.looker._clean_table_name("  MY_TABLE  ", Dialect.REDSHIFT), "my_table"
-        )
-
-        self.assertEqual(
-            self.looker._clean_table_name("  my_table", Dialect.SNOWFLAKE), "my_table"
-        )
-
-        self.assertEqual(
-            self.looker._clean_table_name("TABLE AS ALIAS", Dialect.BIGQUERY), "table"
-        )
-
-        self.assertEqual(
-            self.looker._clean_table_name(
-                "`project_id.dataset_id.table_id` AS ALIAS", Dialect.BIGQUERY
-            ),
+            self.looker._clean_table_name("`project_id.dataset_id.table_id` AS ALIAS", Dialect.BIGQUERY),
             "project_id.dataset_id.table_id",
         )
 
@@ -335,9 +318,7 @@ class LookerUnitTest(TestCase):
         )
 
         self.assertEqual(
-            self.looker._clean_table_name(
-                "`table_catalog`.`table_schema`.`table_name`", Dialect.DATABRICKS
-            ),
+            self.looker._clean_table_name("`table_catalog`.`table_schema`.`table_name`", Dialect.DATABRICKS),
             "table_catalog.table_schema.table_name",
         )
 
@@ -399,16 +380,12 @@ class LookerUnitTest(TestCase):
         }
 
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "`@{data_prod_dw_main}.View_Dim_Countries`"
-            ),
+            self.looker._resolve_lookml_constants("`@{data_prod_dw_main}.View_Dim_Countries`"),
             "`my_dataset.View_Dim_Countries`",
         )
 
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "`@{schema_name}.@{data_prod_dw_main}.some_table`"
-            ),
+            self.looker._resolve_lookml_constants("`@{schema_name}.@{data_prod_dw_main}.some_table`"),
             "`my_schema.my_dataset.some_table`",
         )
 
@@ -426,18 +403,14 @@ class LookerUnitTest(TestCase):
 
         # Partial resolution: known resolved, unknown stripped
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "`@{data_prod_dw_main}.@{unknown}.table`"
-            ),
+            self.looker._resolve_lookml_constants("`@{data_prod_dw_main}.@{unknown}.table`"),
             "`my_dataset.table`",
         )
 
         # Empty constants map — constants stripped, table name still usable
         self.looker._lookml_constants_map = {}
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "`@{data_prod_dw_main}.View_Dim_Countries`"
-            ),
+            self.looker._resolve_lookml_constants("`@{data_prod_dw_main}.View_Dim_Countries`"),
             "`View_Dim_Countries`",
         )
 
@@ -452,17 +425,13 @@ class LookerUnitTest(TestCase):
 
         # Known constant resolved
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "SELECT * FROM @{dataset}.my_table", strip_unresolved=False
-            ),
+            self.looker._resolve_lookml_constants("SELECT * FROM @{dataset}.my_table", strip_unresolved=False),
             "SELECT * FROM prod_dataset.my_table",
         )
 
         # Unknown constant left as-is
         self.assertEqual(
-            self.looker._resolve_lookml_constants(
-                "SELECT * FROM @{unknown}.my_table", strip_unresolved=False
-            ),
+            self.looker._resolve_lookml_constants("SELECT * FROM @{unknown}.my_table", strip_unresolved=False),
             "SELECT * FROM @{unknown}.my_table",
         )
 
@@ -482,9 +451,7 @@ class LookerUnitTest(TestCase):
         with patch.object(
             Looker40SDK,
             "lookml_model_explore",
-            return_value=LookmlModelExplore(
-                sql_table_name="MY_TABLE", model_name="model2", view_name="view"
-            ),
+            return_value=LookmlModelExplore(sql_table_name="MY_TABLE", model_name="model2", view_name="view"),
         ):
             dashboard_sources = self.looker.get_dashboard_sources(MOCK_LOOKER_DASHBOARD)
             # Picks it up from the chart, not here
@@ -508,9 +475,7 @@ class LookerUnitTest(TestCase):
             patch.object(fqn, "build", return_value=None),
             patch.object(OpenMetadata, "get_by_name", return_value=None),
         ):
-            self.assertIsNone(
-                self.looker.build_lineage_request(source, db_service_name, to_entity)
-            )
+            self.assertIsNone(self.looker.build_lineage_request(source, db_service_name, to_entity))
 
         # If from_entity, return a single AddLineageRequest
         table = Table(
@@ -523,16 +488,12 @@ class LookerUnitTest(TestCase):
             patch.object(fqn, "build", return_value=None),
             patch.object(OpenMetadata, "get_by_name", return_value=table),
         ):
-            original_lineage = self.looker.build_lineage_request(
-                source, db_service_name, to_entity
-            ).right
+            original_lineage = self.looker.build_lineage_request(source, db_service_name, to_entity).right
             expected_lineage = AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=table.id.root, type="table"),
                     toEntity=EntityReference(id=to_entity.id.root, type="dashboard"),
-                    lineageDetails=LineageDetails(
-                        source=LineageSource.DashboardLineage, columnsLineage=[]
-                    ),
+                    lineageDetails=LineageDetails(source=LineageSource.DashboardLineage, columnsLineage=[]),
                 )
             )
             self.assertEqual(original_lineage, expected_lineage)
@@ -559,11 +520,9 @@ class LookerUnitTest(TestCase):
         # We don't blow up if the chart cannot be built.
         # Let's mock a random function exploding
         def something_bad():
-            raise Exception("something bad")
+            raise Exception("something bad")  # noqa: TRY002
 
-        with patch.object(
-            LookerSource, "build_chart_description", side_effect=something_bad
-        ):
+        with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
             self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
 
     def test_yield_dashboard_usage(self):
@@ -597,15 +556,11 @@ class LookerUnitTest(TestCase):
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=10), date=self.looker.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=10), date=self.looker.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             # Nothing is returned
-            self.assertEqual(
-                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
-            )
+            self.assertEqual(len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0)
 
         # But if we have usage for today but the count is 0, we'll return the details
         return_value = Dashboard(
@@ -613,9 +568,7 @@ class LookerUnitTest(TestCase):
             name="dashboard_name",
             fullyQualifiedName="dashboard_service.dashboard_name",
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
-            usageSummary=UsageDetails(
-                dailyStats=UsageStats(count=0), date=self.looker.today
-            ),
+            usageSummary=UsageDetails(dailyStats=UsageStats(count=0), date=self.looker.today),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
             self.assertEqual(
@@ -659,9 +612,7 @@ class LookerUnitTest(TestCase):
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
-            self.assertEqual(
-                len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0
-            )
+            self.assertEqual(len(list(self.looker.yield_dashboard_usage(MOCK_LOOKER_DASHBOARD))), 0)
 
     def test_derived_view_references(self):
         """
@@ -704,15 +655,11 @@ class LookerUnitTest(TestCase):
         mock_user = User(email="test@example.com")
 
         # Mock the client.user method to return our mock user
-        with patch.object(self.looker.client, "user", return_value=mock_user):
+        with patch.object(self.looker.client, "user", return_value=mock_user):  # noqa: SIM117
             # Mock the metadata.get_reference_by_email method
-            with patch.object(
-                self.looker.metadata, "get_reference_by_email"
-            ) as mock_get_ref:
+            with patch.object(self.looker.metadata, "get_reference_by_email") as mock_get_ref:
                 mock_get_ref.return_value = EntityReferenceList(
-                    root=[
-                        EntityReference(id=uuid.uuid4(), name="Test User", type="user")
-                    ]
+                    root=[EntityReference(id=uuid.uuid4(), name="Test User", type="user")]
                 )
 
                 # Test get_owner_ref with includeOwners = True
@@ -769,9 +716,7 @@ class LookerUnitTest(TestCase):
         self.looker.source_config.includeOwners = True
 
         # Mock the client.user method to raise an exception
-        with patch.object(
-            self.looker.client, "user", side_effect=Exception("API Error")
-        ):
+        with patch.object(self.looker.client, "user", side_effect=Exception("API Error")):
             # Test get_owner_ref with exception
             result = self.looker.get_owner_ref(MOCK_LOOKER_DASHBOARD)
 
@@ -806,9 +751,7 @@ class LookerUnitTest(TestCase):
                 return_value=None,
             ),
         ):
-            results = [
-                r for r in self.looker.yield_bulk_datamodel(mock_explore) if r.right
-            ]
+            results = [r for r in self.looker.yield_bulk_datamodel(mock_explore) if r.right]
             explore_result = results[0].right
             self.assertEqual(
                 explore_result.sourceUrl.root,
@@ -855,9 +798,7 @@ class LookerUnitTest(TestCase):
             ),
             patch.object(LookerSource, "add_view_lineage", return_value=iter([])),
         ):
-            results = list(
-                self.looker._process_view(view_name="my_view", explore=mock_explore)
-            )
+            results = list(self.looker._process_view(view_name="my_view", explore=mock_explore))
             view_result = results[0].right
             self.assertEqual(
                 view_result.sourceUrl.root,
@@ -904,9 +845,7 @@ class LookerUnitTest(TestCase):
             ),
             patch.object(LookerSource, "add_view_lineage", return_value=iter([])),
         ):
-            results = list(
-                self.looker._process_view(view_name="my_view", explore=mock_explore)
-            )
+            results = list(self.looker._process_view(view_name="my_view", explore=mock_explore))
             view_result = results[0].right
             self.assertIsNone(view_result.sourceUrl)
 
@@ -962,9 +901,7 @@ class LookerUnitTest(TestCase):
         mock_parser = MagicMock()
         mock_parser.find_view.return_value = None
 
-        explore = LookmlModelExplore(
-            model_name="test_model", project_name="test_project"
-        )
+        explore = LookmlModelExplore(model_name="test_model", project_name="test_project")
         self.looker._repo_credentials = True
         self.looker._project_parsers = {"test_project": mock_parser}
 
@@ -976,6 +913,178 @@ class LookerUnitTest(TestCase):
         self.looker.chart_source_state = set()
         list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
         assert len(self.looker.chart_source_state) == 1
-        assert any(
-            "looker_source_test" in fqn for fqn in self.looker.chart_source_state
+        assert any("looker_source_test" in fqn for fqn in self.looker.chart_source_state)
+
+    def test_list_datamodels_declares_datamodel_total(self):
+        """
+        Check that list_datamodels declares the DashboardDataModel progress
+        total from the explore navigation, and marks it reconcilable so
+        standalone views can grow it later.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 3)
+        self.assertTrue(counter.reconcilable)
+
+    def test_list_datamodels_excludes_filtered_models_from_total(self):
+        """
+        Check that list_datamodels excludes explores belonging to models
+        filtered out by dataModelFilterPattern when computing the
+        DashboardDataModel progress total, matching what
+        fetch_lookml_explores actually yields.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["^m2$"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_list_datamodels_excludes_filtered_explore_from_total(self):
+        """
+        Check that a dataModelFilterPattern matching an explore's composite
+        datamodel name (model_explore) excludes only that explore from the
+        total, mirroring the per-explore filter in yield_bulk_datamodel.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["m1_e2"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_get_dashboards_list_declares_dashboard_total(self):
+        """
+        Check that get_dashboards_list declares the Dashboard progress total
+        from the name-filtered dashboard list.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertEqual(registry._global["Dashboard"].total, 2)
+
+    def test_get_dashboards_list_reconcilable_when_project_filtered(self):
+        """
+        projectFilterPattern is applied downstream in the base get_dashboard
+        (needs per-dashboard project detail), so get_dashboards_list falls back
+        to a reconcilable running count instead of an unreachable pre-filter
+        total.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+        self.looker.source_config.projectFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertTrue(registry._global["Dashboard"].reconcilable)
+        self.assertIsNone(registry._global["Dashboard"].total)
+
+    def test_yield_bulk_datamodel_tracks_progress(self):
+        """
+        Check that yield_bulk_datamodel advances the DashboardDataModel
+        counter after successfully yielding the explore request.
+        """
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+            fields=LookmlModelExploreFieldset(dimensions=[], measures=[]),
         )
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_get_explore_sql", return_value=None),
+        ):
+            list(self.looker.yield_bulk_datamodel(mock_explore))
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_standalone_datamodels_tracks_progress(self):
+        """
+        Check that yield_standalone_datamodels advances the
+        DashboardDataModel counter after successfully yielding a view request.
+        """
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_view = LookMlView(name="my_view", source_file="views/my_view.view.lkml")
+        mock_parser = MagicMock()
+        mock_parser._views_cache = {"my_view": mock_view}
+        mock_parser.parsed_files = {}
+
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"my_project": mock_parser}
+        self.looker._views_cache = {}
+        self.looker._all_lookml_models = [SimpleNamespace(name="my_model")]
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_add_standalone_view_lineage", return_value=iter([])),
+        ):
+            list(self.looker.yield_standalone_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_dashboard_tracks_progress(self):
+        """
+        Check that yield_dashboard advances the Dashboard counter after
+        successfully yielding the dashboard request.
+        """
+        self.looker.progress_tracking.manual.set_total("Dashboard", 5)
+
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            list(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD))
+
+        counter = self.looker.progress_tracking.registry._global["Dashboard"]
+        self.assertGreaterEqual(counter.done, 1)

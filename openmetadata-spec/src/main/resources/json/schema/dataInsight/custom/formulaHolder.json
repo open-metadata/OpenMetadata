@@ -11,7 +11,7 @@
             "type": "string"
         },
         "function": {
-            "$ref": "dataInsightCustomChart.json#/definitions/function"
+            "$ref": "chartFunctions.json#/definitions/function"
         },
         "field": {
             "description": "Group of Result",

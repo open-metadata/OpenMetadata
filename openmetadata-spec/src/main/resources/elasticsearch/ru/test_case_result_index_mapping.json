@@ -337,7 +337,8 @@
                     "type": "text",
                     "analyzer": "om_analyzer"
                   }
-                }
+                },
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -486,6 +487,46 @@
           "id": {
             "type": "keyword",
             "ignore_above": 256
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },

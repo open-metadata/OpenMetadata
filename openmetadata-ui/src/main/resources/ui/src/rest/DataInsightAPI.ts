@@ -74,6 +74,7 @@ export const getMultiChartsPreviewByName = async (
 export const setChartDataStreamConnection = async (params: {
   chartNames: SystemChartType[];
   serviceName: string;
+  serviceType: string;
   startTime: number;
   endTime: number;
   entityLink: string;

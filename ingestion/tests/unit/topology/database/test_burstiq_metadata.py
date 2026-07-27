@@ -77,9 +77,7 @@ class TestBurstIQMetadataIngestion(TestCase):
 
         # Create a mock source instance
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
 
         # Test simple type mappings
         test_cases = [
@@ -105,9 +103,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
 
         # Test array type mappings
         test_cases = [
@@ -120,21 +116,15 @@ class TestBurstIQMetadataIngestion(TestCase):
 
         for burstiq_type, expected_result in test_cases:
             result = source._map_burstiq_datatype(burstiq_type)
-            self.assertEqual(
-                result, expected_result, f"Failed for array type {burstiq_type}"
-            )
+            self.assertEqual(result, expected_result, f"Failed for array type {burstiq_type}")
 
     def test_column_processing_simple_attribute(self):
         """Test processing a simple attribute to column"""
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
-        source._process_attribute_to_column = (
-            Burstiqsource._process_attribute_to_column.__get__(source)
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
+        source._process_attribute_to_column = Burstiqsource._process_attribute_to_column.__get__(source)
 
         # Create attribute
         attribute = BurstIQAttribute(
@@ -159,17 +149,11 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
-        source._process_attribute_to_column = (
-            Burstiqsource._process_attribute_to_column.__get__(source)
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
+        source._process_attribute_to_column = Burstiqsource._process_attribute_to_column.__get__(source)
 
         # Create array attribute
-        attribute = BurstIQAttribute(
-            name="tags", datatype="STRING_ARRAY", required=False
-        )
+        attribute = BurstIQAttribute(name="tags", datatype="STRING_ARRAY", required=False)
 
         # Process to column
         column = source._process_attribute_to_column(attribute, "patient")
@@ -184,12 +168,8 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
-        source._process_attribute_to_column = (
-            Burstiqsource._process_attribute_to_column.__get__(source)
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
+        source._process_attribute_to_column = Burstiqsource._process_attribute_to_column.__get__(source)
 
         # Create nested object attribute
         attribute = BurstIQAttribute(
@@ -217,9 +197,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(
-            source
-        )
+        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(source)
 
         # Create dictionary with primary key
         dictionary = BurstIQDictionary(
@@ -242,9 +220,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(
-            source
-        )
+        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(source)
 
         # Create dictionary with unique index
         dictionary = BurstIQDictionary(
@@ -269,9 +245,7 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(
-            source
-        )
+        source.get_table_constraints = Burstiqsource.get_table_constraints.__get__(source)
 
         # Mock metadata and context for FQN building
         source.metadata = Mock()
@@ -296,15 +270,12 @@ class TestBurstIQMetadataIngestion(TestCase):
         )
 
         # Mock fqn.build to return table FQN and fqn._build to return column FQN
-        with patch(
-            "metadata.ingestion.source.database.burstiq.metadata.fqn.build"
-        ) as mock_fqn_build, patch(
-            "metadata.ingestion.source.database.burstiq.metadata.fqn._build"
-        ) as mock_fqn_private_build:
+        with (
+            patch("metadata.ingestion.source.database.burstiq.metadata.fqn.build") as mock_fqn_build,
+            patch("metadata.ingestion.source.database.burstiq.metadata.fqn._build") as mock_fqn_private_build,
+        ):
             mock_fqn_build.return_value = "test_service.test_db.test_schema.patient"
-            mock_fqn_private_build.return_value = (
-                "test_service.test_db.test_schema.patient.patient_id"
-            )
+            mock_fqn_private_build.return_value = "test_service.test_db.test_schema.patient.patient_id"
 
             # Get constraints
             constraints = source.get_table_constraints(dictionary)
@@ -342,12 +313,8 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
-        source._process_attribute_to_column = (
-            Burstiqsource._process_attribute_to_column.__get__(source)
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
+        source._process_attribute_to_column = Burstiqsource._process_attribute_to_column.__get__(source)
         source.get_columns = Burstiqsource.get_columns.__get__(source)
 
         # Create dictionary with multiple attributes
@@ -391,17 +358,11 @@ class TestBurstIQMetadataIngestion(TestCase):
         from metadata.ingestion.source.database.burstiq.metadata import Burstiqsource
 
         source = Mock(spec=Burstiqsource)
-        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(
-            source
-        )
-        source._process_attribute_to_column = (
-            Burstiqsource._process_attribute_to_column.__get__(source)
-        )
+        source._map_burstiq_datatype = Burstiqsource._map_burstiq_datatype.__get__(source)
+        source._process_attribute_to_column = Burstiqsource._process_attribute_to_column.__get__(source)
 
         # Create attribute with precision
-        attribute = BurstIQAttribute(
-            name="amount", datatype="DECIMAL", precision=10, required=False
-        )
+        attribute = BurstIQAttribute(name="amount", datatype="DECIMAL", precision=10, required=False)
 
         # Process to column
         column = source._process_attribute_to_column(attribute, "transaction")

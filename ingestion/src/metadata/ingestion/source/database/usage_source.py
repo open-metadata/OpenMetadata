@@ -11,12 +11,13 @@
 """
 Usage Source Module
 """
+
 import csv
 import os
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta, timezone
-from typing import Iterable
+from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -42,29 +43,23 @@ class UsageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
-            if os.path.isfile(query_log_path):
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath  # pyright: ignore[reportAttributeAccessIssue]
+            if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
-            elif os.path.isdir(query_log_path):
-                file_paths = [
-                    os.path.join(query_log_path, f)
-                    for f in os.listdir(query_log_path)
-                    if f.endswith(".csv")
-                ]
+            elif os.path.isdir(query_log_path):  # noqa: PTH112
+                file_paths = [os.path.join(query_log_path, f) for f in os.listdir(query_log_path) if f.endswith(".csv")]  # noqa: PTH118, PTH208
             else:
-                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")  # noqa: TRY301
             for file_path in file_paths:
                 query_list = []
-                with open(file_path, "r", encoding="utf-8") as fin:
+                with open(file_path, "r", encoding="utf-8") as fin:  # noqa: PTH123
                     for record in csv.DictReader(fin):
                         query_dict = dict(record)
 
                         analysis_date = (
                             datetime.now(timezone.utc)
                             if not query_dict.get("start_time")
-                            else datetime.strptime(
-                                query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
-                            )
+                            else datetime.strptime(query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f")
                         )
                         query_list.append(
                             TableQuery(
@@ -92,7 +87,7 @@ class UsageSource(QueryParserSource, ABC):
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_table_queries_from_logs()
         else:
             yield from self.yield_table_queries()
@@ -113,19 +108,19 @@ class UsageSource(QueryParserSource, ABC):
             )
             query = None
             try:
-                query = self.get_sql_statement(
-                    start_time=self.start + timedelta(days=days),
-                    end_time=self.start + timedelta(days=days + 1),
-                )
-                logger.debug(f"Executing usage query: {query}")
                 for engine in self.get_engine():
+                    query = self.get_sql_statement(
+                        start_time=self.start + timedelta(days=days),
+                        end_time=self.start + timedelta(days=days + 1),
+                    )
+                    logger.debug(f"Executing usage query: {query}")
                     with engine.connect() as conn:
                         rows = conn.execute(text(query))
                         queries = []
                         row_count = 0
                         for row in rows:
                             row_count += 1
-                            row = row._asdict()
+                            row = row._asdict()  # noqa: PLW2901
                             try:
                                 row.update({k.lower(): v for k, v in row.items()})
                                 logger.debug(f"Processing row: {row}")
@@ -153,15 +148,20 @@ class UsageSource(QueryParserSource, ABC):
                                 )
                             except Exception as exc:
                                 logger.debug(traceback.format_exc())
-                                logger.warning(
-                                    f"Unexpected exception processing row [{row}]: {exc}"
-                                )
+                                logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                     logger.info(f"Processed {row_count} query log entries for usage")
+                    result_limit = getattr(self.source_config, "resultLimit", None)
+                    if isinstance(result_limit, int) and row_count >= result_limit:
+                        logger.debug(
+                            f"Reached the configured resultLimit of {result_limit} query log entries; "
+                            f"if more queries exist they were truncated and usage may be incomplete. "
+                            f"Consider increasing resultLimit."
+                        )
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:
                     logger.debug(
-                        (
+                        (  # noqa: UP034
                             f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value) or query}"
                             "\n##########################"
                         )
@@ -170,6 +170,15 @@ class UsageSource(QueryParserSource, ABC):
                 logger.error(f"Source usage processing error: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
+        days = max(1, (self.end - self.start).days)
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        if result_limit is not None:
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit * days)
+        processed = 0
         for table_queries in self.get_table_query():
             if table_queries:
+                count = len(table_queries.queries)  # pyright: ignore[reportAttributeAccessIssue]
+                self.progress_tracking.manual.track("Queries", count)
+                processed += count
                 yield Either(right=table_queries)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", processed)

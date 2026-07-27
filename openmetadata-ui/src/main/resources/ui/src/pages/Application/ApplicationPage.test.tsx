@@ -80,7 +80,7 @@ jest.mock('../../rest/applicationAPI', () => ({
   getApplicationList: jest.fn(() => mockGetApplicationList()),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test'),
 }));
 

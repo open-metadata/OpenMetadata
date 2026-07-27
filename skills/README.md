@@ -56,6 +56,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 | [Systematic Debugging](systematic-debugging/SKILL.md) | `/systematic-debugging` | 4-phase root cause analysis |
 | [Code Review](code-review/SKILL.md) | `/code-review` | Two-stage review: spec compliance then code quality |
 | [Verification](verification/SKILL.md) | `/verification` | Evidence-based completion — show test output, not claims |
+| [PR Checklist](pr-checklist/SKILL.md) | `/pr-checklist` | Walk the PR template (issue link, design, tests + coverage, UI recording, manual tests) and draft the PR body |
 
 ### Connector Skills
 
@@ -74,7 +75,7 @@ The `openmetadata-workflow` meta-skill is loaded at session start and directs Cl
 |-------|---------|
 | [java-reviewer](agents/java-reviewer.md) | Review Java code — Dropwizard, Flyway, JUnit 5, spotless, 90% coverage |
 | [python-reviewer](agents/python-reviewer.md) | Review Python code — Pydantic 2.x, pytest, connector architecture, 90% coverage |
-| [frontend-reviewer](agents/frontend-reviewer.md) | Review TypeScript/React — core components, `tw:` prefix, i18n, no MUI, Jest/Playwright |
+| [frontend-reviewer](agents/frontend-reviewer.md) | Review TypeScript/React — core components, `tw:` prefix, i18n, Jest/Playwright |
 
 ### Connector Agents
 
@@ -96,7 +97,6 @@ The plugin includes hooks (`hooks/hooks.json`) that fire automatically:
 | Schema regeneration | PostToolUse | Reminds to run `make generate` after JSON schema edits |
 
 Additional hooks in `.claude/settings.json` (in-repo, no plugin needed):
-- Block MUI imports
 - Remind `yarn parse-schema` after connection schema edits
 - Warn about `any` type in TypeScript
 

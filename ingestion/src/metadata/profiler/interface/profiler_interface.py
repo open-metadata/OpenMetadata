@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -45,12 +45,12 @@ from metadata.utils.ssl_manager import get_ssl_connection
 class ProfilerProcessorStatus(Status):
     """Keep track of the entity being processed"""
 
-    entity: Optional[str] = None
+    entity: Optional[str] = None  # noqa: UP045
 
     def scanned(self, record: Any) -> None:
         self.records.append(record)
 
-    def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:
+    def failed_profiler(self, error: str, stack_trace: Optional[str] = None) -> None:  # noqa: UP045
         self.failed(
             StackTraceError(
                 name=self.entity if self.entity else "",
@@ -65,12 +65,12 @@ class ProfilerInterface(Root, ABC):
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
         ometa_client: OpenMetadata,
         entity: Table,
         source_config: DatabaseServiceProfilerPipeline,
         sampler: SamplerInterface,
-        thread_count: Optional[int] = None,
+        thread_count: Optional[int] = None,  # noqa: UP045
         timeout_seconds: int = 43200,
         **kwargs,
     ):
@@ -118,7 +118,7 @@ class ProfilerInterface(Root, ABC):
         source_config: DatabaseServiceProfilerPipeline,
         service_connection_config,
         sampler: SamplerInterface,
-        ometa_client: Optional[OpenMetadata],
+        ometa_client: Optional[OpenMetadata],  # noqa: UP045
         **kwargs,
     ) -> "ProfilerInterface":
         """create class method is used to dispatch the profiler protocol to the
@@ -161,7 +161,7 @@ class ProfilerInterface(Root, ABC):
     @abstractmethod
     def _compute_table_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner,
         *args,
         **kwargs,
@@ -172,11 +172,11 @@ class ProfilerInterface(Root, ABC):
     @abstractmethod
     def _compute_static_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner,
         *args,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any]:  # noqa: UP006
         """Get metrics
         Return:
             Dict[str, Any]: dict of metrics tio be merged into the final column profile. Keys need to be compatible with
@@ -198,7 +198,7 @@ class ProfilerInterface(Root, ABC):
     @abstractmethod
     def _compute_window_metrics(
         self,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         runner: QueryRunner,
         *args,
         **kwargs,
@@ -209,18 +209,16 @@ class ProfilerInterface(Root, ABC):
     @abstractmethod
     def _compute_system_metrics(
         self,
-        metrics: Type[System],
+        metrics: Type[System],  # noqa: UP006
         runner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:
+    ) -> List[SystemProfile]:  # noqa: UP006
         """Get metrics"""
         raise NotImplementedError
 
     @abstractmethod
-    def _compute_custom_metrics(
-        self, metrics: List[CustomMetric], runner, *args, **kwargs
-    ):
+    def _compute_custom_metrics(self, metrics: List[CustomMetric], runner, *args, **kwargs):  # noqa: UP006
         """Compute custom metrics"""
         raise NotImplementedError
 
@@ -230,16 +228,12 @@ class ProfilerInterface(Root, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_composed_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ) -> dict:
+    def get_composed_metrics(self, column: Column, metric: Metrics, column_results: Dict) -> dict:  # noqa: UP006
         """run profiler metrics"""
         raise NotImplementedError
 
     @abstractmethod
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict
-    ) -> dict:
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict) -> dict:  # noqa: UP006
         """run profiler metrics"""
         raise NotImplementedError
 

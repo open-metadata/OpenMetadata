@@ -11,6 +11,7 @@
 """
 Test Atlas using the topology
 """
+
 import json
 from pathlib import Path
 from unittest import TestCase
@@ -90,7 +91,7 @@ mock_atlas_config = {
 
 
 mock_file_path = Path(__file__).parent / "atlas_dataset.json"
-with open(mock_file_path, encoding="UTF-8") as file:
+with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 
@@ -286,10 +287,8 @@ class AtlasUnitTest(TestCase):
     Atlas Metadata Unit Test
     """
 
-    @patch(
-        "metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch("metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
@@ -298,14 +297,10 @@ class AtlasUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(
-                mock_atlas_config["workflowConfig"]["openMetadataServerConfig"]
-            )
+            OpenMetadataConnection.model_validate(mock_atlas_config["workflowConfig"]["openMetadataServerConfig"])
         )
 
-        self.database_service = (
-            mock_database_service_object
-        ) = self.metadata.create_or_update(
+        self.database_service = mock_database_service_object = self.metadata.create_or_update(
             CreateDatabaseServiceRequest(
                 name="hive",
                 serviceType="Hive",
@@ -429,9 +424,7 @@ class AtlasUnitTest(TestCase):
         return []
 
     def mock_create_tag(self):
-        classification = CreateClassificationRequest(
-            description="test tag", name="AtlasMetadata"
-        )
+        classification = CreateClassificationRequest(description="test tag", name="AtlasMetadata")
 
         self.metadata.create_or_update(classification)
         self.metadata.create_or_update(
@@ -451,18 +444,11 @@ class AtlasUnitTest(TestCase):
         """
         self.mock_create_tag()
         _ = list(self.atlas_source._iter())
-        updated_database = self.metadata.get_by_name(
-            entity=Database, fqn="hive.Reporting"
-        )
+        updated_database = self.metadata.get_by_name(entity=Database, fqn="hive.Reporting")
         assert updated_database.description.root == EXPECTED_DATABASE_DESCRIPTION
 
-        updated_database_schema = self.metadata.get_by_name(
-            entity=DatabaseSchema, fqn="hive.Reporting.Reporting"
-        )
-        assert (
-            updated_database_schema.description.root
-            == EXPTECTED_DATABASE_SCHEMA_DESCRIPTION
-        )
+        updated_database_schema = self.metadata.get_by_name(entity=DatabaseSchema, fqn="hive.Reporting.Reporting")
+        assert updated_database_schema.description.root == EXPTECTED_DATABASE_SCHEMA_DESCRIPTION
 
         updated_table = self.metadata.get_by_name(
             entity=Table,

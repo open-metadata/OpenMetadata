@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,7 +51,7 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
-  void extensionFieldMustBeFlattenedInAllIndices() {
+  void extensionFieldMustBeDisabledObjectInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
       String entity = entry.getKey();
@@ -62,9 +63,42 @@ class IndexMappingNestedFieldConsistencyTest {
     }
     assertTrue(
         violations.isEmpty(),
-        "The 'extension' field must have \"type\": \"flattened\" in all index mappings. "
-            + "Using 'keyword' or 'object' will cause reindex failures when custom properties "
-            + "(entityExtension) contain object/map values. Violations: "
+        "The 'extension' field must be \"type\": \"object\" with \"enabled\": false in all index "
+            + "mappings. It stores arbitrary custom-property (entityExtension) values without "
+            + "indexing them, which avoids field explosion and the Lucene 32766-byte immense-term "
+            + "failure that flattened/flat_object leaves hit on OpenSearch. Custom-property search "
+            + "goes through customPropertiesTyped. Violations: "
+            + violations);
+  }
+
+  @Test
+  void taggableIndexFieldsMustAppearTogether() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      boolean hasClassificationTags = properties.has("classificationTags");
+      boolean hasGlossaryTags = properties.has("glossaryTags");
+      if (hasClassificationTags != hasGlossaryTags) {
+        violations.add(
+            entity
+                + " (classificationTags="
+                + hasClassificationTags
+                + ", glossaryTags="
+                + hasGlossaryTags
+                + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Indexes whose backing index class implements TaggableIndex must define both "
+            + "'classificationTags' and 'glossaryTags' as top-level keyword fields. "
+            + "TaggableIndex.applyTagFields() writes both into every doc; if the mapping omits "
+            + "one, OpenSearch dynamic-maps it as text and aggregations/sorts/scripts on it fail "
+            + "at reindex time. Violations: "
             + violations);
   }
 
@@ -91,6 +125,59 @@ class IndexMappingNestedFieldConsistencyTest {
             + ". RBAC nested queries will fail on these indices.");
   }
 
+  @Test
+  void aiGovernanceProjectionFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String entity : List.of("aiApplication", "llmModel", "mcpServer")) {
+      for (String language : LANGUAGES) {
+        JsonNode mapping = allMappings.get(entity + "[" + language + "]");
+        JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+        JsonNode aiGovernance = properties == null ? null : properties.get("aiGovernance");
+        if (aiGovernance == null) {
+          violations.add(entity + "[" + language + "] missing aiGovernance");
+          continue;
+        }
+        assertEquals("object", aiGovernance.path("type").asText(), entity + "[" + language + "]");
+        JsonNode projection = aiGovernance.path("properties");
+        for (String field :
+            List.of(
+                "assetSubtype",
+                "registrationStatus",
+                "riskLevel",
+                "accessesPii",
+                "accessesSensitiveData",
+                "dataCategories",
+                "detection",
+                "complianceStatus",
+                "frameworks",
+                "euRiskClassification",
+                "regions",
+                "lastAssessedAt",
+                "affectedUserCount")) {
+          if (!projection.has(field)) {
+            violations.add(entity + "[" + language + "] missing aiGovernance." + field);
+          }
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "AI governance projection mapping gaps: " + violations);
+  }
+
+  @Test
+  void auditReportIndexFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      JsonNode mapping = allMappings.get("auditReport[" + language + "]");
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      for (String field : List.of("status", "scope", "format", "requestedAt", "completedAt")) {
+        if (properties == null || !properties.has(field)) {
+          violations.add("auditReport[" + language + "] missing " + field);
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "Audit report mapping gaps: " + violations);
+  }
+
   private static void findExtensionTypeViolations(
       JsonNode properties, String currentPath, List<String> violations, String entity) {
     Iterator<String> fieldNames = properties.fieldNames();
@@ -100,9 +187,13 @@ class IndexMappingNestedFieldConsistencyTest {
       String path = currentPath.isEmpty() ? name : currentPath + "." + name;
       if (name.equals("extension")) {
         String type = fieldNode.path("type").asText("");
-        if (!"flattened".equals(type)) {
+        boolean disabledObject =
+            "object".equals(type) && !fieldNode.path("enabled").asBoolean(true);
+        if (!disabledObject) {
           String detail =
-              type.isEmpty() ? "missing \"type\" (implicit object)" : "\"" + type + "\"";
+              type.isEmpty()
+                  ? "missing \"type\" (implicit object)"
+                  : "\"" + type + "\" enabled=" + fieldNode.path("enabled").asText("true");
           violations.add(entity + " (" + path + "): " + detail);
         }
       }

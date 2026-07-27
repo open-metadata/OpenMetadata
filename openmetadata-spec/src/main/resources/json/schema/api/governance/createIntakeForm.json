@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/createIntakeForm.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateIntakeFormRequest",
+  "description": "Create IntakeForm API request.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.governance.CreateIntakeForm",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Unique name of the IntakeForm.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what governance policy this IntakeForm enforces.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "description": "The entity type this IntakeForm applies to.",
+      "$ref": "../../governance/intakeForm.json#/definitions/targetEntityType"
+    },
+    "enabled": {
+      "description": "Whether this IntakeForm is currently enforced.",
+      "type": "boolean",
+      "default": true
+    },
+    "requiredFields": {
+      "description": "Additional required fields enforced by this IntakeForm.",
+      "type": "array",
+      "items": {
+        "$ref": "../../governance/intakeForm.json#/definitions/requiredField"
+      },
+      "default": []
+    },
+    "owners": {
+      "description": "Owners of this IntakeForm configuration.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    }
+  },
+  "required": ["name", "entityType"],
+  "additionalProperties": false
+}

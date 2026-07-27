@@ -17,6 +17,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DIRECTORY_DUMMY_DATA } from '../constants/Directory.constant';
@@ -25,7 +26,7 @@ import { EntityTabs } from '../enums/entity.enum';
 import { Directory } from '../generated/entity/data/directory';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import {
   DirectoryDetailPageTabProps,
   getDirectoryDetailsPageTabs,
@@ -39,7 +40,8 @@ type DirectoryWidgetKeys =
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class DirectoryClassBase {
   defaultWidgetHeight: Record<DirectoryWidgetKeys, number>;
@@ -52,6 +54,7 @@ class DirectoryClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -139,6 +142,14 @@ class DirectoryClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
@@ -171,6 +182,7 @@ class DirectoryClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

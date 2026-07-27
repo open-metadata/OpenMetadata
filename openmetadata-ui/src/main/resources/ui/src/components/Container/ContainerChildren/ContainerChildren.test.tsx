@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
@@ -54,22 +55,54 @@ jest.mock('../../Customization/GenericTab/GenericTab', () => ({
 }));
 
 jest.mock('../../../rest/storageAPI');
-jest.mock('../../../hooks/paging/usePaging', () => ({
-  usePaging: jest.fn().mockImplementation(() => ({
-    pageSize: 15,
-    paging: {
-      total: 2,
-    },
-  })),
-}));
+jest.mock('../../../hooks/paging/usePaging', () => {
+  const handlers = {
+    handlePageChange: jest.fn(),
+    handlePageSizeChange: jest.fn(),
+    handlePagingChange: jest.fn(),
+  };
+
+  return {
+    usePaging: jest.fn().mockImplementation(() => ({
+      pageSize: 15,
+      paging: {
+        total: 2,
+      },
+      ...handlers,
+    })),
+  };
+});
 
 describe('ContainerChildren', () => {
-  it('Should call fetch container function on load', () => {
+  beforeEach(() => {
+    (getContainerChildrenByName as jest.Mock).mockReset();
+    (getContainerChildrenByName as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+  });
+
+  it('Should call fetch container function on load with non-deleted include', () => {
     render(<ContainerChildren />, { wrapper: MemoryRouter });
 
     expect(getContainerChildrenByName).toHaveBeenCalledWith('', {
       limit: 15,
       offset: 0,
+      include: Include.NonDeleted,
+    });
+  });
+
+  it('Should switch include to deleted when the toggle is enabled', async () => {
+    render(<ContainerChildren />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByTestId('show-deleted'));
+
+    await waitFor(() => {
+      expect(getContainerChildrenByName).toHaveBeenLastCalledWith('', {
+        limit: 15,
+        offset: 0,
+        include: Include.Deleted,
+      });
     });
   });
 

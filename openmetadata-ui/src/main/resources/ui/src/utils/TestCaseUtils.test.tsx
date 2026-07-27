@@ -27,7 +27,7 @@ jest.mock('../hoc/LimitWrapper', () => ({
     <div>{children}</div>
   ),
 }));
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityPureUtils', () => ({
   getEntityImportPath: jest.fn(
     (entityType, fqn) => `/import/${entityType}/${fqn}`
   ),

@@ -1,6 +1,7 @@
 """
 Comprehensive unit tests for Team entity with full mock coverage.
 """
+
 import unittest
 from unittest.mock import MagicMock
 from uuid import UUID
@@ -70,9 +71,7 @@ class TestTeamEntity(unittest.TestCase):
         # Assert
         self.assertEqual(str(result.id), self.team_id)
         self.assertEqual(result.name, "data-engineering")
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TeamEntity, entity_id=self.team_id, fields=None
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TeamEntity, entity_id=self.team_id, fields=None)
 
     def test_retrieve_team_with_users(self):
         """Test retrieving team with users"""
@@ -107,9 +106,7 @@ class TestTeamEntity(unittest.TestCase):
         self.assertEqual(len(result.users), 2)
         self.assertEqual(result.users[0].name, "john.doe")
         self.assertEqual(result.userCount, 2)
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=TeamEntity, entity_id=self.team_id, fields=fields
-        )
+        self.mock_ometa.get_by_id.assert_called_once_with(entity=TeamEntity, entity_id=self.team_id, fields=fields)
 
     def test_retrieve_team_by_name(self):
         """Test retrieving a team by name"""
@@ -126,9 +123,7 @@ class TestTeamEntity(unittest.TestCase):
 
         # Assert
         self.assertEqual(result.fullyQualifiedName, self.team_fqn)
-        self.mock_ometa.get_by_name.assert_called_once_with(
-            entity=TeamEntity, fqn=self.team_fqn, fields=None
-        )
+        self.mock_ometa.get_by_name.assert_called_once_with(entity=TeamEntity, fqn=self.team_fqn, fields=None)
 
     def test_update_team(self):
         """Test updating a team"""
@@ -140,9 +135,7 @@ class TestTeamEntity(unittest.TestCase):
 
         # Mock the get_by_id to return the current state
         current_entity = MagicMock(spec=type(team_to_update))
-        current_entity.id = (
-            team_to_update.id if hasattr(team_to_update, "id") else UUID(self.entity_id)
-        )
+        current_entity.id = team_to_update.id if hasattr(team_to_update, "id") else UUID(self.entity_id)
         self.mock_ometa.get_by_id.return_value = current_entity
 
         # Mock the patch to return the updated entity
@@ -301,9 +294,7 @@ class TestTeamEntity(unittest.TestCase):
 
         # Assert
         self.assertIsNotNone(result.profile)
-        self.assertEqual(
-            result.profile.images.image, "https://company.com/teams/data-eng.png"
-        )
+        self.assertEqual(result.profile.images.image, "https://company.com/teams/data-eng.png")
 
 
 if __name__ == "__main__":

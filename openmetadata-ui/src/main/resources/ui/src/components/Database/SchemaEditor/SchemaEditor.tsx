@@ -15,6 +15,7 @@ import Icon from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
+import 'codemirror/addon/display/placeholder';
 import 'codemirror/addon/edit/closebrackets.js';
 import 'codemirror/addon/edit/matchbrackets.js';
 import 'codemirror/addon/fold/brace-fold';
@@ -28,7 +29,10 @@ import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
+import {
+  Controlled as CodeMirror,
+  UnControlled as UnControlledCodeMirror,
+} from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
@@ -40,6 +44,8 @@ import { SchemaEditorProps } from './SchemaEditor.interface';
 
 const SchemaEditor = ({
   value = '',
+  autoFormat = true,
+  uncontrolled = false,
   className = '',
   mode = {
     name: CSMode.JAVASCRIPT,
@@ -71,26 +77,42 @@ const SchemaEditor = ({
     ...options,
   };
   const [internalValue, setInternalValue] = useState<string>(
-    getSchemaEditorValue(value)
+    getSchemaEditorValue(value, autoFormat)
   );
   const editorInstance = useRef<Editor | null>(null);
   const wasHiddenRef = useRef(false);
   const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
+
+  // In uncontrolled mode CodeMirror owns the buffer, so the value prop is only
+  // the initial content. Freezing it prevents the parent's onChange echo from
+  // re-hydrating the editor and losing the caret (e.g. after autoCloseBrackets).
+  const initialValueRef = useRef<string>(
+    getSchemaEditorValue(value, autoFormat)
+  );
+  // Latest external value; used to flush a pending update on blur when the
+  // sync effect had to skip it because the editor was focused.
+  const latestValueRef = useRef<string>(
+    getSchemaEditorValue(value, autoFormat)
+  );
 
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
     value: string
   ): void => {
-    setInternalValue(getSchemaEditorValue(value));
+    setInternalValue(getSchemaEditorValue(value, autoFormat));
   };
   const handleEditorInputChange = (
     _editor: Editor,
     _data: EditorChange,
     value: string
   ): void => {
+    const nextValue = getSchemaEditorValue(value, autoFormat);
+    if (uncontrolled) {
+      setInternalValue(nextValue);
+    }
     if (!isUndefined(onChange)) {
-      onChange(getSchemaEditorValue(value));
+      onChange(nextValue);
     }
   };
 
@@ -118,8 +140,44 @@ const SchemaEditor = ({
   }, [editorInstance, wrapperRef]);
 
   useEffect(() => {
-    setInternalValue(getSchemaEditorValue(value));
-  }, [value]);
+    setInternalValue(getSchemaEditorValue(value, autoFormat));
+  }, [value, autoFormat]);
+
+  // Uncontrolled editors own their buffer, so react-codemirror2 does not push
+  // later value changes in. Sync external updates (e.g. an async-loaded saved
+  // config) ourselves, but only while the editor is blurred so we never disturb
+  // the caret or an in-progress edit.
+  useEffect(() => {
+    const nextValue = getSchemaEditorValue(value, autoFormat);
+    latestValueRef.current = nextValue;
+    const editor = editorInstance.current;
+    if (
+      uncontrolled &&
+      editor &&
+      !editor.hasFocus() &&
+      editor.getValue() !== nextValue
+    ) {
+      editor.setValue(nextValue);
+    }
+  }, [value, autoFormat, uncontrolled]);
+
+  // A value that arrived while the editor was focused is skipped above; apply
+  // any such pending change once the editor loses focus.
+  useEffect(() => {
+    const editor = editorInstance.current;
+    let detach = () => undefined as void;
+    if (uncontrolled && editor) {
+      const flushOnBlur = () => {
+        if (editor.getValue() !== latestValueRef.current) {
+          editor.setValue(latestValueRef.current);
+        }
+      };
+      editor.on('blur', flushOnBlur);
+      detach = () => editor.off('blur', flushOnBlur);
+    }
+
+    return detach;
+  }, [uncontrolled]);
 
   // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
   // When a parent sets display:none, boundingClientRect collapses to 0.
@@ -183,19 +241,33 @@ const SchemaEditor = ({
         </div>
       )}
 
-      <CodeMirror
-        className={editorClass}
-        editorDidMount={(editor) => {
-          editorInstance.current = editor;
-        }}
-        editorWillUnmount={editorWillUnmount}
-        options={defaultOptions}
-        ref={wrapperRef}
-        value={internalValue}
-        onBeforeChange={handleEditorInputBeforeChange}
-        onChange={handleEditorInputChange}
-        {...(onFocus && { onFocus })}
-      />
+      {uncontrolled ? (
+        <UnControlledCodeMirror
+          className={editorClass}
+          editorDidMount={(editor) => {
+            editorInstance.current = editor;
+          }}
+          editorWillUnmount={editorWillUnmount}
+          options={defaultOptions}
+          value={initialValueRef.current}
+          onChange={handleEditorInputChange}
+          {...(onFocus && { onFocus })}
+        />
+      ) : (
+        <CodeMirror
+          className={editorClass}
+          editorDidMount={(editor) => {
+            editorInstance.current = editor;
+          }}
+          editorWillUnmount={editorWillUnmount}
+          options={defaultOptions}
+          ref={wrapperRef}
+          value={internalValue}
+          onBeforeChange={handleEditorInputBeforeChange}
+          onChange={handleEditorInputChange}
+          {...(onFocus && { onFocus })}
+        />
+      )}
     </div>
   );
 };

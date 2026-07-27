@@ -18,9 +18,9 @@
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": [
-        "databricks+connector"
+        "databricks"
       ],
-      "default": "databricks+connector"
+      "default": "databricks"
     }
   },
   "properties": {
@@ -34,7 +34,7 @@
       "title": "Connection Scheme",
       "description": "SQLAlchemy driver scheme options.",
       "$ref": "#/definitions/databricksScheme",
-      "default": "databricks+connector"
+      "default": "databricks"
     },
     "hostPort": {
       "title": "Host and Port",
@@ -143,6 +143,10 @@
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsIncrementalMetadataExtraction": {
+      "title": "Supports Incremental Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsIncrementalMetadataExtraction"
     }
   },
   "additionalProperties": false,

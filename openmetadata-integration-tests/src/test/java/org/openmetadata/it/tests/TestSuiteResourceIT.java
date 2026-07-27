@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,18 +41,25 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 
 /**
@@ -176,17 +184,6 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().testSuites().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().testSuites().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override
@@ -920,8 +917,145 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   // ===================================================================
+  // DATA QUALITY REPORT BATCH TESTS
+  // ===================================================================
+
+  @Test
+  void test_dataQualityReportBatch_matchesSingleEndpoint(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Table table = createTableForBasicTestSuite(ns, "dq_batch_parity");
+    TestSuite testSuite = createBasicTestSuiteForTable(table);
+    List<TestCase> testCases = createTestCases(client, ns, table, 4);
+    recordTestCaseResults(client, testCases, 2, 2);
+
+    String scopedQuery = scopedTestCaseQuery(testSuite.getId());
+    String statusAgg = "bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus";
+    String coverageAgg = "bucketName=entityWithTests:aggType=cardinality:field=originEntityFQN";
+
+    Awaitility.await("test case results indexed for data quality report")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    getDataQualityReport(scopedQuery, "testCase", statusAgg).getData().isEmpty(),
+                    "Expected status aggregation to return data"));
+
+    DataQualityReportBatchRequest request =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(
+                    reportRequest("status", scopedQuery, "testCase", statusAgg),
+                    reportRequest("coverage", scopedQuery, "testCase", coverageAgg)));
+
+    DataQualityReportBatchResponse response = getDataQualityReportBatch(request);
+    Map<String, DataQualityReportResult> byKey = resultsByKey(response);
+
+    assertEquals(2, byKey.size());
+    assertEquals(
+        JsonUtils.pojoToJson(getDataQualityReport(scopedQuery, "testCase", statusAgg)),
+        JsonUtils.pojoToJson(byKey.get("status").getReport()),
+        "Batch status report should match the single endpoint result");
+    assertEquals(
+        JsonUtils.pojoToJson(getDataQualityReport(scopedQuery, "testCase", coverageAgg)),
+        JsonUtils.pojoToJson(byKey.get("coverage").getReport()),
+        "Batch coverage report should match the single endpoint result");
+  }
+
+  @Test
+  void test_dataQualityReportBatch_isolatesPerItemFailures(TestNamespace ns) {
+    Table table = createTableForBasicTestSuite(ns, "dq_batch_isolation");
+    TestSuite testSuite = createBasicTestSuiteForTable(table);
+    String scopedQuery = scopedTestCaseQuery(testSuite.getId());
+    String statusAgg = "bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus";
+
+    DataQualityReportBatchRequest request =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(
+                    reportRequest("ok", scopedQuery, "testCase", statusAgg),
+                    reportRequest("bad", scopedQuery, "index_that_does_not_exist", statusAgg)));
+
+    DataQualityReportBatchResponse response = getDataQualityReportBatch(request);
+    Map<String, DataQualityReportResult> byKey = resultsByKey(response);
+
+    assertNotNull(byKey.get("ok").getReport(), "Valid item should return a report");
+    assertNull(byKey.get("bad").getReport(), "Failed item should not return a report");
+    assertNotNull(byKey.get("bad").getError(), "Failed item should carry an error message");
+  }
+
+  @Test
+  void test_dataQualityReportBatch_validation_400(TestNamespace ns) {
+    assertThrows(
+        Exception.class,
+        () ->
+            getDataQualityReportBatch(new DataQualityReportBatchRequest().withRequests(List.of())),
+        "Empty batch should be rejected");
+
+    DataQualityReportBatchRequest missingAggregation =
+        new DataQualityReportBatchRequest()
+            .withRequests(
+                List.of(new DataQualityReportRequest().withKey("k").withIndex("testCase")));
+    assertThrows(
+        Exception.class,
+        () -> getDataQualityReportBatch(missingAggregation),
+        "Batch item without aggregationQuery should be rejected");
+  }
+
+  // ===================================================================
   // HELPER METHODS
   // ===================================================================
+
+  private String scopedTestCaseQuery(UUID testSuiteId) {
+    return """
+        {"query":{"bool":{"must":[{"term":{"testSuite.id":"%s"}},{"term":{"deleted":false}}]}}}"""
+        .formatted(testSuiteId);
+  }
+
+  private DataQualityReportRequest reportRequest(
+      String key, String q, String index, String aggregationQuery) {
+    return new DataQualityReportRequest()
+        .withKey(key)
+        .withQ(q)
+        .withIndex(index)
+        .withAggregationQuery(aggregationQuery);
+  }
+
+  private Map<String, DataQualityReportResult> resultsByKey(
+      DataQualityReportBatchResponse response) {
+    return response.getResults().stream()
+        .collect(Collectors.toMap(DataQualityReportResult::getKey, result -> result));
+  }
+
+  private DataQualityReport getDataQualityReport(String q, String index, String aggregationQuery) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", q)
+            .queryParam("index", index)
+            .queryParam("aggregationQuery", aggregationQuery)
+            .build();
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataQuality/testSuites/dataQualityReport",
+            null,
+            DataQualityReport.class,
+            options);
+  }
+
+  private DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/dataQuality/testSuites/dataQualityReport/batch",
+            request,
+            DataQualityReportBatchResponse.class);
+  }
 
   private Table createTableForBasicTestSuite(TestNamespace ns, String suffix) {
     OpenMetadataClient client = SdkClients.adminClient();

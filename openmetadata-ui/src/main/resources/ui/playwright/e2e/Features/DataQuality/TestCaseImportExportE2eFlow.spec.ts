@@ -18,6 +18,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage, uuid } from '../../../utils/common';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import {
   cleanupDownloadedCSV,
   performE2EExportImportFlow,
@@ -67,6 +68,18 @@ test.describe(
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
       await table.createTestCase(apiContext);
+
+      // The export step inside performE2EExportImportFlow reads the table's
+      // test cases via search. Without waiting for ES indexing here, the
+      // just-created test case is missing from the exported CSV, so the
+      // import sees only the 4 added rows (not 5 = 1 existing + 4 added) and
+      // `processed-row` reports "4" instead of the expected "5".
+      await waitForSearchIndexed(
+        apiContext,
+        table.testCasesResponseData[0]?.fullyQualifiedName,
+        'test_case_search_index'
+      );
+
       await afterAction();
     });
 
@@ -86,7 +99,7 @@ test.describe(
      * 5. Verify Bulk Edit capabilities (Display Name, Tags)
      */
     test('Admin: Complete export-import-validate flow', async ({ page }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(page);
       await performE2EExportImportFlow(page, table, 'admin');
     });
@@ -128,6 +141,16 @@ test.describe(
 
       await table.create(apiContext);
       await table.createTestCase(apiContext);
+
+      // See the matching note in the Admin describe — without waiting for
+      // ES indexing the export misses the just-created test case and
+      // processed-row reports "4" instead of "5".
+      await waitForSearchIndexed(
+        apiContext,
+        table.testCasesResponseData[0]?.fullyQualifiedName,
+        'test_case_search_index'
+      );
+
       await afterAction();
     });
 
@@ -152,7 +175,7 @@ test.describe(
     test('EditAll User: Complete export-import-validate flow', async ({
       testCaseEditPage,
     }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(testCaseEditPage);
       await performE2EExportImportFlow(testCaseEditPage, table, 'edituser');
     });

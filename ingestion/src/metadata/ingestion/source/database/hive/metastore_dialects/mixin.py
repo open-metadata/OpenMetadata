@@ -11,6 +11,7 @@
 """
 Hive Metastore Dialect Mixin
 """
+
 from sqlalchemy.engine import reflection
 
 from metadata.ingestion.source.database.hive.utils import get_columns

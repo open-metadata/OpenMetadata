@@ -43,27 +43,52 @@ export default class Fqn {
   }
 
   // Equivalent of Java's FullyQualifiedName#quoteName
-  static quoteName(name: string) {
+  static quoteName(name: string): string {
+    this.validateName(name);
+
+    if (this.isQuotedName(name)) {
+      const unquotedName = this.decodeQuotedName(name);
+
+      return this.needsQuoting(unquotedName) ? name : unquotedName;
+    }
+
+    return this.needsQuoting(name)
+      ? '"' + name.replace(/"/g, '""') + '"'
+      : name;
+  }
+
+  // Equivalent of Java's FullyQualifiedName#unquoteName
+  static unquoteName(name: string): string {
+    this.validateName(name);
+
+    return this.isQuotedName(name) ? this.decodeQuotedName(name) : name;
+  }
+
+  private static validateName(name: string): void {
     const matcher = /^(")([^"]+)(")$|^(.*)$/.exec(name);
     if (matcher?.[0].length !== name.length) {
       throw new Error(`${i18n.t('label.invalid-name')} ${name}`);
     }
+  }
 
-    // Name matches quoted string "sss".
-    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
-    if (matcher[1] != null) {
-      const unquotedName = matcher[2];
+  private static needsQuoting(rawName: string): boolean {
+    return rawName.includes('.') || rawName.includes('"');
+  }
 
-      return unquotedName.includes('.') ? name : unquotedName;
+  private static isQuotedName(name: string): boolean {
+    if (
+      name.length < 2 ||
+      name.charAt(0) !== '"' ||
+      name.charAt(name.length - 1) !== '"'
+    ) {
+      return false;
     }
+    const body = name.substring(1, name.length - 1);
 
-    // Name matches unquoted string sss
-    // If unquoted string contains ".", return quoted "sss", else unquoted sss
-    const unquotedName = matcher[4];
-    if (!unquotedName.includes('"')) {
-      return unquotedName.includes('.') ? '"' + name + '"' : unquotedName;
-    }
+    return !body.replace(/""/g, '').includes('"');
+  }
 
-    throw new Error(`${i18n.t('label.invalid-name')} ${name}`);
+  private static decodeQuotedName(name: string): string {
+    return name.substring(1, name.length - 1).replace(/""/g, '"');
   }
 }

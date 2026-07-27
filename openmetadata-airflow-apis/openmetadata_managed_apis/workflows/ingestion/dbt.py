@@ -13,6 +13,7 @@ Metadata DAG function builder
 """
 
 from airflow import DAG
+
 from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_source,
@@ -20,7 +21,7 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     metadata_ingestion_workflow,
 )
 
-try:
+try:  # noqa: SIM105
     pass
 except ModuleNotFoundError:
     pass
@@ -55,7 +56,7 @@ def build_dbt_workflow_config(
         enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
-    return workflow_config
+    return workflow_config  # noqa: RET504
 
 
 def build_dbt_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
@@ -70,4 +71,4 @@ def build_dbt_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         workflow_fn=metadata_ingestion_workflow,
     )
 
-    return dag
+    return dag  # noqa: RET504

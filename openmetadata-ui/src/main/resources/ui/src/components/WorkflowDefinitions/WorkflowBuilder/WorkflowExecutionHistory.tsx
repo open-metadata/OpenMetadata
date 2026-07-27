@@ -11,19 +11,25 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../components/common/StatusBadge/StatusBadgeV2.component';
 import TableV2 from '../../../components/common/Table/TableV2';
-import { PAGE_SIZE_BASE } from '../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import {
   WorkflowInstance,
@@ -36,7 +42,12 @@ import {
   convertMillisecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import EntityLink from '../../../utils/EntityLink';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+
+const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
 export const WorkflowExecutionHistory: React.FC = () => {
   const { t } = useTranslation();
@@ -61,6 +72,55 @@ export const WorkflowExecutionHistory: React.FC = () => {
     },
     [statusMapping]
   );
+
+  const renderRelatedEntity = useCallback((record: WorkflowInstance) => {
+    const entityLinkString = record.variables?.[
+      GLOBAL_RELATED_ENTITY_VARIABLE
+    ] as string | undefined;
+
+    const placeholder = (
+      <Typography data-testid="related-entity-placeholder" size="text-sm">
+        {NO_DATA_PLACEHOLDER}
+      </Typography>
+    );
+
+    let content = placeholder;
+
+    if (entityLinkString) {
+      try {
+        const entityType = EntityLink.getEntityType(entityLinkString);
+        const entityFqn = EntityLink.getEntityFqn(entityLinkString);
+
+        if (entityType && entityFqn) {
+          const displayName = getNameFromFQN(entityFqn);
+          const entityPath = getEntityLinkFromType(
+            entityFqn,
+            entityType as EntityType
+          );
+
+          content = entityPath ? (
+            <Link
+              data-testid="related-entity-link"
+              title={entityFqn}
+              to={entityPath}>
+              {displayName}
+            </Link>
+          ) : (
+            <Typography
+              data-testid="related-entity-name"
+              size="text-sm"
+              title={entityFqn}>
+              {displayName}
+            </Typography>
+          );
+        }
+      } catch {
+        content = placeholder;
+      }
+    }
+
+    return content;
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -97,6 +157,13 @@ export const WorkflowExecutionHistory: React.FC = () => {
         },
       },
       {
+        title: t('label.entity'),
+        dataIndex: 'variables',
+        key: 'entity',
+        render: (_: unknown, record: WorkflowInstance) =>
+          renderRelatedEntity(record),
+      },
+      {
         title: t('label.duration'),
         dataIndex: 'endedAt',
         key: 'duration',
@@ -116,7 +183,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
         },
       },
     ],
-    [t, getStatusInfo]
+    [t, getStatusInfo, renderRelatedEntity]
   );
 
   const fetchExecutionHistory = useCallback(
@@ -172,6 +239,7 @@ export const WorkflowExecutionHistory: React.FC = () => {
       data-testid="workflow-execution-history">
       <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         <TableV2
+          cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
           data-testid="workflow-execution-history-table"
           dataSource={instances}

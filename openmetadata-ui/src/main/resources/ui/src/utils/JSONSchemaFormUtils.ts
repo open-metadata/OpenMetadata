@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { cloneDeep, isString } from 'lodash';
+import { Children, isValidElement, ReactNode } from 'react';
 
 export function escapeBackwardSlashChar<T>(formData: T): T {
   for (const key in formData) {
@@ -107,3 +109,44 @@ export function formatFormDataForRender<T extends object>(formData: T): T {
 
   return formData;
 }
+
+export const hasHiddenClassName = (className?: unknown): boolean =>
+  typeof className === 'string' &&
+  /(^|\s)(tw:hidden|hidden)(\s|$)/.test(className);
+
+export const hasHiddenContent = (node: ReactNode): boolean => {
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  const props = node.props as {
+    children?: ReactNode;
+    className?: unknown;
+    hidden?: boolean;
+    style?: {
+      display?: string;
+      visibility?: string;
+    };
+  };
+
+  if (
+    props.hidden ||
+    hasHiddenClassName(props.className) ||
+    props.style?.display === 'none' ||
+    props.style?.visibility === 'hidden'
+  ) {
+    return true;
+  }
+
+  const children = Children.toArray(props.children);
+
+  return children.length > 0 && children.every(hasHiddenContent);
+};
+
+export const isVisibleProperty = (
+  property: ObjectFieldTemplatePropertyType
+): boolean => !property.hidden && !hasHiddenContent(property.content);
+
+export const hasVisibleProperties = (
+  properties: ObjectFieldTemplatePropertyType[]
+): boolean => properties.some(isVisibleProperty);

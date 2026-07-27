@@ -19,10 +19,13 @@ def session(tmp_path_factory):
     """
     from testcontainers.cassandra import CassandraContainer
 
-    with CassandraContainer() as container, Cluster(
-        container.get_contact_points(),
-        load_balancing_policy=DCAwareRoundRobinPolicy(container.get_local_datacenter()),
-    ) as cluster:
+    with (
+        CassandraContainer() as container,
+        Cluster(
+            container.get_contact_points(),
+            load_balancing_policy=DCAwareRoundRobinPolicy(container.get_local_datacenter()),
+        ) as cluster,
+    ):
         session = cluster.connect()
         session.execute(
             textwrap.dedent(

@@ -16,10 +16,10 @@ import base64
 import json
 import re
 import string
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Optional, Type, TypeVar, Union  # noqa: UP035
 
 from pydantic import BaseModel
-from requests.utils import quote as url_quote
+from requests.utils import quote as url_quote  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -39,7 +39,7 @@ def format_name(name: str) -> str:
 
 
 def get_entity_type(
-    entity: Union[Type[T], str],
+    entity: Union[Type[T], str],  # noqa: UP006, UP007
 ) -> str:
     """
     Given an Entity T, return its type.
@@ -74,7 +74,34 @@ def model_str(arg: Any) -> str:
     return str(arg)
 
 
-def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
+MAX_USER_AGENT_LENGTH = 256
+
+
+def sanitize_user_agent(
+    value: Optional[str],  # noqa: UP045
+    max_length: int = MAX_USER_AGENT_LENGTH,
+) -> Optional[str]:  # noqa: UP045
+    """
+    Produce a header-safe User-Agent string.
+
+    HTTP forbids CR/LF in header values (header injection) and underlying HTTP
+    libraries (``requests``, ``httpx``) raise ``InvalidHeader`` for control
+    characters. Because the workflow interpolates the user-supplied
+    ``serviceName`` into the agent, callers MUST sanitize before assigning to a
+    header. Returns ``None`` when nothing usable remains so the caller can fall
+    back to the default agent rather than sending a malformed one.
+    """
+    if value is None:
+        return None
+    sanitized = "".join(ch for ch in value if 0x20 <= ord(ch) <= 0x7E).strip()
+    if not sanitized:
+        return None
+    if len(sanitized) > max_length:
+        sanitized = sanitized[:max_length].rstrip()
+    return sanitized or None
+
+
+def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:  # noqa: UP007
     """
     Quote the FQN so that it's safe to pass to the API.
     E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
@@ -94,13 +121,13 @@ def build_entity_reference(entity: T) -> EntityReference:
     )
 
 
-def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:
+def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
     """
     Decode JWT token to extract payload without verification.
     JWT tokens have three parts: header.payload.signature
     We only decode the payload part to get user information.
     """
-    from metadata.utils.logger import ometa_logger
+    from metadata.utils.logger import ometa_logger  # noqa: PLC0415
 
     logger = ometa_logger()
     try:

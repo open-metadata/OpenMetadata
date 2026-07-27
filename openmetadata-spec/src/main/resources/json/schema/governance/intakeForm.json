@@ -1,0 +1,120 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/intakeForm.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntakeForm",
+  "description": "An IntakeForm declares additional required fields that must be populated when creating or updating a governance entity (Data Product, Domain, Glossary Term). These are org-configurable and layer on top of the schema's own required fields. Enforced identically at the API and UI layers so both contracts match.",
+  "$comment": "@om-entity-type",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.governance.IntakeForm",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "targetEntityType": {
+      "description": "Entity types supported by IntakeForm today.",
+      "type": "string",
+      "enum": ["dataProduct", "domain", "glossaryTerm"]
+    },
+    "fieldKind": {
+      "description": "Whether a required field refers to a native entity attribute or a custom property defined via the Type system.",
+      "type": "string",
+      "enum": ["native", "customProperty"]
+    },
+    "requiredField": {
+      "description": "A single field declared as required by this IntakeForm.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.governance.IntakeFormRequiredField",
+      "properties": {
+        "fieldPath": {
+          "description": "Path to the field on the entity. Native paths are simple attribute names (e.g., 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.",
+          "type": "string"
+        },
+        "fieldLabel": {
+          "description": "Human-friendly label used in validation error messages and on the intake form UI.",
+          "type": "string"
+        },
+        "fieldKind": {
+          "$ref": "#/definitions/fieldKind"
+        },
+        "errorMessage": {
+          "description": "Optional override for the validation error message when this field is missing.",
+          "type": "string"
+        }
+      },
+      "required": ["fieldPath", "fieldLabel", "fieldKind"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique ID of the IntakeForm.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Unique name of the IntakeForm.",
+      "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the IntakeForm.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what governance policy this IntakeForm enforces.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "entityType": {
+      "description": "The entity type this IntakeForm applies to. Only one IntakeForm may exist per entityType.",
+      "$ref": "#/definitions/targetEntityType"
+    },
+    "enabled": {
+      "description": "Whether this IntakeForm is currently enforced. Disabling is a soft toggle that lets admins pause validation without deleting the form.",
+      "type": "boolean",
+      "default": true
+    },
+    "requiredFields": {
+      "description": "Additional required fields enforced by this IntakeForm on top of the schema-required fields.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/requiredField"
+      },
+      "default": []
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "owners": {
+      "description": "Owners of this IntakeForm configuration.",
+      "$ref": "../type/entityReferenceList.json"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name", "entityType"],
+  "additionalProperties": false
+}

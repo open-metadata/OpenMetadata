@@ -31,9 +31,7 @@ def cockroach_container():
 
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
 
-    with (
-        try_bind(container, 26257, None) if not os.getenv("CI") else container
-    ) as container:
+    with try_bind(container, 26257, None) if not os.getenv("CI") else container as container:
         testcontainers_config.max_tries = old_max_tries
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:

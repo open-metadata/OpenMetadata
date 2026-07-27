@@ -12,9 +12,10 @@
 """
 Avro DataFrame reader - streams records in batches to avoid OOM
 """
+
 import traceback
 from functools import singledispatchmethod
-from typing import Iterator, List, Optional
+from typing import Iterator, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
@@ -58,15 +59,13 @@ class AvroDataFrameReader(DataFrameReader):
     """
 
     @staticmethod
-    def _stream_avro_records(
-        file_obj, batch_size: int = CHUNKSIZE
-    ) -> Iterator["DataFrame"]:
+    def _stream_avro_records(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """
         Stream Avro records in batches from a file-like object.
         Uses fastavro for streaming support.
         """
-        import fastavro
-        from pandas import DataFrame
+        import fastavro  # noqa: PLC0415
+        from pandas import DataFrame  # noqa: PLC0415
 
         batch = []
         for record in fastavro.reader(file_obj):
@@ -78,13 +77,13 @@ class AvroDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
-    def _get_avro_columns(file_obj) -> Optional[List[Column]]:
+    def _get_avro_columns(file_obj) -> Optional[List[Column]]:  # noqa: UP006, UP045
         """Extract columns from Avro schema without reading all records."""
-        import json
+        import json  # noqa: PLC0415
 
-        import fastavro
+        import fastavro  # noqa: PLC0415
 
-        from metadata.parsers.avro_parser import parse_avro_schema
+        from metadata.parsers.avro_parser import parse_avro_schema  # noqa: PLC0415
 
         try:
             reader = fastavro.reader(file_obj)
@@ -93,16 +92,14 @@ class AvroDataFrameReader(DataFrameReader):
                 if isinstance(writer_schema, dict):
                     writer_schema = json.dumps(reader.writer_schema)
 
-                return parse_avro_schema(schema=writer_schema, cls=Column)
+                return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
         except Exception as warn:
             logger.warning(f"Error reading Avro schema: {warn}")
             logger.debug(traceback.format_exc())
         return None
 
     @singledispatchmethod
-    def _read_avro_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
-    ) -> DatalakeColumnWrapper:
+    def _read_avro_dispatch(self, config_source: ConfigSource, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         raise FileFormatException(config_source=config_source, file_name=key)
 
     @_read_avro_dispatch.register
@@ -129,7 +126,7 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from GCS without loading entire file into memory."""
-        from gcsfs import GCSFileSystem
+        from gcsfs import GCSFileSystem  # noqa: PLC0415
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -146,7 +143,7 @@ class AvroDataFrameReader(DataFrameReader):
     @_read_avro_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
         """Stream Avro from Azure without loading entire file into memory."""
-        from adlfs import AzureBlobFileSystem
+        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(
@@ -172,16 +169,14 @@ class AvroDataFrameReader(DataFrameReader):
         bucket_name: str,  # pylint: disable=unused-argument
     ) -> DatalakeColumnWrapper:
         """Stream Avro from local filesystem without loading entire file into memory."""
-        with open(key, "rb") as f:
+        with open(key, "rb") as f:  # noqa: PTH123
             columns = self._get_avro_columns(f)
 
         def chunk_generator():
-            with open(key, "rb") as f:
+            with open(key, "rb") as f:  # noqa: PTH123
                 yield from self._stream_avro_records(f)
 
         return DatalakeColumnWrapper(columns=columns, dataframes=chunk_generator)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
-        return self._read_avro_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
-        )
+        return self._read_avro_dispatch(self.config_source, key=key, bucket_name=bucket_name)

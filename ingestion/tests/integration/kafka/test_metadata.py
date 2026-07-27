@@ -4,9 +4,7 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.workflow.metadata import MetadataWorkflow
 
 
-def test_ingest_metadata(
-    patch_passwords_for_db_services, run_workflow, ingestion_config, metadata_assertions
-):
+def test_ingest_metadata(patch_passwords_for_db_services, run_workflow, ingestion_config, metadata_assertions):
     run_workflow(MetadataWorkflow, ingestion_config)
     metadata_assertions()
 

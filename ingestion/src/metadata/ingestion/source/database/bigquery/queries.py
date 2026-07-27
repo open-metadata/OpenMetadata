@@ -14,7 +14,7 @@ SQL Queries used during ingestion
 
 import textwrap
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import text
@@ -65,7 +65,7 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
     select table_name, table_type from `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLES 
     WHERE TRUE {view_filter}
-    """
+    """  # noqa: W291
 )
 
 BIGQUERY_CONSTRAINTS = textwrap.dedent(
@@ -187,6 +187,25 @@ and table_catalog = '{database_name}'
 """
 )
 
+# TABLE_STORAGE is only exposed at the region/organization level (it cannot be
+# dataset-qualified like TABLES), so this variant is region-scoped and joins on
+# table_schema to restrict TABLE_STORAGE to the current dataset. Used when the
+# dataset's region can be resolved; otherwise we fall back to the dataset-scoped
+# created-only query above.
+BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION = textwrap.dedent(
+    """
+select
+t.table_name as table_name,
+t.creation_time as created_at,
+s.storage_last_modified_time as updated_at
+from `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLES t
+left join `{database_name}`.`region-{region}`.INFORMATION_SCHEMA.TABLE_STORAGE s
+on t.table_name = s.table_name and t.table_schema = s.table_schema
+where t.table_schema = '{schema_name}'
+and t.table_catalog = '{database_name}'
+"""
+)
+
 BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING = """
 protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.BigQueryAuditMetadata"
 AND (
@@ -237,9 +256,9 @@ class BigQueryQueryResult(BaseModel):
     project_id: str
     dataset_id: str
     table_name: str
-    inserted_row_count: Optional[int] = None
-    deleted_row_count: Optional[int] = None
-    updated_row_count: Optional[int] = None
+    inserted_row_count: Optional[int] = None  # noqa: UP045
+    deleted_row_count: Optional[int] = None  # noqa: UP045
+    updated_row_count: Optional[int] = None  # noqa: UP045
     start_time: datetime
     statement_type: str
 
@@ -249,7 +268,7 @@ class BigQueryQueryResult(BaseModel):
         usage_location: str,
         dataset_id: str,
         project_id: str,
-        billing_project_id: Optional[str] = None,
+        billing_project_id: Optional[str] = None,  # noqa: UP045
     ):
         # Use billing project for the INFORMATION_SCHEMA query if provided
         query_project_id = billing_project_id or project_id
@@ -269,9 +288,7 @@ class BigQueryQueryResult(BaseModel):
             )
         )
 
-        return TypeAdapter(List[BigQueryQueryResult]).validate_python(
-            [r._asdict() for r in rows]
-        )
+        return TypeAdapter(List[BigQueryQueryResult]).validate_python([r._asdict() for r in rows])  # noqa: UP006
 
 
 JOBS = """

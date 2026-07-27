@@ -13,9 +13,10 @@
 """
 Postgres SQLAlchemy util methods
 """
+
 import re
 import traceback
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple  # noqa: UP035
 
 from packaging import version
 from sqlalchemy import sql, text, util
@@ -44,6 +45,7 @@ logger = utils_logger()
 
 OLD_POSTGRES_VERSION = "130000"
 
+
 # pylint: disable=unused-argument,too-many-arguments,invalid-name,too-many-locals
 def get_etable_owner(self, connection, table_name=None, schema=None):
     """Return all owners.
@@ -63,9 +65,7 @@ def get_etable_owner(self, connection, table_name=None, schema=None):
 
 
 @reflection.cache
-def get_foreign_keys(
-    self, connection, table_name, schema=None, postgresql_ignore_search_path=False, **kw
-):
+def get_foreign_keys(self, connection, table_name, schema=None, postgresql_ignore_search_path=False, **kw):
     """
     Args:
         connection (_type_): _description_
@@ -77,12 +77,10 @@ def get_foreign_keys(
         _type_: _description_
     """
     preparer = self.identifier_preparer
-    table_oid = self.get_table_oid(
-        connection, table_name, schema, info_cache=kw.get("info_cache")
-    )
+    table_oid = self.get_table_oid(connection, table_name, schema, info_cache=kw.get("info_cache"))
 
     # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
-    FK_REGEX = re.compile(
+    FK_REGEX = re.compile(  # noqa: N806
         r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
         r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
         r"[\s]?(ON UPDATE "
@@ -120,9 +118,7 @@ def get_foreign_keys(
         if deferrable is not None:
             deferrable = deferrable == "DEFERRABLE"
         constrained_columns = tuple(re.split(r"\s*,\s*", constrained_columns))
-        constrained_columns = [
-            preparer._unquote_identifier(x) for x in constrained_columns
-        ]
+        constrained_columns = [preparer._unquote_identifier(x) for x in constrained_columns]
 
         if postgresql_ignore_search_path:
             # when ignoring search path, we use the actual schema
@@ -197,15 +193,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     Overriding the dialect method to add raw_data_type in response
     """
 
-    table_oid = self.get_table_oid(
-        connection, table_name, schema, info_cache=kw.get("info_cache")
-    )
+    table_oid = self.get_table_oid(connection, table_name, schema, info_cache=kw.get("info_cache"))
 
-    generated = (
-        "a.attgenerated as generated"
-        if self.server_version_info >= (12,)
-        else "NULL as generated"
-    )
+    generated = "a.attgenerated as generated" if self.server_version_info >= (12,) else "NULL as generated"
     if self.server_version_info >= (10,):
         # a.attidentity != '' is required or it will reflect also
         # serial columns as identity.
@@ -244,7 +234,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         format_type,
         default_,
         notnull,
-        table_oid,
+        table_oid,  # noqa: B007
         comment,
         generated,
         identity,
@@ -273,7 +263,7 @@ def _get_numeric_args(charlen):
     return ()
 
 
-def _get_interval_args(charlen, attype, kwargs: Dict):
+def _get_interval_args(charlen, attype, kwargs: Dict):  # noqa: UP006
     field_match = re.match(r"interval (.+)", attype, re.I)
     if charlen:
         kwargs["precision"] = int(charlen)
@@ -291,9 +281,7 @@ def _get_bit_var_args(charlen, kwargs):
     return (), kwargs
 
 
-def get_column_args(
-    charlen: str, args: Tuple, kwargs: Dict, attype: str
-) -> Tuple[Tuple, Dict]:
+def get_column_args(charlen: str, args: Tuple, kwargs: Dict, attype: str) -> Tuple[Tuple, Dict]:  # noqa: UP006
     """
     Method to determine the args and kwargs
     """
@@ -353,13 +341,7 @@ def get_column_default(coltype, schema, default, generated):
                 # unconditionally quote the schema name.  this could
                 # later be enhanced to obey quoting rules /
                 # "quote schema"
-                default = (
-                    match.group(1)
-                    + (f'"{sch}"')
-                    + "."
-                    + match.group(2)
-                    + match.group(3)
-                )
+                default = match.group(1) + (f'"{sch}"') + "." + match.group(2) + match.group(3)
     return default, autoincrement, computed
 
 
@@ -490,7 +472,7 @@ def get_view_definition(self, connection, table_name, schema=None, **kw):
     )
 
 
-def get_postgres_version(engine) -> Optional[str]:
+def get_postgres_version(engine) -> Optional[str]:  # noqa: UP045
     """
     return the postgres version in major.minor.patch format
     """
@@ -499,7 +481,7 @@ def get_postgres_version(engine) -> Optional[str]:
             results = conn.execute(text(POSTGRES_GET_SERVER_VERSION)).all()
         for res in results:
             version_string = str(res[0])
-            return version_string
+            return version_string  # noqa: RET504
     except Exception as err:
         logger.warning(f"Unable to fetch the Postgres Version - {err}")
         logger.debug(traceback.format_exc())
@@ -514,14 +496,12 @@ def get_postgres_time_column_name(engine) -> str:
     try:
         with engine.connect() as conn:
             result = conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'"
-                )
+                text("SELECT column_name FROM information_schema.columns WHERE table_name = 'pg_stat_statements'")
             )
             columns = {row[0] for row in result}
             if "total_exec_time" in columns:
                 return "total_exec_time"
-            elif "total_time" in columns:
+            elif "total_time" in columns:  # noqa: RET505
                 return "total_time"
             else:
                 logger.warning(
@@ -533,16 +513,12 @@ def get_postgres_time_column_name(engine) -> str:
         # Fallback to version check
         time_column_name = "total_exec_time"
         postgres_version = get_postgres_version(engine)
-        if postgres_version and version.parse(postgres_version) < version.parse(
-            OLD_POSTGRES_VERSION
-        ):
+        if postgres_version and version.parse(postgres_version) < version.parse(OLD_POSTGRES_VERSION):
             time_column_name = "total_time"
         return time_column_name
 
 
 @reflection.cache
 def get_schema_names(self, connection, **kw):
-    result = connection.execute(
-        sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode)
-    )
-    return [name for name, in result]
+    result = connection.execute(sql.text(POSTGRES_GET_SCHEMA_NAMES).columns(nspname=sqltypes.Unicode))
+    return [name for (name,) in result]

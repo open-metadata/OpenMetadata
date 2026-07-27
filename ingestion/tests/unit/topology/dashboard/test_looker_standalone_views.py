@@ -11,6 +11,7 @@
 """
 Test Looker standalone views functionality
 """
+
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -54,7 +55,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
         }
 
         processed_views = []
-        for view_name, view in views_cache.items():
+        for view_name, view in views_cache.items():  # noqa: B007, PERF102
             processed_views.append(view_name)
 
         self.assertEqual(len(processed_views), 2)
@@ -87,7 +88,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
 
         # Simulate filtering logic
         views_to_process = []
-        for view_name, view in parser_cache.items():
+        for view_name, view in parser_cache.items():  # noqa: B007, PERF102
             if view_name not in processed_cache:
                 views_to_process.append(view_name)
 
@@ -109,9 +110,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
         ]
 
         # Calculate total explores
-        total_explores = sum(
-            len(m.explores) if m.explores else 0 for m in all_lookml_models
-        )
+        total_explores = sum(len(m.explores) if m.explores else 0 for m in all_lookml_models)
 
         self.assertEqual(total_explores, 3)
 
@@ -122,7 +121,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
 
         # Simulate processing explores
         for i in range(total_explores):
-            explores_processed_count += 1
+            explores_processed_count += 1  # noqa: SIM113
 
             # Check if this is the last explore
             is_last_explore = explores_processed_count >= total_explores
@@ -200,7 +199,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
         }
 
         # Get first project (order may vary in dict, but we just need one)
-        first_project = list(project_parsers.keys())[0] if project_parsers else None
+        first_project = list(project_parsers.keys())[0] if project_parsers else None  # noqa: RUF015
 
         self.assertIsNotNone(first_project)
         self.assertIn(first_project, ["project1", "project2", "project3"])
@@ -210,7 +209,7 @@ class TestLookerStandaloneViewsLogic(TestCase):
         parser_cache = {}
 
         views_to_process = []
-        for view_name, view in parser_cache.items():
+        for view_name, view in parser_cache.items():  # noqa: B007, PERF102
             views_to_process.append(view_name)
 
         self.assertEqual(len(views_to_process), 0)
@@ -282,7 +281,7 @@ class TestStandaloneViewsIntegrationScenarios(TestCase):
         processed_views = {"view1": Mock(), "view2": Mock(), "view3": Mock()}
 
         # Count how many would be processed
-        to_process = [v for v in parser_views.keys() if v not in processed_views]
+        to_process = [v for v in parser_views.keys() if v not in processed_views]  # noqa: SIM118
 
         self.assertEqual(len(to_process), 0)
 
@@ -301,7 +300,7 @@ class TestStandaloneViewsIntegrationScenarios(TestCase):
         processed_views = {"view1": Mock(), "view3": Mock()}
 
         # Count how many would be processed
-        to_process = [v for v in parser_views.keys() if v not in processed_views]
+        to_process = [v for v in parser_views.keys() if v not in processed_views]  # noqa: SIM118
 
         self.assertEqual(len(to_process), 3)
         self.assertIn("view2", to_process)
@@ -312,9 +311,7 @@ class TestStandaloneViewsIntegrationScenarios(TestCase):
         """Test scenario where model has no explores, only standalone views"""
         all_lookml_models = [LookmlModel(name="model1", explores=[])]
 
-        total_explores = sum(
-            len(m.explores) if m.explores else 0 for m in all_lookml_models
-        )
+        total_explores = sum(len(m.explores) if m.explores else 0 for m in all_lookml_models)
 
         # With 0 explores, standalone views would be processed immediately
         self.assertEqual(total_explores, 0)
@@ -333,7 +330,7 @@ class TestStandaloneViewsIntegrationScenarios(TestCase):
         }
 
         # Currently only first project is processed
-        first_project_name = list(project_parsers.keys())[0]
+        first_project_name = list(project_parsers.keys())[0]  # noqa: RUF015
         first_project = project_parsers[first_project_name]
 
         # Count views in first project only

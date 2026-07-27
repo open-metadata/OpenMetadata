@@ -1,6 +1,8 @@
 import logging
+import os
+import shutil
 import time
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -22,6 +24,52 @@ from metadata.workflow.ingestion import IngestionWorkflow
 def configure_logging():
     logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
     logging.getLogger("pytds").setLevel(logging.CRITICAL)
+
+
+_last_package: dict = {"name": None}
+
+
+def _package_of(item) -> str | None:
+    """Top-level package under tests/integration, e.g. 'tests/integration/trino'."""
+    parts = item.nodeid.split("/")
+    return "/".join(parts[:3]) if len(parts) > 3 else None
+
+
+def _prune_docker_images() -> None:
+    import docker
+    from docker.errors import DockerException
+    from requests.exceptions import RequestException
+
+    try:
+        reclaimed = docker.from_env().images.prune(filters={"dangling": False}).get("SpaceReclaimed", 0)
+    except (DockerException, RequestException):
+        logging.exception("Failed to prune docker images")
+        return
+    logging.info(
+        "Pruned docker images: reclaimed %.1f GiB, %.1f GiB now free",
+        reclaimed / 2**30,
+        shutil.disk_usage("/").free / 2**30,
+    )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Reclaim the previous package's images before the next one pulls its own.
+
+    Testcontainers stops containers at fixture teardown but never removes images, so a
+    shard's peak disk grows with the number of packages it runs rather than its heaviest
+    one. Runners in the ubuntu-latest pool ship either a 72G or a 145G root disk, and the
+    unpruned total only fits the latter. Pruning here keeps peak at one package's images.
+
+    CI only: this removes every image not held by a running container, which on a
+    developer machine would wipe their local cache.
+    """
+    if not os.environ.get("CI"):
+        return
+    package = _package_of(item)
+    if _last_package["name"] not in (None, package):
+        _prune_docker_images()
+    _last_package["name"] = package
 
 
 @pytest.fixture(scope="session")
@@ -151,7 +199,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
+    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -166,12 +214,19 @@ logger = logging.getLogger(__name__)
 
 
 def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
-    """Delete with retry logic to handle transient server errors during parallel teardown."""
+    """Delete with retry logic to handle transient server errors during parallel teardown.
+
+    A 404 here means the entity is already gone (e.g., wiped as part of an earlier
+    cascade or another worker's teardown); treat it as success rather than retrying.
+    """
     for attempt in range(retries):
         try:
             metadata.delete(entity=entity, entity_id=entity_id, **kwargs)
-            return
-        except Exception:
+            return  # noqa: TRY300
+        except Exception as exc:
+            if _is_not_found(exc):
+                logger.debug("Skipping %s %s delete — already gone", entity.__name__, entity_id)
+                return
             if attempt < retries - 1:
                 logger.warning(
                     "Retry %d/%d: delete %s %s",
@@ -183,6 +238,13 @@ def _safe_delete(metadata, entity, entity_id, retries=3, **kwargs):
                 time.sleep(0.5 * (attempt + 1))
             else:
                 raise
+
+
+def _is_not_found(exc: BaseException) -> bool:
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if status == 404:
+        return True
+    return "404" in str(exc)
 
 
 @pytest.fixture(scope="module")
@@ -218,13 +280,9 @@ def unmask_password(create_service_request):
 
     def patch_password(service: DatabaseService):
         if hasattr(service.connection.config, "authType"):
-            service.connection.config.authType.password = (
-                create_service_request.connection.config.authType.password
-            )
+            service.connection.config.authType.password = create_service_request.connection.config.authType.password
             return service
-        service.connection.config.password = (
-            create_service_request.connection.config.password
-        )
+        service.connection.config.password = create_service_request.connection.config.password
         return service
 
     return patch_password
@@ -277,7 +335,7 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
-            if isinstance(result, DatabaseService):
+            if isinstance(result, DatabaseService):  # noqa: SIM102
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
                     return unmask_password(result)
             return result
@@ -297,9 +355,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []
+    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
 
-    def inner(entity_type: Type[Entity], fqn: str):
+    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
         fqns.append((entity_type, fqn))
 
     yield inner
@@ -321,9 +379,7 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}
-            },
+            "sourceConfig": {"config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}},
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,

@@ -40,7 +40,7 @@ function InlineAlert({
   const { alertContainerClass, alertIconClass } = useMemo(
     () => ({
       alertContainerClass: `${type ?? 'default'}-alert`,
-      alertIconClass: `${type ?? 'default'}-icon`,
+      alertIconClass: `${type ?? 'default'}-icon tw:flex-shrink-0`,
     }),
     [type]
   );

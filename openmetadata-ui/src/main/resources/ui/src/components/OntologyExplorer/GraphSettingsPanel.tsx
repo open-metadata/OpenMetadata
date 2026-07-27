@@ -62,7 +62,7 @@ const GraphSettingsPanel: React.FC<GraphSettingsPanelProps> = ({
       <div className="tw:flex tw:items-center tw:justify-between tw:shrink-0 tw:border-b tw:border-gray-200 tw:px-4 tw:py-3 ">
         <Typography
           as="span"
-          className="tw:text-sm tw:font-semibold tw:text-gray-900">
+          className="tw:text-sm tw:font-semibold tw:text-primary">
           {t('label.graph-settings')}
         </Typography>
         <ButtonUtility

@@ -23,7 +23,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -35,7 +34,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Flowable delegate that executes sink operations within a workflow.
@@ -91,11 +92,10 @@ public class SinkTaskDelegate implements JavaDelegate {
               ? Integer.parseInt((String) timeoutSecondsExpr.getValue(execution))
               : 300; // Default 5 minutes
 
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
 
       // Check if we have an entity list for batch processing
-      String entityListNamespace = inputNamespaceMap.get(ENTITY_LIST_VARIABLE);
+      String entityListNamespace = inputNamespaces.namespaceFor(ENTITY_LIST_VARIABLE);
       List<String> entityList = null;
       if (entityListNamespace != null) {
         Object entityListObj =
@@ -142,7 +142,7 @@ public class SinkTaskDelegate implements JavaDelegate {
         result = executeBatchMode(context, sinkProvider, entityList);
       } else {
         // Single entity mode: process one entity
-        result = executeSingleEntityMode(context, sinkProvider, inputNamespaceMap, varHandler);
+        result = executeSingleEntityMode(context, sinkProvider, inputNamespaces, varHandler);
       }
 
       // Set output variables
@@ -239,7 +239,10 @@ public class SinkTaskDelegate implements JavaDelegate {
                   for (String entityLinkStr : subBatch) {
                     try {
                       var entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-                      entities.add(Entity.getEntity(entityLink, "*", Include.ALL));
+                      String fields =
+                          String.join(
+                              ",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
+                      entities.add(Entity.getEntity(entityLink, fields, Include.ALL));
                     } catch (Exception e) {
                       LOG.error("Failed to fetch entity: {}", entityLinkStr, e);
                       fetchErrors.add(
@@ -279,16 +282,18 @@ public class SinkTaskDelegate implements JavaDelegate {
   private SinkResult executeSingleEntityMode(
       SinkContext context,
       SinkProvider sinkProvider,
-      Map<String, String> inputNamespaceMap,
+      InputNamespaces inputNamespaces,
       WorkflowVariableHandler varHandler) {
 
     // Get entity from workflow context
-    String relatedEntityNamespace = inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
+    String relatedEntityNamespace = inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE);
     String relatedEntityValue =
         (String) varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
 
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    String fields =
+        String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
+    EntityInterface entity = Entity.getEntity(entityLink, fields, Include.ALL);
 
     LOG.info(
         "[{}] Executing single entity sink for: {}",

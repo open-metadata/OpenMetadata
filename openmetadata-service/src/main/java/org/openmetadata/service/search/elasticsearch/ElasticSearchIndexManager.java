@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -7,8 +9,12 @@ import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
 import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeRequest;
+import es.co.elastic.clients.elasticsearch.indices.ForcemergeResponse;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
 import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsRequest;
+import es.co.elastic.clients.elasticsearch.indices.PutIndicesSettingsResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
@@ -31,6 +37,7 @@ import org.openmetadata.service.search.IndexManagementClient;
  */
 @Slf4j
 public class ElasticSearchIndexManager implements IndexManagementClient {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -69,6 +76,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       String indexName = indexMapping.getIndexName(clusterAlias);
       createIndexInternal(indexName, indexMappingContent);
       createAliases(indexMapping);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as the String overload and updateIndex.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to create index {} due to", indexMapping.getIndexName(clusterAlias), e);
     }
@@ -83,12 +95,17 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              : indexMappingContent;
+      String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
+                if (mappingsJson != null) {
+                  builder.withJson(new StringReader(mappingsJson));
                 }
                 return builder;
               });
@@ -96,6 +113,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       client.indices().putMapping(request);
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as createIndex.
+      throw e;
     } catch (Exception e) {
       LOG.error(
           "Failed to update Elasticsearch index {} due to",
@@ -114,6 +136,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
@@ -136,19 +159,45 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       createIndexInternal(indexName, indexMappingContent);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to create index {} due to", indexName, e);
     }
   }
 
+  private String extractMappingsJson(String indexMappingContent) {
+    if (indexMappingContent == null) {
+      return null;
+    }
+    try {
+      JsonNode root = MAPPER.readTree(indexMappingContent);
+      JsonNode mappings = root.get("mappings");
+      if (mappings != null) {
+        return MAPPER.writeValueAsString(mappings);
+      }
+      return indexMappingContent;
+    } catch (IOException e) {
+      LOG.warn(
+          "Failed to extract mappings from index content, using full content: {}", e.getMessage());
+      return indexMappingContent;
+    }
+  }
+
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
+    String enrichedContent =
+        (indexMappingContent != null && !indexMappingContent.isEmpty())
+            ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+            : indexMappingContent;
     CreateIndexRequest request =
         CreateIndexRequest.of(
             builder -> {
               builder.index(indexName);
-              if (indexMappingContent != null) {
-                builder.withJson(new StringReader(indexMappingContent));
+              if (enrichedContent != null) {
+                builder.withJson(new StringReader(enrichedContent));
               }
               return builder;
             });
@@ -326,35 +375,45 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot swap aliases.");
       return false;
     }
-    if (aliases == null || aliases.isEmpty()) {
-      LOG.debug("No aliases to swap for index {}", newIndex);
+    Set<String> finalAliases = aliases == null ? Set.of() : aliases;
+    Set<String> finalIndicesToRemove = indicesToRemove == null ? Set.of() : indicesToRemove;
+    if (finalAliases.isEmpty() && finalIndicesToRemove.isEmpty()) {
+      LOG.debug("No aliases to swap and no indices to remove for index {}", newIndex);
       return true;
     }
-    if (oldIndices == null) {
-      oldIndices = new HashSet<>();
-    }
-
-    Set<String> finalOldIndices = oldIndices;
+    Set<String> finalOldIndices = oldIndices == null ? new HashSet<>() : oldIndices;
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
                 // First, remove aliases from all old indices
                 for (String oldIndex : finalOldIndices) {
-                  for (String alias : aliases) {
+                  for (String alias : finalAliases) {
                     updateBuilder.actions(
                         actionBuilder ->
                             actionBuilder.remove(
                                 removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
                   }
                 }
-                // Then, add aliases to the new index
-                for (String alias : aliases) {
+                // Then delete any concrete index sharing the alias name, atomically, so the alias
+                // add below cannot race a separate delete and orphan the canonical name.
+                // must_exist is intentionally omitted to stay byte-for-byte aligned with the
+                // OpenSearch path (which rejects it); it is unnecessary because
+                // resolveCanonicalRemoval only forwards indices already confirmed to exist.
+                for (String indexToRemove : finalIndicesToRemove) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.removeIndex(
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
+                }
+                // Finally, add aliases to the new index
+                for (String alias : finalAliases) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
@@ -366,25 +425,18 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
       if (response.acknowledged()) {
         LOG.info(
-            "Atomically swapped aliases {} from indices {} to index {}",
-            aliases,
-            finalOldIndices,
-            newIndex);
+            "Atomically swapped aliases {} to index {} (removed indices {}, detached from {})",
+            finalAliases,
+            newIndex,
+            finalIndicesToRemove,
+            finalOldIndices);
         return true;
       } else {
-        LOG.warn(
-            "Alias swap from indices {} to index {} was not acknowledged",
-            finalOldIndices,
-            newIndex);
+        LOG.warn("Alias swap to index {} was not acknowledged", newIndex);
         return false;
       }
     } catch (Exception e) {
-      LOG.error(
-          "Failed to swap aliases {} from indices {} to index {}",
-          aliases,
-          finalOldIndices,
-          newIndex,
-          e);
+      LOG.error("Failed to swap aliases {} to index {}", finalAliases, newIndex, e);
       return false;
     }
   }
@@ -496,12 +548,16 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       }
       IndicesStats stats = entry.getValue();
       long docs = 0;
+      long indexedOps = 0;
       long sizeBytes = 0;
       int primaryShards = 0;
       int replicaShards = 0;
       if (stats.primaries() != null) {
         if (stats.primaries().docs() != null) {
           docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
         }
         if (stats.primaries().store() != null) {
           sizeBytes = stats.primaries().store().sizeInBytes();
@@ -522,8 +578,70 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       Set<String> aliases = getAliases(indexName);
       result.add(
           new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
     }
     return result;
+  }
+
+  @Override
+  public void updateIndexSettings(String indexName, String settingsJson) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update settings for {}.", indexName);
+      return;
+    }
+    if (settingsJson == null || settingsJson.isBlank()) {
+      LOG.debug("No settings to apply for index {}, skipping.", indexName);
+      return;
+    }
+    try {
+      PutIndicesSettingsRequest request =
+          PutIndicesSettingsRequest.of(
+              b -> {
+                b.index(indexName);
+                b.withJson(new StringReader(settingsJson));
+                return b;
+              });
+      PutIndicesSettingsResponse response = client.indices().putSettings(request);
+      LOG.info(
+          "Updated settings on index '{}' acknowledged={} settings={}",
+          indexName,
+          response.acknowledged(),
+          settingsJson);
+    } catch (Exception e) {
+      LOG.error("Failed to update settings on index {}: {}", indexName, e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void forceMerge(String indexName, int maxNumSegments) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot force-merge {}.", indexName);
+      return;
+    }
+    try {
+      long start = System.currentTimeMillis();
+      ForcemergeRequest request =
+          ForcemergeRequest.of(
+              b ->
+                  b.index(indexName).maxNumSegments((long) maxNumSegments).waitForCompletion(true));
+      ForcemergeResponse response = client.indices().forcemerge(request);
+      LOG.info(
+          "Force-merged index '{}' to {} segments in {}ms (failed shards: {})",
+          indexName,
+          maxNumSegments,
+          System.currentTimeMillis() - start,
+          response.shards() != null && response.shards().failed() != null
+              ? response.shards().failed()
+              : 0);
+    } catch (Exception e) {
+      LOG.error("Failed to force-merge index {}: {}", indexName, e.getMessage(), e);
+    }
   }
 }

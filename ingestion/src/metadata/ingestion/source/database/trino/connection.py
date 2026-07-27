@@ -12,7 +12,8 @@
 """
 Source connection handler
 """
-from copy import deepcopy
+
+from copy import deepcopy  # noqa: I001
 from typing import Optional, cast
 from urllib.parse import quote_plus
 
@@ -58,7 +59,7 @@ from metadata.utils.credentials import get_azure_access_token
 # pylint: disable=unused-argument
 def _is_disconnect(self, e, connection, cursor):
     """is_disconnect method for the Databricks dialect"""
-    if "JWT expired" in str(e):
+    if "JWT expired" in str(e):  # noqa: SIM103
         return True
     return False
 
@@ -74,7 +75,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         # here we are creating a copy of connection, because we need to dynamically
         # add auth params to connectionArguments, which we do no intend to store
         # in original connection object and in OpenMetadata database
-        from trino.sqlalchemy.dialect import TrinoDialect
+        from trino.sqlalchemy.dialect import TrinoDialect  # noqa: PLC0415
 
         TrinoDialect.is_disconnect = _is_disconnect  # type: ignore
 
@@ -82,16 +83,14 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         connection_copy = deepcopy(connection)
 
         if hasattr(connection.authType, "azureConfig"):
-            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+            auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
             access_token = get_azure_access_token(auth_type)
             if not connection.connectionOptions:
                 connection.connectionOptions = init_empty_connection_options()
             connection.connectionOptions.root["access_token"] = access_token
 
         # Update the connection with the connection arguments
-        connection_copy.connectionArguments = self.build_connection_args(
-            connection_copy
-        )
+        connection_copy.connectionArguments = self.build_connection_args(connection_copy)
 
         return create_generic_db_connection(
             connection=connection_copy,
@@ -102,8 +101,8 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -143,17 +142,12 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         if connection_copy.proxies:
             connection_dict["http_session"] = connection_copy.proxies
 
-        if (
-            connection_copy.connectionArguments
-            and connection_copy.connectionArguments.root
-        ):
+        if connection_copy.connectionArguments and connection_copy.connectionArguments.root:
             connection_with_options_secrets(lambda: connection_copy)
             connection_dict.update(get_connection_args_common(connection_copy))
 
         if isinstance(connection_copy.authType, basicAuth.BasicAuth):
-            connection_dict["auth"] = TrinoConnection.get_basic_auth_dict(
-                connection_copy
-            )
+            connection_dict["auth"] = TrinoConnection.get_basic_auth_dict(connection_copy)
             connection_dict["http_scheme"] = "https"
 
         elif isinstance(connection_copy.authType, jwtAuth.JwtAuth):
@@ -161,18 +155,11 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
             connection_dict["http_scheme"] = "https"
 
         elif hasattr(connection_copy.authType, "azureConfig"):
-            connection_dict["auth"] = TrinoConnection.get_azure_auth_dict(
-                connection_copy
-            )
+            connection_dict["auth"] = TrinoConnection.get_azure_auth_dict(connection_copy)
             connection_dict["http_scheme"] = "https"
 
-        elif (
-            connection_copy.authType
-            == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
-        ):
-            connection_dict["auth"] = TrinoConnection.get_oauth2_auth_dict(
-                connection_copy
-            )
+        elif connection_copy.authType == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2:
+            connection_dict["auth"] = TrinoConnection.get_oauth2_auth_dict(connection_copy)
             connection_dict["http_scheme"] = "https"
 
         return connection_dict
@@ -197,9 +184,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
             url += f"/{connection.catalog}"
         if connection.connectionOptions is not None:
             params = "&".join(
-                f"{key}={quote_plus(value)}"
-                for (key, value) in connection.connectionOptions.root.items()
-                if value
+                f"{key}={quote_plus(value)}" for (key, value) in connection.connectionOptions.root.items() if value
             )
             url = f"{url}?{params}"
         return url
@@ -210,9 +195,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the connection args for the trino connection
         """
-        connection_args: ConnectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
-        )
+        connection_args: ConnectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         assert connection_args.root is not None
 
         if connection.verify:
@@ -233,10 +216,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         elif hasattr(connection.authType, "azureConfig"):
             TrinoConnection.set_azure_auth(connection, connection_args)
 
-        elif (
-            connection.authType
-            == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
-        ):
+        elif connection.authType == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2:
             TrinoConnection.set_oauth2_auth(connection, connection_args)
 
         return connection_args
@@ -246,24 +226,20 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the basic auth dictionary for the trino connection
         """
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
         return {
             "authType": "basic",
             "username": connection.username,
-            "password": auth_type.password.get_secret_value()
-            if auth_type.password
-            else None,
+            "password": auth_type.password.get_secret_value() if auth_type.password else None,
         }
 
     @staticmethod
-    def set_basic_auth(
-        connection: TrinoConnectionConfig, connection_args: ConnectionArguments
-    ) -> None:
+    def set_basic_auth(connection: TrinoConnectionConfig, connection_args: ConnectionArguments) -> None:
         """
         Get the basic auth dictionary for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(basicAuth.BasicAuth, connection.authType)
+        auth_type = cast(basicAuth.BasicAuth, connection.authType)  # noqa: TC006
 
         connection_args.root["auth"] = BasicAuthentication(
             connection.username,
@@ -278,7 +254,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the jwt auth dictionary for the trino connection
         """
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
         return {
             "authType": "jwt",
@@ -286,18 +262,14 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         }
 
     @staticmethod
-    def set_jwt_auth(
-        connection: TrinoConnectionConfig, connection_args: ConnectionArguments
-    ) -> None:
+    def set_jwt_auth(connection: TrinoConnectionConfig, connection_args: ConnectionArguments) -> None:
         """
         Set the jwt auth for the trino connection
         """
         assert connection_args.root is not None
-        auth_type = cast(jwtAuth.JwtAuth, connection.authType)
+        auth_type = cast(jwtAuth.JwtAuth, connection.authType)  # noqa: TC006
 
-        connection_args.root["auth"] = JWTAuthentication(
-            auth_type.jwt.get_secret_value()
-        )
+        connection_args.root["auth"] = JWTAuthentication(auth_type.jwt.get_secret_value())
 
         if connection_args.root.get("http_scheme") is None:
             connection_args.root["http_scheme"] = "https"
@@ -313,17 +285,13 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         }
 
     @staticmethod
-    def set_azure_auth(
-        connection: TrinoConnectionConfig, connection_args: ConnectionArguments
-    ) -> None:
+    def set_azure_auth(connection: TrinoConnectionConfig, connection_args: ConnectionArguments) -> None:
         """
         Set the azure auth for the trino connection
         """
         assert connection_args.root is not None
 
-        connection_args.root["auth"] = JWTAuthentication(
-            TrinoConnection.get_azure_token(connection)
-        )
+        connection_args.root["auth"] = JWTAuthentication(TrinoConnection.get_azure_token(connection))
         if connection_args.root.get("http_scheme") is None:
             connection_args.root["http_scheme"] = "https"
 
@@ -337,9 +305,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         }
 
     @staticmethod
-    def set_oauth2_auth(
-        connection: TrinoConnectionConfig, connection_args: ConnectionArguments
-    ) -> None:
+    def set_oauth2_auth(connection: TrinoConnectionConfig, connection_args: ConnectionArguments) -> None:
         """
         Set the oauth2 auth for the trino connection
         """
@@ -354,5 +320,5 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         """
         Get the azure token for the trino connection
         """
-        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)
+        auth_type = cast(azureConfig.AzureConfigurationSource, connection.authType)  # noqa: TC006
         return get_azure_access_token(auth_type)

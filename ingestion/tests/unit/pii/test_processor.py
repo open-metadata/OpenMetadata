@@ -4,7 +4,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Set, Tuple
+from typing import Dict, Generator, List, Optional, Set, Tuple  # noqa: UP035
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -36,21 +36,17 @@ def workflow_config() -> OpenMetadataWorkflowConfig:
         source=Source(
             type="Postgres",
             sourceConfig=SourceConfig(
-                config=DatabaseServiceAutoClassificationPipeline(
-                    type=AutoClassificationConfigType.AutoClassification
-                )
+                config=DatabaseServiceAutoClassificationPipeline(type=AutoClassificationConfigType.AutoClassification)
             ),
         ),
         workflowConfig=WorkflowConfig.model_construct(),
     )
 
 
-def group_column_tags_by_column(column_tags: List[ColumnTag]) -> Dict[str, Set[str]]:
-    column_tags_by_column: Dict[str, Set[str]] = defaultdict(set)
+def group_column_tags_by_column(column_tags: List[ColumnTag]) -> Dict[str, Set[str]]:  # noqa: UP006
+    column_tags_by_column: Dict[str, Set[str]] = defaultdict(set)  # noqa: UP006
     for column_tag in column_tags:
-        column_tags_by_column[column_tag.column_fqn].add(
-            column_tag.tag_label.tagFQN.root
-        )
+        column_tags_by_column[column_tag.column_fqn].add(column_tag.tag_label.tagFQN.root)
     return column_tags_by_column
 
 
@@ -63,13 +59,13 @@ def import_from_path(module_name, file_path):
 
 
 def generate_test_cases(
-    include: Optional[Set[str]] = None,
-) -> Generator[Tuple[str, SamplerResponse, List[ColumnTag]], None, None]:
-    test_cases_dir = Path(os.path.join(os.path.dirname(__file__), "test_cases"))
-    for file in os.listdir(test_cases_dir):
+    include: Optional[Set[str]] = None,  # noqa: UP006, UP045
+) -> Generator[Tuple[str, SamplerResponse, List[ColumnTag]], None, None]:  # noqa: UP006
+    test_cases_dir = Path(os.path.join(os.path.dirname(__file__), "test_cases"))  # noqa: PTH118, PTH120
+    for file in os.listdir(test_cases_dir):  # noqa: PTH208
         file_path = test_cases_dir / file
 
-        if not os.path.isfile(file_path):
+        if not os.path.isfile(file_path):  # noqa: PTH113
             continue
 
         module_name = file.replace(".py", "")
@@ -99,7 +95,7 @@ def test_it_returns_the_expected_column_tags(
     sampler_record: SamplerResponse,
     openmetadata: Mock,
     workflow_config: OpenMetadataWorkflowConfig,
-    expected_column_tags: List[ColumnTag],
+    expected_column_tags: List[ColumnTag],  # noqa: UP006
 ):
     processor = PIIProcessor(workflow_config, openmetadata)
 

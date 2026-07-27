@@ -1,4 +1,4 @@
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set  # noqa: UP035
 
 import factory
 from factory.base import FactoryOptions, OptionDefault
@@ -6,14 +6,12 @@ from factory.base import FactoryOptions, OptionDefault
 DEFAULT_ROOT_ATTRIBUTE_NAME = "root"
 
 
-def add_root_prefix(
-    parameters: Dict[str, Any], root_attribute_name: str, ignore_keys: Set[str]
-) -> Dict[str, Any]:
+def add_root_prefix(parameters: Dict[str, Any], root_attribute_name: str, ignore_keys: Set[str]) -> Dict[str, Any]:  # noqa: UP006
     params = {}
 
     for key, value in parameters.items():
         if not key.startswith(root_attribute_name) and key not in ignore_keys:
-            key = f"{root_attribute_name}__{key}"
+            key = f"{root_attribute_name}__{key}"  # noqa: PLW2901
 
         params[key] = value
 
@@ -23,9 +21,7 @@ def add_root_prefix(
 class RootFactoryOptions(FactoryOptions):
     def _build_default_options(self):
         return super()._build_default_options() + [
-            OptionDefault(
-                "root_attribute_name", DEFAULT_ROOT_ATTRIBUTE_NAME, inherit=False
-            ),
+            OptionDefault("root_attribute_name", DEFAULT_ROOT_ATTRIBUTE_NAME, inherit=False),
         ]
 
 
@@ -48,9 +44,7 @@ class RootModelFactory(factory.Factory):
 
 
 class RootSubFactory(factory.SubFactory):
-    def __init__(
-        self, *args, root_attribute_name: str = DEFAULT_ROOT_ATTRIBUTE_NAME, **kwargs
-    ):
+    def __init__(self, *args, root_attribute_name: str = DEFAULT_ROOT_ATTRIBUTE_NAME, **kwargs):
         super().__init__(*args, **kwargs)
         self.root_attribute_name = root_attribute_name
 

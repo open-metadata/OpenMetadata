@@ -105,20 +105,6 @@ If Enabled, App Analytics insights will be populated when the App runs.
 $$
 
 $$section
-### Data Quality Insights Module $(id="moduleConfiguration.dataQuality")
-
-Data Quality Insights Module configuration
-
-$$
-
-$$section
-### Enabled $(id="moduleConfiguration.dataQuality.enabled")
-
-If Enabled, Data Quality insights will be populated when the App runs.
-
-$$
-
-$$section
 ### Cost Analysis Insights Module $(id="moduleConfiguration.costAnalysis")
 
 Cost Analysis Insights Module configuration

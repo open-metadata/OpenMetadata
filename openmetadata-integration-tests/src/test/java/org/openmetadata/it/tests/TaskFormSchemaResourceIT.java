@@ -43,7 +43,8 @@ public class TaskFormSchemaResourceIT extends BaseEntityIT<TaskFormSchema, TaskF
     supportsPatch = true;
     supportsOwners = false;
     supportsSearchIndex = false;
-    supportsVersionHistory = true;
+    supportsVersionHistory = false;
+    supportsGetByVersion = false;
   }
 
   private FormSchema buildFormSchema() {

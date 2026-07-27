@@ -12,6 +12,7 @@
 """
 OpenMetadata high-level API Chart test
 """
+
 import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -47,9 +48,7 @@ class TestOMetaChartAPI:
     - create_chart: Chart factory (function scope)
     """
 
-    def test_create(
-        self, metadata, dashboard_service, chart_request, expected_fqn, create_chart
-    ):
+    def test_create(self, metadata, dashboard_service, chart_request, expected_fqn, create_chart):
         """
         We can create a Chart and we receive it back as Entity
         """
@@ -89,9 +88,7 @@ class TestOMetaChartAPI:
         res = metadata.create_or_update(data=updated_entity)
 
         # Verify update
-        assert (
-            res.service.fullyQualifiedName == dashboard_service.fullyQualifiedName.root
-        )
+        assert res.service.fullyQualifiedName == dashboard_service.fullyQualifiedName.root
         assert res_create.id == res.id
         assert res.owners.root[0].id == user.id
 
@@ -158,9 +155,7 @@ class TestOMetaChartAPI:
         """
         created = create_chart(chart_request)
 
-        res = metadata.get_entity_version(
-            entity=Chart, entity_id=created.id.root, version=0.1
-        )
+        res = metadata.get_entity_version(entity=Chart, entity_id=created.id.root, version=0.1)
 
         # Check we get the correct version requested and the correct entity ID
         assert res.version.root == 0.1
@@ -171,8 +166,6 @@ class TestOMetaChartAPI:
         Test retrieving EntityReference for a chart
         """
         created = create_chart(chart_request)
-        entity_ref = metadata.get_entity_reference(
-            entity=Chart, fqn=created.fullyQualifiedName
-        )
+        entity_ref = metadata.get_entity_reference(entity=Chart, fqn=created.fullyQualifiedName)
 
         assert created.id == entity_ref.id

@@ -37,8 +37,7 @@ const createTaskViaAPI = async (
       category: 'MetadataUpdate',
       type: 'DescriptionUpdate',
       priority: 'Medium',
-      about: entityFQN,
-      aboutType: entityType,
+      about: `<#E::${entityType}::${entityFQN}>`,
       assignees: [assigneeFQN],
       payload: {
         suggestedValue: 'Test description',
@@ -529,10 +528,6 @@ test.describe('Task Comments - UI Tests', () => {
         .click();
       await taskFeeds;
 
-      // Wait for task cards to load
-      await page.waitForTimeout(1000);
-
-      // Look for the task card - could be task-feed-card or feed-card-v2
       const taskCard = page
         .locator('[data-testid="task-feed-card"], .task-feed-card-v1-new')
         .first();

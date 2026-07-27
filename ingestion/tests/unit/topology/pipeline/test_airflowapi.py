@@ -74,12 +74,9 @@ def _make_source_and_dag(task_names=None):
     source.source_config = MagicMock()
     source.source_config.includeTags = True
 
-    source._get_dag_source_url = (
-        lambda dag_id: f"http://airflow.example.com:8080/dags/{dag_id}/grid"
-    )
+    source._get_dag_source_url = lambda dag_id: f"http://airflow.example.com:8080/dags/{dag_id}/grid"
     source._get_task_source_url = lambda dag_id, task_id: (
-        f"http://airflow.example.com:8080/taskinstance/list/"
-        f"?_flt_3_dag_id={dag_id}&_flt_3_task_id={task_id}"
+        f"http://airflow.example.com:8080/taskinstance/list/?_flt_3_dag_id={dag_id}&_flt_3_task_id={task_id}"
     )
     source._build_tasks = lambda details: AirflowApiSource._build_tasks(source, details)
     source.register_record = MagicMock()
@@ -131,10 +128,7 @@ class TestStatusMapping:
         assert STATUS_MAP["upstream_failed"] == StatusType.Failed.value
 
     def test_unknown_state_defaults(self):
-        assert (
-            STATUS_MAP.get("nonexistent", StatusType.Pending.value)
-            == StatusType.Pending.value
-        )
+        assert STATUS_MAP.get("nonexistent", StatusType.Pending.value) == StatusType.Pending.value
 
 
 # ── Models ───────────────────────────────────────────────────────────────
@@ -198,7 +192,7 @@ class TestClientApiVersionDetection:
 
         def side_effect(path):
             if "/v2/" in path:
-                raise Exception("Not found")
+                raise Exception("Not found")  # noqa: TRY002
             return {"version": "2.9.0"}
 
         mock_rest.get.side_effect = side_effect
@@ -258,6 +252,78 @@ class TestClientBuildDagDetails:
         assert result.tasks[0].task_id == "extract"
         assert result.tasks[0].downstream_task_ids == ["transform"]
         assert result.tasks[0].class_ref["class_name"] == "PythonOperator"
+
+
+# ── Client: DAG Count ────────────────────────────────────────────────────
+
+
+class TestClientGetDagsCount:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_total_entries(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": [{"dag_id": "d1"}], "total_entries": 42}
+
+        assert client.get_dags_count() == 42
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_when_total_entries_absent(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": []}
+
+        assert client.get_dags_count() is None
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_on_request_error(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = RequestsConnectionError("boom")
+
+        assert client.get_dags_count() is None
+
+
+# ── Source: Progress Totals ──────────────────────────────────────────────
+
+
+class TestDeclareProgressTotals:
+    def test_sets_pipeline_total_when_count_positive(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_called_once_with("Pipeline", 7)
+
+    def test_does_not_declare_when_count_none(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = None
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_count_zero(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = False
+        source.connection.get_dags_count.return_value = 0
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_pipeline_filter_configured(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = True
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+        source.connection.get_dags_count.assert_not_called()
 
 
 # ── Client: Date Field ───────────────────────────────────────────────────
@@ -401,15 +467,11 @@ class TestPaginateTaskInstances:
         client, mock_rest = _make_client(mock_rest_cls)
 
         page1 = {
-            "task_instances": [
-                {"task_id": f"t_{i}", "state": "success"} for i in range(100)
-            ],
+            "task_instances": [{"task_id": f"t_{i}", "state": "success"} for i in range(100)],
             "total_entries": 150,
         }
         page2 = {
-            "task_instances": [
-                {"task_id": f"t_{i}", "state": "success"} for i in range(100, 150)
-            ],
+            "task_instances": [{"task_id": f"t_{i}", "state": "success"} for i in range(100, 150)],
             "total_entries": 150,
         }
         mock_rest.get.side_effect = [page1, page2]
@@ -736,17 +798,13 @@ class TestGetOwners:
     def test_resolves_single_owner(self):
         source = self._make_source()
         admin_ref = _make_entity_ref("admin")
-        source.metadata.get_reference_by_name.return_value = EntityReferenceList(
-            root=[admin_ref]
-        )
+        source.metadata.get_reference_by_name.return_value = EntityReferenceList(root=[admin_ref])
 
         result = AirflowApiSource.get_owners(source, ["admin"])
         assert result is not None
         assert len(result.root) == 1
         assert result.root[0].name == "admin"
-        source.metadata.get_reference_by_name.assert_called_once_with(
-            name="admin", is_owner=True
-        )
+        source.metadata.get_reference_by_name.assert_called_once_with(name="admin", is_owner=True)
 
     def test_resolves_multiple_owners(self):
         source = self._make_source()
@@ -790,7 +848,7 @@ class TestGetOwners:
         def side_effect(name, is_owner):
             if name == "admin":
                 return EntityReferenceList(root=[admin_ref])
-            raise Exception(f"User {name} not found")
+            raise Exception(f"User {name} not found")  # noqa: TRY002
 
         source.metadata.get_reference_by_name.side_effect = side_effect
 

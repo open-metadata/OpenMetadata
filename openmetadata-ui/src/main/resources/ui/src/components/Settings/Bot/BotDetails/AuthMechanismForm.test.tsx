@@ -108,7 +108,7 @@ describe('AuthMechanismForm', () => {
 
       const authMechanismSelect = screen.getByTestId('auth-mechanism');
 
-      expect(authMechanismSelect).toHaveTextContent('OpenMetadata JWT');
+      expect(authMechanismSelect).toHaveTextContent('label.om-jwt-token');
     });
 
     it('should disable auth mechanism select field', () => {

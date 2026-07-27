@@ -16,7 +16,7 @@ Validator for column values to be between test case
 import traceback
 from abc import abstractmethod
 from datetime import date, datetime, time
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union  # noqa: UP035
 
 from sqlalchemy import Column
 
@@ -66,7 +66,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         test_params = self._get_test_parameters()
 
         try:
-            column: Union[SQALikeColumn, Column] = self.get_column()
+            column: Union[SQALikeColumn, Column] = self.get_column()  # noqa: UP007
             min_res = self._run_results(Metrics.min, column)
             max_res = self._run_results(Metrics.max, column)
 
@@ -80,7 +80,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
-            logger.warning(msg)
+            logger.error(msg)
             return self.get_test_case_result_object(
                 self.execution_date,
                 TestCaseStatus.Aborted,
@@ -99,9 +99,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             row_count, failed_rows = None, None
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(
-            metric_values, test_params=test_params
-        )
+        result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -148,13 +146,11 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             self.MAX_BOUND: max_bound,
         }
 
-    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:  # noqa: UP045
         """Get Metrics needed to compute"""
         return {Metrics.min.name: Metrics.min, Metrics.max.name: Metrics.max}
 
-    def _evaluate_test_condition(
-        self, metric_values: dict, test_params: dict
-    ) -> TestEvaluation:
+    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> TestEvaluation:
         """Evaluate the values-to-be-between test condition
 
         For this test, the condition passes if both min and max values are within bounds.
@@ -182,11 +178,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         matched = min_value >= min_bound and max_value <= max_bound
         total_rows = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
         failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
-        passed_rows = (
-            total_rows - failed_rows
-            if (total_rows is not None and failed_rows is not None)
-            else None
-        )
+        passed_rows = total_rows - failed_rows if (total_rows is not None and failed_rows is not None) else None
 
         return {
             "matched": matched,
@@ -198,8 +190,8 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
     def _format_result_message(
         self,
         metric_values: dict,
-        dimension_info: Optional[DimensionInfo] = None,
-        test_params: Optional[dict] = None,
+        dimension_info: Optional[DimensionInfo] = None,  # noqa: UP045
+        test_params: Optional[dict] = None,  # noqa: UP045
     ) -> str:
         """Format the result message for values-to-be-between test
 
@@ -212,9 +204,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
             str: Formatted result message
         """
         if test_params is None:
-            raise ValueError(
-                "test_params is required for columnValuesToBeBetween._format_result_message"
-            )
+            raise ValueError("test_params is required for columnValuesToBeBetween._format_result_message")
 
         min_value = metric_values[Metrics.min.name]
         max_value = metric_values[Metrics.max.name]
@@ -226,10 +216,10 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
                 f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
                 f"Found min={min_value}, max={max_value} vs. the expected min={min_bound}, max={max_bound}"
             )
-        else:
+        else:  # noqa: RET505
             return f"Found min={min_value}, max={max_value} vs. the expected min={min_bound}, max={max_bound}."
 
-    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:
+    def _get_test_result_values(self, metric_values: dict) -> List[TestResultValue]:  # noqa: UP006
         """Get test result values for values-to-be-between test
 
         Args:
@@ -260,12 +250,12 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
     @abstractmethod
     def _execute_dimensional_validation(
         self,
-        column: Union[SQALikeColumn, Column],
-        dimension_col: Union[SQALikeColumn, Column],
+        column: Union[SQALikeColumn, Column],  # noqa: UP007
+        dimension_col: Union[SQALikeColumn, Column],  # noqa: UP007
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:
+    ) -> List[DimensionResult]:  # noqa: UP006
         """Execute dimensional validation query for a single dimension column
 
         Args:
@@ -281,13 +271,11 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
+    def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):  # noqa: UP007
         raise NotImplementedError
 
     @abstractmethod
-    def compute_row_count(
-        self, column: Union[SQALikeColumn, Column], min_bound, max_bound
-    ):
+    def compute_row_count(self, column: Union[SQALikeColumn, Column], min_bound, max_bound):  # noqa: UP007
         """Compute row count for the given column
 
         Args:
@@ -300,7 +288,7 @@ class BaseColumnValuesToBeBetweenValidator(BaseTestValidator):
         """
         raise NotImplementedError
 
-    def get_row_count(self, min_bound, max_bound) -> Tuple[int, int]:
+    def get_row_count(self, min_bound, max_bound) -> Tuple[int, int]:  # noqa: UP006
         """Get row count
 
         Args:

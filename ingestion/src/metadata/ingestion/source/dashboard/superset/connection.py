@@ -12,16 +12,15 @@
 """
 Source connection handler
 """
-from functools import partial
-from typing import Optional, Union
 
-from sqlalchemy.engine import Engine
+from functools import partial
+from typing import Any, Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
+    SupersetConnection as SupersetConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
@@ -35,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetApiConnection,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,
@@ -51,53 +51,51 @@ from metadata.ingestion.source.database.postgres.connection import PostgresConne
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(
-    connection: SupersetConnection,
-) -> Union[SupersetAPIClient, Engine, None]:
-    """
-    Create connection
-    """
-    if isinstance(connection.connection, SupersetApiConnection):
-        return SupersetAPIClient(connection)
-    if isinstance(connection.connection, PostgresConnectionConfig):
-        return PostgresConnection(connection.connection).client
-    if isinstance(connection.connection, MysqlConnectionConfig):
-        return MySQLConnection(connection.connection).client
-    return None
+class SupersetConnection(BaseConnection[SupersetConnectionConfig, Any]):
+    def _get_client(self) -> Any:
+        """
+        Create connection
+        """
+        connection = self.service_connection
+        if isinstance(connection.connection, SupersetApiConnection):
+            return SupersetAPIClient(connection)
+        if isinstance(connection.connection, PostgresConnectionConfig):
+            return PostgresConnection(connection.connection).client
+        if isinstance(connection.connection, MysqlConnectionConfig):
+            return MySQLConnection(connection.connection).client
+        return None
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: Union[SupersetAPIClient, Engine],
-    service_connection: SupersetConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        test_fn = {}
 
-    test_fn = {}
-
-    if isinstance(client, SupersetAPIClient):
-        test_fn["CheckAccess"] = client.get_dashboard_count
-        test_fn["GetDashboards"] = client.get_dashboard_count
-        test_fn["GetCharts"] = client.get_chart_count
-    else:
-        test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
-        test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
-        if isinstance(service_connection.connection, MysqlConnectionConfig):
-            test_fn["GetCharts"] = partial(
-                test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`")
-            )
+        if isinstance(client, SupersetAPIClient):
+            test_fn["CheckAccess"] = client.get_dashboard_count
+            test_fn["GetDashboards"] = client.get_dashboard_count
+            test_fn["GetCharts"] = client.get_chart_count
         else:
-            test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
+            test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
+            test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
+            if isinstance(service_connection.connection, MysqlConnectionConfig):
+                test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`"))
+            else:
+                test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

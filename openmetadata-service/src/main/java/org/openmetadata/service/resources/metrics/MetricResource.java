@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.metrics;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -43,6 +44,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -54,14 +56,18 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.jdbi3.MetricRepository.MetricCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 
 @Path("/v1/metrics")
 @Tag(
@@ -250,24 +256,8 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -360,12 +350,156 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
             description = "Bulk operation accepted for async processing"),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateMetric> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @GET
+  @Path("/documentation/csv")
+  @Valid
+  @Operation(
+      operationId = "getMetricCsvDocumentation",
+      summary = "Get CSV documentation for metric import/export")
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
+    return JsonUtils.pojoToJson(MetricCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportMetricsAsync",
+      summary = "Export metrics in CSV format asynchronously",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Export initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Metric fully qualified name, or * to export all metrics",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name, false);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Valid
+  @Operation(
+      operationId = "exportMetrics",
+      summary = "Export metrics in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported CSV with metrics",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Metric fully qualified name, or * to export all metrics",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name)
+      throws IOException {
+    return exportCsvInternal(securityContext, name, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/import")
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Valid
+  @Operation(
+      operationId = "importMetrics",
+      summary = "Import metrics from CSV to create or update metrics",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Metric import scope. Use * for collection import",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true validates the CSV without importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv)
+      throws IOException {
+    return importCsvInternal(uriInfo, securityContext, name, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importMetricsAsync",
+      summary = "Import metrics from CSV asynchronously",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Metric import scope. Use * for collection import",
+              schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true validates the CSV without importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(uriInfo, securityContext, name, csv, dryRun, false);
   }
 
   @PATCH

@@ -14,7 +14,7 @@ IOMETE source methods.
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, Optional  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
 
@@ -27,9 +27,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.connections_utils import kill_active_connections
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.iomete.connection import get_connection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -44,15 +44,11 @@ class IometeSource(CommonDbSourceService):
     service_connection: IometeConnection
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config = WorkflowSource.model_validate(config_dict)
         connection: IometeConnection = config.serviceConnection.root.config
         if not isinstance(connection, IometeConnection):
-            raise InvalidSourceException(
-                f"Expected IometeConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected IometeConnection, but got {connection}")
         return cls(config, metadata)
 
     def set_inspector(self, database_name: str) -> None:
@@ -85,22 +81,16 @@ class IometeSource(CommonDbSourceService):
 
     def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         try:
             schema_definition = None
             if self.source_config.includeDDL or table_type in (
                 TableType.View,
                 TableType.MaterializedView,
             ):
-                schema_definition = inspector.get_view_definition(
-                    table_name, schema_name
-                )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+                schema_definition = inspector.get_view_definition(table_name, schema_name)
+            schema_definition = str(schema_definition).strip() if schema_definition is not None else None
+            return schema_definition  # noqa: RET504, TRY300
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
         except Exception as exc:

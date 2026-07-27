@@ -11,6 +11,7 @@
 """
 MYSQL usage module
 """
+
 from metadata.ingestion.source.database.mysql.queries import MYSQL_SQL_STATEMENT
 from metadata.ingestion.source.database.mysql.query_parser import MysqlQueryParserSource
 from metadata.ingestion.source.database.usage_source import UsageSource

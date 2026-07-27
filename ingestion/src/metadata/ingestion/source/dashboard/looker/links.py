@@ -11,6 +11,7 @@
 """
 LookML Link handler
 """
+
 from urllib.parse import unquote, urlparse
 
 

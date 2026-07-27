@@ -11,6 +11,7 @@
 """
 Custom models for profile models
 """
+
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createTableProfile import (

@@ -13,15 +13,16 @@ OpenMetadataExt source for the profiler
 
 This source is used in cases where the service name
 is not provided for the profiler workflow.
-In such situations, the profiler will perform a thorough scan 
-of the entire data source to locate the 
+In such situations, the profiler will perform a thorough scan
+of the entire data source to locate the
 corresponding table entity in OpenMetadata.
-Subsequently, it will proceed to ingest relevant metrics 
+Subsequently, it will proceed to ingest relevant metrics
 and sample data for that identified entity.
 """
+
 import traceback
 from copy import deepcopy
-from typing import Iterable, Type, cast
+from typing import Iterable, Type, cast  # noqa: UP035
 
 from sqlalchemy.inspection import inspect
 
@@ -34,7 +35,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
     DatabaseServiceMetadataPipeline,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
+    DatabaseServiceProfilerPipeline,  # noqa: TC001
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -76,13 +77,12 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         # Init and type the source config
         self.service_connection = self.config.source.serviceConnection.root.config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+            "DatabaseServiceProfilerPipeline",
+            self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
         source_type = self.config.source.type.lower()
         service_type = get_service_type_from_source_type(self.config.source.type)
-        source_class = import_source_class(
-            service_type=service_type, source_type=source_type
-        )
+        source_class = import_source_class(service_type=service_type, source_type=source_type)
         database_source_config = DatabaseServiceMetadataPipeline()
         new_config = deepcopy(self.config.source)
         new_config.sourceConfig.config = database_source_config
@@ -92,12 +92,9 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self._connection = None
         self.set_inspector()
 
-        logger.info(
-            f"Starting profiler for service {self.config.source.type}"
-            f":{self.config.source.type.lower()}"
-        )
+        logger.info(f"Starting profiler for service {self.config.source.type}:{self.config.source.type.lower()}")
 
-    def set_inspector(self, database_name: str = None) -> None:
+    def set_inspector(self, database_name: str = None) -> None:  # noqa: RUF013
         """
         When sources override `get_database_names`, they will need
         to setup multiple inspectors. They can use this function.
@@ -121,9 +118,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     service_name=None,
                 )
                 if not database_entity:
-                    logger.debug(
-                        f"Database Entity for database `{database_name}` not found"
-                    )
+                    logger.debug(f"Database Entity for database `{database_name}` not found")
                     continue
                 for schema_name in self.get_schema_names():
                     for table_name in self.get_table_names(schema_name):
@@ -169,22 +164,20 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 continue
             yield table_name
 
-    def import_profiler_interface(self) -> Type[ProfilerInterface]:
+    def import_profiler_interface(self) -> Type[ProfilerInterface]:  # noqa: UP006
         class_path = BaseSpec.get_for_source(
             ServiceType.Database,
             source_type=self.config.source.type.lower(),
         ).profiler_class
         profiler_source_class = import_from_module(class_path)
-        return cast(Type[ProfilerInterface], profiler_source_class)
+        return cast(Type[ProfilerInterface], profiler_source_class)  # noqa: TC006, UP006
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names():
-                if filter_by_schema(
-                    self.source_config.schemaFilterPattern, schema_name
-                ):
+                if filter_by_schema(self.source_config.schemaFilterPattern, schema_name):
                     self.status.filter(schema_name, "Schema pattern not allowed")
                     continue
                 yield schema_name
@@ -209,23 +202,15 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         )
                         if filter_by_database(
                             self.source_config.databaseFilterPattern,
-                            (
-                                database_fqn
-                                if self.source_config.useFqnForFiltering
-                                else database
-                            ),
+                            (database_fqn if self.source_config.useFqnForFiltering else database),
                         ):
                             self.status.filter(database, "Database pattern not allowed")
                             continue
                         self.set_inspector(database_name=database)
                         yield database
             else:
-                custom_database_name = self.service_connection.__dict__.get(
-                    "databaseName"
-                )
-                database_name = self.service_connection.__dict__.get(
-                    "database", custom_database_name or "default"
-                )
+                custom_database_name = self.service_connection.__dict__.get("databaseName")
+                database_name = self.service_connection.__dict__.get("database", custom_database_name or "default")
                 yield database_name
         except Exception as exc:
             logger.debug(f"Failed to fetch database names {exc}")
