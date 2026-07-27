@@ -14,6 +14,7 @@
 Module for sqlalchemy dialect utils
 """
 
+import threading
 import traceback
 from typing import Dict, Optional, Tuple  # noqa: UP035
 
@@ -25,6 +26,15 @@ from sqlalchemy.schema import CreateTable, MetaData
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Serializes the first (expensive) bulk load of the column-comment cache. The
+# dialect is shared across the worker threads that reflect schemas in parallel, so
+# without this several threads would each run the costly VERTICA_COLUMN_COMMENTS
+# query before any of them publishes the result. A single module-level lock is
+# enough: it is only taken on the rare first load / database switch (steady-state
+# lookups never touch it), so gating it across dialect instances is negligible and
+# avoids the race of lazily creating a per-instance lock.
+_column_comment_load_lock = threading.Lock()
 
 
 @reflection.cache
@@ -87,12 +97,19 @@ def get_all_column_comments(self, connection, query):
 
 def get_column_comment_wrapper(self, connection, query, table_name, column_name, schema=None):
     # Snapshot the shared attributes once. getattr avoids racing with the atomic
-    # publish above (all_column_comments is assigned before current_db, so a reader
-    # in that window harmlessly sees an unset current_db and rebuilds).
+    # publish in get_all_column_comments (all_column_comments is assigned before
+    # current_db, so a reader in that window harmlessly sees an unset current_db).
+    database = connection.engine.url.database
     cache = getattr(self, "all_column_comments", None)
-    if cache is None or getattr(self, "current_db", None) != connection.engine.url.database:
-        self.get_all_column_comments(connection, query)
-        cache = self.all_column_comments
+    if cache is None or getattr(self, "current_db", None) != database:
+        # Double-checked locking: only the first racing thread runs the expensive
+        # bulk query; the rest wait, then re-check and reuse the published cache.
+        # Steady-state lookups skip the lock entirely (fast path above).
+        with _column_comment_load_lock:
+            cache = getattr(self, "all_column_comments", None)
+            if cache is None or getattr(self, "current_db", None) != database:
+                self.get_all_column_comments(connection, query)
+            cache = self.all_column_comments
     key = (
         (schema or "").lower(),
         (table_name or "").lower(),

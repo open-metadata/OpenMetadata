@@ -22,6 +22,8 @@ These cover the column-comment bulk-caching that replaces the old per-table
 * ``VerticaDialect`` enables SQLAlchemy statement caching.
 """
 
+import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -201,6 +203,52 @@ def test_bulk_population_is_atomic():
     assert observed == [None]
     assert dialect.all_column_comments[("public", "t1", "c1")] == "c1 comment"
     assert dialect.all_column_comments[("public", "t1", "c2")] == "c2 comment"
+
+
+def test_first_load_runs_bulk_query_once_under_concurrency():
+    # The dialect is shared across worker threads reflecting schemas in parallel.
+    # On the first load they all see an empty cache; double-checked locking must
+    # ensure only one thread runs the expensive bulk query while the rest wait and
+    # reuse the published result.
+    dialect = _new_dialect()
+    comment_query_calls = []
+    start = threading.Barrier(5)
+
+    def _execute(query, *_args, **_kwargs):
+        if "v_catalog.comments" in str(query):
+            comment_query_calls.append(1)
+            time.sleep(0.05)  # widen the load window so all threads race the load
+            return iter([_comment_row("public", "t1", "c1", "c1 comment")])
+        return iter([])
+
+    connection = MagicMock()
+    connection.engine.url.database = "db"
+    connection.execute.side_effect = _execute
+
+    results = []
+
+    def worker():
+        start.wait()
+        results.append(
+            get_column_comment_wrapper(
+                dialect,
+                connection,
+                VERTICA_COLUMN_COMMENTS,
+                table_name="t1",
+                column_name="c1",
+                schema="public",
+            )
+        )
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert all(result == "c1 comment" for result in results)
+    # Five racing threads, but the costly comment catalog is queried exactly once.
+    assert len(comment_query_calls) == 1
 
 
 def test_get_columns_query_does_not_join_comments():
