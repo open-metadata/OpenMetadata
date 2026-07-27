@@ -13,6 +13,7 @@
 import logging
 import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import mlflow
@@ -129,7 +130,7 @@ def create_data(mlflow_environment):
 
     np.random.seed(40)
 
-    csv_path = os.path.join(os.path.dirname(__file__), "data", "winequality-red.csv")
+    csv_path = Path(__file__).parent / "data" / "winequality-red.csv"
     data = pd.read_csv(csv_path, sep=";")
 
     train, test = train_test_split(data)
