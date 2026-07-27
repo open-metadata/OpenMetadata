@@ -25,7 +25,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.system.EntityError;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
@@ -35,6 +34,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -671,8 +671,9 @@ public class PartitionWorker {
       return precomputed;
     }
     int cursorOffset = toCursorOffset(entityType, offset);
-    ListFilter filter = new ListFilter(Include.ALL);
-    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    ListFilter filter = repository.getReindexFilter();
+    String cursor = repository.getCursorAtOffset(filter, cursorOffset);
     if (cursor == null) {
       LOG.debug(
           "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
