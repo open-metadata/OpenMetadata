@@ -21,7 +21,7 @@ test('ignores non-antd imports', () => {
   assert.deepEqual(parseAntdImports(`import { X } from 'antdesign-x';`), []);
 });
 
-test('counts distinct .ant- selectors', () => {
+test('counts .ant- selector occurrences', () => {
   const less = `.ant-btn { color: red; }\n.ant-btn:hover {}\n.ant-select-dropdown {}`;
   assert.equal(countAntSelectors(less), 3);
 });

@@ -95,7 +95,7 @@ function renderMarkdown(results) {
   lines.push(`| CSS / meta | ${repos.join(' | ')} |`);
   lines.push(`|---|${repos.map(() => '---|').join('')}`);
   lines.push(
-    `| distinct \`.ant-*\` selector occurrences | ${repos
+    `| \`.ant-*\` selector occurrences | ${repos
       .map((r) => results.get(r).antSelectors)
       .join(' | ')} |`
   );
