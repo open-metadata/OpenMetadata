@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import MetricSemanticList from './MetricSemanticList';
 import { MetricSemanticItem } from './MetricSemanticList.interface';
@@ -132,18 +132,20 @@ describe('MetricSemanticList', () => {
     fireEvent.click(screen.getByTestId('edit-description-region'));
     fireEvent.click(await screen.findByTestId('save-description'));
 
-    expect(mockOnUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        dimensions: [
-          ITEMS[0],
-          {
-            name: 'region',
-            expression: 'c.region',
-            description: 'new description',
-          },
-        ],
-      }),
-      'dimensions'
+    await waitFor(() =>
+      expect(mockOnUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dimensions: [
+            ITEMS[0],
+            {
+              name: 'region',
+              expression: 'c.region',
+              description: 'new description',
+            },
+          ],
+        }),
+        'dimensions'
+      )
     );
   });
 
