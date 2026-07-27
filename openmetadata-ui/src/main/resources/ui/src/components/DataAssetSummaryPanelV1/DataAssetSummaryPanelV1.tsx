@@ -452,6 +452,9 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.WORKFLOW_DEFINITION:
       case EntityType.DATA_CONTRACT:
       case EntityType.QUERY:
+      case EntityType.AI_APPLICATION:
+      case EntityType.LLM_MODEL:
+      case EntityType.MCP_SERVER:
       case EntityType.APPLICATION:
       case EntityType.ALERT:
       case EntityType.EVENT_SUBSCRIPTION:
