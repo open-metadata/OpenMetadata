@@ -43,6 +43,7 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import CreatePlaceholder from '../EmptyPlaceholder/CreatePlaceholder';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './custom-property-table.less';
@@ -225,28 +226,27 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full flex-center border-default border-radius-sm tw:overflow-hidden">
-        <ErrorPlaceHolder
-          className="border-none"
-          contentMaxWidthClass="tw:max-w-96"
+      <div className="h-full tw:relative tw:min-h-90">
+        <CreatePlaceholder
+          description={
+            <Transi18next
+              i18nKey="message.no-custom-properties-entity"
+              renderElement={
+                <a
+                  href={CUSTOM_PROPERTIES_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
+                  title="Custom properties documentation"
+                />
+              }
+              values={{
+                docs: t('label.doc-plural-lowercase'),
+                entity: startCase(entityType),
+              }}
+            />
+          }
           icon={<CustomPropertyEmpty />}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
-              />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
-        </ErrorPlaceHolder>
+        />
       </div>
     );
   }
