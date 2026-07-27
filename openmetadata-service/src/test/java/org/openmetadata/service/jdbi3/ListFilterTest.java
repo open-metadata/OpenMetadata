@@ -447,26 +447,20 @@ class ListFilterTest {
   }
 
   @Test
-  void test_taskStatusGroup_closedIncludesTerminalAndNonDarApprovedAndDarGranted() {
+  void test_taskStatusGroup_closedIncludesTerminalAndGrantedAndNonDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
     String condition = filter.getCondition("task_entity");
 
-    // Shared terminal statuses.
+    // Shared terminal statuses — Granted is in this list unconditionally because it's
+    // DAR-only in practice; keeps the SQL branch count minimal.
     assertTrue(
         condition.contains(
-            "task_entity.status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+            "task_entity.status IN ('Granted', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
         condition);
     // Non-DAR Approved is terminal (Glossary/DescriptionUpdate/etc.) — belongs in Closed tab.
     assertTrue(
         condition.contains(
             "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
-        condition);
-    // DAR Granted is "done" from the user's perspective (GitHub-issue model). Revoke stays
-    // available via availableTransitions, mirroring "reopen a closed issue". This is the fix
-    // for the Slack thread where Granted DAR tasks were showing under the Open tab.
-    assertTrue(
-        condition.contains(
-            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Granted'"),
         condition);
   }
 

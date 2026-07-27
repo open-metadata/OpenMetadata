@@ -44,7 +44,8 @@ class TaskBucketSqlDriftTest {
           TaskEntityStatus.Cancelled,
           TaskEntityStatus.Failed,
           TaskEntityStatus.Revoked,
-          TaskEntityStatus.Expired);
+          TaskEntityStatus.Expired,
+          TaskEntityStatus.Granted);
 
   private static final Set<TaskEntityStatus> ACTIVE =
       EnumSet.of(
@@ -74,20 +75,19 @@ class TaskBucketSqlDriftTest {
   void openAndClosedBucketsAreExhaustiveOverAllStatuses() {
     // Every TaskEntityStatus value must land in the open or closed bucket for at least one
     // (type, status) combination — otherwise a row in that status would be dropped from the
-    // openCount + completedCount reconciliation. Approved and Granted are covered by the
-    // type-conditional branches in ListFilter.buildTaskStatusGroupCondition (DAR vs non-DAR),
-    // so they must not appear in SHARED_OPEN or SHARED_TERMINAL.
+    // openCount + completedCount reconciliation. Approved is the only status covered by a
+    // type-conditional branch (terminal for non-DAR, non-terminal for DAR); every other
+    // status lands unconditionally in SHARED_OPEN or SHARED_TERMINAL.
     Set<TaskEntityStatus> covered = EnumSet.copyOf(SHARED_OPEN);
     covered.addAll(SHARED_TERMINAL);
     covered.add(TaskEntityStatus.Approved);
-    covered.add(TaskEntityStatus.Granted);
     Set<TaskEntityStatus> uncovered = EnumSet.allOf(TaskEntityStatus.class);
     uncovered.removeAll(covered);
     assertEquals(
         EnumSet.noneOf(TaskEntityStatus.class),
         uncovered,
-        "Every TaskEntityStatus must be assigned to open, closed, or a type-conditional"
-            + " (Approved / Granted) bucket. Uncovered statuses would break"
+        "Every TaskEntityStatus must be assigned to open, closed, or the type-conditional"
+            + " Approved bucket. Uncovered statuses would break"
             + " openCount + completedCount = total.");
   }
 
