@@ -1354,6 +1354,9 @@ public class SearchRepository {
       try {
         if (!getSearchClient().isClientAvailable()) {
           for (EntityInterface entity : entities) {
+            if (!shouldIndexEntity(entity)) {
+              continue; // non-searchable (e.g. PRIVATE/SHARED memory): nothing to retry
+            }
             SearchIndexRetryQueue.enqueue(
                 entity.getId() != null ? entity.getId().toString() : null,
                 entity.getFullyQualifiedName(),
@@ -1822,15 +1825,24 @@ public class SearchRepository {
         continue;
       }
 
-      if (!shouldIndexEntity(entity)) {
-        // A now-non-searchable instance (e.g. a memory flipped to PRIVATE/SHARED) must have any
-        // stale document removed from the index.
-        deleteEntityIndex(entity);
-        continue;
+      // Guard the per-entity indexability/delete branch so one bad entity can't abort the whole
+      // bulk update (mirrors createEntitiesIndex's per-entity error isolation).
+      try {
+        if (!shouldIndexEntity(entity)) {
+          // A now-non-searchable instance (e.g. a memory flipped to PRIVATE/SHARED) must have any
+          // stale document removed from the index.
+          deleteEntityIndex(entity);
+          continue;
+        }
+        String actualType = entity.getEntityReference().getType();
+        entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
+      } catch (Exception e) {
+        LOG.error(
+            "Skipping entity [{}] in bulk index update due to error: {}",
+            entity.getId(),
+            e.getMessage(),
+            e);
       }
-
-      String actualType = entity.getEntityReference().getType();
-      entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
 
     int batchSize = 100;
