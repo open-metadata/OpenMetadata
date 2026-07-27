@@ -1147,15 +1147,12 @@ public class ListFilter extends Filter<ListFilter> {
   private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
     return switch (statusGroup.toLowerCase(Locale.ROOT)) {
       case TASK_STATUS_GROUP_OPEN -> String.format(
-          "(%1$s IN (%2$s)"
-              + " OR (%3$s = '%4$s' AND %1$s = '%5$s')"
-              + " OR (%3$s <> '%4$s' AND %1$s = '%6$s'))",
+          "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s = '%5$s'))",
           column,
           TaskBucketSql.SHARED_OPEN_STATUSES,
           typeCol,
           TaskBucketSql.TASK_TYPE_DAR,
-          TaskBucketSql.STATUS_APPROVED,
-          TaskBucketSql.STATUS_GRANTED);
+          TaskBucketSql.STATUS_APPROVED);
       case TASK_STATUS_GROUP_ACTIVE -> String.format(
           "%s IN (%s)", column, TaskBucketSql.ACTIVE_STATUSES);
       case TASK_STATUS_GROUP_CLOSED -> String.format(

@@ -428,12 +428,11 @@ class ListFilterTest {
   }
 
   @Test
-  void test_taskStatusGroup_openIncludesSharedOpenAndDarApprovedAndNonDarGranted() {
+  void test_taskStatusGroup_openIncludesSharedOpenAndDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
     String condition = filter.getCondition("task_entity");
 
-    // Shared open statuses (ManualRevoke stays here as the defensive-fallback status). Granted
-    // is no longer universal — it's routed per task type via the branches below.
+    // Shared open statuses. Granted is not here — it's DAR-only and routed to the Closed bucket.
     assertTrue(
         condition.contains(
             "task_entity.status IN ('Open', 'InProgress', 'Pending', 'ManualRevoke')"),
@@ -443,12 +442,8 @@ class ListFilterTest {
         condition.contains(
             "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         condition);
-    // Defensive fallback: any hypothetical non-DAR task type that reaches Granted lands in open
-    // rather than falling through the bucket predicate.
-    assertTrue(
-        condition.contains(
-            "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Granted'"),
-        condition);
+    // Granted must not appear on the open side — the reported UX bug.
+    assertFalse(condition.contains("'Granted'"), condition);
   }
 
   @Test
@@ -496,13 +491,8 @@ class ListFilterTest {
         "DAR Approved must not appear in the closed bucket: " + closedCond);
     // DAR Granted lives in closed, never in open (Slack-thread regression guard).
     assertFalse(
-        openCond.contains(
-            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Granted'"),
-        "DAR Granted must not appear in the open bucket: " + openCond);
-    // Non-DAR Granted lives in open, never in closed (defensive-fallback direction).
-    assertFalse(
-        closedCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Granted'"),
-        "Non-DAR Granted must not appear in the closed bucket: " + closedCond);
+        openCond.contains("'Granted'"),
+        "Granted must not appear in the open bucket at all: " + openCond);
   }
 
   @Test

@@ -24,7 +24,6 @@ package org.openmetadata.service.jdbi3;
  * <ul>
  *   <li>{@code open}   = {@code status IN SHARED_OPEN_STATUSES}
  *       OR {@code (type = DataAccessRequest AND status = Approved)}
- *       OR {@code (type <> DataAccessRequest AND status = Granted)}
  *   <li>{@code closed} = {@code status IN SHARED_TERMINAL_STATUSES}
  *       OR {@code (type <> DataAccessRequest AND status = Approved)}
  *       OR {@code (type = DataAccessRequest AND status = Granted)}
@@ -39,16 +38,16 @@ package org.openmetadata.service.jdbi3;
  *   <li>{@code Approved}: terminal for non-DAR task types
  *       (Glossary/DescriptionUpdate/etc. — belongs in the Closed tab) and non-terminal for
  *       DataAccessRequest (means "awaiting grant" — belongs in the Open tab).
- *   <li>{@code Granted}: for DAR the requester's / reviewer's work is done and the task should
- *       read as closed (GitHub-issue model — revoke stays available from the closed task via
- *       {@code availableTransitions}, mirroring "reopen a closed issue"). For any hypothetical
- *       non-DAR task type that reaches Granted, we default to Open so the row still lands in a
- *       bucket rather than silently breaking the {@code openCount + completedCount = total}
- *       invariant.
+ *   <li>{@code Granted}: DAR-only in practice — for DAR the requester's / reviewer's work is
+ *       done and the task should read as closed (GitHub-issue model — revoke stays available
+ *       from the closed task via {@code availableTransitions}, mirroring "reopen a closed
+ *       issue"). No non-DAR workflow currently sets Granted, so the closed bucket is the only
+ *       branch that routes it. If a future task type ever adopts Granted,
+ *       {@code TaskBucketSqlDriftTest#openAndClosedBucketsAreExhaustiveOverAllStatuses}
+ *       still passes (Granted is in the type-conditional coverage set) but the runtime
+ *       {@code openCount + completedCount = total} invariant will drop those rows —
+ *       intentional signal to force the author to route the new type explicitly.
  * </ul>
- *
- * <p>{@code ManualRevoke} lives in {@code SHARED_OPEN_STATUSES} for the same defensive reason —
- * DAR-only in practice but any future task type reaching that status lands in Open by default.
  */
 public final class TaskBucketSql {
 

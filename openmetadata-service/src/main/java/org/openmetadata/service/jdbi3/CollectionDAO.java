@@ -4683,11 +4683,6 @@ public interface CollectionDAO {
             + "' AND status = '"
             + TaskBucketSql.STATUS_APPROVED
             + "' THEN 1"
-            + " WHEN type <> '"
-            + TaskBucketSql.TASK_TYPE_DAR
-            + "' AND status = '"
-            + TaskBucketSql.STATUS_GRANTED
-            + "' THEN 1"
             + " ELSE 0 END), 0) AS openCount, "
             + "COALESCE(SUM(CASE"
             + " WHEN status IN ("
