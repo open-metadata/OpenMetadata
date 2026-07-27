@@ -723,7 +723,7 @@ public class IncidentTaskIntegrationIT {
             () -> {
               List<TestCaseResolutionStatus> timeline = tcrsTimeline(client, stateId);
               assertFalse(timeline.isEmpty(), "no TCRS records for stateId " + stateId);
-              TestCaseResolutionStatus latest = timeline.get(timeline.size() - 1);
+              TestCaseResolutionStatus latest = timeline.getLast();
               assertEquals(expectedStatus, latest.getTestCaseResolutionStatusType());
               assertEquals(expectedAssignee, tcrsAssigneeName(latest));
             });
