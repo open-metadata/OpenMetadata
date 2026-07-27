@@ -65,7 +65,7 @@ class SearchRelevancyPreviewIT {
 
   @Test
   void termBoostPromotesTheMatchingTier(final TestNamespace ns) {
-    final String marker = ns.uniqueShortId();
+    final String marker = RelevancyFixtures.uniqueToken("gt");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table tier1Table = RelevancyFixtures.createTable(schema, marker + "a", marker, TIER_1);
     final Table tier2Table = RelevancyFixtures.createTable(schema, marker + "b", marker, TIER_2);
@@ -74,6 +74,7 @@ class SearchRelevancyPreviewIT {
     awaitTierIndexed(tier2Table, TIER_2);
 
     final SearchSettings base = currentSettings();
+    SearchSettingsTestHelper.clearBoosts(base, TABLE_INDEX);
 
     assertThat(topHit(marker, boostTier(base, TIER_1)))
         .as("boosting %s must rank the Tier1 table first", TIER_1)
@@ -233,7 +234,7 @@ class SearchRelevancyPreviewIT {
 
   @Test
   void perAssetTermBoostAppliesOnThatAssetIndex(final TestNamespace ns) {
-    final String marker = ns.uniqueShortId();
+    final String marker = RelevancyFixtures.uniqueToken("at");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table tier1Table = RelevancyFixtures.createTable(schema, marker + "a", marker, TIER_1);
     final Table tier2Table = RelevancyFixtures.createTable(schema, marker + "b", marker, TIER_2);
@@ -242,6 +243,7 @@ class SearchRelevancyPreviewIT {
     awaitTierIndexed(tier2Table, TIER_2);
 
     final SearchSettings base = currentSettings();
+    SearchSettingsTestHelper.clearBoosts(base, TABLE_INDEX);
 
     final SearchSettings boostTier1 = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.addAssetTermBoost(

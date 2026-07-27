@@ -611,6 +611,41 @@ def test_targeted_selection_combines_changed_specs_impacts_and_unmapped_canaries
     assert selection["directChangedSpecs"] == ["playwright/e2e/Pages/Entity.spec.ts"]
 
 
+def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/Explore.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    schema_search = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Features/SchemaSearch.spec.ts"
+    )
+    assert "Ingestion" in schema_search["projects"]
+
+
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     existing_spec = tmp_path / selector.UI_ROOT / "playwright/e2e/Smoke.spec.ts"
@@ -1353,6 +1388,26 @@ def test_security_impact_mapping_uses_each_permission_specs_project():
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         mapping["specs"],
     )
+
+
+def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
+        in entry["sources"]
+    )
+    schema_search = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
+    ).read_text()
+
+    assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
+    assert "Ingestion" in mapping["projects"]
+    assert "tag: '@ingestion'" in schema_search
 
 
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
