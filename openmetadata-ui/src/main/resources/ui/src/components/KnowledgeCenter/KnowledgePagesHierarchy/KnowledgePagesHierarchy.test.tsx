@@ -325,6 +325,63 @@ describe('KnowledgePagesHierarchy', () => {
     ).toBeInTheDocument();
   });
 
+  it('should keep a manually collapsed ancestor of the active node collapsed', async () => {
+    const { rerender } = render(
+      <KnowledgePagesHierarchy
+        activeKey="Article_2p7Z8MAN"
+        permissions={DEFAULT_ENTITY_PERMISSION}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    // Manually expand the ancestor so the active descendant is visible,
+    // mirroring what the activeKey-driven auto-expand effect would do.
+    const row = screen
+      .getByText('How to Discover Assets of Interest')
+      .closest('[role="row"]');
+    const chevron = row?.querySelector('button[slot="chevron"]');
+
+    expect(chevron).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(chevron!);
+    });
+
+    expect(
+      screen.getByText('How to Discover Assets of Interest Child 1')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(chevron!);
+    });
+
+    expect(
+      screen.queryByText('How to Discover Assets of Interest Child 1')
+    ).not.toBeInTheDocument();
+
+    // Re-rendering with the same activeKey (e.g. triggered by an unrelated
+    // hierarchy state update) must not re-expand the ancestor that was just
+    // collapsed by the user.
+    rerender(
+      <KnowledgePagesHierarchy
+        activeKey="Article_2p7Z8MAN"
+        permissions={DEFAULT_ENTITY_PERMISSION}
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByText('How to Discover Assets of Interest Child 1')
+    ).not.toBeInTheDocument();
+  });
+
   it('delete flow should work', async () => {
     await act(async () => {
       render(
@@ -344,6 +401,88 @@ describe('KnowledgePagesHierarchy', () => {
     fireEvent.click(deleteButton);
 
     expect(screen.getByTestId('delete-widget')).toBeInTheDocument();
+  });
+
+  describe('loadNodeChildren', () => {
+    const mockGetPageHierarchyFromES = jest.requireMock(
+      'rest/knowledgeCenterAPI'
+    ).getPageHierarchyFromES;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should stop fetching once a childrenCount/actual-children mismatch is detected, instead of calling the API forever', async () => {
+      const mismatchedHierarchy = [
+        {
+          id: 'mismatch-parent-id',
+          pageType: 'Article',
+          name: 'Article_Mismatch',
+          description: '',
+          fullyQualifiedName: 'Article_Mismatch',
+          displayName: 'Mismatched Count Parent',
+          // childrenCount claims more children exist than any fetch will ever return.
+          childrenCount: 5,
+          children: [],
+        },
+      ];
+
+      mockGetPageHierarchyFromES.mockImplementation((parent?: string) =>
+        Promise.resolve({
+          data:
+            parent === 'Article_Mismatch'
+              ? [
+                  {
+                    id: 'mismatch-child-1',
+                    pageType: 'Article',
+                    name: 'Article_MismatchChild',
+                    description: '',
+                    fullyQualifiedName:
+                      'Article_Mismatch.Article_MismatchChild',
+                    displayName: 'Mismatch Child',
+                    childrenCount: 0,
+                    children: [],
+                  },
+                ]
+              : mismatchedHierarchy,
+          paging: { limit: 100, offset: 0, total: 1 },
+        })
+      );
+
+      await act(async () => {
+        render(
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          { wrapper: MemoryRouter }
+        );
+      });
+
+      const row = screen
+        .getByText('Mismatched Count Parent')
+        .closest('[role="row"]');
+      const expandBtn = row?.querySelector('button[slot="chevron"]');
+
+      await act(async () => {
+        fireEvent.click(expandBtn!);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Mismatch Child')).toBeInTheDocument();
+      });
+
+      const callCountAfterFirstLoad =
+        mockGetPageHierarchyFromES.mock.calls.length;
+
+      // Allow further effect/render cycles to run; the call count must not
+      // keep growing once the single available page of children has loaded.
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(mockGetPageHierarchyFromES.mock.calls.length).toBe(
+        callCountAfterFirstLoad
+      );
+    });
   });
 
   describe('Scroll Pagination', () => {

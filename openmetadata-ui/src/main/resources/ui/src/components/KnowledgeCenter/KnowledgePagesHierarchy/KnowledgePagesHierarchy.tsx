@@ -336,19 +336,43 @@ const KnowledgePagesHierarchy = forwardRef<
     const fetchKnowledgePageHierarchyRef = useRef(fetchKnowledgePageHierarchy);
     fetchKnowledgePageHierarchyRef.current = fetchKnowledgePageHierarchy;
 
+    const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
+    const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
+
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
-        if (!node || node.childrenCount <= (node.children?.length ?? 0)) {
+        const loadedCount = node?.children?.length ?? 0;
+        if (!node || node.childrenCount <= loadedCount) {
           return;
         }
+        if (
+          nodesLoadingChildrenRef.current.has(nodeKey) ||
+          nodesWithNoMoreChildrenRef.current.has(nodeKey)
+        ) {
+          return;
+        }
+        nodesLoadingChildrenRef.current.add(nodeKey);
         try {
-          const { data: children } = await getPageHierarchyFromES(nodeKey);
+          const { data: children } = await getPageHierarchyFromES(
+            nodeKey,
+            undefined,
+            loadedCount,
+            KNOWLEDGE_CENTER_PAGINATION_LIMIT
+          );
+          if (children.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+            nodesWithNoMoreChildrenRef.current.add(nodeKey);
+          }
+          if (children.length === 0) {
+            return;
+          }
           setKnowledgePageHierarchy(
             updateTreeData(knowledgePageHierarchy, children, nodeKey)
           );
         } catch {
           // do nothing
+        } finally {
+          nodesLoadingChildrenRef.current.delete(nodeKey);
         }
       },
       [knowledgePageHierarchy]
@@ -467,10 +491,24 @@ const KnowledgePagesHierarchy = forwardRef<
             targetNode.fullyQualifiedName
           );
 
+          nodesWithNoMoreChildrenRef.current.delete(
+            targetNode.fullyQualifiedName
+          );
+          nodesLoadingChildrenRef.current.delete(targetNode.fullyQualifiedName);
+
+          const targetChildrenWithMovedSubtree = targetNodeChildren.data.map(
+            (child) =>
+              child.fullyQualifiedName === newSourceFQN &&
+              isEmpty(child.children) &&
+              !isEmpty(sourceNode.children)
+                ? { ...child, children: sourceNode.children }
+                : child
+          );
+
           setKnowledgePageHierarchy((prev) =>
             getUpdatePageHierarchy(
               prev,
-              { ...targetNode, children: targetNodeChildren.data },
+              { ...targetNode, children: targetChildrenWithMovedSubtree },
               true
             )
           );
@@ -479,6 +517,13 @@ const KnowledgePagesHierarchy = forwardRef<
 
           if (sourceNodeParent) {
             const sourceNodeParentChildren = await getPageHierarchyFromES(
+              sourceNodeParent.fullyQualifiedName
+            );
+
+            nodesWithNoMoreChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodesLoadingChildrenRef.current.delete(
               sourceNodeParent.fullyQualifiedName
             );
 
@@ -696,8 +741,11 @@ const KnowledgePagesHierarchy = forwardRef<
       fetchKnowledgePagesTotalCount();
     }, [fetchKnowledgePagesTotalCount]);
 
+    const autoExpandedForKeyRef = useRef<string | undefined>(undefined);
+
     useEffect(() => {
-      if (activeKey) {
+      if (activeKey && autoExpandedForKeyRef.current !== activeKey) {
+        autoExpandedForKeyRef.current = activeKey;
         setExpandedKeys((prev) =>
           uniq([
             ...prev,

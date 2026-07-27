@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PageHierarchy, PageType } from '../interface/knowledge-center.interface';
-import { updateTreeData } from './KnowledgePagePureUtils';
+import {
+  PageHierarchy,
+  PageType,
+} from '../interface/knowledge-center.interface';
+import {
+  getUpdatePageHierarchy,
+  updateTreeData,
+} from './KnowledgePagePureUtils';
 
 const buildPage = (
   fullyQualifiedName: string,
@@ -27,9 +33,7 @@ const buildPage = (
 
 describe('updateTreeData', () => {
   it('appends new children under the matching parent', () => {
-    const existing = [
-      buildPage('parent', { childrenCount: 1 }),
-    ];
+    const existing = [buildPage('parent', { childrenCount: 1 })];
     const newChildren = [buildPage('parent.child')];
 
     const result = updateTreeData(existing, newChildren, 'parent');
@@ -71,5 +75,71 @@ describe('updateTreeData', () => {
     const result = updateTreeData(existing, newPages);
 
     expect(result).toHaveLength(2);
+  });
+});
+
+describe('getUpdatePageHierarchy', () => {
+  it('preserves an already-loaded grandchild subtree when a shallow refresh of the parent does not include it', () => {
+    // A -> C -> D, where C's subtree was already loaded locally.
+    const grandchild = buildPage('A.C.D', { childrenCount: 0 });
+    const nodeC = buildPage('A.C', {
+      childrenCount: 1,
+      children: [grandchild],
+    });
+    const existing = [buildPage('A', { childrenCount: 1, children: [nodeC] })];
+
+    // A one-level-deep refresh of A's children (e.g. after an unrelated
+    // sibling move) returns C without its nested children.
+    const shallowRefreshedC = buildPage('A.C', { childrenCount: 1 });
+
+    const result = getUpdatePageHierarchy(
+      existing,
+      { ...buildPage('A'), children: [shallowRefreshedC] },
+      true
+    );
+
+    expect(result[0].children).toHaveLength(1);
+    expect(result[0].children?.[0].children).toEqual([grandchild]);
+  });
+
+  it('drops a child that the authoritative fresh fetch no longer reports, instead of leaving a stale duplicate', () => {
+    // A used to have children [B, C]; B was moved out from under A, so a
+    // fresh fetch of A's children now only reports C.
+    const nodeB = buildPage('A.B');
+    const nodeC = buildPage('A.C');
+    const existing = [
+      buildPage('A', { childrenCount: 2, children: [nodeB, nodeC] }),
+    ];
+
+    const result = getUpdatePageHierarchy(
+      existing,
+      { ...buildPage('A'), children: [nodeC] },
+      true
+    );
+
+    expect(result[0].children).toEqual([nodeC]);
+  });
+
+  it('replaces a child with its fresh version when the fresh fetch does include updated children', () => {
+    const existingChild = buildPage('A.C.D');
+    const nodeC = buildPage('A.C', {
+      childrenCount: 1,
+      children: [existingChild],
+    });
+    const existing = [buildPage('A', { childrenCount: 1, children: [nodeC] })];
+
+    const refreshedChild = buildPage('A.C.D', { displayName: 'Renamed' });
+    const refreshedC = buildPage('A.C', {
+      childrenCount: 1,
+      children: [refreshedChild],
+    });
+
+    const result = getUpdatePageHierarchy(
+      existing,
+      { ...buildPage('A'), children: [refreshedC] },
+      true
+    );
+
+    expect(result[0].children?.[0].children).toEqual([refreshedChild]);
   });
 });

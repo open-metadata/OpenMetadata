@@ -263,8 +263,22 @@ export const getUpdatePageHierarchy = (
     nodes.forEach((node) => {
       if (node.fullyQualifiedName === activePage?.fullyQualifiedName) {
         if (updateChildren) {
-          const children = (activePage?.children ?? []) as PageHierarchy[];
-          node.children = children;
+          const freshChildren = (activePage?.children ?? []) as PageHierarchy[];
+          const previousChildrenByFqn = new Map(
+            (node.children ?? []).map((child) => [
+              child.fullyQualifiedName,
+              child,
+            ])
+          );
+          node.children = freshChildren.map((freshChild) => {
+            const previousChild = previousChildrenByFqn.get(
+              freshChild.fullyQualifiedName
+            );
+
+            return isEmpty(freshChild.children) && previousChild?.children
+              ? { ...freshChild, children: previousChild.children }
+              : freshChild;
+          });
         } else {
           node.displayName = activePage?.displayName;
         }
