@@ -217,9 +217,11 @@ class AIGovernanceSampleData:
             edge=EntitiesEdge(
                 fromEntity=from_entity,
                 toEntity=to_entity,
-                lineageDetails=LineageDetails(
-                    description=edge.get("description"),
-                    source=Source.Manual,
+                lineageDetails=LineageDetails.model_validate(
+                    {
+                        "description": edge.get("description"),
+                        "source": Source.Manual,
+                    }
                 ),
             )
         )
@@ -245,12 +247,14 @@ class AIGovernanceSampleData:
         if entity is None:
             raise AIGovernanceSampleDataError(f"Cannot resolve {reference_type} dependency '{fqn}'")
 
-        return EntityReference(
-            id=entity.id,
-            type=reference_type,
-            name=self._model_value(getattr(entity, "name", None)),
-            fullyQualifiedName=self._model_value(getattr(entity, "fullyQualifiedName", None)),
-            displayName=getattr(entity, "displayName", None),
+        return EntityReference.model_validate(
+            {
+                "id": entity.id,
+                "type": reference_type,
+                "name": self._model_value(getattr(entity, "name", None)),
+                "fullyQualifiedName": self._model_value(getattr(entity, "fullyQualifiedName", None)),
+                "displayName": getattr(entity, "displayName", None),
+            }
         )
 
     @staticmethod

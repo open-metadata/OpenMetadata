@@ -944,7 +944,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
     def prepare(self):
         """Nothing to prepare"""
 
-    def _iter(self, *_, **__) -> Iterable[Entity]:
+    def _iter(self, *_, **__) -> Iterable[Either]:
         yield from self.ingest_domains()
         yield from self.ingest_data_products()
         yield from self.ingest_teams()
@@ -985,7 +985,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
         for request in self.ai_governance.iter_requests():
-            yield Either(right=request)
+            yield Either(left=None, right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""
