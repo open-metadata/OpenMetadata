@@ -136,6 +136,7 @@ class EntityETagTest {
                 user(u).withDefaultPersona(ref("persona", "p2"))));
 
     for (Case c : cases) {
+      assertEquals(c.before().getId(), c.after().getId());
       assertEquals(c.before().getVersion(), c.after().getVersion());
       assertEquals(c.before().getUpdatedAt(), c.after().getUpdatedAt());
       assertNotEquals(
