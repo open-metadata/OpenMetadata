@@ -129,8 +129,8 @@ def create_data(mlflow_environment):
 
     np.random.seed(40)
 
-    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
-    data = pd.read_csv(csv_url, sep=";")
+    csv_path = os.path.join(os.path.dirname(__file__), "data", "winequality-red.csv")
+    data = pd.read_csv(csv_path, sep=";")
 
     train, test = train_test_split(data)
 

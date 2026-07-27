@@ -123,17 +123,19 @@ RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(
   && if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then \
        echo "pyspark not installed; skipping Hive-metastore jar patch"; \
      else \
+       fetch_jar() { \
+         wget -q "https://repo1.maven.org/maven2/$2" -O "$1" \
+         && echo "$3  $1" | sha256sum -c - || exit 1; \
+       }; \
        cd "${JARS_DIR}" \
        && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
                 jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
-       && for entry in \
-            "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|b12d6fb4afd7b3849d3a9a5a38b9260c23a12e1ea58ca8c8d775880249cb8eac" \
-            "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|ad15d812b1f01f373638443adcda0e23fda549d65ced2be8c4f64bef33b5d774" \
-          ; do \
-            name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
-            wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
-            && echo "${sha}  ${name}" | sha256sum -c - || exit 1; \
-          done; \
+       && fetch_jar zookeeper-3.7.2.jar \
+            org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar \
+            b12d6fb4afd7b3849d3a9a5a38b9260c23a12e1ea58ca8c8d775880249cb8eac \
+       && fetch_jar zookeeper-jute-3.7.2.jar \
+            org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar \
+            ad15d812b1f01f373638443adcda0e23fda549d65ced2be8c4f64bef33b5d774; \
      fi
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
