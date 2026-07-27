@@ -46,7 +46,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -108,7 +108,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
 
@@ -150,7 +150,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
