@@ -165,13 +165,13 @@ def test_nested_model_dump_after_parent_validation_is_defer_build_safe():
     Dumping a nested model whose class defer_build left unbuilt must work.
 
     ``MetadataWorkflow._get_source`` calls ``self.config.source.model_dump()``.
-    Under defer_build=True the nested ``Source`` class never has its own
-    class-level schema built — the validated parent's schema handles it by
-    composition — so serialization has to go through a deferred serializer.
-    The nightly CLI E2E runs hit
-    ``'MockValSer' object cannot be converted to 'SchemaSerializer'`` on exactly
-    this path when pydantic's own lazy rebuild fails to resolve the generated
-    forward references.
+    Validating the parent config builds only the parent, so ``Source`` and the
+    models below it (``DatabaseConnection``, ``SnowflakeConnection``,
+    ``SourceConfig``, ``DatabaseServiceMetadataPipeline``) keep the MockValSer
+    that defer_build installed. pydantic-core dereferences a nested class's own
+    serializer when serializing it as a union or root member, so the dump fails
+    with ``'MockValSer' object cannot be converted to 'SchemaSerializer'`` —
+    the nightly CLI E2E failure. Building only ``type(self)`` is not enough.
 
     Runs in a subprocess so the probe starts from an unbuilt Source class.
     """

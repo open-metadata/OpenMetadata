@@ -34,6 +34,38 @@ logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
+MOCK_SERIALIZER = "MockValSer"
+
+
+def _has_deferred_serializer(model_class: type) -> bool:
+    """Whether defer_build has left this class without a real serializer."""
+    return type(model_class.__pydantic_serializer__).__name__ == MOCK_SERIALIZER
+
+
+def _model_classes_in_schema(schema: Any) -> list:
+    """
+    Collect the model classes embedded in a pydantic-core schema.
+
+    A built schema carries the whole nested graph inline, with each model node
+    holding its class under the `cls` key, so walking it avoids reimplementing
+    typing introspection over Union/Annotated/RootModel field annotations.
+    """
+    collected = []
+    seen_nodes = set()
+    pending = [schema]
+    while pending:
+        node = pending.pop()
+        if id(node) in seen_nodes:
+            continue
+        seen_nodes.add(id(node))
+        if isinstance(node, dict):
+            candidate = node.get("cls")
+            if isinstance(candidate, type) and issubclass(candidate, PydanticBaseModel):
+                collected.append(candidate)
+            pending.extend(node.values())
+        elif isinstance(node, (list, tuple)):
+            pending.extend(node)
+    return collected
 
 
 class BaseModel(PydanticBaseModel):
@@ -93,6 +125,38 @@ class BaseModel(PydanticBaseModel):
         except Exception as exc:
             logger.warning("Exception while parsing Basemodel: %s", exc)
             return values
+
+    @classmethod
+    def build_deferred_serializers(cls) -> None:
+        """
+        Give this model and every model reachable from it a real serializer.
+
+        `defer_build=True` leaves each class holding a MockValSer until something
+        forces its build. Validating a parent only builds the parent: the nested
+        classes stay mocked because the parent's schema serializes them by
+        composition. pydantic-core still dereferences a nested class's own
+        serializer when it serializes that value as a union or root member, and
+        then fails with
+        `'MockValSer' object cannot be converted to 'SchemaSerializer'` — which is
+        what `MetadataWorkflow._get_source` hits on `config.source.model_dump()`.
+
+        Building the graph rather than just `cls` is therefore required, and
+        memoizing on `cls.__dict__` keeps it to once per model type, which is the
+        cost defer_build already accepts. Nested rebuilds pass `raise_errors=False`
+        so a model that genuinely cannot build is left mocked exactly as before
+        instead of breaking a dump that used to succeed.
+        """
+        if cls.__dict__.get("__om_deferred_serializers_built__"):
+            return
+
+        if _has_deferred_serializer(cls):
+            cls.model_rebuild(force=True)
+
+        for nested_class in _model_classes_in_schema(cls.__pydantic_core_schema__):
+            if _has_deferred_serializer(nested_class):
+                nested_class.model_rebuild(force=True, raise_errors=False)
+
+        cls.__om_deferred_serializers_built__ = True
 
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
@@ -162,19 +226,7 @@ class BaseModel(PydanticBaseModel):
         if "warnings" not in kwargs:
             kwargs["warnings"] = warnings
 
-        # Under `defer_build=True`, a nested model exposed as a field of a
-        # validated parent never has its own class-level schema built — the
-        # parent's schema handles serialization via composition. When user code
-        # then calls `.model_dump()` on the nested instance directly, pydantic
-        # tries `type(self).__pydantic_serializer__.to_python(...)` and hits a
-        # MockValSer whose lazy rebuild (parent_namespace_depth=5) is fragile
-        # from inside this override and can fail with
-        # `'MockValSer' object cannot be converted to 'SchemaSerializer'`.
-        # Force the one-time rebuild here so serialization of top-level
-        # nested models (Source, ServiceConnection, ...) works reliably.
-        cls = type(self)
-        if type(cls.__pydantic_serializer__).__name__ == "MockValSer":
-            cls.model_rebuild(force=True)
+        type(self).build_deferred_serializers()
 
         return super().model_dump(**kwargs)
 
