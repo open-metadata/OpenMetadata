@@ -18,10 +18,11 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link04, XClose } from '@untitledui/icons';
+import { XClose } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatBytes } from '../../../utils/ContextCenterUtils';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
@@ -32,10 +33,10 @@ import {
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
   <Box align="center" className="tw:py-1.5" justify="between">
-    <Typography className="tw:text-gray-500" size="text-sm">
+    <Typography className="tw:text-quaternary" size="text-sm">
       {label}
     </Typography>
-    <Typography className="tw:text-gray-900" size="text-sm" weight="medium">
+    <Typography className="tw:text-primary" size="text-sm" weight="medium">
       {value}
     </Typography>
   </Box>
@@ -89,18 +90,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           </div>
         </Box>
         <Box align="center" gap={2}>
-          <CopyLinkButton url={url}>
-            <Link04
-              aria-hidden="true"
-              className="tw:-rotate-45"
-              size={17}
-              strokeWidth={1.8}
-            />
+          <CopyLinkButton className="tw:w-8 tw:h-8" url={url}>
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           <ButtonUtility
             color="tertiary"
             data-testid="close-preview-btn"
-            icon={XClose}
+            icon={<XClose height={20} width={20} />}
             size="xs"
             tooltip={t('label.close')}
             onClick={onClose}
@@ -112,13 +108,13 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
-        <Card className="tw:p-4">
+        <Card className="tw:p-4 tw:shrink-0">
           <div className="tw:mb-3">
             <Typography
-              className="tw:text-gray-500 tw:uppercase"
+              className="tw:text-quaternary tw:uppercase"
               size="text-xs"
               weight="semibold">
-              {t('label.status')}
+              {t('label.detail-plural')}
             </Typography>
           </div>
           {folderName && (

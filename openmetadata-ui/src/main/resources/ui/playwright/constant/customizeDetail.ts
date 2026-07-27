@@ -235,6 +235,7 @@ export const DATA_PRODUCT_DEFAULT_TABS = [
   EntityTabs.ACTIVITY_FEED,
   EntityTabs.CUSTOM_PROPERTIES,
   EntityTabs.INPUT_OUTPUT_PORTS,
+  EntityTabs.DATA_OBSERVABILITY,
 ];
 
 export const GLOSSARY_DEFAULT_TABS = [

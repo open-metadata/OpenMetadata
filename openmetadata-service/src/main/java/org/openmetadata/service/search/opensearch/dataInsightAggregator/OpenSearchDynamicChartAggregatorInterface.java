@@ -188,6 +188,10 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       Map<String, Aggregation> aggregations,
       String aggregationName,
       List<FormulaHolder> formulas) {
+    if (function == null && formula == null) {
+      throw new IllegalArgumentException(
+          "Data Insight chart metric must define either a function or a formula");
+    }
     if (formula != null) {
       if (filter != null && !filter.equals("{}")) {
         try {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { IconButton, ToggleButtonGroup } from '@mui/material';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
@@ -30,7 +29,7 @@ import {
 import {
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
+} from '../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
@@ -38,7 +37,6 @@ import { ColumnLevelLineageNode } from '../Lineage/Lineage.interface';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
-
 // Mock dependencies
 jest.mock('../../context/LineageProvider/LineageProvider');
 jest.mock('../../hooks/paging/usePaging');
@@ -52,20 +50,10 @@ jest.mock('../../utils/StringUtils', () => ({
 }));
 jest.mock('../../hooks/useLineageStore');
 jest.mock('../../utils/Lineage/LineageUtils');
+jest.mock('../../utils/Lineage/LineagePureUtils');
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock('./LineageTable.styled', () => {
-  const { Menu: MuiMenu } = jest.requireActual('@mui/material');
-
-  return {
-    StyledMenu: (props: React.ComponentProps<typeof MuiMenu>) => (
-      <MuiMenu {...props} />
-    ),
-    StyledToggleButtonGroup: ToggleButtonGroup,
-    StyledIconButton: IconButton,
-  };
-});
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
@@ -498,9 +486,7 @@ describe('LineageTable', () => {
 
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const table = document.querySelector('.ant-spin-container');
-
-    expect(table).toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('should handle error state when API calls fail', async () => {
@@ -535,7 +521,7 @@ describe('LineageTable', () => {
 
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const upstreamButton = screen.getByRole('button', {
+    const upstreamButton = screen.getByRole('radio', {
       name: /label.upstream/,
     });
     fireEvent.click(upstreamButton);
@@ -552,9 +538,7 @@ describe('LineageTable', () => {
   it('should render table with pagination props', () => {
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const table = document.querySelector('.ant-table');
-
-    expect(table).toBeInTheDocument();
+    expect(document.querySelector('table')).toBeInTheDocument();
   });
 
   describe('LineageTable Hooks Integration', () => {

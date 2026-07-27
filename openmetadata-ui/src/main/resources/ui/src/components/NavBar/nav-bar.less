@@ -46,7 +46,7 @@
     font-size: 18px;
     line-height: 32px;
     font-weight: 600;
-    color: @grey-700;
+    color: var(--tw-color-text-secondary);
   }
 }
 
@@ -70,9 +70,9 @@
 }
 
 .ant-btn.domain-nav-btn {
-  background-color: @white;
-  border: 1px solid @grey-15;
-  color: @text-color;
+  background-color: var(--tw-color-bg-primary);
+  border: 1px solid var(--tw-color-border-primary);
+  color: var(--tw-color-text-secondary);
   height: 40px;
 
   .domain-text {
@@ -82,15 +82,15 @@
 
   &:hover,
   &:focus {
-    background-color: @primary-button-background;
-    border: 1px solid @alert-info-icon-bg-1;
-    color: @text-color;
+    background-color: var(--tw-color-bg-primary_hover);
+    border: 1px solid var(--tw-color-border-primary);
+    color: var(--tw-color-text-secondary);
   }
 
   &.domain-active {
-    color: @primary-color;
-    border: 1px solid @primary-color;
-    background-color: @primary-button-background;
+    color: var(--tw-color-text-brand-tertiary);
+    border: 1px solid var(--tw-color-border-brand);
+    background-color: var(--tw-color-bg-brand-primary);
   }
 }
 
@@ -102,27 +102,27 @@
   margin: 0 auto;
   box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.12);
   border-radius: 10px;
-  border: 1px solid @text-color;
-  background: @text-color;
-  color: @white;
+  border: 1px solid var(--tw-color-bg-primary-solid);
+  background: var(--tw-color-bg-primary-solid);
+  color: var(--tw-color-text-white);
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
 
   .ant-alert-message {
-    color: @white;
+    color: var(--tw-color-text-white);
   }
 
   .ant-alert-description {
-    color: @grey-4;
+    color: var(--tw-color-gray-400);
   }
 
   .ant-alert-content {
-    border-right: 1px solid @white;
+    border-right: 1px solid var(--tw-color-text-white);
   }
 
   .ant-btn {
     font-weight: 700;
-    color: @white;
+    color: var(--tw-color-text-white);
   }
 }

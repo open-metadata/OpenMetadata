@@ -13,8 +13,9 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { Post, Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
@@ -25,15 +26,17 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
+);
 
 interface CommentCardInterface {
   feed: Thread;

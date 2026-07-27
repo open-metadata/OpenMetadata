@@ -64,14 +64,17 @@ export const COMMON_TIER_TAG = [
   },
 ];
 
-export const ASSET_FILTER_NAMES = [
-  'Entity Type',
-  'Domains',
-  'Owners',
-  'Tag',
-  'Tier',
-  'Service',
-  'Service Type',
+// Stable, locale-independent search keys (EntityFields) for the asset-filter
+// quick-filter dropdowns. Keyed off field.key rather than the translated label
+// so the selectors survive i18n/label changes.
+export const ASSET_FILTER_KEYS = [
+  'entityType',
+  'domains.displayName.keyword',
+  'ownerDisplayName',
+  'tags.tagFQN',
+  'tier.tagFQN',
+  'service.displayName.keyword',
+  'serviceType',
 ];
 
 export const KEY_PROFILE_METRICS = [

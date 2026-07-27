@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
-    KafkaConnection,
+    KafkaConnection as KafkaConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.messaging.redpandaCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -65,7 +66,7 @@ class KafkaClient:
         self.consumer_client = consumer_client
 
 
-def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
+def get_connection(connection: Union[KafkaConnectionConfig, RedpandaConnection]) -> KafkaClient:  # noqa: UP007
     """
     Create connection
     """
@@ -119,7 +120,7 @@ def get_connection(connection: Union[KafkaConnection, RedpandaConnection]) -> Ka
 def test_connection(
     metadata: OpenMetadata,
     client: KafkaClient,
-    service_connection: Union[KafkaConnection, RedpandaConnection],  # noqa: UP007
+    service_connection: Union[KafkaConnectionConfig, RedpandaConnection],  # noqa: UP007
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
@@ -158,3 +159,22 @@ def test_connection(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+
+class KafkaConnection(BaseConnection[KafkaConnectionConfig, KafkaClient]):
+    def _get_client(self) -> KafkaClient:
+        return get_connection(self.service_connection)
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

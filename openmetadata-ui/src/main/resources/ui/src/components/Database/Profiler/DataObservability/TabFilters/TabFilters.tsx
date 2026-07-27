@@ -36,7 +36,7 @@ import {
   getAddCustomMetricPath,
   getEntityDetailsPath,
 } from '../../../../../utils/RouterUtils';
-import MuiDatePickerMenu from '../../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
+import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
@@ -210,7 +210,7 @@ const TabFilters = () => {
           <span className="tw:text-sm tw:font-medium tw:text-primary">
             {`${t('label.date')}:`}
           </span>
-          <MuiDatePickerMenu
+          <DatePickerMenu
             showSelectedCustomRange
             defaultDateRange={dateRangeObject}
             handleDateRangeChange={handleDateRangeChange}

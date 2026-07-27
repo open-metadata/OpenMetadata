@@ -43,21 +43,23 @@ import {
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  applyTaskFormSchemaDefaults,
-  getResolvedTaskFormSchema,
-} from '../../../utils/TaskFormSchemaUtils';
+import { fetchOptions } from '../../../utils/TaskAssigneeUtils';
 import {
   fetchEntityDetail,
-  fetchOptions,
   getBreadCrumbList,
+} from '../../../utils/TaskEntityFetchUtils';
+import {
   getColumnObjectByPath,
   getDescriptionTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskFieldColumns,
   getTaskMessage,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskFieldUtils';
+import {
+  applyTaskFormSchemaDefaults,
+  getResolvedTaskFormSchema,
+} from '../../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';

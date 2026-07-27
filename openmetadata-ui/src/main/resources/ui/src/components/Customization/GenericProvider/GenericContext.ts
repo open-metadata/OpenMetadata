@@ -13,11 +13,16 @@
 import { once } from 'lodash';
 import { createContext, useContext } from 'react';
 import type { EntityReference } from '../../../generated/entity/type';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import type { GenericContextType } from './GenericProvider.interface';
 
 export const createGenericContext = once(<
   T extends Omit<EntityReference, 'type'>
->() => createContext({} as GenericContextType<T>));
+>() =>
+  createContext({
+    permissions: DEFAULT_ENTITY_PERMISSION,
+  } as GenericContextType<T>)
+);
 
 export const useGenericContext = <T extends Omit<EntityReference, 'type'>>() =>
   useContext(createGenericContext<T>());

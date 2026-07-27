@@ -1,0 +1,8 @@
+{
+  "description": "Index of built-in AI governance framework catalogs. Each file in this directory describes one framework + its control library. The AIGovernanceFrameworkLoader app reads this index at startup and materializes any missing frameworks into the AIGovernanceFramework / AIFrameworkControl tables.",
+  "frameworks": [
+    "eu_ai_act.json",
+    "nist_ai_rmf.json",
+    "iso_iec_42001.json"
+  ]
+}

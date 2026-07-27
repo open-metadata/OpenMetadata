@@ -15,12 +15,14 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +58,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for verifying that bulk asset operations (add/remove) record the correct user
@@ -140,9 +143,10 @@ public class BulkAssetChangeEventUserIT {
 
     BulkAssets assets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
     String addPath = "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add";
+    long timestampBeforeAdd = System.currentTimeMillis();
     adminClient.getHttpClient().execute(HttpMethod.PUT, addPath, assets, Void.class);
-
-    Thread.sleep(500);
+    awaitUpdatedEvent(
+        adminClient.getHttpClient(), Entity.DOMAIN, domain.getId(), timestampBeforeAdd);
 
     long timestampBeforeRemove = System.currentTimeMillis();
 
@@ -256,9 +260,9 @@ public class BulkAssetChangeEventUserIT {
 
     BulkAssets assets = new BulkAssets().withAssets(List.of(testUser.getEntityReference()));
     String addPath = "/v1/teams/" + team.getFullyQualifiedName() + "/assets/add";
+    long timestampBeforeAdd = System.currentTimeMillis();
     adminClient.getHttpClient().execute(HttpMethod.PUT, addPath, assets, Void.class);
-
-    Thread.sleep(500);
+    awaitUpdatedEvent(adminClient.getHttpClient(), Entity.TEAM, team.getId(), timestampBeforeAdd);
 
     long timestampBeforeRemove = System.currentTimeMillis();
 
@@ -361,6 +365,27 @@ public class BulkAssetChangeEventUserIT {
     }
 
     return new ListResponse<>();
+  }
+
+  private void awaitUpdatedEvent(
+      HttpClient httpClient, String entityType, UUID entityId, long timestamp) throws Exception {
+    Awaitility.await("Wait for setup bulk-add change event for " + entityType + ":" + entityId)
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              ListResponse<ChangeEvent> events =
+                  queryChangeEvents(httpClient, null, entityType, null, null, timestamp);
+              assertNotNull(events);
+              assertNotNull(events.getData());
+              assertTrue(
+                  events.getData().stream()
+                      .anyMatch(
+                          event ->
+                              entityId.equals(event.getEntityId())
+                                  && event.getEventType() == EventType.ENTITY_UPDATED),
+                  "Setup bulk-add change event was not recorded");
+            });
   }
 
   private ListResponse<ChangeEvent> deserializeEventListResponse(String json) throws Exception {

@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -342,6 +343,11 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       ssoHandler.handleLogin(wrappedRequest, currentResponse.get());
 
+      LOG.debug(
+          "handleLogin() completed for auth request {}; response committed: {}",
+          authRequestId,
+          currentResponse.get() != null && currentResponse.get().isCommitted());
+
       // After handleLogin(), pac4j has stored its state in the session
       // Extract pac4j session attributes and store in database
       // Note: pac4j stores State and CodeVerifier as objects, not strings
@@ -393,8 +399,27 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             authRequestId, pac4jState, pac4jNonce, pac4jCodeVerifier);
         LOG.info("Stored pac4j session data in database for auth request: {}", authRequestId);
       } else {
-        LOG.error("Could not find pac4j state in session after handleLogin()");
-        throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
+        HttpServletResponse resp = currentResponse.get();
+        if (resp != null && resp.isCommitted()) {
+          // Active-session shortcut: handleLogin() committed a direct 302 to /mcp/callback
+          // with the id_token in the URL fragment (implicit/hybrid flow). pac4j was never
+          // invoked, so no pac4j state was generated. The browser is already navigating to
+          // /mcp/callback where the JS fragment-extraction page will pull the id_token out
+          // of window.location.hash and retry as a query param so the server can read it.
+          LOG.info(
+              "MCP OAuth active-session shortcut detected for auth request {}: "
+                  + "handleLogin() redirected directly to /mcp/callback with id_token "
+                  + "in URL fragment — no pac4j state expected. "
+                  + "Fragment extraction page will complete the flow.",
+              authRequestId);
+        } else {
+          LOG.error(
+              "Could not find pac4j state in session after handleLogin() "
+                  + "for auth request {}. Session attributes: {}",
+              authRequestId,
+              Collections.list(session.getAttributeNames()));
+          throw new AuthorizeException("server_error", "Failed to initialize SSO session state");
+        }
       }
 
       return CompletableFuture.completedFuture("SSO_REDIRECT_INITIATED");

@@ -22,6 +22,7 @@ import {
 import {
   addAndVerifyWidget,
   setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import { selectDomainFromNavbar } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -75,15 +76,19 @@ test.describe.serial('Domain Widget Filter', () => {
     await redirectToHomePage(page);
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+    const domainAId = String(domainA.responseData.id);
+    const domainBId = String(domainB.responseData.id);
 
-    const domainWidget = page.getByTestId('KnowledgePanel.Domains');
-    await expect(domainWidget).toBeVisible();
+    const domainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
 
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
+      domainWidget.getByTestId(`domain-card-${domainAId}`)
     ).toBeVisible();
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainB.responseData.id}`)
+      domainWidget.getByTestId(`domain-card-${domainBId}`)
     ).toBeVisible();
 
     // Navigate to explore page where domain-dropdown is available in navbar
@@ -97,11 +102,16 @@ test.describe.serial('Domain Widget Filter', () => {
     await waitForAllLoadersToDisappear(page);
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
+    const filteredDomainWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
+
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainA.responseData.id}`)
+      filteredDomainWidget.getByTestId(`domain-card-${domainAId}`)
     ).toBeVisible();
     await expect(
-      domainWidget.getByTestId(`domain-card-${domainB.responseData.id}`)
+      filteredDomainWidget.getByTestId(`domain-card-${domainBId}`)
     ).not.toBeVisible();
   });
 });

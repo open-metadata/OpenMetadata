@@ -535,8 +535,9 @@ class DistributedJobStatsAggregatorTest {
                 aggregatedStats);
 
     assertEquals(Integer.MAX_VALUE, stats.getJobStats().getTotalRecords());
-    assertEquals(100, stats.getReaderStats().getSuccessRecords());
+    assertEquals(89, stats.getReaderStats().getSuccessRecords());
     assertEquals(5, stats.getReaderStats().getFailedRecords());
+    assertEquals(6, stats.getReaderStats().getWarningRecords());
     assertEquals(107, stats.getProcessStats().getTotalRecords());
     assertEquals(100, stats.getProcessStats().getSuccessRecords());
     assertEquals(108, stats.getSinkStats().getTotalRecords());
@@ -839,6 +840,45 @@ class DistributedJobStatsAggregatorTest {
     assertNotNull(tableStats);
     assertEquals(30, tableStats.getVectorSuccessRecords());
     assertEquals(7, tableStats.getVectorFailedRecords());
+  }
+
+  @Test
+  void testConvertToStatsAccountsForSinkWarnings() throws Exception {
+    SearchIndexJob job =
+        newJob(IndexJobStatus.COMPLETED).toBuilder()
+            .totalRecords(10)
+            .processedRecords(10)
+            .successRecords(9)
+            .failedRecords(0)
+            .build();
+    CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStats =
+        new CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats(
+            10, 0, 0, 9, 0, 10, 0, 0, 0, 100, 90, 80, 0, 1, 0);
+
+    aggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+
+    Stats stats =
+        (Stats)
+            invokePrivate(
+                "convertToStats",
+                new Class<?>[] {
+                  SearchIndexJob.class,
+                  CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats.class
+                },
+                job,
+                serverStats);
+
+    assertEquals(1, stats.getJobStats().getWarningRecords());
+    assertEquals(0, stats.getJobStats().getFailedRecords());
+    assertEquals(10, stats.getProcessStats().getTotalRecords());
+    assertEquals(9, stats.getSinkStats().getSuccessRecords());
+    assertEquals(0, stats.getSinkStats().getFailedRecords());
+    assertEquals(1, stats.getSinkStats().getWarningRecords());
+    assertEquals(
+        stats.getProcessStats().getTotalRecords(),
+        stats.getSinkStats().getSuccessRecords()
+            + stats.getSinkStats().getFailedRecords()
+            + stats.getSinkStats().getWarningRecords());
   }
 
   /**

@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { ReactNode, useMemo } from 'react';
+import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FieldOperation } from '../../../../../generated/entity/feed/thread';
@@ -20,10 +20,16 @@ import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
 const PRIMARY_COLOR = 'var(--ant-primary-color)';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(
+    () => import('../../../../common/RichTextEditor/RichTextEditorPreviewerV1')
+  )
+);
 
 interface AnnouncementCardV1ContentProps {
   backgroundColor?: string;

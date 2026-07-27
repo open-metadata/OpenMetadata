@@ -143,8 +143,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+    ListFilter filter = new ListFilter(null);
+    EntityUtil.applyDomainSelfRestriction(securityContext, filter);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -670,7 +671,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
-    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
+    return repository.buildHierarchy(
+        fieldsParam, limitParam, directChildrenOf, offset, securityContext);
   }
 
   @PUT

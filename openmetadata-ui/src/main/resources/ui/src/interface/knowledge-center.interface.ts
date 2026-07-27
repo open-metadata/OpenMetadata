@@ -116,6 +116,7 @@ export interface KnowledgeCenterPageHandlers {
   onSetThreadLink: (link: string) => void;
   onToggleDelete: () => void;
   onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
   contentChangeState: ContentChangeState;
 }
 
@@ -129,7 +130,6 @@ export interface ArticleTab {
 export interface KnowledgeCenterPageProps {
   title: string;
   rightPanel: React.ReactNode;
-  header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
   feedCount?: number;

@@ -38,6 +38,7 @@
     "lifecycleStage",
     "glossaryTerms",
     "inputPorts",
-    "outputPorts"
+    "outputPorts",
+    "entityStatus"
   ]
 }

@@ -1,0 +1,9 @@
+{
+  "id": "22222222-2222-4222-8222-222222222100",
+  "name": "ai_governance_mcp",
+  "displayName": "AI Governance MCP Registry",
+  "description": "Demo MCP service for AI Governance Studio servers, tools, resources, prompts, and security posture review.",
+  "serviceType": "Mcp",
+  "updatedBy": "admin",
+  "updatedAt": 1775001600000
+}

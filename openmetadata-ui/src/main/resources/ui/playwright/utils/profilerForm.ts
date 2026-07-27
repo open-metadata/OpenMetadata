@@ -15,6 +15,7 @@ import { SERVICE_TYPE } from '../constant/service';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { selectOnDemandSchedule } from './scheduleInterval';
 import { visitServiceDetailsPage } from './service';
 
 export const PROFILE_PIPELINES_URL = '/api/v1/services/ingestionPipelines';
@@ -27,12 +28,12 @@ export type ProfileSampleConfig =
     };
 
 export const expandAdvancedConfig = async (page: Page) => {
-  const collapseHeader = page
-    .locator('.advanced-properties-collapse .ant-collapse-header')
-    .first();
+  const collapseHeader = page.getByTestId('ingestion-section-advanced');
   await collapseHeader.waitFor();
   const isExpanded =
-    (await collapseHeader.getAttribute('aria-expanded')) === 'true';
+    (await collapseHeader
+      .getByTestId('connection-advanced-section-fields')
+      .isVisible()) === true;
   if (!isExpanded) {
     await collapseHeader.click();
   }
@@ -95,19 +96,16 @@ export const isCreatePipelineCall = (url: string, method: string) =>
 export const submitAndCaptureCreatePayload = async (
   page: Page
 ): Promise<ProfileSampleConfig> => {
-  await page.click('[data-testid="submit-btn"]');
+  await page.click('[data-testid="next-button"]');
 
-  await page.getByTestId('schedular-card-container').waitFor();
-  await page
-    .getByTestId('schedular-card-container')
-    .getByText('On Demand')
-    .click();
+  await page.getByTestId('schedule-interval-container').waitFor();
+  await selectOnDemandSchedule(page);
 
   const createResponsePromise = page.waitForResponse((response) =>
     isCreatePipelineCall(response.url(), response.request().method())
   );
 
-  await page.click('[data-testid="deploy-button"]');
+  await page.click('[data-testid="next-button"]');
 
   const createResponse = await createResponsePromise;
 

@@ -14,7 +14,7 @@ Unit tests for Unity Catalog incremental metadata extraction.
 """
 
 from threading import RLock
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -128,6 +128,8 @@ class TestUnityCatalogIncrementalSource:
         """
         source = Mock()
         source._state_lock = RLock()
+        # Listing methods iterate through the real failure-isolation wrapper
+        source._iterate_listing = MethodType(UnitycatalogSource._iterate_listing, source)
         return source
 
     def test_init_configures_threads_from_source_config(self):
@@ -140,9 +142,7 @@ class TestUnityCatalogIncrementalSource:
 
         try:
             with (
-                patch(f"{UC_METADATA_MODULE}.get_connection", return_value=Mock()),
-                patch(f"{UC_METADATA_MODULE}.DatabricksClient", return_value=Mock()),
-                patch(f"{UC_METADATA_MODULE}.get_sqlalchemy_connection", return_value=Mock()),
+                patch(f"{UC_METADATA_MODULE}.create_connection", return_value=Mock()),
                 patch.object(UnitycatalogSource, "test_connection", return_value=None),
             ):
                 source = UnitycatalogSource(config, metadata, incremental)
@@ -337,14 +337,18 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         source.incremental.enabled = False
         source.context.get.return_value = SimpleNamespace(database="cat", database_schema="schema1")
-        tables = [SimpleNamespace(name="t1"), SimpleNamespace(name="t2")]
+        source._get_tables_with_constraints.return_value = set()
+        tables = [
+            SimpleNamespace(name="t1", catalog_name="cat", schema_name="schema1"),
+            SimpleNamespace(name="t2", catalog_name="cat", schema_name="schema1"),
+        ]
         source.client.tables.list.return_value = tables
         source._process_table.side_effect = lambda table, catalog, schema: iter([(table.name, TableType.Regular)])
 
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
-        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1")
+        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1", max_results=0)
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):

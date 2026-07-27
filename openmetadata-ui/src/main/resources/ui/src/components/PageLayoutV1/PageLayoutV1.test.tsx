@@ -125,6 +125,32 @@ describe('PageLayoutV1', () => {
     expect(pageLayout).not.toHaveStyle({ height: 'calc(100vh - 64px)' });
   });
 
+  it('Should apply the default 20px padding class when no variant is provided', () => {
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page">Center content</PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveClass('p-x-box');
+    expect(pageLayout).not.toHaveClass('tw:p-2');
+    expect(pageLayout).toHaveAttribute('data-variant', 'default');
+  });
+
+  it('Should apply the compact 8px padding class when variant is compact', () => {
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page" variant="compact">
+        Center content
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).toHaveClass('tw:p-2');
+    expect(pageLayout).not.toHaveClass('p-x-box');
+    expect(pageLayout).toHaveAttribute('data-variant', 'compact');
+  });
+
   it('Should merge custom pageContainerStyle with fullHeight styles', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(

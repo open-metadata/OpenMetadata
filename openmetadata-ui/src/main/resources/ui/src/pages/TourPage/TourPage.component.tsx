@@ -14,9 +14,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
+import {
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../../components/Explore/ExplorePage.interface';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
+import {
+  mockDatasetData,
+  mockSearchData,
+  MOCK_EXPLORE_PAGE_COUNT,
+} from '../../constants/mockTourData.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { SearchResponse } from '../../interface/search.interface';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -99,6 +110,7 @@ const TourPage = () => {
     updateActiveTab,
     updateTourPage,
     updateTourSearch,
+    updateTourMockData,
   } = useTourProvider();
   const { t } = useTranslation();
   const [isTourReady, setIsTourReady] = useState(false);
@@ -106,6 +118,25 @@ const TourPage = () => {
   const clearSearchTerm = useCallback(() => {
     updateTourSearch('');
   }, [updateTourSearch]);
+
+  // Seed mock data on mount so tour-aware pages read it from the provider
+  // instead of each one fetching the chunk via a dynamic import that races
+  // react-tour's stepWaitTimer.
+  useEffect(() => {
+    updateTourMockData?.({
+      searchResults:
+        mockSearchData as unknown as SearchResponse<ExploreSearchIndex>,
+      searchHitCounts: MOCK_EXPLORE_PAGE_COUNT as SearchHitCounts,
+      datasetData: mockDatasetData,
+    });
+  }, [updateTourMockData]);
+
+  // Reset on /tour entry — react-tour's stepIndex resets on remount but
+  // TourProvider state persists across the SPA session; keep them in sync.
+  useEffect(() => {
+    updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
+    updateActiveTab(EntityTabs.SCHEMA);
+  }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
     let tourMountFrameId = 0;
@@ -122,21 +153,32 @@ const TourPage = () => {
     };
   }, [updateIsTourOpen]);
 
+  const isExplorePage = currentTourPage === CurrentTourPageType.EXPLORE_PAGE;
+  // Pre-mount Explore (hidden) during the MyData phase so it stays mounted into
+  // the Explore step — react-tour closes a step whose target is missing on
+  // activation, and the redesigned Explore can't mount within its stepWaitTimer.
+  const shouldRenderExplore =
+    currentTourPage === CurrentTourPageType.MY_DATA_PAGE || isExplorePage;
+  const exploreStyle = useMemo(
+    () => ({ display: isExplorePage ? undefined : 'none' }),
+    [isExplorePage]
+  );
+
   const currentPageComponent = useMemo(() => {
-    switch (currentTourPage) {
-      case CurrentTourPageType.MY_DATA_PAGE:
-        return <MyDataPage />;
-
-      case CurrentTourPageType.EXPLORE_PAGE:
-        return <ExplorePageV1Component pageTitle={t('label.explore')} />;
-
-      case CurrentTourPageType.DATASET_PAGE:
-        return <TableDetailsPageV1 />;
-
-      default:
-        return;
-    }
-  }, [currentTourPage]);
+    return (
+      <>
+        {currentTourPage === CurrentTourPageType.MY_DATA_PAGE && <MyDataPage />}
+        {shouldRenderExplore && (
+          <div style={exploreStyle}>
+            <ExplorePageV1Component pageTitle={t('label.explore')} />
+          </div>
+        )}
+        {currentTourPage === CurrentTourPageType.DATASET_PAGE && (
+          <TableDetailsPageV1 />
+        )}
+      </>
+    );
+  }, [currentTourPage, shouldRenderExplore, exploreStyle, t]);
 
   const tourSteps = useMemo(
     () =>

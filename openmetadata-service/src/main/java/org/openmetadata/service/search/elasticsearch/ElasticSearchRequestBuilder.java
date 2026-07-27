@@ -31,6 +31,7 @@ public class ElasticSearchRequestBuilder {
   private String timeout;
   private Boolean explain;
   private List<String> searchAfter;
+  private String preference;
 
   public ElasticSearchRequestBuilder() {}
 
@@ -201,6 +202,15 @@ public class ElasticSearchRequestBuilder {
     return this.searchAfter;
   }
 
+  public ElasticSearchRequestBuilder preference(String preference) {
+    this.preference = preference;
+    return this;
+  }
+
+  public String preference() {
+    return this.preference;
+  }
+
   public SearchRequest build(String... indices) {
     return SearchRequest.of(
         s -> {
@@ -259,6 +269,10 @@ public class ElasticSearchRequestBuilder {
               fieldValues.add(es.co.elastic.clients.elasticsearch._types.FieldValue.of(value));
             }
             s.searchAfter(fieldValues);
+          }
+
+          if (preference != null && !preference.isEmpty()) {
+            s.preference(preference);
           }
 
           return s;

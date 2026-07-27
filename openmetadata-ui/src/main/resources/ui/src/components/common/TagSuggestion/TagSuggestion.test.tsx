@@ -11,16 +11,30 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { TagSource } from '../../../generated/entity/data/container';
 import TagSuggestion from './TagSuggestion';
-import { MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
+import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
 const mockGetTags = jest.fn();
+const mockFetchGlossaryList = jest.fn();
+const mockEnsureComboboxMenuOpen = jest.fn();
 
 jest.mock('../../../utils/TagClassBase', () => ({
   __esModule: true,
   default: {
     getTags: (...args: unknown[]) => mockGetTags(...args),
   },
+}));
+
+jest.mock('../../../utils/formPureUtils', () => ({
+  ...jest.requireActual('../../../utils/formPureUtils'),
+  ensureComboboxMenuOpen: (...args: unknown[]) =>
+    mockEnsureComboboxMenuOpen(...args),
+}));
+
+jest.mock('../../../utils/TagsUtils', () => ({
+  __esModule: true,
+  fetchGlossaryList: (...args: unknown[]) => mockFetchGlossaryList(...args),
 }));
 
 jest.mock('lodash', () => {
@@ -149,6 +163,10 @@ describe('TagSuggestion', () => {
     mockGetTags.mockResolvedValue({
       data: MOCK_TAG_OPTIONS,
       paging: { total: 3 },
+    });
+    mockFetchGlossaryList.mockResolvedValue({
+      data: MOCK_GLOSSARY_OPTIONS,
+      paging: { total: 2 },
     });
   });
 
@@ -301,5 +319,126 @@ describe('TagSuggestion', () => {
     });
 
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('should stamp source Classification on an inserted tag by default', async () => {
+    render(<TagSuggestion onChange={mockOnChange} />);
+
+    const input = screen.getByRole('combobox');
+
+    fireEvent.mouseDown(input);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('tag-option-PersonalData.Personal')
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+
+    expect(mockOnChange.mock.calls[0][0][0].source).toBe(
+      TagSource.Classification
+    );
+  });
+
+  describe('menu open on field vs label pointer-down', () => {
+    it('force-opens the menu when the field itself is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByRole('combobox'));
+
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not force-open the menu when the label is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByText('Tags'));
+
+      expect(mockEnsureComboboxMenuOpen).not.toHaveBeenCalled();
+    });
+
+    it('reopens the menu after a tag is inserted so a following Escape closes the menu, not the drawer', async () => {
+      render(<TagSuggestion onChange={mockOnChange} />);
+
+      fireEvent.mouseDown(screen.getByRole('combobox'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('tag-option-PersonalData.Personal')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+
+      // mouseDown (not pointerDown) doesn't hit the field handler, so this call
+      // comes from the insertion path re-opening the menu.
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('when tagType is Glossary', () => {
+    it('should query fetchGlossaryList and never getTags', async () => {
+      render(
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+      );
+
+      const input = screen.getByRole('combobox');
+
+      fireEvent.change(input, { target: { value: 'Revenue' } });
+
+      await waitFor(() => {
+        expect(mockFetchGlossaryList).toHaveBeenCalledWith('Revenue', 1);
+      });
+
+      expect(mockGetTags).not.toHaveBeenCalled();
+    });
+
+    it('should display glossary terms returned from the search', async () => {
+      render(
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+      );
+
+      const input = screen.getByRole('combobox');
+
+      fireEvent.mouseDown(input);
+
+      await waitFor(() => {
+        expect(screen.getByRole('listbox')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByTestId('tag-option-Business.Revenue')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('tag-option-Business.Customer')
+      ).toBeInTheDocument();
+    });
+
+    it('should stamp source Glossary on an inserted glossary term', async () => {
+      render(
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
+      );
+
+      const input = screen.getByRole('combobox');
+
+      fireEvent.mouseDown(input);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('tag-option-Business.Revenue')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('tag-option-Business.Revenue'));
+
+      expect(mockOnChange).toHaveBeenCalled();
+
+      const insertedTag = mockOnChange.mock.calls[0][0][0];
+
+      expect(insertedTag.tagFQN).toBe('Business.Revenue');
+      expect(insertedTag.source).toBe(TagSource.Glossary);
+      expect(insertedTag.name).toBe('Revenue');
+    });
   });
 });

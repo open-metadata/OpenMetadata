@@ -28,10 +28,13 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -180,7 +183,14 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
     cacheProvider = System.getProperty("cacheProvider", "none");
 
+    // The test-support search resource is disabled by default (it must never ship enabled in
+    // production); the embedded test server opts in so the resource is available to tests.
+    System.setProperty("OM_TEST_SUPPORT_SEARCH_ENABLED", "true");
+
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
+    System.setProperty("user.timezone", "UTC");
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    LOG.info("Test JVM timezone set to {}", TimeZone.getDefault().getID());
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
@@ -718,13 +728,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                 .NaturalLanguageSearchConfiguration();
     nlSearch.setSemanticSearchEnabled(true);
     nlSearch.setEnabled(true);
-    nlSearch.setEmbeddingProvider("djl");
-
-    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-    djlConfig.setEmbeddingModel(
-        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-    nlSearch.setDjl(djlConfig);
     config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
@@ -1209,8 +1212,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private static String getProjectRoot() {
     String projectRoot = System.getProperty("user.dir");
-    if (projectRoot.endsWith("openmetadata-integration-tests")) {
-      projectRoot = projectRoot.substring(0, projectRoot.lastIndexOf("/"));
+    Path projectRootPath = Paths.get(projectRoot);
+    if (projectRootPath.endsWith("openmetadata-integration-tests")
+        && projectRootPath.getParent() != null) {
+      projectRoot = projectRootPath.getParent().toString();
     }
     return projectRoot;
   }

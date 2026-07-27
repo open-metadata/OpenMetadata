@@ -12,8 +12,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig;
 
 @Slf4j
 public class DjlEmbeddingClient extends EmbeddingClient implements AutoCloseable {
@@ -34,15 +34,16 @@ public class DjlEmbeddingClient extends EmbeddingClient implements AutoCloseable
   private final String modelName;
   private final int dimension;
 
-  public DjlEmbeddingClient(ElasticSearchConfiguration config) {
+  public DjlEmbeddingClient(LLMConfiguration config) {
     super(resolveMaxConcurrent(config));
-    NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
-    if (nlsCfg.getDjl() == null) {
+    LLMDjlEmbeddingConfig djlCfg =
+        config.getEmbeddings() != null ? config.getEmbeddings().getDjl() : null;
+    if (djlCfg == null) {
       throw new IllegalArgumentException("DJL configuration is required");
     }
     this.modelName =
-        nlsCfg.getDjl().getEmbeddingModel() != null
-            ? nlsCfg.getDjl().getEmbeddingModel()
+        djlCfg.getEmbeddingModel() != null
+            ? djlCfg.getEmbeddingModel()
             : "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2";
 
     try {

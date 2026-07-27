@@ -14,6 +14,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import {
   Task,
   TaskCategory,
@@ -340,14 +341,22 @@ jest.mock('../../../../utils/EntityLink', () => {
   };
 });
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../../utils/TaskAssigneeUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskAssigneeUtils'),
   fetchOptions: jest.fn(),
   generateOptions: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 jest.mock('../../../../utils/FqnUtils', () => ({
@@ -454,7 +463,7 @@ describe('TaskTabNew Component', () => {
       isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     const actualTaskFormSchemaUtils = jest.requireActual(
       '../../../../utils/TaskFormSchemaUtils'
     );
@@ -573,7 +582,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
@@ -601,7 +610,7 @@ describe('TaskTabNew Component', () => {
   it('should render FeedbackApprovalTask for recognizer feedback approval tasks', async () => {
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isRecognizerFeedbackTask.mockReturnValue(true);
 
     await act(async () => {
@@ -613,7 +622,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    expect(screen.getByText('FeedbackApprovalTask')).toBeInTheDocument();
+    expect(await screen.findByText('FeedbackApprovalTask')).toBeInTheDocument();
   });
 
   it('should display action required section for open tasks', async () => {
@@ -668,7 +677,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -741,7 +750,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -767,7 +776,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -822,7 +831,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -848,7 +857,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -876,7 +885,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -897,7 +906,9 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdown = screen.getByTestId('glossary-accept-reject-task-dropdown');
+    const dropdown = await screen.findByTestId(
+      'glossary-accept-reject-task-dropdown'
+    );
 
     expect(dropdown).toBeInTheDocument();
     expect(dropdown).toHaveStyle('pointer-events: none');
@@ -933,7 +944,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
@@ -1080,6 +1091,131 @@ describe('TaskTabNew Component', () => {
       screen.getByTestId('workflow-task-action-primary')
     ).toBeInTheDocument();
     expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
+  });
+
+  const buildAssignees = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `assignee-${index}`,
+      type: 'user',
+      name: `assignee-${index}`,
+      displayName: `Assignee ${index}`,
+      deleted: false,
+    }));
+
+  const renderDataAccessTaskWithAssignees = async (assigneeCount: number) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', title: 'Reason' },
+        },
+      },
+      uiSchema: {},
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      assignees: buildAssignees(assigneeCount),
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should not render the show-more toggle when assignees fit the collapsed view', async () => {
+    await renderDataAccessTaskWithAssignees(5);
+
+    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+  });
+
+  it('should clamp assignees and toggle the full list via show-more/show-less', async () => {
+    await renderDataAccessTaskWithAssignees(8);
+
+    const collapsedChips = screen.getAllByText('ProfilePicture').length;
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-more'));
+    });
+
+    expect(screen.getByText('label.show-less')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(
+      collapsedChips + 3
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-less'));
+    });
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(collapsedChips);
+  });
+
+  const renderDataAccessTaskWithAccessType = async (accessType: AccessType) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          accessType: { type: 'string', title: 'Access Type' },
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            title: 'Columns Requested',
+          },
+        },
+      },
+      uiSchema: { 'ui:order': ['accessType', 'columns'] },
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      payload: {
+        accessType,
+        columns: ['sample_data.ecommerce_db.shopify."dim.shop".shop_id'],
+      },
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should render the columns field in the read-only form for column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.ColumnLevel);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.getByText('Columns Requested')).toBeInTheDocument();
+  });
+
+  it('should hide the columns field in the read-only form for non-column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.FullAccess);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.queryByText('Columns Requested')).not.toBeInTheDocument();
   });
 
   it('resolves workflow-driven tasks using transition ids', async () => {

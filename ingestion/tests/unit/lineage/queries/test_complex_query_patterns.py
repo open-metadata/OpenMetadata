@@ -7948,12 +7948,24 @@ class TestComplexQueryPatterns:
                     TestColumnQualifierTuple("volume", "stock_prices"),
                     TestColumnQualifierTuple("volume", "stock_analysis"),
                 ),
+                (
+                    TestColumnQualifierTuple("closing_price", "stock_prices"),
+                    TestColumnQualifierTuple("prev_day_price", "stock_analysis"),
+                ),
+                (
+                    TestColumnQualifierTuple("closing_price", "stock_prices"),
+                    TestColumnQualifierTuple("next_day_price", "stock_analysis"),
+                ),
+                (
+                    TestColumnQualifierTuple("closing_price", "stock_prices"),
+                    TestColumnQualifierTuple("daily_change", "stock_analysis"),
+                ),
+                (
+                    TestColumnQualifierTuple("volume", "stock_prices"),
+                    TestColumnQualifierTuple("same_weekday_prev_week", "stock_analysis"),
+                ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
-            # SqlGlot: Tracks LAG/LEAD window functions as column lineages (8 lineages including prev_day_price, next_day_price, daily_change, same_weekday_prev_week)
-            # SqlFluff: Tracks LAG/LEAD window functions as column lineages (8 lineages including prev_day_price, next_day_price, daily_change, same_weekday_prev_week)
-            test_sqlglot=False,
-            test_sqlfluff=False,
         )
 
     def test_window_func_03_multiple_window_specs(self):

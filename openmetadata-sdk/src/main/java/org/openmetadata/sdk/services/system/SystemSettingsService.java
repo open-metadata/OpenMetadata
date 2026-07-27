@@ -1,0 +1,204 @@
+package org.openmetadata.sdk.services.system;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpClient;
+import org.openmetadata.sdk.network.HttpMethod;
+
+/**
+ * Client limited to glossary term relation settings.
+ *
+ * <p>Type registration preserves the server's missing, null, or array representation and
+ * reconciles a fresh snapshot after a rejected concurrent update. This service never reads or
+ * writes another system setting type.
+ */
+public class SystemSettingsService {
+  private static final int MAX_REGISTRATION_ATTEMPTS = 3;
+  private static final String SETTINGS_BASE = "/v1/system/settings";
+  private static final String RELATION_TYPES_PATH = "/relationTypes";
+  private static final String RELATION_TYPES_APPEND_PATH = "/relationTypes/-";
+
+  private final HttpClient httpClient;
+  private final ObjectMapper objectMapper;
+
+  public SystemSettingsService(HttpClient httpClient) {
+    this.httpClient = httpClient;
+    this.objectMapper = new ObjectMapper();
+  }
+
+  /** Return only the glossary term relation configuration. */
+  public GlossaryTermRelationSettings getGlossaryRelationSettings() throws OpenMetadataException {
+    return toRelationConfig(getGlossaryRelationSettingsEnvelope());
+  }
+
+  public List<GlossaryTermRelationType> glossaryRelationTypes() throws OpenMetadataException {
+    List<GlossaryTermRelationType> types = getGlossaryRelationSettings().getRelationTypes();
+    return types != null ? types : List.of();
+  }
+
+  /**
+   * Register a glossary term relation type while preserving the current {@code relationTypes}
+   * representation. A 400 or 422 response is reconciled once, but retries only when the error
+   * identifies a failed JSON-Patch {@code test} operation. Explicit 409 or 412 precondition
+   * failures may retry from a fresh snapshot. A concurrently registered matching name becomes an
+   * idempotent no-op.
+   *
+   * @param relationType the relation type to register
+   * @return only the updated glossary relation configuration, or the current configuration if the
+   *     name already existed
+   */
+  public GlossaryTermRelationSettings defineGlossaryRelationType(
+      GlossaryTermRelationType relationType) throws OpenMetadataException {
+    int attempts = 0;
+    Settings current = getGlossaryRelationSettingsEnvelope();
+    RelationTypesSnapshot snapshot = relationTypesSnapshot(current);
+    while (true) {
+      if (relationTypeExists(snapshot.relationTypes(), relationType.getName())) {
+        return toRelationConfig(current);
+      }
+      try {
+        return appendRelationType(relationType, snapshot);
+      } catch (OpenMetadataException exception) {
+        int statusCode = exception.getStatusCode();
+        if (!shouldReconcileRegistrationFailure(statusCode)) {
+          throw exception;
+        }
+        Settings latest = getGlossaryRelationSettingsEnvelope();
+        RelationTypesSnapshot latestSnapshot = relationTypesSnapshot(latest);
+        if (relationTypeExists(latestSnapshot.relationTypes(), relationType.getName())) {
+          return toRelationConfig(latest);
+        }
+        if (!isRetryableRegistrationFailure(exception, statusCode)
+            || hasSamePatchState(snapshot, latestSnapshot)) {
+          throw exception;
+        }
+        attempts++;
+        if (attempts >= MAX_REGISTRATION_ATTEMPTS) {
+          throw exception;
+        }
+        current = latest;
+        snapshot = latestSnapshot;
+      }
+    }
+  }
+
+  private GlossaryTermRelationSettings appendRelationType(
+      GlossaryTermRelationType relationType, RelationTypesSnapshot snapshot)
+      throws OpenMetadataException {
+    ArrayNode patch = objectMapper.createArrayNode();
+    JsonNode relationTypeValue = objectMapper.valueToTree(relationType);
+    if (!snapshot.present()) {
+      addOperation(patch, "test", "", snapshot.config());
+      addOperation(
+          patch, "add", RELATION_TYPES_PATH, objectMapper.createArrayNode().add(relationTypeValue));
+    } else if (snapshot.patchValue().isNull()) {
+      addOperation(patch, "test", RELATION_TYPES_PATH, snapshot.patchValue());
+      addOperation(
+          patch,
+          "replace",
+          RELATION_TYPES_PATH,
+          objectMapper.createArrayNode().add(relationTypeValue));
+    } else {
+      addOperation(patch, "test", RELATION_TYPES_PATH, snapshot.patchValue());
+      addOperation(patch, "add", RELATION_TYPES_APPEND_PATH, relationTypeValue);
+    }
+    Settings updated =
+        httpClient.execute(
+            HttpMethod.PATCH,
+            SETTINGS_BASE + "/" + glossaryRelationSettingsKey(),
+            patch,
+            Settings.class);
+    return toRelationConfig(updated);
+  }
+
+  private void addOperation(ArrayNode patch, String op, String path, JsonNode value) {
+    ObjectNode operation = patch.addObject();
+    operation.put("op", op);
+    operation.put("path", path);
+    operation.set("value", value);
+  }
+
+  private RelationTypesSnapshot relationTypesSnapshot(Settings settings) {
+    JsonNode config = objectMapper.valueToTree(settings.getConfigValue());
+    if (!config.isObject()) {
+      throw new OpenMetadataException("glossary relation settings must be a JSON object");
+    }
+    JsonNode relationTypes = config.get("relationTypes");
+    boolean present = config.has("relationTypes");
+    if (present && !relationTypes.isNull() && !relationTypes.isArray()) {
+      throw new OpenMetadataException("glossary relationTypes must be an array, null, or absent");
+    }
+    List<GlossaryTermRelationType> types = toRelationConfig(settings).getRelationTypes();
+    return new RelationTypesSnapshot(
+        types != null ? types : List.of(), relationTypes, config, present);
+  }
+
+  private boolean shouldReconcileRegistrationFailure(int statusCode) {
+    return statusCode == 400 || statusCode == 409 || statusCode == 412 || statusCode == 422;
+  }
+
+  private boolean isRetryableRegistrationFailure(OpenMetadataException exception, int statusCode) {
+    if (statusCode == 409 || statusCode == 412) {
+      return true;
+    }
+    if (statusCode != 400 && statusCode != 422) {
+      return false;
+    }
+    String message = exception.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String normalizedMessage = message.toLowerCase(Locale.ROOT);
+    boolean identifiesTestOperation =
+        normalizedMessage.contains("operation 'test'")
+            || normalizedMessage.contains("operation \"test\"")
+            || normalizedMessage.contains("test operation")
+            || normalizedMessage.contains("json patch test");
+    return identifiesTestOperation
+        && (normalizedMessage.contains("fail")
+            || normalizedMessage.contains("mismatch")
+            || normalizedMessage.contains("did not match"));
+  }
+
+  private boolean hasSamePatchState(RelationTypesSnapshot first, RelationTypesSnapshot second) {
+    if (first.present() != second.present()) {
+      return false;
+    }
+    return first.present()
+        ? Objects.equals(first.patchValue(), second.patchValue())
+        : Objects.equals(first.config(), second.config());
+  }
+
+  private boolean relationTypeExists(List<GlossaryTermRelationType> types, String name) {
+    return types.stream().anyMatch(type -> Objects.equals(type.getName(), name));
+  }
+
+  private Settings getGlossaryRelationSettingsEnvelope() throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, SETTINGS_BASE + "/" + glossaryRelationSettingsKey(), null, Settings.class);
+  }
+
+  private GlossaryTermRelationSettings toRelationConfig(Settings settings) {
+    return objectMapper.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
+  }
+
+  private String glossaryRelationSettingsKey() {
+    return SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value();
+  }
+
+  private record RelationTypesSnapshot(
+      List<GlossaryTermRelationType> relationTypes,
+      JsonNode patchValue,
+      JsonNode config,
+      boolean present) {}
+}

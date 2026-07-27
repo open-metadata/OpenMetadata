@@ -199,6 +199,11 @@ export const LDAP_UI_SCHEMA = {
     groupAttributeName: { 'ui:title': 'Group Attribute Name' },
     groupAttributeValue: { 'ui:title': 'Group Attribute Value' },
     groupMemberAttributeName: { 'ui:title': 'Group Member Attribute Name' },
+    recursiveGroupMembership: {
+      'ui:title': 'Recursive Group Membership',
+      'ui:help':
+        'Enable this for Active Directory nested groups. OpenMetadata will use AD transitive membership matching when checking role mappings.',
+    },
     authRolesMapping: {
       'ui:title': 'Auth Roles Mapping',
       'ui:widget': 'LdapRoleMappingWidget',
@@ -809,23 +814,6 @@ export const getSSOUISchema = (
 
   return commonSchema;
 };
-
-export enum ValidationStatus {
-  SUCCESS = 'success',
-  FAILED = 'failed',
-}
-
-export interface SecurityValidationResult {
-  component: string;
-  status: ValidationStatus;
-  message: string;
-}
-
-export interface SecurityValidationResponse {
-  status: ValidationStatus;
-  message: string;
-  results: SecurityValidationResult[];
-}
 
 export const VALIDATION_STATUS = {
   SUCCESS: 'success',

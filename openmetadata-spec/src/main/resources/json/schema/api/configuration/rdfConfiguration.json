@@ -63,13 +63,19 @@
     "bulkEntityBatchSize": {
       "description": "Maximum number of entity models written to RDF storage in a single bulk request.",
       "type": "integer",
-      "default": 50,
+      "default": 100,
       "minimum": 1
     },
     "bulkRelationshipSourceBatchSize": {
       "description": "Maximum number of source entities reconciled in a single RDF relationship bulk request.",
       "type": "integer",
-      "default": 25,
+      "default": 100,
+      "minimum": 1
+    },
+    "bulkLineageEdgeBatchSize": {
+      "description": "Maximum number of lineage edges written to RDF storage in a single SPARQL update.",
+      "type": "integer",
+      "default": 50,
       "minimum": 1
     },
     "username": {
@@ -94,7 +100,7 @@
     "inferenceEnabled": {
       "description": "Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the inference engine to derive additional triples based on the reasoning level.",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "defaultInferenceLevel": {
       "description": "Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides OpenMetadata-specific inference rules including transitive lineage traversal and inverse relationships.",

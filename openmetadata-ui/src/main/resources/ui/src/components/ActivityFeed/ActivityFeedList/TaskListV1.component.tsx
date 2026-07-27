@@ -35,7 +35,8 @@ interface TaskListV1Props {
 }
 
 const TaskListV1 = ({
-  taskList,
+  // The ActivityFeedProvider context defaults to `{}`, so this can be undefined
+  taskList = [],
   isLoading,
   onTaskClick,
   activeFeedId,

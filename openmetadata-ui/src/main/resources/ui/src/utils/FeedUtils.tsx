@@ -14,7 +14,6 @@
 import { RightOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
-import { lowerCase } from 'lodash';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
@@ -25,16 +24,12 @@ import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { OwnerType } from '../enums/user.enum';
 import { ActivityEventType } from '../generated/entity/activity/activityEvent';
-import {
-  CardStyle,
-  FieldOperation,
-  TestCaseStatus,
-} from '../generated/entity/feed/thread';
+import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
-import { getEntityPlaceHolder } from './EntityDisplayUtils';
+import { getEntityPlaceHolder } from './EntityDisplayPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { buildMentionLink } from './FeedUtilsPure';
@@ -43,40 +38,7 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
-import { getTermQuery } from './SearchUtils';
-
-// Re-exports from FeedUtilsPure (backward compat)
-export {
-  buildMentionLink,
-  deletePost,
-  entityDisplayName,
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  formatTestStatusData,
-  getBackendFormat,
-  getEntityColumnFQN,
-  getEntityDetail,
-  getEntityField,
-  getEntityFQN,
-  getEntityFQNFromAbout,
-  getEntityType,
-  getEntityTypeFromAbout,
-  getFeedChangeFieldLabel,
-  getFeedCounts,
-  getFeedListWithRelativeDays,
-  getFeedPanelHeaderText,
-  getFrontEndFormat,
-  getHashTagList,
-  getMentionList,
-  getReplyText,
-  getTestCaseNameListForResult,
-  getUpdatedThread,
-  HTMLToMarkdown,
-  isEntityReferenceAbout,
-  MarkdownToHTMLConverter,
-  prepareFeedLink,
-  updateThreadData,
-} from './FeedUtilsPure';
+import { getTermQuery } from './SearchPureUtils';
 
 export async function suggestions(
   searchTerm: string,
@@ -251,21 +213,6 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
     )
   );
 };
-
-export const getTestCaseResultCount = (
-  count: number,
-  status: TestCaseStatus
-) => (
-  <div
-    className={`test-result-container ${lowerCase(status)}`}
-    data-testid={`test-${status}`}>
-    <Typography.Text
-      className="font-medium text-md"
-      data-testid={`test-${status}-value`}>
-      {count}
-    </Typography.Text>
-  </div>
-);
 
 const getActionLabelFromCardStyle = (
   cardStyle?: CardStyle,

@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, IconButton, useTheme } from '@mui/material';
-import classNames from 'classnames';
+import { Box, ButtonUtility, Divider } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
@@ -43,7 +42,6 @@ const OwnerUserTeamList = ({
   ownerDisplayName,
   placement = 'horizontal',
 }: OwnerUserTeamListProps) => {
-  const theme = useTheme();
   const showMultipleTypeTeam = owners.filter(
     (owner) => owner.type === OwnerType.TEAM
   );
@@ -53,14 +51,10 @@ const OwnerUserTeamList = ({
 
   return (
     <Box
-      className={classNames(className)}
-      sx={{
-        width: '100%',
-        display: 'flex',
-        alignItems: placement === 'vertical' ? 'flex-start' : 'center',
-        flexDirection: placement === 'vertical' ? 'column' : 'row',
-        gap: placement === 'vertical' ? '8px' : '0',
-      }}>
+      align={placement === 'vertical' ? 'start' : 'center'}
+      className={`tw:w-full${className ? ` ${className}` : ''}`}
+      direction={placement === 'vertical' ? 'col' : 'row'}
+      gap={placement === 'vertical' ? 2 : 0}>
       <OwnerUserList
         avatarSize={avatarSize}
         className={className}
@@ -71,15 +65,7 @@ const OwnerUserTeamList = ({
       />
 
       {placement === 'horizontal' && (
-        <Divider
-          flexItem
-          orientation="vertical"
-          sx={{
-            margin: '0 10px',
-            background: theme.palette.allShades.blueGray[100],
-          }}
-          variant="middle"
-        />
+        <Divider className="tw:mx-[10px]" orientation="vertical" />
       )}
 
       <OwnerTeamList
@@ -90,13 +76,13 @@ const OwnerUserTeamList = ({
       />
 
       {hasPermission && isAssignee && (
-        <IconButton
+        <ButtonUtility
+          className="tw:p-0 tw:ml-2"
           data-testid="edit-assignees"
-          size="small"
-          sx={{ padding: 0, marginLeft: '8px' }}
-          onClick={onEditClick}>
-          <EditIcon style={{ width: '14px', height: '14px' }} />
-        </IconButton>
+          icon={EditIcon}
+          size="xs"
+          onClick={onEditClick}
+        />
       )}
     </Box>
   );

@@ -72,51 +72,53 @@ public class ChangeSummarizer<T extends EntityInterface> {
   }
 
   /**
-   * Given a list of fields that were deleted, process the fields and return the set of keys to delete
+   * Given a list of fields that were deleted, return the change-summary keys to remove. A key is
+   * removed when either the tracked field itself was deleted (for example clearing a single
+   * column's description) or when a parent list holding tracked fields was deleted (for example
+   * removing a whole column). The keys mirror the ones produced by {@link #summarizeChanges}, which
+   * uses the raw {@link FieldChange#getName()} as the map key.
    */
   public Set<String> processDeleted(List<FieldChange> fieldsDeleted) {
+    Set<String> keysToDelete = new HashSet<>(directlyDeletedKeys(fieldsDeleted));
+    keysToDelete.addAll(nestedListDeletedKeys(fieldsDeleted));
+    return keysToDelete;
+  }
+
+  private Set<String> directlyDeletedKeys(List<FieldChange> fieldsDeleted) {
+    return fieldsDeleted.stream()
+        .map(FieldChange::getName)
+        .filter(this::isFieldTracked)
+        .collect(Collectors.toSet());
+  }
+
+  private Set<String> nestedListDeletedKeys(List<FieldChange> fieldsDeleted) {
     Set<String> keysToDelete = new HashSet<>();
     for (String field : fields) {
-      // process top level fields
-      List<String> topLevel =
-          fieldsDeleted.stream()
-              .filter(fieldChange -> fieldChange.getName().equals(field))
-              .map(
-                  fieldChange ->
-                      FullyQualifiedName.build(
-                          fieldChange.getName(), (String) fieldChange.getOldValue()))
-              .toList();
-      if (!topLevel.isEmpty()) {
-        keysToDelete.addAll(topLevel);
-        continue;
-      }
-
-      // process nested fields
-      Set<FieldChange> nestedFields =
+      Set<FieldChange> deletedParentLists =
           fieldsDeleted.stream()
               .filter(fieldChange -> field.startsWith(fieldChange.getName() + "."))
+              .filter(fieldChange -> isListField(clazz, fieldChange.getName()))
               .collect(Collectors.toSet());
-
-      for (FieldChange fieldChange : nestedFields) {
-        if (!isListField(clazz, fieldChange.getName())) {
-          continue;
-        }
-
-        try {
-          String nestedField = field.substring(fieldChange.getName().length() + 1);
-          JsonUtils.readObjects((String) fieldChange.getOldValue(), Map.class).stream()
-              .map(map -> (Map<String, Object>) map)
-              .map(map -> (String) map.get("name"))
-              .forEach(
-                  name ->
-                      keysToDelete.add(
-                          FullyQualifiedName.build(fieldChange.getName(), name, nestedField)));
-        } catch (JsonParsingException e) {
-          LOG.warn("Error processing deleted fields", e);
-        }
+      for (FieldChange fieldChange : deletedParentLists) {
+        keysToDelete.addAll(expandListItemKeys(field, fieldChange));
       }
     }
     return keysToDelete;
+  }
+
+  private Set<String> expandListItemKeys(String trackedField, FieldChange deletedList) {
+    Set<String> keys = new HashSet<>();
+    try {
+      String nestedField = trackedField.substring(deletedList.getName().length() + 1);
+      JsonUtils.readObjects((String) deletedList.getOldValue(), Map.class).stream()
+          .map(map -> (Map<String, Object>) map)
+          .map(map -> (String) map.get("name"))
+          .forEach(
+              name -> keys.add(FullyQualifiedName.build(deletedList.getName(), name, nestedField)));
+    } catch (JsonParsingException e) {
+      LOG.warn("Error processing deleted fields", e);
+    }
+    return keys;
   }
 
   private boolean matchesTrackedField(String trackedField, String fieldName) {

@@ -104,7 +104,10 @@ export class BlockEditorExtensionsClassBase {
       }),
       LinkExtension.configure({
         autolink: false,
-        openOnClick: true,
+        // Open links on click only in read-only previews. While editing, a
+        // click should surface the link popup (edit/open/unlink) instead of
+        // navigating away.
+        openOnClick: 'whenNotEditable',
         linkOnPaste: true,
         HTMLAttributes: {
           rel: 'noopener noreferrer nofollow',

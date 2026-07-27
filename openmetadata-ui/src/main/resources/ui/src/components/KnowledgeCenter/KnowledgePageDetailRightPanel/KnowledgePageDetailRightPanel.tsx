@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Card } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
-import { DomainLabelV2 } from '../../../components/DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
@@ -28,8 +26,9 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
-import './knowledge-page.less';
+
 interface KnowledgePageDetailRightPanelProps {
   permissions: OperationPermission;
   tags: Array<EntityTags>;
@@ -74,87 +73,56 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
     [data, onUpdate]
   );
 
-  const handleDomainSave = useCallback(
-    async (selectedDomain: EntityReference | EntityReference[]) => {
-      try {
-        const updatedEntity = { ...data };
-        updatedEntity.domains = Array.isArray(selectedDomain)
-          ? selectedDomain
-          : [selectedDomain];
-
-        await onUpdate(updatedEntity);
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      }
-    },
-    [data, onUpdate]
-  );
-
   const hasDataProductsPermission = useMemo(() => {
     return genericPermissions?.EditAll && !data?.deleted;
   }, [genericPermissions?.EditAll, data?.deleted]);
 
   return (
-    <div
-      className="knowledge-page-right-panel"
+    <Card
+      className="tw:h-full tw:p-5 tw:overflow-auto"
       data-testid="knowledge-page-right-panel">
-      <Row gutter={[0, 24]}>
-        <Col span={24}>
-          <DomainLabelV2
-            showDomainHeading
-            multiple={entityRules?.canAddMultipleDomains}
-            onUpdate={handleDomainSave}
-          />
-        </Col>
-        <Col span={24}>
-          <div data-testid="KnowledgePanel.DataProducts">
-            <DataProductsContainer
-              newLook
-              activeDomains={data?.domains ?? []}
-              dataProducts={data?.dataProducts ?? []}
-              hasPermission={hasDataProductsPermission}
-              multiple={entityRules?.canAddMultipleDataProducts}
-              onSave={handleDataProductsSave}
-            />
-          </div>
-        </Col>
-        <Col span={24}>
-          <OwnerLabelV2 />
-        </Col>
-        <Col span={24}>
-          <ReviewerLabelV2 />
-        </Col>
-        <Col span={24}>
-          <TagsContainerV2
+      <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:gap-6">
+        <div data-testid="KnowledgePanel.DataProducts">
+          <DataProductsContainer
             newLook
-            displayType={DisplayType.POPOVER}
-            permission={permissions.EditAll || permissions.EditTags}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Classification}
-            onSelectionChange={updatePageTag}
+            activeDomains={data?.domains ?? []}
+            dataProducts={data?.dataProducts ?? []}
+            hasPermission={hasDataProductsPermission}
+            multiple={entityRules?.canAddMultipleDataProducts}
+            onSave={handleDataProductsSave}
           />
-        </Col>
-        <Col span={24}>
-          <TagsContainerV2
-            newLook
-            displayType={DisplayType.POPOVER}
-            permission={permissions.EditAll || permissions.EditTags}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Glossary}
-            onSelectionChange={updatePageTag}
-          />
-        </Col>
-        <Col span={24}>
-          <RelatedDataAssets
-            hasPermission={permissions.EditAll}
-            relatedDataAssets={knowledgePage?.['relatedEntities']}
-            onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
-          />
-        </Col>
-      </Row>
-    </div>
+        </div>
+        <ReviewerLabelV2 />
+
+        <TagsContainerV2
+          newLook
+          displayType={DisplayType.POPOVER}
+          permission={permissions.EditAll || permissions.EditTags}
+          selectedTags={tags}
+          showTaskHandler={false}
+          tagType={TagSource.Classification}
+          onSelectionChange={updatePageTag}
+        />
+
+        <TagsContainerV2
+          newLook
+          displayType={DisplayType.POPOVER}
+          permission={permissions.EditAll || permissions.EditTags}
+          selectedTags={tags}
+          showTaskHandler={false}
+          tagType={TagSource.Glossary}
+          onSelectionChange={updatePageTag}
+        />
+
+        <RelatedDataAssets
+          hasPermission={permissions.EditAll}
+          relatedDataAssets={knowledgePage?.['relatedEntities']}
+          onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
+        />
+
+        <AttachmentWidget entityFqn={knowledgePage?.fullyQualifiedName} />
+      </Card.Content>
+    </Card>
   );
 };
 

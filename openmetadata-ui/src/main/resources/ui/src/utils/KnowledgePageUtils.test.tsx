@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
+  Article,
   KnowledgePage,
   PageHierarchy,
   PageType,
@@ -24,10 +25,10 @@ import {
   findPageAndParentInTreeData,
   findPageInTreeData,
   getKnowledgePageName,
-  getLink,
   getUpdatePageHierarchy,
   integrateNodesIntoHierarchy,
-} from './KnowledgePageUtils';
+} from './KnowledgePagePureUtils';
+import { getLink } from './KnowledgePageUtils';
 
 describe('getKnowledgePageName', () => {
   it('returns displayName when present', () => {
@@ -228,7 +229,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/456',
         deleted: false,
       };
@@ -259,7 +260,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };
@@ -285,7 +286,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };

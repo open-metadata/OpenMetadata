@@ -43,8 +43,8 @@ import {
   TagSource,
   type TagLabel,
 } from '../generated/type/tagLabel';
-import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import { extractContainerColumns } from './ContainerDetailUtils';
+import { extractApiEndpointFields } from './APIEndpoints/APIEndpointFieldUtils';
+import { extractContainerColumns } from './ContainerDetailPureUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import {

@@ -129,7 +129,6 @@ export const openDeleteModal = async (page: Page) => {
  * Fills the DELETE confirmation and clicks confirm button.
  */
 export const confirmDelete = async (page: Page) => {
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 };
 

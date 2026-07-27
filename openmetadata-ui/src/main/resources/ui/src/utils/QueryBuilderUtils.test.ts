@@ -23,8 +23,7 @@ import {
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
   resolveFieldType,
-} from './QueryBuilderUtils';
-
+} from './QueryBuilderPureUtils';
 jest.mock('./StringUtils', () => ({
   generateUUID: jest.fn(),
 }));

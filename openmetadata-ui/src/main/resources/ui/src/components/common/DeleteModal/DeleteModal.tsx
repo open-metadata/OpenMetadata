@@ -36,6 +36,7 @@ export const DeleteModal = ({
 
   return (
     <ModalOverlay
+      data-testid="delete-modal"
       isDismissable={!isDeleting}
       isOpen={open}
       style={{ zIndex: 999 }}
@@ -52,7 +53,7 @@ export const DeleteModal = ({
             <div
               className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4"
               data-testid="modal-header">
-              <Typography size="text-md" weight="semibold">
+              <Typography ellipsis size="text-md" weight="semibold">
                 {t('label.delete')} {entityTitle}
               </Typography>
               <Typography as="p" className="tw:text-tertiary">

@@ -38,9 +38,12 @@ export const NativeSelect = ({
           aria-describedby={hint ? hintId : undefined}
           aria-labelledby={label ? labelId : undefined}
           className={cx(
-            'tw:appearance-none tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-md tw:font-medium tw:text-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset tw:placeholder:text-fg-quaternary tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:disabled:cursor-not-allowed tw:disabled:bg-disabled_subtle tw:disabled:text-disabled',
+            // Border drawn with outline, not a ring (WebKit does not pixel-snap box-shadow,
+            // so rings thin/vanish in Safari when zoomed out). `outline-hidden` is gone —
+            // the outline IS the border and focus indicator, as in input.tsx.
+            'tw:appearance-none tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-2.5 tw:text-md tw:font-medium tw:text-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear tw:placeholder:text-fg-quaternary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand tw:disabled:cursor-not-allowed tw:disabled:bg-disabled_subtle tw:disabled:text-disabled',
             // Styles when the select is within an `InputGroup`
-            'tw:in-data-input-wrapper:flex tw:in-data-input-wrapper:h-full tw:in-data-input-wrapper:gap-1 tw:in-data-input-wrapper:bg-inherit tw:in-data-input-wrapper:px-3 tw:in-data-input-wrapper:py-2 tw:in-data-input-wrapper:font-normal tw:in-data-input-wrapper:text-tertiary tw:in-data-input-wrapper:shadow-none tw:in-data-input-wrapper:ring-transparent',
+            'tw:in-data-input-wrapper:flex tw:in-data-input-wrapper:h-full tw:in-data-input-wrapper:gap-1 tw:in-data-input-wrapper:bg-inherit tw:in-data-input-wrapper:px-3 tw:in-data-input-wrapper:py-2 tw:in-data-input-wrapper:font-normal tw:in-data-input-wrapper:text-tertiary tw:in-data-input-wrapper:shadow-none tw:in-data-input-wrapper:outline-transparent',
             // Styles for the select when `TextField` is disabled
             'tw:in-data-input-wrapper:group-disabled:pointer-events-none tw:in-data-input-wrapper:group-disabled:cursor-not-allowed tw:in-data-input-wrapper:group-disabled:bg-transparent tw:in-data-input-wrapper:group-disabled:text-disabled',
             // Common styles for sizes and border radius within `InputGroup`

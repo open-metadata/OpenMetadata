@@ -37,6 +37,9 @@ jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
     total: 8,
   }),
   getPieChartLabel: jest.fn().mockReturnValue(<div>Test Label</div>),
+}));
+
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
   getTestCaseTabPath: jest.fn((status: TestCaseStatus) => ({
     pathname: '/data-quality/test-cases',
     search: `testCaseStatus=${status}`,
@@ -136,7 +139,7 @@ describe('TestCaseStatusPieChartWidget', () => {
 
   it('should pass onSegmentClick to CustomPieChart and navigate on segment click', async () => {
     const { getTestCaseTabPath } = jest.requireMock(
-      '../../../../utils/DataQuality/DataQualityUtils'
+      '../../../../utils/DataQuality/DataQualityPureUtils'
     ) as { getTestCaseTabPath: jest.Mock };
     const mockNavigate = (
       jest.requireMock('react-router-dom') as {
@@ -194,6 +197,31 @@ describe('TestCaseStatusPieChartWidget', () => {
     expect(mockNavigate).toHaveBeenCalledWith({
       pathname: '/data-quality/test-cases',
       search: `testCaseStatus=${TestCaseStatus.Aborted}`,
+    });
+  });
+
+  it('should use the supplied navigate function and test cases path', async () => {
+    const navigate = jest.fn();
+
+    render(
+      <TestCaseStatusPieChartWidget
+        navigate={navigate}
+        redirectPath="/observability/data-quality/test-cases"
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const failedSegment = await screen.findByTestId('segment-1');
+    await act(async () => {
+      failedSegment.click();
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: '/observability/data-quality/test-cases',
+      search: `testCaseStatus=${TestCaseStatus.Failed}`,
     });
   });
 });

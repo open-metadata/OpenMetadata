@@ -104,8 +104,11 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
 );
 
 jest.mock(
-  '../../components/Customization/GenericProvider/GenericProvider',
+  '../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest.fn().mockImplementation(() => ({
       data: {
         tableDetails: {
@@ -165,13 +168,10 @@ jest.mock(
     GenericProvider: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      data: {},
-    })),
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>description</div>)
 );
 

@@ -136,7 +136,7 @@ test.describe('Task Navigation - Activity Feed Widget', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -231,7 +231,7 @@ test.describe('Task Navigation - Entity Page', () => {
     await waitForPageLoaded(page);
 
     // Click on Tasks filter
-    const tasksFilter = page.getByRole('button', { name: /tasks/i });
+    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksFilter.isVisible()) {
       await tasksFilter.click();
       await waitForPageLoaded(page);
@@ -257,7 +257,7 @@ test.describe('Task Navigation - Entity Page', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -306,7 +306,7 @@ test.describe('Task Navigation - Entity Page', () => {
     await activityFeedTab.click();
     await waitForPageLoaded(page);
 
-    const tasksFilter = page.getByRole('button', { name: /tasks/i });
+    const tasksFilter = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksFilter.isVisible()) {
       await tasksFilter.click();
       await waitForPageLoaded(page);

@@ -23,8 +23,8 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
     ));
 });
 
-jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn((content) => content),
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+  formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
 }));
 
@@ -56,12 +56,12 @@ const mockProp: PreviewerProp = {
 };
 
 describe('RichTextEditorPreviewerV1', () => {
-  it('should render the component with markdown content', () => {
+  it('should render the component with markdown content', async () => {
     render(<RichTextEditorPreviewerV1 {...mockProp} />);
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(screen.getByTestId('block-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
@@ -219,11 +219,13 @@ describe('RichTextEditorPreviewerV1', () => {
     );
   });
 
-  it('should format content using formatContent utility', () => {
-    const { formatContent } = require('../../../utils/BlockEditorUtils');
+  it('should format content using formatClientContent utility', () => {
+    const {
+      formatClientContent,
+    } = require('../../../utils/BlockEditorPureUtils');
     render(<RichTextEditorPreviewerV1 {...mockProp} />);
 
-    expect(formatContent).toHaveBeenCalledWith(mockLongMarkdown, 'client');
+    expect(formatClientContent).toHaveBeenCalledWith(mockLongMarkdown);
   });
 
   it('should initialize with expanded state based on isDescriptionExpanded prop', () => {

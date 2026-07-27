@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -39,7 +40,7 @@ const uiCreatedDomainName = `PW-mp-domain-${uuid()}`;
 
 test.describe(
   'Data Marketplace - Core',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

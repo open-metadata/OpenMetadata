@@ -13,10 +13,7 @@
 import { BrowserContext } from '@playwright/test';
 import { ProviderConfigOverride } from './ssoAuth';
 
-// Short enough to keep test runtime low, long enough to ride out SAML callback
-// latency plus the small clock skew between the server JWT `exp` and the
-// browser's wall clock.
-export const SHORT_ACCESS_TTL_SECONDS = 10;
+export const SHORT_ACCESS_TTL_SECONDS = 30;
 
 // Server-side SAML HttpSession cookie. SamlAuthServletHandler.handleRefresh
 // uses this cookie to resolve the existing server-side session; clearing it

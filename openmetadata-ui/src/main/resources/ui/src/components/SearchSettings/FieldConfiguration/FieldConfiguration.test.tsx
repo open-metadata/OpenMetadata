@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
-import { MatchType } from '../../../generated/settings/settings';
+import {
+  FieldValueBoost,
+  SearchFieldMatchType as MatchType,
+} from '../../../generated/configuration/searchSettings';
 import FieldConfiguration from './FieldConfiguration';
 
 const mockProps = {

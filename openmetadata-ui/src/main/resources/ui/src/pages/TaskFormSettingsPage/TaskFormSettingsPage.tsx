@@ -38,10 +38,10 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import CodeEditor from '../../components/Database/SchemaEditor/CodeEditor';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
@@ -81,6 +81,10 @@ import { getDefaultTaskFormSchema } from '../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import TaskFormBuilderSection from './components/TaskFormBuilderSection';
 import './task-form-settings.less';
+
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/CodeEditor'))
+);
 
 const EMPTY_SCHEMA: TaskFormSchema = {
   name: '',

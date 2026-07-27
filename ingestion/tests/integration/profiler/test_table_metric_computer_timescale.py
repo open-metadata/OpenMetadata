@@ -55,9 +55,12 @@ class NonExistentModel(Base):
     id = Column(Integer, primary_key=True)
 
 
+TIMESCALE_IMAGE = "timescale/timescaledb:2.14.2-pg15"
+
+
 @pytest.fixture(scope="module")
 def ts_engine():
-    container = PostgresContainer("timescale/timescaledb-ha:pg15")
+    container = PostgresContainer(TIMESCALE_IMAGE)
     with container as container:
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:

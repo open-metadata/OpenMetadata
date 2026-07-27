@@ -26,10 +26,6 @@ import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>Error Placeholder Mock</div>);
-});
-
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader Mock</div>);
 });
@@ -50,7 +46,7 @@ jest.mock('../../../utils/StringUtils', () => {
     replacePlus: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
-jest.mock('../../../utils/FeedUtils', () => {
+jest.mock('../../../utils/FeedUtilsPure', () => {
   return {
     getEntityFQN: jest.fn().mockImplementation((fqn) => fqn),
   };
@@ -285,7 +281,7 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Error Placeholder Mock')).toBeInTheDocument();
+      expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
   });
 
@@ -1272,7 +1268,7 @@ describe('AddTestCaseList', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Error Placeholder Mock')).toBeInTheDocument();
+      expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     });
 
     expect(screen.queryByTestId('select-all-test-cases')).toBeNull();

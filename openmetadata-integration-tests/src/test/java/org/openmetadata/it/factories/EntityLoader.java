@@ -17,6 +17,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -70,6 +71,7 @@ import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,6 +99,12 @@ public final class EntityLoader {
   private static final Logger LOG = LoggerFactory.getLogger(EntityLoader.class);
   private static final long FUTURE_TIMEOUT_SECONDS = 600;
 
+  // Caps the per-load create concurrency. Defaults to unbounded (the spec's own value) so embedded
+  // and local runs are unchanged; CI sets {@code -Djpw.loader.maxWorkers=N} (e.g. 8) so parallel
+  // creates against a shared, proxy-fronted external cluster don't queue past the ingress timeout
+  // and 504. Tune per run via the workflow input.
+  private static final String MAX_WORKERS_PROPERTY = "jpw.loader.maxWorkers";
+
   // Children that hang off a single parent (glossary terms → glossary, tags →
   // classification, api endpoints → collection, data products → domain) serialize on the
   // parent's relationship row lock during create. Funnelling thousands through one parent
@@ -122,12 +130,16 @@ public final class EntityLoader {
   private EntityLoader() {}
 
   public static EntityLoadSummary load(final EntityLoadSpec spec, final TestNamespace ns) {
+    final int workers = effectiveParallelWorkers(spec.parallelWorkers());
     LOG.info(
-        "EntityLoader starting: total={} parallelWorkers={}", spec.total(), spec.parallelWorkers());
+        "EntityLoader starting: total={} parallelWorkers={} (requested={})",
+        spec.total(),
+        workers,
+        spec.parallelWorkers());
     final Instant start = Instant.now();
     final EntityLoadSummary.Builder summary = new EntityLoadSummary.Builder();
     final LoaderContext ctx = new LoaderContext();
-    final ExecutorService executor = Executors.newFixedThreadPool(spec.parallelWorkers());
+    final ExecutorService executor = Executors.newFixedThreadPool(workers);
     try {
       runAssetKinds(spec, ns, executor, summary, ctx);
       runTaxonomyKinds(spec, ns, executor, summary);
@@ -146,6 +158,15 @@ public final class EntityLoader {
         built.totalColumns(),
         built.totalDuration());
     return built;
+  }
+
+  /**
+   * Caps the requested worker count by {@code -Djpw.loader.maxWorkers}. Unset (embedded/local) means
+   * no cap — the spec's value is used verbatim.
+   */
+  private static int effectiveParallelWorkers(final int requested) {
+    final Integer cap = Integer.getInteger(MAX_WORKERS_PROPERTY);
+    return (cap != null && cap > 0) ? Math.min(requested, cap) : requested;
   }
 
   private static void runAssetKinds(
@@ -346,9 +367,9 @@ public final class EntityLoader {
                 return null;
               }));
     }
-    awaitAll(futures, EntityKind.TABLE);
-    summary.recordCreated(EntityKind.TABLE, count);
-    summary.recordColumns(count * columns);
+    final int createdCount = awaitAll(futures, EntityKind.TABLE);
+    summary.recordCreated(EntityKind.TABLE, createdCount);
+    summary.recordColumns(createdCount * columns);
   }
 
   private static void loadTopics(
@@ -361,19 +382,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.TOPIC);
     final String namePrefix = ns.prefix("topic") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TOPIC,
-        index ->
-            SdkClients.adminClient()
-                .topics()
-                .create(
-                    new CreateTopic()
-                        .withName(namePrefix + index)
-                        .withService(serviceFqn)
-                        .withPartitions(1)));
-    summary.recordCreated(EntityKind.TOPIC, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.TOPIC,
+            index ->
+                SdkClients.adminClient()
+                    .topics()
+                    .create(
+                        new CreateTopic()
+                            .withName(namePrefix + index)
+                            .withService(serviceFqn)
+                            .withPartitions(1)));
+    summary.recordCreated(EntityKind.TOPIC, createdCount);
   }
 
   private static void loadDashboards(
@@ -386,19 +408,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.DASHBOARD);
     final String namePrefix = ns.prefix("dashboard") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.DASHBOARD,
-        index ->
-            ctx.recordDashboard(
-                SdkClients.adminClient()
-                    .dashboards()
-                    .create(
-                        new CreateDashboard()
-                            .withName(namePrefix + index)
-                            .withService(serviceFqn))));
-    summary.recordCreated(EntityKind.DASHBOARD, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.DASHBOARD,
+            index ->
+                ctx.recordDashboard(
+                    SdkClients.adminClient()
+                        .dashboards()
+                        .create(
+                            new CreateDashboard()
+                                .withName(namePrefix + index)
+                                .withService(serviceFqn))));
+    summary.recordCreated(EntityKind.DASHBOARD, createdCount);
   }
 
   private static void loadCharts(
@@ -410,19 +433,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.CHART);
     final String namePrefix = ns.prefix("chart") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.CHART,
-        index ->
-            SdkClients.adminClient()
-                .charts()
-                .create(
-                    new CreateChart()
-                        .withName(namePrefix + index)
-                        .withService(serviceFqn)
-                        .withChartType(ChartType.Bar)));
-    summary.recordCreated(EntityKind.CHART, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.CHART,
+            index ->
+                SdkClients.adminClient()
+                    .charts()
+                    .create(
+                        new CreateChart()
+                            .withName(namePrefix + index)
+                            .withService(serviceFqn)
+                            .withChartType(ChartType.Bar)));
+    summary.recordCreated(EntityKind.CHART, createdCount);
   }
 
   private static void loadDashboardDataModels(
@@ -435,19 +459,20 @@ public final class EntityLoader {
     final int columns = spec.columnsPerDataModel();
     final String namePrefix = ns.prefix("data_model") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.DASHBOARD_DATA_MODEL,
-        index -> {
-          final CreateDashboardDataModel request = new CreateDashboardDataModel();
-          request.setName(namePrefix + index);
-          request.setService(serviceFqn);
-          request.setDataModelType(DataModelType.MetabaseDataModel);
-          request.setColumns(buildColumns(columns));
-          SdkClients.adminClient().dashboardDataModels().create(request);
-        });
-    summary.recordCreated(EntityKind.DASHBOARD_DATA_MODEL, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.DASHBOARD_DATA_MODEL,
+            index -> {
+              final CreateDashboardDataModel request = new CreateDashboardDataModel();
+              request.setName(namePrefix + index);
+              request.setService(serviceFqn);
+              request.setDataModelType(DataModelType.MetabaseDataModel);
+              request.setColumns(buildColumns(columns));
+              SdkClients.adminClient().dashboardDataModels().create(request);
+            });
+    summary.recordCreated(EntityKind.DASHBOARD_DATA_MODEL, createdCount);
   }
 
   private static void loadPipelines(
@@ -461,19 +486,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.PIPELINE);
     final String namePrefix = ns.prefix("pipeline") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.PIPELINE,
-        index ->
-            ctx.recordPipeline(
-                SdkClients.adminClient()
-                    .pipelines()
-                    .create(
-                        new CreatePipeline()
-                            .withName(namePrefix + index)
-                            .withService(serviceFqn))));
-    summary.recordCreated(EntityKind.PIPELINE, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.PIPELINE,
+            index ->
+                ctx.recordPipeline(
+                    SdkClients.adminClient()
+                        .pipelines()
+                        .create(
+                            new CreatePipeline()
+                                .withName(namePrefix + index)
+                                .withService(serviceFqn))));
+    summary.recordCreated(EntityKind.PIPELINE, createdCount);
   }
 
   private static void loadMlModels(
@@ -486,18 +512,19 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.ML_MODEL);
     final String namePrefix = ns.prefix("ml_model") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.ML_MODEL,
-        index -> {
-          final CreateMlModel request = new CreateMlModel();
-          request.setName(namePrefix + index);
-          request.setService(serviceFqn);
-          request.setAlgorithm("regression");
-          SdkClients.adminClient().mlModels().create(request);
-        });
-    summary.recordCreated(EntityKind.ML_MODEL, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.ML_MODEL,
+            index -> {
+              final CreateMlModel request = new CreateMlModel();
+              request.setName(namePrefix + index);
+              request.setService(serviceFqn);
+              request.setAlgorithm("regression");
+              SdkClients.adminClient().mlModels().create(request);
+            });
+    summary.recordCreated(EntityKind.ML_MODEL, createdCount);
   }
 
   private static void loadContainers(
@@ -510,17 +537,18 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.CONTAINER);
     final String namePrefix = ns.prefix("container") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.CONTAINER,
-        index -> {
-          final CreateContainer request = new CreateContainer();
-          request.setName(namePrefix + index);
-          request.setService(serviceFqn);
-          SdkClients.adminClient().containers().create(request);
-        });
-    summary.recordCreated(EntityKind.CONTAINER, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.CONTAINER,
+            index -> {
+              final CreateContainer request = new CreateContainer();
+              request.setName(namePrefix + index);
+              request.setService(serviceFqn);
+              SdkClients.adminClient().containers().create(request);
+            });
+    summary.recordCreated(EntityKind.CONTAINER, createdCount);
   }
 
   private static void loadSearchIndexes(
@@ -534,18 +562,19 @@ public final class EntityLoader {
     final String namePrefix = ns.prefix("search_index") + "_";
     final List<SearchIndexField> fields = defaultSearchIndexFields();
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.SEARCH_INDEX,
-        index -> {
-          final CreateSearchIndex request = new CreateSearchIndex();
-          request.setName(namePrefix + index);
-          request.setService(serviceFqn);
-          request.setFields(fields);
-          SdkClients.adminClient().searchIndexes().create(request);
-        });
-    summary.recordCreated(EntityKind.SEARCH_INDEX, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.SEARCH_INDEX,
+            index -> {
+              final CreateSearchIndex request = new CreateSearchIndex();
+              request.setName(namePrefix + index);
+              request.setService(serviceFqn);
+              request.setFields(fields);
+              SdkClients.adminClient().searchIndexes().create(request);
+            });
+    summary.recordCreated(EntityKind.SEARCH_INDEX, createdCount);
   }
 
   private static void loadApiCollections(
@@ -558,19 +587,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.API_COLLECTION);
     final String namePrefix = ns.prefix("api_collection") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.API_COLLECTION,
-        index ->
-            SdkClients.adminClient()
-                .apiCollections()
-                .create(
-                    new CreateAPICollection()
-                        .withName(namePrefix + index)
-                        .withService(serviceFqn)
-                        .withEndpointURL(URI.create("https://loader.test/api/" + index))));
-    summary.recordCreated(EntityKind.API_COLLECTION, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.API_COLLECTION,
+            index ->
+                SdkClients.adminClient()
+                    .apiCollections()
+                    .create(
+                        new CreateAPICollection()
+                            .withName(namePrefix + index)
+                            .withService(serviceFqn)
+                            .withEndpointURL(URI.create("https://loader.test/api/" + index))));
+    summary.recordCreated(EntityKind.API_COLLECTION, createdCount);
   }
 
   private static void loadApiEndpoints(
@@ -582,20 +612,21 @@ public final class EntityLoader {
     final List<String> collectionFqns = createApiCollectionParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("api_endpoint") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.API_ENDPOINT,
-        index ->
-            SdkClients.adminClient()
-                .apiEndpoints()
-                .create(
-                    new CreateAPIEndpoint()
-                        .withName(namePrefix + index)
-                        .withApiCollection(collectionFqns.get(index % collectionFqns.size()))
-                        .withEndpointURL(URI.create("https://loader.test/api/ep/" + index))
-                        .withRequestMethod(APIRequestMethod.GET)));
-    summary.recordCreated(EntityKind.API_ENDPOINT, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.API_ENDPOINT,
+            index ->
+                SdkClients.adminClient()
+                    .apiEndpoints()
+                    .create(
+                        new CreateAPIEndpoint()
+                            .withName(namePrefix + index)
+                            .withApiCollection(collectionFqns.get(index % collectionFqns.size()))
+                            .withEndpointURL(URI.create("https://loader.test/api/ep/" + index))
+                            .withRequestMethod(APIRequestMethod.GET)));
+    summary.recordCreated(EntityKind.API_ENDPOINT, createdCount);
   }
 
   private static void loadStoredProcedures(
@@ -611,18 +642,19 @@ public final class EntityLoader {
             .withCode("CREATE OR REPLACE PROCEDURE noop() AS $$ BEGIN RETURN; END; $$;")
             .withLanguage(StoredProcedureLanguage.SQL);
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.STORED_PROCEDURE,
-        index -> {
-          final CreateStoredProcedure request = new CreateStoredProcedure();
-          request.setName(namePrefix + index);
-          request.setDatabaseSchema(schemaFqn);
-          request.setStoredProcedureCode(code);
-          SdkClients.adminClient().storedProcedures().create(request);
-        });
-    summary.recordCreated(EntityKind.STORED_PROCEDURE, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.STORED_PROCEDURE,
+            index -> {
+              final CreateStoredProcedure request = new CreateStoredProcedure();
+              request.setName(namePrefix + index);
+              request.setDatabaseSchema(schemaFqn);
+              request.setStoredProcedureCode(code);
+              SdkClients.adminClient().storedProcedures().create(request);
+            });
+    summary.recordCreated(EntityKind.STORED_PROCEDURE, createdCount);
   }
 
   private static void loadQueries(
@@ -639,19 +671,20 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.QUERY);
     final String namePrefix = ns.prefix("query") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.QUERY,
-        index ->
-            SdkClients.adminClient()
-                .queries()
-                .create(
-                    new CreateQuery()
-                        .withName(namePrefix + index)
-                        .withQuery("SELECT " + index + " AS n_" + System.nanoTime())
-                        .withService(serviceFqn)));
-    summary.recordCreated(EntityKind.QUERY, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.QUERY,
+            index ->
+                SdkClients.adminClient()
+                    .queries()
+                    .create(
+                        new CreateQuery()
+                            .withName(namePrefix + index)
+                            .withQuery("SELECT " + index + " AS n_" + System.nanoTime())
+                            .withService(serviceFqn)));
+    summary.recordCreated(EntityKind.QUERY, createdCount);
   }
 
   // ---------------- Taxonomy loaders ----------------
@@ -664,18 +697,21 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.GLOSSARY);
     final String namePrefix = ns.prefix("glossary") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.GLOSSARY,
-        index ->
-            SdkClients.adminClient()
-                .glossaries()
-                .create(
-                    new CreateGlossary()
-                        .withName(namePrefix + index)
-                        .withDescription("Loader glossary " + index)));
-    summary.recordCreated(EntityKind.GLOSSARY, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.GLOSSARY,
+            index ->
+                ns.trackRoot(
+                    Entity.GLOSSARY,
+                    SdkClients.adminClient()
+                        .glossaries()
+                        .create(
+                            new CreateGlossary()
+                                .withName(namePrefix + index)
+                                .withDescription("Loader glossary " + index))));
+    summary.recordCreated(EntityKind.GLOSSARY, createdCount);
   }
 
   private static void loadGlossaryTerms(
@@ -687,19 +723,20 @@ public final class EntityLoader {
     final List<String> glossaryFqns = createGlossaryParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("term") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.GLOSSARY_TERM,
-        index ->
-            SdkClients.adminClient()
-                .glossaryTerms()
-                .create(
-                    new CreateGlossaryTerm()
-                        .withName(namePrefix + index)
-                        .withGlossary(glossaryFqns.get(index % glossaryFqns.size()))
-                        .withDescription("Loader term " + index)));
-    summary.recordCreated(EntityKind.GLOSSARY_TERM, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.GLOSSARY_TERM,
+            index ->
+                SdkClients.adminClient()
+                    .glossaryTerms()
+                    .create(
+                        new CreateGlossaryTerm()
+                            .withName(namePrefix + index)
+                            .withGlossary(glossaryFqns.get(index % glossaryFqns.size()))
+                            .withDescription("Loader term " + index)));
+    summary.recordCreated(EntityKind.GLOSSARY_TERM, createdCount);
   }
 
   private static void loadClassifications(
@@ -710,18 +747,21 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.CLASSIFICATION);
     final String namePrefix = ns.prefix("classification") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.CLASSIFICATION,
-        index ->
-            SdkClients.adminClient()
-                .classifications()
-                .create(
-                    new CreateClassification()
-                        .withName(namePrefix + index)
-                        .withDescription("Loader classification " + index)));
-    summary.recordCreated(EntityKind.CLASSIFICATION, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.CLASSIFICATION,
+            index ->
+                ns.trackRoot(
+                    Entity.CLASSIFICATION,
+                    SdkClients.adminClient()
+                        .classifications()
+                        .create(
+                            new CreateClassification()
+                                .withName(namePrefix + index)
+                                .withDescription("Loader classification " + index))));
+    summary.recordCreated(EntityKind.CLASSIFICATION, createdCount);
   }
 
   private static void loadTags(
@@ -733,20 +773,21 @@ public final class EntityLoader {
     final List<String> classificationNames = createClassificationParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("tag") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TAG,
-        index ->
-            SdkClients.adminClient()
-                .tags()
-                .create(
-                    new CreateTag()
-                        .withName(namePrefix + index)
-                        .withClassification(
-                            classificationNames.get(index % classificationNames.size()))
-                        .withDescription("Loader tag " + index)));
-    summary.recordCreated(EntityKind.TAG, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.TAG,
+            index ->
+                SdkClients.adminClient()
+                    .tags()
+                    .create(
+                        new CreateTag()
+                            .withName(namePrefix + index)
+                            .withClassification(
+                                classificationNames.get(index % classificationNames.size()))
+                            .withDescription("Loader tag " + index)));
+    summary.recordCreated(EntityKind.TAG, createdCount);
   }
 
   // ---------------- Org loaders ----------------
@@ -759,16 +800,22 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.USER);
     final String namePrefix = ns.prefix("user") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.USER,
-        index -> {
-          final String name = namePrefix + index;
-          final String email = "u" + UUID.randomUUID().toString().replace("-", "") + EMAIL_DOMAIN;
-          SdkClients.adminClient().users().create(new CreateUser().withName(name).withEmail(email));
-        });
-    summary.recordCreated(EntityKind.USER, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.USER,
+            index -> {
+              final String name = namePrefix + index;
+              final String email =
+                  "u" + UUID.randomUUID().toString().replace("-", "") + EMAIL_DOMAIN;
+              ns.trackRoot(
+                  Entity.USER,
+                  SdkClients.adminClient()
+                      .users()
+                      .create(new CreateUser().withName(name).withEmail(email)));
+            });
+    summary.recordCreated(EntityKind.USER, createdCount);
   }
 
   private static void loadTeams(
@@ -779,19 +826,22 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.TEAM);
     final String namePrefix = ns.prefix("team") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TEAM,
-        index ->
-            SdkClients.adminClient()
-                .teams()
-                .create(
-                    new CreateTeam()
-                        .withName(namePrefix + index)
-                        .withDisplayName(namePrefix + index)
-                        .withTeamType(TeamType.GROUP)));
-    summary.recordCreated(EntityKind.TEAM, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.TEAM,
+            index ->
+                ns.trackRoot(
+                    Entity.TEAM,
+                    SdkClients.adminClient()
+                        .teams()
+                        .create(
+                            new CreateTeam()
+                                .withName(namePrefix + index)
+                                .withDisplayName(namePrefix + index)
+                                .withTeamType(TeamType.GROUP))));
+    summary.recordCreated(EntityKind.TEAM, createdCount);
   }
 
   // ---------------- Governance loaders ----------------
@@ -804,19 +854,22 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.DOMAIN);
     final String namePrefix = ns.prefix("domain") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.DOMAIN,
-        index ->
-            SdkClients.adminClient()
-                .domains()
-                .create(
-                    new CreateDomain()
-                        .withName(namePrefix + index)
-                        .withDomainType(DomainType.AGGREGATE)
-                        .withDescription("Loader domain " + index)));
-    summary.recordCreated(EntityKind.DOMAIN, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.DOMAIN,
+            index ->
+                ns.trackRoot(
+                    Entity.DOMAIN,
+                    SdkClients.adminClient()
+                        .domains()
+                        .create(
+                            new CreateDomain()
+                                .withName(namePrefix + index)
+                                .withDomainType(DomainType.AGGREGATE)
+                                .withDescription("Loader domain " + index))));
+    summary.recordCreated(EntityKind.DOMAIN, createdCount);
   }
 
   private static void loadDataProducts(
@@ -828,19 +881,22 @@ public final class EntityLoader {
     final List<String> domainFqns = createDomainParents(ns, parentCountFor(count));
     final String namePrefix = ns.prefix("data_product") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.DATA_PRODUCT,
-        index ->
-            SdkClients.adminClient()
-                .dataProducts()
-                .create(
-                    new CreateDataProduct()
-                        .withName(namePrefix + index)
-                        .withDomains(List.of(domainFqns.get(index % domainFqns.size())))
-                        .withDescription("Loader data product " + index)));
-    summary.recordCreated(EntityKind.DATA_PRODUCT, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.DATA_PRODUCT,
+            index ->
+                ns.trackRoot(
+                    Entity.DATA_PRODUCT,
+                    SdkClients.adminClient()
+                        .dataProducts()
+                        .create(
+                            new CreateDataProduct()
+                                .withName(namePrefix + index)
+                                .withDomains(List.of(domainFqns.get(index % domainFqns.size())))
+                                .withDescription("Loader data product " + index))));
+    summary.recordCreated(EntityKind.DATA_PRODUCT, createdCount);
   }
 
   // ---------------- Quality loaders ----------------
@@ -853,17 +909,19 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.TEST_SUITE);
     final String namePrefix = ns.prefix("test_suite") + "_";
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TEST_SUITE,
-        index -> {
-          final CreateTestSuite request = new CreateTestSuite();
-          request.setName(namePrefix + index);
-          request.setDescription("Loader test suite " + index);
-          SdkClients.adminClient().testSuites().create(request);
-        });
-    summary.recordCreated(EntityKind.TEST_SUITE, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.TEST_SUITE,
+            index -> {
+              final CreateTestSuite request = new CreateTestSuite();
+              request.setName(namePrefix + index);
+              request.setDescription("Loader test suite " + index);
+              ns.trackRoot(
+                  Entity.TEST_SUITE, SdkClients.adminClient().testSuites().create(request));
+            });
+    summary.recordCreated(EntityKind.TEST_SUITE, createdCount);
   }
 
   private static void loadTestCases(
@@ -881,7 +939,8 @@ public final class EntityLoader {
     // <table.fqn>.testSuite name under MySQL's 256-char limit), each shard creates its
     // slice of test cases sequentially, and the shards run in parallel. No two threads
     // ever touch the same table, so the lock never contends.
-    final int shards = Math.max(1, Math.min(spec.parallelWorkers(), count));
+    final int shards =
+        Math.max(1, Math.min(effectiveParallelWorkers(spec.parallelWorkers()), count));
     final List<String> shardTableLinks = new ArrayList<>(shards);
     for (int s = 0; s < shards; s++) {
       shardTableLinks.add(
@@ -913,8 +972,8 @@ public final class EntityLoader {
                 return null;
               }));
     }
-    awaitAll(futures, EntityKind.TEST_CASE);
-    summary.recordCreated(EntityKind.TEST_CASE, count);
+    final int createdCount = awaitAll(futures, EntityKind.TEST_CASE);
+    summary.recordCreated(EntityKind.TEST_CASE, createdCount);
   }
 
   // ---------------- Graph loaders ----------------
@@ -940,19 +999,21 @@ public final class EntityLoader {
     final List<EntityReference[]> tasks = planLineageTasks(count, tables, dashboards, pipelines);
     final OpenMetadataClient client = SdkClients.adminClient();
 
-    submitBatch(
-        executor,
-        tasks.size(),
-        EntityKind.LINEAGE_EDGE,
-        index -> {
-          final EntityReference[] pair = tasks.get(index);
-          client
-              .lineage()
-              .addLineage(
-                  new AddLineage()
-                      .withEdge(new EntitiesEdge().withFromEntity(pair[0]).withToEntity(pair[1])));
-        });
-    summary.recordCreated(EntityKind.LINEAGE_EDGE, tasks.size());
+    final int createdCount =
+        submitBatch(
+            executor,
+            tasks.size(),
+            EntityKind.LINEAGE_EDGE,
+            index -> {
+              final EntityReference[] pair = tasks.get(index);
+              client
+                  .lineage()
+                  .addLineage(
+                      new AddLineage()
+                          .withEdge(
+                              new EntitiesEdge().withFromEntity(pair[0]).withToEntity(pair[1])));
+            });
+    summary.recordCreated(EntityKind.LINEAGE_EDGE, createdCount);
   }
 
   private static List<EntityReference> lineageTableNodes(
@@ -1100,7 +1161,7 @@ public final class EntityLoader {
     void run(int index) throws Exception;
   }
 
-  private static void submitBatch(
+  private static int submitBatch(
       final ExecutorService executor,
       final int count,
       final EntityKind kind,
@@ -1115,7 +1176,7 @@ public final class EntityLoader {
                 return null;
               }));
     }
-    awaitAll(futures, kind);
+    return awaitAll(futures, kind);
   }
 
   private static List<Column> buildColumns(final int n) {
@@ -1126,25 +1187,110 @@ public final class EntityLoader {
     return columns;
   }
 
+  /**
+   * Creates a single intentionally pathological "wide" table in one create call — a huge table
+   * description plus a very large column count, each column carrying a sizable description. Used by
+   * the static seed to stress single-document reindexing and {@code _source} size (the 413 /
+   * immense-term / field-limit paths). The create payload scales with
+   * {@code columnCount × columnDescriptionChars}, so a large count can exceed request/DB size limits
+   * — the seed runner gives the JVM extra heap and exposes the sizes as tunable properties.
+   */
+  public static Table loadWideTable(
+      final TestNamespace ns,
+      final int columnCount,
+      final int columnDescriptionChars,
+      final int tableDescriptionChars) {
+    final String schemaFqn = ensureTablesSchema(ns).getFullyQualifiedName();
+    final String name = ns.prefix("wide_table") + "_0";
+    LOG.info(
+        "Creating wide table '{}': {} columns (columnDesc={}c, tableDesc={}c)",
+        name,
+        columnCount,
+        columnDescriptionChars,
+        tableDescriptionChars);
+    final Table created =
+        Tables.create()
+            .name(name)
+            .withDescription(repeatedText(tableDescriptionChars))
+            .inSchema(schemaFqn)
+            .withColumns(buildDescribedColumns(columnCount, columnDescriptionChars))
+            .execute();
+    return created;
+  }
+
+  private static List<Column> buildDescribedColumns(final int n, final int descriptionChars) {
+    final String description = repeatedText(descriptionChars);
+    final List<Column> columns = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.STRING)
+              .withDescription(description));
+    }
+    return columns;
+  }
+
+  private static String repeatedText(final int targetChars) {
+    final String unit = "lorem ipsum dolor sit amet ";
+    final StringBuilder text = new StringBuilder(targetChars + unit.length());
+    while (text.length() < targetChars) {
+      text.append(unit);
+    }
+    text.setLength(Math.max(0, targetChars));
+    return text.toString();
+  }
+
   private static List<SearchIndexField> defaultSearchIndexFields() {
     return List.of(
         new SearchIndexField().withName("id").withDataType(SearchIndexDataType.TEXT),
         new SearchIndexField().withName("name").withDataType(SearchIndexDataType.KEYWORD));
   }
 
-  private static void awaitAll(final List<Future<Void>> futures, final EntityKind kind) {
+  /**
+   * Waits for every create future and returns how many succeeded. Transient per-item failures
+   * (a 504/timeout/409 from a shared, proxy-fronted cluster) are tolerated and logged rather than
+   * aborting the whole batch on the first failure — otherwise a single failure mid-load would leave
+   * a partial set (e.g. 100k requested, ~50k created). Only a total failure (nothing succeeded)
+   * throws.
+   */
+  private static int awaitAll(final List<Future<Void>> futures, final EntityKind kind) {
+    int succeeded = 0;
+    int failed = 0;
+    Throwable firstFailure = null;
     for (final Future<Void> f : futures) {
       try {
         f.get(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        succeeded++;
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new IllegalStateException("Interrupted while loading " + kind, e);
       } catch (final ExecutionException e) {
-        throw new IllegalStateException("Failed to load " + kind, e.getCause());
-      } catch (final java.util.concurrent.TimeoutException e) {
-        throw new IllegalStateException("Timed out loading " + kind, e);
+        failed++;
+        if (firstFailure == null) {
+          firstFailure = e.getCause();
+        }
+      } catch (final TimeoutException e) {
+        f.cancel(true);
+        failed++;
+        if (firstFailure == null) {
+          firstFailure = e;
+        }
       }
     }
+    if (failed > 0) {
+      LOG.warn(
+          "{}: created {}/{} ({} failed) — first failure: {}",
+          kind,
+          succeeded,
+          futures.size(),
+          failed,
+          firstFailure != null ? firstFailure.toString() : "unknown");
+    }
+    if (succeeded == 0 && !futures.isEmpty()) {
+      throw new IllegalStateException("Failed to load any " + kind, firstFailure);
+    }
+    return succeeded;
   }
 
   private static void shutdown(final ExecutorService executor) {
@@ -1175,24 +1321,25 @@ public final class EntityLoader {
     final long baseTs = System.currentTimeMillis();
     final String[] statuses = {"Success", "Failed", "Aborted"};
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.TEST_CASE_RESULT,
-        index -> {
-          final String fqn = fqns.get(index % fqns.size());
-          final String path =
-              TEST_CASE_RESULT_PATH_PREFIX + URLEncoder.encode(fqn, StandardCharsets.UTF_8);
-          final Map<String, Object> body = new HashMap<>();
-          body.put("timestamp", baseTs - (index * 3_600_000L));
-          body.put("testCaseStatus", statuses[index % statuses.length]);
-          body.put("result", "Loader result " + index);
-          body.put(
-              "testResultValue",
-              List.of(Map.of("name", "value", "value", randomDoubleStr(0.0, 100.0))));
-          httpPost(path, body);
-        });
-    summary.recordCreated(EntityKind.TEST_CASE_RESULT, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.TEST_CASE_RESULT,
+            index -> {
+              final String fqn = fqns.get(index % fqns.size());
+              final String path =
+                  TEST_CASE_RESULT_PATH_PREFIX + URLEncoder.encode(fqn, StandardCharsets.UTF_8);
+              final Map<String, Object> body = new HashMap<>();
+              body.put("timestamp", baseTs - (index * 3_600_000L));
+              body.put("testCaseStatus", statuses[index % statuses.length]);
+              body.put("result", "Loader result " + index);
+              body.put(
+                  "testResultValue",
+                  List.of(Map.of("name", "value", "value", randomDoubleStr(0.0, 100.0))));
+              httpPost(path, body);
+            });
+    summary.recordCreated(EntityKind.TEST_CASE_RESULT, createdCount);
   }
 
   private static void loadEntityReportData(
@@ -1203,25 +1350,27 @@ public final class EntityLoader {
     final long baseTs = System.currentTimeMillis();
     final String[] entityTypes = {"table", "topic", "dashboard", "pipeline", "mlmodel"};
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.ENTITY_REPORT_DATA,
-        index -> {
-          final int entityCount = ThreadLocalRandom.current().nextInt(1, 1001);
-          final int hasOwner = ThreadLocalRandom.current().nextInt(0, entityCount + 1);
-          final Map<String, Object> data = new HashMap<>();
-          data.put("entityType", entityTypes[index % entityTypes.length]);
-          data.put("entityTier", "Tier.Tier" + ((index % 5) + 1));
-          data.put("serviceName", "loader-test-service");
-          data.put("completedDescriptions", ThreadLocalRandom.current().nextInt(0, 101));
-          data.put("missingDescriptions", ThreadLocalRandom.current().nextInt(0, 51));
-          data.put("hasOwner", hasOwner);
-          data.put("missingOwner", entityCount - hasOwner);
-          data.put("entityCount", entityCount);
-          httpPost(DATA_INSIGHTS_PATH, dataInsightBody(baseTs, index, "entityReportData", data));
-        });
-    summary.recordCreated(EntityKind.ENTITY_REPORT_DATA, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.ENTITY_REPORT_DATA,
+            index -> {
+              final int entityCount = ThreadLocalRandom.current().nextInt(1, 1001);
+              final int hasOwner = ThreadLocalRandom.current().nextInt(0, entityCount + 1);
+              final Map<String, Object> data = new HashMap<>();
+              data.put("entityType", entityTypes[index % entityTypes.length]);
+              data.put("entityTier", "Tier.Tier" + ((index % 5) + 1));
+              data.put("serviceName", "loader-test-service");
+              data.put("completedDescriptions", ThreadLocalRandom.current().nextInt(0, 101));
+              data.put("missingDescriptions", ThreadLocalRandom.current().nextInt(0, 51));
+              data.put("hasOwner", hasOwner);
+              data.put("missingOwner", entityCount - hasOwner);
+              data.put("entityCount", entityCount);
+              httpPost(
+                  DATA_INSIGHTS_PATH, dataInsightBody(baseTs, index, "entityReportData", data));
+            });
+    summary.recordCreated(EntityKind.ENTITY_REPORT_DATA, createdCount);
   }
 
   private static void loadWebAnalyticViews(
@@ -1231,23 +1380,24 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.WEB_ANALYTIC_VIEW);
     final long baseTs = System.currentTimeMillis();
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.WEB_ANALYTIC_VIEW,
-        index -> {
-          final Map<String, Object> data = new HashMap<>();
-          data.put("entityType", "table");
-          data.put("entityFqn", "loader-test-service.db.public.table_" + index);
-          data.put("entityHref", "https://loader.test/table/" + index);
-          data.put("owner", "user_" + (index % 50));
-          data.put("views", ThreadLocalRandom.current().nextInt(1, 501));
-          httpPost(
-              DATA_INSIGHTS_PATH,
-              dataInsightBody(
-                  baseTs - (index * 60_000L), 0, "webAnalyticEntityViewReportData", data));
-        });
-    summary.recordCreated(EntityKind.WEB_ANALYTIC_VIEW, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.WEB_ANALYTIC_VIEW,
+            index -> {
+              final Map<String, Object> data = new HashMap<>();
+              data.put("entityType", "table");
+              data.put("entityFqn", "loader-test-service.db.public.table_" + index);
+              data.put("entityHref", "https://loader.test/table/" + index);
+              data.put("owner", "user_" + (index % 50));
+              data.put("views", ThreadLocalRandom.current().nextInt(1, 501));
+              httpPost(
+                  DATA_INSIGHTS_PATH,
+                  dataInsightBody(
+                      baseTs - (index * 60_000L), 0, "webAnalyticEntityViewReportData", data));
+            });
+    summary.recordCreated(EntityKind.WEB_ANALYTIC_VIEW, createdCount);
   }
 
   private static void loadWebAnalyticActivity(
@@ -1257,25 +1407,26 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.WEB_ANALYTIC_ACTIVITY);
     final long baseTs = System.currentTimeMillis();
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.WEB_ANALYTIC_ACTIVITY,
-        index -> {
-          final long ts = baseTs - (index * 60_000L);
-          final Map<String, Object> data = new HashMap<>();
-          data.put("userName", "loader_user_" + index);
-          data.put("userId", UUID.randomUUID().toString());
-          data.put("team", "loader-test-team");
-          data.put("totalSessions", ThreadLocalRandom.current().nextInt(1, 21));
-          data.put("totalSessionDuration", ThreadLocalRandom.current().nextInt(10, 3601));
-          data.put("totalPageView", ThreadLocalRandom.current().nextInt(1, 101));
-          data.put("lastSession", ts);
-          httpPost(
-              DATA_INSIGHTS_PATH,
-              dataInsightBody(ts, 0, "webAnalyticUserActivityReportData", data));
-        });
-    summary.recordCreated(EntityKind.WEB_ANALYTIC_ACTIVITY, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.WEB_ANALYTIC_ACTIVITY,
+            index -> {
+              final long ts = baseTs - (index * 60_000L);
+              final Map<String, Object> data = new HashMap<>();
+              data.put("userName", "loader_user_" + index);
+              data.put("userId", UUID.randomUUID().toString());
+              data.put("team", "loader-test-team");
+              data.put("totalSessions", ThreadLocalRandom.current().nextInt(1, 21));
+              data.put("totalSessionDuration", ThreadLocalRandom.current().nextInt(10, 3601));
+              data.put("totalPageView", ThreadLocalRandom.current().nextInt(1, 101));
+              data.put("lastSession", ts);
+              httpPost(
+                  DATA_INSIGHTS_PATH,
+                  dataInsightBody(ts, 0, "webAnalyticUserActivityReportData", data));
+            });
+    summary.recordCreated(EntityKind.WEB_ANALYTIC_ACTIVITY, createdCount);
   }
 
   private static void loadRawCostAnalysis(
@@ -1287,31 +1438,32 @@ public final class EntityLoader {
     final long baseTs = System.currentTimeMillis();
     final List<EntityReference> tables = ctx.tables();
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.RAW_COST_ANALYSIS,
-        index -> {
-          final Map<String, Object> entityRef = new HashMap<>();
-          if (tables.isEmpty()) {
-            entityRef.put("id", UUID.randomUUID().toString());
-            entityRef.put("type", "table");
-            entityRef.put("fullyQualifiedName", "loader-test-service.db.public.table_" + index);
-          } else {
-            final EntityReference ref = tables.get(index % tables.size());
-            entityRef.put("id", ref.getId().toString());
-            entityRef.put("type", "table");
-            entityRef.put("fullyQualifiedName", ref.getFullyQualifiedName());
-          }
-          final Map<String, Object> data = new HashMap<>();
-          data.put("entity", entityRef);
-          data.put("sizeInByte", ThreadLocalRandom.current().nextDouble(100.0, 100_000.0));
-          httpPost(
-              DATA_INSIGHTS_PATH,
-              dataInsightBody(
-                  baseTs - (index * 86_400_000L), 0, "rawCostAnalysisReportData", data));
-        });
-    summary.recordCreated(EntityKind.RAW_COST_ANALYSIS, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.RAW_COST_ANALYSIS,
+            index -> {
+              final Map<String, Object> entityRef = new HashMap<>();
+              if (tables.isEmpty()) {
+                entityRef.put("id", UUID.randomUUID().toString());
+                entityRef.put("type", "table");
+                entityRef.put("fullyQualifiedName", "loader-test-service.db.public.table_" + index);
+              } else {
+                final EntityReference ref = tables.get(index % tables.size());
+                entityRef.put("id", ref.getId().toString());
+                entityRef.put("type", "table");
+                entityRef.put("fullyQualifiedName", ref.getFullyQualifiedName());
+              }
+              final Map<String, Object> data = new HashMap<>();
+              data.put("entity", entityRef);
+              data.put("sizeInByte", ThreadLocalRandom.current().nextDouble(100.0, 100_000.0));
+              httpPost(
+                  DATA_INSIGHTS_PATH,
+                  dataInsightBody(
+                      baseTs - (index * 86_400_000L), 0, "rawCostAnalysisReportData", data));
+            });
+    summary.recordCreated(EntityKind.RAW_COST_ANALYSIS, createdCount);
   }
 
   private static void loadAggCostAnalysis(
@@ -1321,25 +1473,26 @@ public final class EntityLoader {
     final int count = spec.countOf(EntityKind.AGG_COST_ANALYSIS);
     final long baseTs = System.currentTimeMillis();
 
-    submitBatch(
-        executor,
-        count,
-        EntityKind.AGG_COST_ANALYSIS,
-        index -> {
-          final Map<String, Object> data = new HashMap<>();
-          data.put("entityType", "table");
-          data.put("serviceName", "loader-test-service");
-          data.put("serviceType", "BigQuery");
-          data.put("totalSize", ThreadLocalRandom.current().nextDouble(1000.0, 1_000_000.0));
-          data.put("totalCount", ThreadLocalRandom.current().nextInt(100, 100_001));
-          data.put("unusedDataAssets", costAssetBuckets());
-          data.put("frequentlyUsedDataAssets", costAssetBuckets());
-          httpPost(
-              DATA_INSIGHTS_PATH,
-              dataInsightBody(
-                  baseTs - (index * 86_400_000L), 0, "aggregatedCostAnalysisReportData", data));
-        });
-    summary.recordCreated(EntityKind.AGG_COST_ANALYSIS, count);
+    final int createdCount =
+        submitBatch(
+            executor,
+            count,
+            EntityKind.AGG_COST_ANALYSIS,
+            index -> {
+              final Map<String, Object> data = new HashMap<>();
+              data.put("entityType", "table");
+              data.put("serviceName", "loader-test-service");
+              data.put("serviceType", "BigQuery");
+              data.put("totalSize", ThreadLocalRandom.current().nextDouble(1000.0, 1_000_000.0));
+              data.put("totalCount", ThreadLocalRandom.current().nextInt(100, 100_001));
+              data.put("unusedDataAssets", costAssetBuckets());
+              data.put("frequentlyUsedDataAssets", costAssetBuckets());
+              httpPost(
+                  DATA_INSIGHTS_PATH,
+                  dataInsightBody(
+                      baseTs - (index * 86_400_000L), 0, "aggregatedCostAnalysisReportData", data));
+            });
+    summary.recordCreated(EntityKind.AGG_COST_ANALYSIS, createdCount);
   }
 
   private static Map<String, Object> dataInsightBody(

@@ -905,7 +905,7 @@ DROP TABLE IF EXISTS `tag_usage`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `tag_usage` (
   `source` tinyint NOT NULL,
-  `tagFQN` varchar(256) NOT NULL,
+  `tagFQN` varchar(512) NOT NULL,
   `labelType` tinyint NOT NULL,
   `state` tinyint NOT NULL,
   `tagFQNHash` varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,

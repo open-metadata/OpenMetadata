@@ -16,9 +16,9 @@ import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
+import { lazy } from 'react';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import {
   ICON_DIMENSION,
@@ -33,25 +33,20 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { getEntityName } from './EntityNameUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 
-export {
-  buildTree,
-  filterTreeNodeOptions,
-  findAndUpdateNested,
-  findExpandableKeys,
-  findExpandableKeysForArray,
-  findItemByFqn,
-  getGlossaryBreadcrumbs,
-  getGlossaryEntityLink,
-  getQueryFilterToExcludeTerm,
-  getQueryFilterToIncludeApprovedTerm,
-  glossaryTermTableColumnsWidth,
-  permissionForApproveOrReject,
-  referenceURLValidator,
-  StatusClass,
-  StatusFilters,
-  updateGlossaryTermByFqn,
-  validateReferenceURL,
-} from './GlossaryPureUtils';
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
+  )
+);
+
+const GlossaryTermTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/Glossary/GlossaryTermTab/GlossaryTermTab.component')
+  )
+);
 
 export const convertGlossaryTermsToTreeOptions = (
   options: ModifiedGlossaryTerm[] = [],

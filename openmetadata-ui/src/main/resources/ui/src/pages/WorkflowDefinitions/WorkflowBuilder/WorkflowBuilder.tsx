@@ -25,7 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
-import DeleteModalMUI from '../../../components/common/DeleteModal/DeleteModalMUI';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UnsavedChangesModal } from '../../../components/Modals/UnsavedChangesModal/UnsavedChangesModal.component';
@@ -578,7 +578,7 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
         onSave={navigationBlock.onSave}
       />
 
-      <DeleteModalMUI
+      <DeleteModal
         entityTitle={workflowMetadata?.displayName || ''}
         isDeleting={isDeleting}
         message={t('message.delete-entity-message', {

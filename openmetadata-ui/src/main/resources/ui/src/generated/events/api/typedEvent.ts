@@ -94,6 +94,12 @@ export interface ChangeEvent {
      */
     previousVersion?: number;
     /**
+     * True when this change event represents a recursive (cascade) delete of the entity
+     * together with its children. A single event is recorded for the deleted root entity;
+     * cascaded descendants do not produce individual change events.
+     */
+    recursive?: boolean;
+    /**
      * Timestamp when the change was made in Unix epoch time milliseconds.
      *
      * Time of Failure
@@ -253,6 +259,12 @@ export interface ChangeEventClass {
      * `currentVersion`.
      */
     previousVersion?: number;
+    /**
+     * True when this change event represents a recursive (cascade) delete of the entity
+     * together with its children. A single event is recorded for the deleted root entity;
+     * cascaded descendants do not produce individual change events.
+     */
+    recursive?: boolean;
     /**
      * Timestamp when the change was made in Unix epoch time milliseconds.
      */

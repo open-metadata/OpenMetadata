@@ -24,7 +24,7 @@ import {
 import { TestCase } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
-import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityUtils';
+import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {

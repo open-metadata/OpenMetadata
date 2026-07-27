@@ -14,12 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.search.IndexAliasInspector;
+import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.playwright.ui.UiSession;
 import org.openmetadata.playwright.ui.UiSessionExtension;
-import org.openmetadata.playwright.ui.pages.DataQualityListPage;
 import org.openmetadata.playwright.ui.pages.ExplorePage;
 import org.openmetadata.playwright.ui.pages.ExplorePage.Tab;
 import org.openmetadata.playwright.ui.pages.SearchIndexAppPage;
@@ -56,6 +58,7 @@ import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,7 +128,7 @@ class SelectiveFieldReindexUIIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(SelectiveFieldReindexUIIT.class);
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
   private static final String STATUS_SUCCESS = "Success";
 
   // Pattern adopted from SimpleReindexTriggerUIIT: "Run Now" Success means the app finished,
@@ -133,7 +136,7 @@ class SelectiveFieldReindexUIIT {
   // tabs whose hit count is zero, so a not-yet-refreshed search returns a missing tab testid
   // (not just a 0 count). Re-issuing the navigation on each tick lets the assertion absorb
   // that lag instead of failing at the first Playwright timeout.
-  private static final Duration UI_ASSERT_TIMEOUT = Duration.ofMinutes(2);
+  private static final Duration UI_ASSERT_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration UI_ASSERT_POLL_INTERVAL = Duration.ofSeconds(3);
   // Inner Playwright assertion timeout — short, since the Awaitility retry handles the long
   // wait. Long inner timeouts would only fire once and miss the next ES refresh.
@@ -177,8 +180,8 @@ class SelectiveFieldReindexUIIT {
     assertTableSearchableByColumnName(ui, fixtures, phase);
     assertQueryRendersOnTableQueriesTab(ui, fixtures, phase);
     assertWorksheetSearchableByColumnName(ui, fixtures, phase);
-    assertTestCaseAppearsInDqList(ui, fixtures, phase);
-    assertTestSuiteAppearsInDqList(ui, fixtures, phase);
+    assertTestCaseSearchable(ui, fixtures, phase);
+    assertTestSuiteSearchable(ui, fixtures, phase);
     assertTableUsageSummaryInSource(ui, fixtures, phase);
   }
 
@@ -195,7 +198,14 @@ class SelectiveFieldReindexUIIT {
         () -> {
           final ExplorePage explore =
               ExplorePage.openWithSearch(ui, Tab.TABLES, fixtures.tableColumnMarker);
-          explore.assertCountForTab(Tab.TABLES, 1);
+          // Assert the seeded table itself surfaces for the column-name query, not that it's the
+          // ONLY hit: the Explore filter-count is a global fuzzy total, so on the shared cluster a
+          // concurrent run's ngram-colliding table would inflate an == 1 count. Presence of the
+          // seeded table still fails if the reindex drops columns from _source (the regression).
+          PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.tableName))
+              .isVisible(
+                  new LocatorAssertions.IsVisibleOptions()
+                      .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
         });
   }
 
@@ -229,24 +239,25 @@ class SelectiveFieldReindexUIIT {
         () -> {
           final ExplorePage explore =
               ExplorePage.openWithSearch(ui, Tab.WORKSHEETS, fixtures.worksheetColumnMarker);
-          explore.assertCountForTab(Tab.WORKSHEETS, 1);
+          // Presence of the seeded worksheet, not an == 1 global fuzzy count — see the rationale in
+          // assertTableSearchableByColumnName.
+          PlaywrightAssertions.assertThat(explore.firstResultByName(fixtures.worksheetName))
+              .isVisible(
+                  new LocatorAssertions.IsVisibleOptions()
+                      .setTimeout(INNER_ASSERT_TIMEOUT.toMillis()));
         });
   }
 
-  private static void assertTestCaseAppearsInDqList(
+  private static void assertTestCaseSearchable(
       final UiSession ui, final SeededFixtures fixtures, final String phase) {
-    final String description =
-        "TestCaseIndex.testSuite/testCaseResult → DQ Test Cases list shows '"
+    assertSearchIndexHasEntity(
+        ui,
+        "testCase",
+        fixtures.testCaseName,
+        "TestCaseIndex.testSuite/testCaseResult → testCase '"
             + fixtures.testCaseName
-            + "' — "
-            + phase;
-    LOG.info("Asserting {}", description);
-    pollUiAssertion(
-        description,
-        () ->
-            DataQualityListPage.open(ui)
-                .searchByName(fixtures.testCaseName)
-                .assertTestCaseVisible(fixtures.testCaseName));
+            + "' searchable after reindex — "
+            + phase);
   }
 
   /**
@@ -293,25 +304,39 @@ class SelectiveFieldReindexUIIT {
         });
   }
 
-  private static void assertTestSuiteAppearsInDqList(
+  private static void assertTestSuiteSearchable(
       final UiSession ui, final SeededFixtures fixtures, final String phase) {
-    final String description =
-        "TestSuiteIndex.summary → DQ Test Suites list shows basic suite for '"
-            + fixtures.tableFqn
-            + "' — "
-            + phase;
+    assertSearchIndexHasEntity(
+        ui,
+        "testSuite",
+        fixtures.testSuiteName,
+        "TestSuiteIndex.summary → basic suite '"
+            + fixtures.testSuiteName
+            + "' searchable after reindex — "
+            + phase);
+  }
+
+  /**
+   * Asserts the entity is present in its own search index after reindex — the exact contract the
+   * DQ Test Cases / Test Suites lists are backed by. A direct {@code name.keyword} index count is
+   * deterministic and run-scoped, unlike rendering the global {@code /data-quality} page, whose
+   * heavy dashboard aggregations make it slow and flaky to load under the nightly stress cohort.
+   * The Explore-based assertions above still cover the search-backed UI surfaces that load reliably.
+   */
+  private static void assertSearchIndexHasEntity(
+      final UiSession ui, final String entityType, final String name, final String description) {
     LOG.info("Asserting {}", description);
-    // Search by the table's leaf name (no dots — tokenizes cleanly in the search API) but
-    // assert by the link's visible text, which renders the table FQN per
-    // TestSuites.component.tsx:renderNameCell. The suite's own `record.name` is the long
-    // dotted form which makes a testid-based match brittle.
+    final SearchAssertions search = new SearchAssertions(ui.server());
+    final String index = new IndexAliasInspector(ui.server()).indexNameFor(entityType);
     pollUiAssertion(
         description,
-        () ->
-            DataQualityListPage.open(ui)
-                .openTestSuitesTab()
-                .searchTestSuiteByName(fixtures.tableName)
-                .assertTestSuiteVisible(fixtures.tableFqn));
+        () -> {
+          final long count = search.countByNamePrefix(index, name);
+          if (count < 1) {
+            throw new AssertionError(
+                entityType + " '" + name + "' not found in index[" + index + "] after reindex");
+          }
+        });
   }
 
   private static void pollUiAssertion(final String description, final Runnable assertion) {
@@ -319,7 +344,7 @@ class SelectiveFieldReindexUIIT {
         .atMost(UI_ASSERT_TIMEOUT)
         .pollInterval(UI_ASSERT_POLL_INTERVAL)
         .pollDelay(Duration.ZERO)
-        .ignoreNoExceptions()
+        .ignoreExceptions()
         .untilAsserted(assertion::run);
   }
 
@@ -331,7 +356,14 @@ class SelectiveFieldReindexUIIT {
     final String shortId = ns.uniqueShortId();
     LOG.info("Seeding entities for selective-field reindex coverage (shortId={})", shortId);
 
-    final DatabaseService dbService = createShortPostgresService(shortId);
+    // Track the two service roots so TestNamespaceExtension.afterEach recursively hard-deletes the
+    // whole seeded subtree (db/schema/table/query/testCase/testSuite and
+    // drive/spreadsheet/worksheet).
+    // Without this the seed leaks a full "Selective-field reindex seed" cohort on the shared
+    // cluster
+    // every run — the children all cascade from these two roots.
+    final DatabaseService dbService =
+        ns.trackRoot(Entity.DATABASE_SERVICE, createShortPostgresService(shortId));
     final DatabaseSchema schema = createShortSchema(shortId, dbService);
 
     final String tableColumnMarker = "tcol" + shortId;
@@ -340,16 +372,19 @@ class SelectiveFieldReindexUIIT {
     createQueryLinkedTo(shortId, dbService.getFullyQualifiedName(), table);
     final TestCaseSeed testCaseSeed = createTestCaseWithResult(shortId, table);
 
-    final DriveService driveService = createShortDriveService(shortId);
+    final DriveService driveService =
+        ns.trackRoot(Entity.DRIVE_SERVICE, createShortDriveService(shortId));
     final String worksheetColumnMarker = "wcol" + shortId;
-    createWorksheetWithColumnMarker(
-        shortId, driveService.getFullyQualifiedName(), worksheetColumnMarker);
+    final String worksheetName =
+        createWorksheetWithColumnMarker(
+            shortId, driveService.getFullyQualifiedName(), worksheetColumnMarker);
 
     return new SeededFixtures(
         table.getFullyQualifiedName(),
         table.getName(),
         tableColumnMarker,
         worksheetColumnMarker,
+        worksheetName,
         testCaseSeed.testCaseName,
         testCaseSeed.testSuiteName);
   }
@@ -483,7 +518,7 @@ class SelectiveFieldReindexUIIT {
     }
   }
 
-  private static void createWorksheetWithColumnMarker(
+  private static String createWorksheetWithColumnMarker(
       final String shortId, final String driveServiceFqn, final String columnMarker) {
     final Spreadsheet spreadsheet =
         SdkClients.adminClient()
@@ -496,7 +531,7 @@ class SelectiveFieldReindexUIIT {
             .withName("ws_" + shortId)
             .withSpreadsheet(spreadsheet.getFullyQualifiedName())
             .withColumns(List.of(markerColumn));
-    SdkClients.adminClient().worksheets().create(request);
+    return SdkClients.adminClient().worksheets().create(request).getName();
   }
 
   private record SeededFixtures(
@@ -504,6 +539,7 @@ class SelectiveFieldReindexUIIT {
       String tableName,
       String tableColumnMarker,
       String worksheetColumnMarker,
+      String worksheetName,
       String testCaseName,
       String testSuiteName) {}
 

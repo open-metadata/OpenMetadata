@@ -12,6 +12,7 @@
  */
 
 import { Extensions } from '@tiptap/react';
+import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import blockEditorExtensionsClassBase, {
   BlockEditorExtensionsClassBase,
 } from './BlockEditorExtensionsClassBase';
@@ -222,6 +223,18 @@ describe('BlockEditorExtensionsClassBase', () => {
       );
 
       expect(link).toBeDefined();
+    });
+
+    it('should configure links to open on click only in read-only previews', () => {
+      (
+        extensionsClass as unknown as {
+          getCoreExtensions: () => Extensions;
+        }
+      ).getCoreExtensions();
+
+      expect(LinkExtension.configure).toHaveBeenCalledWith(
+        expect.objectContaining({ openOnClick: 'whenNotEditable' })
+      );
     });
 
     it('should include slash command extension', () => {

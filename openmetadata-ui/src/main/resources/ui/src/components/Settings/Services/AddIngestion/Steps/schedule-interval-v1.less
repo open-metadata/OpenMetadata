@@ -13,44 +13,33 @@
 @import (reference) '../../../../../styles/variables.less';
 
 .schedule-interval-v1 {
-  .cron-expression-card {
-    .ant-card-body {
-      padding: @padding-sm;
-      display: flex;
-      align-items: center;
-    }
-
-    .cron-expression-card-icon {
-      border: 2px solid fade(@grey-600, 10%);
-      border-radius: 50%;
-      padding: @padding-xss;
-      color: @grey-600;
-      font-size: 20px;
-      margin-right: @margin-md;
-
-      .anticon {
-        height: 32px;
-        width: 32px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border: 2px solid fade(@grey-600, 30%);
-        border-radius: 50%;
-      }
-    }
+  .schedule-interval-v1-fields {
+    display: flex;
+    flex-direction: column;
+    gap: @margin-md;
   }
-  .ant-radio-button-wrapper.week-selector-buttons,
-  .ant-radio-button-wrapper.week-selector-buttons:first-child,
-  .ant-radio-button-wrapper.week-selector-buttons:last-child {
-    height: 32px;
-    width: 32px;
+
+  .frequency-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: @margin-sm;
+  }
+
+  label {
+    font-weight: 500;
+  }
+
+  .cron-expression-card {
     display: flex;
     align-items: center;
-    justify-content: center;
-    border-radius: 16px;
-    border-width: 1px;
-  }
-  .ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
-    position: relative;
+    gap: @margin-sm;
+    padding: @padding-sm @padding-md;
+
+    .cron-expression-card-icon {
+      height: 20px;
+      width: 20px;
+      flex-shrink: 0;
+      color: @grey-600;
+    }
   }
 }

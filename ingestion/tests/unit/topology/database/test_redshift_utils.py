@@ -14,6 +14,7 @@
 import unittest
 from unittest.mock import MagicMock, Mock
 
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
     _get_args_and_kwargs,
@@ -471,6 +472,40 @@ class TestRedshiftNumericParsing(unittest.TestCase):
 
         self.assertEqual(args, (10, 2))
         self.assertEqual(kwargs, {})
+
+
+class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
+    """
+    Spectrum/Glue external tables emit Hive-style column types via
+    svv_external_columns. Types like `string` and `double` must resolve to
+    concrete OpenMetadata types instead of UNKNOWN (issue #29589), otherwise
+    column-level data quality test selection shows "No data".
+    """
+
+    def test_external_hive_types_resolve_to_concrete_types(self):
+        """Each Spectrum type is registered and maps to the expected type."""
+        expected = {
+            "string": "VARCHAR",
+            "double": "DOUBLE",
+            "char": "CHAR",
+            "tinyint": "TINYINT",
+        }
+
+        for external_type, expected_om_type in expected.items():
+            with self.subTest(external_type=external_type):
+                self.assertIn(
+                    external_type,
+                    ischema_names,
+                    f"'{external_type}' is not registered in ischema_names",
+                )
+                # Resolve an instantiated type, matching how the dialect passes
+                # column types into the parser during reflection.
+                resolved = ColumnTypeParser.get_column_type(ischema_names[external_type]())
+                self.assertEqual(
+                    resolved,
+                    expected_om_type,
+                    f"'{external_type}' resolved to {resolved}, expected {expected_om_type}",
+                )
 
 
 if __name__ == "__main__":

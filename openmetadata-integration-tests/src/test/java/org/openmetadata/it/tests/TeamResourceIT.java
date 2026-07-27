@@ -27,17 +27,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -873,6 +877,57 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_listTeams_ownsEntityTypeFilter_preservesDomainsAndFiltersOwns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    CreateTeam createTeam =
+        new CreateTeam()
+            .withName(ns.prefix("ownsFilterTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDomains(List.of(domainFqn))
+            .withDescription("Team for ownsEntityType filter regression test (#28381)");
+    Team team = createEntity(createTeam);
+
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline createPipeline =
+        new CreatePipeline()
+            .withName(ns.prefix("ownedPipeline"))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(team.getEntityReference()));
+    Pipeline pipeline = client.pipelines().create(createPipeline);
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("owns,domains");
+    params.addFilter("ownsEntityType", "pipeline");
+    ListResponse<Team> response = listEntities(params);
+
+    Team listed =
+        response.getData().stream()
+            .filter(t -> t.getId().equals(team.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Team must be present in the list response");
+
+    // Regression guard (#28381): the ownsEntityType filter must not drop relationship-bulk
+    // fields like domains, which Team populates only via the batched relationship fetch.
+    assertNotNull(
+        listed.getDomains(), "domains must not be dropped when the ownsEntityType filter is set");
+    assertTrue(
+        listed.getDomains().stream().anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)),
+        "Team domains should be preserved alongside the ownsEntityType filter");
+
+    assertNotNull(listed.getOwns(), "owns should be populated");
+    assertTrue(
+        listed.getOwns().stream().anyMatch(o -> o.getId().equals(pipeline.getId())),
+        "owns should include the owned pipeline");
+    assertTrue(
+        listed.getOwns().stream().allMatch(o -> "pipeline".equals(o.getType())),
+        "owns should contain only pipelines when ownsEntityType=pipeline");
+  }
+
+  @Test
   void test_teamWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1228,6 +1283,121 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               || e.getMessage().contains("participates in a loop"),
           "Expected circular dependency error but got: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_teamHierarchy_childCannotBeAncestor(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team grandParent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptGrandParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Grand parent department"));
+
+    Team parent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(grandParent.getId()))
+                .withDescription("Parent department"));
+
+    Team child =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptChild"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(parent.getId()))
+                .withDescription("Child department"));
+
+    Team toUpdate = client.teams().get(child.getId().toString(), "parents,children");
+    toUpdate.setChildren(List.of(grandParent.getEntityReference()));
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> patchEntity(child.getId().toString(), toUpdate),
+            "Adding an ancestor as a child must be rejected as a circular reference");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
+  }
+
+  @Test
+  void test_teamHierarchy_parentAndChildOverlapRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team other =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptOther"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Other department"));
+
+    CreateTeam createLoop =
+        new CreateTeam()
+            .withName(ns.prefix("deptLoop"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(other.getId()))
+            .withChildren(List.of(other.getId()))
+            .withDescription("Team declaring the same team as parent and child");
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> createEntity(createLoop),
+            "The same team as both parent and child must be rejected");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
+  }
+
+  @Test
+  void test_teamHierarchy_createWithChildThatIsAncestorRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team grandParent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossGrandParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Grand parent department"));
+
+    Team parent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(grandParent.getId()))
+                .withDescription("Parent department"));
+
+    // New team declares parent=parent and child=grandParent; grandParent is already an ancestor of
+    // parent, so this closes the loop grandParent -> parent -> newTeam -> grandParent even though
+    // the new team is not persisted yet.
+    CreateTeam createLoop =
+        new CreateTeam()
+            .withName(ns.prefix("deptCrossLoop"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(parent.getId()))
+            .withChildren(List.of(grandParent.getId()))
+            .withDescription("Cross-edge cycle declared on create");
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> createEntity(createLoop),
+            "Creating a team whose child is an ancestor of its parent must be rejected");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
   }
 
   // ===================================================================

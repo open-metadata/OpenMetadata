@@ -15,6 +15,7 @@ import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
 import { getFailedRowsData, visitDataQualityTab } from '../../utils/testCases';
 
 // use the admin user to login
@@ -114,11 +115,11 @@ test(
     await test.step('Delete sample data', async () => {
       await page.click('[data-testid="sample-data-manage-button"]');
       await page.click('[data-testid="delete-button"]');
-      await page.locator('.ant-modal-body').waitFor({ state: 'visible' });
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+      await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       const deleteSampleData = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*/failedRowsSample'
       );
+      await fillDeleteConfirmationIfPresent(page);
       await page.click('[data-testid="confirm-button"]');
       await deleteSampleData;
       await page.locator('[data-testid="sample-data-manage-button"]').waitFor({

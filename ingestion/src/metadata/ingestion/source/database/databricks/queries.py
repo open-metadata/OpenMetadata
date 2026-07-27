@@ -186,3 +186,7 @@ TEST_COLUMN_LINEAGE = textwrap.dedent(
     WHERE 1=0
     """
 )
+
+DATABRICKS_GET_ALL_SCHEMAS = """
+SELECT catalog_name, schema_name FROM system.information_schema.schemata
+"""

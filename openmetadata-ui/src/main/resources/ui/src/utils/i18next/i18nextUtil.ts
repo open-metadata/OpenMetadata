@@ -81,4 +81,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
   ar: SupportedLocales.العربية,
+  sv: SupportedLocales.Svenska,
 };

@@ -1,0 +1,72 @@
+{
+  "id": "11111111-1111-4111-8111-111111111106",
+  "name": "external_shadow_research_llm",
+  "displayName": "External Shadow Research LLM",
+  "description": "Unauthorized model discovered from outbound browser traffic and SaaS connector logs. It is not approved for enterprise prompts or confidential data.",
+  "modelType": "Custom",
+  "baseModel": "unknown-external",
+  "modelProvider": "Unknown",
+  "modelVersion": "unknown",
+  "providerModelId": "external-shadow-research",
+  "capabilities": ["Chat"],
+  "governanceStatus": "Unauthorized",
+  "detection": {
+    "source": "OutboundApiTraffic",
+    "sourceDetails": "egress-monitor detected api.thirdparty-ai.example/chat/completions",
+    "detectedAt": 1775606400000,
+    "suspectedUser": "research@acme.example",
+    "volume7d": "~5,000 calls / 7d",
+    "flags": ["PiiWithoutDpa", "NoOwner"],
+    "severity": "High"
+  },
+  "costMetrics": {
+    "inputCostPer1kTokens": 0.004,
+    "outputCostPer1kTokens": 0.02,
+    "currency": "USD",
+    "estimatedMonthlyUsage": 5000000,
+    "estimatedMonthlyCost": 410
+  },
+  "modelEvaluation": {
+    "evaluatedAt": 1775606400000,
+    "safetyMetrics": {
+      "toxicityScore": 0.08,
+      "harmfulContentRate": 0.05,
+      "piiLeakageRisk": 0.31
+    }
+  },
+  "regulatoryCompliance": [],
+  "remediationActions": [
+    {
+      "id": "22222222-2222-4222-8222-222222222403",
+      "label": "Block unauthorized endpoint at egress proxy",
+      "frameworkRef": "NIST_AI_RMF",
+      "controlCode": "map-1",
+      "dueDate": 1778198400000,
+      "priority": "High",
+      "status": "Open",
+      "createdAt": 1775606400000,
+      "createdBy": "ai-governance@acme.example"
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222404",
+      "label": "Open intake record for research team use case",
+      "frameworkRef": "NIST_AI_RMF",
+      "controlCode": "govern-1",
+      "dueDate": 1778803200000,
+      "priority": "Medium",
+      "status": "Open",
+      "createdAt": 1775606400000,
+      "createdBy": "ai-governance@acme.example"
+    }
+  ],
+  "tags": [
+    {
+      "tagFQN": "PII.Sensitive",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

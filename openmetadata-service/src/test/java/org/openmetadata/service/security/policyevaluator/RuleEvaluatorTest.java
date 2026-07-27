@@ -382,6 +382,19 @@ class RuleEvaluatorTest {
     assertFalse(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Non-reviewer user should return false for isReviewer()");
+
+    Glossary createGlossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("createGlossary")
+            .withReviewers(List.of(reviewerRef));
+    CreateResourceContext<Glossary> createResourceContext =
+        new CreateResourceContext<>(Entity.GLOSSARY, createGlossary);
+    ruleEvaluator = new RuleEvaluator(null, subjectContext, createResourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(
+        parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
+        "Self-assigned reviewer on CREATE should return false for isReviewer()");
   }
 
   @Test
@@ -707,6 +720,43 @@ class RuleEvaluatorTest {
     assertFalse(parseExpression("isTaskFiler()").getValue(ctx, Boolean.class));
     assertFalse(parseExpression("isTaskAssignee()").getValue(ctx, Boolean.class));
     assertFalse(parseExpression("isTaskReviewer()").getValue(ctx, Boolean.class));
+  }
+
+  @Test
+  void test_isAdminUser() {
+    User adminTarget =
+        new User().withId(UUID.randomUUID()).withName("admin-target").withIsAdmin(true);
+    User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
+
+    assertTrue(evaluateUserResourceCondition(adminTarget, "isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(adminTarget, "!isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(regularTarget, "isAdminUser()"));
+    assertTrue(evaluateUserResourceCondition(regularTarget, "!isAdminUser()"));
+  }
+
+  @Test
+  void test_isBotUser() {
+    User botTarget = new User().withId(UUID.randomUUID()).withName("bot-target").withIsBot(true);
+    User regularTarget = new User().withId(UUID.randomUUID()).withName("regular-target");
+
+    assertTrue(evaluateUserResourceCondition(botTarget, "isBotUser()"));
+    assertFalse(evaluateUserResourceCondition(botTarget, "isAdminUser()"));
+    assertFalse(evaluateUserResourceCondition(regularTarget, "isBotUser()"));
+  }
+
+  @Test
+  void test_userSpecificConditionsReturnFalseForNonUserResources() {
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, resourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    assertFalse(parseExpression("isAdminUser()").getValue(ctx, Boolean.class));
+    assertFalse(parseExpression("isBotUser()").getValue(ctx, Boolean.class));
+  }
+
+  private Boolean evaluateUserResourceCondition(User target, String condition) {
+    ResourceContext<User> userResourceContext = new ResourceContext<>(Entity.USER, target, null);
+    RuleEvaluator evaluator = new RuleEvaluator(null, subjectContext, userResourceContext);
+    EvaluationContext ctx = new StandardEvaluationContext(evaluator);
+    return parseExpression(condition).getValue(ctx, Boolean.class);
   }
 
   private Boolean evaluateExpression(String condition) {

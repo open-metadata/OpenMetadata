@@ -62,7 +62,7 @@ const OwnerUserList = ({
       {!isCompactView && (
         <IconUser
           className={classNames(
-            'tw:text-gray-700 tw:flex-none tw:mr-0.5',
+            'tw:text-secondary tw:flex-none tw:mr-0.5',
             AVATAR_SIZE_CLASS_MAP[avatarSize]
           )}
           data-testid="user-owner-icon"

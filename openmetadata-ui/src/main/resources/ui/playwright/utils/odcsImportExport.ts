@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, Response } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
@@ -25,17 +25,21 @@ export const openODCSImportDropdown = async (page: Page) => {
   const addButton = page.getByTestId('add-contract-button');
   const manageButton = page.getByTestId('manage-contract-actions');
 
-  const addButtonVisible = await addButton.isVisible().catch(() => false);
-  const manageButtonVisible = await manageButton.isVisible().catch(() => false);
+  // Button render can lag the page loader; wait instead of a one-shot isVisible() check.
+  await expect(addButton.or(manageButton)).toBeVisible({ timeout: 15000 });
 
-  if (addButtonVisible) {
+  if (await addButton.isVisible()) {
     await addButton.click();
     await page.getByTestId('add-contract-menu').waitFor({
       state: 'visible',
       timeout: 10000,
     });
-  } else if (manageButtonVisible) {
+  } else {
     await manageButton.click();
+    await page.getByTestId('contract-action-dropdown').waitFor({
+      state: 'visible',
+      timeout: 10000,
+    });
   }
 };
 
@@ -70,10 +74,7 @@ export const importODCSYaml = async (
 
   // If existing contract, select mode
   if (options?.hasExistingContract && options?.mode) {
-    const modeRadio = page.locator(
-      `input[type="radio"][value="${options.mode}"]`
-    );
-    await modeRadio.click();
+    await page.getByTestId(`import-mode-${options.mode}`).click();
   }
 
   // Determine which API endpoint will be called based on mode

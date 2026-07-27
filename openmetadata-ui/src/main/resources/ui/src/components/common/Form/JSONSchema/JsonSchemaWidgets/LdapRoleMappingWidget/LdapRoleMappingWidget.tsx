@@ -272,12 +272,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         {mappings.length > 0 && (
           <Grid className="tw:mb-1" gap="2">
             <Grid.Item span={11}>
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {t('label.ldap-group-dn')}
               </Typography>
             </Grid.Item>
             <Grid.Item span={12}>
-              <Typography className="tw:text-gray-700" weight="medium">
+              <Typography className="tw:text-secondary" weight="medium">
                 {t('label.openmetadata-role-plural')}
               </Typography>
             </Grid.Item>

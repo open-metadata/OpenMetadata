@@ -13,10 +13,8 @@
 
 package org.openmetadata.service.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -43,12 +41,10 @@ import org.slf4j.LoggerFactory;
 public final class ODPSConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ODPSConverter.class);
-  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   public static final String DEFAULT_LANGUAGE = "en";
   public static final String DEFAULT_SCHEMA_URL =
       "https://opendataproducts.org/v4.1/schema/odps.json";
-  public static final String ODPS_EXTENSION_KEY = "odpsMetadata";
 
   private ODPSConverter() {}
 
@@ -177,7 +173,12 @@ public final class ODPSConverter {
       dp.setSla(fromODPSSla(odps.getProduct().getSla()));
     }
 
-    dp.setExtension(preserveOdpsMetadata(odps));
+    // Every meaningful ODPS field is mapped onto a native DataProduct attribute
+    // above. We deliberately do NOT stash the raw document under an
+    // `extension.odpsMetadata` custom field: `odpsMetadata` is not a registered
+    // custom property, so entity create/update would reject it
+    // ("Unknown custom field odpsMetadata"), breaking every import. The native
+    // fields are the source of truth on export (toODPS never reads it back).
     return dp;
   }
 
@@ -232,13 +233,6 @@ public final class ODPSConverter {
       }
     }
     return sla;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Object preserveOdpsMetadata(ODPSDataProduct odps) {
-    Map<String, Object> extension = new LinkedHashMap<>();
-    extension.put(ODPS_EXTENSION_KEY, MAPPER.convertValue(odps, Map.class));
-    return extension;
   }
 
   private static final int MAX_ENTITY_NAME_LENGTH = 64;
@@ -317,8 +311,8 @@ public final class ODPSConverter {
         imported.getTags() != null && !imported.getTags().isEmpty()
             ? imported.getTags()
             : existing.getTags());
-    merged.setExtension(
-        imported.getExtension() != null ? imported.getExtension() : existing.getExtension());
+    // ODPS carries no OpenMetadata custom properties; keep the existing ones.
+    merged.setExtension(existing.getExtension());
     return merged;
   }
 
@@ -350,7 +344,9 @@ public final class ODPSConverter {
     replaced.setPortfolioPriority(imported.getPortfolioPriority());
     replaced.setSla(imported.getSla());
     replaced.setTags(imported.getTags());
-    replaced.setExtension(imported.getExtension());
+    // Custom properties have no ODPS representation; a declarative replace must
+    // not silently wipe them (same rationale as the governance fields above).
+    replaced.setExtension(existing.getExtension());
     return replaced;
   }
 

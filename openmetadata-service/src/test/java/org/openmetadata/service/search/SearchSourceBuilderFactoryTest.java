@@ -19,6 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.util.NamedValue;
+import jakarta.json.stream.JsonGenerator;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +33,8 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.Range;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
@@ -38,12 +42,14 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 
 public class SearchSourceBuilderFactoryTest {
 
   private SearchSettings searchSettings;
   private AssetTypeConfiguration tableConfig;
   private AssetTypeConfiguration topicConfig;
+  private AssetTypeConfiguration contextFileConfig;
   private AssetTypeConfiguration defaultConfig;
 
   @BeforeEach
@@ -91,6 +97,13 @@ public class SearchSourceBuilderFactoryTest {
     topicFields.add(createFieldBoost("description", 2.0, "standard"));
     topicConfig.setSearchFields(topicFields);
 
+    contextFileConfig = new AssetTypeConfiguration();
+    contextFileConfig.setAssetType(Entity.CONTEXT_FILE);
+    contextFileConfig.setSearchFields(
+        List.of(
+            createFieldBoost("name.ngram", 1.0, "fuzzy"),
+            createFieldBoost("extractedText", 3.0, "standard")));
+
     // Default configuration
     defaultConfig = new AssetTypeConfiguration();
     defaultConfig.setAssetType("default");
@@ -109,6 +122,7 @@ public class SearchSourceBuilderFactoryTest {
     List<AssetTypeConfiguration> assetConfigs = new ArrayList<>();
     assetConfigs.add(tableConfig);
     assetConfigs.add(topicConfig);
+    assetConfigs.add(contextFileConfig);
     searchSettings.setAssetTypeConfigurations(assetConfigs);
     searchSettings.setDefaultConfiguration(defaultConfig);
   }
@@ -152,6 +166,23 @@ public class SearchSourceBuilderFactoryTest {
 
     assertNotNull(osAllBuilder, "OpenSearch all builder should not be null");
     assertNotNull(esAllBuilder, "ElasticSearch all builder should not be null");
+  }
+
+  @Test
+  public void testContextFileSearchUsesExtractedTextConfiguration() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
+
+    String osQuery = osBuilder.query().toJsonString();
+    String esQuery = esBuilder.query().toString();
+    assertTrue(osQuery.contains("extractedText"), osQuery);
+    assertTrue(esQuery.contains("extractedText"), esQuery);
   }
 
   @Test
@@ -209,6 +240,120 @@ public class SearchSourceBuilderFactoryTest {
       assertEquals(0, tableBuilder.from());
       assertEquals(10, tableBuilder.size());
     }
+  }
+
+  @Test
+  public void testQuerySyntaxDetectionHandlesLongMalformedQueries() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+
+    List.of(
+            "owner:john",
+            "name : test",
+            "name:test AND type:table",
+            "description:\"exact phrase\"",
+            "[a TO z]",
+            "-deprecated",
+            "(-deprecated)",
+            "(+certified)",
+            "name:-deprecated",
+            "status:+active",
+            "customer -orders",
+            "*PII*",
+            "\\\\".repeat(5000) + "*")
+        .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
+
+    List.of(
+            "customer order",
+            "customer-orders",
+            "\"customer orders\"",
+            "[".repeat(5000),
+            "[a TO " + " ".repeat(5000),
+            "a".repeat(5000),
+            "\\\\".repeat(5000),
+            "\\\\".repeat(5000) + "\\*")
+        .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+
+    List.of(
+            "customer\\-orders",
+            "name\\:test",
+            "name\\:-deprecated",
+            "\\\"customer orders\\\"",
+            "orders\\(daily\\)",
+            "\\(-deprecated",
+            "\\[a TO z\\]")
+        .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+  }
+
+  @Test
+  public void testRankedQueriesUseUnescapedPlainText() {
+    defaultConfig.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("exactName")
+                        .withFields(List.of("fullyQualifiedName"))
+                        .withMatchType(RankingStage.MatchType.EXACT)
+                        .withWeight(32.0))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+    String escapedFqn = "pw\\-ml\\-model\\-service.pw\\-mlmodel";
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false));
+    String esQuery =
+        esFactory
+            .buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("pw-ml-model-service.pw-mlmodel"), osQuery);
+    assertTrue(esQuery.contains("pw-ml-model-service.pw-mlmodel"), esQuery);
+    assertFalse(osQuery.contains("\\\\-"), osQuery);
+    assertFalse(esQuery.contains("\\\\-"), esQuery);
+  }
+
+  @Test
+  public void testTokenCoverageRequiresAllAnalyzedSubTermsWithinEachQueryToken() {
+    defaultConfig.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("closeName")
+                        .withFields(List.of("name.compound"))
+                        .withMatchType(RankingStage.MatchType.TOKEN_COVERAGE)
+                        .withMinimumShouldMatch("2<70%"))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false));
+    String esQuery =
+        esFactory
+            .buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
+    assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
+  }
+
+  private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
+    JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+    StringWriter writer = new StringWriter();
+    JsonGenerator generator = mapper.jsonProvider().createGenerator(writer);
+    requestBuilder.build("table_search_index").serialize(generator, mapper);
+    generator.close();
+    return writer.toString();
   }
 
   @Test
@@ -324,6 +469,20 @@ public class SearchSourceBuilderFactoryTest {
     assertEquals(Boolean.FALSE, esWithoutAggregations.explain());
     assertHighlightFields(osWithoutAggregations, "displayName");
     assertHighlightFields(esWithoutAggregations, "displayName");
+  }
+
+  @Test
+  public void testOpenSearchHighlightDropsFlattenedExtensionField() {
+    // `extension` is flat_object on OpenSearch (no analyzer); highlighting it (or any extension.*
+    // subfield) fails the whole shard with a 500. buildHighlightsV2 must drop those while keeping
+    // the real analyzable fields. Regression guard for ExtensionHighlightSearchIT.
+    tableConfig.setHighlightFields(List.of("name", "extension", "extension.foundry_rid"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+
+    assertHighlightFields(osBuilder, "name");
   }
 
   @Test

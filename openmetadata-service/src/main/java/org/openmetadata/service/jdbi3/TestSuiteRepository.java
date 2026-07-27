@@ -33,9 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,10 +48,14 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -86,8 +93,12 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public static final String SUMMARY_FIELD = "summary";
+  public static final String TESTS_REVISION_EXTENSION = "internal.testSuite.testsRevision";
+  public static final String TESTS_REVISION_FIELD = "testsRevision";
+  private static final String TESTS_REVISION_SCHEMA = "testsRevision";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
+  private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -143,6 +154,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
+
+  public static Map<UUID, Long> getTestsRelationshipRevisions(List<UUID> testSuiteIds) {
+    if (nullOrEmpty(testSuiteIds)) {
+      return Map.of();
+    }
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
+      return Map.of();
+    }
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record :
+        collectionDAO
+            .entityExtensionDAO()
+            .getExtensionBatch(
+                testSuiteIds.stream().map(UUID::toString).toList(), TESTS_REVISION_EXTENSION)) {
+      TestsRelationshipRevision revision =
+          JsonUtils.readValue(record.extensionJson(), TestsRelationshipRevision.class);
+      revisions.put(record.id(), revision.revision());
+    }
+    return revisions;
+  }
+
+  static String getTestsRevisionSchema() {
+    return TESTS_REVISION_SCHEMA;
+  }
+
+  private record TestsRelationshipRevision(long revision) {}
 
   @Override
   public ResultList<TestSuite> listFromSearchWithOffset(
@@ -200,10 +238,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
-      inheritOwners(testSuite, fields, table);
-      inheritDomains(testSuite, fields, table);
+          Entity.getEntityOrNull(testSuite.getBasicEntityReference(), "owners,domains", ALL);
+      if (table != null) {
+        inheritOwners(testSuite, fields, table);
+        inheritDomains(testSuite, fields, table);
+      }
     }
   }
 
@@ -245,8 +284,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     return records.stream()
         .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .filter(rel -> idToRefMap.get(rel.getToId()) != null)
         .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
-        .filter(entry -> entry.getValue() != null)
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
@@ -369,6 +408,44 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(
         queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  public DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request, SubjectContext subjectContext) {
+    List<DataQualityReportResult> results =
+        runReportsConcurrently(request.getRequests(), subjectContext);
+    return new DataQualityReportBatchResponse().withResults(results);
+  }
+
+  private List<DataQualityReportResult> runReportsConcurrently(
+      List<DataQualityReportRequest> requests, SubjectContext subjectContext) {
+    Queue<DataQualityReportResult> results = new ConcurrentLinkedQueue<>();
+    int concurrency = Math.min(requests.size(), MAX_CONCURRENT_REPORT_QUERIES);
+    try (ExecutorService executor = Executors.newFixedThreadPool(concurrency)) {
+      for (DataQualityReportRequest item : requests) {
+        executor.submit(() -> results.add(runSingleReport(item, subjectContext)));
+      }
+    }
+    return new ArrayList<>(results);
+  }
+
+  private DataQualityReportResult runSingleReport(
+      DataQualityReportRequest item, SubjectContext subjectContext) {
+    DataQualityReportResult result = new DataQualityReportResult().withKey(item.getKey());
+    try {
+      DataQualityReport report =
+          getDataQualityReport(
+              item.getQ(),
+              item.getAggregationQuery(),
+              item.getIndex(),
+              item.getDomain(),
+              subjectContext);
+      result.withReport(report);
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to compute data quality report for key '{}'", item.getKey(), e);
+      result.withError(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+    }
+    return result;
   }
 
   private String addDomainFilter(String query, String domain, String index) {

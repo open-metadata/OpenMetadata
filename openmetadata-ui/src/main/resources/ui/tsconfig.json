@@ -56,7 +56,6 @@
     "allowUnreachableCode": false,
     "skipLibCheck": true,
     "noImplicitAny": true,
-    "baseUrl": ".",
     "paths": {
       "react-hook-form": ["./node_modules/react-hook-form"]
     }

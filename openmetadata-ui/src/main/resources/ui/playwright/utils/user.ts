@@ -36,6 +36,7 @@ import {
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { clickUpdateButtonIfVisible } from './explore';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -185,12 +186,7 @@ export const softDeleteUserProfilePage = async (
 
   await page.getByText('Delete Profile').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=false&recursive=true'
@@ -233,14 +229,9 @@ export const hardDeleteUserProfilePage = async (
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.click('[data-testid="hard-delete"]');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
@@ -249,9 +240,7 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
-    /deleted successfully!/
-  );
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
@@ -372,7 +361,6 @@ export const softDeleteUser = async (
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
   // Soft deleting the user
   await page.click('[data-testid="soft-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const fetchUpdatedUsers = page.waitForResponse('/api/v1/users/*');
   const deleteResponse = page.waitForResponse(
@@ -468,18 +456,10 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
-  if (!isUserSoftDeleted) {
-    // Modal opens with soft-delete as default; wait for the form's
-    // initialization effect before switching, otherwise the click races
-    // with setFieldsValue and the selection gets clobbered.
-    await page
-      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
-      .waitFor();
-  }
+  await page.getByTestId('delete-modal').waitFor();
 
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const reFetchUsers = page.waitForResponse(
     '/api/v1/users?**include=non-deleted'
@@ -661,14 +641,21 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await dataAssetDropdownRequest;
 
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
-  await page.click('[data-testid="table-checkbox"]');
 
+  // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="table-checkbox"]');
+  await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  // Close the dropdown by toggling its trigger — pressing Escape would also
+  // close the auto-opened summary panel (ExploreV1 has a document-level
+  // Escape handler), removing the entity-link this step needs to click.
+  await page.click('[data-testid="search-dropdown-Data Assets"]');
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');

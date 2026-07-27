@@ -6,7 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARI
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -16,8 +15,8 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.rules.RuleEngine;
 
@@ -30,15 +29,15 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       String rules = (String) rulesExpr.getValue(execution);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(entityLink, rules));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
+      varHandler.setNodeVariable(RESULT_VARIABLE, checkAttributes(varHandler, entityLink, rules));
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -47,8 +46,9 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     }
   }
 
-  private Boolean checkAttributes(MessageParser.EntityLink entityLink, String rules) {
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+  private Boolean checkAttributes(
+      WorkflowVariableHandler varHandler, MessageParser.EntityLink entityLink, String rules) {
+    EntityInterface entity = varHandler.getRelatedEntity(entityLink, "*", Include.ALL);
 
     boolean result;
     try {

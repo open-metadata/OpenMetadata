@@ -228,6 +228,15 @@ describe('EntityBulkEditUtils', () => {
       expect(result).toBe('/data-quality/test-cases');
     });
 
+    it('should return metrics listing path for METRIC with wildcard fqn', () => {
+      const result = getBulkEntityNavigationPath(
+        EntityType.METRIC,
+        WILD_CARD_CHAR
+      );
+
+      expect(result).toBe('/metrics');
+    });
+
     it('should return TABLE profiler path for TEST_CASE with TABLE source entity type', () => {
       const result = getBulkEntityNavigationPath(
         EntityType.TEST_CASE,

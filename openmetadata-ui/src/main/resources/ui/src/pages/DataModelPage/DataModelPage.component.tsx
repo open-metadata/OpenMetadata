@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
@@ -46,13 +46,12 @@ import {
   dashboardDataModelQueryFn,
   dashboardDataModelQueryKey,
 } from '../../rest/queries/dashboardDataModelQuery';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const DATA_MODEL_FIELDS = [
   TabSpecificField.OWNERS,
   TabSpecificField.TAGS,
@@ -387,7 +386,7 @@ const DataModelsPage = () => {
   }, [dashboardDataModelFQN]);
 
   if (permissionsLoading || dataModelLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (isError) {
@@ -411,7 +410,7 @@ const DataModelsPage = () => {
   }
 
   if (!dataModelData) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

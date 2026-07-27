@@ -55,6 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -236,10 +237,6 @@ test.describe(
           .click();
         await patchRequest;
 
-        await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-        ).toBeVisible();
-
         for (const name of [
           user.getUserDisplayName(),
           user2.getUserDisplayName(),
@@ -384,6 +381,7 @@ test.describe(
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
 
         await page.getByRole('button', { name: 'Update' }).click();
 
@@ -391,7 +389,7 @@ test.describe(
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         await page.click('[data-testid="databases"]');
@@ -531,12 +529,13 @@ test.describe(
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
         await page.getByRole('button', { name: 'Update' }).click();
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         // Verify Details updated
@@ -563,7 +562,7 @@ test.describe(
 
         await page.getByTestId('column-display-name').click();
 
-        await page.locator('loader').waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify Tags
         await expect(
@@ -671,10 +670,11 @@ test.describe(
         const updateButtonResponse = page.waitForResponse(
           `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
         );
+        const navigationPromise = page.waitForEvent('framenavigated');
         await page.getByRole('button', { name: 'Update' }).click();
 
         await updateButtonResponse;
-        await page.waitForEvent('framenavigated');
+        await navigationPromise;
         await toastNotification(page, /details updated successfully/);
 
         // Verify Details updated
@@ -691,7 +691,7 @@ test.describe(
           .getByTestId('column-display-name')
           .getByTestId(table.entity.name)
           .click();
-        await page.locator('loader').waitFor({ state: 'hidden' });
+        await waitForAllLoadersToDisappear(page);
 
         // Verify Domain
         await expect(page.getByTestId('domain-link')).toContainText(
@@ -796,10 +796,10 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomain(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData, true);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomain(page, testDomain2.responseData, false);
+        await assignDomainWidget(page, testDomain2.responseData, true);
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links

@@ -60,7 +60,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 ```
 
 **Key rules:**
-- Use components from `openmetadata-ui-core-components`, never MUI
+- Use components from `openmetadata-ui-core-components`, never Ant Design
 - All Tailwind classes use `tw:` prefix, all colors use CSS custom properties
 - No string literals in JSX — use `t('label.key-name')` from `useTranslation()`
 - No `any` type — use generated types from `generated/` or define proper interfaces

@@ -23,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { load as yamlLoad } from 'js-yaml';
 import { isNil } from 'lodash';
 import { ChangeEvent, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +38,28 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ODPSImportModalProps } from './ODPSImportModal.interface';
 
 const DEFAULT_STRATEGY: ODPSImportStrategy = 'merge';
+
+// The ODPS product name lives at product.details.<lang>.name. Parse the
+// document and read that path instead of regex-matching the first `name:`
+// key (which can hit an SLA dimension, a tag, etc.). The backend selects the
+// `en` details by default, falling back to the first declared language.
+const extractOdpsProductName = (yamlContent: string): string | undefined => {
+  let name: string | undefined;
+  try {
+    const doc = yamlLoad(yamlContent) as {
+      product?: { details?: Record<string, { name?: string }> };
+    };
+    const details = doc?.product?.details;
+    if (details) {
+      const detail = details.en ?? Object.values(details)[0];
+      name = detail?.name;
+    }
+  } catch {
+    name = undefined;
+  }
+
+  return typeof name === 'string' ? name.trim() : undefined;
+};
 
 const ODPSImportModal = ({
   open,
@@ -122,26 +145,30 @@ const ODPSImportModal = ({
     // specific data product page, a YAML whose name doesn't match would
     // silently overwrite a sibling product. Guard against that here.
     if (existingDataProduct?.name) {
-      const yamlNameMatch = yamlContent.match(
-        /^\s*name\s*:\s*["']?([^"'\n#]+)/m
-      );
-      const yamlName = yamlNameMatch?.[1]?.trim();
+      const yamlName = extractOdpsProductName(yamlContent);
       // The backend exports the ODPS `name` from displayName ?? name
       // (ODPSConverter.buildProductDetails), so an exported YAML round-trips
       // with the product's displayName, while a hand-written YAML may use the
-      // internal name. Accept either; only block when it matches neither —
-      // i.e. the YAML targets a different product the backend would overwrite.
+      // internal name. Accept either; block otherwise.
       const expectedNames = [
         existingDataProduct.displayName,
         existingDataProduct.name,
       ].filter(Boolean);
-      if (yamlName && !expectedNames.includes(yamlName)) {
+      const existingName =
+        existingDataProduct.displayName ?? existingDataProduct.name;
+      // A YAML with no readable product.details.<lang>.name can't be verified
+      // against this product, yet the backend would still resolve — and
+      // overwrite — whichever product the document maps to. Treat an
+      // unreadable name as a mismatch rather than letting an undefined result
+      // bypass the guard.
+      if (!yamlName) {
+        showErrorToast(t('message.odps-yaml-name-missing', { existingName }));
+
+        return;
+      }
+      if (!expectedNames.includes(yamlName)) {
         showErrorToast(
-          t('message.odps-yaml-name-mismatch', {
-            yamlName,
-            existingName:
-              existingDataProduct.displayName ?? existingDataProduct.name,
-          })
+          t('message.odps-yaml-name-mismatch', { yamlName, existingName })
         );
 
         return;

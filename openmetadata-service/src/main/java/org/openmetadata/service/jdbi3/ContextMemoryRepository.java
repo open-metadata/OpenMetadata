@@ -408,6 +408,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
       recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
       recordChange("sourceType", original.getSourceType(), updated.getSourceType());
+      recordChange("pinned", original.getPinned(), updated.getPinned());
       recordChange(
           "sourceConversation", original.getSourceConversation(), updated.getSourceConversation());
       recordChange(

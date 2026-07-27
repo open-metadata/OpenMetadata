@@ -119,8 +119,19 @@ class SSEClient:
                     response.raise_for_status()
                     self.logger.info("Connected to SSE stream")
 
+                    # SSE payloads are UTF-8. ``requests`` defaults a charset-less
+                    # ``text/event-stream`` response to ISO-8859-1, which corrupts
+                    # multi-byte characters (e.g. emoji in model output) and decodes
+                    # UTF-8 continuation bytes such as 0x85 into codepoints that
+                    # ``str.splitlines()`` treats as line breaks. Forcing UTF-8 plus
+                    # splitting only on ``\n`` keeps a single ``data:`` line intact;
+                    # without this an emoji like ``✅`` (bytes e2 9c 85) truncates
+                    # the JSON mid-string, surfacing as ``Unterminated string``.
+                    response.encoding = "utf-8"
+
                     event_buffer = []
-                    for line in response.iter_lines(decode_unicode=True):
+                    for raw_line in response.iter_lines(decode_unicode=True, delimiter="\n"):
+                        line = raw_line.rstrip("\r")
                         if not line:
                             if event_buffer:
                                 parsed_event = self._parse_sse_event(event_buffer)
@@ -158,16 +169,24 @@ class SSEClient:
             dict[str, Any]: The parsed event.
         """
         event: dict[str, Any] = {}
+        data_lines: list[str] = []
         for line in event_buffer:
             if line.startswith("event:"):
                 event["event"] = line.split(":", 1)[1].strip()
                 if "complete" in event["event"] or "error" in event["event"]:
                     self.stream_completed = True
             elif line.startswith("data:"):
-                event["data"] = line.split(":", 1)[1].strip()
+                # Per the SSE spec a single event's `data` field may span multiple
+                # `data:` lines that must be concatenated with `\n`. Accumulate them
+                # instead of overwriting: keeping only the last line truncated large
+                # payloads (e.g. the Quality agent's createTestCase blob) mid-string,
+                # surfacing downstream as `json.JSONDecodeError: Unterminated string`.
+                data_lines.append(line.split(":", 1)[1].strip())
             elif line.startswith("id:"):
                 event["id"] = line.split(":", 1)[1].strip()
                 self.last_event_id = event["id"]
+        if data_lines:
+            event["data"] = "\n".join(data_lines)
         return event
 
     def _validate_access_token(self):

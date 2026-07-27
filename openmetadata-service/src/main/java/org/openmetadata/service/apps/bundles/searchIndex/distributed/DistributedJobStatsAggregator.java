@@ -426,10 +426,13 @@ public class DistributedJobStatsAggregator {
       CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats serverStatsAggr) {
     Stats stats = new Stats();
 
+    long jobWarnings = warningRecords(job);
+
     StepStats jobStats = new StepStats();
     jobStats.setTotalRecords(safeToInt(job.getTotalRecords()));
     jobStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
     jobStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+    jobStats.setWarningRecords(safeToInt(jobWarnings));
     stats.setJobStats(jobStats);
 
     Map<String, CollectionDAO.SearchIndexServerStatsDAO.EntityStats> vectorByEntity =
@@ -473,45 +476,63 @@ public class DistributedJobStatsAggregator {
     StepStats readerStats = new StepStats();
     readerStats.setTotalRecords(safeToInt(job.getTotalRecords()));
     if (serverStatsAggr != null) {
-      readerStats.setSuccessRecords(
-          safeToInt(Math.min(serverStatsAggr.readerSuccess(), partitionTruth)));
-      readerStats.setFailedRecords(safeToInt(serverStatsAggr.readerFailed()));
-      readerStats.setWarningRecords(safeToInt(serverStatsAggr.readerWarnings()));
+      long readerFailed = serverStatsAggr.readerFailed();
+      long readerWarnings = serverStatsAggr.readerWarnings();
+      long readerSuccess =
+          Math.min(
+              serverStatsAggr.readerSuccess(),
+              Math.max(0, partitionTruth - readerFailed - readerWarnings));
+      readerStats.setSuccessRecords(safeToInt(readerSuccess));
+      readerStats.setFailedRecords(safeToInt(readerFailed));
+      readerStats.setWarningRecords(safeToInt(readerWarnings));
       readerStats.setTotalTimeMs(serverStatsAggr.readerTimeMs());
     } else {
-      readerStats.setSuccessRecords(safeToInt(partitionTruth));
+      readerStats.setSuccessRecords(safeToInt(Math.max(0, partitionTruth - jobWarnings)));
       readerStats.setFailedRecords(0);
-      readerStats.setWarningRecords(0);
+      readerStats.setWarningRecords(safeToInt(jobWarnings));
     }
     stats.setReaderStats(readerStats);
 
     StepStats processStats = new StepStats();
     if (serverStatsAggr != null) {
       long processSuccess = Math.min(serverStatsAggr.processSuccess(), partitionTruth);
-      long processTotal = processSuccess + serverStatsAggr.processFailed();
+      long processFailed = serverStatsAggr.processFailed();
+      long sinkSuccess = Math.min(serverStatsAggr.sinkSuccess(), partitionTruth);
+      long sinkFailed = serverStatsAggr.sinkFailed();
+      long sinkWarnings = Math.max(0, processSuccess + processFailed - sinkSuccess - sinkFailed);
+      long processWarnings = Math.max(0, jobWarnings - sinkWarnings);
+      long processTotal = processSuccess + processFailed + processWarnings;
       processStats.setTotalRecords(safeToInt(processTotal));
       processStats.setSuccessRecords(safeToInt(processSuccess));
-      processStats.setFailedRecords(safeToInt(serverStatsAggr.processFailed()));
+      processStats.setFailedRecords(safeToInt(processFailed));
+      processStats.setWarningRecords(safeToInt(processWarnings));
       processStats.setTotalTimeMs(serverStatsAggr.processTimeMs());
     } else {
       processStats.setTotalRecords(safeToInt(partitionTruth));
-      processStats.setSuccessRecords(safeToInt(partitionTruth));
+      processStats.setSuccessRecords(safeToInt(Math.max(0, partitionTruth - jobWarnings)));
       processStats.setFailedRecords(0);
+      processStats.setWarningRecords(safeToInt(jobWarnings));
     }
     stats.setProcessStats(processStats);
 
     StepStats sinkStats = new StepStats();
     if (serverStatsAggr != null) {
       long sinkSuccess = Math.min(serverStatsAggr.sinkSuccess(), partitionTruth);
-      long sinkTotal = sinkSuccess + serverStatsAggr.sinkFailed();
+      long sinkFailed = serverStatsAggr.sinkFailed();
+      long processSuccess = Math.min(serverStatsAggr.processSuccess(), partitionTruth);
+      long processFailed = serverStatsAggr.processFailed();
+      long sinkWarnings = Math.max(0, processSuccess + processFailed - sinkSuccess - sinkFailed);
+      long sinkTotal = sinkSuccess + sinkFailed + sinkWarnings;
       sinkStats.setTotalRecords(safeToInt(sinkTotal));
       sinkStats.setSuccessRecords(safeToInt(sinkSuccess));
-      sinkStats.setFailedRecords(safeToInt(serverStatsAggr.sinkFailed()));
+      sinkStats.setFailedRecords(safeToInt(sinkFailed));
+      sinkStats.setWarningRecords(safeToInt(sinkWarnings));
       sinkStats.setTotalTimeMs(serverStatsAggr.sinkTimeMs());
     } else {
       sinkStats.setTotalRecords(safeToInt(job.getProcessedRecords()));
       sinkStats.setSuccessRecords(safeToInt(job.getSuccessRecords()));
       sinkStats.setFailedRecords(safeToInt(job.getFailedRecords()));
+      sinkStats.setWarningRecords(safeToInt(jobWarnings));
     }
     stats.setSinkStats(sinkStats);
 
@@ -590,6 +611,11 @@ public class DistributedJobStatsAggregator {
     appRecord.setSuccessContext(successContext);
 
     return appRecord;
+  }
+
+  private long warningRecords(SearchIndexJob job) {
+    return Math.max(
+        0, job.getProcessedRecords() - job.getSuccessRecords() - job.getFailedRecords());
   }
 
   /**

@@ -2,6 +2,7 @@ package org.openmetadata.playwright.ui.pages;
 
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import org.openmetadata.playwright.ui.UiSession;
 
 /**
@@ -39,6 +40,18 @@ public abstract class PageObject {
   /** Convenience accessor for {@code data-testid} locators — prefer over text/CSS. */
   protected final Locator byTestId(final String testId) {
     return page.getByTestId(testId);
+  }
+
+  /**
+   * Open an Ant Design dropdown/menu. Ant triggers TOGGLE on click, so we click exactly once and
+   * wait for the panel. A speculative second click (to guard against a "swallowed" first click)
+   * would instead close a menu the first click already opened slowly, and any follow-up item click
+   * then burns its full timeout on the collapsing panel. Matches the single-click pattern the
+   * source {@code *.spec.ts} files use for these same dropdowns.
+   */
+  protected final void openMenu(final Locator trigger, final Locator menu) {
+    trigger.click();
+    menu.waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
   }
 
   /** Override to wait for a page-specific readiness signal after navigation. */

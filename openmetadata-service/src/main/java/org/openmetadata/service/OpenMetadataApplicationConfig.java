@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -82,6 +83,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("nlqHybridSearch")
   private JsonNode nlqHybridSearch;
+
+  @JsonProperty("llmConfiguration")
+  private LLMConfiguration llmConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;

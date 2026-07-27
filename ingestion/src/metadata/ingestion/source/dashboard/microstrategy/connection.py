@@ -19,42 +19,44 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
-    MicroStrategyConnection,
+    MicroStrategyConnection as MicroStrategyConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrategyClient
+from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MicroStrategyConnection) -> MicroStrategyClient:
-    """
-    Create connection
-    """
-    return MicroStrategyClient(connection)
+class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, MicroStrategyClient]):
+    def _get_client(self) -> MicroStrategyClient:
+        return MicroStrategyClient(self.service_connection)
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: MicroStrategyClient,
-    service_connection: MicroStrategyConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        test_fn = {
+            "GetToken": client.get_auth_params,
+            "GetProjects": client.get_projects_list,
+        }
 
-    test_fn = {
-        "GetToken": client.get_auth_params,
-        "GetProjects": client.get_projects_list,
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

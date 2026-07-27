@@ -135,6 +135,12 @@ export const getTimeZone = (): string => {
 };
 
 /**
+ * Returns the local UTC offset label, e.g. `UTC+05:30` / `UTC-07:00`.
+ */
+export const getUtcOffsetLabel = (): string =>
+  DateTime.local().toFormat("'UTC'ZZ");
+
+/**
  *
  * @param timeStamp
  * @returns

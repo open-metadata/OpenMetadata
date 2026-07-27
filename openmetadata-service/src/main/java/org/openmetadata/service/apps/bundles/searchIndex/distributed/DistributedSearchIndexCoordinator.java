@@ -590,6 +590,19 @@ public class DistributedSearchIndexCoordinator {
    * @param failedCount Number of failed entities
    */
   public void completePartition(UUID partitionId, long successCount, long failedCount) {
+    completePartition(partitionId, successCount, failedCount, 0);
+  }
+
+  /**
+   * Mark a partition as completed.
+   *
+   * @param partitionId The partition ID
+   * @param successCount Number of successfully indexed entities
+   * @param failedCount Number of failed entities
+   * @param warningCount Number of skipped warning entities
+   */
+  public void completePartition(
+      UUID partitionId, long successCount, long failedCount, long warningCount) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 
     SearchIndexPartitionRecord record = partitionDAO.findById(partitionId.toString());
@@ -608,7 +621,7 @@ public class DistributedSearchIndexCoordinator {
             partitionId.toString(),
             PartitionStatus.COMPLETED.name(),
             record.rangeEnd(),
-            successCount + failedCount,
+            successCount + failedCount + warningCount,
             successCount,
             failedCount,
             record.assignedServer(),
@@ -629,11 +642,12 @@ public class DistributedSearchIndexCoordinator {
     }
 
     LOG.info(
-        "Completed partition {} for entity type {} (success: {}, failed: {})",
+        "Completed partition {} for entity type {} (success: {}, failed: {}, warnings: {})",
         partitionId,
         record.entityType(),
         successCount,
-        failedCount);
+        failedCount,
+        warningCount);
 
     // Keep job.updatedAt fresh so OrphanJobMonitor doesn't mark it as orphaned.
     // This is especially important after recovery when no coordinator lock-refresh loop is running.
@@ -880,13 +894,21 @@ public class DistributedSearchIndexCoordinator {
     for (EntityStatsRecord es : entityStatsList) {
       CollectionDAO.SearchIndexServerStatsDAO.EntityStats timing =
           entityTimingByType.get(es.entityType());
-      long entityWarnings = timing != null ? timing.readerWarnings() : 0;
+      long partitionWarnings =
+          Math.max(0, es.processedRecords() - es.successRecords() - es.failedRecords());
+      long timingWarnings = timing != null ? timing.readerWarnings() : 0;
+      long maxWarnings = Math.max(0, es.totalRecords() - es.successRecords() - es.failedRecords());
+      long entityWarnings = Math.min(Math.max(partitionWarnings, timingWarnings), maxWarnings);
+      long entityProcessed =
+          Math.max(
+              es.processedRecords(), es.successRecords() + es.failedRecords() + entityWarnings);
+      entityProcessed = Math.min(es.totalRecords(), entityProcessed);
       entityStatsMap.put(
           es.entityType(),
           SearchIndexJob.EntityTypeStats.builder()
               .entityType(es.entityType())
               .totalRecords(es.totalRecords())
-              .processedRecords(es.processedRecords() + entityWarnings)
+              .processedRecords(entityProcessed)
               .successRecords(es.successRecords())
               .failedRecords(es.failedRecords())
               .warningRecords(entityWarnings)
@@ -898,7 +920,7 @@ public class DistributedSearchIndexCoordinator {
               .sinkTimeMs(timing != null ? timing.sinkTimeMs() : 0)
               .vectorTimeMs(timing != null ? timing.vectorTimeMs() : 0)
               .build());
-      totalProcessed += es.processedRecords() + entityWarnings;
+      totalProcessed += entityProcessed;
       totalSuccess += es.successRecords();
       totalFailed += es.failedRecords();
     }

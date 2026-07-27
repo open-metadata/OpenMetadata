@@ -30,11 +30,11 @@ jobs:
     steps:
     # Step 1: Checkout repository code
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     # Step 2: Set up Python environment with caching
     - name: Set up Python 3.9 # Or consider a newer version like 3.11/3.12
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: 3.9 # Or e.g., '3.11'
         cache: 'pip'

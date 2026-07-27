@@ -72,7 +72,8 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
-  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
+  const { showDeleted, search, queryFilter, quickFilter, browsePath } =
+    query ?? {};
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -81,8 +82,14 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
   const isQuery = useMemo(
     () =>
-      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
-    [search, queryFilter, quickFilter, showDeleted]
+      Boolean(
+        search ||
+          queryFilter ||
+          quickFilter ||
+          browsePath ||
+          showDeleted === 'true'
+      ),
+    [search, queryFilter, quickFilter, browsePath, showDeleted]
   );
 
   const noRecordForES = useMemo(() => {

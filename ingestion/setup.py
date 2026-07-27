@@ -36,9 +36,9 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.1.4",
-    "pyarrow": "pyarrow~=16.0",
+    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
-    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
@@ -151,7 +151,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=46.0.5",  # CVE-2026-26007
+    "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -163,9 +163,9 @@ base_requirements = {
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
-    "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
+    "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
     "mypy_extensions>=0.4.3",
-    "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
+    "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
@@ -175,7 +175,7 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.3",
+    "collate-sqllineage>=2.1.4",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -201,10 +201,10 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
-        "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
+        "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
-        "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
+        "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
@@ -299,8 +299,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
-        "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=6.0.0,<7",
+        "sqlalchemy_exasol>=7.1.1,<8",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -341,8 +340,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
-    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
+    # >=3.13.0 closes CVE-2026-2635 (default creds) + CVE-2026-8147 (missing authz);
+    # retains the CVE-2026-4137 (insecure tmp dir) fix from the prior >=3.11.1 floor.
+    "mlflow": {"mlflow-skinny>=3.13.0,<3.15"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
@@ -459,6 +459,11 @@ test_unit = {
     *plugins["teradata"],
 }
 
+exasol_test = {
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
+}
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.37.0",
@@ -502,6 +507,7 @@ test = {
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
+    "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
     *plugins["datalake-s3"],
     *plugins["kafka"],
     "kafka-python==2.0.2",
@@ -521,12 +527,12 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
     *plugins["exasol"],
+    *exasol_test,
     *plugins["teradata"],
 }
 
@@ -538,6 +544,8 @@ e2e_test = {
     # playwright dependencies
     "pytest-playwright",
     "pytest-base-url",
+    *plugins["exasol"],
+    *exasol_test,
 }
 
 # Define playwright_dependencies as a set of packages required for Playwright tests
@@ -574,6 +582,7 @@ setup(
         "test": list(test),
         "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
+        "exasol-test": list(exasol_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         # FIXME: all-dev-env is a temporary solution to install all dependencies except

@@ -26,7 +26,7 @@ export interface HeaderBreadcrumbProps {
   items: Omit<BreadcrumbItemType, 'id'>[];
   /**
    * When true, prepends a home crumb that navigates to ROUTES.HOME.
-   * Defaults to false.
+   * Defaults to true.
    */
   showHome?: boolean;
   /** Visual style of the crumbs. Defaults to 'text'. */
@@ -35,6 +35,24 @@ export interface HeaderBreadcrumbProps {
   divider?: BreadcrumbsDivider;
   /** Size of the crumbs. Defaults to 'sm'. */
   size?: BreadcrumbsSize;
+  /**
+   * Keep the trail on a single line and collapse the middle crumbs into a `…`
+   * menu when the container is too narrow to fit them all. Defaults to false.
+   */
+  autoCollapse?: boolean;
+  /**
+   * Maximum number of crumbs to render inline; longer trails collapse the
+   * middle crumbs into a `…` menu (first crumb + trailing crumbs stay
+   * visible). Omit to always render every crumb.
+   */
+  maxItems?: number;
   /** Optional class name applied to the root nav element. */
   className?: string;
+  /**
+   * When true, drops the default bottom margin (`tw:mb-3`). Use when the
+   * breadcrumb is placed inside a container that already owns the spacing
+   * (e.g. `HeaderShell`, which controls the breadcrumb→title gap via its own
+   * layout). Defaults to false.
+   */
+  noMargin?: boolean;
 }

@@ -12,7 +12,12 @@
  */
 
 import { EntityStats } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { getEntityStatsData } from './ApplicationUtils';
+import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
+import {
+  getAppRunFailureLogs,
+  getEntityStatsData,
+  hasAppRunStats,
+} from './ApplicationUtils';
 import { MOCK_APPLICATION_ENTITY_STATS } from './mocks/ApplicationUtils.mock';
 
 describe('ApplicationUtils tests', () => {
@@ -55,5 +60,69 @@ describe('ApplicationUtils tests', () => {
     );
 
     expect(classificationEntry?.vectorEmbeddings).toBeNull();
+  });
+});
+
+describe('hasAppRunStats', () => {
+  it('returns true when the success context has any stat block', () => {
+    const record = {
+      successContext: { stats: { jobStats: { totalRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns true when the failure context has a stat block', () => {
+    const record = {
+      failureContext: { stats: { readerStats: { totalRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns true when there are server stats', () => {
+    const record = {
+      successContext: { serverStats: { 's-1': { processedRecords: 1 } } },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(true);
+  });
+
+  it('returns false when the record has only a failure and no stats', () => {
+    const record = {
+      failureContext: { failure: { message: 'boom' }, stackTrace: 'boom' },
+    } as unknown as AppRunRecord;
+
+    expect(hasAppRunStats(record)).toBe(false);
+  });
+
+  it('returns false when the record is empty', () => {
+    expect(hasAppRunStats({} as AppRunRecord)).toBe(false);
+  });
+});
+
+describe('getAppRunFailureLogs', () => {
+  it('formats the failure object into readable log text', () => {
+    const record = {
+      failureContext: { failure: { message: 'oops' } },
+    } as unknown as AppRunRecord;
+
+    expect(getAppRunFailureLogs(record)).toContain('oops');
+  });
+
+  it('prefers stackTrace over failure', () => {
+    const record = {
+      failureContext: {
+        stackTrace: 'boom-trace',
+        failure: { message: 'oops' },
+      },
+    } as unknown as AppRunRecord;
+
+    // stackTrace wins, so the failure message is not present
+    expect(getAppRunFailureLogs(record)).not.toContain('oops');
+  });
+
+  it('returns an empty string when there is no failure context', () => {
+    expect(getAppRunFailureLogs({} as AppRunRecord)).toBe('');
   });
 });

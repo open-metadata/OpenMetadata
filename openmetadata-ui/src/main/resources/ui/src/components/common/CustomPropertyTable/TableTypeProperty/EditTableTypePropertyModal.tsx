@@ -35,7 +35,7 @@ export const getGridColumns = (columns: string[]) => {
     editable: true,
     renderEditCell: lazyTextEditor,
     minWidth: 180,
-  })) as Column<Record<string, string>[]>[];
+  })) as Column<Record<string, string>>[];
 };
 
 const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({

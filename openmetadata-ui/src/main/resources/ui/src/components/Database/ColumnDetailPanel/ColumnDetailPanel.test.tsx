@@ -124,7 +124,7 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
 }));
 
-jest.mock('../../../assets/svg/ic-column.svg', () => ({
+jest.mock('../../../assets/svg/entity/column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 
@@ -309,7 +309,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     permissions: {
       EditTags: true,
@@ -407,7 +407,7 @@ jest.mock('../../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   flattenColumns: jest.fn().mockImplementation((columns) => columns || []),
   generateEntityLink: jest.fn().mockImplementation((fqn) => fqn),
   getDataTypeDisplay: jest.fn().mockReturnValue('VARCHAR'),

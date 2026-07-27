@@ -54,13 +54,9 @@ class ApiIngestionClass extends ServiceBaseClass {
       '/home/airflow/ingestion/examples/openapi/sample.json';
 
     await page
-      .getByTestId('select-widget-root/openAPISchemaConnection__oneof_select')
-      .getByRole('combobox')
-      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="OpenAPISchemaFilePath"]'
-    );
+      .getByTestId('oneof-option-1')
+      .filter({ hasText: 'Open API Schema File Path' })
+      .click();
 
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaFilePath')

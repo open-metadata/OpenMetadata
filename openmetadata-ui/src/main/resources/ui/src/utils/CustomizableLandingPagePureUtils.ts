@@ -13,11 +13,17 @@
 
 import { capitalize, uniqBy, uniqueId } from 'lodash';
 import type { Layout } from 'react-grid-layout';
+import {
+  LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
+  LANDING_PAGE_MAX_GRID_SIZE,
+  LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS,
+} from '../constants/CustomizeMyDataPage.constants';
 import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import type { Document } from '../generated/entity/docStore/document';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import i18n from './i18next/LocalUtil';
+
+type WidgetHeightResolver = (widgetName: string) => number;
 
 /**
  * Ensures widget width doesn't exceed the maximum allowed width of 2
@@ -26,6 +32,25 @@ export const getConstrainedWidgetWidth = (width: number): number => {
   const maxWidth = 2;
 
   return Math.min(width, maxWidth);
+};
+
+const getWidgetHeight = (widgetName: string) => {
+  const widgetHeightByName: Record<string, number> = {
+    ActivityFeed: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed,
+    Announcements: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.announcements,
+    CuratedAssets: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.curatedAssets,
+    DataAssets: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.DataAssets,
+    DataProducts: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.DataProducts,
+    Domains: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.domains,
+    Following: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.following,
+    KnowledgeCenter: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.knowledgeCenter,
+    KPI: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.kpi,
+    MyData: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.myData,
+    MyTask: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.myTask,
+    TotalAssets: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.totalAssets,
+  };
+
+  return widgetHeightByName[widgetName] ?? LANDING_PAGE_DEFAULT_WIDGET_HEIGHT;
 };
 
 export const getNewWidgetPlacement = (
@@ -52,7 +77,7 @@ export const getNewWidgetPlacement = (
 
   // Check if there's enough space to place the new widget on the same row
   if (
-    customizeMyDataPageClassBase.landingPageMaxGridSize -
+    LANDING_PAGE_MAX_GRID_SIZE -
       (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
     widgetWidth
   ) {
@@ -73,7 +98,7 @@ export const getNewWidgetPlacement = (
  * Creates a placeholder widget with collision prevention
  */
 const createPlaceholderWidget = (x = 0, y = 0) => ({
-  h: customizeMyDataPageClassBase.defaultWidgetHeight,
+  h: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
   i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
   w: 1,
   x,
@@ -141,10 +166,7 @@ const packWidgetsTightly = (widgets: WidgetConfig[]): WidgetConfig[] => {
     }
 
     // Check if widget fits in current row
-    if (
-      currentX + widget.w >
-      customizeMyDataPageClassBase.landingPageMaxGridSize
-    ) {
+    if (currentX + widget.w > LANDING_PAGE_MAX_GRID_SIZE) {
       // Move to next row
       currentX = 0;
       currentY += maxHeightInRow;
@@ -204,8 +226,7 @@ export const ensurePlaceholderAtEnd = (
 
   // Find available space in the last row
   const widgetsInLastRow = packedWidgets.filter(
-    (widget) =>
-      widget.y === maxY - customizeMyDataPageClassBase.defaultWidgetHeight
+    (widget) => widget.y === maxY - LANDING_PAGE_DEFAULT_WIDGET_HEIGHT
   );
 
   // Calculate the rightmost position in the last row
@@ -216,15 +237,11 @@ export const ensurePlaceholderAtEnd = (
   });
 
   // Check if there's space in the last row
-  const canFitInLastRow =
-    rightmostInLastRow + 1 <=
-    customizeMyDataPageClassBase.landingPageMaxGridSize;
+  const canFitInLastRow = rightmostInLastRow + 1 <= LANDING_PAGE_MAX_GRID_SIZE;
 
   const placeholderWidget = createPlaceholderWidget(
     canFitInLastRow ? rightmostInLastRow : 0,
-    canFitInLastRow
-      ? maxY - customizeMyDataPageClassBase.defaultWidgetHeight
-      : maxY
+    canFitInLastRow ? maxY - LANDING_PAGE_DEFAULT_WIDGET_HEIGHT : maxY
   );
 
   return [...packedWidgets, placeholderWidget];
@@ -277,7 +294,8 @@ export const getAddWidgetHandler =
     newWidgetData: Document,
     placeholderWidgetKey: string,
     widgetWidth: number,
-    maxGridSize: number
+    maxGridSize: number,
+    getWidgetHeightForName: WidgetHeightResolver = getWidgetHeight
   ) =>
   (currentLayout: Array<WidgetConfig>) => {
     if (!newWidgetData) {
@@ -287,9 +305,7 @@ export const getAddWidgetHandler =
     const widgetFQN = uniqueId(
       `${newWidgetData.fullyQualifiedName || 'widget'}-`
     );
-    const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
-      newWidgetData.name
-    );
+    const widgetHeight = getWidgetHeightForName(newWidgetData.name);
 
     if (!currentLayout || currentLayout.length === 0) {
       return [
@@ -332,7 +348,7 @@ export const getAddWidgetHandler =
         return {
           ...widget,
           i: widgetFQN,
-          h: 3,
+          h: widgetHeight,
           w: widgetWidth,
           x: Math.min(widget.x, maxGridSize - widgetWidth),
           static: false,

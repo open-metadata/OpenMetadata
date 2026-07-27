@@ -138,7 +138,7 @@ class DomoDashboardUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    @patch("pydomo.Domo")
+    @patch("metadata.ingestion.source.dashboard.domodashboard.connection.Domo")
     def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False

@@ -135,8 +135,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<p>DescriptionV1</p>);
+jest.mock('../../common/EntityDescription/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
 jest.mock('react-router-dom', () => ({
@@ -164,7 +164,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn().mockReturnValue([]),
-  searchTagInData: jest.fn().mockReturnValue([]),
+  getFilteredTagsData: jest.fn((data) => data),
   getFilterTags: jest.fn().mockReturnValue([]),
 }));
 
@@ -174,7 +174,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockReturnValue(<p>CustomPropertyTable.component</p>),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn().mockReturnValue({}),
 }));
 
@@ -213,9 +213,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
@@ -238,6 +241,9 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     data: mockPipelineDetails,
     permissions: DEFAULT_ENTITY_PERMISSION,

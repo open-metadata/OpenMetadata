@@ -74,6 +74,7 @@ class DataProductClassBase {
       EntityTabs.INPUT_OUTPUT_PORTS,
       EntityTabs.ASSETS,
       EntityTabs.CONTRACT,
+      EntityTabs.DATA_OBSERVABILITY,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
@@ -240,18 +241,11 @@ class DataProductClassBase {
     }
   }
 
-  public getShowRequestDataAccess(): boolean {
-    return false;
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
   }
 
-  public getRequestDataAccessDrawer(
-    _isOpen: boolean,
-    _onClose: () => void,
-    _entityFqn: string,
-    _entityName: string,
-    _entityType: string,
-    _onCreated?: () => void
-  ): ReactNode {
+  public getRequestDataAccessBanner(): ReactNode {
     return null;
   }
 

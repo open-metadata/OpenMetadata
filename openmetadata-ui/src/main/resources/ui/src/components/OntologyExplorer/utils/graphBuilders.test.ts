@@ -193,6 +193,75 @@ describe('convertRdfGraphToOntologyGraph', () => {
       'relatedTo',
     ]);
   });
+
+  it('dedupes nodes that share an id', () => {
+    const rdf: GraphData = {
+      nodes: [
+        {
+          id: 'term-1',
+          label: 'Revenue',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Revenue',
+        },
+        {
+          id: 'term-1',
+          label: 'Revenue',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Revenue',
+        },
+        {
+          id: 'term-2',
+          label: 'Cost',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Cost',
+        },
+      ],
+      edges: [],
+    };
+
+    const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
+
+    expect(result.nodes).toHaveLength(2);
+    expect(result.nodes.map((n) => n.id).sort()).toEqual(['term-1', 'term-2']);
+  });
+
+  it('drops edges whose endpoints are not in the node set', () => {
+    const rdf: GraphData = {
+      nodes: [
+        {
+          id: 'term-1',
+          label: 'Revenue',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Revenue',
+        },
+        {
+          id: 'term-2',
+          label: 'Cost',
+          type: 'glossaryTerm',
+          fullyQualifiedName: 'Finance.Cost',
+        },
+      ],
+      edges: [
+        {
+          from: 'term-1',
+          to: 'term-2',
+          label: 'Related To',
+          relationType: 'relatedTo',
+        },
+        {
+          from: 'term-1',
+          to: 'missing-node',
+          label: 'Related To',
+          relationType: 'relatedTo',
+        },
+      ],
+    };
+
+    const result = convertRdfGraphToOntologyGraph(rdf, glossaries);
+
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0].to).toBe('term-2');
+  });
 });
 
 describe('buildGraphFromAllTerms', () => {
@@ -283,5 +352,47 @@ describe('buildGraphFromAllTerms', () => {
       distinctRelationTypes.has('partOf') ||
         distinctRelationTypes.has('hasPart')
     ).toBe(true);
+  });
+
+  it('dedupes terms that appear more than once in the input', () => {
+    const term = {
+      id: '11111111-1111-1111-1111-111111111111',
+      name: 'KPI 1',
+      displayName: 'KPI 1',
+      fullyQualifiedName: 'Finance.KPI 1',
+      glossary: { id: 'gloss-finance-id', name: 'Finance', type: 'glossary' },
+    } as GlossaryTerm;
+
+    const result = buildGraphFromAllTerms([term, term], [baseGlossary], tStub);
+
+    expect(result.nodes).toHaveLength(1);
+  });
+
+  it('drops related-term edges whose target term is not in the loaded set', () => {
+    const terms: GlossaryTerm[] = [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: 'KPI 1',
+        displayName: 'KPI 1',
+        fullyQualifiedName: 'Finance.KPI 1',
+        glossary: { id: 'gloss-finance-id', name: 'Finance', type: 'glossary' },
+        relatedTerms: [
+          {
+            term: {
+              id: '99999999-9999-9999-9999-999999999999',
+              type: 'glossaryTerm',
+              name: 'Missing',
+              fullyQualifiedName: 'Finance.Missing',
+            },
+            relationType: 'relatedTo',
+          },
+        ],
+      } as GlossaryTerm,
+    ];
+
+    const result = buildGraphFromAllTerms(terms, [baseGlossary], tStub);
+
+    expect(result.nodes).toHaveLength(1);
+    expect(result.edges).toHaveLength(0);
   });
 });

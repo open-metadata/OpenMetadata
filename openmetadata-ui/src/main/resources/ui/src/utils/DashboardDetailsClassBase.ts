@@ -20,7 +20,7 @@ import {
   KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
-import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constnats';
+import { DASHBOARD_DUMMY_DATA } from '../constants/Dashboard.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';

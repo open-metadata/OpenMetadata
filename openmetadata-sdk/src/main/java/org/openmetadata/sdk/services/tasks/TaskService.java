@@ -145,6 +145,12 @@ public class TaskService extends EntityServiceBase<Task> {
   public ListResponse<Task> listCreated(
       TaskEntityStatus status, String statusGroup, String domain, String fields)
       throws OpenMetadataException {
+    return listCreated(status, statusGroup, domain, fields, null);
+  }
+
+  public ListResponse<Task> listCreated(
+      TaskEntityStatus status, String statusGroup, String domain, String fields, Integer limit)
+      throws OpenMetadataException {
     String path = basePath + "/created";
     RequestOptions.Builder optionsBuilder = RequestOptions.builder();
     if (status != null) {
@@ -158,6 +164,9 @@ public class TaskService extends EntityServiceBase<Task> {
     }
     if (fields != null) {
       optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
     }
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
@@ -222,6 +231,82 @@ public class TaskService extends EntityServiceBase<Task> {
     String responseStr =
         httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
     return deserializeListResponse(responseStr);
+  }
+
+  private ListResponse<Task> listScopedTasks(
+      String path,
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (status != null) {
+      optionsBuilder.queryParam("status", status.value());
+    }
+    if (statusGroup != null) {
+      optionsBuilder.queryParam("statusGroup", statusGroup);
+    }
+    if (domain != null) {
+      optionsBuilder.queryParam("domain", domain);
+    }
+    if (fields != null) {
+      optionsBuilder.queryParam("fields", fields);
+    }
+    if (limit != null) {
+      optionsBuilder.queryParam("limit", limit.toString());
+    }
+    if (startTs != null) {
+      optionsBuilder.queryParam("startTs", startTs.toString());
+    }
+    if (endTs != null) {
+      optionsBuilder.queryParam("endTs", endTs.toString());
+    }
+    String responseStr =
+        httpClient.executeForString(HttpMethod.GET, path, null, optionsBuilder.build());
+    return deserializeListResponse(responseStr);
+  }
+
+  public ListResponse<Task> listVisible(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/visible", status, statusGroup, domain, fields, limit, startTs, endTs);
+  }
+
+  public ListResponse<Task> listOwned(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/owned", status, statusGroup, domain, fields, limit, startTs, endTs);
+  }
+
+  public ListResponse<Task> listCreated(
+      TaskEntityStatus status,
+      String statusGroup,
+      String domain,
+      String fields,
+      Integer limit,
+      Long startTs,
+      Long endTs)
+      throws OpenMetadataException {
+    return listScopedTasks(
+        basePath + "/created", status, statusGroup, domain, fields, limit, startTs, endTs);
   }
 
   /**

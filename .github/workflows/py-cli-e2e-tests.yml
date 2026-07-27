@@ -62,11 +62,11 @@ jobs:
         docker-images: false
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
-      uses: aws-actions/configure-aws-credentials@v4
+      uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
         role-session-name: github-ci-aws-e2e-tests
@@ -85,28 +85,46 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Reclaim unused disk for Exasol
+      if: matrix.e2e-test == 'exasol'
+      continue-on-error: true
+      run: |
+        {
+          echo "Before Exasol disk reclaim"
+          df -h
+          docker system df
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force || true
+          docker builder prune --all --force || true
+          echo "After Exasol disk reclaim"
+          df -h
+          docker system df
+        } 2>&1 | tee "${RUNNER_TEMP}/exasol-disk-reclaim.log"
+      shell: bash
+
     - name: Run Python Unit Tests
       if: matrix.e2e-test == 'python-unittests'
       id: python-unittest
-      continue-on-error: true
       run: |
+        set -o pipefail
         source env/bin/activate
         cd ingestion
-        nox --no-venv -s unit-tests
+        nox --no-venv -s unit-tests 2>&1 | tee unit-test-run.log
       shell: bash
 
     - name: Rename coverage file for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
+      continue-on-error: true
       run: mv ingestion/.coverage .coverage.python-unittests
 
     - name: Run Python Integration Tests
       if: matrix.e2e-test == 'python-integration'
       id: python-integration-test
-      continue-on-error: true
       run: |
+        set -o pipefail
         source env/bin/activate
         cd ingestion
-        nox --no-venv -s integration-tests -- --standalone --durations=5
+        nox --no-venv -s integration-tests -- --standalone --durations=5 2>&1 | tee integration-test-run.log
       env:
         TESTCONTAINERS_RYUK_DISABLED: true
       shell: bash
@@ -114,7 +132,6 @@ jobs:
     - name: Run CLI E2E Python Tests & record coverage
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration'
       id: e2e-test
-      continue-on-error: true
       env:
         E2E_TEST: ${{ matrix.e2e-test }}
         E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
@@ -177,22 +194,29 @@ jobs:
         E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
         E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       run: |
+        set -o pipefail
         source env/bin/activate
-        export SITE_CUSTOMIZE_PATH=$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")/sitecustomize.py
-        echo "import os" >> $SITE_CUSTOMIZE_PATH
-        echo "try:" >> $SITE_CUSTOMIZE_PATH
-        echo "    import coverage" >> $SITE_CUSTOMIZE_PATH
-        echo "    os.environ['COVERAGE_PROCESS_START'] = os.path.join(os.environ.get('GITHUB_WORKSPACE', os.getcwd()), 'ingestion', 'pyproject.toml')" >> $SITE_CUSTOMIZE_PATH
-        echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
-        echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
-        echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        coverage run --rcfile ingestion/pyproject.toml --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep .coverage*
-        coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
+        site_packages_path="$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())))")"
+        SITE_CUSTOMIZE_PATH="${site_packages_path}/sitecustomize.py"
+        export SITE_CUSTOMIZE_PATH
+        {
+          echo "import os"
+          echo "try:"
+          echo "    import coverage"
+          echo "    os.environ['COVERAGE_PROCESS_START'] = os.path.join(os.environ.get('GITHUB_WORKSPACE', os.getcwd()), 'ingestion', 'pyproject.toml')"
+          echo "    coverage.process_startup()"
+          echo "except ImportError:"
+          echo "    pass"
+        } >> "$SITE_CUSTOMIZE_PATH"
+        coverage run --rcfile ingestion/pyproject.toml --branch -m pytest -c ingestion/pyproject.toml "--junitxml=ingestion/junit/test-results-${E2E_TEST}.xml" --ignore=ingestion/tests/unit/source "ingestion/tests/cli_e2e/test_cli_${E2E_TEST}.py" 2>&1 | tee ingestion/cli-e2e-test-run.log
+        coverage combine "--data-file=.coverage.${E2E_TEST}" --rcfile=ingestion/pyproject.toml --keep .coverage* || true
+        coverage report --rcfile ingestion/pyproject.toml "--data-file=.coverage.${E2E_TEST}" || true
+      shell: bash
 
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
@@ -200,11 +224,13 @@ jobs:
 
     - name: Rename coverage file for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
+      continue-on-error: true
       run: mv ingestion/.coverage .coverage.python-integration
 
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
@@ -212,56 +238,145 @@ jobs:
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
         include-hidden-files: true
 
+    - name: Classify Python CLI E2E test outcome
+      if: ${{ always() }}
+      env:
+        CLI_E2E_OUTCOME: ${{ steps.e2e-test.outcome }}
+        E2E_TEST: ${{ matrix.e2e-test }}
+        PYTHON_INTEGRATION_OUTCOME: ${{ steps.python-integration-test.outcome }}
+        PYTHON_UNIT_OUTCOME: ${{ steps.python-unittest.outcome }}
+      run: |
+        case "$E2E_TEST" in
+          python-unittests)
+            test_outcome="$PYTHON_UNIT_OUTCOME"
+            test_profile=python-unit-nightly
+            ;;
+          python-integration)
+            test_outcome="$PYTHON_INTEGRATION_OUTCOME"
+            test_profile=python-integration-nightly
+            ;;
+          *)
+            test_outcome="$CLI_E2E_OUTCOME"
+            test_profile=python-cli-e2e
+            ;;
+        esac
+
+        TEST_PROFILE="$test_profile" TEST_LANE="$E2E_TEST" \
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$test_outcome" \
+            --report-glob 'ingestion/junit/test-results-*.xml' \
+            --diagnostic-glob 'ingestion/*-test-run.log' \
+            --output ingestion/ci-diagnostics/outcome.json
+      shell: bash
+
     - name: Upload tests artifact
-      if: (steps.e2e-test.outcome == 'success' || steps.python-unittest.outcome == 'success' || steps.python-integration-test.outcome == 'success') && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
       with:
         name: tests-${{ matrix.e2e-test }}
-        path: ingestion/junit/test-results-*.xml
+        path: |
+          ingestion/junit/test-results-*.xml
+          ingestion/ci-diagnostics/outcome.json
+          ingestion/*-test-run.log
+        if-no-files-found: warn
+        retention-days: 14
+        compression-level: 1
+
+    - name: Collect runner and service diagnostics
+      if: ${{ failure() || cancelled() }}
+      continue-on-error: true
+      run: |
+        diagnostics="${RUNNER_TEMP}/python-ci-diagnostics"
+        rm -rf "$diagnostics"
+        mkdir -p "$diagnostics"
+        df -h > "$diagnostics/disk-usage.txt" 2>&1 || true
+        free -h > "$diagnostics/memory-usage.txt" 2>&1 || true
+        docker system df > "$diagnostics/docker-disk-usage.txt" 2>&1 || true
+        docker ps --all --no-trunc > "$diagnostics/docker-containers.txt" 2>&1 || true
+        if [ -d docker/development ]; then
+          (cd docker/development && docker compose ps --all) > "$diagnostics/docker-compose-ps.txt" 2>&1 || true
+          (cd docker/development && docker compose logs --no-color --tail 2000) > "$diagnostics/docker-compose.log" 2>&1 || true
+        fi
+        coredumpctl --no-pager list > "$diagnostics/coredumps.txt" 2>&1 || true
+        coredumpctl --no-pager info >> "$diagnostics/coredumps.txt" 2>&1 || true
+        find "$GITHUB_WORKSPACE" /tmp /var/crash -maxdepth 3 -type f \
+          \( -name 'core' -o -name 'core.*' -o -name '*.core' -o -name '*.dmp' -o -name '*.crash' \) \
+          -printf '%p %s bytes\n' >> "$diagnostics/core-files.txt" 2>/dev/null || true
+        if [ -f "${RUNNER_TEMP}/exasol-disk-reclaim.log" ]; then
+          cp "${RUNNER_TEMP}/exasol-disk-reclaim.log" "$diagnostics/"
+        fi
+      shell: bash
+
+    - name: Upload runner and service diagnostics
+      if: ${{ failure() || cancelled() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
+      with:
+        name: py-cli-e2e-diagnostics-${{ matrix.e2e-test }}
+        path: ${{ runner.temp }}/python-ci-diagnostics/
+        if-no-files-found: warn
+        retention-days: 14
+        compression-level: 1
 
     - name: Clean Up
-      if: matrix.e2e-test != 'python-unittests'
+      if: ${{ always() && matrix.e2e-test != 'python-unittests' }}
+      continue-on-error: true
       run: |
         cd ./docker/development
-        docker compose down --remove-orphans
-        sudo rm -rf ${PWD}/docker-volume
+        docker compose down --remove-orphans || true
+        sudo rm -rf "${PWD}/docker-volume"
 
     - name: Slack on Failure
-      if: (steps.e2e-test.outcome == 'failure' || steps.python-unittest.outcome == 'failure' || steps.python-integration-test.outcome == 'failure') && env.DEBUG == 'false'
-      uses: slackapi/slack-github-action@v1.23.0
+      if: ${{ always() && !cancelled() && env.DEBUG == 'false' && failure() }}
+      continue-on-error: true
+      uses: slackapi/slack-github-action@v4
       with:
+        webhook: ${{ secrets.E2E_SLACK_WEBHOOK }}
+        webhook-type: incoming-webhook
         payload: |
           {
             "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}
-        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
-    - name: Force failure
-      if: steps.e2e-test.outcome == 'failure' || steps.python-unittest.outcome == 'failure' || steps.python-integration-test.outcome == 'failure'
-      run: |
-        exit 1
+  py-cli-e2e-tests-status:
+    name: py-cli-e2e-tests-status
+    needs: [check-debug, py-cli-e2e-tests]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all expected CLI E2E jobs completed
+        env:
+          DEBUG_RESULT: ${{ needs.check-debug.result }}
+          TEST_RESULT: ${{ needs.py-cli-e2e-tests.result }}
+        run: |
+          if [ "$DEBUG_RESULT" != "success" ] || [ "$TEST_RESULT" != "success" ]; then
+            echo "Expected CLI E2E jobs did not succeed: debug=$DEBUG_RESULT tests=$TEST_RESULT"
+            exit 1
+          fi
+        shell: bash
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
     needs:
       - py-cli-e2e-tests
       - check-debug
-    if: needs.check-debug.outputs.DEBUG == 'false'
+    if: ${{ needs.check-debug.outputs.DEBUG == 'false' && needs.py-cli-e2e-tests.result == 'success' }}
+    continue-on-error: true
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
@@ -277,7 +392,7 @@ jobs:
           make install_all install_test
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
@@ -285,11 +400,11 @@ jobs:
         run: |
           # Copy coverage artifacts into ingestion/ so paths resolve relative to it
           for folder in artifacts/coverage-*; do
-            cp -rT $folder/ ingestion/ ;
+            [ -d "$folder" ] && cp -rT "$folder/" ingestion/
           done
           mkdir -p ingestion/junit
           for folder in artifacts/tests-*; do
-            cp -rT $folder/ ingestion/junit ;
+            [ -d "$folder" ] && cp -rT "$folder/" ingestion/junit/
           done
           source env/bin/activate
           cd ingestion
@@ -298,7 +413,7 @@ jobs:
         shell: bash
 
       - name: Push Results to Sonar
-        uses: sonarsource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

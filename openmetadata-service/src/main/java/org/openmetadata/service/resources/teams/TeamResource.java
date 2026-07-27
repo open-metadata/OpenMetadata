@@ -220,6 +220,12 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("isJoinable")
           Boolean isJoinable,
       @Parameter(
+              description =
+                  "When fields contains owns, only include owned entities of this entity type.",
+              schema = @Schema(type = "string", example = "pipeline"))
+          @QueryParam("ownsEntityType")
+          String ownsEntityType,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
@@ -228,6 +234,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     ListFilter filter = new ListFilter(include).addQueryParam("parentTeam", parentTeam);
     if (isJoinable != null) {
       filter.addQueryParam("isJoinable", String.valueOf(isJoinable));
+    }
+    if (ownsEntityType != null) {
+      filter.addQueryParam("ownsEntityType", ownsEntityType);
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

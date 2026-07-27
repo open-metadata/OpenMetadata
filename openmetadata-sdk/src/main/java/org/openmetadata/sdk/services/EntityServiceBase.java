@@ -2,6 +2,7 @@ package org.openmetadata.sdk.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -130,6 +131,21 @@ public abstract class EntityServiceBase<T> {
             HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), optionsBuilder.build());
     storeSnapshot(id, result);
     return result;
+  }
+
+  /**
+   * Retrieve the entity's AI Context (Context Profile) by id as an OKF-style markdown document: its
+   * attached business knowledge (glossary terms, articles, applied metrics), type-specific
+   * structural context, and depth-1 lineage, assembled for LLM consumption.
+   */
+  public String getContext(String id) throws OpenMetadataException {
+    return httpClient.executeForString(HttpMethod.GET, basePath + "/" + id + "/context", null);
+  }
+
+  /** Retrieve the entity's AI Context by fully qualified name. See {@link #getContext(String)}. */
+  public String getContextByName(String fqn) throws OpenMetadataException {
+    return httpClient.executeForString(
+        HttpMethod.GET, buildPathWithEncodedName(fqn) + "/context", null);
   }
 
   public T getByName(String name) throws OpenMetadataException {
@@ -279,6 +295,7 @@ public abstract class EntityServiceBase<T> {
       // Remove computed/read-only fields that cannot be patched
       removeComputedFields(originalNode);
       removeComputedFields(updatedNode);
+      normalizePatchNodes(originalNode, updatedNode, entity);
 
       JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
 
@@ -341,11 +358,19 @@ public abstract class EntityServiceBase<T> {
           "followers",
           "votes");
 
+  protected void normalizePatchNodes(JsonNode originalNode, JsonNode updatedNode, T entity) {
+    // Default no-op. Subclasses can normalize entity-specific response-only fields before diffing.
+  }
+
+  protected void removeField(JsonNode node, String fieldName) {
+    if (node instanceof ObjectNode objectNode) {
+      objectNode.remove(fieldName);
+    }
+  }
+
   private void removeComputedFields(JsonNode node) {
-    if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
-      for (String field : COMPUTED_FIELDS) {
-        objectNode.remove(field);
-      }
+    for (String field : COMPUTED_FIELDS) {
+      removeField(node, field);
     }
   }
 

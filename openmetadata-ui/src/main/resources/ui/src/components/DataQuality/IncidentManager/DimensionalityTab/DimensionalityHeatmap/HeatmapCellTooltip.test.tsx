@@ -11,30 +11,13 @@
  *  limitations under the License.
  */
 
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
-import { ThemeColors } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { HeatmapCellData } from './DimensionalityHeatmap.interface';
 import { HeatmapCellTooltip } from './HeatmapCellTooltip.component';
 
-const mockThemeColors: ThemeColors = {
-  white: '#FFFFFF',
-  gray: {
-    300: '#D1D5DB',
-    700: '#374151',
-    900: '#111827',
-  },
-} as ThemeColors;
-
-const theme: Theme = createTheme({
-  palette: {
-    allShades: mockThemeColors,
-  },
-});
-
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider theme={theme}>{children}</ThemeProvider>
+  <>{children}</>
 );
 
 jest.mock('./DimensionalityHeatmap.utils', () => ({

@@ -129,8 +129,6 @@ test.describe('Activity Stream on Entity Pages', () => {
     await activityFeedTab.click();
     await waitForPageLoaded(page);
 
-    await page.waitForTimeout(2000);
-
     const messageContainers = page.locator('[data-testid="message-container"]');
     const count = await messageContainers.count();
 
@@ -188,11 +186,12 @@ test.describe('Activity Stream on Entity Pages', () => {
     await activityFeedTab.click();
     await waitForPageLoaded(page);
 
-    await page.waitForTimeout(2000);
-
     const allTabInLeftPanel = page.locator(
       '[data-testid="global-setting-left-panel"]'
     );
+    await allTabInLeftPanel
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .catch(() => undefined);
 
     if (await allTabInLeftPanel.isVisible()) {
       await expect(allTabInLeftPanel).toBeVisible();

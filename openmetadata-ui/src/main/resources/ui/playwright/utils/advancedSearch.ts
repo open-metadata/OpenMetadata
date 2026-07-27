@@ -504,7 +504,7 @@ export const verifyAllConditions = async (
       searchCriteria: searchCriteria,
       index: 1,
     });
-    await page.getByTestId('clear-filters').click();
+    await page.getByTestId('advance-search-clear-btn').click();
   }
 
   // Check for Must Not conditions
@@ -516,7 +516,7 @@ export const verifyAllConditions = async (
       searchCriteria: searchCriteria,
       index: 1,
     });
-    await page.getByTestId('clear-filters').click();
+    await page.getByTestId('advance-search-clear-btn').click();
   }
 
   // Don't run null path if it's present in skipConditions
@@ -533,7 +533,7 @@ export const verifyAllConditions = async (
         searchCriteria: undefined,
         index: 1,
       });
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     }
   }
 };
@@ -565,10 +565,10 @@ export const checkAddRuleOrGroupWithOperator = async (
     index: 1,
   });
 
-  if (!isGroupTest) {
-    await page.getByTestId('advanced-search-add-rule').nth(1).click();
-  } else {
+  if (isGroupTest) {
     await page.getByTestId('advanced-search-add-group').first().click();
+  } else {
+    await page.getByTestId('advanced-search-add-rule').nth(1).click();
   }
 
   await fillRule(page, {
@@ -653,7 +653,7 @@ export const runRuleGroupTests = async (
       },
       isGroupTest
     );
-    await page.getByTestId('clear-filters').click();
+    await page.getByTestId('advance-search-clear-btn').click();
   }
 };
 

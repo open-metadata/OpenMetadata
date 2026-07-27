@@ -21,12 +21,19 @@ import org.openmetadata.it.server.ServerHandle;
  */
 public final class UiSession {
 
+  // Playwright's stock default is 30s. Against a shared/external cluster, search-backed renders
+  // (assignee popovers, page-size menus, filtered lists) can lag behind that under contention,
+  // surfacing as spurious 30s locator timeouts. Give every auto-wait more headroom; web-first
+  // assertions still return the instant the element is ready, so this only raises the ceiling.
+  private static final double DEFAULT_TIMEOUT_MS = 60_000;
+
   private final BrowserContext context;
   private final ServerHandle server;
 
   UiSession(final BrowserContext context, final ServerHandle server) {
     this.context = context;
     this.server = server;
+    context.setDefaultTimeout(DEFAULT_TIMEOUT_MS);
   }
 
   public Page newPage() {

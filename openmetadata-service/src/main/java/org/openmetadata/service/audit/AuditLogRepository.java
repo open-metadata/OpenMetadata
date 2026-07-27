@@ -3,6 +3,11 @@ package org.openmetadata.service.audit;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.formatter.field.DefaultFieldFormatter.getFieldValue;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -272,7 +277,8 @@ public class AuditLogRepository {
    *
    * @param progressCallback Optional callback for progress notifications (can be null)
    */
-  public List<AuditLogEntry> exportInBatches(
+  public int streamExportAsJson(
+      OutputStream outputStream,
       String userName,
       String actorType,
       String serviceName,
@@ -282,10 +288,13 @@ public class AuditLogRepository {
       Long endTs,
       String searchTerm,
       int totalLimit,
-      ExportProgressCallback progressCallback) {
+      ExportProgressCallback progressCallback)
+      throws IOException {
 
     long startTime = System.currentTimeMillis();
-    List<AuditLogEntry> allResults = new ArrayList<>();
+    Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+    writer.write("[");
+    int exported = 0;
     String afterCursor = null;
     int remaining = totalLimit;
 
@@ -319,7 +328,7 @@ public class AuditLogRepository {
         LOG.warn(
             "Export timed out after {} ms, returning {} records fetched so far",
             EXPORT_TIMEOUT_MS,
-            allResults.size());
+            exported);
         break;
       }
 
@@ -344,7 +353,13 @@ public class AuditLogRepository {
         break;
       }
 
-      allResults.addAll(batch.getData());
+      for (AuditLogEntry entry : batch.getData()) {
+        if (exported > 0) {
+          writer.write(",");
+        }
+        writer.write(JsonUtils.pojoToJson(entry));
+        exported++;
+      }
       remaining -= batch.getData().size();
       batchNumber++;
 
@@ -352,8 +367,8 @@ public class AuditLogRepository {
       if (progressCallback != null) {
         String message =
             String.format(
-                "Fetched %d of %d records (batch %d)", allResults.size(), actualTotal, batchNumber);
-        progressCallback.onProgress(allResults.size(), actualTotal, message);
+                "Fetched %d of %d records (batch %d)", exported, actualTotal, batchNumber);
+        progressCallback.onProgress(exported, actualTotal, message);
       }
 
       // Get cursor for next batch
@@ -363,33 +378,9 @@ public class AuditLogRepository {
       }
     }
 
-    return allResults;
-  }
-
-  /**
-   * Export audit logs in batches without progress callback (backwards compatibility).
-   */
-  public List<AuditLogEntry> exportInBatches(
-      String userName,
-      String actorType,
-      String serviceName,
-      String entityType,
-      String eventType,
-      Long startTs,
-      Long endTs,
-      String searchTerm,
-      int totalLimit) {
-    return exportInBatches(
-        userName,
-        actorType,
-        serviceName,
-        entityType,
-        eventType,
-        startTs,
-        endTs,
-        searchTerm,
-        totalLimit,
-        null);
+    writer.write("]");
+    writer.flush();
+    return exported;
   }
 
   public ResultList<AuditLogEntry> list(
@@ -427,6 +418,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_ASC,
+              ORDER_ASC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -453,6 +445,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_DESC,
+              ORDER_DESC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -556,14 +549,15 @@ public class AuditLogRepository {
     EventType eventType = changeEvent.getEventType();
     String entityType = changeEvent.getEntityType();
     String entityFqn = changeEvent.getEntityFullyQualifiedName();
+    String recursiveSuffix = Boolean.TRUE.equals(changeEvent.getRecursive()) ? " (recursive)" : "";
 
     switch (eventType) {
       case ENTITY_CREATED:
         return String.format("Created %s: %s", entityType, entityFqn);
       case ENTITY_DELETED:
-        return String.format("Deleted %s: %s", entityType, entityFqn);
+        return String.format("Deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_SOFT_DELETED:
-        return String.format("Soft deleted %s: %s", entityType, entityFqn);
+        return String.format("Soft deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_RESTORED:
         return String.format("Restored %s: %s", entityType, entityFqn);
       case ENTITY_UPDATED:
@@ -752,6 +746,8 @@ public class AuditLogRepository {
 
   private static final String ORDER_DESC = "ORDER BY event_ts DESC, id DESC";
   private static final String ORDER_ASC = "ORDER BY event_ts ASC, id ASC";
+  private static final String ORDER_DESC_QUALIFIED = "ORDER BY a.event_ts DESC, a.id DESC";
+  private static final String ORDER_ASC_QUALIFIED = "ORDER BY a.event_ts ASC, a.id ASC";
 
   private int sanitizeLimit(int requested) {
     int limit = requested <= 0 ? 25 : requested;

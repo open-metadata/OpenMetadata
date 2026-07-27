@@ -12,8 +12,10 @@
  */
 
 import { ROUTES } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { Task } from '../rest/tasksAPI';
 import {
   getDataQualityPagePath,
   getObservabilityAlertDetailsPath,
@@ -23,6 +25,11 @@ import {
   getTestCaseVersionPath,
   getTestSuitePath,
 } from './RouterUtils';
+import {
+  getTaskDetailPath,
+  getTaskEntityFQN,
+  getTaskEntityType,
+} from './TaskUtils';
 
 class ObservabilityRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -85,6 +92,30 @@ class ObservabilityRouterClassBase {
     tab: TestCasePageTabs = TestCasePageTabs.TEST_CASE_RESULTS
   ): string {
     return getTestCaseDimensionsDetailPagePath(fqn, dimensionKey, tab);
+  }
+
+  /**
+   * Test-case incident tasks live on the test case's own Issues tab —
+   * the generic entity activity-feed route has no testCase page, so
+   * `getTaskDetailPath` would land on Not Found for them. When the task
+   * payload carries no `about` reference, `fallbackTestCaseFqn` (the test
+   * case the caller is rendering) keeps the link on the Issues tab.
+   */
+  public getIncidentTaskPath(task: Task, fallbackTestCaseFqn?: string): string {
+    const taskEntityFqn =
+      getTaskEntityType(task) === EntityType.TEST_CASE
+        ? getTaskEntityFQN(task)
+        : undefined;
+    const testCaseFqn = taskEntityFqn ?? fallbackTestCaseFqn;
+
+    if (testCaseFqn) {
+      return this.getTestCaseDetailPagePath(
+        testCaseFqn,
+        TestCasePageTabs.ISSUES
+      );
+    }
+
+    return getTaskDetailPath(task);
   }
 }
 

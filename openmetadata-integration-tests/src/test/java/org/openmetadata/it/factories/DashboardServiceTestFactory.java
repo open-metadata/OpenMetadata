@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating DashboardService entities in integration tests.
@@ -40,7 +41,8 @@ public class DashboardServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Metabase service");
 
-    return SdkClients.adminClient().dashboardServices().create(request);
+    return ns.trackRoot(
+        Entity.DASHBOARD_SERVICE, SdkClients.adminClient().dashboardServices().create(request));
   }
 
   /**
@@ -65,7 +67,8 @@ public class DashboardServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Looker service");
 
-    return SdkClients.adminClient().dashboardServices().create(request);
+    return ns.trackRoot(
+        Entity.DASHBOARD_SERVICE, SdkClients.adminClient().dashboardServices().create(request));
   }
 
   /** Get dashboard service by ID. */

@@ -111,7 +111,8 @@ export const Typography = (props: TypographyProps) => {
   const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : undefined;
   const isEllipsis = !!ellipsis;
   const ellipsisRows = ellipsisConfig?.rows ?? 1;
-  const ellipsisTooltip = ellipsisConfig?.tooltip;
+  const ellipsisTooltip =
+    ellipsisConfig?.tooltip === true ? children : ellipsisConfig?.tooltip;
 
   const getEllipsisClassName = () => {
     if (ellipsisRows <= 1) {

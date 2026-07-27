@@ -15,18 +15,19 @@ import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
 import {
+  getFeedHeaderTextFromCardStyle,
+  getFieldOperationIcon,
+  suggestions,
+} from './FeedUtils';
+import {
   entityDisplayName,
   getBackendFormat,
   getEntityField,
   getEntityFQN,
   getEntityType,
-  getFeedHeaderTextFromCardStyle,
-  getFieldOperationIcon,
   getFrontEndFormat,
-  suggestions,
-} from './FeedUtils';
+} from './FeedUtilsPure';
 import { getPartialNameFromTableFQN } from './FqnUtils';
-
 jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
     hits: {
@@ -53,14 +54,11 @@ jest.mock('./StringUtils', () => ({
 
 jest.mock('./FeedUtils', () => ({
   ...jest.requireActual('./FeedUtils'),
-  getEntityField: jest.fn().mockReturnValue('entityField'),
-  getEntityFQN: jest.fn().mockReturnValue('123'),
-  getEntityType: jest.fn().mockReturnValue('entityType'),
   buildMentionLink: jest.fn().mockReturnValue('buildMentionLink'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
 }));
 
-jest.mock('./EntityDisplayUtils', () => ({
+jest.mock('./EntityDisplayPureUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
@@ -71,15 +69,19 @@ jest.mock('./FqnUtils', () => ({
 
 describe('Feed Utils', () => {
   it('should getEntityType return the correct entity type', () => {
-    expect(getEntityType('#E::Type::123')).toBe('entityType');
+    expect(getEntityType('<#E::table::db.schema.table>')).toBe('table');
   });
 
   it('should getEntityFQN return the correct entity FQN', () => {
-    expect(getEntityFQN('#E::Type::123')).toBe('123');
+    expect(getEntityFQN('<#E::table::db.schema.table>')).toBe(
+      'db.schema.table'
+    );
   });
 
   it('should getEntityField return the correct entity field', () => {
-    expect(getEntityField('entityField')).toBe('entityField');
+    expect(getEntityField('<#E::table::db.schema.table::description>')).toBe(
+      'description'
+    );
   });
 
   it('should return mention suggestions for "@" mentionChar', async () => {

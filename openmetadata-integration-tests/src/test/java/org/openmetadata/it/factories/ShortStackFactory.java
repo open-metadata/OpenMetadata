@@ -13,6 +13,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.service.Entity;
 
 /**
  * Builds a service → database → schema → table chain whose total FQN length is
@@ -35,7 +36,7 @@ public final class ShortStackFactory {
    */
   public static Table table(final TestNamespace ns) {
     final String tag = ns.uniqueShortId();
-    final DatabaseService service = service(tag);
+    final DatabaseService service = ns.trackRoot(Entity.DATABASE_SERVICE, service(tag));
     final Database database = database(service, tag);
     final DatabaseSchema schema = schema(database, tag);
     return Tables.create()

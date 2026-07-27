@@ -159,7 +159,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
 
@@ -195,7 +195,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -239,7 +239,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -499,7 +499,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should swallow staged index deletion failures after failed reindex")
     void testPromoteEntityIndexSwallowsDeleteFailure() {
       SearchClient client = mock(SearchClient.class);
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
       when(client.indexExists("table_search_index_rebuild_new")).thenReturn(true);
       doThrow(new IllegalStateException("delete failed"))
           .when(client)
@@ -602,6 +602,49 @@ class DefaultRecreateHandlerTest {
       assertTrue(aliases.contains("all"));
       assertTrue(aliases.contains("dataAsset"));
     }
+
+    @Test
+    @DisplayName("Data Insights alias survives the reindex alias swap")
+    void testDataInsightAliasSurvivesReindexSwap() {
+      AliasState aliasState = new AliasState();
+      aliasState.put("test_case_resolution_status_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+
+      IndexMapping indexMapping =
+          IndexMapping.builder()
+              .indexName("test_case_resolution_status_search_index")
+              .alias("testCaseResolutionStatus")
+              .parentAliases(List.of())
+              .childAliases(List.of())
+              .dataInsightAliases(List.of("di-data-assets-testcaseresolutionstatus"))
+              .build();
+      when(repo.getIndexMapping("testCaseResolutionStatus")).thenReturn(indexMapping);
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("testCaseResolutionStatus")
+                .canonicalIndex("test_case_resolution_status_search_index")
+                .stagedIndex("test_case_resolution_status_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      Set<String> aliases =
+          aliasState.indexAliases.get("test_case_resolution_status_search_index_rebuild_new");
+      assertTrue(
+          aliases.contains("di-data-assets-testcaseresolutionstatus"),
+          "Data Insights alias must follow the staged index after the reindex swap so custom "
+              + "charts keep reading the reindexed data");
+      assertTrue(aliases.contains("testCaseResolutionStatus"));
+    }
   }
 
   @Nested
@@ -658,7 +701,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -705,7 +748,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -1455,6 +1498,24 @@ class DefaultRecreateHandlerTest {
       assertTrue(json.contains("\"translog\":{"));
       assertTrue(json.contains("\"durability\":\"request\""));
       assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName("Live refresh_interval '-1' is never applied as a live value (guard -> 1s)")
+    void liveRefreshDisabledIsOverriddenToDefault() {
+      // Misconfiguration: liveIndexSettings.refreshInterval is "-1" (refresh disabled) — e.g.
+      // copied from the bulk side or a stale saved config. Without the guard the revert would
+      // faithfully re-apply "-1" to the promoted index, leaving it unsearchable until a manual
+      // _refresh (the "reindex finishes but the page is empty" symptom). The revert must override
+      // it back to the near-real-time default.
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings().withRefreshInterval("-1");
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides().withRefreshInterval("-1");
+      String json = DefaultRecreateHandler.buildRevertJson(live, bulk);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertFalse(json.contains("\"refresh_interval\":\"-1\""));
     }
 
     @Test
