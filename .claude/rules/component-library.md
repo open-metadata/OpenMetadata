@@ -9,7 +9,13 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
 `@openmetadata/ui-core-components` (a yarn `link:` to `openmetadata-ui-core-components/src/main/resources/ui`).
 
 - **Use `openmetadata-ui-core-components` for all new UI work** — it is the canonical component
-  library. **Do not use Ant Design, and do not introduce new UI component-library dependencies.**
+  library, implementing the **UntitledUI + Tailwind** go-forward design system. **Do not use Ant
+  Design, and do not introduce new UI component-library dependencies.**
+- **Read the design-system spec before building a component.** The machine-readable specs live in
+  `openmetadata-ui/src/main/resources/ui/specs/`: start at `specs/README.md` (it declares the two
+  stacks — go-forward **UntitledUI + Tailwind (`tw:`)** vs legacy **Ant Design + Less**, deprecated),
+  then read `specs/untitled/<component>.md` for the component you touch. `yarn tw-guard` blocks new
+  `antd` imports and new `.less` files.
 - Available components (all under
   `openmetadata-ui-core-components/src/main/resources/ui/src/components/`): Button, Input, Select,
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,

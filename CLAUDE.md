@@ -18,7 +18,9 @@ and Docker infrastructure.
 
 - **Backend**: Java 21 + Dropwizard, multi-module Maven.
 - **Frontend**: React + TypeScript, built with **Vite** (dev server on :3000); component library
-  `openmetadata-ui-core-components` (Tailwind v4 with the `tw:` prefix, react-aria-components).
+  `openmetadata-ui-core-components` — the **UntitledUI + Tailwind v4** (`tw:` prefix, react-aria-components)
+  go-forward design system; legacy stack is Ant Design + Less (deprecated). Machine-readable design-system
+  specs: `openmetadata-ui/src/main/resources/ui/specs/` (read `specs/README.md` before UI work).
 - **Ingestion**: Python (`>=3.10`, no pinned ceiling; **CI runs 3.10**) + Pydantic 2.x, 75+ connectors.
 - **Database**: MySQL (default) or PostgreSQL. **Search**: Elasticsearch 7.17+ or OpenSearch 2.6+.
 - **Infrastructure**: Apache Airflow for ingestion orchestration.
