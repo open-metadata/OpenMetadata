@@ -14,11 +14,11 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { authenticateAdminPage } from '../../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
   getApiContext,
-  redirectToHomePage,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { selectActiveGlossary } from '../../../utils/glossary';
@@ -34,7 +34,7 @@ test.use({
 
 test.describe('Glossary P3 Tests', () => {
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    await authenticateAdminPage(page);
   });
 
   // G-C11: Create glossary with unicode/emoji in name
