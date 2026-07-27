@@ -199,4 +199,29 @@ describe('TestCaseStatusPieChartWidget', () => {
       search: `testCaseStatus=${TestCaseStatus.Aborted}`,
     });
   });
+
+  it('should use the supplied navigate function and test cases path', async () => {
+    const navigate = jest.fn();
+
+    render(
+      <TestCaseStatusPieChartWidget
+        navigate={navigate}
+        redirectPath="/observability/data-quality/test-cases"
+      />
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const failedSegment = await screen.findByTestId('segment-1');
+    await act(async () => {
+      failedSegment.click();
+    });
+
+    expect(navigate).toHaveBeenCalledWith({
+      pathname: '/observability/data-quality/test-cases',
+      search: `testCaseStatus=${TestCaseStatus.Failed}`,
+    });
+  });
 });

@@ -113,9 +113,10 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'
