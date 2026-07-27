@@ -276,7 +276,7 @@ const Description = ({
       <Box
         className={classNames(
           wrapInCard
-            ? 'tw:rounded-[10px] tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
+            ? 'tw:rounded-xl tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
             : undefined,
           className
         )}
