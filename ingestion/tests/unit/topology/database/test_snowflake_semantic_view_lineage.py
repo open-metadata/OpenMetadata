@@ -145,11 +145,11 @@ def test_iter_database_lineage_emits_table_and_column_edges():
     orders_id = UUID("22222222-2222-2222-2222-222222222222")
     customers_id = UUID("33333333-3333-3333-3333-333333333333")
     view_entity = MagicMock()
-    view_entity.id = view_id
+    view_entity.id.root = view_id
     orders_entity = MagicMock()
-    orders_entity.id = orders_id
+    orders_entity.id.root = orders_id
     customers_entity = MagicMock()
-    customers_entity.id = customers_id
+    customers_entity.id.root = customers_id
 
     def resolve(table_fqn):
         if "SALES_ANALYSIS" in table_fqn:
@@ -183,9 +183,9 @@ def test_iter_database_lineage_emits_table_level_edge_without_columns():
     view_id = UUID("44444444-4444-4444-4444-444444444444")
     base_id = UUID("55555555-5555-5555-5555-555555555555")
     view_entity = MagicMock()
-    view_entity.id = view_id
+    view_entity.id.root = view_id
     base_entity = MagicMock()
-    base_entity.id = base_id
+    base_entity.id.root = base_id
 
     def resolve(table_fqn):
         if "SALES_ANALYSIS" in table_fqn:
@@ -249,7 +249,7 @@ def test_view_to_metric_edge_emitted():
     )
 
     view_entity = MagicMock()
-    view_entity.id = UUID("11111111-1111-1111-1111-111111111111")
+    view_entity.id.root = UUID("11111111-1111-1111-1111-111111111111")
     metric_entity = MagicMock()
     metric_entity.id.root = UUID("22222222-2222-2222-2222-222222222222")
 
@@ -267,6 +267,6 @@ def test_view_to_metric_edge_emitted():
     edges = [r.right for r in requests if r.right is not None]
     assert len(edges) == 1
     assert isinstance(edges[0], AddLineageRequest)
-    assert str(edges[0].edge.fromEntity.id.root) == str(view_entity.id)
+    assert str(edges[0].edge.fromEntity.id.root) == str(view_entity.id.root)
     assert str(edges[0].edge.toEntity.id.root) == str(metric_entity.id.root)
     assert edges[0].edge.toEntity.type == "metric"

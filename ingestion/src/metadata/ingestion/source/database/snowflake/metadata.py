@@ -266,8 +266,8 @@ def _build_semantic_column_description(
 
 
 def _merge_semantic_view_column(merged: Dict[str, dict], kind: str, row) -> None:  # noqa: UP006
-    """Accumulate a dimension/fact/metric row under its column name, combining
-    kinds when the same name appears across dimensions, facts or metrics."""
+    """Accumulate a dimension/fact row under its column name, combining
+    kinds when the same name appears across dimensions or facts."""
     logical_table, name, data_type, expression, comment, synonyms = (
         row[0],
         row[1],

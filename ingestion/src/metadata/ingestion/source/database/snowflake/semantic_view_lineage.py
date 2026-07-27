@@ -152,7 +152,7 @@ def resolve_base_columns(
 
 def _table_reference(entity: Table) -> EntityReference:
     """Build a table EntityReference for a lineage edge endpoint."""
-    return EntityReference(id=entity.id, type="table")  # pyright: ignore[reportCallIssue]
+    return EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
 
 
 class SnowflakeSemanticViewLineage:
