@@ -253,6 +253,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     render(<FailedTestCaseSampleData testCaseData={mockTestCase} />);
 
     await waitFor(() => expect(getTestCaseFailedSampleData).toHaveBeenCalled());
+
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 
