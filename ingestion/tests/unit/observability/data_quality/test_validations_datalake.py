@@ -45,7 +45,7 @@ DL_DATA = (
         "John Doe",
         "johnny b goode",
         30,
-        datetime.utcnow() - timedelta(days=1),
+        datetime.utcnow(),
         60001,
         49.6852237,
         1.7743058,
