@@ -640,7 +640,10 @@ class DbtSource(DbtServiceSource):
                             dot = completed.rfind(".")
                             if dot != -1:
                                 completed = completed[: dot + 7] + "Z"
-                            return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
+                            try:
+                                return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
+                            except ValueError:
+                                return None
                     return completed
             return None
 
@@ -1971,7 +1974,17 @@ class DbtSource(DbtServiceSource):
                         dot = dbt_timestamp.rfind(".")
                         if dot != -1:
                             dbt_timestamp = dbt_timestamp[: dot + 7] + "Z"
-                        dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                        try:
+                            dbt_timestamp = datetime.strptime(dbt_timestamp, DBT_RUN_RESULT_DATE_FORMAT)
+                        except ValueError:
+                            dbt_timestamp = None
+
+                if not dbt_timestamp or not isinstance(dbt_timestamp, datetime):
+                    logger.debug(
+                        "Skipping test case result for '%s': unparseable timestamp",
+                        manifest_node.name,
+                    )
+                    return
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
