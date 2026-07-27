@@ -2432,7 +2432,7 @@ class SearchRepositoryBehaviorTest {
     when(context.getParentAliases(any()))
         .thenAnswer(invocation -> List.of("parent_" + invocation.getArgument(0)));
 
-    doNothing()
+    doReturn(true)
         .doThrow(new RuntimeException("boom"))
         .when(recreateIndexHandler)
         .finalizeReindex(any(EntityReindexContext.class), eq(true));

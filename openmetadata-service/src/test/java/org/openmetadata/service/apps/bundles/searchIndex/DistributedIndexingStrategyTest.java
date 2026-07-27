@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -483,6 +484,7 @@ class DistributedIndexingStrategyTest {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext("user");
 
     when(tracker.getPromotedEntities()).thenReturn(Set.of());
@@ -516,6 +518,7 @@ class DistributedIndexingStrategyTest {
     DistributedSearchIndexExecutor executor = mock(DistributedSearchIndexExecutor.class);
     EntityCompletionTracker tracker = mock(EntityCompletionTracker.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = new ReindexContext();
     stagedIndexContext.add(
         "table", "table_index", "table_original", "table_staged", Set.of(), "table", List.of());
@@ -637,6 +640,7 @@ class DistributedIndexingStrategyTest {
                         .build()))
             .build();
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
     ReindexingConfiguration reindexConfig =
         ReindexingConfiguration.builder()
@@ -715,6 +719,7 @@ class DistributedIndexingStrategyTest {
                         .build()))
             .build();
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.QUERY_COST_RECORD);
     ReindexingConfiguration reindexConfig =
         ReindexingConfiguration.builder()
@@ -802,6 +807,7 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
@@ -852,6 +858,7 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
     BulkSink bulkSink = mock(BulkSink.class);
     RecreateIndexHandler indexPromotionHandler = mock(RecreateIndexHandler.class);
+    when(indexPromotionHandler.finalizeReindex(any(), anyBoolean())).thenReturn(true);
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);

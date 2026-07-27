@@ -160,13 +160,19 @@ public class DistributedIndexingStrategy {
 
     currentStats.set(stats);
 
-    boolean success =
+    boolean allPromoted =
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
     ExecutionResult.Status resultStatus = determineStatus(stats);
+    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+      LOG.error(
+          "Reindex finished but one or more staged indexes could not be promoted; reporting "
+              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
+      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+    }
 
     StatsReconciler.reconcile(stats);
 
