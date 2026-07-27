@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Get short commit SHA
         id: sha
@@ -69,9 +69,9 @@ jobs:
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         env:
-          DOCKER_BUILD_NO_SUMMARY: true
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: .
           file: docker/storybook/Dockerfile

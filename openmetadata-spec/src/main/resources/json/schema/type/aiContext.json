@@ -52,6 +52,10 @@
                 "dataType": {
                     "type": "string"
                 },
+                "dataTypeEnum": {
+                    "description": "Raw data-type enum name of the field (e.g. VARCHAR, BIGINT — a ColumnDataType value for table columns), for programmatic type branching. `dataType` may carry the source display form (e.g. varchar(255)).",
+                    "type": "string"
+                },
                 "constraint": {
                     "description": "Field-level constraint (e.g. PRIMARY_KEY, NOT_NULL), when applicable.",
                     "type": "string"
@@ -147,6 +151,34 @@
                 },
                 "schemaDefinition": {
                     "description": "DDL for tables and views, when available.",
+                    "type": "string"
+                },
+                "dataModel": {
+                    "description": "The dbt/DDL model that produces this table (type, path, and defining SQL), when available.",
+                    "$ref": "#/definitions/tableDataModel"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tableDataModel": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.TableDataModel",
+            "description": "The data model that produces a table — the dbt (or DDL) model behind it: its type, where the model file lives, and the SQL that defines the table. A strong signal for how the table is built and what logic it encodes.",
+            "properties": {
+                "modelType": {
+                    "description": "Model type that produced the table (e.g. DBT or DDL).",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "Path to the model definition file (e.g. the dbt `.sql` model path).",
+                    "type": "string"
+                },
+                "sourceProject": {
+                    "description": "The dbt project the model belongs to, when applicable.",
+                    "type": "string"
+                },
+                "sql": {
+                    "description": "SQL that defines the table: the compiled dbt/DDL model SQL when available, otherwise the raw templated model SQL. May be bounded server-side.",
                     "type": "string"
                 }
             },
@@ -278,6 +310,10 @@
                     "description": "Fraction of rows where this column is null (0..1).",
                     "type": "number"
                 },
+                "uniqueProportion": {
+                    "description": "Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a key/identifier column.",
+                    "type": "number"
+                },
                 "distinctCount": {
                     "description": "Number of distinct values observed.",
                     "type": "number"
@@ -289,6 +325,18 @@
                 "max": {
                     "description": "Observed maximum value (numeric/date columns).",
                     "type": "string"
+                },
+                "mean": {
+                    "description": "Mean value (numeric/date columns; the profiler stores string-length stats here for text columns).",
+                    "type": "number"
+                },
+                "median": {
+                    "description": "Median value (numeric/date columns; the profiler stores string-length stats here for text columns).",
+                    "type": "number"
+                },
+                "cardinalityDistribution": {
+                    "description": "Top observed values with counts and percentages (plus an 'Others' bucket), when the profiler computed it — lets an agent write exact filter predicates.",
+                    "$ref": "../entity/data/table.json#/definitions/cardinalityDistribution"
                 }
             },
             "additionalProperties": false
@@ -329,6 +377,14 @@
                 "profiledAt": {
                     "description": "Timestamp of the latest profile run.",
                     "$ref": "basic.json#/definitions/timestamp"
+                },
+                "profileSample": {
+                    "description": "Sample size the profile ran on — a percentage when profileSampleType is PERCENTAGE, otherwise an absolute row count. Absent when the profile ran on the full dataset.",
+                    "type": "number"
+                },
+                "profileSampleType": {
+                    "description": "Interpretation of profileSample: PERCENTAGE or ROWS.",
+                    "type": "string"
                 },
                 "columnProfiles": {
                     "type": "array",
@@ -394,6 +450,10 @@
             "description": "Unique identifier of the asset this context describes.",
             "$ref": "basic.json#/definitions/uuid"
         },
+        "name": {
+            "description": "Name of the asset this context describes.",
+            "type": "string"
+        },
         "fullyQualifiedName": {
             "description": "Fully qualified name of the asset this context describes.",
             "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
@@ -401,6 +461,10 @@
         "entityType": {
             "description": "Entity type of the asset (table, dashboard, pipeline, topic, ...).",
             "type": "string"
+        },
+        "service": {
+            "description": "Reference (id, name, type) to the service the asset belongs to, when applicable.",
+            "$ref": "entityReference.json"
         },
         "serviceType": {
             "description": "Service type of the asset's service (e.g. Snowflake, BigQuery).",

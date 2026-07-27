@@ -95,6 +95,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -454,6 +455,41 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     exc,
                 )
         yield from super().yield_life_cycle_data(_)
+
+    def _get_schema_region(self, schema_name: str) -> Optional[str]:  # noqa: UP045
+        """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
+        region = None
+        try:
+            dataset_obj = self.get_dataset_obj(schema_name)
+            region = getattr(dataset_obj, "location", None)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                "Could not resolve dataset region for schema '%s', falling back to dataset-scoped query: %s",
+                schema_name,
+                exc,
+            )
+        return region
+
+    def get_life_cycle_query(self):
+        """
+        Build the life cycle query.
+
+        When the dataset region is resolvable we use the region-scoped variant that
+        also captures the last-modified timestamp from INFORMATION_SCHEMA.TABLE_STORAGE
+        (which is only exposed at region/org level). Otherwise we fall back to the
+        dataset-scoped created-only query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        region = self._get_schema_region(schema_name)
+        if region:
+            query = BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+                database_name=database, schema_name=schema_name, region=region
+            )
+        else:
+            query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=database, schema_name=schema_name)
+        return query
 
     def _prefetch_policy_tags(self):
         """Pre-fetch all policy tags at schema level to avoid per-column API calls"""

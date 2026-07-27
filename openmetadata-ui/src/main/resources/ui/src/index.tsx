@@ -18,10 +18,39 @@ import './styles/index';
 import { getBasePath } from './utils/HistoryUtils';
 import { isSsoTestLoginPopup } from './utils/SsoTestLoginPopup';
 
+const recordPlaywrightAppBoot = () => {
+  if (!import.meta.env.PW_E2E_BUILD) {
+    return;
+  }
+
+  const scenarioKey = 'playwright-ui-scenario';
+  const isNewScenario = !sessionStorage.getItem(scenarioKey);
+  if (isNewScenario) {
+    sessionStorage.setItem(scenarioKey, '1');
+  }
+
+  const basePath = getBasePath();
+  const diagnostics = new URLSearchParams({ 'playwright-app-boot': '1' });
+  if (isNewScenario) {
+    diagnostics.set('playwright-ui-scenario', '1');
+  }
+  void fetch(`${basePath}/favicon.ico?${diagnostics}`, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    keepalive: true,
+  }).catch(() => {
+    if (isNewScenario) {
+      sessionStorage.removeItem(scenarioKey);
+    }
+  });
+};
+
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Failed to find the root element');
 }
+
+recordPlaywrightAppBoot();
 
 // The SSO "Test Login" popup returns to the configured callback URL. When this
 // document is that isolated popup, handle the OIDC handshake separately and

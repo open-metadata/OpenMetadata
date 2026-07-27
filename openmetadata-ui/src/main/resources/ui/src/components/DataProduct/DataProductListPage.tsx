@@ -21,7 +21,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Globe01, SearchLg } from '@untitledui/icons';
 import { debounce, isEmpty } from 'lodash';
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
@@ -29,7 +36,6 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
-import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -57,6 +63,7 @@ import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.compon
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
@@ -335,6 +342,7 @@ const DataProductListPage = ({
     return (
       <>
         <EntityCardView
+          className="tw:grid-cols-[repeat(auto-fill,minmax(380px,1fr))]"
           entities={dataProductListing.entities}
           loading={dataProductListing.loading}
           renderCard={renderDataProductCard}
@@ -403,6 +411,18 @@ const DataProductListPage = ({
   );
 };
 
+const DataProductListPageWithLayout: FC<DataProductListPageProps> = (props) => {
+  const isAiMode = useIsAiMode();
+
+  return (
+    <PageLayoutV1
+      pageTitle={props.pageTitle}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <DataProductListPage {...props} />
+    </PageLayoutV1>
+  );
+};
+
 export { DataProductListPage };
 
-export default withPageLayout(DataProductListPage);
+export default DataProductListPageWithLayout;

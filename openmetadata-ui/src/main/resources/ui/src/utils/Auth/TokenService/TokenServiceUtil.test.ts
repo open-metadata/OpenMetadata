@@ -161,18 +161,26 @@ describe('TokenService', () => {
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
     });
 
-    it('should handle errors during refresh', async () => {
+    it('should log a warning and resolve to null on renewal failure', async () => {
       (getOidcToken as jest.Mock).mockResolvedValue('token');
       (extractDetailsFromToken as jest.Mock).mockReturnValue({
         isExpired: true,
       });
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Refresh failed'));
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
 
-      await expect(tokenService.refreshToken()).rejects.toThrow(
+      const result = await tokenService.refreshToken();
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
         'Failed to refresh token: Refresh failed'
       );
       expect(localStorage.getItem('refreshInProgress')).toBeNull();
+
+      warnSpy.mockRestore();
     });
   });
 
@@ -204,13 +212,21 @@ describe('TokenService', () => {
       expect(result).toBeNull();
     });
 
-    it('should throw other errors', async () => {
+    it('should log a warning and return null for other errors', async () => {
       tokenService.updateRenewToken(mockRenewToken);
       mockRenewToken.mockRejectedValue(new Error('Network error'));
+      const warnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
 
-      await expect(tokenService.fetchNewToken()).rejects.toThrow(
+      const result = await tokenService.fetchNewToken();
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
         'Failed to refresh token: Network error'
       );
+
+      warnSpy.mockRestore();
     });
 
     it('should clear refreshInProgress on success', async () => {

@@ -691,6 +691,18 @@ describe('ServiceConfig', () => {
     expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
   });
 
+  it('should forward additional validation pending state to TestConnection', async () => {
+    await act(async () => {
+      render(
+        <ConnectionConfigForm {...mockProps} isAdditionalValidationPending />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.isFormValidationPending).toBe(true);
+  });
+
   it('should call onValidateAdditionalRequiredFields when validating for test connection', async () => {
     const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
 

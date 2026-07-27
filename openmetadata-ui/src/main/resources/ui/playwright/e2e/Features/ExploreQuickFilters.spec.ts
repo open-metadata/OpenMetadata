@@ -28,6 +28,7 @@ import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+test.describe.configure({ mode: 'default' });
 
 const domain = new Domain();
 const table = new TableClass();
