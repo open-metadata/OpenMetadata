@@ -65,6 +65,7 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.profiler.MetricType;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -1824,6 +1825,108 @@ public class SystemResourceIT {
                 || message.contains("Forbidden")
                 || message.contains("403")),
         "Expected an admin-only / 403 authorization error but got: " + message);
+  }
+
+  @Test
+  void test_validateSecurityConfig_rejectsSilentPromptNone() throws Exception {
+    SecurityConfiguration config = buildBasicSecurityConfig();
+    config
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.AZURE)
+        .withOidcConfiguration(new OidcClientConfig().withPrompt("none"));
+
+    String responseJson =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/system/security/validate",
+                MAPPER.writeValueAsString(config),
+                RequestOptions.builder().build());
+
+    JsonNode response = MAPPER.readTree(responseJson);
+    assertEquals("failed", response.get("status").asText());
+    boolean hasPromptError = false;
+    for (JsonNode error : response.get("errors")) {
+      if (error.get("field").asText().contains("prompt")) {
+        hasPromptError = true;
+        assertTrue(error.get("error").asText().toLowerCase().contains("silent"));
+      }
+    }
+    assertTrue(hasPromptError, "prompt=none must be rejected with an OIDC prompt error");
+  }
+
+  @Test
+  void test_revertSecurityConfig_restoresPreviousConfiguration() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String originalJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/security/config",
+                null,
+                RequestOptions.builder().build());
+    SecurityConfiguration original = MAPPER.readValue(originalJson, SecurityConfiguration.class);
+    String originalDomain = original.getAuthorizerConfiguration().getPrincipalDomain();
+
+    try {
+      SecurityConfiguration modified = buildBasicSecurityConfig();
+      modified.getAuthorizerConfiguration().withPrincipalDomain("reverted-marker.org");
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              MAPPER.writeValueAsString(modified),
+              RequestOptions.builder().build());
+
+      SecurityConfiguration afterPut =
+          MAPPER.readValue(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      "/v1/system/security/config",
+                      null,
+                      RequestOptions.builder().build()),
+              SecurityConfiguration.class);
+      assertEquals(
+          "reverted-marker.org",
+          afterPut.getAuthorizerConfiguration().getPrincipalDomain(),
+          "the modified configuration should be live before revert");
+
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST,
+              "/v1/system/security/config/revert",
+              null,
+              RequestOptions.builder().build());
+
+      SecurityConfiguration afterRevert =
+          MAPPER.readValue(
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.GET,
+                      "/v1/system/security/config",
+                      null,
+                      RequestOptions.builder().build()),
+              SecurityConfiguration.class);
+      assertEquals(
+          originalDomain,
+          afterRevert.getAuthorizerConfiguration().getPrincipalDomain(),
+          "revert should restore the configuration that was live before the change");
+    } finally {
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/security/config",
+              originalJson,
+              RequestOptions.builder().build());
+    }
   }
 
   @Test

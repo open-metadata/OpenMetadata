@@ -93,6 +93,20 @@ export const getSecurityConfiguration = async (): Promise<
 };
 
 /**
+ * Revert to the security configuration that was active before the most recent
+ * change and reload the auth system. Admin-only. Not gated on validation, so it
+ * recovers a deployment even when the just-applied identity provider is broken.
+ * @returns Promise with the restored configuration
+ */
+export const revertSecurityConfiguration = async (): Promise<
+  AxiosResponse<SecurityConfiguration>
+> => {
+  return APIClient.post<undefined, AxiosResponse<SecurityConfiguration>>(
+    '/system/security/config/revert'
+  );
+};
+
+/**
  * Patch authentication configuration with partial updates
  * @param patches - Array of JSON Patch operations
  * @returns Promise with updated configuration

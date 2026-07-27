@@ -906,36 +906,92 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
-
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
-
-      // Update both configurations in a transaction
-      Settings authSettings =
-          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
-
-      Settings authzSettings =
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(securityConfig.getAuthorizerConfiguration());
-
-      // Save both to database
-      systemRepository.createOrUpdate(authSettings);
-      systemRepository.createOrUpdate(authzSettings);
-
-      // Invalidate both caches
-      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
-      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
-      // Reload entire security system
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
-
-      return Response.ok(securityConfig).build();
+      String currentUsername = SecurityUtil.getUserName(securityContext);
+      SecurityValidationResponse validationResponse =
+          systemRepository.validateSecurityConfiguration(
+              securityConfig, applicationConfig, currentUsername);
+      Response response;
+      if (validationResponse.getStatus() != SecurityValidationResponse.Status.SUCCESS) {
+        logValidationErrors(validationResponse);
+        response = Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
+      } else {
+        persistAndReloadSecurityConfig(securityConfig);
+        response = Response.ok(securityConfig).build();
+      }
+      return response;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
     }
+  }
+
+  private void persistAndReloadSecurityConfig(SecurityConfiguration securityConfig) {
+    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+    systemRepository.createOrUpdate(
+        new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig));
+    systemRepository.createOrUpdate(
+        new Settings()
+            .withConfigType(AUTHORIZER_CONFIGURATION)
+            .withConfigValue(securityConfig.getAuthorizerConfiguration()));
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+  }
+
+  private void logValidationErrors(SecurityValidationResponse validationResponse) {
+    List<String> failedMessages = new ArrayList<>();
+    if (validationResponse.getErrors() != null) {
+      for (var error : validationResponse.getErrors()) {
+        failedMessages.add(error.getField() + ": " + error.getError());
+      }
+    }
+    if (!failedMessages.isEmpty()) {
+      LOG.error("Security configuration validation failed: {}", String.join("; ", failedMessages));
+    }
+  }
+
+  @POST
+  @Path("/security/config/revert")
+  @Operation(
+      operationId = "revertSecurityConfig",
+      summary = "Revert to the previous security configuration",
+      description =
+          "Admin-only. Restores the security configuration that was active before the most recent "
+              + "change and reloads the auth system. Use this to recover when a just-applied SSO "
+              + "change prevents new logins: the admin's existing session stays valid across a "
+              + "config change, so this endpoint remains reachable. Not gated on validation, so it "
+              + "always restores the prior state even if the identity provider is unreachable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Reverted Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class))),
+        @ApiResponse(responseCode = "404", description = "No previous configuration available")
+      })
+  public Response revertSecurityConfig(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration previous =
+        SecurityConfigurationManager.getInstance().getPreviousSecurityConfig();
+    Response response;
+    if (previous == null) {
+      response =
+          Response.status(Response.Status.NOT_FOUND)
+              .entity("No previous security configuration is available to revert to")
+              .build();
+    } else {
+      try {
+        persistAndReloadSecurityConfig(previous);
+        response = Response.ok(previous).build();
+      } catch (Exception e) {
+        LOG.error("Failed to revert security configuration", e);
+        throw new RuntimeException("Failed to revert security configuration: " + e.getMessage());
+      }
+    }
+    return response;
   }
 
   @PATCH
@@ -987,20 +1043,7 @@ public class SystemResource {
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
 
       if (!isValidConfig) {
-        // Consolidate all error messages for logging
-        List<String> failedMessages = new ArrayList<>();
-        if (validationResponse.getErrors() != null) {
-          for (var error : validationResponse.getErrors()) {
-            failedMessages.add(error.getField() + ": " + error.getError());
-          }
-        }
-
-        // Log the errors
-        if (!failedMessages.isEmpty()) {
-          LOG.error(
-              "Security configuration validation failed: {}", String.join("; ", failedMessages));
-        }
-
+        logValidationErrors(validationResponse);
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
       Settings authSettings =

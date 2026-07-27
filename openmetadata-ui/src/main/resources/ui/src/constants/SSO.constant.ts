@@ -128,7 +128,12 @@ export const COMMON_UI_FIELDS = {
   oidcTokenValidity: { 'ui:title': 'OIDC Token Validity' },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
-  oidcPrompt: { 'ui:title': 'OIDC Prompt' },
+  oidcPrompt: {
+    'ui:title': 'OIDC Prompt',
+    'ui:placeholder': 'e.g. select_account',
+    'ui:help':
+      "Controls the identity provider's login screen. Recommended: 'select_account', which always shows the account picker. Avoid 'none' or leaving this empty — 'none' requests a silent sign-in that locks out users without an active provider session. Supported values vary by provider (e.g. Google does not accept 'login').",
+  },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
   // Common non-OIDC fields
   authority: {
@@ -631,7 +636,9 @@ export const AUTHORIZER_FIELD_TITLES = {
   },
   principalDomain: {
     'ui:title': 'Principal Domain',
-    'ui:placeholder': 'e.g. https://accounts.google.com',
+    'ui:placeholder': 'e.g. yourcompany.com',
+    'ui:help':
+      "Your organization's email domain (e.g. 'yourcompany.com'), without a scheme or '@'. When 'Enforce Principal Domain' is enabled, users whose email domain does not match are denied access, so an incorrect value locks everyone out.",
   },
   enforcePrincipalDomain: { 'ui:title': 'Enforce Principal Domain' },
   enableSecureSocketConnection: {
