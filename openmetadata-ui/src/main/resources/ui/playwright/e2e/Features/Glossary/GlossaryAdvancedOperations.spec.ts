@@ -73,9 +73,14 @@ test.describe('Glossary Advanced Operations', () => {
       // Verify alert is NOT visible when toggle is OFF
       await expect(page.getByTestId('form-item-alert')).not.toBeVisible();
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
-      const response = await glossaryResponse;
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/glossaries') &&
+            response.request().method() === 'POST'
+        ),
+        page.getByTestId('save-glossary').press('Enter'),
+      ]);
       const responseData = await response.json();
 
       // Store response data for cleanup
@@ -128,9 +133,14 @@ test.describe('Glossary Advanced Operations', () => {
         type: 'Users',
       });
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
-      const response = await glossaryResponse;
+      const [response] = await Promise.all([
+        page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/glossaries') &&
+            response.request().method() === 'POST'
+        ),
+        page.getByTestId('save-glossary').press('Enter'),
+      ]);
       glossary.responseData = await response.json();
 
       // Verify first owner is visible by checking owner link contains user name

@@ -27,7 +27,7 @@ export const getEntityFqn = (
 
 const findOptionByScrolling = async (page: Page, endpoint: string) => {
   let tries = 0;
-  const maxTries = 5; // Limit the number of scroll attempts to prevent infinite loops
+  const maxTries = 10;
   const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
   const dropdown = page
     .getByTestId('global-search-select-dropdown')
@@ -38,10 +38,25 @@ const findOptionByScrolling = async (page: Page, endpoint: string) => {
       await option.click();
       return;
     }
-    // Scroll the dropdown to load more options
-    await dropdown.evaluate((element) => {
-      element.scrollBy(0, 100); // Adjust scroll amount as needed
+    const didScroll = await dropdown.evaluate((element) => {
+      const previousScrollTop = element.scrollTop;
+      element.scrollBy(0, Math.max(element.clientHeight, 100));
+
+      return element.scrollTop > previousScrollTop;
     });
+    const optionBecameVisible = await option
+      .waitFor({ state: 'visible', timeout: 1_000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (optionBecameVisible) {
+      await option.click();
+      return;
+    }
+
+    if (!didScroll) {
+      break;
+    }
     tries++;
   }
   await dropdown.evaluate((element) => {
