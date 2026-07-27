@@ -27,6 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -58,18 +59,21 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.topology import NodeStage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -105,10 +109,14 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_SCHEMATA,
     SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS,
     SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
+)
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    build_metric_request,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
     _current_database_schema,
@@ -303,6 +311,16 @@ def _build_semantic_view_column(entry: dict) -> dict:
     }
 
 
+_SNOWFLAKE_TOPOLOGY = DatabaseServiceTopology()
+_SNOWFLAKE_TOPOLOGY.table.stages.append(
+    NodeStage(  # pyright: ignore[reportCallIssue]
+        type_=CreateMetricRequest,
+        processor="yield_semantic_view_metrics",
+        nullable=True,
+    )
+)
+
+
 # pylint: disable=too-many-public-methods
 class SnowflakeSource(
     ExternalTableLineageMixin,
@@ -315,6 +333,7 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
+    topology = _SNOWFLAKE_TOPOLOGY
 
     def __init__(
         self,
@@ -1194,6 +1213,47 @@ class SnowflakeSource(
             for row in cursor:
                 _merge_semantic_view_column(merged, kind, row)
         return [_build_semantic_view_column(entry) for entry in merged.values()]
+
+    def _semantic_rows(self, query: str, schema: str, view: str) -> List[tuple]:  # noqa: UP006
+        cursor = self.connection.execute(text(query.format(schema=schema, semantic_view=view)))
+        return list(cursor)  # pyright: ignore[reportArgumentType]
+
+    def _semantic_view_reference(self, database: str, schema: str, view: str) -> Optional[EntityReference]:  # noqa: UP045
+        view_fqn = fqn._build(self.context.get().database_service, database, schema, view)  # pyright: ignore[reportAttributeAccessIssue]
+        entity = self.metadata.get_by_name(entity=Table, fqn=view_fqn)
+        reference = None
+        if entity is not None:
+            reference = EntityReference(id=entity.id.root, type="table")  # pyright: ignore[reportCallIssue]
+        return reference
+
+    def yield_semantic_view_metrics(self, table_name_and_type) -> Iterable[Either[CreateMetricRequest]]:
+        """Yield one Metric entity per Snowflake metric on a semantic view."""
+        if table_name_and_type.type_ == TableType.SemanticView:
+            service = self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
+            database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+            schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+            view = table_name_and_type.name
+            try:
+                dimension_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_DIMENSIONS, schema, view)
+                fact_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_FACTS, schema, view)
+                metric_rows = self._semantic_rows(SNOWFLAKE_GET_SEMANTIC_VIEW_METRICS, schema, view)
+                view_ref = self._semantic_view_reference(database, schema, view)
+                for metric_row in metric_rows:
+                    yield Either(  # pyright: ignore[reportCallIssue]
+                        right=build_metric_request(
+                            service,
+                            database,
+                            schema,
+                            view,
+                            metric_row,
+                            dimension_rows,
+                            fact_rows,
+                            view_ref,
+                        )
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning(f"Failed to build metrics for semantic view [{schema}.{view}]: {exc}")
+                logger.debug(traceback.format_exc())
 
     def _get_columns_internal(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,

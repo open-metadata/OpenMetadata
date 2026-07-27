@@ -10,8 +10,13 @@
 #  limitations under the License.
 """Unit tests for the Snowflake semantic-view metric builders."""
 
+from unittest.mock import MagicMock
+
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Language, MetricType
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
     build_metric_name,
     build_metric_request,
@@ -86,3 +91,80 @@ def test_build_metric_request_without_comment_or_assets():
     assert request.measures is None
     assert request.assets is None
     assert request.metricType == MetricType.COUNT
+
+
+def _make_source():
+    from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+
+    source = SnowflakeSource.__new__(SnowflakeSource)
+    context = MagicMock()
+    context.get.return_value = MagicMock(database_service="snowflake_svc", database="TEST_DB", database_schema="SALES")
+    # `connection` is a read-only property backed by `_connection_map`
+    # (see CommonDbSourceService.connection) - populate the map directly
+    # rather than assigning to the property.
+    context.get_current_thread_id.return_value = "test-thread"
+    source.context = context
+    source._connection_map = {"test-thread": MagicMock()}
+    source.metadata = MagicMock()
+    view_entity = MagicMock()
+    view_entity.id.root = "12345678-1234-1234-1234-123456789012"
+    source.metadata.get_by_name.return_value = view_entity
+    return source
+
+
+def _rows_for(query):
+    # `_semantic_rows` interpolates `{schema}`/`{semantic_view}` via `.format()`
+    # before wrapping the query in `text(...)`, so the executed SQL text never
+    # matches the raw, unformatted query constants byte-for-byte. Match on the
+    # source catalog view name instead, which `.format()` leaves untouched.
+    lowered = query.lower()
+    if "semantic_dimensions" in lowered:
+        return [DIM_REGION]
+    if "semantic_facts" in lowered:
+        return [FACT_LINE_AMOUNT]
+    return [TOTAL_REVENUE, ORDER_COUNT]
+
+
+def test_yield_semantic_view_metrics_yields_one_per_metric():
+    source = _make_source()
+    source.connection.execute.side_effect = lambda clause: _rows_for(str(clause.text))
+
+    results = list(
+        source.yield_semantic_view_metrics(TableNameAndType(name="sales_analysis", type_=TableType.SemanticView))
+    )
+    requests = [r.right for r in results if r.right is not None]
+    assert len(requests) == 2
+    names = {r.displayName for r in requests}
+    assert names == {"total_revenue", "order_count"}
+    revenue = next(r for r in requests if r.displayName == "total_revenue")
+    assert str(revenue.assets.root[0].id.root) == "12345678-1234-1234-1234-123456789012"
+    assert [d.name for d in revenue.dimensions] == ["region"]
+    assert [m.name for m in revenue.measures] == ["line_amount"]
+
+
+def test_yield_semantic_view_metrics_skips_non_semantic_tables():
+    source = _make_source()
+    results = list(source.yield_semantic_view_metrics(TableNameAndType(name="regular_table", type_=TableType.Regular)))
+    assert results == []
+    source.connection.execute.assert_not_called()
+
+
+def test_yield_semantic_view_metrics_warns_and_continues_on_error():
+    source = _make_source()
+    source.connection.execute.side_effect = Exception("boom")
+    results = list(
+        source.yield_semantic_view_metrics(TableNameAndType(name="sales_analysis", type_=TableType.SemanticView))
+    )
+    assert results == []
+
+
+def test_snowflake_topology_does_not_leak_into_base_topology():
+    """Import-time isolation guard: constructing the Snowflake module must not
+    mutate the shared base DatabaseServiceTopology definition."""
+    import metadata.ingestion.source.database.snowflake.metadata  # noqa: F401
+    from metadata.ingestion.source.database.database_service import (
+        DatabaseServiceTopology,
+    )
+
+    base_stage_types = [stage.type_ for stage in DatabaseServiceTopology().table.stages]
+    assert CreateMetricRequest not in base_stage_types
