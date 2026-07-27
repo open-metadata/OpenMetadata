@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
@@ -94,6 +96,56 @@ class EntityETagTest {
   }
 
   @Test
+  void etagReflectsRelationshipOnlyMutations() {
+    // Regression matrix (Slack thread, validated against AUT): every mutation that rewrites the
+    // response body WITHOUT bumping version/updatedAt must still move the ETag. votes/followers are
+    // covered above; this locks in the rest of the stale-304 class. Each pair shares id + version +
+    // updatedAt and differs only in the named field — exactly the shape a version-only ETag missed.
+    UUID t = UUID.randomUUID();
+    UUID u = UUID.randomUUID();
+    record Case(String field, EntityInterface before, EntityInterface after) {}
+    List<Case> cases =
+        List.of(
+            new Case(
+                "customMetrics",
+                partialTable(t).withCustomMetrics(List.of(new CustomMetric().withName("cm1"))),
+                partialTable(t).withCustomMetrics(List.of(new CustomMetric().withName("cm2")))),
+            new Case(
+                "testSuite",
+                partialTable(t).withTestSuite(ref("testSuite", "ts1")),
+                partialTable(t).withTestSuite(ref("testSuite", "ts2"))),
+            new Case(
+                "domains",
+                partialTable(t).withDomains(List.of(ref("domain", "d1"))),
+                partialTable(t).withDomains(List.of(ref("domain", "d2")))),
+            new Case(
+                "dataProducts",
+                partialTable(t).withDataProducts(List.of(ref("dataProduct", "dp1"))),
+                partialTable(t).withDataProducts(List.of(ref("dataProduct", "dp2")))),
+            new Case(
+                "tags",
+                partialTable(t).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive"))),
+                partialTable(t).withTags(List.of(new TagLabel().withTagFQN("PII.None")))),
+            new Case(
+                "user.roles",
+                user(u).withRoles(List.of(ref("role", "r1"))),
+                user(u).withRoles(List.of(ref("role", "r2")))),
+            new Case(
+                "user.defaultPersona",
+                user(u).withDefaultPersona(ref("persona", "p1")),
+                user(u).withDefaultPersona(ref("persona", "p2"))));
+
+    for (Case c : cases) {
+      assertEquals(c.before().getVersion(), c.after().getVersion());
+      assertEquals(c.before().getUpdatedAt(), c.after().getUpdatedAt());
+      assertNotEquals(
+          EntityETag.generateETag(c.before()),
+          EntityETag.generateETag(c.after()),
+          c.field() + " change must move the ETag");
+    }
+  }
+
+  @Test
   void validateETagSupportsExactWildcardWeakAndMultipleMatches() {
     EntityInterface entity = entity(2.5, 98765L);
     String etag = EntityETag.generateETag(entity);
@@ -145,5 +197,13 @@ class EntityETagTest {
 
   private static Table partialTable(UUID id) {
     return new Table().withId(id).withName("etag_table").withVersion(1.0).withUpdatedAt(100L);
+  }
+
+  private static User user(UUID id) {
+    return new User().withId(id).withName("etag_user").withVersion(1.0).withUpdatedAt(100L);
+  }
+
+  private static EntityReference ref(String type, String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(type).withName(name);
   }
 }
