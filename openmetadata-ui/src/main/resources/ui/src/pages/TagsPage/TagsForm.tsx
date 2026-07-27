@@ -84,11 +84,33 @@ const mapEntityReferenceToSelectItem = (
   value: ref,
 });
 
+const mapOwnerToSelectItem = (ref: EntityReference): TagFormSelectItem => {
+  const displayName = getEntityName(ref);
+  const isTeam = ref.type === EntityType.TEAM;
+  const { color, backgroundColor, character } = getRandomColor(displayName);
+
+  return {
+    id: ref.id,
+    label: displayName,
+    supportingText: ref.fullyQualifiedName ?? ref.type,
+    icon: isTeam ? (
+      <Avatar placeholderIcon={Users01} size="xs" />
+    ) : (
+      <Avatar
+        initials={character}
+        size="xs"
+        style={{ color, backgroundColor }}
+      />
+    ),
+    value: ref,
+  };
+};
+
 const convertToTagFormValues = (
   entity: Classification | Tag
 ): Partial<TagFormValues> => ({
   ...entity,
-  owners: (entity.owners ?? []).map(mapEntityReferenceToSelectItem),
+  owners: (entity.owners ?? []).map(mapOwnerToSelectItem),
   domains: (entity.domains ?? []).map(mapEntityReferenceToSelectItem),
 });
 
