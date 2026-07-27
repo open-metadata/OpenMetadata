@@ -797,11 +797,13 @@
         <artifactId>bcutil-jdk18on</artifactId>
         <version>1.84</version>
       </dependency>
-      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively). -->
+      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
+           3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this
+           reaches the runtime classpath, but Snyk's Maven scanner walks the provided tree. -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.1.4</version>
+        <version>3.1.5</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
