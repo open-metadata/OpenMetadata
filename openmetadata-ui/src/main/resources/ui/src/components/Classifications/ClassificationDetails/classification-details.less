@@ -10,9 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+// Full-height flex layout so the content fills the panel and only the card body
+// scrolls internally when needed — no page-level vertical scrollbar.
+.classification-details-container {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.classification-details-content.ant-row {
+  flex: 1 1 auto;
+  min-height: 0;
+
+  // Both columns share the row height so left and right panels line up.
+  > .ant-col {
+    height: 100%;
+  }
+}
+
 .classification-details-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
   > .ant-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 16px;
+    // Only the antd table body scrolls (via scroll.y); the card body itself does
+    // not, so there is no double scrollbar and the pagination row stays visible
+    // below the scrolling tag rows. (Do NOT flex the antd table Row here — that
+    // collapses the table's internal layout.)
+    overflow: hidden;
 
     .table-container {
       position: relative;

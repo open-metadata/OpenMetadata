@@ -750,7 +750,7 @@ const TagsPage = () => {
   );
 
   const classificationEmptyState = (
-    <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px] tw:border tw:border-border-secondary">
+    <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
       <EmptyPlaceholder
         actions={
           createClassificationPermission
