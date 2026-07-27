@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.2.1-python3.10
+FROM apache/airflow:3.2.2-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -104,8 +104,30 @@ ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install --upgrade pip "setuptools<81"
 # Pre-install cx-Oracle without build isolation to use the pinned setuptools
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.1/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+
+# Patch vulnerable Hive-metastore jars bundled inside PySpark 3.5.6 (the Deltalake
+# connector calls .enableHiveSupport()). Swap in fixed derby/zookeeper and drop the
+# legacy jackson-asl jars (no patched release exists). SHA1-pinned to Maven Central.
+#   derby 10.14.2.0 -> 10.17.1.0    CVE-2022-46337 (LDAP auth bypass); Java 17 in this image
+#   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass)
+#   jackson-mapper/core-asl 1.9.13  CVE-2019-10202 (deserialization RCE) -- removed, no fix upstream
+RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))')" \
+  && cd "${JARS_DIR}" \
+  && rm -f derby-*.jar zookeeper-*.jar zookeeper-jute-*.jar \
+           jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
+  && for entry in \
+       "derby-10.17.1.0.jar|org/apache/derby/derby/10.17.1.0/derby-10.17.1.0.jar|e90e61e8ee731614a9bafd3d81155e09fff5e80c" \
+       "derbyshared-10.17.1.0.jar|org/apache/derby/derbyshared/10.17.1.0/derbyshared-10.17.1.0.jar|e6eac60d1b80b3781dff97ccef88fa131043f2a5" \
+       "derbytools-10.17.1.0.jar|org/apache/derby/derbytools/10.17.1.0/derbytools-10.17.1.0.jar|6d1a4e5e0f5c26516abbba85ece081506b9ad2e1" \
+       "zookeeper-3.7.2.jar|org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar|3b7c2c26b697094fc29e5a78a522cffa1a55b26d" \
+       "zookeeper-jute-3.7.2.jar|org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar|1ca84725b0e581c8fef7c54e5355f3b8f7e44410" \
+     ; do \
+       name="${entry%%|*}"; rest="${entry#*|}"; path="${rest%%|*}"; sha="${rest##*|}"; \
+       wget -q "https://repo1.maven.org/maven2/${path}" -O "${name}" \
+       && echo "${sha}  ${name}" | sha1sum -c - ; \
+     done
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
