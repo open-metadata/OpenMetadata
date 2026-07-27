@@ -225,7 +225,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="h-full flex-center border-default border-radius-sm">
+      <div className="h-full flex-center border-default border-radius-sm tw:overflow-hidden">
         <ErrorPlaceHolder
           className="border-none"
           contentMaxWidthClass="tw:max-w-96"
