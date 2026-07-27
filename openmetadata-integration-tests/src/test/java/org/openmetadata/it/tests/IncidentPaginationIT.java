@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -37,10 +39,12 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.SAME_THREAD)
 public class IncidentPaginationIT {
   private static final Logger LOG = LoggerFactory.getLogger(IncidentPaginationIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -286,23 +290,32 @@ public class IncidentPaginationIT {
 
     TestCaseResolutionStatus incident =
         JsonUtils.convertValue(initialResponse.getData().get(0), TestCaseResolutionStatus.class);
-    Entity.getCollectionDAO()
-        .relationshipDAO()
-        .delete(
-            target.getId(),
-            Entity.TEST_CASE,
-            incident.getId(),
-            Entity.TEST_CASE_RESOLUTION_STATUS,
-            Relationship.PARENT_OF.ordinal());
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        Entity.getCollectionDAO().relationshipDAO();
+    relationshipDAO.delete(
+        target.getId(),
+        Entity.TEST_CASE,
+        incident.getId(),
+        Entity.TEST_CASE_RESOLUTION_STATUS,
+        Relationship.PARENT_OF.ordinal());
 
-    ListResponse<TestCaseResolutionStatus> orphanedResponse =
-        client.testCaseResolutionStatuses().searchList(initialParams);
+    try {
+      ListResponse<TestCaseResolutionStatus> orphanedResponse =
+          client.testCaseResolutionStatuses().searchList(initialParams);
 
-    assertNotNull(orphanedResponse);
-    assertEquals(
-        0,
-        orphanedResponse.getData().size(),
-        "Orphaned incident records should be skipped instead of failing the search listing");
+      assertNotNull(orphanedResponse);
+      assertEquals(
+          0,
+          orphanedResponse.getData().size(),
+          "Orphaned incident records should be skipped instead of failing the search listing");
+    } finally {
+      relationshipDAO.insert(
+          target.getId(),
+          incident.getId(),
+          Entity.TEST_CASE,
+          Entity.TEST_CASE_RESOLUTION_STATUS,
+          Relationship.PARENT_OF.ordinal());
+    }
   }
 
   @Test
