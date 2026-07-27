@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -39,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -384,6 +387,103 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     TestSuite fetched = client.testSuites().get(testSuite.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
     assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  // ===================================================================
+  // SOFT-DELETED OWNER PATCH TESTS (issue #30117)
+  //
+  // A detail page loads the entity with include=all, so a soft-deleted owner is present in the
+  // client's owner array and in the positional JSON Patch it computes. The server used to load the
+  // PATCH base with NON_DELETED, which dropped that owner and shrank the array — a positional op
+  // then referenced an index past the end ("array item index out of range") and the dangling
+  // ownership could never be removed. These tests reproduce that exact client behavior.
+  // ===================================================================
+
+  @Test
+  void patch_removeSoftDeletedOwnerSortingLast_removesOwnerWithoutCrash(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Owners are ordered by name; the doomed owner is named to sort LAST so its positional index
+    // is the highest — the index that goes out of range once the server filters it from the base.
+    User ownerA = UserTestFactory.createUser(ns, "aaa_owner");
+    User ownerB = UserTestFactory.createUser(ns, "mmm_owner");
+    User doomed = UserTestFactory.createUser(ns, "zzz_owner");
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_softdeleted_owner"));
+    request.setOwners(
+        List.of(
+            ownerA.getEntityReference(), ownerB.getEntityReference(), doomed.getEntityReference()));
+    String id = createEntity(request).getId().toString();
+
+    // The OWNS relationship survives a soft delete, so the user is genuinely still an owner.
+    client.users().delete(doomed.getId().toString());
+
+    TestSuite loaded = client.testSuites().get(id, "owners", "all");
+    assertEquals(
+        3,
+        loaded.getOwners().size(),
+        "include=all should still surface the soft-deleted owner the UI diffs against");
+    int doomedIndex = ownerIndex(loaded, doomed.getId());
+    assertEquals(2, doomedIndex, "soft-deleted owner should sort last");
+
+    JsonNode patch =
+        JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/owners/" + doomedIndex + "\"}]");
+    TestSuite patched = client.testSuites().patch(id, patch);
+    assertNotNull(patched, "PATCH must not fail with 'array item index out of range'");
+
+    List<UUID> ownerIds = ownerIds(client.testSuites().get(id, "owners", "all"));
+    assertEquals(2, ownerIds.size(), "the dangling soft-deleted ownership should be removed");
+    assertFalse(ownerIds.contains(doomed.getId()), "soft-deleted owner should be cleaned up");
+    assertTrue(
+        ownerIds.contains(ownerA.getId()) && ownerIds.contains(ownerB.getId()),
+        "active owners must be preserved");
+  }
+
+  @Test
+  void patch_removeSoftDeletedOwnerSortingInMiddle_removesCorrectOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // The soft-deleted owner sorts in the MIDDLE. Under the old NON_DELETED base the server saw a
+    // shorter, re-indexed array, so the positional remove silently deleted the wrong (active) owner
+    // and left the soft-deleted one dangling. With the fix, client and server indexes stay aligned
+    // and the intended owner is removed.
+    User first = UserTestFactory.createUser(ns, "aaa_active");
+    User doomed = UserTestFactory.createUser(ns, "mmm_doomed");
+    User last = UserTestFactory.createUser(ns, "zzz_active");
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_remove_middle_softdeleted"));
+    request.setOwners(
+        List.of(
+            first.getEntityReference(), doomed.getEntityReference(), last.getEntityReference()));
+    String id = createEntity(request).getId().toString();
+
+    client.users().delete(doomed.getId().toString());
+
+    TestSuite loaded = client.testSuites().get(id, "owners", "all");
+    int doomedIndex = ownerIndex(loaded, doomed.getId());
+    assertEquals(1, doomedIndex, "soft-deleted owner should sort in the middle");
+
+    JsonNode patch =
+        JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/owners/" + doomedIndex + "\"}]");
+    TestSuite patched = client.testSuites().patch(id, patch);
+    assertNotNull(patched, "PATCH must not fail with 'array item index out of range'");
+
+    List<UUID> ownerIds = ownerIds(client.testSuites().get(id, "owners", "all"));
+    assertFalse(
+        ownerIds.contains(doomed.getId()), "the soft-deleted owner should be the one removed");
+    assertTrue(
+        ownerIds.contains(first.getId()) && ownerIds.contains(last.getId()),
+        "both active owners must survive - the positional remove must not hit the wrong index");
+  }
+
+  private int ownerIndex(TestSuite suite, UUID ownerId) {
+    return ownerIds(suite).indexOf(ownerId);
+  }
+
+  private List<UUID> ownerIds(TestSuite suite) {
+    return suite.getOwners().stream().map(EntityReference::getId).collect(Collectors.toList());
   }
 
   @Test

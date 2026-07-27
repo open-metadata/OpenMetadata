@@ -428,6 +428,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
+  // A PATCH's base ("original") must resolve user references the same way the client did when it
+  // computed the diff. Detail pages fetch with include=all, so a soft-deleted owner (or expert,
+  // reviewer, follower) is in the client's base. Loading the server base with NON_DELETED drops it
+  // and shrinks the array, so a positional JSON-Patch op goes out of range ("array item index out
+  // of range") and the dangling relationship can never be removed. Resolve these relations with ALL
+  // for the patch base; the entity itself still loads NON_DELETED so a soft-deleted entity is not
+  // patched through this path. See issue #30117.
+  private static final RelationIncludes PATCH_ORIGINAL_INCLUDES =
+      new RelationIncludes(
+          NON_DELETED,
+          Map.of(
+              FIELD_OWNERS, ALL,
+              FIELD_EXPERTS, ALL,
+              FIELD_REVIEWERS, ALL,
+              FIELD_FOLLOWERS, ALL));
+
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
    * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
@@ -4257,7 +4273,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Get only the fields relevant to this patch operation
     T original;
     try (var ignored = phase("patchLoadOriginal")) {
-      original = get(null, id, patchFields, NON_DELETED, false);
+      original = get(null, id, patchFields, PATCH_ORIGINAL_INCLUDES, false);
     }
 
     // Validate ETag if If-Match header is provided
@@ -4319,7 +4335,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Get only the fields relevant to this patch operation
     T original;
     try (var ignored = phase("patchLoadOriginalByName")) {
-      original = getByName(null, fqn, patchFields, NON_DELETED, false);
+      original = getByName(null, fqn, patchFields, PATCH_ORIGINAL_INCLUDES, false);
     }
 
     // Validate ETag if If-Match header is provided
