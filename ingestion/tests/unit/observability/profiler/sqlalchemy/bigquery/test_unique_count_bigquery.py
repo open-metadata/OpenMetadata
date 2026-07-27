@@ -96,7 +96,7 @@ def test_unique_count_bigquery_timestamp_and_struct():
     )
 
     # Verify outer countif uses value_count integer alias and literal 1 (no timestamp type mismatch)
-    assert "countif(`value_count` = 1)" in sql_ts
+    assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in sql_ts
     assert "timestamp" not in sql_ts.lower()
 
     # 2. Test DATE column created_date via profiler_interface
@@ -127,8 +127,8 @@ def test_unique_count_bigquery_timestamp_and_struct():
     )
 
     # Verify outer countif uses value_count integer alias and literal 1 (no date type mismatch)
-    assert "countif(`value_count` = 1)" in sql_date
-    assert "SELECT count(`created_date`) AS `value_count`" in sql_date
+    assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in sql_date
+    assert f"SELECT count(`created_date`) AS `{VALUE_COUNT_ALIAS}`" in sql_date
 
     # 3. Test nested STRUCT column customer.email via profiler_interface
     col_struct = Orders.__table__.c["customer_email"]
@@ -158,8 +158,8 @@ def test_unique_count_bigquery_timestamp_and_struct():
     )
 
     # Verify outer expression isolates countif(`value_count` = 1) without dotted path in outer query
-    assert "countif(`value_count` = 1) AS `uniqueCount`" in sql_struct
-    assert "SELECT count(`customer`.`email`) AS `value_count`" in sql_struct
+    assert f"countif(`{VALUE_COUNT_ALIAS}` = 1) AS `uniqueCount`" in sql_struct
+    assert f"SELECT count(`customer`.`email`) AS `{VALUE_COUNT_ALIAS}`" in sql_struct
     assert "GROUP BY `orders`.`customer`.`email`" in sql_struct
 
 
@@ -208,7 +208,7 @@ def test_column_values_to_be_unique_validator_bigquery():
             dialect=dialect, compile_kwargs={"literal_binds": True}
         )
     )
-    assert "SELECT count(`customer`.`email`) AS `value_count`" in cte_sql
+    assert f"SELECT count(`customer`.`email`) AS `{VALUE_COUNT_ALIAS}`" in cte_sql
 
     # Note: unique_count expression is wrapped with .label(Metrics.uniqueCount.name)
     # in validator._run_results for result mapping keys.
@@ -218,4 +218,4 @@ def test_column_values_to_be_unique_validator_bigquery():
             dialect=dialect, compile_kwargs={"literal_binds": True}
         )
     )
-    assert "countif(`value_count` = 1)" in expr_sql
+    assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in expr_sql
