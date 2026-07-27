@@ -111,66 +111,76 @@ def test_defer_build_env_var_disables_it():
     assert result.stdout.strip().endswith("OK")
 
 
-_MOCKVALSER_DUMP_PROBE = """
+_NESTED_DUMP_PROBE = """
 import warnings
 
 warnings.filterwarnings("ignore")
 
-# Import BaseModel first so `set_model_mocks` runs against a class that has
-# never had a real serializer built (matches the fresh-process CI state that
-# hits `'MockValSer' object cannot be converted to 'SchemaSerializer'`).
-from pydantic._internal._mock_val_ser import set_model_mocks
-from metadata.generated.schema.metadataIngestion.workflow import Source
-
-set_model_mocks(Source)
-assert type(Source.__pydantic_serializer__).__name__ == "MockValSer", (
-    "probe requires MockValSer starting state"
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+    Source,
 )
 
-source = Source.model_validate({
-    "type": "snowflake",
-    "serviceName": "e2e_defer_build_probe",
-    "serviceConnection": {
-        "config": {
-            "type": "Snowflake",
-            "username": "u",
-            "password": "p",
-            "account": "a",
-            "warehouse": "w",
+assert Source.__pydantic_complete__ is False, "Source was built eagerly at import"
+
+config = OpenMetadataWorkflowConfig.model_validate({
+    "source": {
+        "type": "snowflake",
+        "serviceName": "e2e_defer_build_probe",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "username": "u",
+                "password": "p",
+                "account": "a",
+                "warehouse": "w",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "token"},
         }
     },
-    "sourceConfig": {"config": {}},
 })
 
-dumped = source.model_dump()
+# Validating the parent composes Source into the parent's schema, so Source
+# itself stays unbuilt. This is the state MetadataWorkflow._get_source sees.
+assert Source.__pydantic_complete__ is False, "nested Source built by parent validation"
+
+dumped = config.source.model_dump()
 assert dumped["type"] == "snowflake"
 assert dumped["serviceName"] == "e2e_defer_build_probe"
+assert Source.__pydantic_complete__ is True, "model_dump left the nested class unbuilt"
 print("OK")
 """
 
 
 def test_nested_model_dump_after_parent_validation_is_defer_build_safe():
     """
-    Regression test for the CLI E2E MockValSer failure.
+    Dumping a nested model whose class defer_build left unbuilt must work.
 
-    Under defer_build=True, a nested model exposed as a field of a validated
-    parent never has its own class-level schema built (the parent's schema
-    handles the composition). Calling `.model_dump()` on the nested instance
-    then routes through `type(nested).__pydantic_serializer__`, which is still
-    a MockValSer, and pydantic-core raises
-    ``'MockValSer' object cannot be converted to 'SchemaSerializer'``.
+    ``MetadataWorkflow._get_source`` calls ``self.config.source.model_dump()``.
+    Under defer_build=True the nested ``Source`` class never has its own
+    class-level schema built — the validated parent's schema handles it by
+    composition — so serialization has to go through a deferred serializer.
+    The nightly CLI E2E runs hit
+    ``'MockValSer' object cannot be converted to 'SchemaSerializer'`` on exactly
+    this path when pydantic's own lazy rebuild fails to resolve the generated
+    forward references.
 
-    ``BaseModel.model_dump`` force-rebuilds the class in that case. Runs in a
-    subprocess so the probe starts from an unbuilt Source class.
+    Runs in a subprocess so the probe starts from an unbuilt Source class.
     """
     result = subprocess.run(
-        [sys.executable, "-c", _MOCKVALSER_DUMP_PROBE],
+        [sys.executable, "-c", _NESTED_DUMP_PROBE],
         capture_output=True,
         text=True,
         check=False,
         env=os.environ,
     )
-    assert result.returncode == 0, (
-        f"nested-dump probe failed:\n{result.stdout}\n{result.stderr}"
-    )
+    assert result.returncode == 0, f"nested-dump probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
