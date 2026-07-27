@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentMap;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexServerStatsDAO.AggregatedServerStats;
-import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexServerStatsDAO.EntityStats;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexServerStatsDAO.AggregatedServerStats;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexServerStatsDAO.EntityStats;
 
 /**
  * Manages stats trackers for all entity types within a job. Provides a simple API to get trackers
