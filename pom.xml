@@ -162,7 +162,7 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty.version>12.1.7</jetty.version>
+    <jetty.version>12.1.10</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
@@ -179,6 +179,25 @@
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${org.junit.jupiter.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <!-- Pin every org.eclipse.jetty:* to one patched line. Declaring individual artifacts
+           with ${jetty.version} only covers the ones named explicitly; the rest arrive
+           transitively from dropwizard-core and stay unmanaged on its older line (e.g.
+           jetty-security, CVE-2026-10050 digest authentication bypass). Imported before
+           anything that pulls dropwizard so the patched line wins. -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-bom</artifactId>
+        <version>${jetty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.ee10</groupId>
+        <artifactId>jetty-ee10-bom</artifactId>
+        <version>${jetty.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -701,7 +720,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.135.Final</version>
+        <version>4.1.136.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -778,11 +797,13 @@
         <artifactId>bcutil-jdk18on</artifactId>
         <version>1.84</version>
       </dependency>
-      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively). -->
+      <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
+           3.1.5 adds CVE-2026-59889. jsonschema2pojo-core is scope=provided so none of this
+           reaches the runtime classpath, but Snyk's Maven scanner walks the provided tree. -->
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.1.4</version>
+        <version>3.1.5</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
