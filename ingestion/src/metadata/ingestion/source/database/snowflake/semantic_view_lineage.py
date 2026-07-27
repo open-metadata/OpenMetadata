@@ -26,6 +26,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple  # noqa: UP03
 from sqlalchemy import text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -42,6 +43,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB,
     SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB,
+)
+from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
+    build_metric_name,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -64,7 +68,6 @@ _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
     "semantic_facts",
-    "semantic_metrics",
 )
 
 
@@ -167,11 +170,13 @@ class SnowflakeSemanticViewLineage:
         engine,
         database_filter_pattern,
         resolve_table_by_fqn: Callable[[str], Optional[Table]],  # noqa: UP045
+        resolve_metric_by_name: Callable[[str], Optional[Metric]],  # noqa: UP045
     ):
         self.service_name = service_name
         self.engine = engine
         self.database_filter_pattern = database_filter_pattern
         self.resolve_table_by_fqn = resolve_table_by_fqn
+        self.resolve_metric_by_name = resolve_metric_by_name
 
     def iter_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """Yield semantic view lineage across every allowed database."""
@@ -198,7 +203,8 @@ class SnowflakeSemanticViewLineage:
     def _iter_database_lineage(self, database: str) -> Iterable[Either[AddLineageRequest]]:
         table_maps = self._fetch_table_maps(database)
         columns_by_view = self._fetch_columns(database)
-        for view_key in set(table_maps) | set(columns_by_view):
+        metrics_by_view = self._fetch_view_metrics(database)
+        for view_key in set(table_maps) | set(columns_by_view) | set(metrics_by_view):
             schema, view = view_key
             try:
                 yield from self._build_view_lineage(
@@ -208,6 +214,11 @@ class SnowflakeSemanticViewLineage:
                     table_maps.get(view_key, {}),
                     columns_by_view.get(view_key, {}),
                 )
+                view_entity = self.resolve_table_by_fqn(fqn._build(self.service_name, database, schema, view))
+                if view_entity is not None:
+                    yield from self._build_view_metric_edges(
+                        database, schema, view, view_entity, metrics_by_view.get(view_key, [])
+                    )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning(f"Failed semantic view lineage for [{database}.{schema}.{view}]: {exc}")
                 logger.debug(traceback.format_exc())
@@ -237,6 +248,46 @@ class SnowflakeSemanticViewLineage:
                 columns = columns_by_view.setdefault((schema, view), {})
                 columns.setdefault(name, {"expression": expression})
         return columns_by_view
+
+    def _fetch_view_metrics(self, database: str) -> Dict[ViewKey, List[str]]:  # noqa: UP006
+        """{(schema, view): [metric_name, ...]} for the whole database."""
+        metrics_by_view: Dict[ViewKey, List[str]] = {}  # noqa: UP006
+        query = SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB.format(
+            database=_quote_db(database), catalog_view="semantic_metrics"
+        )
+        for row in self._run(query):
+            schema, view, name = row[0], row[1], row[3]
+            metrics_by_view.setdefault((schema, view), []).append(name)
+        return metrics_by_view
+
+    def _build_view_metric_edges(
+        self,
+        database: str,
+        schema: str,
+        view: str,
+        view_entity: Table,
+        metric_names: List[str],  # noqa: UP006
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Yield one `semantic view -> Metric` edge per resolvable metric."""
+        requests: List[Either[AddLineageRequest]] = []  # noqa: UP006
+        for metric_name in metric_names:
+            name = build_metric_name(self.service_name, database, schema, view, metric_name)
+            metric = self.resolve_metric_by_name(name)
+            if metric is not None:
+                requests.append(
+                    Either(  # pyright: ignore[reportCallIssue]
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=_table_reference(view_entity),
+                                toEntity=EntityReference(id=metric.id.root, type="metric"),  # pyright: ignore[reportCallIssue]
+                                lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
+                                    source=LineageSource.ViewLineage,
+                                ),
+                            )
+                        )
+                    )
+                )
+        return requests
 
     def _build_view_lineage(
         self,

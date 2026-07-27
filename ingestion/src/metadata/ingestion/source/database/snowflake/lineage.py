@@ -23,6 +23,7 @@ from sqlalchemy import text
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import Container
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -266,6 +267,7 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             engine=self.engine,
             database_filter_pattern=self.source_config.databaseFilterPattern,
             resolve_table_by_fqn=self._get_table_by_fqn,
+            resolve_metric_by_name=self._get_metric_by_name,
         )
         yield from extractor.iter_lineage()
 
@@ -586,6 +588,9 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             entity = None
         self._table_cache[om_fqn] = entity
         return entity
+
+    def _get_metric_by_name(self, name: str) -> Optional[Metric]:  # noqa: UP045
+        return self.metadata.get_by_name(entity=Metric, fqn=name)
 
     def _resolve_container_by_path(self, stage_location: str) -> Optional[Container]:  # noqa: UP045
         try:

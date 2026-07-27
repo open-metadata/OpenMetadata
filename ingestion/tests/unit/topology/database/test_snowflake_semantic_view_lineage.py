@@ -92,6 +92,7 @@ def _extractor():
         engine=MagicMock(),
         database_filter_pattern=None,
         resolve_table_by_fqn=MagicMock(),
+        resolve_metric_by_name=lambda _n: None,
     )
 
 
@@ -230,3 +231,42 @@ def test_semantic_view_lineage_is_gated_by_include_flag():
     assert enabled(True, False) is False
     assert enabled(False, True) is False
     assert enabled(False, False) is False
+
+
+def test_semantic_column_catalog_views_exclude_metrics():
+    from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
+        SEMANTIC_COLUMN_CATALOG_VIEWS,
+    )
+
+    assert "semantic_metrics" not in SEMANTIC_COLUMN_CATALOG_VIEWS
+    assert set(SEMANTIC_COLUMN_CATALOG_VIEWS) == {"semantic_dimensions", "semantic_facts"}
+
+
+def test_view_to_metric_edge_emitted():
+    from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+    from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
+        SnowflakeSemanticViewLineage,
+    )
+
+    view_entity = MagicMock()
+    view_entity.id = UUID("11111111-1111-1111-1111-111111111111")
+    metric_entity = MagicMock()
+    metric_entity.id.root = UUID("22222222-2222-2222-2222-222222222222")
+
+    extractor = SnowflakeSemanticViewLineage(
+        service_name="snowflake_svc",
+        engine=MagicMock(),
+        database_filter_pattern=None,
+        resolve_table_by_fqn=lambda _f: view_entity,
+        resolve_metric_by_name=lambda _n: metric_entity,
+    )
+
+    requests = list(
+        extractor._build_view_metric_edges("TEST_DB", "SALES", "sales_analysis", view_entity, ["total_revenue"])
+    )
+    edges = [r.right for r in requests if r.right is not None]
+    assert len(edges) == 1
+    assert isinstance(edges[0], AddLineageRequest)
+    assert str(edges[0].edge.fromEntity.id.root) == str(view_entity.id)
+    assert str(edges[0].edge.toEntity.id.root) == str(metric_entity.id.root)
+    assert edges[0].edge.toEntity.type == "metric"
