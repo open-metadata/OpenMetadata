@@ -30,6 +30,32 @@ from metadata.ingestion.source.database.snowflake.utils import (
 )
 
 
+def test_semantic_column_description_has_no_expression():
+    from metadata.ingestion.source.database.snowflake.metadata import (
+        _build_semantic_column_description,
+    )
+
+    description = _build_semantic_column_description(
+        kinds=["Dimension"],
+        logical_table="customers",
+        synonyms="geo",
+        comment="Customer region",
+    )
+    assert "Expression" not in description
+    assert "[Dimension]" in description
+    assert "Synonyms: geo." in description
+    assert "Customer region" in description
+
+
+def test_semantic_view_column_queries_exclude_metrics():
+    from metadata.ingestion.source.database.snowflake.metadata import (
+        SEMANTIC_VIEW_COLUMN_QUERIES,
+    )
+
+    kinds = {kind for kind, _ in SEMANTIC_VIEW_COLUMN_QUERIES}
+    assert kinds == {"Dimension", "Fact"}
+
+
 def test_semantic_view_table_type_exists():
     assert TableType.SemanticView.value == "SemanticView"
 
@@ -104,34 +130,30 @@ def test_fetch_semantic_view_columns_merges_kinds_and_maps_types():
     # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
     dimension_rows = [
         ("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", None),
+        # same name as the fact -> kinds must merge onto one column
+        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.line_amount", None, None),
     ]
     fact_rows = [
         ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.o_totalprice", None, None),
     ]
-    metric_rows = [
-        # same name as the fact -> kinds must merge onto one column
-        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "SUM(orders.line_amount)", None, None),
-        ("ORDERS", "ORDER_COUNT", "NUMBER", "COUNT(orders.o_orderkey)", None, None),
-    ]
     self_mock.connection.execute.side_effect = [
         iter(dimension_rows),
         iter(fact_rows),
-        iter(metric_rows),
     ]
 
     columns = SnowflakeSource._fetch_semantic_view_columns(self_mock, "PUBLIC", "SALES_SEMANTIC")
 
     by_name = {c["name"]: c for c in columns}
-    assert set(by_name) == {"CUSTOMER_NAME", "LINE_AMOUNT", "ORDER_COUNT"}
+    assert set(by_name) == {"CUSTOMER_NAME", "LINE_AMOUNT"}
 
     dimension = by_name["CUSTOMER_NAME"]
     assert dimension["comment"].startswith("[Dimension]")
     assert "Logical table: CUSTOMERS." in dimension["comment"]
-    assert "Expression: customers.c_name." in dimension["comment"]
+    assert "Expression" not in dimension["comment"]
     assert dimension["system_data_type"] == "VARCHAR(100)"
 
-    # LINE_AMOUNT appears as both a fact and a metric -> both kinds on one column
-    assert by_name["LINE_AMOUNT"]["comment"].startswith("[Fact, Metric]")
+    # LINE_AMOUNT appears as both a dimension and a fact -> both kinds on one column
+    assert by_name["LINE_AMOUNT"]["comment"].startswith("[Dimension, Fact]")
 
 
 def test_get_semantic_view_columns_swallows_errors():
