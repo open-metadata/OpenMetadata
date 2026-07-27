@@ -85,7 +85,7 @@ function OntologyOnboardingEmptyState() {
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
       data-testid="ontology-graph-onboarding">
       <EmptyPlaceholder
         description={t('message.ontology-empty-description')}
@@ -503,27 +503,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
       <div
         className={classNames(
-          'tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden',
-          // 1px inset clears the container's overflow clip so the panel border
-          // isn't shaved. When the toolbar is shown (global), drop the TOP inset
-          // so the graph connects flush to the toolbar's bottom border; the
-          // standalone graph (glossary/term) keeps the inset on all sides.
+          'tw:flex tw:min-h-0 tw:flex-1',
           scope === 'global' && !showOnboardingEmptyState
             ? 'tw:px-px tw:pb-px'
-            : 'tw:px-px tw:pb-px tw:pt-0.5'
+            : 'tw:p-px'
         )}>
-        <div
-          className={classNames(
-            // `tw:isolate` forces a stacking/compositing context so WebKit
-            // clips the absolutely-positioned dotted backdrop + graph to this
-            // element's `border-radius` — without it the corners spill square.
-            'tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
-            !showOnboardingEmptyState &&
-              'tw:border tw:border-utility-gray-blue-100',
-            scope === 'global' && !showOnboardingEmptyState
-              ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
-              : 'tw:rounded-lg'
-          )}>
+        <div className="tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
           {!showOnboardingEmptyState && (
             <>
               <Card
@@ -600,7 +585,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           <div
             className={classNames(
               ONTOLOGY_GRAPH_BACKDROP_CLASS,
-              'tw:overflow-hidden'
+              'tw:overflow-hidden',
+              !showOnboardingEmptyState &&
+                (scope === 'global'
+                  ? 'tw:rounded-b-lg tw:rounded-t-none tw:border tw:border-t-0 tw:border-utility-gray-blue-100'
+                  : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100')
             )}>
             {renderGraphContent()}
           </div>
