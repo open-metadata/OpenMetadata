@@ -774,6 +774,7 @@
     "dimension": "Dimension",
     "dimension-entity": "Dimension ({{entity}})",
     "dimension-level": "Dimension Level",
+    "dimension-lowercase": "dimension",
     "dimension-plural": "Dimensions",
     "dimension-value": "Dimension Value",
     "dimensionality": "Dimensionality",
