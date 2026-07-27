@@ -5,16 +5,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
@@ -23,6 +31,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
@@ -268,6 +277,78 @@ class IngestionPipelineRepositoryTest {
     assertEquals("OpenMetadata", decrypted.getService().getName());
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("invalidSourceConfigs")
+  void validateSourceConfigHasTypeRejectsInvalidConfig(
+      String testCase, IngestionPipeline pipeline, String expectedMessage) {
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+
+    assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsRawConfigWithType() {
+    IngestionPipeline pipeline = pipelineWithConfig(Map.of("type", "DatabaseMetadata"));
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsTypedConfigWithDefaultType() {
+    IngestionPipeline pipeline = pipelineWithConfig(new DatabaseServiceMetadataPipeline());
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
+  private static Stream<Arguments> invalidSourceConfigs() {
+    Map<String, Object> nullType = new HashMap<>();
+    nullType.put("type", null);
+
+    return Stream.of(
+        Arguments.of(
+            "missing sourceConfig",
+            new IngestionPipeline(),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "missing config",
+            new IngestionPipeline().withSourceConfig(new SourceConfig()),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "empty config", pipelineWithConfig(Map.of()), "sourceConfig.config.type is required"),
+        Arguments.of(
+            "null type", pipelineWithConfig(nullType), "sourceConfig.config.type is required"),
+        Arguments.of(
+            "empty type",
+            pipelineWithConfig(Map.of("type", "")),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "blank type",
+            pipelineWithConfig(Map.of("type", "   ")),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "non-string type",
+            pipelineWithConfig(Map.of("type", 42)),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "raw-map enum type",
+            pipelineWithConfig(
+                Map.of(
+                    "type",
+                    DatabaseServiceMetadataPipeline.DatabaseMetadataConfigType.DATABASE_METADATA)),
+            "sourceConfig.config.type is required"),
+        Arguments.of(
+            "scalar config",
+            pipelineWithConfig("DatabaseMetadata"),
+            "sourceConfig.config must be an object with type"),
+        Arguments.of(
+            "list config",
+            pipelineWithConfig(List.of()),
+            "sourceConfig.config must be an object with type"));
+  }
+
   private static IngestionPipeline createPipelineWithSchedule(String schedule) {
     IngestionPipeline pipeline = createBasicPipeline();
     AirflowConfig airflowConfig = new AirflowConfig();
@@ -311,5 +392,9 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
+  }
+
+  private static IngestionPipeline pipelineWithConfig(Object config) {
+    return new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(config));
   }
 }
