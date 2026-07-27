@@ -2967,14 +2967,15 @@ class TestGetLatestResult(TestCase):
         got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
         self.assertIs(got, new_result)
 
-    def test_nanosecond_timestamp_parsed(self):
+    def test_nanosecond_timestamp_parsed_across_files(self):
         from metadata.ingestion.source.database.dbt.metadata import DbtSource
 
-        nano_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.979492347Z", "pass")
-        dbt_objects = self._make_dbt_objects([[nano_result]])
+        old_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.123456789Z", "pass")
+        new_result = self._make_result("test.pkg.my_test", "2026-07-22T09:27:12.987654321Z", "fail")
+        dbt_objects = self._make_dbt_objects([[old_result], [new_result]])
 
         got = DbtSource._get_latest_result(dbt_objects, "test.pkg.my_test")
-        self.assertIs(got, nano_result)
+        self.assertIs(got, new_result)
 
 
 class TestGetBlobsGroupedByDir(TestCase):
