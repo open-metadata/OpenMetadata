@@ -704,8 +704,8 @@ class EntityUtilClassBase {
     return false;
   }
 
-  public getEntityTypeFromString(entityType: string): EntityType | undefined {
-    return Object.values(EntityType).find((type) => type === entityType);
+  public getEntityTypes(): string[] {
+    return Object.values(EntityType);
   }
 }
 

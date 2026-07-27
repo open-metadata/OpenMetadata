@@ -334,21 +334,17 @@ describe('EntityUtilClassBase', () => {
     });
   });
 
-  describe('getEntityTypeFromString', () => {
-    it('should return the matching EntityType for a known type string', () => {
-      expect(entityUtil.getEntityTypeFromString(EntityType.TABLE)).toBe(
-        EntityType.TABLE
-      );
-      expect(entityUtil.getEntityTypeFromString('glossaryTerm')).toBe(
-        EntityType.GLOSSARY_TERM
-      );
+  describe('getEntityTypes', () => {
+    it('should return the list of OSS entity types', () => {
+      const types = entityUtil.getEntityTypes();
+
+      expect(types).toEqual(Object.values(EntityType));
+      expect(types).toContain(EntityType.TABLE);
+      expect(types).toContain(EntityType.GLOSSARY_TERM);
     });
 
-    it('should return undefined for a type string absent from the enum', () => {
-      expect(
-        entityUtil.getEntityTypeFromString('aiAutomation')
-      ).toBeUndefined();
-      expect(entityUtil.getEntityTypeFromString('')).toBeUndefined();
+    it('should not contain Collate-only types absent from the enum', () => {
+      expect(entityUtil.getEntityTypes()).not.toContain('aiAutomation');
     });
   });
 });

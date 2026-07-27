@@ -33,7 +33,9 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
 
   const [, entityTypeStr, rest] = match;
 
-  const entityType = entityUtilClassBase.getEntityTypeFromString(entityTypeStr);
+  const entityType = entityUtilClassBase
+    .getEntityTypes()
+    .find((type) => type === entityTypeStr);
 
   if (!entityType) {
     return { isEntityLink: false };
