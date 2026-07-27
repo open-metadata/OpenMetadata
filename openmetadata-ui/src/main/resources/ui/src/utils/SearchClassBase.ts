@@ -218,7 +218,7 @@ class SearchClassBase {
         label: t('label.worksheet'),
       },
       {
-        label: t('label.knowledge-center'),
+        label: t('label.context-center'),
         value: SearchIndex.KNOWLEDGE_PAGE_INDEX,
       },
     ];
@@ -419,7 +419,7 @@ class SearchClassBase {
         ],
       },
       {
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         key: 'KnowledgeCenter',
         data: {
           isRoot: true,
@@ -431,7 +431,7 @@ class SearchClassBase {
         ),
         children: [
           {
-            title: t('label.knowledge-page'),
+            title: t('label.article'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
             icon: getEntityIcon(
@@ -656,7 +656,7 @@ class SearchClassBase {
         iconClassName: 'tw:text-quaternary',
       },
       [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
-        label: t('label.knowledge-center'),
+        label: t('label.context-center'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'knowledgePages',

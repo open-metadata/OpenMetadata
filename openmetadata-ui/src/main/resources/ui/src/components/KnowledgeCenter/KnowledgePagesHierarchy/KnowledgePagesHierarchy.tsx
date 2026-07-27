@@ -911,7 +911,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 onClose={() => setMovedPage(undefined)}>
                 <Dialog.Header
                   title={t('label.move-the-entity', {
-                    entity: t('label.knowledge-page'),
+                    entity: t('label.article'),
                   })}
                 />
                 <Dialog.Content className="tw:block">
@@ -922,7 +922,7 @@ const KnowledgePagesHierarchy = forwardRef<
                       from: getEntityName(movedPage?.sourceNode),
                       to: movedPage?.targetNode
                         ? getEntityName(movedPage.targetNode)
-                        : t('label.base-knowledge'),
+                        : t('label.top-level'),
                       entity: t('label.page-lowercase'),
                     }}
                   />
