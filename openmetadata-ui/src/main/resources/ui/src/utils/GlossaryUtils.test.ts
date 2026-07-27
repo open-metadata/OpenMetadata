@@ -405,29 +405,29 @@ describe('Glossary Utils - findAndUpdateNested', () => {
 });
 
 describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
-  it('should return columnsWidth object based on Table width', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+  it('should return fixed columnsWidth object when having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(true);
 
     expect(columnWidthObject).toEqual({
-      description: 210,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
+      description: 320,
+      name: 250,
+      owners: 220,
+      reviewers: 200,
+      status: 160,
+      synonyms: 220,
     });
   });
 
-  it('should return columnsWidth object based on Table width when not having create permission', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
+  it('should return a wider description column when not having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(false);
 
     expect(columnWidthObject).toEqual({
-      description: 330,
-      name: 300,
-      owners: 170,
-      reviewers: 330,
-      status: 200,
-      synonyms: 330,
+      description: 400,
+      name: 250,
+      owners: 220,
+      reviewers: 200,
+      status: 160,
+      synonyms: 220,
     });
   });
 
