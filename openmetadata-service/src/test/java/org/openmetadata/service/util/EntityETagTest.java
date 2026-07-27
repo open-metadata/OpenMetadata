@@ -10,10 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.core.Response;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
@@ -66,6 +69,31 @@ class EntityETagTest {
   }
 
   @Test
+  void etagReflectsRequestedFieldsForPartialFetches() {
+    // The ETag hashes the exact partial representation that is serialized for the requested
+    // `fields`, not a canonical full entity. So `fields=tags` and `fields=owners` on the same
+    // entity are different representations and MUST get different ETags — a `fields=tags` 304 can
+    // never hand back an owners-bearing body. The same selection with unchanged data stays stable
+    // so the conditional GET still short-circuits to 304.
+    UUID id = UUID.randomUUID();
+    EntityInterface tagsOnly =
+        partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+    EntityInterface ownersOnly =
+        partialTable(id)
+            .withOwners(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("user")
+                        .withName("u1")));
+    EntityInterface tagsOnlyUnchanged =
+        partialTable(id).withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+
+    assertNotEquals(EntityETag.generateETag(tagsOnly), EntityETag.generateETag(ownersOnly));
+    assertEquals(EntityETag.generateETag(tagsOnly), EntityETag.generateETag(tagsOnlyUnchanged));
+  }
+
+  @Test
   void validateETagSupportsExactWildcardWeakAndMultipleMatches() {
     EntityInterface entity = entity(2.5, 98765L);
     String etag = EntityETag.generateETag(entity);
@@ -113,5 +141,9 @@ class EntityETagTest {
         .withVersion(version)
         .withUpdatedAt(updatedAt)
         .withVotes(new Votes().withUpVotes(upVotes).withDownVotes(0));
+  }
+
+  private static Table partialTable(UUID id) {
+    return new Table().withId(id).withName("etag_table").withVersion(1.0).withUpdatedAt(100L);
   }
 }
