@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'target', '.git', 'generated']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'target', '.git', 'generated', 'openmetadata-ui']); // collate-ui vendors the upstream UI here (gitignored build artifact)
 // Owned by open-metadata/OpenMetadata#29849 — QueryBuilder has its own migration PR.
 const EXCLUDED = [/QueryBuilder/i];
 const CODE_EXT = /\.(ts|tsx|js|jsx)$/;
