@@ -33,6 +33,8 @@ import {
   getExploreQueryFilterMust,
 } from '../../utils/ExploreUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import searchClassBase from '../../utils/SearchClassBase';
+import { EntityIconSize } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -59,6 +61,25 @@ const getOptionLabelFormatter = (
   ENTITY_TYPE_FILTER_KEYS.has(key) && !skipEntityTypeLabel
     ? formatEntityTypeLabel
     : undefined;
+
+const addEntityTypeIcons = (
+  key: string,
+  opts: SearchDropdownOption[]
+): SearchDropdownOption[] => {
+  if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
+    return opts;
+  }
+  return opts.map((opt) => ({
+    ...opt,
+    icon:
+      searchClassBase.getEntityIcon(
+        getCanonicalEntityType(opt.key),
+        'tw:text-gray-500',
+        {},
+        EntityIconSize.Size16
+      ) ?? undefined,
+  }));
+};
 
 const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fields,
@@ -154,7 +175,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(staticOptions);
+      setOptions(addEntityTypeIcons(key, staticOptions));
 
       return;
     }
@@ -192,12 +213,15 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     }
 
     setOptions(
-      uniqWith(
-        getOptionsFromAggregationBucket(
-          buckets,
-          getOptionLabelFormatter(key, untitledDropdown)
-        ),
-        isEqual
+      addEntityTypeIcons(
+        key,
+        uniqWith(
+          getOptionsFromAggregationBucket(
+            buckets,
+            getOptionLabelFormatter(key, untitledDropdown)
+          ),
+          isEqual
+        )
       )
     );
   };
@@ -209,7 +233,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   ) => {
     const staticOptions = getStaticOptions(key);
     if (staticOptions) {
-      setOptions(staticOptions);
+      setOptions(addEntityTypeIcons(key, staticOptions));
 
       return;
     }
@@ -238,7 +262,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             option.label.toLowerCase().includes(value.toLowerCase())
           )
         : staticOptions;
-      setOptions(filteredOptions);
+      setOptions(addEntityTypeIcons(key, filteredOptions));
 
       return;
     }
@@ -270,12 +294,15 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       const buckets =
         res.data.aggregations[`sterms#${searchKeyToUse}`]?.buckets ?? [];
       setOptions(
-        uniqWith(
-          getOptionsFromAggregationBucket(
-            buckets,
-            getOptionLabelFormatter(key, untitledDropdown)
-          ),
-          isEqual
+        addEntityTypeIcons(
+          key,
+          uniqWith(
+            getOptionsFromAggregationBucket(
+              buckets,
+              getOptionLabelFormatter(key, untitledDropdown)
+            ),
+            isEqual
+          )
         )
       );
     } catch (error) {

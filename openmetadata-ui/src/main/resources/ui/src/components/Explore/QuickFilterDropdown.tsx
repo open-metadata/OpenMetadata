@@ -216,7 +216,16 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
                   <Checkbox
                     data-testid={`${option.label}-checkbox`}
                     isSelected={isOptionSelected(option)}
-                    label={option.label}
+                    label={
+                      option.icon ? (
+                        <span className="tw:flex tw:items-center tw:gap-1.5">
+                          {option.icon}
+                          {option.label}
+                        </span>
+                      ) : (
+                        option.label
+                      )
+                    }
                     onChange={() => handleOptionToggle(option)}
                   />
                   {!hideCounts && !isUndefined(option.count) && (
