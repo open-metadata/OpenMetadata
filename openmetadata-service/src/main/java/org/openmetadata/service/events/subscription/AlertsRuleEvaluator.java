@@ -17,7 +17,6 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,7 +82,6 @@ public class AlertsRuleEvaluator {
               Entity.FIELD_DOMAINS, Include.NON_DELETED));
 
   private final ChangeEvent changeEvent;
-  private final Map<String, EntityInterface> threadSubjectsByFields = new HashMap<>();
   private EntityReference threadSubject;
   private boolean threadSubjectResolved;
 
@@ -734,14 +732,6 @@ public class AlertsRuleEvaluator {
     return threadSubject;
   }
 
-  private EntityInterface threadSubjectWith(String fields) {
-    if (!threadSubjectsByFields.containsKey(fields)) {
-      threadSubjectsByFields.put(
-          fields, Entity.getEntityOrNull(threadSubject(), fields, Include.NON_DELETED));
-    }
-    return threadSubjectsByFields.get(fields);
-  }
-
   private boolean threadSubjectMatchesType(List<String> entityTypes) {
     EntityReference subject = threadSubject();
     return subject != null && entityTypes.contains(subject.getType());
@@ -780,14 +770,16 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean threadSubjectMatchesOwner(List<String> ownerNameList) {
-    EntityInterface subject = threadSubjectWith(Entity.FIELD_OWNERS);
+    EntityInterface subject =
+        Entity.getEntityOrNull(threadSubject(), Entity.FIELD_OWNERS, Include.NON_DELETED);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
         && matchOwners(subject.getOwners(), ownerNameList);
   }
 
   private boolean threadSubjectMatchesDomain(List<String> domainFqns) {
-    EntityInterface subject = threadSubjectWith(Entity.FIELD_DOMAINS);
+    EntityInterface subject =
+        Entity.getEntityOrNull(threadSubject(), Entity.FIELD_DOMAINS, Include.NON_DELETED);
     return subject != null && matchesAnyDomainFqn(subject.getDomains(), domainFqns);
   }
 
