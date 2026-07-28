@@ -193,7 +193,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
-      "projects": ["chromium", "Basic", "DomainIsolation"],
+      "projects": ["chromium", "Basic", "DomainIsolation", "Reindex"],
       "specs": [
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
