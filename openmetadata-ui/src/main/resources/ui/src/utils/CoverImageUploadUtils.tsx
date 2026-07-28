@@ -263,15 +263,13 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
   } catch (error) {
     if (!suppressErrorToast) {
       showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-          t('server.entity-already-exist', {
-            entity: entityLabel,
-            entityPlural: entityPluralLabel,
-            name: (formData as { name?: string }).name,
-          })
-        ) : (
-          (error as AxiosError)
-        ),
+        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+          ? t('server.entity-already-exist', {
+              entity: entityLabel,
+              entityPlural: entityPluralLabel,
+              name: (formData as { name?: string }).name,
+            })
+          : (error as AxiosError),
         t('server.add-entity-error', {
           entity: entityLabel.toLowerCase(),
         })
