@@ -157,6 +157,9 @@ import {
   LineageProviderProps,
   LineageTimeRange,
 } from './LineageProvider.interface';
+import 'reactflow/dist/style.css';
+import '../../components/Entity/EntityLineage/entity-lineage.style.less';
+
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 
