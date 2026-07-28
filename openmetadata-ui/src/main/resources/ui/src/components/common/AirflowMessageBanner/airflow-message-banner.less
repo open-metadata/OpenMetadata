@@ -13,15 +13,15 @@
 
 @import '../../../styles/variables.less';
 
-@warning-bg-color: #f0af2c0d;
+@warning-bg-color: var(--om-legacy-color-240-175-44-0-051);
 
 .airflow-message-banner {
   border: 1px solid @warning-color;
-  border-radius: 4px;
-  padding: 8px;
+  border-radius: var(--om-radius-sm);
+  padding: var(--om-space-8);
   background: @warning-bg-color;
   + .rjsf .form-group.field {
-    margin-top: 0px;
+    margin-top: 0;
   }
   width: 100%;
 }
