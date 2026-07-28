@@ -119,6 +119,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_model_name,
     get_dbt_raw_query,
     get_dbt_test_definition_name,
+    get_dbt_test_description,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     map_dbt_metric_type,
@@ -1840,6 +1841,9 @@ class DbtSource(DbtServiceSource):
                     fqn=test_definition_name,
                     entity=TestDefinition,
                 )
+                # A TestDefinition is shared by every dbt test of the same type
+                # (e.g. all "not_null" tests), so its description is only set on
+                # creation and never patched from an individual node.
                 if not check_test_definition_exists:
                     entity_type = EntityType.TABLE
                     if get_manifest_column_name(manifest_node):
@@ -1847,7 +1851,7 @@ class DbtSource(DbtServiceSource):
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=manifest_node.description,
+                            description=get_dbt_test_description(manifest_node),
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -1889,12 +1893,13 @@ class DbtSource(DbtServiceSource):
                     )
 
                     test_case = self.metadata.get_by_name(TestCase, test_case_fqn, fields=["testDefinition,testSuite"])
+                    description = get_dbt_test_description(manifest_node)
                     if test_case is None:
                         # Create the test case only if it does not exist
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=manifest_node.description,
+                                description=description,
                                 testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
@@ -1902,7 +1907,9 @@ class DbtSource(DbtServiceSource):
                                 owners=None,
                             )
                         )
-                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                    else:
+                        logger.debug(f"Test case Already Exists: {test_case_fqn}")
+                        self.patch_dbt_test_case_description(test_case, description)
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1910,6 +1917,23 @@ class DbtSource(DbtServiceSource):
                     error=f"Failed to parse the node to capture tests {err}",
                     stackTrace=traceback.format_exc(),
                 )
+            )
+
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
+        """
+        Keep the description of an already ingested test case in sync with dbt.
+
+        Mirrors how table and column descriptions are handled: an empty
+        description is always filled in, while an existing one is only
+        overridden when dbtUpdateDescriptions is enabled.
+        """
+        if description:
+            logger.debug(f"Patching DBT description for test case: {test_case.fullyQualifiedName.root}")
+            self.metadata.patch_description(
+                entity=TestCase,
+                source=test_case,
+                description=description,
+                force=self.source_config.dbtUpdateDescriptions,
             )
 
     def add_dbt_test_result(self, dbt_test: dict):
