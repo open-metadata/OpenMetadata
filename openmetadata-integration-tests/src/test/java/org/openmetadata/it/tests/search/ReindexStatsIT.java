@@ -34,9 +34,9 @@ import org.openmetadata.service.Entity;
  * <ul>
  *   <li>{@code readerStats.totalRecords == processStats.totalRecords}
  *       (everything read is processed);
- *   <li>{@code processStats.totalRecords == sinkStats.successRecords +
+ *   <li>{@code processStats.successRecords == sinkStats.successRecords +
  *       sinkStats.failedRecords + sinkStats.warningRecords} (everything
- *       processed is accounted for at the sink);
+ *       successfully processed is accounted for at the sink);
  *   <li>and per-entity {@code entityStats} sum to the global numbers.
  * </ul>
  *
@@ -72,8 +72,8 @@ class ReindexStatsIT {
     assertThat(reader.getTotalRecords())
         .as("reader records must equal processor records")
         .isEqualTo(processed.getTotalRecords());
-    assertThat(processed.getTotalRecords())
-        .as("processor records must equal sum of sink success/failure/warning")
+    assertThat(sumOrZero(processed.getSuccessRecords()))
+        .as("successfully processed records must equal sum of sink success/failure/warning")
         .isEqualTo(
             sumOrZero(sink.getSuccessRecords())
                 + sumOrZero(sink.getFailedRecords())
@@ -91,19 +91,28 @@ class ReindexStatsIT {
 
     Entity.getCollectionDAO().databaseSchemaDAO().delete(schema.getId());
 
-    final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
-    assertThat(run.getStatus().value()).isIn("success", "completed");
+    try {
+      final AppRunRecord run = ReindexHelpers.triggerSearchIndexAndWait(server);
+      assertThat(run.getStatus().value()).isIn("success", "completed");
 
-    // A table carries its own FQN/columns and builds its search doc without fetching the (now
-    // hard-deleted) schema entity, so it stays self-indexable. Reindex treats a missing parent
-    // as a benign stale-relationship case, not a failure (see DistributedIndexingStrategy), so a
-    // deleted schema must not push failedRecords above zero or error the run.
-    final StepStats sink = run.getSuccessContext().getStats().getSinkStats();
-    assertThat(sumOrZero(sink.getFailedRecords()))
-        .as(
-            "orphaned schema for table %s must not fail the reindex (stale parent is not a failure)",
-            table.getFullyQualifiedName())
-        .isZero();
+      // A table carries its own FQN/columns and builds its search doc without fetching the (now
+      // hard-deleted) schema entity, so it stays self-indexable. Reindex treats a missing parent
+      // as a benign stale-relationship case, not a failure (see DistributedIndexingStrategy), so a
+      // deleted schema must not push failedRecords above zero or error the run.
+      final StepStats sink = run.getSuccessContext().getStats().getSinkStats();
+      assertThat(sumOrZero(sink.getFailedRecords()))
+          .as(
+              "orphaned schema for table %s must not fail the reindex (stale parent is not a failure)",
+              table.getFullyQualifiedName())
+          .isZero();
+    } finally {
+      // The schema row was force-deleted above, so the table is now orphaned. The namespace's
+      // recursive service cleanup (service -> db -> schema -> table) can't reach it through the
+      // broken chain, leaving a non-deleted, unindexable table on the shared cluster that later
+      // skews the cluster-wide DbToEsCountReconciliationIT (table db=2/es=1). Remove it directly,
+      // mirroring the DAO-level surgery used to create the orphan.
+      Entity.getCollectionDAO().tableDAO().delete(table.getId());
+    }
   }
 
   private static long sumOrZero(final Integer value) {
