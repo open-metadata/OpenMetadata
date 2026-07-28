@@ -33,6 +33,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedSearchIndexExecutor;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.EntityCompletionTracker;
@@ -100,6 +101,7 @@ class DistributedIndexingStrategyTest {
     String reportDataType = ReportData.ReportDataType.ENTITY_REPORT_DATA.value();
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(7);
     when(timeSeriesRepository.getTimeSeriesDao()).thenReturn(timeSeriesDao);
     when(timeSeriesDao.listCount(any(ListFilter.class))).thenReturn(3);
@@ -647,6 +649,7 @@ class DistributedIndexingStrategyTest {
             .build();
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
@@ -770,6 +773,7 @@ class DistributedIndexingStrategyTest {
     EntityDAO entityDao = mock(EntityDAO.class);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
@@ -805,6 +809,7 @@ class DistributedIndexingStrategyTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
@@ -855,6 +860,7 @@ class DistributedIndexingStrategyTest {
     ReindexContext stagedIndexContext = stagedContext(Entity.TABLE);
 
     when(entityRepository.getDao()).thenReturn(entityDao);
+    when(entityRepository.getReindexFilter()).thenReturn(new ListFilter(Include.ALL));
     when(entityDao.listCount(any(ListFilter.class))).thenReturn(5);
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
     when(searchRepository.createReindexHandler()).thenReturn(indexPromotionHandler);
