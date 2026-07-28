@@ -74,9 +74,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
     if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      return threadSubjectMatchesType(originEntities);
     }
 
     String changeEventEntity = changeEvent.getEntityType();
@@ -100,9 +99,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
     if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      return threadSubjectMatchesOwner(ownerNameList);
     }
 
     EntityInterface entity = getEntity(changeEvent);
@@ -146,9 +144,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
     if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      return threadSubjectMatchesFqn(entityFqns);
     }
 
     EntityInterface entity = getEntity(changeEvent);
@@ -193,9 +190,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
     if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      return threadSubjectMatchesId(entityIds);
     }
 
     EntityInterface entity = getEntity(changeEvent);
@@ -480,23 +476,16 @@ public class AlertsRuleEvaluator {
       return false;
     }
 
-    // Filter does not apply to Thread Change Events
     if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      return threadSubjectMatchesDomain(fieldChangeUpdate);
     }
 
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(
             changeEvent.getEntityType(), entity.getId(), "domains", Include.NON_DELETED);
-    if (!nullOrEmpty(entityWithDomainData.getDomains())) {
-      for (String name : fieldChangeUpdate) {
-        for (EntityReference domain : entityWithDomainData.getDomains()) {
-          if (domain.getFullyQualifiedName().equals(name)) {
-            return true;
-          }
-        }
-      }
+    if (matchDomains(entityWithDomainData.getDomains(), fieldChangeUpdate)) {
+      return true;
     }
 
     if (changeEvent.getEntityType().equals(TEST_CASE)) {
@@ -688,6 +677,67 @@ public class AlertsRuleEvaluator {
       if (match) return true;
     }
     return false;
+  }
+
+  // Scoping filters on a thread event are about the thread's parent entity, not the thread.
+  private EntityReference threadSubject() {
+    EntityReference subject = null;
+    if (changeEvent.getEntity() != null) {
+      Thread thread = getThread(changeEvent);
+      subject = thread == null ? null : thread.getEntityRef();
+    }
+    return subject;
+  }
+
+  private boolean threadSubjectMatchesType(List<String> entityTypes) {
+    EntityReference subject = threadSubject();
+    return subject != null && entityTypes.contains(subject.getType());
+  }
+
+  private boolean threadSubjectMatchesFqn(List<String> entityFqns) {
+    EntityReference subject = threadSubject();
+    return subject != null && matchesFqnOrDescendant(subject.getFullyQualifiedName(), entityFqns);
+  }
+
+  private boolean threadSubjectMatchesId(List<String> entityIds) {
+    EntityReference subject = threadSubject();
+    boolean matched = false;
+    if (subject != null) {
+      for (String id : entityIds) {
+        if (subject.getId().equals(UUID.fromString(id))) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    return matched;
+  }
+
+  private boolean threadSubjectMatchesOwner(List<String> ownerNameList) {
+    EntityInterface subject =
+        Entity.getEntityOrNull(threadSubject(), "owners", Include.NON_DELETED);
+    return subject != null
+        && !nullOrEmpty(subject.getOwners())
+        && matchOwners(subject.getOwners(), ownerNameList);
+  }
+
+  private boolean threadSubjectMatchesDomain(List<String> domainFqns) {
+    EntityInterface subject =
+        Entity.getEntityOrNull(threadSubject(), "domains", Include.NON_DELETED);
+    return subject != null && matchDomains(subject.getDomains(), domainFqns);
+  }
+
+  private boolean matchDomains(List<EntityReference> domains, List<String> domainFqns) {
+    boolean matched = false;
+    if (!nullOrEmpty(domains)) {
+      for (EntityReference domain : domains) {
+        if (domainFqns.contains(domain.getFullyQualifiedName())) {
+          matched = true;
+          break;
+        }
+      }
+    }
+    return matched;
   }
 
   private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
