@@ -718,55 +718,90 @@ def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
     return description
 
 
-def generate_entity_link(dbt_test):
-    """
-    Method returns entity link for dbt test cases.
+# Matches a dbt ``ref()``/``source()`` expression, capturing the last quoted argument,
+# which is the model or table name. Handles ref('t'), ref("pkg", "t"), source('s', 't')
+# and the get_where_subquery(...) wrapper dbt adds to test_metadata.kwargs['model'].
+_DBT_REF_PATTERN = re.compile(r"\b(?:ref|source)\(\s*['\"](?:[^'\"]+['\"]\s*,\s*['\"])*([^'\"]+)['\"]\s*\)")
 
-    For test cases with multiple upstream dependencies (e.g., relationship tests),
-    we must identify the primary table being tested. This is explicitly specified in
-    test_metadata.kwargs['model'] for generic tests. Using this explicit reference
-    is more reliable than guessing based on upstream order (fixes issue #24636).
+
+def _get_test_kwargs(manifest_node) -> Dict[str, Any]:  # noqa: UP006
+    test_metadata = getattr(manifest_node, "test_metadata", None)
+    kwargs = getattr(test_metadata, "kwargs", None) if test_metadata else None
+    return kwargs if isinstance(kwargs, dict) else {}
+
+
+def _extract_dbt_model_name(reference: Any) -> Optional[str]:  # noqa: UP045
+    """Return the model/source name referenced by a dbt ``ref()``/``source()`` expression."""
+    match = _DBT_REF_PATTERN.search(str(reference)) if reference else None
+    return match.group(1) if match else None
+
+
+def _match_fqn_by_table_name(upstream_list, table_name: str) -> Optional[str]:  # noqa: UP045
+    """Match on the FQN's table segment, case-insensitively so that warehouses which
+    upper-case identifiers (Snowflake) still line up with lower-case dbt model names."""
+    suffix = f".{table_name}".lower()
+    return next((fqn for fqn in upstream_list if fqn.lower().endswith(suffix)), None)
+
+
+def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optional[str]:  # noqa: UP045
+    """Resolve a dbt ref()/source() expression to one of the test's upstream FQNs.
+
+    Prefers the dbt node name map because ``ref()`` carries the model *name* while the
+    upstream FQN is built from the model *alias*; the two diverge whenever a project
+    sets ``alias:``, and a suffix match alone then silently fails.
+    """
+    model_name = _extract_dbt_model_name(reference)
+    resolved = None
+    if model_name:
+        resolved = upstream_by_name.get(model_name) or _match_fqn_by_table_name(upstream_list, model_name)
+    return resolved
+
+
+def _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs) -> Optional[str]:  # noqa: UP045
+    """Last resort for ``relationships`` tests: the ``to:`` upstream is the referenced
+    parent, so if removing it leaves exactly one candidate that must be the tested table."""
+    referenced_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("to"))
+    candidates = [fqn for fqn in upstream_list if fqn != referenced_fqn] if referenced_fqn else []
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def get_dbt_test_primary_table_fqn(dbt_test) -> Optional[str]:  # noqa: UP045
+    """
+    Return the FQN of the table a dbt test belongs to.
+
+    A test can have several upstreams (a ``relationships`` test depends on both the
+    tested model and the model it references). dbt records the tested model in
+    ``test_metadata.kwargs['model']`` and the referenced parent in ``kwargs['to']``,
+    and orders ``depends_on.nodes`` parent-first. Falling back to the first upstream
+    therefore attaches the test - and its foreign key column - to the referenced table,
+    which rejects it with "Invalid column name" (issue #28911).
     """
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
-    upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value, [])
+    upstream_list = dbt_test.get(DbtCommonEnum.UPSTREAM.value) or []
+    upstream_by_name = dbt_test.get(DbtCommonEnum.UPSTREAM_BY_NAME.value) or {}
+    kwargs = _get_test_kwargs(manifest_node)
 
-    if not upstream_list:
-        return []
-
-    primary_table_fqn = None
-
-    # Try to extract the primary table from test_metadata.kwargs['model']
-    # This field contains the main table being tested (order-independent)
-    if hasattr(manifest_node, "test_metadata"):
-        kwargs = getattr(manifest_node.test_metadata, "kwargs", {})
-        if isinstance(kwargs, dict):
-            model_str = kwargs.get("model", "")
-            if model_str:
-                # Extract table name from ref() pattern
-                # Handles: ref('table'), ref("table"), ref('pkg', 'table'), ref("pkg", "table")
-                match = re.search(
-                    r"ref\(['\"](?:[^'\"]+['\"],\s*['\"])?([^'\"]+)['\"]\)",
-                    str(model_str),
-                )
-                if match:
-                    primary_table_name = match.group(1)
-                    # Find the matching FQN in upstream_list
-                    for fqn in upstream_list:
-                        if fqn.endswith(f".{primary_table_name}"):
-                            primary_table_fqn = fqn
-                            break
-
-    # Fallback: use the first upstream table if model field is not available
+    primary_table_fqn = _resolve_upstream_fqn(upstream_list, upstream_by_name, kwargs.get("model"))
+    if not primary_table_fqn:
+        primary_table_fqn = _resolve_by_excluding_referenced_table(upstream_list, upstream_by_name, kwargs)
     if not primary_table_fqn and upstream_list:
         primary_table_fqn = upstream_list[0]
 
+    return primary_table_fqn
+
+
+def generate_entity_link(dbt_test):
+    """
+    Method returns entity link for dbt test cases.
+    """
+    primary_table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
     if not primary_table_fqn:
         return []
 
     entity_link_str = entity_link.get_entity_link(
         Table,
         fqn=primary_table_fqn,
-        column_name=get_manifest_column_name(manifest_node),
+        column_name=get_manifest_column_name(dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)),
     )
     return [entity_link_str]
 

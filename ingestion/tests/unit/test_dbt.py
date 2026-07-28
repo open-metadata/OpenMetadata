@@ -48,6 +48,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_raw_query,
+    get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     validate_custom_property_value,
@@ -637,6 +638,82 @@ class DbtUnitTest(TestCase):
             ["<#E::table::local_redshift_dbt2.dev.dbt_jaffle.stg_customers::columns::order_id>"],
             result,
         )
+
+    def _get_relationships_test_node(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_VERSIONLESS)
+
+        return dbt_objects.dbt_manifest.nodes.get(
+            "test.jaffle_shop.relationships_orders_customer_id__customer_id__ref_customers_.c6ec7f58f2"
+        )
+
+    def test_dbt_relationships_test_resolves_to_child_table_when_aliased(self):
+        """A relationships test must land on the model holding the foreign key even when
+        the upstream FQNs are built from a dbt alias that differs from the model name."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS", "orders": "svc.db.sch.ORDERS"},
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.ORDERS::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_relationships_test_excludes_referenced_table_without_name_map(self):
+        """Without a name map the `to:` table must still be excluded rather than
+        falling back to depends_on[0], which dbt orders parent-first."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.ORDERS::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_relationships_test_resolves_child_table_by_name(self):
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.customers", "svc.db.sch.orders"],
+            "upstream_by_name": {"customers": "svc.db.sch.customers", "orders": "svc.db.sch.orders"},
+            "results": "",
+        }
+        result = generate_entity_link(dbt_test=dbt_test)
+        self.assertListEqual(
+            ["<#E::table::svc.db.sch.orders::columns::customer_id>"],
+            result,
+        )
+
+    def test_dbt_test_primary_table_fqn_single_upstream(self):
+        _, dbt_objects = self.get_dbt_object_files(mock_manifest=MOCK_SAMPLE_MANIFEST_TEST_NODE)
+        manifest_node = dbt_objects.dbt_manifest.nodes.get("test.jaffle_shop.unique_orders_order_id.fed79b3a6e")
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["local_redshift_dbt2.dev.dbt_jaffle.stg_customers"],
+            "results": "",
+        }
+        self.assertEqual(
+            "local_redshift_dbt2.dev.dbt_jaffle.stg_customers",
+            get_dbt_test_primary_table_fqn(dbt_test),
+        )
+
+    def test_dbt_test_primary_table_fqn_relationships(self):
+        """Test results must be recorded against the child table only, not every upstream."""
+        manifest_node = self._get_relationships_test_node()
+        dbt_test = {
+            "manifest_node": manifest_node,
+            "upstream": ["svc.db.sch.CUSTOMERS", "svc.db.sch.ORDERS"],
+            "upstream_by_name": {"customers": "svc.db.sch.CUSTOMERS", "orders": "svc.db.sch.ORDERS"},
+            "results": "",
+        }
+        self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
 
     def test_get_manifest_column_name(self):
         self.assertEqual(

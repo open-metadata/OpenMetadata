@@ -121,6 +121,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_raw_query,
     get_dbt_test_definition_name,
     get_dbt_test_description,
+    get_dbt_test_primary_table_fqn,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     map_dbt_metric_type,
@@ -653,10 +654,10 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases for later processing
         """
+        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
         self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-            manifest_entities, manifest_node
-        )
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [fqn for _, fqn in upstream_nodes]
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = dict(upstream_nodes)
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
@@ -687,9 +688,13 @@ class DbtSource(DbtServiceSource):
         )
 
         if freshness_test_result:
+            upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
             self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = self.parse_upstream_nodes(
-                manifest_entities, manifest_node
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [
+                fqn for _, fqn in upstream_nodes
+            ]
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = dict(
+                upstream_nodes
             )
             self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
 
@@ -935,6 +940,15 @@ class DbtSource(DbtServiceSource):
         """
         Method to fetch the upstream nodes
         """
+        return [fqn for _, fqn in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
+
+    def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
+        """
+        Method to fetch the upstream nodes as (dbt node name, table FQN) pairs.
+
+        The dbt node name is kept alongside the FQN because the FQN is built from the
+        model alias, while dbt ``ref()`` expressions carry the model name.
+        """
         upstream_nodes = []
         if (
             hasattr(dbt_node, "depends_on")
@@ -971,7 +985,7 @@ class DbtSource(DbtServiceSource):
                     # check if the node is an ephemeral node
                     # Recursively store the upstream of the ephemeral node in the upstream list
                     if check_ephemeral_node(parent_node):
-                        upstream_nodes.extend(self.parse_upstream_nodes(manifest_entities, parent_node))
+                        upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
                         parent_fqn = fqn.build(
                             self.metadata,
@@ -984,7 +998,7 @@ class DbtSource(DbtServiceSource):
 
                         # check if the parent table exists in OM before adding it to the upstream list
                         if self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(parent_fqn)
+                            upstream_nodes.append((parent_node.name, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -2000,8 +2014,10 @@ class DbtSource(DbtServiceSource):
                     result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
                 )
 
-                # Create the test case fqns and add the results
-                for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+                # Results belong to the single table the test case was created against,
+                # which for multi-upstream tests is not every entry in the upstream list
+                table_fqn = get_dbt_test_primary_table_fqn(dbt_test)
+                if table_fqn:
                     source_elements = fqn.split(table_fqn)
                     test_case_fqn = fqn.build(
                         self.metadata,
