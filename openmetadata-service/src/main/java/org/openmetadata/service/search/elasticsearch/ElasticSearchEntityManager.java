@@ -23,6 +23,7 @@ import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.Result;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -223,11 +224,16 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
     DeleteResponse response =
         client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
-    LOG.info(
-        "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
-        indexName,
-        docId,
-        response.result());
+    if (response.result() == Result.NotFound) {
+      LOG.debug(
+          "No ElasticSearch entity found to delete for index: {}, docId: {}", indexName, docId);
+    } else {
+      LOG.info(
+          "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    }
   }
 
   @Override

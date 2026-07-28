@@ -35,6 +35,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -61,6 +63,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.Aggr
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.EntityStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
+import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -109,6 +114,28 @@ class DistributedSearchIndexCoordinatorTest {
     if (serverIdentityMock != null) {
       serverIdentityMock.close();
     }
+  }
+
+  @Test
+  void precomputedPartitionCursorsUseRepositoryReindexFilter() throws Exception {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    @SuppressWarnings("unchecked")
+    EntityDAO<EntityInterface> dao = mock(EntityDAO.class);
+    ListFilter reindexFilter = mock(ListFilter.class);
+    when(repository.getReindexFilter()).thenReturn(reindexFilter);
+    when(repository.getDao()).thenReturn(dao);
+    when(dao.listAfter(any(ListFilter.class), eq(1), eq(""), eq(""))).thenReturn(List.of());
+
+    Method walkAndRecord =
+        DistributedSearchIndexCoordinator.class.getDeclaredMethod(
+            "walkAndRecord", EntityRepository.class, List.class, Map.class);
+    walkAndRecord.setAccessible(true);
+    walkAndRecord.invoke(coordinator, repository, List.of(1L), new HashMap<Long, String>());
+
+    ArgumentCaptor<ListFilter> filterCaptor = ArgumentCaptor.forClass(ListFilter.class);
+    verify(dao).listAfter(filterCaptor.capture(), eq(1), eq(""), eq(""));
+    assertSame(reindexFilter, filterCaptor.getValue());
   }
 
   @Test
