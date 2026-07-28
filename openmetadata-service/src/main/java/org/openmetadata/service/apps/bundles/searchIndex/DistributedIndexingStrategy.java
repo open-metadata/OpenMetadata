@@ -563,7 +563,8 @@ public class DistributedIndexingStrategy implements IndexingStrategy {
                   entityType);
             }
             if (Entity.TABLE.equals(entityType)) {
-              allPromoted &= promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
+              allPromoted &=
+                  promoteColumnIndex(recreateIndexHandler, recreateContext, entitySuccess);
             }
           } catch (Exception ex) {
             allPromoted = false;
