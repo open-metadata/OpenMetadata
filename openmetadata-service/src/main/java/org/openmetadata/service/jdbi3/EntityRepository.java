@@ -428,14 +428,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
-  // A PATCH's base ("original") must resolve OWNER references the same way the client did when it
-  // computed the diff. Detail pages fetch with include=all, so a soft-deleted owner is in the
-  // client's base. A NON_DELETED server base drops it and shrinks the array, so a positional
-  // JSON-Patch op goes out of range ("array item index out of range") and the dangling ownership
-  // can never be removed. Resolve owners with ALL for the patch base; the entity itself still loads
-  // NON_DELETED so a soft-deleted entity is not patched through this path. (Experts / reviewers /
-  // followers share the latent issue but are validated on update against NON_DELETED, so they are
-  // left unchanged here - a separate follow-up. See issue #30117.)
+  // A PATCH's base ("original") must resolve OWNER references the same way the client diffed
+  // against. Detail pages fetch with include=all, so a soft-deleted owner is in the client's base;
+  // a
+  // NON_DELETED server base drops it and shrinks the array, so a positional JSON-Patch op goes out
+  // of range ("array item index out of range") and the dangling ownership can never be removed.
+  // Resolve owners with ALL here; the entity itself still loads NON_DELETED so a soft-deleted
+  // entity
+  // is not patched through this path. Trade-off: a client that instead diffs owners against a
+  // NON_DELETED view (a GET sending includeRelations=owners:non-deleted) can misalign against this
+  // longer base - the representation-aware fix (the PATCH declaring the base it diffed against) is
+  // the follow-up the issue flags as a design call. Experts / reviewers / followers share the
+  // latent
+  // crash but are validated on update against NON_DELETED, so they are left unchanged. See #30117.
   private static final RelationIncludes PATCH_ORIGINAL_INCLUDES =
       new RelationIncludes(NON_DELETED, Map.of(FIELD_OWNERS, ALL));
 
@@ -7873,21 +7878,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
         nullOrEmpty(updatedOwners)
             || updatedOwners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited()));
     if (!skipValidation) {
-      Set<UUID> existingOwnerIds =
-          listOrEmpty(originalOwners).stream()
-              .map(EntityReference::getId)
-              .collect(Collectors.toSet());
+      Map<UUID, EntityReference> existingOwnersById = new HashMap<>();
+      for (EntityReference owner : listOrEmpty(originalOwners)) {
+        existingOwnersById.put(owner.getId(), owner);
+      }
+      // Retain owners already assigned, using the authoritative ref from the base (resolved with
+      // ALL, so a since-soft-deleted owner keeps its populated name/type and is not re-validated).
+      // Validate only newly added owners against NON_DELETED so a deleted user cannot be freshly
+      // assigned.
       List<EntityReference> retainedOwners =
           updatedOwners.stream()
-              .filter(owner -> existingOwnerIds.contains(owner.getId()))
+              .filter(owner -> existingOwnersById.containsKey(owner.getId()))
+              .map(owner -> existingOwnersById.get(owner.getId()))
               .collect(Collectors.toList());
       List<EntityReference> newOwners =
           updatedOwners.stream()
-              .filter(owner -> !existingOwnerIds.contains(owner.getId()))
+              .filter(owner -> !existingOwnersById.containsKey(owner.getId()))
               .collect(Collectors.toList());
       result = new ArrayList<>(retainedOwners);
       result.addAll(listOrEmpty(validateOwners(newOwners)));
-      result.sort(Comparator.comparing(EntityReference::getName));
+      result.sort(
+          Comparator.comparing(
+              EntityReference::getName, Comparator.nullsLast(Comparator.naturalOrder())));
     }
     return result;
   }
