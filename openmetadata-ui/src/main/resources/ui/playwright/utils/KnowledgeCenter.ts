@@ -12,8 +12,8 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import {
-    SHORTCUTS,
-    SLASH_COMMANDS
+  SHORTCUTS,
+  SLASH_COMMANDS,
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
