@@ -314,16 +314,21 @@ export const findAndUpdateNested = (
   });
 };
 
-export const glossaryTermTableColumnsWidth = (
-  havingCreatePermission: boolean
-) => {
+// Column widths for the glossary term table. All values are fixed pixel widths
+// except `description`, which is applied as a *minimum* width: the Description
+// column is left without a fixed width so it stays flexible (react-aria `1fr`)
+// and absorbs spare horizontal space, keeping the table full-width without an
+// oversized trailing Actions column — while `description` keeps it from
+// collapsing under its header on narrow viewports.
+export const glossaryTermTableColumnsWidth = () => {
   return {
     name: 250,
-    description: havingCreatePermission ? 320 : 400,
+    description: 320,
     reviewers: 200,
     synonyms: 220,
     owners: 220,
     status: 160,
+    actions: 100,
   };
 };
 

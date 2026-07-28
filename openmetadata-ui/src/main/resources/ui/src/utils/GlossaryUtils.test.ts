@@ -405,24 +405,12 @@ describe('Glossary Utils - findAndUpdateNested', () => {
 });
 
 describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
-  it('should return fixed columnsWidth object when having create permission', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(true);
+  it('should return the glossary term table column widths', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
+      actions: 100,
       description: 320,
-      name: 250,
-      owners: 220,
-      reviewers: 200,
-      status: 160,
-      synonyms: 220,
-    });
-  });
-
-  it('should return a wider description column when not having create permission', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(false);
-
-    expect(columnWidthObject).toEqual({
-      description: 400,
       name: 250,
       owners: 220,
       reviewers: 200,
