@@ -12,8 +12,8 @@
  */
 
 import {
-  EmptyPlaceholder,
   Typography as CoreTypography,
+  EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
 import { Code01 } from '@untitledui/icons';
 import { Typography } from 'antd';
@@ -129,12 +129,13 @@ export const getErrorPlaceHolder = (
   ingestionDataLength: number,
   isPlatFormDisabled: boolean,
   theme: UIThemePreference['customTheme'],
-  pipelineType?: PipelineType
+  pipelineType?: PipelineType,
+  className?: string
 ) => {
   if (ingestionDataLength === 0) {
     return (
       <EmptyPlaceholder
-        className="tw:bg-primary tw:border tw:border-secondary tw:rounded-xl"
+        className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
           theme,
