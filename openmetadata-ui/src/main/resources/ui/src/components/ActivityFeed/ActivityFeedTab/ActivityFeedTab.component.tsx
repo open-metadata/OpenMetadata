@@ -55,7 +55,11 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
+import {
+  GeneratedBy,
+  Thread,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -424,10 +428,22 @@ export const ActivityFeedTab = ({
     }
   }, [feedCount, activeDomain]);
 
+  // User conversations live only in the legacy feed store, so every count has to
+  // add them to the activity events rather than read either source alone.
+  const allActivityCount = useMemo(
+    () =>
+      (activityEvents?.length ?? 0) +
+      (entityThread ?? []).filter(
+        (feed) => feed.generatedBy !== GeneratedBy.System
+      ).length,
+    [activityEvents, entityThread]
+  );
+
   useEffect(() => {
-    if (activityEvents && activityEvents.length > 0) {
+    const activityCount = allActivityCount;
+
+    if (activityCount > 0) {
       setCountData((prev) => {
-        const activityCount = activityEvents.length;
         const newData = {
           ...prev.data,
           conversationCount: activityCount,
@@ -438,7 +454,7 @@ export const ActivityFeedTab = ({
         return { ...prev, data: newData };
       });
     }
-  }, [activityEvents, onUpdateFeedCount]);
+  }, [allActivityCount, onUpdateFeedCount]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -741,7 +757,7 @@ export const ActivityFeedTab = ({
                   <span>
                     {!isUserEntity &&
                       getCountBadge(
-                        activityEvents?.length ?? 0,
+                        allActivityCount,
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}
