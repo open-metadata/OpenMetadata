@@ -790,7 +790,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
       }
     },
-    []
+    [activeDomain]
   );
 
   const fetchMyActivityFeedHandler = useCallback(
