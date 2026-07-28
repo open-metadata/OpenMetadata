@@ -12,6 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Package } from '@untitledui/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -38,6 +39,7 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
+import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -254,13 +256,18 @@ const MarketplaceDataProductsWidget = ({
         )}
       </div>
       {isEmpty(dataProducts) ? (
-        <div className="tw:flex tw:items-center tw:justify-center tw:min-h-16">
-          <Typography as="span" className="tw:text-sm tw:text-text-tertiary">
-            {t('label.no-entity', {
-              entity: t('label.data-product-plural'),
-            })}
-          </Typography>
-        </div>
+        <MarketplaceWidgetEmptyState
+          actionLabel={
+            !isEditView && permissions.dataProduct?.Create
+              ? `${t('label.new')} ${t('label.data-product')}`
+              : undefined
+          }
+          dataTestId="marketplace-dp-empty-state"
+          description={t('label.no-data-products-yet-description')}
+          icon={<Package className="tw:text-brand-600" height={24} width={24} />}
+          title={t('label.no-data-products-yet')}
+          onAction={openDrawer}
+        />
       ) : (
         cardList
       )}
