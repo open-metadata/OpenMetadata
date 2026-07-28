@@ -780,7 +780,7 @@ const AddDomainForm = ({
       options: iconOptions,
       labels: {
         customIconUrl: t('label.icon-url'),
-        emptyState: t('message.no-entity-available', {
+        emptyState: t('label.no-entity-available', {
           entity: t('label.icon-plural'),
         }),
         enterIconUrl: t('label.enter-entity', {
