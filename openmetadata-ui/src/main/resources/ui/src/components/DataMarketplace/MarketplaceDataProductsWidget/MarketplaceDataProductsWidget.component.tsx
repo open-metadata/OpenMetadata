@@ -39,7 +39,6 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
-import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -48,6 +47,7 @@ import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.inter
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
+import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 
 const DISPLAY_COUNT = 3;
 
@@ -264,7 +264,9 @@ const MarketplaceDataProductsWidget = ({
           }
           dataTestId="marketplace-dp-empty-state"
           description={t('label.no-data-products-yet-description')}
-          icon={<Package className="tw:text-brand-600" height={24} width={24} />}
+          icon={
+            <Package className="tw:text-brand-600" height={24} width={24} />
+          }
           title={t('label.no-data-products-yet')}
           onAction={openDrawer}
         />

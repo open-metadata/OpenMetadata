@@ -35,7 +35,6 @@ import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
-import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -44,6 +43,7 @@ import { DomainFormValues } from '../../Domain/AddDomainForm/AddDomainForm.inter
 import { DomainFormType } from '../../Domain/DomainPage.interface';
 import '../marketplace-widget-shared.less';
 import MarketplaceItemCard from '../MarketplaceItemCard/MarketplaceItemCard.component';
+import MarketplaceWidgetEmptyState from '../MarketplaceWidgetEmptyState/MarketplaceWidgetEmptyState.component';
 
 const DISPLAY_COUNT = 3;
 
@@ -247,7 +247,9 @@ const MarketplaceDomainsWidget = ({
           }
           dataTestId="marketplace-domains-empty-state"
           description={t('label.no-domains-yet-description')}
-          icon={<Globe01 className="tw:text-brand-600" height={24} width={24} />}
+          icon={
+            <Globe01 className="tw:text-brand-600" height={24} width={24} />
+          }
           title={t('label.no-domains-yet')}
           onAction={openDrawer}
         />
