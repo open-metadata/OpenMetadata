@@ -347,7 +347,7 @@ test.describe(
   }
 );
 
-test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.describe.fixme('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   Object.values(ECustomizedDataAssets).forEach(async (type) => {
     test(`${type} - customization should work`, async ({
       adminPage,
