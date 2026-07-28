@@ -38,8 +38,8 @@ import {
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -431,7 +431,7 @@ class SearchClassBase {
         ),
         children: [
           {
-            title: t('label.article'),
+            title: t('label.article-plural'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
             icon: getEntityIcon(
