@@ -79,6 +79,11 @@ STATUS_MAP = {
     2: StatusType.Skipped.value,
 }
 
+WILDCARD_SERVICE = "*"
+
+# Number of unmatched dbt node ids listed in the "no lineage created" warning
+UNMATCHED_NODES_SAMPLE_SIZE = 10
+
 
 class DbtcloudSource(PipelineServiceSource):
     """
@@ -98,18 +103,45 @@ class DbtcloudSource(PipelineServiceSource):
         super().__init__(config, metadata)
         # Cache for observability data: {(job_id, run_id): {models, parents, pipeline_entity, ...}}
         self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}  # noqa: UP006
-        # Cache for table entity lookups to avoid redundant API calls
-        self._table_entity_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
+        self._warn_on_missing_db_service_names()
 
-    def _get_table_entity(self, table_fqn: str) -> Optional[Table]:  # noqa: UP045
+    def _warn_on_missing_db_service_names(self) -> None:
         """
-        Cached table entity lookup to avoid redundant API calls.
+        Without ``dbServiceNames`` every dbt node has to be resolved across all
+        database services, which is both slower and ambiguous when the same
+        database.schema.table exists in more than one service. Say so once at
+        startup instead of leaving the user with silently empty lineage.
         """
-        if table_fqn not in self._table_entity_cache:
-            self._table_entity_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-        return self._table_entity_cache[table_fqn]
+        if self.source_config.includeLineage and not self.get_db_service_names():
+            logger.warning(
+                "No 'dbServiceNames' configured for this dbt Cloud service. dbt models will be resolved by "
+                "searching every database service, and the first match wins. Set 'dbServiceNames' in the "
+                "lineage information to scope resolution to the warehouse dbt actually builds into."
+            )
+
+    def _resolve_table_entity(self, db_service_name: Optional[str], node: DBTModel) -> Optional[Table]:  # noqa: UP045
+        """
+        Resolve the OpenMetadata table backing a dbt model, seed or source.
+
+        Resolution goes through the search index rather than an exact
+        ``get_by_name``: ``dbServiceNames`` is optional, and dbt Cloud reports
+        database/schema/table names as the warehouse spells them, which does not
+        always match the casing OpenMetadata ingested. When no database service
+        is configured the service slot becomes a wildcard so the table is looked
+        up across every service.
+        """
+        fqn_search_string = fqn.build_es_fqn_search_string(
+            service_name=db_service_name or WILDCARD_SERVICE,
+            database_name=node.database,
+            schema_name=node.dbtschema,
+            table_name=node.name,
+        )
+        table_entity = self.metadata.search_in_any_service(entity_type=Table, fqn_search_string=fqn_search_string)
+        if table_entity is None:
+            logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")
+        return table_entity
 
     def _get_task_list(self, job_id: int) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """
@@ -174,12 +206,12 @@ class DbtcloudSource(PipelineServiceSource):
                 )
             )
 
-    def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+    def yield_pipeline_lineage_details(self, pipeline_details: DBTJob) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between pipeline and data sources.
         Uses combined GraphQL call for models and seeds, with optimized caching.
         """
-        try:  # pylint: disable=too-many-nested-blocks
+        try:
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
@@ -225,113 +257,56 @@ class DbtcloudSource(PipelineServiceSource):
                     "runs": self.context.get().current_runs,
                 }
 
+            # A node is only reported as unmatched when *no* configured database
+            # service resolves it, hence the two sets rather than a counter.
+            resolved_nodes = set()
+            unmatched_nodes = set()
+
             for model in dbt_models or []:
-                if not model.runGeneratedAt:
-                    logger.debug(f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}")
+                if not self._is_lineage_candidate(model, is_source=False):
                     continue
 
-                if not all([model.name, model.database, model.dbtschema]):
-                    logger.debug(
-                        f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
-                        f"database={getattr(model, 'database', None)}, schema={getattr(model, 'dbtschema', None)}"
-                    )
-                    continue
-
-                for dbservicename in self.get_db_service_names() or ["*"]:
-                    to_entity_fqn = fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Table,
-                        table_name=model.name,
-                        database_name=model.database,
-                        schema_name=model.dbtschema,
-                        service_name=dbservicename,
-                    )
-
-                    # Use cached table entity lookup
-                    to_entity = self._get_table_entity(to_entity_fqn)
+                for db_service_name in self.get_db_service_names() or [None]:
+                    to_entity = self._resolve_table_entity(db_service_name, model)
 
                     if to_entity is None:
+                        unmatched_nodes.add(model.uniqueId)
                         continue
 
-                    # Add to context table FQNs
-                    if to_entity_fqn not in self.context.get().current_table_fqns:
-                        self.context.get().current_table_fqns.append(to_entity_fqn)
+                    resolved_nodes.add(model.uniqueId)
 
-                    # Add to observability cache using set.add() for O(1)
-                    if cache_key and cache_key in self.observability_cache:
-                        self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
+                    # The resolved entity's own FQN is used downstream: the FQN built from
+                    # the dbt node would carry the "*" wildcard as service name whenever no
+                    # dbServiceNames are configured.
+                    to_entity_fqn = str(to_entity.fullyQualifiedName.root)
+                    self._track_table_fqn(to_entity_fqn, cache_key)
 
-                    if model.compiledCode and to_entity_fqn:
-                        # dialect is resolved from the resolved table FQN's service, not the
-                        # loop value, which may be the "*" wildcard when no dbServiceNames are set.
+                    if model.compiledCode:
                         yield from self._yield_column_lineage(  # pyright: ignore[reportReturnType]
                             model=model,
                             to_entity_fqn=to_entity_fqn,
                         )
 
                     for unique_id in model.dependsOn or []:
-                        # Use dict lookup instead of list comprehension
                         parent = parent_by_unique_id.get(unique_id)
                         if not parent:
                             continue
 
-                        # Check runGeneratedAt for models and seeds (not sources)
-                        # Sources are auto-generated and don't have runGeneratedAt
-                        is_source = unique_id.startswith("source.")
-                        if not is_source and not parent.runGeneratedAt:
-                            logger.debug(f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}")
+                        if not self._is_lineage_candidate(parent, is_source=unique_id.startswith("source.")):
                             continue
 
-                        if not all([parent.name, parent.database, parent.dbtschema]):
-                            logger.debug(
-                                f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
-                                f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
-                            )
-                            continue
-
-                        from_entity_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            table_name=parent.name,
-                            database_name=parent.database,
-                            schema_name=parent.dbtschema,
-                            service_name=dbservicename,
-                        )
-
-                        # Use cached table entity lookup
-                        from_entity = self._get_table_entity(from_entity_fqn)
+                        from_entity = self._resolve_table_entity(db_service_name, parent)
 
                         if from_entity is None:
+                            unmatched_nodes.add(unique_id)
                             continue
 
-                        # Add to context table FQNs
-                        if from_entity_fqn not in self.context.get().current_table_fqns:
-                            self.context.get().current_table_fqns.append(from_entity_fqn)
+                        resolved_nodes.add(unique_id)
+                        self._track_table_fqn(str(from_entity.fullyQualifiedName.root), cache_key)
 
-                        # Add to observability cache using set.add() for O(1)
-                        if cache_key and cache_key in self.observability_cache:
-                            self.observability_cache[cache_key]["table_fqns"].add(from_entity_fqn)
+                        yield Either(right=self._build_lineage_request(from_entity, to_entity, pipeline_entity))
 
-                        lineage_details = LineageDetails(
-                            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
-                            source=LineageSource.PipelineLineage,
-                        )
-
-                        yield Either(
-                            right=AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=from_entity.id,
-                                        type="table",
-                                    ),
-                                    toEntity=EntityReference(
-                                        id=to_entity.id,
-                                        type="table",
-                                    ),
-                                    lineageDetails=lineage_details,
-                                )
-                            )
-                        )
+            self._warn_on_unmatched_nodes(pipeline_details, unmatched_nodes - resolved_nodes)
 
         except Exception as exc:
             yield Either(
@@ -341,6 +316,66 @@ class DbtcloudSource(PipelineServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    @staticmethod
+    def _warn_on_unmatched_nodes(pipeline_details: DBTJob, unmatched_nodes: set) -> None:
+        """
+        Lineage for a dbt node is dropped when its table is not in OpenMetadata.
+        Report it: an empty lineage result otherwise looks like a successful run.
+        """
+        if unmatched_nodes:
+            sample = sorted(unmatched_nodes)[:UNMATCHED_NODES_SAMPLE_SIZE]
+            logger.warning(
+                f"{len(unmatched_nodes)} dbt node(s) of job {pipeline_details.name} could not be matched to a "
+                f"table in OpenMetadata, so no lineage was created for them. Ingest the warehouse holding those "
+                f"tables first and check the 'dbServiceNames' lineage configuration. Unmatched (first "
+                f"{len(sample)}): {sample}"
+            )
+
+    @staticmethod
+    def _is_lineage_candidate(node: DBTModel, is_source: bool) -> bool:
+        """
+        A dbt node can only be matched to a table when it carries a full
+        database/schema/name triple and the run that produced it is known.
+        Sources are exempt from the run check: they are auto-generated and never
+        carry a ``runGeneratedAt``.
+        """
+        is_candidate = True
+        if not is_source and not node.runGeneratedAt:
+            logger.debug(f"Skipping dbt node with missing runGeneratedAt: name={node.name}")
+            is_candidate = False
+        elif not all([node.name, node.database, node.dbtschema]):
+            logger.debug(
+                f"Skipping dbt node with missing attributes: name={node.name}, "
+                f"database={node.database}, schema={node.dbtschema}"
+            )
+            is_candidate = False
+        return is_candidate
+
+    def _track_table_fqn(self, table_fqn: str, cache_key: Optional[Tuple[int, str]]) -> None:  # noqa: UP006, UP045
+        """
+        Record a resolved table FQN so the observability stage can attach the
+        job's run data to it, both for the pipeline being processed and for the
+        cached historical runs.
+        """
+        if table_fqn not in self.context.get().current_table_fqns:
+            self.context.get().current_table_fqns.append(table_fqn)
+        if cache_key and cache_key in self.observability_cache:
+            self.observability_cache[cache_key]["table_fqns"].add(table_fqn)
+
+    @staticmethod
+    def _build_lineage_request(from_entity: Table, to_entity: Table, pipeline_entity: Pipeline) -> AddLineageRequest:
+        """Build the table-to-table edge produced by a dbt job."""
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=from_entity.id, type="table"),
+                toEntity=EntityReference(id=to_entity.id, type="table"),
+                lineageDetails=LineageDetails(
+                    pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+                    source=LineageSource.PipelineLineage,
+                ),
+            )
+        )
 
     def _resolve_dialect(self, db_service_name: str) -> Dialect:
         """

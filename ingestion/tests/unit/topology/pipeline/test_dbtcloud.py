@@ -505,6 +505,22 @@ EXPECTED_ENVIRONMENT_FILTERS = ["70403103931988", "70403103931989"]
 EXPECTED_PIPELINE_NAME = str(MOCK_JOB_RESULT["data"][0]["name"])
 
 
+def table_search_side_effect(tables):
+    """
+    Build a `search_in_any_service` side effect resolving the given tables by the
+    table name held in the last slot of the ES FQN search string.
+    """
+    tables_by_name = {table.name.root: table for table in tables}
+
+    def _search(entity_type, fqn_search_string, **_):
+        if entity_type is not Table:
+            return None
+
+        return tables_by_name.get(fqn_search_string.split(".")[-1])
+
+    return _search
+
+
 class DBTCloudUnitTest(TestCase):
     """
     DBTCloud unit tests
@@ -883,7 +899,14 @@ class DBTCloudUnitTest(TestCase):
         )
 
         # Patch the metadata's get_by_name method
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name,
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_source_table, mock_target_table]),
+            ),
+        ):
 
             def get_by_name_side_effect(entity, fqn):
                 if entity == Pipeline:
@@ -894,12 +917,6 @@ class DBTCloudUnitTest(TestCase):
                     elif isinstance(fqn, FullyQualifiedEntityName):  # noqa: SIM102
                         if fqn.root == "dbtcloud_pipeline_test.New job":
                             return mock_pipeline
-                elif entity == Table:
-                    fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
-                    if "model_15" in fqn_str:
-                        return mock_source_table
-                    elif "model_32" in fqn_str:  # noqa: RET505
-                        return mock_target_table
                 return None
 
             mock_get_by_name.side_effect = get_by_name_side_effect
@@ -933,9 +950,11 @@ class DBTCloudUnitTest(TestCase):
                 # Get the lineage details
                 lineage_details = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-                # Verify we can call the method without errors
-                # Note: Lineage edges may or may not be generated depending on entity resolution
-                self.assertIsInstance(lineage_details, list)
+        edges = [result.right for result in lineage_details if result.right is not None]
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(str(edges[0].edge.fromEntity.id.root), str(mock_source_table.id.root))
+        self.assertEqual(str(edges[0].edge.toEntity.id.root), str(mock_target_table.id.root))
+        self.assertEqual(edges[0].edge.lineageDetails.pipeline.id.root, mock_pipeline.id.root)
 
     def _build_lineage_mocks(self):
         """
@@ -981,13 +1000,9 @@ class DBTCloudUnitTest(TestCase):
                 service = MagicMock()
                 service.serviceType.value = "Redshift"
                 return service
-            if entity == Table:
-                fqn_str = str(fqn)
-                if "model_15" in fqn_str:
-                    return mock_source_table
-                if "model_32" in fqn_str:
-                    return mock_target_table
             return None
+
+        self.dbtcloud.metadata.search_in_any_service = table_search_side_effect([mock_source_table, mock_target_table])
 
         return mock_pipeline, mock_source_table, mock_target_table, get_by_name_side_effect
 
@@ -1209,10 +1224,13 @@ class DBTCloudUnitTest(TestCase):
         self.dbtcloud.context.get().__dict__["current_job_id"] = 70403103936332
         self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
         self.dbtcloud.context.get().__dict__["current_pipeline_entity"] = MOCK_PIPELINE
-        self.dbtcloud.context.get().__dict__["current_table_fqns"] = [
+        # Assigned as an attribute, not through __dict__: the source writes this
+        # key as a pydantic extra, and a __dict__ entry would shadow it for every
+        # later test sharing the topology context.
+        self.dbtcloud.context.get().current_table_fqns = {
             "local_redshift.dev.dbt_test_new.model_15",
             "local_redshift.dev.dbt_test_new.model_32",
-        ]
+        }
 
         # Create mock run object
         mock_run = DBTRun(
@@ -1265,7 +1283,7 @@ class DBTCloudUnitTest(TestCase):
         """
         # Clear current context to test cache fallback
         self.dbtcloud.context.get().__dict__["current_job_id"] = 99999
-        self.dbtcloud.context.get().__dict__.pop("current_table_fqns", None)
+        self.dbtcloud.context.get().current_table_fqns = None
         self.dbtcloud.context.get().__dict__.pop("latest_run", None)
         self.dbtcloud.context.get().__dict__.pop("current_pipeline_entity", None)
 
@@ -1349,7 +1367,7 @@ class DBTCloudUnitTest(TestCase):
         Test pipeline observability when no context or cache data is available
         """
         # Clear all context and cache
-        self.dbtcloud.context.get().__dict__.pop("current_table_fqns", None)
+        self.dbtcloud.context.get().current_table_fqns = None
         self.dbtcloud.context.get().__dict__.pop("latest_run", None)
         self.dbtcloud.context.get().__dict__.pop("current_pipeline_entity", None)
         self.dbtcloud.observability_cache.clear()
@@ -1564,7 +1582,7 @@ class DBTCloudUnitTest(TestCase):
         mock_run_2 = DBTRun(
             id=1002,
             status=2,
-            state="Error",
+            state="Cancelled",
             started_at="2024-05-21 10:00:00.000000+00:00",
             finished_at="2024-05-21 11:00:00.000000+00:00",
         )
@@ -1606,7 +1624,7 @@ class DBTCloudUnitTest(TestCase):
 
         # Clear current context to force cache usage
         self.dbtcloud.context.get().__dict__["current_job_id"] = 99999
-        self.dbtcloud.context.get().__dict__.pop("current_table_fqns", None)
+        self.dbtcloud.context.get().current_table_fqns = None
         self.dbtcloud.context.get().__dict__.pop("latest_run", None)
 
         # Get observability data
@@ -1629,7 +1647,7 @@ class DBTCloudUnitTest(TestCase):
                 status = status.value
             statuses.append(status)
         self.assertIn("Successful", statuses)
-        self.assertIn("Skipped", statuses)  # status 2 maps to Skipped
+        self.assertIn("Skipped", statuses)  # humanized "Cancelled" maps to Skipped
 
     def test_get_models_with_lineage(self):
         """
@@ -1801,33 +1819,273 @@ class DBTCloudUnitTest(TestCase):
             # numberOfRuns is 10 in the config, but MOCK_RUN_RESULT has 2 runs
             self.assertLessEqual(len(runs_list), 10)
 
-    def test_table_entity_cache(self):
+    def test_resolve_table_entity_scopes_search_to_db_service(self):
         """
-        Test that _get_table_entity caches table lookups
+        With a configured database service the search string must be scoped to
+        that service so a same-named table in another service is not picked up.
         """
         mock_table = Table(
             id=uuid.uuid4(),
             name="test_table",
-            fullyQualifiedName="service.db.schema.test_table",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.test_table",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.test_table",
+            name="test_table",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=mock_table) as mock_search:
+            resolved = self.dbtcloud._resolve_table_entity("local_redshift", node)
+
+        self.assertEqual(resolved, mock_table)
+        self.assertEqual(
+            mock_search.call_args.kwargs["fqn_search_string"],
+            "local_redshift.dev.dbt_test_new.test_table",
+        )
+
+    def test_resolve_table_entity_falls_back_to_wildcard_search(self):
+        """
+        Without `dbServiceNames` the table must still be resolvable: the service
+        slot becomes a wildcard and resolution goes through the search index.
+        An exact `get_by_name` on a "*"-prefixed FQN would never match, which is
+        what used to make dbt Cloud lineage silently empty.
+        """
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="test_table",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.test_table",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.test_table",
+            name="test_table",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=mock_table) as mock_search:
+            resolved = self.dbtcloud._resolve_table_entity(None, node)
+
+        self.assertEqual(resolved, mock_table)
+        self.assertEqual(
+            mock_search.call_args.kwargs["fqn_search_string"],
+            "*.dev.dbt_test_new.test_table",
+        )
+
+    def test_lineage_resolves_tables_without_db_service_names(self):
+        """
+        A dbt Cloud service configured without `dbServiceNames` must still emit
+        lineage - resolution falls back to a cross-service search instead of an
+        exact lookup on a wildcard FQN, which never matched.
+        """
+        self.dbtcloud.observability_cache.clear()
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["latest_run_id"] = 70403110257794
+        ctx.__dict__["pipeline"] = "New job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = []
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": None})
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+        mock_source_table = Table(
+            id=uuid.uuid4(),
+            name="model_15",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_15",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+        mock_target_table = Table(
+            id=uuid.uuid4(),
+            name="model_32",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_32",
             database=EntityReference(id=uuid.uuid4(), type="database"),
             columns=[],
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
 
-        with patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_table) as mock_get:
-            # First call should hit the API
-            result1 = self.dbtcloud._get_table_entity("service.db.schema.test_table")
-            self.assertEqual(result1, mock_table)
-            self.assertEqual(mock_get.call_count, 1)
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_source_table, mock_target_table]),
+            ) as mock_search,
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_32",
+                        name="model_32",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=["model.dbt_test_new.model_15"],
+                    ),
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_15",
+                        name="model_15",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=None,
+                    ),
+                ],
+                [],
+                [],
+            )
+            results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            # Second call should use cache
-            result2 = self.dbtcloud._get_table_entity("service.db.schema.test_table")
-            self.assertEqual(result2, mock_table)
-            self.assertEqual(mock_get.call_count, 1)  # Still 1, no new API call
+        edges = [result.right for result in results if result.right is not None]
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(str(edges[0].edge.fromEntity.id.root), str(mock_source_table.id.root))
+        self.assertEqual(str(edges[0].edge.toEntity.id.root), str(mock_target_table.id.root))
 
-            # Different FQN should hit the API again
-            self.dbtcloud._get_table_entity("service.db.schema.other_table")
-            self.assertEqual(mock_get.call_count, 2)
+        search_strings = {call.kwargs["fqn_search_string"] for call in mock_search.call_args_list}
+        self.assertEqual(search_strings, {"*.dev.dbt_test_new.model_32", "*.dev.dbt_test_new.model_15"})
+
+        # The context tracks the resolved entity FQN, never the wildcard one.
+        self.assertEqual(
+            set(self.dbtcloud.context.get().current_table_fqns),
+            {
+                "local_redshift.dev.dbt_test_new.model_32",
+                "local_redshift.dev.dbt_test_new.model_15",
+            },
+        )
+
+    def test_warns_once_when_db_service_names_missing(self):
+        """
+        Resolving across every database service is ambiguous, so the missing
+        `dbServiceNames` configuration must be called out at startup rather than
+        leaving the user to discover empty lineage.
+        """
+        self.dbtcloud.source_config.lineageInformation = None
+
+        with patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.logger") as mock_logger:
+            self.dbtcloud._warn_on_missing_db_service_names()
+
+        warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("dbServiceNames", warnings[0])
+
+    def test_no_unmatched_warning_when_another_db_service_resolves(self):
+        """
+        With several `dbServiceNames` configured, a model only lives in one of
+        them - missing from the others is normal and must not be reported as
+        lineage that could not be created.
+        """
+        self.dbtcloud.observability_cache.clear()
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["latest_run_id"] = 70403110257794
+        ctx.__dict__["pipeline"] = "New job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = []
+        self.dbtcloud.source_config.lineageInformation = type(
+            "obj", (object,), {"dbServiceNames": ["other_service", "local_redshift"]}
+        )
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="model_32",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_32",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        def only_redshift_resolves(entity_type, fqn_search_string, **_):
+            return mock_table if fqn_search_string.startswith("local_redshift.") else None
+
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(self.dbtcloud.metadata, "search_in_any_service", side_effect=only_redshift_resolves),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+            patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.logger") as mock_logger,
+        ):
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_32",
+                        name="model_32",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=None,
+                    )
+                ],
+                [],
+                [],
+            )
+            list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
+        self.assertEqual([warning for warning in warnings if "could not be matched" in warning], [])
+
+    def test_warns_when_no_db_service_resolves_a_node(self):
+        """
+        A dbt node whose table is in no configured service produces no lineage -
+        that has to surface as a warning instead of an empty, successful run.
+        """
+        self.dbtcloud.observability_cache.clear()
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["latest_run_id"] = 70403110257794
+        ctx.__dict__["pipeline"] = "New job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = []
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=None),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+            patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.logger") as mock_logger,
+        ):
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_32",
+                        name="model_32",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=None,
+                    )
+                ],
+                [],
+                [],
+            )
+            results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        self.assertEqual([result for result in results if result.right is not None], [])
+        warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
+        self.assertTrue(any("could not be matched" in warning for warning in warnings))
+        self.assertTrue(any("model.dbt_test_new.model_32" in warning for warning in warnings))
 
     def test_observability_cache_uses_set_for_table_fqns(self):
         """
@@ -1869,42 +2127,39 @@ class DBTCloudUnitTest(TestCase):
         # Clear cache
         self.dbtcloud.observability_cache.clear()
 
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_table]),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            # Return same model multiple times to test deduplication
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_32",
+                        name="model_32",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=[],
+                    ),
+                ],
+                [],
+                [],
+            )
 
-            def get_by_name_side_effect(entity, fqn):
-                if entity == Pipeline:
-                    return mock_pipeline
-                elif entity == Table:  # noqa: RET505
-                    return mock_table
-                return None
+            # Process lineage
+            list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            mock_get_by_name.side_effect = get_by_name_side_effect
-
-            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
-                # Return same model multiple times to test deduplication
-                mock_get_models.return_value = (
-                    [
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.model_32",
-                            name="model_32",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=[],
-                        ),
-                    ],
-                    [],
-                    [],
-                )
-
-                # Process lineage
-                list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
-
-                # Verify cache was populated with set
-                cache_key = (70403103936332, "70403110257794")
-                if cache_key in self.dbtcloud.observability_cache:
-                    table_fqns = self.dbtcloud.observability_cache[cache_key]["table_fqns"]
-                    self.assertIsInstance(table_fqns, set)
+            # Verify cache was populated with set
+            cache_key = (70403103936332, "70403110257794")
+            if cache_key in self.dbtcloud.observability_cache:
+                table_fqns = self.dbtcloud.observability_cache[cache_key]["table_fqns"]
+                self.assertIsInstance(table_fqns, set)
 
     def test_get_jobs_url_construction_with_project_id(self):
         """
@@ -2112,7 +2367,6 @@ class DBTCloudUnitTest(TestCase):
         Test that models without runGeneratedAt are skipped during lineage processing
         """
         # Clear caches
-        self.dbtcloud._table_entity_cache.clear()
         self.dbtcloud.observability_cache.clear()
 
         # Mock the context
@@ -2149,55 +2403,52 @@ class DBTCloudUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
 
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_table]),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            # Return models - one with runGeneratedAt, one without
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_with_run",
+                        name="model_with_run",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=[],
+                    ),
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_without_run",
+                        name="model_without_run",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt=None,  # No runGeneratedAt
+                        dependsOn=[],
+                    ),
+                ],
+                [],  # seeds
+                [],  # sources
+            )
 
-            def get_by_name_side_effect(entity, fqn):
-                if entity == Pipeline:
-                    return mock_pipeline
-                elif entity == Table:  # noqa: RET505
-                    return mock_table
-                return None
+            # Process lineage
+            lineage_results = list(  # noqa: F841
+                self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
+            )
 
-            mock_get_by_name.side_effect = get_by_name_side_effect
-
-            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
-                # Return models - one with runGeneratedAt, one without
-                mock_get_models.return_value = (
-                    [
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.model_with_run",
-                            name="model_with_run",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=[],
-                        ),
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.model_without_run",
-                            name="model_without_run",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt=None,  # No runGeneratedAt
-                            dependsOn=[],
-                        ),
-                    ],
-                    [],  # seeds
-                    [],  # sources
-                )
-
-                # Process lineage
-                lineage_results = list(  # noqa: F841
-                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
-                )
-
-                # The model without runGeneratedAt should be skipped
-                # Only the model with runGeneratedAt should be processed
-                # Verify context table FQNs only contains the model with runGeneratedAt
-                ctx = self.dbtcloud.context.get()
-                if hasattr(ctx, "current_table_fqns") and ctx.current_table_fqns:
-                    # Should only have the model with runGeneratedAt
-                    for fqn_str in ctx.current_table_fqns:
-                        self.assertNotIn("model_without_run", fqn_str)
+            # The model without runGeneratedAt should be skipped
+            # Only the model with runGeneratedAt should be processed
+            # Verify context table FQNs only contains the model with runGeneratedAt
+            ctx = self.dbtcloud.context.get()
+            if hasattr(ctx, "current_table_fqns") and ctx.current_table_fqns:
+                # Should only have the model with runGeneratedAt
+                for fqn_str in ctx.current_table_fqns:
+                    self.assertNotIn("model_without_run", fqn_str)
 
     def test_lineage_skips_parent_models_without_run_generated_at(self):
         """
@@ -2205,7 +2456,6 @@ class DBTCloudUnitTest(TestCase):
         but parent sources are NOT skipped (sources don't need runGeneratedAt)
         """
         # Clear caches
-        self.dbtcloud._table_entity_cache.clear()
         self.dbtcloud.observability_cache.clear()
 
         # Mock the context
@@ -2269,85 +2519,79 @@ class DBTCloudUnitTest(TestCase):
             ),
         }
 
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect(mock_tables.values()),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            # Return a child model that depends on:
+            # 1. A parent model WITH runGeneratedAt (should create lineage)
+            # 2. A parent model WITHOUT runGeneratedAt (should be skipped)
+            # 3. A source (should create lineage - sources don't need runGeneratedAt)
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.child_model",
+                        name="child_model",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=[
+                            "model.dbt_test_new.parent_model_with_run",
+                            "model.dbt_test_new.parent_model_without_run",
+                            "source.dbt_test_new.source_table",
+                        ],
+                    ),
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.parent_model_with_run",
+                        name="parent_model_with_run",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=None,
+                    ),
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.parent_model_without_run",
+                        name="parent_model_without_run",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt=None,  # No runGeneratedAt - should be skipped
+                        dependsOn=None,
+                    ),
+                ],
+                [],  # seeds
+                [
+                    DBTModel(
+                        uniqueId="source.dbt_test_new.source_table",
+                        name="source_table",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt=None,  # Sources don't have runGeneratedAt
+                        dependsOn=None,
+                    ),
+                ],  # sources
+            )
 
-            def get_by_name_side_effect(entity, fqn):
-                if entity == Pipeline:
-                    return mock_pipeline
-                elif entity == Table:  # noqa: RET505
-                    fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
-                    for table_name, table in mock_tables.items():
-                        if table_name in fqn_str:
-                            return table
-                return None
+            # Process lineage
+            lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            mock_get_by_name.side_effect = get_by_name_side_effect
+            # Verify method completed without errors
+            self.assertIsInstance(lineage_results, list)
 
-            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
-                # Return a child model that depends on:
-                # 1. A parent model WITH runGeneratedAt (should create lineage)
-                # 2. A parent model WITHOUT runGeneratedAt (should be skipped)
-                # 3. A source (should create lineage - sources don't need runGeneratedAt)
-                mock_get_models.return_value = (
-                    [
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.child_model",
-                            name="child_model",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=[
-                                "model.dbt_test_new.parent_model_with_run",
-                                "model.dbt_test_new.parent_model_without_run",
-                                "source.dbt_test_new.source_table",
-                            ],
-                        ),
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.parent_model_with_run",
-                            name="parent_model_with_run",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=None,
-                        ),
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.parent_model_without_run",
-                            name="parent_model_without_run",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt=None,  # No runGeneratedAt - should be skipped
-                            dependsOn=None,
-                        ),
-                    ],
-                    [],  # seeds
-                    [
-                        DBTModel(
-                            uniqueId="source.dbt_test_new.source_table",
-                            name="source_table",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt=None,  # Sources don't have runGeneratedAt
-                            dependsOn=None,
-                        ),
-                    ],  # sources
+            # Verify that if any lineage was generated, parent_model_without_run
+            # should not appear as a from_entity (it should be skipped)
+            successful_edges = [r for r in lineage_results if r.right is not None]
+            for edge in successful_edges:
+                from_entity_id = str(edge.right.edge.fromEntity.id)
+                # The parent_model_without_run should never appear as a source
+                self.assertNotEqual(
+                    from_entity_id,
+                    str(mock_tables["parent_model_without_run"].id),
                 )
-
-                # Process lineage
-                lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
-
-                # Verify method completed without errors
-                self.assertIsInstance(lineage_results, list)
-
-                # Verify that if any lineage was generated, parent_model_without_run
-                # should not appear as a from_entity (it should be skipped)
-                successful_edges = [r for r in lineage_results if r.right is not None]
-                for edge in successful_edges:
-                    from_entity_id = str(edge.right.edge.fromEntity.id)
-                    # The parent_model_without_run should never appear as a source
-                    self.assertNotEqual(
-                        from_entity_id,
-                        str(mock_tables["parent_model_without_run"].id),
-                    )
 
     def test_lineage_allows_sources_without_run_generated_at(self):
         """
@@ -2355,7 +2599,6 @@ class DBTCloudUnitTest(TestCase):
         because sources are auto-generated and don't require it
         """
         # Clear caches
-        self.dbtcloud._table_entity_cache.clear()
         self.dbtcloud.observability_cache.clear()
 
         # Mock the context
@@ -2401,53 +2644,45 @@ class DBTCloudUnitTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
         )
 
-        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([mock_model_table, mock_source_table]),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            # Return a model that depends on a source (source has no runGeneratedAt)
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.model_from_source",
+                        name="model_from_source",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=["source.dbt_test_new.raw_data"],
+                    ),
+                ],
+                [],  # seeds
+                [
+                    DBTModel(
+                        uniqueId="source.dbt_test_new.raw_data",
+                        name="raw_data",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt=None,  # Sources don't have runGeneratedAt
+                        dependsOn=None,
+                    ),
+                ],  # sources
+            )
 
-            def get_by_name_side_effect(entity, fqn):
-                if entity == Pipeline:
-                    return mock_pipeline
-                elif entity == Table:  # noqa: RET505
-                    fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
-                    if "model_from_source" in fqn_str:
-                        return mock_model_table
-                    elif "raw_data" in fqn_str:  # noqa: RET505
-                        return mock_source_table
-                return None
+            # Process lineage
+            lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
 
-            mock_get_by_name.side_effect = get_by_name_side_effect
-
-            with patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models:
-                # Return a model that depends on a source (source has no runGeneratedAt)
-                mock_get_models.return_value = (
-                    [
-                        DBTModel(
-                            uniqueId="model.dbt_test_new.model_from_source",
-                            name="model_from_source",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
-                            dependsOn=["source.dbt_test_new.raw_data"],
-                        ),
-                    ],
-                    [],  # seeds
-                    [
-                        DBTModel(
-                            uniqueId="source.dbt_test_new.raw_data",
-                            name="raw_data",
-                            dbtschema="dbt_test_new",
-                            database="dev",
-                            runGeneratedAt=None,  # Sources don't have runGeneratedAt
-                            dependsOn=None,
-                        ),
-                    ],  # sources
-                )
-
-                # Process lineage
-                lineage_results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
-
-                # Verify method completed without errors
-                self.assertIsInstance(lineage_results, list)
-                # Sources should NOT be filtered out even though they have no runGeneratedAt
-                # Note: Actual lineage generation depends on entity resolution (FQN matching)
-                # The key test is that no exception was raised when processing
-                # a source with runGeneratedAt=None
+        # Sources are NOT filtered out even though they have no runGeneratedAt
+        edges = [result.right for result in lineage_results if result.right is not None]
+        self.assertEqual(len(edges), 1)
+        self.assertEqual(str(edges[0].edge.fromEntity.id.root), str(mock_source_table.id.root))
+        self.assertEqual(str(edges[0].edge.toEntity.id.root), str(mock_model_table.id.root))
