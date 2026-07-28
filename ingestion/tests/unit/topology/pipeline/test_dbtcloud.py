@@ -1851,12 +1851,67 @@ class DBTCloudUnitTest(TestCase):
             "local_redshift.dev.dbt_test_new.test_table",
         )
 
+    def test_resolve_table_entity_falls_back_to_exact_lookup(self):
+        """
+        A configured service keeps a deterministic FQN, so a search miss - stale,
+        still-building or unreachable index - must not lose the table. Without
+        this fallback the connector would resolve strictly worse than the old
+        `fqn.build` + `get_by_name` pair it replaces.
+        """
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="test_table",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.test_table",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.test_table",
+            name="test_table",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+
+        with (
+            patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=None),
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_table) as mock_get_by_name,
+        ):
+            resolved = self.dbtcloud._resolve_table_entity("local_redshift", node)
+
+        self.assertEqual(resolved, mock_table)
+        self.assertEqual(
+            str(mock_get_by_name.call_args.kwargs["fqn"]),
+            "local_redshift.dev.dbt_test_new.test_table",
+        )
+
+    def test_resolve_table_entity_never_looks_up_a_wildcard_fqn(self):
+        """
+        With no configured service there is no deterministic FQN to fall back to,
+        so a search miss must not degrade into an exact lookup on a "*"-prefixed
+        FQN - that can only 404.
+        """
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.test_table",
+            name="test_table",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+
+        with (
+            patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=None),
+            patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name,
+        ):
+            resolved = self.dbtcloud._resolve_table_entity(None, node)
+
+        self.assertIsNone(resolved)
+        mock_get_by_name.assert_not_called()
+
     def test_resolve_table_entity_falls_back_to_wildcard_search(self):
         """
-        Without `dbServiceNames` the table must still be resolvable: the service
-        slot becomes a wildcard and resolution goes through the search index.
-        An exact `get_by_name` on a "*"-prefixed FQN would never match, which is
-        what used to make dbt Cloud lineage silently empty.
+        Without `dbServiceNames` the table is resolved across every service
+        through the search index, and the entity comes straight from the search
+        hit instead of costing an extra `get_by_name` round trip.
         """
         mock_table = Table(
             id=uuid.uuid4(),
@@ -1969,21 +2024,6 @@ class DBTCloudUnitTest(TestCase):
             },
         )
 
-    def test_warns_once_when_db_service_names_missing(self):
-        """
-        Resolving across every database service is ambiguous, so the missing
-        `dbServiceNames` configuration must be called out at startup rather than
-        leaving the user to discover empty lineage.
-        """
-        self.dbtcloud.source_config.lineageInformation = None
-
-        with patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.logger") as mock_logger:
-            self.dbtcloud._warn_on_missing_db_service_names()
-
-        warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
-        self.assertEqual(len(warnings), 1)
-        self.assertIn("dbServiceNames", warnings[0])
-
     def test_no_unmatched_warning_when_another_db_service_resolves(self):
         """
         With several `dbServiceNames` configured, a model only lives in one of
@@ -2063,8 +2103,11 @@ class DBTCloudUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
         )
 
+        def pipeline_only(entity, fqn):
+            return mock_pipeline if entity is Pipeline else None
+
         with (
-            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(self.dbtcloud.metadata, "get_by_name", side_effect=pipeline_only),
             patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=None),
             patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
             patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.logger") as mock_logger,

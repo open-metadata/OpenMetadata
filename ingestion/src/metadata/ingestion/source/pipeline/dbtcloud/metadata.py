@@ -110,32 +110,20 @@ class DbtcloudSource(PipelineServiceSource):
         self.observability_cache: LRUCache = LRUCache(maxsize=OBSERVABILITY_CACHE_SIZE)
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
-        self._warn_on_missing_db_service_names()
-
-    def _warn_on_missing_db_service_names(self) -> None:
-        """
-        Without ``dbServiceNames`` every dbt node has to be resolved across all
-        database services, which is both slower and ambiguous when the same
-        database.schema.table exists in more than one service. Say so once at
-        startup instead of leaving the user with silently empty lineage.
-        """
-        if self.source_config.includeLineage and not self.get_db_service_names():
-            logger.warning(
-                "No 'dbServiceNames' configured for this dbt Cloud service. dbt models will be resolved by "
-                "searching every database service, and the first match wins. Set 'dbServiceNames' in the "
-                "lineage information to scope resolution to the warehouse dbt actually builds into."
-            )
 
     def _resolve_table_entity(self, db_service_name: Optional[str], node: DBTModel) -> Optional[Table]:  # noqa: UP045
         """
         Resolve the OpenMetadata table backing a dbt model, seed or source.
 
-        Resolution goes through the search index rather than an exact
-        ``get_by_name``: ``dbServiceNames`` is optional, and dbt Cloud reports
-        database/schema/table names as the warehouse spells them, which does not
-        always match the casing OpenMetadata ingested. When no database service
-        is configured the service slot becomes a wildcard so the table is looked
-        up across every service.
+        The search index is the primary lookup: ``dbServiceNames`` is optional,
+        and with no configured service the slot becomes a wildcard so the table
+        is found across every service. The entity comes straight out of the
+        search hit, which saves the extra ``get_by_name`` round trip the caller
+        used to pay on top of the search ``fqn.build`` already performed.
+
+        A configured service falls back to an exact lookup, because the FQN is
+        then deterministic and must stay resolvable while the search index is
+        stale, still building, or unreachable.
         """
         fqn_search_string = fqn.build_es_fqn_search_string(
             service_name=db_service_name or WILDCARD_SERVICE,
@@ -144,9 +132,24 @@ class DbtcloudSource(PipelineServiceSource):
             table_name=node.name,
         )
         table_entity = self.metadata.search_in_any_service(entity_type=Table, fqn_search_string=fqn_search_string)
+        if table_entity is None and db_service_name:
+            table_entity = self._get_table_by_exact_fqn(db_service_name, node)
         if table_entity is None:
             logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")
         return table_entity
+
+    def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Optional[Table]:  # noqa: UP045
+        """Look the table up by its deterministic FQN, bypassing the search index."""
+        table_fqn = fqn.build(
+            metadata=None,
+            entity_type=Table,
+            service_name=db_service_name,
+            database_name=node.database,
+            schema_name=node.dbtschema,
+            table_name=node.name,
+            skip_es_search=True,
+        )
+        return self.metadata.get_by_name(entity=Table, fqn=table_fqn)
 
     def _get_task_list(self, job_id: int) -> Optional[List[Task]]:  # noqa: UP006, UP045
         """
