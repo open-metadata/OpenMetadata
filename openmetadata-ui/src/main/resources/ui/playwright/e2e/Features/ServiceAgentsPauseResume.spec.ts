@@ -34,6 +34,13 @@ const mockPipelineEnabledState = async (
 ) => {
   let enabled = initialEnabled;
 
+  await page.route('**/api/v1/services/ingestionPipelines/status', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 200, platform: 'airflow' }),
+    })
+  );
+
   await page.route('**/api/v1/services/ingestionPipelines?*', async (route) => {
     const response = await route.fetch();
     const body = await response.json();
@@ -95,7 +102,7 @@ const clickAndAwaitToggle = async (page: Page, testId: string) => {
   await toggleResponse;
 };
 
-test.describe.skip('Service Agents pause and resume', () => {
+test.describe('Service Agents pause and resume', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 

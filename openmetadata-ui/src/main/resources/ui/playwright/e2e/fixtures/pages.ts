@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Browser, Page, test as base } from '@playwright/test';
-import { stripEtagConditionalReads } from '../../utils/common';
+import { disableEtagConditionalReads } from '../../utils/common';
 
 // Define the type for our custom fixtures
 export type CustomFixtures = {
@@ -25,12 +25,11 @@ export type CustomFixtures = {
   ownerPage: Page;
 };
 
-// Open a role page with the ETag conditional-read strip installed, so every
-// fixture-based spec gets fresh entity reads regardless of the deployed bundle
-// (see stripEtagConditionalReads in utils/common).
+// Open a role page with conditional reads disabled so fixture-based specs
+// always receive fresh entity state.
 const openRolePage = async (browser: Browser, storageState: string) => {
   const page = await browser.newPage({ storageState });
-  await stripEtagConditionalReads(page);
+  await disableEtagConditionalReads(page);
 
   return page;
 };

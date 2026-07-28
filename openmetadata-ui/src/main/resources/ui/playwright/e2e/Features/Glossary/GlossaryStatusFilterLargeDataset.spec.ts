@@ -15,7 +15,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
-  stripEtagConditionalReads,
+  disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
@@ -231,7 +231,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await stripEtagConditionalReads(page);
+    await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
     await page

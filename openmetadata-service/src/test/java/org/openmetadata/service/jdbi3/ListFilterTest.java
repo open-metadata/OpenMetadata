@@ -127,6 +127,23 @@ class ListFilterTest {
   }
 
   @Test
+  void test_getMemorySearchVisibilityCondition() {
+    ListFilter filter = new ListFilter();
+    String condition = filter.getCondition("context_memory");
+    assertFalse(condition.contains("shareConfig.visibility"));
+    assertFalse(condition.contains("shareConfig'->>'visibility"));
+
+    filter = new ListFilter();
+    filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
+    condition = filter.getCondition("context_memory");
+    String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
+    assertTrue(
+        condition.contains(
+                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder)
+            || condition.contains("json->'shareConfig'->>'visibility' = " + bindPlaceholder));
+  }
+
+  @Test
   void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
@@ -428,32 +445,36 @@ class ListFilterTest {
   }
 
   @Test
-  void test_taskStatusGroup_openIncludesGrantedManualRevokeUniversallyAndDarApproved() {
+  void test_taskStatusGroup_openIncludesSharedOpenAndDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
     String condition = filter.getCondition("task_entity");
 
-    // Shared open statuses (Granted/ManualRevoke included so any hypothetical future task type
-    // reaching those statuses still lands in a bucket rather than silently breaking the invariant).
+    // Shared open statuses. Granted is not here — it's DAR-only and routed to the Closed bucket.
     assertTrue(
         condition.contains(
-            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke')"),
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'ManualRevoke')"),
         condition);
-    // DAR-only bump: Approved only counts as open for DataAccessRequest rows.
+    // DAR-only bump: Approved counts as open for DataAccessRequest rows (still awaiting grant).
     assertTrue(
         condition.contains(
             "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         condition);
+    // Granted must not appear on the open side — the reported UX bug.
+    assertFalse(condition.contains("'Granted'"), condition);
   }
 
   @Test
-  void test_taskStatusGroup_closedExcludesApprovedForDarRows() {
+  void test_taskStatusGroup_closedIncludesTerminalAndGrantedAndNonDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
     String condition = filter.getCondition("task_entity");
 
+    // Shared terminal statuses — Granted is in this list unconditionally because it's
+    // DAR-only in practice; keeps the SQL branch count minimal.
     assertTrue(
         condition.contains(
-            "task_entity.status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+            "task_entity.status IN ('Granted', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
         condition);
+    // Non-DAR Approved is terminal (Glossary/DescriptionUpdate/etc.) — belongs in Closed tab.
     assertTrue(
         condition.contains(
             "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
@@ -479,6 +500,10 @@ class ListFilterTest {
         closedCond.contains(
             "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         "DAR Approved must not appear in the closed bucket: " + closedCond);
+    // DAR Granted lives in closed, never in open (Slack-thread regression guard).
+    assertFalse(
+        openCond.contains("'Granted'"),
+        "Granted must not appear in the open bucket at all: " + openCond);
   }
 
   @Test

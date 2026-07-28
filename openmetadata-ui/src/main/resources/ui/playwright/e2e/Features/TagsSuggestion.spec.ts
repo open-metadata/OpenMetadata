@@ -43,13 +43,13 @@ import {
   openTaskForm,
 } from '../../utils/taskWorkflow';
 
-const requesterUser = new UserClass();
-const reviewerUser = new UserClass();
-const table = new TableClass();
-const topic = new TopicClass();
-const container = new ContainerClass();
-const apiEndpoint = new ApiEndpointClass();
-const createdTaskIds: string[] = [];
+let requesterUser: UserClass;
+let reviewerUser: UserClass;
+let table: TableClass;
+let topic: TopicClass;
+let container: ContainerClass;
+let apiEndpoint: ApiEndpointClass;
+let createdTaskIds: string[];
 
 const ENTITY_ENDPOINTS = {
   table: '/api/v1/tables/name/',
@@ -102,13 +102,23 @@ const fetchEntityDetails = async (
 const getTagFqns = (tags?: Array<{ tagFQN: string }>) =>
   (tags ?? []).map((tag) => tag.tagFQN).sort();
 
-test.describe.serial(
+const describeTagTaskWorkflowsInParallel = test.describe;
+
+describeTagTaskWorkflowsInParallel(
   'Tag Task Workflows',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.slow(true);
 
     test.beforeAll('Setup users and entities', async ({ browser }) => {
+      requesterUser = new UserClass();
+      reviewerUser = new UserClass();
+      table = new TableClass();
+      topic = new TopicClass();
+      container = new ContainerClass();
+      apiEndpoint = new ApiEndpointClass();
+      createdTaskIds = [];
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       try {

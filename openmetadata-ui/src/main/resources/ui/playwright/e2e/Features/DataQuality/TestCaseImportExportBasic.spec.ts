@@ -273,6 +273,8 @@ test.describe(
   'Test Case Import/Export/Edits - Permissions',
   { tag: `${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality` },
   () => {
+    test.describe.configure({ mode: 'default' });
+
     const table = new TableClass();
 
     test.beforeAll(async ({ browser }) => {
