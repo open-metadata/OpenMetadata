@@ -11,9 +11,10 @@
 
 name: PostgreSQL PR RDF E2E Tests
 on:
+  merge_group:
   workflow_dispatch:
-  # Same-repo PRs run under pull_request — unprivileged. Merges and full
-  # dispatch runs come from workflow_dispatch above.
+  # Same-repo PRs run under pull_request — unprivileged. Merges come
+  # from merge_group above, full dispatch runs from workflow_dispatch.
   pull_request:
     types:
       - labeled
@@ -118,12 +119,12 @@ concurrency:
 jobs:
   # Fork-vs-same-repo PR arbitration. Same pattern as
   # playwright-postgresql-e2e.yml (established by #30485):
-  #   workflow_dispatch      → always run
-  #   drafts                 → never run
+  #   merge_group / workflow_dispatch → always run
+  #   drafts                          → never run
   #   labeled event with label != "safe to test" → skip
-  #   same-repo PR + pull_request       → run
+  #   same-repo PR + pull_request     → run
   #   fork PR + pull_request_target + "safe to test" (reconciled) → run
-  #   everything else        → skip
+  #   everything else                 → skip
   gate:
     runs-on: ubuntu-latest
     permissions:
@@ -177,7 +178,7 @@ jobs:
           set -euo pipefail
           decide() { echo "should_run=$1" >> "$GITHUB_OUTPUT"; exit 0; }
           case "$EVENT" in
-            workflow_dispatch) decide true ;;
+            merge_group|workflow_dispatch) decide true ;;
           esac
           if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
           if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
@@ -239,7 +240,12 @@ jobs:
           retention-days: 1
 
   playwright-rdf-postgresql:
-    name: Playwright RDF (Knowledge Graph + Ontology)
+    # Internal display name only. The required-check status
+    # `Playwright RDF (Knowledge Graph + Ontology)` is published by the
+    # `playwright-rdf-summary` job below (which uses a dynamic name
+    # expression), so a redundant sibling event's synthetic-green cannot
+    # satisfy branch protection before the real pipeline finishes.
+    name: RDF Playwright execution
     needs: [gate, build]
     runs-on: ubuntu-latest
     # The previous fork short-circuit (`!github.event.pull_request.head.repo.fork`)
@@ -390,3 +396,76 @@ jobs:
           docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
           docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
           sudo rm -rf "${PWD}/docker/development/docker-volume"
+
+  # Publishes the required branch-protection check name
+  # `Playwright RDF (Knowledge Graph + Ontology)` ONLY when this run is
+  # authorised by the gate. Every other case (redundant sibling event
+  # for a same-repo PR, fork PR without safe-to-test, draft, spurious
+  # non-safe-to-test labeled event) publishes a differently-named check
+  # so branch protection can distinguish "authoritative for this PR
+  # shape" from "synthetic green / skipped". Without this, GitHub's
+  # protection UI picks the most-recently-completed run of the required
+  # name — and the pull_request_target sibling of a same-repo PR would
+  # finish in ~15s with a green skip while the real pull_request run is
+  # still compiling, making the PR appear mergeable before tests run.
+  #
+  # Decision tree (mirrors the gate + playwright-postgresql-e2e.yml
+  # pattern from #30476):
+  #   gate succeeds with should_run=true              → 'Playwright RDF (Knowledge Graph + Ontology)'
+  #   gate fails (crash / cancelled)                   → 'Playwright RDF (Knowledge Graph + Ontology)' + hard fail
+  #   labeled event with non-'safe to test' label     → '... (label ignored)'
+  #   gate succeeds with should_run=false              → '... (skipped)'
+  playwright-rdf-summary:
+    name: >-
+      ${{
+        (
+          needs.gate.result != 'success'
+          || needs.gate.outputs.should_run == 'true'
+        )
+        && 'Playwright RDF (Knowledge Graph + Ontology)'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'Playwright RDF (Knowledge Graph + Ontology) (label ignored)'
+          || 'Playwright RDF (Knowledge Graph + Ontology) (skipped)'
+        )
+      }}
+    if: ${{ always() && !cancelled() }}
+    needs: [gate, build, playwright-rdf-postgresql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # If gate itself didn't produce a valid decision (crash, cancelled,
+      # unknown), FAIL loudly rather than silently reporting green.
+      # Without this guard, `should_run != 'true'` on an unset output
+      # would fall into the label-ignored/skipped branch above and mask
+      # the gate failure.
+      - name: Guard against missing gate decision
+        if: ${{ needs.gate.result != 'success' }}
+        run: |
+          echo "::error::gate did not succeed (result=${{ needs.gate.result }}, should_run=${{ needs.gate.outputs.should_run }}). Refusing synthetic green."
+          exit 1
+
+      # Short-circuit when gate decided should_run=false. The underlying
+      # jobs are skipped in that case (redundant pull_request_target for
+      # a same-repo PR, or fork PR without safe-to-test), so there's
+      # nothing to summarise. The dynamic job name above already routes
+      # this run to a non-required check name; this step just keeps the
+      # job outcome at ✅.
+      - name: Report gate-skipped run as green
+        if: ${{ needs.gate.outputs.should_run == 'false' }}
+        run: |
+          echo "Gate decided should_run=false for event=${{ github.event_name }}."
+          echo "This run is intentionally skipped; the authoritative required check comes from the sibling event's run."
+
+      # Propagate real upstream failures under the required check name
+      # so the PR fails visibly rather than falling through to green.
+      - name: Fail on upstream failure
+        if: |
+          needs.gate.outputs.should_run == 'true' && (
+            needs.build.result != 'success' ||
+            needs.playwright-rdf-postgresql.result != 'success'
+          )
+        run: |
+          echo "::error::Upstream job failure — build=${{ needs.build.result }}, execution=${{ needs.playwright-rdf-postgresql.result }}."
+          exit 1
