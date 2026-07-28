@@ -60,12 +60,20 @@ class SupersetIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill(
-      '#root\\/dashboardFilterPattern\\/includes',
-      `${this.entityName}`
-    );
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
     await page
-      .locator('#root\\/dashboardFilterPattern\\/includes')
+      .getByTestId('dashboardFilterPattern-only-specific-button')
+      .click();
+    await page
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.entityName);
+    await page
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 
