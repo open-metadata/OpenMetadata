@@ -64,9 +64,7 @@ export const addToKnowledgeCenterRecentViewed = (
     }
     if (recentlyViewed) {
       const arrData = recentlyViewed
-        .filter(
-          (item) => item.fullyQualifiedName !== entityData.fullyQualifiedName
-        )
+        .filter((item) => item.id !== entityData.id)
         .sort(arraySorterByKey<RecentViewedKnowledgePage>('timestamp', true));
       arrData.unshift(entityData);
 
