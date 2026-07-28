@@ -944,17 +944,13 @@ class HiveUnitTest(TestCase):
         self.assertEqual(ldap_ssl_connection.password.get_secret_value(), "password")
         self.assertTrue(ldap_ssl_connection.useSSL)
 
-    @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
-    def test_test_connection_with_postgres_connection_object(self, mock_get_metastore, mock_test_db_schema):
+    def test_get_client_with_postgres_connection_object(self, mock_get_metastore):
         """
-        Test test_connection when metastoreConnection is already a PostgresConnection object
+        Test the client is the metastore engine when metastoreConnection is a PostgresConnection
         """
-        mock_metadata = Mock()
-        mock_engine = Mock()
         mock_metastore_engine = Mock()
         mock_get_metastore.return_value = mock_metastore_engine
-        mock_test_db_schema.return_value = Mock()
 
         postgres_conn = PostgresConnection(
             username="postgres_user",
@@ -968,26 +964,18 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_conn,
         )
 
-        handler = HiveConnectionHandler(hive_conn)
-        handler._client = mock_engine
-        handler.test_connection(mock_metadata)
+        client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once_with(postgres_conn)
-        mock_test_db_schema.assert_called_once()
-        call_kwargs = mock_test_db_schema.call_args
-        self.assertEqual(call_kwargs.kwargs["engine"], mock_metastore_engine)
+        self.assertEqual(client, mock_metastore_engine)
 
-    @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
-    def test_test_connection_with_mysql_connection_object(self, mock_get_metastore, mock_test_db_schema):
+    def test_get_client_with_mysql_connection_object(self, mock_get_metastore):
         """
-        Test test_connection when metastoreConnection is already a MysqlConnection object
+        Test the client is the metastore engine when metastoreConnection is a MysqlConnection
         """
-        mock_metadata = Mock()
-        mock_engine = Mock()
         mock_metastore_engine = Mock()
         mock_get_metastore.return_value = mock_metastore_engine
-        mock_test_db_schema.return_value = Mock()
 
         mysql_conn = MysqlConnection(
             username="mysql_user",
@@ -1001,26 +989,34 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_conn,
         )
 
-        handler = HiveConnectionHandler(hive_conn)
-        handler._client = mock_engine
-        handler.test_connection(mock_metadata)
+        client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once_with(mysql_conn)
-        mock_test_db_schema.assert_called_once()
-        call_kwargs = mock_test_db_schema.call_args
-        self.assertEqual(call_kwargs.kwargs["engine"], mock_metastore_engine)
+        self.assertEqual(client, mock_metastore_engine)
 
-    @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
-    def test_test_connection_with_postgres_dict(self, mock_get_metastore, mock_test_db_schema):
+    def test_get_client_without_metastore_uses_hiveserver(self, mock_get_metastore):
         """
-        Test test_connection when metastoreConnection is a dict that validates as PostgresConnection
+        Test the client is the HiveServer2 engine when no metastore is configured
         """
-        mock_metadata = Mock()
-        mock_engine = Mock()
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection={},
+        )
+
+        client = HiveConnectionHandler(hive_conn)._get_client()
+
+        mock_get_metastore.assert_not_called()
+        self.assertEqual(client.url.drivername, "hive")
+
+    @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
+    def test_get_client_with_postgres_dict(self, mock_get_metastore):
+        """
+        Test the raw dict form is validated and used to build the metastore engine
+        """
         mock_metastore_engine = Mock()
         mock_get_metastore.return_value = mock_metastore_engine
-        mock_test_db_schema.return_value = Mock()
 
         postgres_dict = {
             "type": "Postgres",
@@ -1035,24 +1031,19 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_dict,
         )
 
-        handler = HiveConnectionHandler(hive_conn)
-        handler._client = mock_engine
-        handler.test_connection(mock_metadata)
+        client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once()
-        self.assertIsInstance(hive_conn.metastoreConnection, PostgresConnection)
+        self.assertEqual(client, mock_metastore_engine)
+        self.assertIsInstance(mock_get_metastore.call_args.args[0], PostgresConnection)
 
-    @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
-    def test_test_connection_with_mysql_dict(self, mock_get_metastore, mock_test_db_schema):
+    def test_get_client_with_mysql_dict(self, mock_get_metastore):
         """
-        Test test_connection when metastoreConnection is a dict that validates as MysqlConnection
+        Test the raw dict form is validated and used to build the metastore engine
         """
-        mock_metadata = Mock()
-        mock_engine = Mock()
         mock_metastore_engine = Mock()
         mock_get_metastore.return_value = mock_metastore_engine
-        mock_test_db_schema.return_value = Mock()
 
         mysql_dict = {
             "type": "Mysql",
@@ -1067,11 +1058,11 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_dict,
         )
 
-        handler = HiveConnectionHandler(hive_conn)
-        handler._client = mock_engine
-        handler.test_connection(mock_metadata)
+        client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once()
+        self.assertEqual(client, mock_metastore_engine)
+        self.assertIsInstance(mock_get_metastore.call_args.args[0], MysqlConnection)
         self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
 
     @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")

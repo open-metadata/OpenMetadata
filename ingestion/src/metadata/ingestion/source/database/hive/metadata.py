@@ -30,7 +30,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.hive.connection import (
-    get_metastore_connection,
     get_validated_metastore_connection,
 )
 from metadata.ingestion.source.database.hive.utils import (
@@ -80,9 +79,9 @@ class HiveSource(CommonDbSourceService):
         Fetching views in hive server with query "SHOW VIEWS" was possible
         only after hive 2.2.0 version
         """
-        metastore_conn = get_validated_metastore_connection(self.service_connection.metastoreConnection)
-
-        if not metastore_conn:
+        # The engine is owned by HiveConnection, which already picked the metastore engine when one
+        # is configured. Dialect patching only applies to the HiveServer2 engine.
+        if not get_validated_metastore_connection(self.service_connection.metastoreConnection):
             with self.engine.connect() as conn:
                 result = conn.execute(text("SELECT VERSION()")).fetchone()._asdict()
 
@@ -94,8 +93,6 @@ class HiveSource(CommonDbSourceService):
             else:
                 HiveDialect.get_table_names = get_table_names_older_versions
                 HiveDialect.get_view_names = get_view_names_older_versions
-        else:
-            self.engine = get_metastore_connection(metastore_conn)
         self._connection_map = {}  # Lazy init as well
         self._inspector_map = {}
 

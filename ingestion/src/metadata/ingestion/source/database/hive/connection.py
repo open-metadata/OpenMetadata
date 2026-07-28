@@ -105,6 +105,13 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         connection = self.service_connection
 
+        # A configured metastore replaces HiveServer2 entirely: it reads the same catalog from the
+        # metastore database in bulk, so only one of the two engines is ever live.
+        metastore_conn = get_validated_metastore_connection(connection.metastoreConnection)
+        if metastore_conn:
+            connection.metastoreConnection = metastore_conn
+            return get_metastore_connection(metastore_conn)
+
         if connection.auth:
             auth_key = (
                 "auth"
@@ -153,18 +160,10 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         Test connection. This can be executed either as part
         of a metadata workflow or during an Automation Workflow
         """
-        engine = self.client
-        service_connection = self.service_connection
-        metastore_conn = get_validated_metastore_connection(service_connection.metastoreConnection)
-
-        if metastore_conn:
-            service_connection.metastoreConnection = metastore_conn
-            engine = get_metastore_connection(metastore_conn)
-
         return test_connection_db_schema_sources(
             metadata=metadata,
-            engine=engine,
-            service_connection=service_connection,
+            engine=self.client,
+            service_connection=self.service_connection,
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )

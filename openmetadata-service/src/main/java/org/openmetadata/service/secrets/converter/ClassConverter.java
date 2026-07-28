@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -69,29 +68,18 @@ public abstract class ClassConverter {
 
   // method called when and Object field can expect a HashMap or a specific class
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
-    Optional<Object> result = Optional.ofNullable(object);
-    if (isConvertible(object)) {
+    if (object != null) {
       Optional<Object> converted =
           candidateClasses.stream()
               .map(candidateClazz -> convert(object, candidateClazz))
               .filter(Objects::nonNull)
               .findFirst();
       if (converted.isPresent()) {
-        result =
-            Optional.of(
-                ClassConverterFactory.getConverter(converted.get().getClass())
-                    .convert(converted.get()));
+        return Optional.of(
+            ClassConverterFactory.getConverter(converted.get().getClass())
+                .convert(converted.get()));
       }
     }
-    return result;
-  }
-
-  /**
-   * An empty map carries no user-supplied configuration, so it must be left untouched. Jackson does
-   * not enforce JSON Schema `required`, so converting it would silently succeed against the first
-   * candidate class and persist a config populated entirely with schema defaults.
-   */
-  private static boolean isConvertible(Object object) {
-    return object != null && !(object instanceof Map<?, ?> map && map.isEmpty());
+    return object == null ? Optional.empty() : Optional.of(object);
   }
 }
