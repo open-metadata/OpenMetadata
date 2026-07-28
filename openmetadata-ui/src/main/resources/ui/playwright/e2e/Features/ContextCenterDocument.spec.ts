@@ -1173,7 +1173,11 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toContainText('1');
 
     // DocumentFolderView header still shows the global total (unchanged).
-    expect(folderCount).toBeGreaterThanOrEqual(globalCount);
+    const folderCountAfter = parseInt(
+      (await folderViewCount.textContent())?.match(/\d+/)?.[0] ?? '0',
+      10
+    );
+    expect(folderCountAfter).toBeGreaterThanOrEqual(globalCount);
 
     const inFolderRow = getDocumentRowByName(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();
