@@ -12,30 +12,30 @@
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import {
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Dialog,
-  Modal,
-  ModalOverlay,
-  Tree,
-  Typography,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Dialog,
+    Modal,
+    ModalOverlay,
+    Tree,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
-  forwardRef,
-  ReactNode,
-  UIEventHandler,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useReducer,
-  useRef,
-  useState,
+    forwardRef,
+    ReactNode,
+    UIEventHandler,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useReducer,
+    useRef,
+    useState
 } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -49,8 +49,8 @@ import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlacehol
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
-  KNOWLEDGE_CENTER_PAGINATION_LIMIT,
-  KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
+    KNOWLEDGE_CENTER_PAGINATION_LIMIT,
+    KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -59,36 +59,37 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
-  KnowledgePage,
-  KnowledgePagesHierarchyRef,
-  MovedEntity,
-  PageHierarchy,
-  PageType,
-  RecentlyViewedQuickLinks,
+    KnowledgePage,
+    KnowledgePagesHierarchyRef,
+    MovedEntity,
+    PageHierarchy,
+    PageType,
+    RecentlyViewedQuickLinks
 } from '../../../interface/knowledge-center.interface';
 import {
-  deleteKnowledgePage,
-  getListKnowledgePages,
-  getPageHierarchyFromES,
-  patchKnowledgePage,
+    deleteKnowledgePage,
+    getListKnowledgePages,
+    getPageHierarchyFromES,
+    patchKnowledgePage
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
-  extractKnowledgePageParentFQN,
-  findPageAndParentInTreeData,
-  findPageInTreeData,
-  getExpandedNodeKeys,
-  getKnowledgePageName,
-  getPageAllChildren,
-  getUpdatePageHierarchy,
-  getUpdatePageHierarchyForDelete,
-  hierarchyPaginationInitialState,
-  hierarchyPaginationReducer,
-  integrateNodesIntoHierarchy,
-  updateTreeData,
+    extractKnowledgePageParentFQN,
+    findPageAndParentInTreeData,
+    findPageInTreeData,
+    getExpandedNodeKeys,
+    getKnowledgePageName,
+    getPageAllChildren,
+    getUpdatePageHierarchy,
+    getUpdatePageHierarchyForDelete,
+    hierarchyPaginationInitialState,
+    hierarchyPaginationReducer,
+    integrateNodesIntoHierarchy,
+    remapSubtreeFqn,
+    updateTreeData
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -154,6 +155,10 @@ const KnowledgePagesHierarchy = forwardRef<
       hierarchyPaginationInitialState
     );
 
+    const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
+    const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
+    const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
       try {
@@ -181,19 +186,39 @@ const KnowledgePagesHierarchy = forwardRef<
 
         while (nodesPendingChildren.length > 0) {
           const childrenResults = await Promise.all(
-            nodesPendingChildren.map((node) =>
-              getPageHierarchyFromES(node.fullyQualifiedName)
-            )
+            nodesPendingChildren.map((node) => {
+              const offset =
+                nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+                (node.children?.length ?? 0);
+
+              return getPageHierarchyFromES(
+                node.fullyQualifiedName,
+                undefined,
+                offset,
+                KNOWLEDGE_CENTER_PAGINATION_LIMIT
+              );
+            })
           );
 
           nodesPendingChildren.forEach((node, index) => {
-            fetchedChildrenByParentFqn.set(
+            const fetchedChildren = childrenResults[index].data;
+            const offset =
+              nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+              (node.children?.length ?? 0);
+
+            nodeChildrenOffsetRef.current.set(
               node.fullyQualifiedName,
-              childrenResults[index].data
+              offset + fetchedChildren.length
             );
+
+            fetchedChildrenByParentFqn.set(node.fullyQualifiedName, [
+              ...(fetchedChildrenByParentFqn.get(node.fullyQualifiedName) ??
+                []),
+              ...fetchedChildren,
+            ]);
             traversalHierarchy = updateTreeData(
               traversalHierarchy,
-              childrenResults[index].data,
+              fetchedChildren,
               node.fullyQualifiedName
             );
           });
@@ -299,6 +324,9 @@ const KnowledgePagesHierarchy = forwardRef<
           if (forceRefresh) {
             setExpandedKeys([]);
             setIsUserExpandedAll(false);
+            nodesWithNoMoreChildrenRef.current.clear();
+            nodesLoadingChildrenRef.current.clear();
+            nodeChildrenOffsetRef.current.clear();
           }
           if (isCreateHash) {
             consumedCreateHashFqnRef.current = fqn;
@@ -336,9 +364,6 @@ const KnowledgePagesHierarchy = forwardRef<
     const fetchKnowledgePageHierarchyRef = useRef(fetchKnowledgePageHierarchy);
     fetchKnowledgePageHierarchyRef.current = fetchKnowledgePageHierarchy;
 
-    const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
-    const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
-
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
@@ -354,11 +379,17 @@ const KnowledgePagesHierarchy = forwardRef<
         }
         nodesLoadingChildrenRef.current.add(nodeKey);
         try {
+          const fetchOffset =
+            nodeChildrenOffsetRef.current.get(nodeKey) ?? loadedCount;
           const { data: children } = await getPageHierarchyFromES(
             nodeKey,
             undefined,
-            loadedCount,
+            fetchOffset,
             KNOWLEDGE_CENTER_PAGINATION_LIMIT
+          );
+          nodeChildrenOffsetRef.current.set(
+            nodeKey,
+            fetchOffset + children.length
           );
           if (children.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
             nodesWithNoMoreChildrenRef.current.add(nodeKey);
@@ -495,13 +526,21 @@ const KnowledgePagesHierarchy = forwardRef<
             targetNode.fullyQualifiedName
           );
           nodesLoadingChildrenRef.current.delete(targetNode.fullyQualifiedName);
+          nodeChildrenOffsetRef.current.delete(targetNode.fullyQualifiedName);
 
           const targetChildrenWithMovedSubtree = targetNodeChildren.data.map(
             (child) =>
               child.fullyQualifiedName === newSourceFQN &&
               isEmpty(child.children) &&
               !isEmpty(sourceNode.children)
-                ? { ...child, children: sourceNode.children }
+                ? {
+                    ...child,
+                    children: remapSubtreeFqn(
+                      sourceNode.children ?? [],
+                      oldSourceFQN,
+                      newSourceFQN
+                    ),
+                  }
                 : child
           );
 
@@ -524,6 +563,9 @@ const KnowledgePagesHierarchy = forwardRef<
               sourceNodeParent.fullyQualifiedName
             );
             nodesLoadingChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodeChildrenOffsetRef.current.delete(
               sourceNodeParent.fullyQualifiedName
             );
 

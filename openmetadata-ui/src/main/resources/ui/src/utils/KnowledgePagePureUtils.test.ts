@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import {
-  PageHierarchy,
-  PageType,
+    PageHierarchy,
+    PageType
 } from '../interface/knowledge-center.interface';
 import {
-  getUpdatePageHierarchy,
-  updateTreeData,
+    getUpdatePageHierarchy,
+    remapSubtreeFqn,
+    updateTreeData
 } from './KnowledgePagePureUtils';
 
 const buildPage = (
@@ -141,5 +142,35 @@ describe('getUpdatePageHierarchy', () => {
     );
 
     expect(result[0].children?.[0].children).toEqual([refreshedChild]);
+  });
+});
+
+describe('remapSubtreeFqn', () => {
+  it('rewrites the fullyQualifiedName prefix at every depth of the subtree', () => {
+    const grandchild = buildPage('oldParent.source.child.grandchild');
+    const child = buildPage('oldParent.source.child', {
+      childrenCount: 1,
+      children: [grandchild],
+    });
+
+    const result = remapSubtreeFqn(
+      [child],
+      'oldParent.source',
+      'newParent.source'
+    );
+
+    expect(result[0].fullyQualifiedName).toBe('newParent.source.child');
+    expect(result[0].children?.[0].fullyQualifiedName).toBe(
+      'newParent.source.child.grandchild'
+    );
+  });
+
+  it('leaves nodes without children untouched beyond the FQN rewrite', () => {
+    const leaf = buildPage('oldParent.source.leaf');
+
+    const result = remapSubtreeFqn([leaf], 'oldParent.source', 'newParent');
+
+    expect(result[0].fullyQualifiedName).toBe('newParent.leaf');
+    expect(result[0].children).toBeUndefined();
   });
 });

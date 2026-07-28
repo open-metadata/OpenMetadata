@@ -823,8 +823,8 @@ test.describe('Context Center Articles', () => {
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
 
-    await page.getByLabel('Collapse All').click();
     await page.getByLabel('Expand All').click();
+    await page.getByLabel('Collapse All').click();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -838,19 +838,6 @@ test.describe('Context Center Articles', () => {
     }
 
     expect(pageErrors).toEqual([]);
-
-    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
-      await getApiContext(page);
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${grandparent.fullyQualifiedName}.${parent.name}.${child.name}`
-    );
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${grandparent.fullyQualifiedName}.${parent.name}`
-    );
-    await deleteArticleByFqn(cleanupContext, grandparent.fullyQualifiedName);
-    await cleanupAfterAction();
   });
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({
