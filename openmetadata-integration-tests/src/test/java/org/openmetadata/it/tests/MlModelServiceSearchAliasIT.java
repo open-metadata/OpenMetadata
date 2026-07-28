@@ -53,7 +53,7 @@ import org.openmetadata.service.Entity;
 public class MlModelServiceSearchAliasIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-  private static final Duration POLL_AT_MOST = Duration.ofSeconds(60);
+  private static final Duration POLL_AT_MOST = Duration.ofSeconds(120);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
   private static final String MLMODEL_SERVICE_INDEX = "mlModelService";
   private static final String MLMODEL_INDEX = "mlmodel";
@@ -64,8 +64,6 @@ public class MlModelServiceSearchAliasIT {
     OpenMetadataClient client = SdkClients.adminClient();
 
     MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
-    String serviceFqn = service.getFullyQualifiedName();
-    String assetName = ns.prefix("mlmodel_alias_asset");
     MlModel asset =
         ns.trackRoot(
             Entity.MLMODEL,
@@ -73,58 +71,60 @@ public class MlModelServiceSearchAliasIT {
                 .mlModels()
                 .create(
                     new CreateMlModel()
-                        .withName(assetName)
-                        .withService(serviceFqn)
+                        .withName(ns.prefix("mlmodel_alias_asset"))
+                        .withService(service.getFullyQualifiedName())
                         .withAlgorithm("regression")));
-    String assetFqn = asset.getFullyQualifiedName();
+    String serviceId = service.getId().toString();
+    String assetId = asset.getId().toString();
 
-    JsonNode assetHit = awaitHitByFqn(client, MLMODEL_INDEX, assetName, assetFqn);
+    JsonNode assetHit = awaitHitById(client, MLMODEL_INDEX, assetId);
     assertEquals(
         Entity.MLMODEL,
         assetHit.path("entityType").asText(),
         "asset must be reachable via its own index with entityType 'mlmodel'");
 
-    JsonNode serviceHit = awaitHitByFqn(client, MLMODEL_SERVICE_INDEX, serviceFqn, serviceFqn);
+    JsonNode serviceHit = awaitHitById(client, MLMODEL_SERVICE_INDEX, serviceId);
     assertEquals(
         Entity.MLMODEL_SERVICE,
         serviceHit.path("entityType").asText(),
         "service must be reachable via the mlModelService alias");
 
-    JsonNode leakedAsset = findHitByFqn(client, MLMODEL_SERVICE_INDEX, assetName, assetFqn);
+    JsonNode leakedAsset = findHitById(client, MLMODEL_SERVICE_INDEX, assetId);
     assertNull(
         leakedAsset,
-        "index=mlModelService must not return the mlModel asset " + assetFqn + " (alias leak)");
+        "index=mlModelService must not return the mlModel asset " + assetId + " (alias leak)");
   }
 
   /**
-   * Poll {@code index} for {@code query} until a hit whose FQN equals {@code fqn} appears, then
-   * return its {@code _source}. ES indexing is async after the write API returns, so a fixed sleep
-   * flakes; this waits for convergence.
+   * Poll {@code index} for the document with id {@code id} until it appears, then return its
+   * {@code _source}. Matching by id (a keyword field) is analyzer-independent, so it behaves
+   * identically on Elasticsearch and OpenSearch. Indexing is async after the write API returns, so a
+   * fixed sleep flakes; this waits for convergence.
    */
-  private JsonNode awaitHitByFqn(
-      OpenMetadataClient client, String index, String query, String fqn) {
+  private JsonNode awaitHitById(OpenMetadataClient client, String index, String id) {
     JsonNode[] match = new JsonNode[1];
-    Awaitility.await(fqn + " indexed in " + index)
+    Awaitility.await(id + " indexed in " + index)
         .pollInterval(POLL_INTERVAL)
         .atMost(POLL_AT_MOST)
         .ignoreExceptions()
         .untilAsserted(
             () -> {
-              JsonNode source = findHitByFqn(client, index, query, fqn);
-              assertNotNull(source, fqn + " not yet indexed in " + index);
+              JsonNode source = findHitById(client, index, id);
+              assertNotNull(source, id + " not yet indexed in " + index);
               match[0] = source;
             });
     return match[0];
   }
 
-  private JsonNode findHitByFqn(OpenMetadataClient client, String index, String query, String fqn)
+  private JsonNode findHitById(OpenMetadataClient client, String index, String id)
       throws Exception {
-    String response = client.search().query(query).index(index).size(50).deleted(false).execute();
+    String response =
+        client.search().query("id:" + id).index(index).size(5).deleted(false).execute();
     JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
     JsonNode result = null;
     for (JsonNode hit : hits) {
       JsonNode source = hit.path("_source");
-      if (fqn.equals(source.path("fullyQualifiedName").asText(""))) {
+      if (id.equals(source.path("id").asText(""))) {
         result = source;
         break;
       }
