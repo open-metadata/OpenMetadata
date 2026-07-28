@@ -290,4 +290,38 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
       expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument()
     );
   });
+
+  it('should not restore stale sample when a late response resolves after a status change', async () => {
+    let resolveFetch: (value: unknown) => void = () => undefined;
+    (getTestCaseFailedSampleData as jest.Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      })
+    );
+
+    const { rerender } = render(
+      <FailedTestCaseSampleData testCaseData={mockTestCase} />
+    );
+
+    // The failing test case's request is in flight.
+    await waitFor(() =>
+      expect(getTestCaseFailedSampleData).toHaveBeenCalledWith(mockTestCase.id)
+    );
+
+    // Status changes to passing before that request resolves.
+    const passingTestCase = {
+      ...mockTestCase,
+      testCaseResult: { testCaseStatus: TestCaseStatus.Success },
+    } as TestCase;
+    rerender(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
+
+    // The in-flight request now resolves — its late response must be ignored.
+    resolveFetch({ columns: ['c1'], rows: [['r1']] });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument()
+    );
+
+    expect(screen.queryByTestId('explore-with-query')).not.toBeInTheDocument();
+  });
 });

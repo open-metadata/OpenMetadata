@@ -152,22 +152,29 @@ const FailedTestCaseSampleData = ({
     return { columns, rows };
   };
 
-  const fetchFailedTestCaseSampleData = async () => {
+  // `isStale` guards against a late response overwriting state after the test
+  // case has changed (e.g. status moved away from Failed) while the request was
+  // in flight — otherwise the resolved response would restore stale rows.
+  const fetchFailedTestCaseSampleData = async (isStale?: () => boolean) => {
     if (testCaseData?.id) {
       setIsLoading(true);
       try {
         const response = await getTestCaseFailedSampleData(testCaseData.id);
-        setSampleData(getSampleDataWithType(response));
+        if (!isStale?.()) {
+          setSampleData(getSampleDataWithType(response));
+        }
       } catch (error) {
-        setSampleData(undefined);
-        // A 404 is the backend's expected "no failed-rows sample stored"
-        // response (samples exist only for failing test cases with row-count
-        // computation enabled) — treat it as an empty state, not an error.
-        // Any other status (e.g. 403/500) is a real failure worth surfacing.
-        if (
-          (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
-        ) {
-          showErrorToast(error as AxiosError);
+        if (!isStale?.()) {
+          setSampleData(undefined);
+          // A 404 is the backend's expected "no failed-rows sample stored"
+          // response (samples exist only for failing test cases with row-count
+          // computation enabled) — treat it as an empty state, not an error.
+          // Any other status (e.g. 403/500) is a real failure worth surfacing.
+          if (
+            (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
+          ) {
+            showErrorToast(error as AxiosError);
+          }
         }
       } finally {
         setIsLoading(false);
@@ -206,13 +213,18 @@ const FailedTestCaseSampleData = ({
     testCaseData?.testCaseResult?.testCaseStatus === TestCaseStatus.Failed;
 
   useEffect(() => {
+    let cancelled = false;
     if (hasViewSampleDataPermission && isTestCaseFailed) {
-      fetchFailedTestCaseSampleData();
+      fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
       // case is no longer failing (e.g. a status change on the mounted page).
       setSampleData(undefined);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
 
   if (!hasViewSampleDataPermission) {

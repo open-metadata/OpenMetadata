@@ -14,6 +14,7 @@
 import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { TableClass } from '../../support/entity/TableClass';
+import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import { fillDeleteConfirmationIfPresent } from '../../utils/entity';
 import { getFailedRowsData, visitDataQualityTab } from '../../utils/testCases';
@@ -132,48 +133,63 @@ test(
   }
 );
 
-test(
-  'Failed rows sample fetch is gated on failed status',
-  PLAYWRIGHT_INGESTION_TAG_OBJ,
-  async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
-    const table = new TableClass();
+test.describe('Failed rows sample fetch gating', () => {
+  const table = new TableClass();
+  let passingTestCaseFqn = '';
+  let failedTestCaseFqn = '';
 
-    try {
-      await table.create(apiContext);
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      // A passing test case — a failed-rows sample can never exist for it, so the
-      // UI must not request one.
-      const passingTestCase = await table.createTestCase(apiContext, {
-        name: `pw_passing_row_count_${uuid()}`,
-      });
-      await table.addTestCaseResult(
-        apiContext,
-        passingTestCase.fullyQualifiedName,
-        {
-          result: 'Passing (fixture)',
-          testCaseStatus: 'Success',
-          testResultValue: [{ name: 'rowCount', value: '100' }],
-          timestamp: Date.now(),
-        }
-      );
+    await table.create(apiContext);
 
-      // A failing test case with no computed failed-rows sample stored — the UI
-      // still requests it (status is Failed) but the backend answers 404.
-      const failedTestCase = await table.createTestCase(apiContext, {
-        name: `pw_failing_no_sample_${uuid()}`,
-      });
-      await table.addTestCaseResult(
-        apiContext,
-        failedTestCase.fullyQualifiedName,
-        {
-          result: 'Failed (fixture)',
-          testCaseStatus: 'Failed',
-          testResultValue: [{ name: 'rowCount', value: '0' }],
-          timestamp: Date.now(),
-        }
-      );
+    // A passing test case — a failed-rows sample can never exist for it, so the
+    // UI must not request one.
+    const passingTestCase = await table.createTestCase(apiContext, {
+      name: `pw_passing_row_count_${uuid()}`,
+    });
+    await table.addTestCaseResult(
+      apiContext,
+      passingTestCase.fullyQualifiedName,
+      {
+        result: 'Passing (fixture)',
+        testCaseStatus: 'Success',
+        testResultValue: [{ name: 'rowCount', value: '100' }],
+        timestamp: Date.now(),
+      }
+    );
+    passingTestCaseFqn = passingTestCase.fullyQualifiedName;
 
+    // A failing test case with no computed failed-rows sample stored — the UI
+    // still requests it (status is Failed) but the backend answers 404.
+    const failedTestCase = await table.createTestCase(apiContext, {
+      name: `pw_failing_no_sample_${uuid()}`,
+    });
+    await table.addTestCaseResult(
+      apiContext,
+      failedTestCase.fullyQualifiedName,
+      {
+        result: 'Failed (fixture)',
+        testCaseStatus: 'Failed',
+        testResultValue: [{ name: 'rowCount', value: '0' }],
+        timestamp: Date.now(),
+      }
+    );
+    failedTestCaseFqn = failedTestCase.fullyQualifiedName;
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await table.delete(apiContext);
+    await afterAction();
+  });
+
+  test(
+    'gates the sample fetch on failed status',
+    PLAYWRIGHT_INGESTION_TAG_OBJ,
+    async ({ page }) => {
       await test.step('passing test case does not request the failed-rows sample', async () => {
         // Intercept so any failed-rows request is caught the moment it starts,
         // independent of response timing.
@@ -198,7 +214,7 @@ test(
         );
         await page.goto(
           `test-case/${encodeURIComponent(
-            passingTestCase.fullyQualifiedName
+            passingTestCaseFqn
           )}/test-case-results`
         );
         await testCaseDetails;
@@ -216,9 +232,7 @@ test(
           res.url().includes('/failedRowsSample')
         );
         await page.goto(
-          `test-case/${encodeURIComponent(
-            failedTestCase.fullyQualifiedName
-          )}/test-case-results`
+          `test-case/${encodeURIComponent(failedTestCaseFqn)}/test-case-results`
         );
         const response = await failedRowsSample;
         expect(response.status()).toBe(404);
@@ -231,10 +245,6 @@ test(
         // surface as an error toast.
         await expect(page.getByTestId('alert-bar')).not.toBeVisible();
       });
-    } finally {
-      // Cleanup runs even if a step above fails, so a failed run doesn't leak
-      // the service/table/test cases into later E2E runs.
-      await table.delete(apiContext);
     }
-  }
-);
+  );
+});
