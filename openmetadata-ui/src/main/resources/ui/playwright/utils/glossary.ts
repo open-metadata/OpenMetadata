@@ -765,9 +765,7 @@ export const addAssetToGlossaryTerm = async (
   hasExistingAssets = false
 ) => {
   if (!hasExistingAssets) {
-    await page
-      .getByText("Looks like you haven't added any data assets yet.")
-      .waitFor();
+    await page.getByText('No assets linked yet').waitFor();
   }
 
   await page.click('[data-testid="glossary-term-add-button-menu"]');
@@ -896,9 +894,7 @@ export const verifyAssetModalFilters = async (
   hasExistingAssets = false
 ) => {
   if (!hasExistingAssets) {
-    await page
-      .getByText("Looks like you haven't added any data assets yet.")
-      .waitFor();
+    await page.getByText('No assets linked yet').waitFor();
   }
 
   await page.click('[data-testid="glossary-term-add-button-menu"]');
