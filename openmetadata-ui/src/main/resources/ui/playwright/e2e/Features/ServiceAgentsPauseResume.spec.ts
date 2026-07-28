@@ -34,6 +34,16 @@ let pipelineName = '';
 const mockToggleFlow = async (page: Page, initialEnabled: boolean) => {
   let enabled = initialEnabled;
 
+  // The `chromium` lane has no Airflow container, so the real status endpoint
+  // returns non-200 and the agent list renders "Ingestion Scheduler is unable
+  // to respond" instead of the cards. Stub it so `isAirflowAvailable` is true.
+  await page.route('**/api/v1/services/ingestionPipelines/status', (route) =>
+    route.fulfill({
+      status: 200,
+      body: JSON.stringify({ code: 200, platform: 'airflow' }),
+    })
+  );
+
   const rewriteEnabled = (pipeline: { name: string; enabled?: boolean }) =>
     pipeline.name === pipelineName ? { ...pipeline, enabled } : pipeline;
 
