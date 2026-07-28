@@ -17,7 +17,9 @@ import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +59,9 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class AlertsRuleEvaluator {
   private final ChangeEvent changeEvent;
+  private final Map<String, EntityInterface> threadSubjectsByFields = new HashMap<>();
+  private EntityReference threadSubject;
+  private boolean threadSubjectResolved;
 
   public AlertsRuleEvaluator(ChangeEvent event) {
     this.changeEvent = event;
@@ -194,13 +199,7 @@ public class AlertsRuleEvaluator {
       return threadSubjectMatchesId(entityIds);
     }
 
-    EntityInterface entity = getEntity(changeEvent);
-    for (String id : entityIds) {
-      if (entity.getId().equals(UUID.fromString(id))) {
-        return true;
-      }
-    }
-    return false;
+    return matchesAnyId(getEntity(changeEvent).getId(), entityIds);
   }
 
   @Function(
@@ -680,13 +679,24 @@ public class AlertsRuleEvaluator {
   }
 
   // Scoping filters on a thread event are about the thread's parent entity, not the thread.
+  // Memoized: every matcher in one evaluation asks for the same subject.
   private EntityReference threadSubject() {
-    EntityReference subject = null;
-    if (changeEvent.getEntity() != null) {
-      Thread thread = getThread(changeEvent);
-      subject = thread == null ? null : thread.getEntityRef();
+    if (!threadSubjectResolved) {
+      threadSubjectResolved = true;
+      if (changeEvent.getEntity() != null) {
+        Thread thread = getThread(changeEvent);
+        threadSubject = thread == null ? null : thread.getEntityRef();
+      }
     }
-    return subject;
+    return threadSubject;
+  }
+
+  private EntityInterface threadSubjectWith(String fields) {
+    if (!threadSubjectsByFields.containsKey(fields)) {
+      threadSubjectsByFields.put(
+          fields, Entity.getEntityOrNull(threadSubject(), fields, Include.NON_DELETED));
+    }
+    return threadSubjectsByFields.get(fields);
   }
 
   private boolean threadSubjectMatchesType(List<String> entityTypes) {
@@ -701,29 +711,40 @@ public class AlertsRuleEvaluator {
 
   private boolean threadSubjectMatchesId(List<String> entityIds) {
     EntityReference subject = threadSubject();
+    return subject != null && matchesAnyId(subject.getId(), entityIds);
+  }
+
+  // A filter value that is not a UUID cannot match; throwing here would abort the whole batch.
+  private static boolean matchesAnyId(UUID entityId, List<String> entityIds) {
     boolean matched = false;
-    if (subject != null) {
-      for (String id : entityIds) {
-        if (subject.getId().equals(UUID.fromString(id))) {
-          matched = true;
-          break;
-        }
+    for (String id : entityIds) {
+      if (entityId.equals(parseUuidOrNull(id))) {
+        matched = true;
+        break;
       }
     }
     return matched;
   }
 
+  private static UUID parseUuidOrNull(String id) {
+    UUID parsed = null;
+    try {
+      parsed = UUID.fromString(id);
+    } catch (IllegalArgumentException e) {
+      LOG.debug("Ignoring non-UUID entity id filter value '{}'", id);
+    }
+    return parsed;
+  }
+
   private boolean threadSubjectMatchesOwner(List<String> ownerNameList) {
-    EntityInterface subject =
-        Entity.getEntityOrNull(threadSubject(), "owners", Include.NON_DELETED);
+    EntityInterface subject = threadSubjectWith(Entity.FIELD_OWNERS);
     return subject != null
         && !nullOrEmpty(subject.getOwners())
         && matchOwners(subject.getOwners(), ownerNameList);
   }
 
   private boolean threadSubjectMatchesDomain(List<String> domainFqns) {
-    EntityInterface subject =
-        Entity.getEntityOrNull(threadSubject(), "domains", Include.NON_DELETED);
+    EntityInterface subject = threadSubjectWith(Entity.FIELD_DOMAINS);
     return subject != null && matchDomains(subject.getDomains(), domainFqns);
   }
 
