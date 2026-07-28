@@ -51,3 +51,19 @@ defineInlineTest(
   `/*\n * License header\n */\nimport { Divider } from '@openmetadata/ui-core-components';\nexport const x = 1;`,
   'keeps the license header attached to the top of file'
 );
+
+defineInlineTest(
+  transform,
+  OPTS,
+  `/*\n * License header\n */\nimport { Divider } from 'antd';\nimport { Card } from '@openmetadata/ui-core-components';`,
+  `/*\n * License header\n */\nimport { Card, Divider } from '@openmetadata/ui-core-components';`,
+  'keeps the license header at the top when a full move merges into an existing target import'
+);
+
+defineInlineTest(
+  transform,
+  OPTS,
+  `import Something from './something';\n// eslint-disable-next-line no-restricted-imports\nimport { Divider } from 'antd';\nimport { Card } from '@openmetadata/ui-core-components';`,
+  `import Something from './something';\nimport { Card, Divider } from '@openmetadata/ui-core-components';`,
+  'does not re-home comments from a non-first antd import onto an unrelated statement'
+);

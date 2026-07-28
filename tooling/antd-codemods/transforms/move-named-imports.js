@@ -42,7 +42,26 @@ module.exports = function transformer(file, api, options) {
         j(path).replaceWith(decl);
         moved.length = 0;
       } else {
+        // Merging into an existing target import removes this node
+        // entirely. If it was the program's first statement, its leading
+        // comments are the file's license header — re-attach them to the
+        // new first statement so the header stays at the top. Comments on
+        // a non-first import (e.g. an eslint-disable aimed at the antd
+        // line) are dropped with the import; re-homing them onto an
+        // unrelated statement would be worse.
+        const wasFirstStatement =
+          root.get().node.program.body[0] === path.node;
+        const leadingComments = path.node.comments;
         j(path).remove();
+        if (wasFirstStatement && leadingComments && leadingComments.length) {
+          const [firstStatement] = root.get().node.program.body;
+          if (firstStatement) {
+            firstStatement.comments = [
+              ...leadingComments,
+              ...(firstStatement.comments || []),
+            ];
+          }
+        }
       }
     }
   });
