@@ -69,6 +69,7 @@ const addEntityTypeIcons = (
   if (!ENTITY_TYPE_FILTER_KEYS.has(key)) {
     return opts;
   }
+
   return opts.map((opt) => ({
     ...opt,
     icon:

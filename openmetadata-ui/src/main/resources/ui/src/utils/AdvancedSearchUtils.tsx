@@ -112,7 +112,11 @@ export const generateSearchDropdownLabel = (
 
   return (
     <div className="d-flex justify-between">
-      <Space align="center" className="m-x-sm" data-testid={option.key} size={8}>
+      <Space
+        align="center"
+        className="m-x-sm"
+        data-testid={option.key}
+        size={8}>
         <InputComponent
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
