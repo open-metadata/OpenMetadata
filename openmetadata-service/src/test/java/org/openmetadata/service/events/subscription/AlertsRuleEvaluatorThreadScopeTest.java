@@ -57,6 +57,13 @@ class AlertsRuleEvaluatorThreadScopeTest {
   }
 
   @Test
+  void matchAnyEntityId_malformedFilterValue_isSkippedInsteadOfThrowing() {
+    AlertsRuleEvaluator evaluator = evaluatorForThreadAbout(termRef(TERM_FQN));
+    assertFalse(evaluator.matchAnyEntityId(List.of("not-a-uuid")));
+    assertTrue(evaluator.matchAnyEntityId(List.of("not-a-uuid", TERM_ID.toString())));
+  }
+
+  @Test
   void matchAnySource_threadAboutListedEntityType_returnsTrue() {
     AlertsRuleEvaluator evaluator = evaluatorForThreadAbout(termRef(TERM_FQN));
     assertTrue(evaluator.matchAnySource(List.of("glossaryTerm")));
