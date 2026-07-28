@@ -83,7 +83,13 @@ jobs:
       - name: Validate ingestion
         run: |
           source env/bin/activate
-          python scripts/validate_sample_data.py
+          python scripts/validate_sample_data.py --id-snapshot /tmp/ai-governance-sample-ids.json
+
+      - name: Verify sample data is idempotent
+        run: |
+          docker run --net=host --rm openmetadata/ingestion-base:test metadata ingest -c ./pipelines/sample_data.yaml
+          source env/bin/activate
+          python scripts/validate_sample_data.py --id-snapshot /tmp/ai-governance-sample-ids.json
 
       - name: Clean Up
         run: |
