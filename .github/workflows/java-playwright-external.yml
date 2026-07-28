@@ -152,7 +152,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
@@ -331,7 +331,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
@@ -469,7 +469,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
 
