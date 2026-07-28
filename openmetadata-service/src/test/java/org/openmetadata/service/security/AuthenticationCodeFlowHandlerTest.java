@@ -22,6 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -408,6 +409,61 @@ class AuthenticationCodeFlowHandlerTest {
 
       assertTrue(thrown.getMessage().contains("example.com"));
     }
+  }
+
+  @Test
+  void requireRedirectUri_allowsConfiguredBrowserExtensionRedirect() throws Exception {
+    String extensionRedirect = "https://ndjnpiadedlmgddlpeklbnobebkpkdgb.chromiumapp.org/auth0";
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of(extensionRedirect));
+
+    assertEquals(extensionRedirect, invokeRequireRedirectUri(handler, extensionRedirect));
+  }
+
+  @Test
+  void requireRedirectUri_rejectsUnconfiguredBrowserExtensionRedirect() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        createRedirectHandler("https://app.example.com", "", List.of());
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> invokeRequireRedirectUri(handler, "https://evil.chromiumapp.org/auth0"));
+
+    assertEquals("Redirect URI must exactly match a trusted redirect URI", thrown.getMessage());
+  }
+
+  private AuthenticationCodeFlowHandler createRedirectHandler(
+      String serverUrl, String callbackUrl, List<String> additionalTrustedRedirectUris)
+      throws Exception {
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(callbackUrl);
+    when(authConfig.getAdditionalTrustedRedirectUris()).thenReturn(additionalTrustedRedirectUris);
+
+    AuthenticationCodeFlowHandler handler =
+        (AuthenticationCodeFlowHandler)
+            getUnsafe().allocateInstance(AuthenticationCodeFlowHandler.class);
+    setField(handler, "authenticationConfiguration", authConfig);
+    setField(handler, "serverUrl", serverUrl);
+    return handler;
+  }
+
+  private String invokeRequireRedirectUri(AuthenticationCodeFlowHandler handler, String redirectUri)
+      throws Exception {
+    Method method =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("requireRedirectUri", String.class);
+    method.setAccessible(true);
+    String result;
+    try {
+      result = (String) method.invoke(handler, redirectUri);
+    } catch (InvocationTargetException e) {
+      Throwable cause = e.getCause();
+      if (cause instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      throw e;
+    }
+    return result;
   }
 
   private AuthenticationCodeFlowHandler createSelfSignupHandler(Set<String> allowedDomains)
