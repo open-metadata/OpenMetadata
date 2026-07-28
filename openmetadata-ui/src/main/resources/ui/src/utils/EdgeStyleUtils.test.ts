@@ -14,6 +14,7 @@ import { Edge } from 'reactflow';
 import {
   clearEdgeStyleCache,
   computeEdgeStyle,
+  computeEdgeVisualState,
   invalidateEdgeStyles,
   LineageEdgeColors,
 } from './EdgeStyleUtils';
@@ -596,6 +597,102 @@ describe('EdgeStyleUtils', () => {
       );
 
       expect(style1).toBe(style2);
+    });
+  });
+
+  describe('computeEdgeVisualState', () => {
+    const nodeEdge = (id: string, fromId: string, toId: string): Edge => ({
+      id,
+      source: fromId,
+      target: toId,
+      data: {
+        isColumnLineage: false,
+        edge: {
+          fromEntity: { id: fromId },
+          toEntity: { id: toId },
+        },
+      },
+    });
+
+    const columnEdge = (
+      id: string,
+      fromEntityId: string,
+      toEntityId: string,
+      sourceHandle: string,
+      targetHandle: string
+    ): Edge => ({
+      id,
+      source: fromEntityId,
+      target: toEntityId,
+      sourceHandle,
+      targetHandle,
+      data: {
+        isColumnLineage: true,
+        edge: {
+          fromEntity: { id: fromEntityId },
+          toEntity: { id: toEntityId },
+        },
+      },
+    });
+
+    it('returns "default" when no tracing context is active', () => {
+      const edge = nodeEdge('e1', 'a', 'b');
+
+      expect(computeEdgeVisualState(edge, new Set(), new Set())).toBe(
+        'default'
+      );
+    });
+
+    describe('node mode (tracedNodes populated, tracedColumns empty)', () => {
+      it('returns "traced" for a node edge between two traced nodes', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(['a', 'b']), new Set())
+        ).toBe('traced');
+      });
+
+      it('returns "dimmed" for a node edge whose endpoints are not both traced', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(computeEdgeVisualState(edge, new Set(['a']), new Set())).toBe(
+          'dimmed'
+        );
+      });
+
+      it('returns "hidden" for a column edge when a node is selected', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(['a', 'b']), new Set())
+        ).toBe('hidden');
+      });
+    });
+
+    describe('column mode (tracedColumns populated, tracedNodes empty)', () => {
+      it('returns "traced" for a column edge whose handles are both traced', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(
+          computeEdgeVisualState(edge, new Set(), new Set(['colA', 'colB']))
+        ).toBe('traced');
+      });
+
+      it('returns "hidden" for a column edge whose handles are not both traced', () => {
+        const edge = columnEdge('e1', 'a', 'b', 'colA', 'colB');
+
+        expect(computeEdgeVisualState(edge, new Set(), new Set(['colA']))).toBe(
+          'hidden'
+        );
+      });
+
+      it('returns "dimmed" for a node edge when a column is selected', () => {
+        const edge = nodeEdge('e1', 'a', 'b');
+
+        expect(computeEdgeVisualState(edge, new Set(), new Set(['colA']))).toBe(
+          'dimmed'
+        );
+      });
     });
   });
 });

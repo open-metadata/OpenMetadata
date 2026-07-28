@@ -21,6 +21,8 @@ test.use({
 });
 
 test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test.describe.configure({ mode: 'default' });
+
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
   let parentTerm: GlossaryTerm;

@@ -45,6 +45,8 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.ActivityEventType;
@@ -1912,6 +1914,8 @@ public class MigrationUtil {
     private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
     private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
         "createRecognizerFeedbackApprovalTask";
+    private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
+    private static final String ENTITY_STATUS_FIELD = "entityStatus";
     private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
     private static final int BATCH_SIZE = 200;
 
@@ -2131,6 +2135,9 @@ public class MigrationUtil {
           }
 
           try {
+            if (GLOSSARY_TERM_APPROVAL_WORKFLOW.equals(workflowDefinition.getName())) {
+              addEntityStatusToTriggerExclude(workflowDefinition);
+            }
             workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
             redeployed++;
             LOG.info(
@@ -2147,6 +2154,24 @@ public class MigrationUtil {
         LOG.error("Failed to redeploy user approval workflows during migration", e);
       }
       return redeployed;
+    }
+
+    private void addEntityStatusToTriggerExclude(WorkflowDefinition workflowDefinition) {
+      if (workflowDefinition.getTrigger()
+          instanceof EventBasedEntityTriggerDefinition eventTrigger) {
+        Config config = eventTrigger.getConfig();
+        if (config != null) {
+          List<String> exclude = new ArrayList<>(listOrEmpty(config.getExclude()));
+          if (!exclude.contains(ENTITY_STATUS_FIELD)) {
+            exclude.add(ENTITY_STATUS_FIELD);
+            config.setExclude(exclude);
+            LOG.info(
+                "Added '{}' to trigger exclude list for workflow '{}'",
+                ENTITY_STATUS_FIELD,
+                workflowDefinition.getName());
+          }
+        }
+      }
     }
 
     private boolean containsApprovalTaskNodeForCutover(

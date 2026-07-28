@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
@@ -295,7 +294,7 @@ public class DistributedSearchIndexCoordinator {
    */
   private <T extends org.openmetadata.schema.EntityInterface> void walkAndRecord(
       EntityRepository<T> repo, List<Long> sortedTargets, Map<Long, String> result) {
-    ListFilter filter = new ListFilter(Include.ALL);
+    ListFilter filter = repo.getReindexFilter();
     String afterName = "";
     String afterId = "";
     long currentOffset = 0;

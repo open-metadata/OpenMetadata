@@ -19,9 +19,10 @@ import {
   screen,
 } from '@testing-library/react';
 import React, { act } from 'react';
-import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -260,10 +261,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
     },
   };
 });
-
-jest.mock('../../../../rest/incidentManagerAPI', () => ({
-  getListTestCaseIncidentByStateId: jest.fn().mockResolvedValue({ data: [] }),
-}));
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
@@ -1170,6 +1167,62 @@ describe('DataQualityTab test', () => {
         await screen.findByTestId('bundle-suite-form-drawer')
       ).toBeInTheDocument();
       expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
+  });
+
+  describe('Inline incident status', () => {
+    it('Should render the incident status from the inline incidentStatus field and rebuild the testCaseReference from the test case', async () => {
+      (TestCaseIncidentManagerStatus as jest.Mock).mockClear();
+      // Mirror the API shape: the inline incidentStatus has no testCaseReference.
+      const testCaseWithIncident = {
+        ...MOCK_TEST_CASE[0],
+        name: 'incident_inline_case',
+        incidentStatus: {
+          stateId: 'state-1',
+          testCaseResolutionStatusType: 'New',
+        },
+      } as unknown as TestCase;
+
+      await act(async () => {
+        render(
+          <DataQualityTab {...mockProps} testCases={[testCaseWithIncident]} />
+        );
+      });
+
+      expect(
+        await screen.findByTestId('incident-manager-status')
+      ).toBeInTheDocument();
+      expect(TestCaseIncidentManagerStatus).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            testCaseReference: expect.objectContaining({
+              fullyQualifiedName: MOCK_TEST_CASE[0].fullyQualifiedName,
+            }),
+          }),
+        }),
+        expect.anything()
+      );
+    });
+
+    it('Should not render an incident status when incidentStatus is absent', async () => {
+      const testCaseWithoutIncident = {
+        ...MOCK_TEST_CASE[0],
+        name: 'no_incident_case',
+        incidentStatus: undefined,
+      };
+
+      await act(async () => {
+        render(
+          <DataQualityTab
+            {...mockProps}
+            testCases={[testCaseWithoutIncident]}
+          />
+        );
+      });
+
+      expect(
+        screen.queryByTestId('incident-manager-status')
+      ).not.toBeInTheDocument();
     });
   });
 });

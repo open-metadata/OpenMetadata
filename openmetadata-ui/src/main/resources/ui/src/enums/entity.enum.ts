@@ -137,6 +137,7 @@ export enum TabSpecificField {
   FOLLOWERS = 'followers',
   FOLLOWS = 'follows',
   INCIDENT_ID = 'incidentId',
+  INCIDENT_STATUS = 'incidentStatus',
   JOINS = 'joins',
   LAST_ACTIVITY_TIME = 'lastActivityTime',
   LAST_LOGIN_TIME = 'lastLoginTime',

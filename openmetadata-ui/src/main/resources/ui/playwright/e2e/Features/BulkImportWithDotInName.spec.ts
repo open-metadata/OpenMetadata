@@ -157,7 +157,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(300_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     // Create a database service with a dot in the name (e.g., "local.mysql")
@@ -284,7 +286,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(180_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -352,7 +356,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   test('Full import cycle with dot in service name', async ({ browser }) => {
     test.setTimeout(300_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -454,7 +460,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   test('Service name with multiple dots', async ({ browser }) => {
     test.setTimeout(180_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -526,7 +534,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(240_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -615,7 +625,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(300_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -714,7 +726,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(240_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);
@@ -817,7 +831,9 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
   }) => {
     test.setTimeout(240_000);
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser, {
+      navigate: true,
+    });
     const { apiContext } = await getApiContext(page);
 
     const uid = uuid().substring(0, 6);

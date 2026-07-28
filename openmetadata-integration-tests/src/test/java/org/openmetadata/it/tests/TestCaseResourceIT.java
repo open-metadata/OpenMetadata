@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -500,14 +501,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
-  void post_testCaseWithoutEntityLink_4xx(TestNamespace ns) {
+  void post_testCaseWithMissingOrEmptyEntityLink_4xx(TestNamespace ns) {
+    CreateTestCase missingEntityLink = buildRequestWithEntityLink(ns, "no_entity_link", null);
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(missingEntityLink),
+        "Creation should fail when entityLink is missing");
+
+    CreateTestCase emptyEntityLink = buildRequestWithEntityLink(ns, "empty_entity_link", "");
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createEntity(emptyEntityLink),
+        "Creation should fail when entityLink is empty");
+  }
+
+  private CreateTestCase buildRequestWithEntityLink(
+      TestNamespace ns, String name, String entityLink) {
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("no_entity_link"));
+    request.setName(ns.prefix(name));
+    request.setEntityLink(entityLink);
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
-
-    assertThrows(Exception.class, () -> createEntity(request), "Should fail without entity link");
+    return request;
   }
 
   @Test
@@ -2847,6 +2863,78 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   matching.getIncidentId(),
                   "search/list with fields=* must include incidentId even when testCaseResult is"
                       + " present");
+            });
+  }
+
+  @Test
+  void test_incidentStatusInlinedInGetAndSearchList(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_status_inline"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
+        new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+            .withResult("Test failed - trigger incident");
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+
+    Awaitility.await("incidentStatus populated on single get")
+        .atMost(90, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestCase fetched =
+                  client.testCases().get(testCase.getId().toString(), "incidentStatus");
+              assertNotNull(fetched.getIncidentStatus());
+              assertEquals(
+                  TestCaseResolutionStatusTypes.New,
+                  fetched.getIncidentStatus().getTestCaseResolutionStatusType());
+            });
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "incidentStatus")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .queryParam("offset", "0")
+            .build();
+
+    Awaitility.await("incidentStatus inlined in ES-backed search/list")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String responseJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              TestCaseResource.TestCaseList result =
+                  JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+
+              TestCase matching =
+                  result.getData().stream()
+                      .filter(tc -> testCase.getId().equals(tc.getId()))
+                      .findFirst()
+                      .orElse(null);
+
+              assertNotNull(matching, "Expected created test case in search/list response");
+              assertNotNull(
+                  matching.getIncidentStatus(),
+                  "search/list with fields=incidentStatus must inline the incident status");
+              assertEquals(
+                  TestCaseResolutionStatusTypes.New,
+                  matching.getIncidentStatus().getTestCaseResolutionStatusType());
             });
   }
 

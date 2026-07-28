@@ -659,42 +659,46 @@
           "default": null
         },
         "cardinalityDistribution": {
-          "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
-          "type": "object",
-          "properties": {
-            "categories": {
-              "description": "List of category names including 'Others'.",
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "counts": {
-              "description": "List of counts corresponding to each category.",
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
-            "percentages": {
-              "description": "List of percentages corresponding to each category.",
-              "type": "array",
-              "items": {
-                "type": "number"
-              }
-            },
-            "allValuesUnique": {
-              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
+          "$ref": "#/definitions/cardinalityDistribution"
         }
       },
       "required": [
         "name",
         "timestamp"
       ],
+      "additionalProperties": false
+    },
+    "cardinalityDistribution": {
+      "description": "Cardinality distribution showing top categories with an 'Others' bucket.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.CardinalityDistribution",
+      "properties": {
+        "categories": {
+          "description": "List of category names including 'Others'.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "counts": {
+          "description": "List of counts corresponding to each category.",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "percentages": {
+          "description": "List of percentages corresponding to each category.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "allValuesUnique": {
+          "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+          "type": "boolean"
+        }
+      },
       "additionalProperties": false
     },
     "dmlOperationType": {
