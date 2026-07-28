@@ -43,7 +43,7 @@ jobs:
       k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         if: ${{ github.event_name != 'workflow_dispatch' }}
 
       - uses: dorny/paths-filter@v4
@@ -78,7 +78,7 @@ jobs:
     if: ${{ needs.changes.outputs.java == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
@@ -135,7 +135,7 @@ jobs:
     if: ${{ needs.changes.outputs.k8s_operator == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 

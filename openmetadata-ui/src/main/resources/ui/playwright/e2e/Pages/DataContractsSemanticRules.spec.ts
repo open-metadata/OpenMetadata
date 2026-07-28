@@ -558,7 +558,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
     });
   });
 
-  test.fixme('Validate Owner Rule Is_Not_Set', async ({ page, browser }) => {
+  test('Validate Owner Rule Is_Not_Set', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1426,7 +1426,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
     });
   });
 
-  test.fixme('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
+  test('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -2602,96 +2602,93 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
     });
   });
 
-  test.fixme(
-    'Validate DataProduct Rule Is_Not_Set',
-    async ({ page, browser }) => {
-      test.slow();
+  test('Validate DataProduct Rule Is_Not_Set', async ({ page, browser }) => {
+    test.slow();
 
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      const table = new TableClass();
-      await table.create(apiContext);
-      await afterAction();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
 
-      await test.step('Open contract section and start adding contract', async () => {
-        await redirectToHomePage(page);
-        await table.visitEntityPage(page);
-        await performInitialStepForRules(page);
+    await test.step('Open contract section and start adding contract', async () => {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await performInitialStepForRules(page);
+    });
+
+    await test.step('DataProduct with IsNotSet condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
+
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
+
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Data Product',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
+      );
+
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
+
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
+
+    await test.step('DataProduct with IsNotSet condition should failed', async () => {
+      // Move to Schema Tab
+      await page.getByTestId('schema').click();
+
+      await waitForAllLoadersToDisappear(page);
+
+      await assignSingleSelectDomain(page, domain.responseData);
+
+      await assignDataProduct(page, domain.responseData, [
+        createdDataProducts[1].responseData,
+      ]);
+
+      await page.click('[data-testid="contract"]');
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.getByTestId('contract-action-dropdown').waitFor({
+        state: 'visible',
       });
 
-      await test.step('DataProduct with IsNotSet condition should passed', async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+      await page.reload();
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Data Product',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
-        );
+      await waitForAllLoadersToDisappear(page);
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      });
-
-      await test.step('DataProduct with IsNotSet condition should failed', async () => {
-        // Move to Schema Tab
-        await page.getByTestId('schema').click();
-
-        await waitForAllLoadersToDisappear(page);
-
-        await assignSingleSelectDomain(page, domain.responseData);
-
-        await assignDataProduct(page, domain.responseData, [
-          createdDataProducts[1].responseData,
-        ]);
-
-        await page.click('[data-testid="contract"]');
-        await waitForAllLoadersToDisappear(page);
-
-        await page.getByTestId('manage-contract-actions').click();
-
-        await page.getByTestId('contract-action-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
-
-        await page.reload();
-
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
-
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      });
-    }
-  );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
+  });
 });
 
 test.describe('Data Contracts Semantics Rule DisplayName', () => {

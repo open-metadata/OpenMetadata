@@ -37,6 +37,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * so it is applied for every non-admin subject regardless of the RBAC access-control toggle.
  * Disabling RBAC search filtering must never expose another user's private memories.
  *
+ * <p>Current live writes and reindexing exclude restricted memories at index time. This filter
+ * remains as defense-in-depth for documents written before that policy was introduced and for
+ * mixed-version deployments during an upgrade.
+ *
  * <p>The produced query is engine-agnostic via {@link QueryBuilderFactory}, so the same builder
  * serves both Elasticsearch and OpenSearch. Each OR-group is a bool with only {@code should}
  * clauses so the engine default {@code minimum_should_match = 1} applies (the {@link OMQueryBuilder}
@@ -105,9 +109,9 @@ public class ContextMemorySearchVisibility {
   /**
    * Matches a memory shared with the subject (directly or via a team/domain) — but only when its
    * visibility is actually {@code Shared}. Gating on visibility mirrors {@link
-   * org.openmetadata.service.resources.context.ContextMemoryVisibility#isInSharedWithList}, which is
-   * consulted only for {@code SHARED}, so a stale {@code sharedWithIds} left on a memory later flipped
-   * to {@code Private} cannot leak it to those principals through search.
+   * org.openmetadata.service.resources.context.ContextMemoryVisibility#isInSharedWithList}, which
+   * is consulted only for {@code SHARED}, so a stale {@code sharedWithIds} left on a memory later
+   * flipped to {@code Private} cannot leak it to those principals through search.
    */
   private OMQueryBuilder sharedWithSubjectClause(User user) {
     return queryBuilderFactory
