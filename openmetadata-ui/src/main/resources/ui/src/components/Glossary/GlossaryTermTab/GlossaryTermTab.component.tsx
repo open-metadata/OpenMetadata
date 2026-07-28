@@ -971,11 +971,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
         fixed: 'right' as const,
-        // this check is added to the width, since the last column is optional and to maintain
-        // the re-sizing of the column should not be affected the others columns width sizes.
-        ...(permissions.Create && {
-          width: tableColumnsWidth.status,
-        }),
+        width: tableColumnsWidth.status,
         render: (_, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 

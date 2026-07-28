@@ -125,7 +125,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
 
     for (let i = 0; i < checkCount; i++) {
-      const statusCell = rows.nth(i).locator('td:nth-child(3)');
+      const statusCell = rows.nth(i).locator('td:nth-child(6)');
       const statusText = await statusCell.textContent();
       if (statusText?.trim()) {
         const hasValidStatus = allowedStatuses.some((s) =>

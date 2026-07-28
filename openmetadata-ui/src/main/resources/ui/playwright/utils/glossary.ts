@@ -1578,7 +1578,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 2;
+  const statusColumnIndex = 5;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows
