@@ -295,7 +295,7 @@
         "openmetadata-spec/src/main/resources/json/schema/api/data/createContextFile.json",
         "openmetadata-spec/src/main/resources/json/schema/api/data/moveContextFileRequest.json"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/ContextCenterMemories.spec.ts",
