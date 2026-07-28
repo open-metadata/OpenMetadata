@@ -15,8 +15,8 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   @Override
-  public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
-    super.finalizeReindex(context, reindexSuccess);
+  public boolean finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
+    boolean promoted = super.finalizeReindex(context, reindexSuccess);
 
     if (reindexSuccess) {
       SearchRepository searchRepository = Entity.getSearchRepository();
@@ -26,5 +26,6 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
             context.getEntityType());
       }
     }
+    return promoted;
   }
 }

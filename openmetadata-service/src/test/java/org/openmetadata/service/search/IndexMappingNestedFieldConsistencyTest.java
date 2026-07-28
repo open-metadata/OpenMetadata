@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -71,6 +72,37 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void taggableIndexFieldsMustAppearTogether() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      boolean hasClassificationTags = properties.has("classificationTags");
+      boolean hasGlossaryTags = properties.has("glossaryTags");
+      if (hasClassificationTags != hasGlossaryTags) {
+        violations.add(
+            entity
+                + " (classificationTags="
+                + hasClassificationTags
+                + ", glossaryTags="
+                + hasGlossaryTags
+                + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Indexes whose backing index class implements TaggableIndex must define both "
+            + "'classificationTags' and 'glossaryTags' as top-level keyword fields. "
+            + "TaggableIndex.applyTagFields() writes both into every doc; if the mapping omits "
+            + "one, OpenSearch dynamic-maps it as text and aggregations/sorts/scripts on it fail "
+            + "at reindex time. Violations: "
+            + violations);
+  }
+
+  @Test
   void ownersFieldMustBeNestedInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
@@ -91,6 +123,88 @@ class IndexMappingNestedFieldConsistencyTest {
             + "Missing in: "
             + violations
             + ". RBAC nested queries will fail on these indices.");
+  }
+
+  @Test
+  void customPropertiesTypedMustBeNestedWhereExtensionExists() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode properties = getTopLevelProperties(entry.getValue());
+      assertNotNull(
+          properties,
+          "Index mapping for '" + entity + "' has no properties — mapping file may be malformed.");
+      if (properties.has("extension")) {
+        JsonNode typed = properties.get("customPropertiesTyped");
+        boolean nested = typed != null && "nested".equals(typed.path("type").asText());
+        if (!nested) {
+          String detail = typed == null ? "missing" : "\"" + typed.path("type").asText("") + "\"";
+          violations.add(entity + " (customPropertiesTyped=" + detail + ")");
+        }
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every index whose mapping declares a top-level 'extension' field (i.e. it stores "
+            + "custom-property values) must also declare 'customPropertiesTyped' with "
+            + "\"type\": \"nested\". SearchIndex writes customPropertiesTyped into every such doc; "
+            + "if the mapping omits it, OpenSearch dynamic-maps it as a plain object and the nested "
+            + "custom-property search query fails at runtime with '[nested] nested object under "
+            + "path [customPropertiesTyped] is not of nested type'. Violations: "
+            + violations);
+  }
+
+  @Test
+  void aiGovernanceProjectionFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String entity : List.of("aiApplication", "llmModel", "mcpServer")) {
+      for (String language : LANGUAGES) {
+        JsonNode mapping = allMappings.get(entity + "[" + language + "]");
+        JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+        JsonNode aiGovernance = properties == null ? null : properties.get("aiGovernance");
+        if (aiGovernance == null) {
+          violations.add(entity + "[" + language + "] missing aiGovernance");
+          continue;
+        }
+        assertEquals("object", aiGovernance.path("type").asText(), entity + "[" + language + "]");
+        JsonNode projection = aiGovernance.path("properties");
+        for (String field :
+            List.of(
+                "assetSubtype",
+                "registrationStatus",
+                "riskLevel",
+                "accessesPii",
+                "accessesSensitiveData",
+                "dataCategories",
+                "detection",
+                "complianceStatus",
+                "frameworks",
+                "euRiskClassification",
+                "regions",
+                "lastAssessedAt",
+                "affectedUserCount")) {
+          if (!projection.has(field)) {
+            violations.add(entity + "[" + language + "] missing aiGovernance." + field);
+          }
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "AI governance projection mapping gaps: " + violations);
+  }
+
+  @Test
+  void auditReportIndexFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      JsonNode mapping = allMappings.get("auditReport[" + language + "]");
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      for (String field : List.of("status", "scope", "format", "requestedAt", "completedAt")) {
+        if (properties == null || !properties.has(field)) {
+          violations.add("auditReport[" + language + "] missing " + field);
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "Audit report mapping gaps: " + violations);
   }
 
   private static void findExtensionTypeViolations(
