@@ -12,30 +12,30 @@
  */
 import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import {
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Dialog,
-    Modal,
-    ModalOverlay,
-    Tree,
-    Typography
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tree,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
-    forwardRef,
-    ReactNode,
-    UIEventHandler,
-    useCallback,
-    useEffect,
-    useImperativeHandle,
-    useReducer,
-    useRef,
-    useState
+  forwardRef,
+  ReactNode,
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useReducer,
+  useRef,
+  useState,
 } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -49,8 +49,8 @@ import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlacehol
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
-    KNOWLEDGE_CENTER_PAGINATION_LIMIT,
-    KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT
+  KNOWLEDGE_CENTER_PAGINATION_LIMIT,
+  KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -59,37 +59,37 @@ import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCu
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
-    KnowledgePage,
-    KnowledgePagesHierarchyRef,
-    MovedEntity,
-    PageHierarchy,
-    PageType,
-    RecentlyViewedQuickLinks
+  KnowledgePage,
+  KnowledgePagesHierarchyRef,
+  MovedEntity,
+  PageHierarchy,
+  PageType,
+  RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import {
-    deleteKnowledgePage,
-    getListKnowledgePages,
-    getPageHierarchyFromES,
-    patchKnowledgePage
+  deleteKnowledgePage,
+  getListKnowledgePages,
+  getPageHierarchyFromES,
+  patchKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
-    extractKnowledgePageParentFQN,
-    findPageAndParentInTreeData,
-    findPageInTreeData,
-    getExpandedNodeKeys,
-    getKnowledgePageName,
-    getPageAllChildren,
-    getUpdatePageHierarchy,
-    getUpdatePageHierarchyForDelete,
-    hierarchyPaginationInitialState,
-    hierarchyPaginationReducer,
-    integrateNodesIntoHierarchy,
-    remapSubtreeFqn,
-    updateTreeData
+  extractKnowledgePageParentFQN,
+  findPageAndParentInTreeData,
+  findPageInTreeData,
+  getExpandedNodeKeys,
+  getKnowledgePageName,
+  getPageAllChildren,
+  getUpdatePageHierarchy,
+  getUpdatePageHierarchyForDelete,
+  hierarchyPaginationInitialState,
+  hierarchyPaginationReducer,
+  integrateNodesIntoHierarchy,
+  remapSubtreeFqn,
+  updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -171,7 +171,10 @@ const KnowledgePagesHierarchy = forwardRef<
         ): PageHierarchy[] => {
           const unloaded: PageHierarchy[] = [];
           nodes.forEach((n) => {
-            if (n.childrenCount > (n.children?.length ?? 0)) {
+            const isExhausted = nodesWithNoMoreChildrenRef.current.has(
+              n.fullyQualifiedName
+            );
+            if (n.childrenCount > (n.children?.length ?? 0) && !isExhausted) {
               unloaded.push(n);
             } else if (n.children) {
               unloaded.push(...collectUnloadedExpandableNodes(n.children));
@@ -189,7 +192,8 @@ const KnowledgePagesHierarchy = forwardRef<
             nodesPendingChildren.map((node) => {
               const offset =
                 nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
-                (node.children?.length ?? 0);
+                node.children?.length ??
+                0;
 
               return getPageHierarchyFromES(
                 node.fullyQualifiedName,
@@ -204,12 +208,17 @@ const KnowledgePagesHierarchy = forwardRef<
             const fetchedChildren = childrenResults[index].data;
             const offset =
               nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
-              (node.children?.length ?? 0);
+              node.children?.length ??
+              0;
 
             nodeChildrenOffsetRef.current.set(
               node.fullyQualifiedName,
               offset + fetchedChildren.length
             );
+
+            if (fetchedChildren.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+              nodesWithNoMoreChildrenRef.current.add(node.fullyQualifiedName);
+            }
 
             fetchedChildrenByParentFqn.set(node.fullyQualifiedName, [
               ...(fetchedChildrenByParentFqn.get(node.fullyQualifiedName) ??
