@@ -32,7 +32,7 @@ import {
   Space,
   Tooltip,
 } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
+import { ColumnType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -653,10 +653,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(permissions.Create),
-    [permissions.Create]
-  );
+  const tableColumnsWidth = useMemo(() => glossaryTermTableColumnsWidth(), []);
 
   const updateGlossaryTermStatus = (
     terms: ModifiedGlossary[],
@@ -814,7 +811,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const columns = useMemo(() => {
-    const data: ColumnsType<ModifiedGlossaryTerm> = [
+    const data: (ColumnType<ModifiedGlossaryTerm> & {
+      minWidth?: number;
+    })[] = [
       {
         title: t('label.term-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
@@ -883,7 +882,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         title: t('label.description'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: tableColumnsWidth.description,
+        minWidth: tableColumnsWidth.description,
         render: (description: string, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 
@@ -1026,6 +1025,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         title: t('label.action-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+        width: tableColumnsWidth.actions,
         render: (_, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
 

@@ -677,6 +677,25 @@ const TableV2 = <T extends object>(
 
                   const stickyStyle = getColumnStickyStyle(colType.fixed, 2);
 
+                  const explicitMinWidth = (
+                    colType as ColumnType<T> & { minWidth?: number }
+                  ).minWidth;
+                  const resizableColumnSizing: {
+                    defaultWidth?: number;
+                    minWidth?: number;
+                  } = {};
+                  if (rest.resizableColumns) {
+                    if (colType.width !== undefined) {
+                      resizableColumnSizing.defaultWidth =
+                        colType.width as number;
+                    }
+                    const minWidthFloor =
+                      explicitMinWidth ?? (colType.width as number | undefined);
+                    if (minWidthFloor !== undefined) {
+                      resizableColumnSizing.minWidth = minWidthFloor;
+                    }
+                  }
+
                   return (
                     <UntitledTable.Head
                       allowsSorting={!!colType.sorter}
@@ -684,12 +703,7 @@ const TableV2 = <T extends object>(
                       id={colKey}
                       isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
-                      {...(rest.resizableColumns && colType.width !== undefined
-                        ? {
-                            defaultWidth: colType.width as number,
-                            minWidth: colType.width as number,
-                          }
-                        : {})}
+                      {...resizableColumnSizing}
                       style={{
                         ...(rest.size === 'small' ? { padding: '8px' } : {}),
                         ...(!rest.resizableColumns && colWidth !== undefined

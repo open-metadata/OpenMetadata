@@ -100,7 +100,7 @@ describe('TableV2 - column width handling', () => {
     renderTable({ resizableColumns: true });
 
     const nameHeader = screen.getByRole('columnheader', { name: /Name/i });
-    
+
     expect(nameHeader.style.minWidth).toBe('');
   });
 });
