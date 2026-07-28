@@ -318,6 +318,30 @@ public class ActivityStreamRepository {
     return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
   }
 
+  /**
+   * List activity for entities a user follows. Following is a user-only relationship, so unlike
+   * {@link #listByOwners} there is no team leg.
+   */
+  public List<ActivityEvent> listByFollowers(String userId, long afterTimestamp, int limit) {
+    List<String> jsonList = activityStreamDAO.listByFollowers(userId, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
+  /** List activity for entities a user follows within specific domains. */
+  public List<ActivityEvent> listByFollowers(
+      String userId, List<UUID> domainIds, long afterTimestamp, int limit) {
+    if (nullOrEmpty(domainIds)) {
+      return listByFollowers(userId, afterTimestamp, limit);
+    }
+
+    List<String> domainIdStrings = domainIds.stream().map(UUID::toString).toList();
+    String domainJson = JsonUtils.pojoToJson(domainIdStrings);
+    List<String> jsonList =
+        activityStreamDAO.listByFollowersAndDomains(
+            userId, domainJson, domainIdStrings, afterTimestamp, limit);
+    return jsonList.stream().map(json -> JsonUtils.readValue(json, ActivityEvent.class)).toList();
+  }
+
   /** List activity events by EntityLink (about field). */
   public List<ActivityEvent> listByAbout(String entityLink, long afterTimestamp, int limit) {
     String aboutFqnHash =

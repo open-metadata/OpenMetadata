@@ -52,6 +52,7 @@ import {
   getAllFeeds,
   getEntityActivityByFqn,
   getFeedById,
+  getFollowingActivityFeed,
   getMyActivityFeed,
   getPostsFeedById,
   getUserActivity,
@@ -793,6 +794,23 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [activeDomain]
   );
 
+  const fetchFollowingActivityHandler = useCallback(
+    async (params?: { days?: number; limit?: number }) => {
+      setIsActivityLoading(true);
+      try {
+        const domain =
+          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+        const { data } = await getFollowingActivityFeed({ ...params, domain });
+        setActivityEvents(data);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsActivityLoading(false);
+      }
+    },
+    [activeDomain]
+  );
+
   const fetchEntityActivityHandler = useCallback(
     async (
       entityType: string,
@@ -873,6 +891,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       activityThread,
       fetchActivityEvents: fetchActivityEventsHandler,
       fetchMyActivityFeed: fetchMyActivityFeedHandler,
+      fetchFollowingActivity: fetchFollowingActivityHandler,
       fetchEntityActivity: fetchEntityActivityHandler,
       fetchUserActivity: fetchUserActivityHandler,
       updateActivityReaction,
@@ -917,6 +936,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     activityThread,
     fetchActivityEventsHandler,
     fetchMyActivityFeedHandler,
+    fetchFollowingActivityHandler,
     fetchEntityActivityHandler,
     fetchUserActivityHandler,
     updateActivityReaction,
