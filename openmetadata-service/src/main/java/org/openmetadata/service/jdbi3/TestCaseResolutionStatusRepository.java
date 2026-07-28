@@ -601,6 +601,12 @@ public class TestCaseResolutionStatusRepository
               null,
               updatedBy);
           LOG.info("Incident task {} auto-advanced to the assigned stage", taskId);
+        } else {
+          LOG.warn(
+              "Incident task {} has assignees but sits at stage '{}' instead of '{}'; it stays New and renders as unassigned",
+              taskId,
+              current.getWorkflowStageId(),
+              IncidentWorkflowStages.NEW_STAGE_ID);
         }
       } catch (Exception e) {
         // Best effort: an incident that fails to advance is still a usable incident sitting in

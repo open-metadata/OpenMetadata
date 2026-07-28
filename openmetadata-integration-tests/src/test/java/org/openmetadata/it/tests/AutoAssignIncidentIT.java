@@ -43,6 +43,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -102,9 +103,13 @@ public class AutoAssignIncidentIT {
 
     TestCaseResolutionStatus assigned =
         findTcrsOfType(client, stateId, TestCaseResolutionStatusTypes.Assigned);
-    assertTrue(
-        assigned.getTestCaseResolutionStatusDetails().toString().contains(owner.getName()),
-        "Assigned TCRS record should carry the owner as assignee");
+    Assigned details =
+        JsonUtils.convertValue(assigned.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertNotNull(details.getAssignee(), "Assigned TCRS record must carry an assignee");
+    assertEquals(
+        owner.getId(),
+        details.getAssignee().getId(),
+        "Assigned TCRS record should name the owner as assignee");
   }
 
   @Test
