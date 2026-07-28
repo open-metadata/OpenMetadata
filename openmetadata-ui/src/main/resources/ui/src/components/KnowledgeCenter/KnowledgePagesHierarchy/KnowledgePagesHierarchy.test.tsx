@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitFor
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
 } from '@testing-library/react';
 import { createRef } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -626,9 +626,7 @@ describe('KnowledgePagesHierarchy', () => {
         );
       });
 
-      const row = screen
-        .getByText('Exhausted Parent')
-        .closest('[role="row"]');
+      const row = screen.getByText('Exhausted Parent').closest('[role="row"]');
       const expandBtn = row?.querySelector('button[slot="chevron"]');
 
       await act(async () => {
@@ -651,17 +649,18 @@ describe('KnowledgePagesHierarchy', () => {
       const rowAfterRefresh = screen
         .getByText('Exhausted Parent')
         .closest('[role="row"]');
-      const expandBtnAfterRefresh =
-        rowAfterRefresh?.querySelector('button[slot="chevron"]');
+      const expandBtnAfterRefresh = rowAfterRefresh?.querySelector(
+        'button[slot="chevron"]'
+      );
 
       await act(async () => {
         fireEvent.click(expandBtnAfterRefresh!);
       });
 
       await waitFor(() => {
-        expect(
-          mockGetPageHierarchyFromES.mock.calls.length
-        ).toBeGreaterThan(callCountBeforeRefresh);
+        expect(mockGetPageHierarchyFromES.mock.calls.length).toBeGreaterThan(
+          callCountBeforeRefresh
+        );
       });
 
       expect(screen.getByText('Exhausted Child')).toBeInTheDocument();

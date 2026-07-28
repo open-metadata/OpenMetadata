@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-    PageHierarchy,
-    PageType
+  PageHierarchy,
+  PageType,
 } from '../interface/knowledge-center.interface';
 import {
-    getUpdatePageHierarchy,
-    remapSubtreeFqn,
-    updateTreeData
+  getUpdatePageHierarchy,
+  remapSubtreeFqn,
+  updateTreeData,
 } from './KnowledgePagePureUtils';
 
 const buildPage = (

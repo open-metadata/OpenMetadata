@@ -14,22 +14,22 @@ import type { DataNode } from 'antd/lib/tree';
 import { cloneDeep, isEmpty, unionBy } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-    PLACEHOLDER_ROUTE_FQN,
-    PLACEHOLDER_ROUTE_SUB_TAB,
-    PLACEHOLDER_ROUTE_TAB,
-    PLACEHOLDER_ROUTE_VERSION,
-    ROUTES
+  PLACEHOLDER_ROUTE_FQN,
+  PLACEHOLDER_ROUTE_SUB_TAB,
+  PLACEHOLDER_ROUTE_TAB,
+  PLACEHOLDER_ROUTE_VERSION,
+  ROUTES,
 } from '../constants/constants';
 import {
-    GLOSSARY_TERMS_WIDGET,
-    TAGS_WIDGET
+  GLOSSARY_TERMS_WIDGET,
+  TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../enums/entity.enum';
 import type {
-    KnowledgePage,
-    KnowledgePageHierarchyResponse,
-    PageHierarchy,
-    PageSearchResult
+  KnowledgePage,
+  KnowledgePageHierarchyResponse,
+  PageHierarchy,
+  PageSearchResult,
 } from '../interface/knowledge-center.interface';
 import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
@@ -301,7 +301,8 @@ export const remapSubtreeFqn = (
 ): PageHierarchy[] =>
   nodes.map((node) => ({
     ...node,
-    fullyQualifiedName: toPrefix + node.fullyQualifiedName.slice(fromPrefix.length),
+    fullyQualifiedName:
+      toPrefix + node.fullyQualifiedName.slice(fromPrefix.length),
     children: node.children
       ? remapSubtreeFqn(node.children, fromPrefix, toPrefix)
       : node.children,
