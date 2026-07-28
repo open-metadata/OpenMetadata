@@ -39,7 +39,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
+import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -738,10 +738,11 @@ const AssetsTabs = forwardRef(
                   ]
                 : undefined
             }
-            description={t('message.no-data-message', {
-              entity: t('label.data-asset-lowercase-plural'),
+            description={t('message.link-assets-description', {
+              entity: getEntityTypeString(type),
             })}
-            icon={<FolderEmptyIcon />}
+            icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
+            title={t('label.no-assets-linked-yet')}
           />
         );
       }
