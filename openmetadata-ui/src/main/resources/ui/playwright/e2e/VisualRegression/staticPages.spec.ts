@@ -57,7 +57,10 @@ const PAGES: {
   { name: 'incident-manager', route: '/incident-manager' },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
-  { name: 'roles', route: '/settings/access/roles' },
+  // 'roles' intentionally omitted: the roles listing renders seeded roles
+  // with per-run random names, so it is non-deterministic run-to-run in CI
+  // (no committed baseline can be stable). Re-add with a dedicated
+  // fixed-name fixture when its sweep needs coverage.
   { name: 'bots', route: '/settings/bots' },
   { name: 'applications', route: '/marketplace' },
 ];
