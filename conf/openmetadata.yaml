@@ -451,6 +451,10 @@ authenticationConfiguration:
   clientId: ${AUTHENTICATION_CLIENT_ID:-""}
   # For SSO: Set to your OAuth callback URL (e.g., "https://yourhost/api/v1/callback")
   callbackUrl: ${AUTHENTICATION_CALLBACK_URL:-""}
+  # Additional redirect URIs allowed for the login flow (beyond callbackUrl and the server callbacks).
+  # Each entry must exactly match the requested redirect URI. Use for browser-extension logins,
+  # e.g. ["https://<extension-id>.chromiumapp.org/auth0"].
+  additionalTrustedRedirectUris: ${AUTHENTICATION_ADDITIONAL_TRUSTED_REDIRECT_URIS:-[]}
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
