@@ -63,6 +63,7 @@ import os.org.opensearch.client.opensearch._types.ErrorCause;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch._types.Result;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -227,11 +228,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     DeleteResponse response =
         client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
-    LOG.info(
-        "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
-        indexName,
-        docId,
-        response.result());
+    if (response.result() == Result.NotFound) {
+      LOG.debug("No OpenSearch entity found to delete for index: {}, docId: {}", indexName, docId);
+    } else {
+      LOG.info(
+          "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    }
   }
 
   @Override

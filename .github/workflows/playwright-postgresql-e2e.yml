@@ -92,36 +92,42 @@ jobs:
   #                                                the "safe to test" label
   gate:
     runs-on: ubuntu-latest
-    # write on pull-requests is only needed for the auto-strip-label step
-    # below (fork sync). All other jobs keep the workflow-level read scope.
     permissions:
+      checks: read
       contents: read
-      pull-requests: write
+      pull-requests: read
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
     steps:
-      # SECURITY: "safe to test" persists on the PR after it's applied.
-      # If we accept it on later `synchronize` events, a fork author can
-      # push malicious commits AFTER a maintainer vouched for the earlier
-      # head, and those unreviewed commits execute with base-repo secrets.
-      # Strip the label whenever the fork syncs so it only ever vouches
-      # for the SHA the maintainer actually saw. Re-labelling is required
-      # before the next fork push can run CI.
-      - name: Invalidate safe-to-test on fork sync
+      # Team Label atomically removes stale fork approval on synchronize and
+      # re-adds it only for allowlisted authors. Wait for that reconciliation
+      # instead of relying on another labeled event: GITHUB_TOKEN label writes
+      # intentionally do not trigger a new workflow run.
+      - name: Wait for fork label reconciliation
         if: |
           github.event_name == 'pull_request_target' &&
-          github.event.action == 'synchronize' &&
-          github.event.pull_request.head.repo.full_name != github.repository &&
-          contains(github.event.pull_request.labels.*.name, 'safe to test')
+          github.event.pull_request.head.repo.full_name != github.repository
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
+      - name: Read reconciled fork labels
+        id: fork-labels
+        if: |
+          github.event_name == 'pull_request_target' &&
+          github.event.pull_request.head.repo.full_name != github.repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          echo "::warning::Fork sync detected; removing 'safe to test' label (re-apply after reviewing the new commits)."
-          gh api -X DELETE "/repos/${REPO}/issues/${PR_NUMBER}/labels/safe%20to%20test" \
-            || echo "Label already absent"
+          labels=$(gh api "/repos/${REPO}/pulls/${PR_NUMBER}" \
+            --jq '[.labels[].name] | @json')
+          echo "labels=$labels" >> "$GITHUB_OUTPUT"
 
       - name: Compute gate decision
         id: gate
@@ -131,7 +137,7 @@ jobs:
           LABEL: ${{ github.event.label.name }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO: ${{ github.repository }}
-          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          LABELS_JSON: ${{ steps.fork-labels.outputs.labels || toJSON(github.event.pull_request.labels.*.name) }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           set -euo pipefail
@@ -142,12 +148,11 @@ jobs:
           if [[ "$IS_DRAFT" == "true" ]]; then decide false; fi
           if [[ "$ACTION" == "labeled" && "$LABEL" != "safe to test" ]]; then decide false; fi
           if [[ "$HEAD_REPO" == "$BASE_REPO" ]]; then
-            [[ "$EVENT" == "pull_request" ]] && decide true || decide false
+            if [[ "$EVENT" == "pull_request" ]]; then decide true; else decide false; fi
           fi
-          # Fork PR — pull_request_target must fire AND "safe to test" must be present.
-          # For synchronize events the previous step already stripped the label, so
-          # this check will correctly reject the run (forcing a re-label after review).
-          if [[ "$EVENT" == "pull_request_target" && "$ACTION" != "synchronize" ]] && \
+          # Fork PR — pull_request_target must fire and the reconciled labels
+          # for the current head SHA must include "safe to test".
+          if [[ "$EVENT" == "pull_request_target" ]] && \
              echo "$LABELS_JSON" | jq -e '. | index("safe to test")' >/dev/null; then
             decide true
           fi
@@ -238,10 +243,10 @@ jobs:
       toolchain: ${{ steps.fingerprints.outputs.toolchain }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -285,7 +290,7 @@ jobs:
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
+        uses: lewagon/wait-on-check-action@9312864dfbc9fd208e9c0417843430751c042800 # v1.7.0
         if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -303,10 +308,10 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -423,7 +428,7 @@ jobs:
       lineage_representative_only: ${{ steps.select.outputs.lineage_representative_only }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -471,10 +476,10 @@ jobs:
       requires_airflow: ${{ steps.plan.outputs.requires_airflow }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -594,10 +599,10 @@ jobs:
       ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -695,12 +700,36 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' && (needs.plan-playwright.outputs.requires_airflow != 'true' || needs.restore-playwright-fixture.outputs.ingestion_cache_hit == 'true') }}
         run: echo "The golden fixture and optional ingestion image were restored while the distribution was prepared."
 
+      # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
+      # any docker work runs. `create_playwright_fixture.sh` does a
+      # `docker image save <ingestion>` after packing the fixture tar, which
+      # streams multi-GB blobs through /var/lib/docker/tmp/. On a fresh
+      # ubuntu-latest that partition has ~14 GB free after all the OM images
+      # (server, ingestion, postgres, opensearch, airflow) and their seeded
+      # volumes are loaded — not enough headroom for the docker export tmp,
+      # so the save fails with:
+      #   Error response from daemon: write /var/lib/docker/tmp/...: no space left on device
+      # (See failure on https://github.com/open-metadata/OpenMetadata/actions/runs/30097915650)
+      # docker-images:false is deliberate — the OM images are exactly what
+      # this job needs to snapshot, so we can't prune them here.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
       - name: Checkout
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -896,10 +925,10 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -1309,7 +1338,31 @@ jobs:
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
   playwright-summary:
-    name: ${{ contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-summary (label ignored)' || 'playwright-summary' }}
+    # Publish the required check name `playwright-summary` ONLY when this
+    # gate authorizes the run. Every explicit gate skip publishes a
+    # differently-named check so a redundant sibling event cannot satisfy
+    # branch protection before the real pipeline finishes. Gate failures keep
+    # the required name and fail in the guard step below.
+    #
+    # Decision tree:
+    #   gate succeeds with should_run=true              → 'playwright-summary'
+    #   gate fails                                      → 'playwright-summary'
+    #   labeled event with non-'safe to test' label     → 'playwright-summary (label ignored)'
+    #   gate succeeds with should_run=false              → 'playwright-summary (skipped)'
+    name: >-
+      ${{
+        (
+          needs.gate.result != 'success'
+          || needs.gate.outputs.should_run == 'true'
+        )
+        && 'playwright-summary'
+        || (
+          github.event.action == 'labeled'
+          && github.event.label.name != 'safe to test'
+          && 'playwright-summary (label ignored)'
+          || 'playwright-summary (skipped)'
+        )
+      }}
     if: ${{ always() && !cancelled() }}
     needs:
       [
@@ -1340,7 +1393,7 @@ jobs:
       - name: Checkout
         id: checkout
         continue-on-error: true
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
@@ -1381,6 +1434,36 @@ jobs:
         with:
           pattern: playwright-results-json-*
           path: results
+          # Pin the per-artifact subdirectory layout the renderer expects
+          # (results/playwright-results-json-<shardId>/results.json). When
+          # only one artifact matches the pattern — typical for spec-only
+          # single-shard PR runs — some download-artifact configurations
+          # flatten the contents directly into `path:`, which breaks the
+          # readdirSync-based shard discovery in render_playwright_summary.cjs
+          # and reports the shard as "did not upload a usable Playwright
+          # results artifact". Explicitly locking merge-multiple=false keeps
+          # the layout consistent across single-shard and multi-shard runs.
+          # See run 30088248354 for the failure this addresses.
+          merge-multiple: false
+
+      # Diagnostic: log the actual on-disk layout the renderer sees. The
+      # explicit merge-multiple pin above matches the documented default,
+      # so if single-shard runs still fail the same way we need this
+      # trace to see whether download-artifact placed files at
+      # `results/playwright-results-json-<shardId>/results.json` (expected)
+      # or somewhere else. Remove once single-shard runs are consistently
+      # green.
+      - name: Diagnose downloaded results layout
+        if: ${{ always() && needs.playwright-ci-postgresql.result != 'skipped' }}
+        continue-on-error: true
+        run: |
+          echo "=== results/ tree ==="
+          ls -laR results 2>&1 || echo "(results/ does not exist)"
+          echo
+          echo "=== expected shardIds (from plan-playwright.matrix) ==="
+          echo '${{ needs.plan-playwright.outputs.matrix }}' \
+            | jq -r '.include[].shardId' \
+            || echo "(jq parse failed)"
 
       - name: Setup Node.js
         id: setup-node
