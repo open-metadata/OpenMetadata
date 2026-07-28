@@ -218,24 +218,31 @@ describe('NotificationFeedCard', () => {
     });
   });
 
-  it('falls back to a generic conversation label when the title is missing', async () => {
-    await act(async () => {
-      render(
-        <NotificationFeedCard
-          createdBy="vishnu.jain"
-          entityFQN="shreyansh"
-          entityType="user"
-          mentionNotification={{
-            ...mockChatCollaboratorThread,
-            feedInfo: undefined,
-          }}
-          timestamp={mockChatCollaboratorThread.threadTs}
-        />
-      );
-    });
+  it.each([
+    ['feedInfo is absent', undefined],
+    // An empty title must fall back too, or the link renders with no label.
+    ['headerMessage is empty', { headerMessage: '' }],
+  ])(
+    'falls back to a generic conversation label when %s',
+    async (_label, feedInfo) => {
+      await act(async () => {
+        render(
+          <NotificationFeedCard
+            createdBy="vishnu.jain"
+            entityFQN="shreyansh"
+            entityType="user"
+            mentionNotification={{
+              ...mockChatCollaboratorThread,
+              feedInfo,
+            }}
+            timestamp={mockChatCollaboratorThread.threadTs}
+          />
+        );
+      });
 
-    expect(screen.getByText('label.conversation')).toBeInTheDocument();
-  });
+      expect(screen.getByText('label.conversation')).toBeInTheDocument();
+    }
+  );
 
   it('calls navigate with tasksRefreshKey state when the task notification card is clicked', async () => {
     mockGetTaskDetailPathFromTask.mockReturnValue('/mock-task-link');

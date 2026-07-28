@@ -86,8 +86,10 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 
   const entityName = useMemo(() => {
     if (isChatCollaboratorNotification) {
+      // Falsy rather than nullish: an empty headerMessage would otherwise render
+      // an empty link label.
       return (
-        mentionNotification?.feedInfo?.headerMessage ?? t('label.conversation')
+        mentionNotification?.feedInfo?.headerMessage || t('label.conversation')
       );
     }
 
