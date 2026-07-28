@@ -487,6 +487,33 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void patch_nonOwnerField_withSoftDeletedOwnerPresent_succeeds(TestNamespace ns) {
+    // Editing an unrelated field must not fail owner re-validation just because a still-assigned
+    // owner was soft-deleted. The PATCH base now surfaces that owner, so validating the whole owner
+    // list against NON_DELETED would 404 - existing owners must be tolerated. See issue #30117.
+    OpenMetadataClient client = SdkClients.adminClient();
+    User active = UserTestFactory.createUser(ns, "aaa_active");
+    User doomed = UserTestFactory.createUser(ns, "zzz_doomed");
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_edit_with_dangling_owner"));
+    request.setOwners(List.of(active.getEntityReference(), doomed.getEntityReference()));
+    String id = createEntity(request).getId().toString();
+    client.users().delete(doomed.getId().toString());
+
+    JsonNode patch =
+        JsonUtils.readTree(
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited with dangling owner\"}]");
+    TestSuite patched = client.testSuites().patch(id, patch);
+    assertEquals("edited with dangling owner", patched.getDescription());
+
+    // The still-assigned soft-deleted owner is preserved (not silently dropped by the edit).
+    List<UUID> ownerIds = ownerIds(client.testSuites().get(id, "owners", "all"));
+    assertTrue(
+        ownerIds.contains(active.getId()) && ownerIds.contains(doomed.getId()),
+        "an unrelated edit must preserve existing owners, including the soft-deleted one");
+  }
+
+  @Test
   void test_testSuiteFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

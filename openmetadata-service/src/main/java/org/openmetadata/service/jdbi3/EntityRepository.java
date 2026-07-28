@@ -428,21 +428,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
-  // A PATCH's base ("original") must resolve user references the same way the client did when it
-  // computed the diff. Detail pages fetch with include=all, so a soft-deleted owner (or expert,
-  // reviewer, follower) is in the client's base. Loading the server base with NON_DELETED drops it
-  // and shrinks the array, so a positional JSON-Patch op goes out of range ("array item index out
-  // of range") and the dangling relationship can never be removed. Resolve these relations with ALL
-  // for the patch base; the entity itself still loads NON_DELETED so a soft-deleted entity is not
-  // patched through this path. See issue #30117.
+  // A PATCH's base ("original") must resolve OWNER references the same way the client did when it
+  // computed the diff. Detail pages fetch with include=all, so a soft-deleted owner is in the
+  // client's base. A NON_DELETED server base drops it and shrinks the array, so a positional
+  // JSON-Patch op goes out of range ("array item index out of range") and the dangling ownership
+  // can never be removed. Resolve owners with ALL for the patch base; the entity itself still loads
+  // NON_DELETED so a soft-deleted entity is not patched through this path. (Experts / reviewers /
+  // followers share the latent issue but are validated on update against NON_DELETED, so they are
+  // left unchanged here - a separate follow-up. See issue #30117.)
   private static final RelationIncludes PATCH_ORIGINAL_INCLUDES =
-      new RelationIncludes(
-          NON_DELETED,
-          Map.of(
-              FIELD_OWNERS, ALL,
-              FIELD_EXPERTS, ALL,
-              FIELD_REVIEWERS, ALL,
-              FIELD_FOLLOWERS, ALL));
+      new RelationIncludes(NON_DELETED, Map.of(FIELD_OWNERS, ALL));
 
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
@@ -4409,7 +4404,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate and populate owners
     List<EntityReference> validatedOwners;
     try (var ignored = phase("patchValidateOwners")) {
-      validatedOwners = getValidatedOwners(updated.getOwners());
+      validatedOwners = getValidatedOwnersForPatch(original.getOwners(), updated.getOwners());
     }
     updated.setOwners(validatedOwners);
 
@@ -7861,6 +7856,40 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
     return refs;
+  }
+
+  /**
+   * Owner validation for PATCH. Owners already assigned to the entity (present in {@code
+   * originalOwners}) are retained even when the user has since been soft-deleted - a deactivated user
+   * is still a valid, existing assignment. Only newly added owners are validated against {@code
+   * NON_DELETED}, so a deleted user still cannot be freshly assigned. This keeps unrelated edits
+   * (description, tags, ...) working on an entity that carries a dangling soft-deleted owner, which
+   * the PATCH base now surfaces (see {@link #PATCH_ORIGINAL_INCLUDES}). See issue #30117.
+   */
+  private List<EntityReference> getValidatedOwnersForPatch(
+      List<EntityReference> originalOwners, List<EntityReference> updatedOwners) {
+    List<EntityReference> result = updatedOwners;
+    boolean skipValidation =
+        nullOrEmpty(updatedOwners)
+            || updatedOwners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited()));
+    if (!skipValidation) {
+      Set<UUID> existingOwnerIds =
+          listOrEmpty(originalOwners).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet());
+      List<EntityReference> retainedOwners =
+          updatedOwners.stream()
+              .filter(owner -> existingOwnerIds.contains(owner.getId()))
+              .collect(Collectors.toList());
+      List<EntityReference> newOwners =
+          updatedOwners.stream()
+              .filter(owner -> !existingOwnerIds.contains(owner.getId()))
+              .collect(Collectors.toList());
+      result = new ArrayList<>(retainedOwners);
+      result.addAll(listOrEmpty(validateOwners(newOwners)));
+      result.sort(Comparator.comparing(EntityReference::getName));
+    }
+    return result;
   }
 
   protected List<EntityReference> getValidatedDomains(List<EntityReference> domains) {
