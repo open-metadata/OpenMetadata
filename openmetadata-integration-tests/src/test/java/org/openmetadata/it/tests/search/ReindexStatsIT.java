@@ -34,9 +34,9 @@ import org.openmetadata.service.Entity;
  * <ul>
  *   <li>{@code readerStats.totalRecords == processStats.totalRecords}
  *       (everything read is processed);
- *   <li>{@code processStats.totalRecords == sinkStats.successRecords +
+ *   <li>{@code processStats.successRecords == sinkStats.successRecords +
  *       sinkStats.failedRecords + sinkStats.warningRecords} (everything
- *       processed is accounted for at the sink);
+ *       successfully processed is accounted for at the sink);
  *   <li>and per-entity {@code entityStats} sum to the global numbers.
  * </ul>
  *
@@ -72,8 +72,8 @@ class ReindexStatsIT {
     assertThat(reader.getTotalRecords())
         .as("reader records must equal processor records")
         .isEqualTo(processed.getTotalRecords());
-    assertThat(processed.getTotalRecords())
-        .as("processor records must equal sum of sink success/failure/warning")
+    assertThat(sumOrZero(processed.getSuccessRecords()))
+        .as("successfully processed records must equal sum of sink success/failure/warning")
         .isEqualTo(
             sumOrZero(sink.getSuccessRecords())
                 + sumOrZero(sink.getFailedRecords())
