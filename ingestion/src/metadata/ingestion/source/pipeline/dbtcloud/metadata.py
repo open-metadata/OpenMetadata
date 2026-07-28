@@ -58,6 +58,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -131,12 +132,55 @@ class DbtcloudSource(PipelineServiceSource):
             schema_name=node.dbtschema,
             table_name=node.name,
         )
-        table_entity = self.metadata.search_in_any_service(entity_type=Table, fqn_search_string=fqn_search_string)
+        matches = (
+            self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fetch_multiple_entities=True,
+            )
+            or []
+        )
+        table_entity = self._pick_matching_table(matches, node)
         if table_entity is None and db_service_name:
             table_entity = self._get_table_by_exact_fqn(db_service_name, node)
         if table_entity is None:
             logger.debug(f"No table found in OpenMetadata for dbt node search string {fqn_search_string}")
         return table_entity
+
+    @staticmethod
+    def _pick_matching_table(matches: List[Table], node: DBTModel) -> Optional[Table]:  # noqa: UP006, UP045
+        """
+        Pick one table out of a search page.
+
+        The search is scored, not exact, so hits are first narrowed to the ones
+        whose database/schema/name actually equal the dbt node's - case
+        insensitively, since the warehouse and OpenMetadata may not agree on
+        casing. The remainder is sorted before picking: the wildcard search can
+        legitimately match the same table in several services, and taking the
+        raw first hit would make the chosen edge flip between runs.
+        """
+        wanted = [str(part).lower() for part in (node.database, node.dbtschema, node.name)]
+        exact = [
+            table
+            for table in matches
+            if [part.lower() for part in fqn.split(DbtcloudSource._table_fqn(table))[-3:]] == wanted
+        ]
+        picked = None
+        if exact:
+            exact.sort(key=DbtcloudSource._table_fqn)
+            picked = exact[0]
+            if len(exact) > 1:
+                logger.warning(
+                    f"dbt node {node.uniqueId} matches {len(exact)} tables across services "
+                    f"({[DbtcloudSource._table_fqn(table) for table in exact]}); using "
+                    f"{DbtcloudSource._table_fqn(picked)}. Set 'dbServiceNames' to disambiguate."
+                )
+        return picked
+
+    @staticmethod
+    def _table_fqn(table: Table) -> str:
+        """FQN of a resolved table as a plain string."""
+        return model_str(table.fullyQualifiedName) if table.fullyQualifiedName else ""
 
     def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Optional[Table]:  # noqa: UP045
         """Look the table up by its deterministic FQN, bypassing the search index."""
@@ -286,7 +330,7 @@ class DbtcloudSource(PipelineServiceSource):
                     # The resolved entity's own FQN is used downstream: the FQN built from
                     # the dbt node would carry the "*" wildcard as service name whenever no
                     # dbServiceNames are configured.
-                    to_entity_fqn = str(to_entity.fullyQualifiedName.root)
+                    to_entity_fqn = self._table_fqn(to_entity)
                     self._track_table_fqn(to_entity_fqn, cache_key)
 
                     if model.compiledCode:
@@ -310,7 +354,7 @@ class DbtcloudSource(PipelineServiceSource):
                             continue
 
                         resolved_nodes.add(unique_id)
-                        self._track_table_fqn(str(from_entity.fullyQualifiedName.root), cache_key)
+                        self._track_table_fqn(self._table_fqn(from_entity), cache_key)
 
                         yield Either(right=self._build_lineage_request(from_entity, to_entity, pipeline_entity))
 

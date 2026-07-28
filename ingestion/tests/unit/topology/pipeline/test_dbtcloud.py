@@ -519,7 +519,9 @@ def table_search_side_effect(tables):
         if entity_type is not Table:
             return None
 
-        return tables_by_name.get(fqn_search_string.split(".")[-1])
+        match = tables_by_name.get(fqn_search_string.split(".")[-1])
+
+        return [match] if match else []
 
     return _search
 
@@ -1842,7 +1844,7 @@ class DBTCloudUnitTest(TestCase):
             database="dev",
         )
 
-        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=mock_table) as mock_search:
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=[mock_table]) as mock_search:
             resolved = self.dbtcloud._resolve_table_entity("local_redshift", node)
 
         self.assertEqual(resolved, mock_table)
@@ -1850,6 +1852,89 @@ class DBTCloudUnitTest(TestCase):
             mock_search.call_args.kwargs["fqn_search_string"],
             "local_redshift.dev.dbt_test_new.test_table",
         )
+
+    def test_resolve_table_entity_picks_deterministically_across_services(self):
+        """
+        The wildcard search can match the same database.schema.table in several
+        services. The pick has to be stable, otherwise the lineage edge target
+        flips between runs depending on ES scoring.
+        """
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.test_table",
+            name="test_table",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+        candidates = [
+            Table(
+                id=uuid.uuid4(),
+                name="test_table",
+                fullyQualifiedName=f"{service}.dev.dbt_test_new.test_table",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            )
+            for service in ("zeta_redshift", "alpha_redshift")
+        ]
+
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=candidates):
+            first = self.dbtcloud._resolve_table_entity(None, node)
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=list(reversed(candidates))):
+            second = self.dbtcloud._resolve_table_entity(None, node)
+
+        self.assertEqual(str(first.fullyQualifiedName.root), "alpha_redshift.dev.dbt_test_new.test_table")
+        self.assertEqual(str(first.fullyQualifiedName.root), str(second.fullyQualifiedName.root))
+
+    def test_resolve_table_entity_discards_inexact_search_hits(self):
+        """
+        `search_in_any_service` is scored, not exact, so a near-miss can come
+        back for a name that shares a prefix. Attaching lineage to it would be
+        silently wrong.
+        """
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.orders",
+            name="orders",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+        near_miss = Table(
+            id=uuid.uuid4(),
+            name="orders_snapshot",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.orders_snapshot",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=[near_miss]):
+            resolved = self.dbtcloud._resolve_table_entity(None, node)
+
+        self.assertIsNone(resolved)
+
+    def test_resolve_table_entity_matches_case_insensitively(self):
+        """
+        Snowflake-style upper-case storage against dbt's lower-case node names
+        must still match - that is the whole point of resolving through search.
+        """
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.customers",
+            name="customers",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+        upper_cased = Table(
+            id=uuid.uuid4(),
+            name="CUSTOMERS",
+            fullyQualifiedName="snowflake.DEV.DBT_TEST_NEW.CUSTOMERS",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=[upper_cased]):
+            resolved = self.dbtcloud._resolve_table_entity(None, node)
+
+        self.assertEqual(resolved, upper_cased)
 
     def test_resolve_table_entity_falls_back_to_exact_lookup(self):
         """
@@ -1928,7 +2013,7 @@ class DBTCloudUnitTest(TestCase):
             database="dev",
         )
 
-        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=mock_table) as mock_search:
+        with patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=[mock_table]) as mock_search:
             resolved = self.dbtcloud._resolve_table_entity(None, node)
 
         self.assertEqual(resolved, mock_table)
