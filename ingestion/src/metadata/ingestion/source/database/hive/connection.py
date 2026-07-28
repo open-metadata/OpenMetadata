@@ -16,7 +16,7 @@ Source connection handler
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
-from typing import Any, Optional, Union
+from typing import Any
 from urllib.parse import quote_plus
 
 from pydantic import ValidationError
@@ -110,7 +110,9 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         metastore_conn = get_validated_metastore_connection(connection.metastoreConnection)
         if metastore_conn:
             connection.metastoreConnection = metastore_conn
-            return get_metastore_connection(metastore_conn)
+            metastore_engine = get_metastore_connection(metastore_conn)
+            self._on_close(metastore_engine.dispose)
+            return metastore_engine
 
         if connection.auth:
             auth_key = (
@@ -135,11 +137,13 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
         if hasattr(connection, "useSSL") and connection.useSSL:
             self._connection_arguments_root(connection)["use_ssl"] = True
 
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     @staticmethod
     def _connection_arguments_root(connection: HiveConnectionConfig) -> dict[str, Any]:
@@ -153,8 +157,8 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part
@@ -171,7 +175,7 @@ class HiveConnection(BaseConnection[HiveConnectionConfig, Engine]):
 
 def get_validated_metastore_connection(
     metastore_connection: Any,
-) -> Optional[Union[PostgresConnection, MysqlConnection]]:  # noqa: UP007, UP045
+) -> PostgresConnection | MysqlConnection | None:
     """
     Return the metastore connection as a validated model, or None when no metastore is configured.
     """
@@ -187,7 +191,7 @@ def get_validated_metastore_connection(
 
 def _validate_metastore_dict(
     metastore_connection: dict[str, Any],
-) -> Optional[Union[PostgresConnection, MysqlConnection]]:  # noqa: UP007, UP045
+) -> PostgresConnection | MysqlConnection | None:
     """
     Validate a raw metastore payload against the supported metastore backends.
     """
@@ -227,7 +231,7 @@ def _(connection: PostgresConnection):
         HIVE_POSTGRES = HIVE_POSTGRES_SCHEME
 
     class CustomPostgresConnection(PostgresConnection):
-        scheme: Optional[CustomPostgresScheme]  # noqa: UP045
+        scheme: CustomPostgresScheme | None
 
     connection_copy = deepcopy(connection.__dict__)
     connection_copy["scheme"] = CustomPostgresScheme.HIVE_POSTGRES
@@ -253,7 +257,7 @@ def _(connection: MysqlConnection):
         HIVE_MYSQL = HIVE_MYSQL_SCHEME
 
     class CustomMysqlConnection(MysqlConnection):
-        scheme: Optional[CustomMysqlScheme]  # noqa: UP045
+        scheme: CustomMysqlScheme | None
 
     connection_copy = deepcopy(connection.__dict__)
     connection_copy["scheme"] = CustomMysqlScheme.HIVE_MYSQL

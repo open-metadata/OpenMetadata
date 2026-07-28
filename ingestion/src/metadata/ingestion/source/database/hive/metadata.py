@@ -13,7 +13,6 @@ Hive source methods.
 """
 
 import traceback
-from typing import Optional, Tuple  # noqa: UP035
 
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy import text
@@ -61,14 +60,14 @@ class HiveSource(CommonDbSourceService):
     service_connection: HiveConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: HiveConnection = config.serviceConnection.root.config
         if not isinstance(connection, HiveConnection):
             raise InvalidSourceException(f"Expected HiveConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _parse_version(self, version: str) -> Tuple:  # noqa: UP006
+    def _parse_version(self, version: str) -> tuple:
         if "-" in version:
             version = version.replace("-", ".")
         return tuple(map(int, (version.split(".")[:3])))
@@ -98,7 +97,7 @@ class HiveSource(CommonDbSourceService):
 
     def get_schema_definition(  # pylint: disable=unused-argument
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """

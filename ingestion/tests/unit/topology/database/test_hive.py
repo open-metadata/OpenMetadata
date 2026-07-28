@@ -995,6 +995,31 @@ class HiveUnitTest(TestCase):
         self.assertEqual(client, mock_metastore_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
+    def test_close_disposes_metastore_engine(self, mock_get_metastore):
+        """
+        Test the metastore engine is released by close(), like any client the connection builds
+        """
+        mock_metastore_engine = Mock()
+        mock_get_metastore.return_value = mock_metastore_engine
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=MysqlConnection(
+                username="mysql_user",
+                hostPort="localhost:3306",
+                databaseSchema="hive_metastore",
+            ),
+        )
+
+        connection = HiveConnectionHandler(hive_conn)
+        self.assertEqual(connection.client, mock_metastore_engine)
+
+        connection.close()
+
+        mock_metastore_engine.dispose.assert_called_once()
+
+    @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_get_client_without_metastore_uses_hiveserver(self, mock_get_metastore):
         """
         Test the client is the HiveServer2 engine when no metastore is configured
