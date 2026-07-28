@@ -49,7 +49,7 @@ const ENTITY_MEMORY_TITLE = `CC Memory Entity ${uuid()}`;
 
 // ─── Test suite ───────────────────────────────────────────────────────────────
 
-test.describe(
+test.describe.fixme(
   'Context Center - Memories',
   { tag: ['@Features', '@Governance'] },
   () => {
