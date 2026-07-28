@@ -121,7 +121,7 @@ const AppDetails = () => {
       } catch {
         setJsonSchema(undefined);
         showErrorToast(
-          t('message.no-application-schema-found', { appName: fqn })
+          t('server.no-application-schema-found', { appName: fqn })
         );
       }
     } catch (error) {
