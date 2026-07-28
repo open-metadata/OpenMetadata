@@ -43,17 +43,13 @@ const NAME_MASKS = [
 const table = new TableClass();
 
 test.beforeAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-    browser
-  );
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
   await table.create(apiContext);
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-    browser
-  );
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -61,9 +57,7 @@ test.afterAll(async ({ browser }) => {
 const maskFor = (page: Page) =>
   NAME_MASKS.map((selector) => page.locator(selector));
 
-test('table entity details (schema tab) matches baseline', async ({
-  page,
-}) => {
+test('table entity details (schema tab) matches baseline', async ({ page }) => {
   await gotoForScreenshot(
     page,
     `/table/${encodeURIComponent(
