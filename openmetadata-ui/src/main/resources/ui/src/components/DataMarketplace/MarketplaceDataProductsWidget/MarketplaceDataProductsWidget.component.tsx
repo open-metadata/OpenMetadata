@@ -259,7 +259,7 @@ const MarketplaceDataProductsWidget = ({
         <MarketplaceWidgetEmptyState
           actionLabel={
             !isEditView && permissions.dataProduct?.Create
-              ? `${t('label.new')} ${t('label.data-product')}`
+              ? t('label.new-entity', { entity: t('label.data-product') })
               : undefined
           }
           dataTestId="marketplace-dp-empty-state"

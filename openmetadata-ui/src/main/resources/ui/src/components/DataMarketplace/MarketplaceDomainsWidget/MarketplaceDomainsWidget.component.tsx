@@ -242,7 +242,7 @@ const MarketplaceDomainsWidget = ({
         <MarketplaceWidgetEmptyState
           actionLabel={
             !isEditView && permissions.domain?.Create
-              ? `${t('label.new')} ${t('label.domain')}`
+              ? t('label.new-entity', { entity: t('label.domain') })
               : undefined
           }
           dataTestId="marketplace-domains-empty-state"
