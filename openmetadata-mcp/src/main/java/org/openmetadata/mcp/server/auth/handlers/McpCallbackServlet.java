@@ -540,7 +540,7 @@ public class McpCallbackServlet extends HttpServlet {
       throw new IllegalStateException("No session found for direct ID token flow");
     }
 
-    String authRequestId = (String) session.getAttribute("mcp.auth.request.id");
+    String authRequestId = (String) session.getAttribute(UserSSOOAuthProvider.MCP_AUTH_REQUEST_ID);
     if (authRequestId == null) {
       throw new IllegalStateException("No auth request ID found in session");
     }
@@ -589,7 +589,7 @@ public class McpCallbackServlet extends HttpServlet {
 
     LOG.debug("Extracted user identity from direct ID token flow");
 
-    session.removeAttribute("mcp.auth.request.id");
+    session.removeAttribute(UserSSOOAuthProvider.MCP_AUTH_REQUEST_ID);
 
     processBufferedCallbackResponse(
         response,
