@@ -180,7 +180,13 @@ jobs:
       - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+        run: |
+          for attempt in 1 2 3; do
+            mvn -DskipTests install -pl :openmetadata-integration-tests -am && exit 0
+            echo "::warning::Build attempt ${attempt} failed (transient dependency-mirror error); retrying in 30s"
+            sleep 30
+          done
+          exit 1
 
       - name: Install Playwright browsers
         run: |
@@ -359,7 +365,13 @@ jobs:
       - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+        run: |
+          for attempt in 1 2 3; do
+            mvn -DskipTests install -pl :openmetadata-integration-tests -am && exit 0
+            echo "::warning::Build attempt ${attempt} failed (transient dependency-mirror error); retrying in 30s"
+            sleep 30
+          done
+          exit 1
 
       - name: Acquire admin JWT from external cluster
         env:
@@ -497,7 +509,13 @@ jobs:
       - name: Build dependencies for integration-tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+        run: |
+          for attempt in 1 2 3; do
+            mvn -DskipTests install -pl :openmetadata-integration-tests -am && exit 0
+            echo "::warning::Build attempt ${attempt} failed (transient dependency-mirror error); retrying in 30s"
+            sleep 30
+          done
+          exit 1
 
       - name: Acquire admin JWT from external cluster
         env:
