@@ -12,10 +12,11 @@
 """
 Prefect integration test fixtures
 """
+
 import os
 import subprocess
 import time
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 import requests
@@ -66,7 +67,6 @@ def prefect_server() -> Generator[str, None, None]:
             try:
                 response = requests.get(f"{api_url}/health", timeout=2)
                 if response.status_code == 200:
-                    print(f"Prefect server ready at {api_url}")
                     break
             except requests.exceptions.RequestException:
                 pass
@@ -111,9 +111,7 @@ def om_config(prefect_server: str) -> dict:
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "openMetadataServerConfig": {
-                "hostPort": os.environ.get(
-                    "OM_HOST_PORT", "http://host.docker.internal:8585/api"
-                ),
+                "hostPort": os.environ.get("OM_HOST_PORT", "http://host.docker.internal:8585/api"),
                 "authProvider": "openmetadata",
                 "securityConfig": {"jwtToken": om_jwt},
             }

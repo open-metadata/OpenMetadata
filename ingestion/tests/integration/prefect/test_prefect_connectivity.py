@@ -14,6 +14,7 @@ Simplified integration tests for Prefect connector with Docker.
 
 Tests verify the connector can connect to and fetch data from a real Prefect server.
 """
+
 import httpx
 import pytest
 
@@ -63,6 +64,4 @@ def test_self_hosted_mode_detection():
     # Note: This test is skipped due to Python bytecode caching issues in the test environment
     # The self-hosted mode is already tested by the 4 passing tests above (Docker Prefect is self-hosted)
     # SSL verification is implemented following SSRS connector pattern
-    pytest.skip(
-        "Self-hosted mode already verified by Docker tests; SSL implementation follows SSRS pattern"
-    )
+    pytest.skip("Self-hosted mode already verified by Docker tests; SSL implementation follows SSRS pattern")

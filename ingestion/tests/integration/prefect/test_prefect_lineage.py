@@ -22,6 +22,7 @@ Requires:
 - OpenMetadata server running (accessible via host.docker.internal:8585)
 - OM_JWT environment variable set
 """
+
 import os
 import time
 
@@ -69,9 +70,7 @@ def metadata():
     if not om_jwt:
         pytest.skip("OM_JWT environment variable not set")
 
-    om_host_port = os.environ.get(
-        "OM_HOST_PORT", "http://host.docker.internal:8585/api"
-    )
+    om_host_port = os.environ.get("OM_HOST_PORT", "http://host.docker.internal:8585/api")
 
     server_config = OpenMetadataConnection(
         hostPort=om_host_port,
@@ -174,9 +173,7 @@ def test_create_flows_in_prefect(prefect_server):
             json=flow_data,
             timeout=10,
         )
-        assert (
-            response.status_code == 201
-        ), f"Failed to create flow {flow_data['name']}: {response.text}"
+        assert response.status_code == 201, f"Failed to create flow {flow_data['name']}: {response.text}"
 
     # Verify flows were created using POST /flows/filter
     response = requests.post(
@@ -240,7 +237,7 @@ def test_lineage_from_tags(metadata, om_config, test_tables):
     """
     Test that tag-based lineage is created when flows have om-source/om-destination tags.
     """
-    table_source, table_destination = test_tables
+    _, table_destination = test_tables
 
     # Run the ingestion workflow
     workflow = MetadataWorkflow.create(om_config)
@@ -252,9 +249,7 @@ def test_lineage_from_tags(metadata, om_config, test_tables):
     time.sleep(2)
 
     # Check lineage from source table
-    source_fqn = (
-        "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
-    )
+    source_fqn = "test-service-prefect-lineage.test-db.test-schema.prefect-lineage-source"
     lineage = metadata.get_lineage_by_name(
         entity=Table,
         fqn=source_fqn,
@@ -267,17 +262,15 @@ def test_lineage_from_tags(metadata, om_config, test_tables):
     downstream_edges = lineage.get("downstreamEdges", [])
     if downstream_edges:
         # Verify destination table is in lineage
-        assert downstream_edges[0]["toEntity"] == str(
-            table_destination.id.root
-        ), "Lineage destination does not match expected table"
+        assert downstream_edges[0]["toEntity"] == str(table_destination.id.root), (
+            "Lineage destination does not match expected table"
+        )
 
         # Verify pipeline is in lineage details
-        pipeline_fqn = downstream_edges[0]["lineageDetails"]["pipeline"][
-            "fullyQualifiedName"
-        ]
-        assert (
-            pipeline_fqn == f"{PIPELINE_SERVICE_NAME}.test-integration-flow"
-        ), "Pipeline in lineage does not match expected flow"
+        pipeline_fqn = downstream_edges[0]["lineageDetails"]["pipeline"]["fullyQualifiedName"]
+        assert pipeline_fqn == f"{PIPELINE_SERVICE_NAME}.test-integration-flow", (
+            "Pipeline in lineage does not match expected flow"
+        )
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -286,9 +279,7 @@ def cleanup_pipeline_service(metadata):
     yield
 
     # Cleanup pipeline service
-    pipeline_service = metadata.get_by_name(
-        entity=PipelineService, fqn=PIPELINE_SERVICE_NAME
-    )
+    pipeline_service = metadata.get_by_name(entity=PipelineService, fqn=PIPELINE_SERVICE_NAME)
     if pipeline_service:
         pipeline_service_id = str(pipeline_service.id.root)
         metadata.delete(

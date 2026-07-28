@@ -21,9 +21,9 @@
     },
     "apiKey": {
       "title": "Prefect API Key",
-      "description": "Prefect Cloud API key for authentication.",
+      "description": "Prefect API key for authentication. Required for Prefect Cloud; optional for a self-hosted Prefect Server without authentication.",
       "type": "string",
-      "password": true
+      "format": "password"
     },
     "accountId": {
       "title": "Account ID",
@@ -65,6 +65,5 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false,
-  "required": ["apiKey"]
+  "additionalProperties": false
 }
