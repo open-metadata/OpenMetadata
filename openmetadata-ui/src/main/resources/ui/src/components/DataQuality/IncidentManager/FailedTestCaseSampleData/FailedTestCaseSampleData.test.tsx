@@ -315,6 +315,9 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
     } as TestCase;
     rerender(<FailedTestCaseSampleData testCaseData={passingTestCase} />);
 
+    // The loader must not linger while the now-ignored request is still pending.
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+
     // The in-flight request now resolves — its late response must be ignored.
     resolveFetch({ columns: ['c1'], rows: [['r1']] });
 

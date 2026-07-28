@@ -218,8 +218,11 @@ const FailedTestCaseSampleData = ({
       fetchFailedTestCaseSampleData(() => cancelled);
     } else {
       // Clear any previously loaded sample so it doesn't linger when the test
-      // case is no longer failing (e.g. a status change on the mounted page).
+      // case is no longer failing (e.g. a status change on the mounted page),
+      // and reset loading so a non-failed test case shows its empty state
+      // immediately instead of waiting on any in-flight request.
       setSampleData(undefined);
+      setIsLoading(false);
     }
 
     return () => {
