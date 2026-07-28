@@ -13,6 +13,7 @@
 import logging
 import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import mlflow
@@ -63,6 +64,8 @@ PREVIOUS_HYPERPARAMS = {"alpha": "0.2", "l1_ratio": "0.3"}
 
 MODEL_NAME = "ElasticnetWineModel"
 MODEL_DESCRIPTION = "ElasticNet model predicting wine quality"
+
+WINE_QUALITY_CSV = Path(__file__).parent / "winequality-red.csv"
 
 
 def eval_metrics(actual, pred):
@@ -129,8 +132,7 @@ def create_data(mlflow_environment):
 
     np.random.seed(40)
 
-    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
-    data = pd.read_csv(csv_url, sep=";")
+    data = pd.read_csv(WINE_QUALITY_CSV, sep=";")
 
     train, test = train_test_split(data)
 
