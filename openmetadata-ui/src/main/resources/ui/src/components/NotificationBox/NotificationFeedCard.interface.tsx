@@ -12,7 +12,7 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { Post } from '../../generated/entity/feed/thread';
+import { FeedInfo, Post } from '../../generated/entity/feed/thread';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Task } from '../../rest/tasksAPI';
 
@@ -21,6 +21,8 @@ export interface MentionNotification {
   about?: string;
   createdBy?: string;
   entityRef?: EntityReference;
+  entityUrlLink?: string;
+  feedInfo?: FeedInfo;
   message?: string;
   posts?: Post[];
   reactions?: Post['reactions'];
