@@ -2005,7 +2005,28 @@ export const getTreeNode = (page: Page, nodeId: string) =>
 export const getSelectionControl = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(new RegExp(`^(radio|checkbox)-${nodeId}$`));
 
-export const expandTreeNodeByName = async (page: Page, displayName: string) => {
+export const expandTreeNodeByName = async (
+  page: Page,
+  displayName: string,
+  options: { search?: boolean } = {}
+) => {
+  const { search = true } = options;
+
+  // Searching re-queries the API and only returns matched terms one level
+  // deep, so a node found via a *nested* search looks like a leaf and its
+  // expand chevron never becomes interactive. Only search at the top level
+  // (the full glossary tree is virtualized, so a plain scroll can miss an
+  // off-screen glossary); nested lookups rely on the parent's already-loaded
+  // subtree instead.
+  if (search) {
+    const searchResponse = page.waitForResponse(
+      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
+    );
+    await page.getByTestId('glossary-terms').locator('input').fill(displayName);
+    await searchResponse;
+    await waitForAllLoadersToDisappear(page);
+  }
+
   const popover = getTreeDropdown(page);
   const nodeText = popover.getByText(displayName, { exact: true });
   await expect(nodeText).toBeVisible({ timeout: 10000 });
@@ -2031,17 +2052,11 @@ export const expandToGlossaryTermChildren = async (
     timeout: 10000,
   });
 
+  await expandTreeNodeByName(page, glossaryDisplayName);
   if (parentTermDisplayName) {
-    await expandTreeNodeByName(page, glossaryDisplayName);
-    await expandTreeNodeByName(page, parentTermDisplayName);
-  } else {
-    const searchResponse = page.waitForResponse(
-      /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
-    );
-    await glossaryField.locator('input').fill(glossaryDisplayName);
-    await searchResponse;
-    await waitForAllLoadersToDisappear(page);
-    await expandTreeNodeByName(page, glossaryDisplayName);
+    await expandTreeNodeByName(page, parentTermDisplayName, {
+      search: false,
+    });
   }
 };
 
