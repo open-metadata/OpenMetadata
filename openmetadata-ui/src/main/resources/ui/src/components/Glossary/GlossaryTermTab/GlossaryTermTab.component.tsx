@@ -819,6 +819,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
         className: 'glossary-name-column',
+        fixed: 'left' as const,
         ellipsis: true,
         width: tableColumnsWidth.name,
         render: (_, record) => {
@@ -902,60 +903,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         },
       },
       {
-        title: t('label.status'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
-        // this check is added to the width, since the last column is optional and to maintain
-        // the re-sizing of the column should not be affected the others columns width sizes.
-        ...(permissions.Create && {
-          width: tableColumnsWidth.status,
-        }),
-        render: (_, record) => {
-          const isLoadMoreRow = record.isLoadMoreButton;
-
-          if (isLoadMoreRow) {
-            return null;
-          }
-
-          const status = record.entityStatus ?? EntityStatus.Approved;
-          const termFQN = record.fullyQualifiedName ?? '';
-          const { permission, taskId } = permissionForApproveOrReject(
-            record,
-            currentUser as User,
-            termTaskThreads
-          );
-
-          if (status === EntityStatus.InReview && permission) {
-            return (
-              <StatusAction
-                dataTestId={record.name}
-                onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
-                onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
-              />
-            );
-          }
-
-          return (
-            <Popover
-              content={
-                <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
-              }
-              overlayStyle={{ minWidth: '260px' }}
-              placement="topLeft"
-              trigger="hover">
-              <div>
-                <StatusBadge
-                  dataTestId={termFQN + '-status'}
-                  label={status}
-                  status={EntityStatusClass[status]}
-                />
-              </div>
-            </Popover>
-          );
-        },
-        onFilter: (value, record) => record.entityStatus === value,
-      },
-      {
         title: t('label.reviewer'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
@@ -1019,12 +966,68 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return col.render ? col.render(owners, record, 0) : null;
         },
       })),
+      {
+        title: t('label.status'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+        fixed: 'right' as const,
+        // this check is added to the width, since the last column is optional and to maintain
+        // the re-sizing of the column should not be affected the others columns width sizes.
+        ...(permissions.Create && {
+          width: tableColumnsWidth.status,
+        }),
+        render: (_, record) => {
+          const isLoadMoreRow = record.isLoadMoreButton;
+
+          if (isLoadMoreRow) {
+            return null;
+          }
+
+          const status = record.entityStatus ?? EntityStatus.Approved;
+          const termFQN = record.fullyQualifiedName ?? '';
+          const { permission, taskId } = permissionForApproveOrReject(
+            record,
+            currentUser as User,
+            termTaskThreads
+          );
+
+          if (status === EntityStatus.InReview && permission) {
+            return (
+              <StatusAction
+                dataTestId={record.name}
+                onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+              />
+            );
+          }
+
+          return (
+            <Popover
+              content={
+                <WorkflowHistory glossaryTerm={record as GlossaryTerm} />
+              }
+              overlayStyle={{ minWidth: '260px' }}
+              placement="topLeft"
+              trigger="hover">
+              <div>
+                <StatusBadge
+                  dataTestId={termFQN + '-status'}
+                  label={status}
+                  status={EntityStatusClass[status]}
+                />
+              </div>
+            </Popover>
+          );
+        },
+        onFilter: (value, record) => record.entityStatus === value,
+      },
     ];
     if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+        fixed: 'right' as const,
         width: tableColumnsWidth.actions,
         render: (_, record) => {
           const isLoadMoreRow = record.isLoadMoreButton;
