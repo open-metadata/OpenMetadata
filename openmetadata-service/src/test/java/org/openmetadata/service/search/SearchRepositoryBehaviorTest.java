@@ -3062,6 +3062,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
+    when(searchClient.getEntityTypeCounts(request, "global", subjectContext)).thenReturn(response);
     when(searchClient.getQueryCostRecords("service")).thenReturn(queryCostResult);
 
     assertSame(response, repository.previewSearch(request, subjectContext, null));
@@ -3073,6 +3074,9 @@ class SearchRepositoryBehaviorTest {
     assertSame(response, repository.searchBySourceUrl("https://src"));
     assertSame(response, repository.aggregate(aggregationRequest));
     assertSame(response, repository.getEntityTypeCounts(request, "global"));
+    // The subject-aware overload is what SearchResource calls, so a ContextMemory count matches
+    // what the same caller sees in the listing instead of being capped at org-wide memories.
+    assertSame(response, repository.getEntityTypeCounts(request, "global", subjectContext));
     assertSame(queryCostResult, repository.getQueryCostRecords("service"));
   }
 

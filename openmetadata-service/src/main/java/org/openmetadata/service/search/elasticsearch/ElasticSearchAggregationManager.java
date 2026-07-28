@@ -71,10 +71,26 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   }
 
   /**
-   * ANDs the org-wide-only ContextMemory filter into an aggregation query. Aggregations run without
-   * a {@link org.openmetadata.service.security.policyevaluator.SubjectContext}, so they cannot tell
-   * whose restricted memory a document is and must fail closed: only memories everyone may read are
-   * aggregated. Non-memory documents are unaffected.
+   * Resolves ContextMemory visibility for {@code subjectContext} so the counts match what that
+   * caller sees in the listing. Leaving the request unresolved (no identifiable subject) lets
+   * {@code ElasticSearchRequestBuilder#build} apply its org-wide-only default instead.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
+    }
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
+    }
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into an aggregation query run without an
+   * identifiable subject. Such a query cannot tell whose restricted memory a document is and must
+   * fail closed: only memories everyone may read are aggregated. Non-memory documents are
+   * unaffected.
    */
   private Query restrictToOrgWideMemories(Query query) {
     Query memoryFilter =
@@ -584,6 +600,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   @Override
   public Response getEntityTypeCounts(
       org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    return getEntityTypeCounts(request, index, null);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform get entity type counts");
       throw new IOException("ElasticSearch client is not available");
@@ -652,6 +677,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       // Resolve the index alias properly
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);
