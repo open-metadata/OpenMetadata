@@ -21,6 +21,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -102,6 +103,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [selectedActivity, setSelectedActivity] = useState<ActivityEvent>();
   const [activityThread, setActivityThread] = useState<Thread | undefined>();
   const [isActivityLoading, setIsActivityLoading] = useState(false);
+  // The activity fetchers all write to the same activityEvents state. Switching the
+  // home widget filter quickly can let a slower earlier request resolve last and
+  // overwrite newer results, so each request claims a sequence number and only the
+  // latest one is allowed to commit.
+  const activityRequestSeq = useRef(0);
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread>();
@@ -764,14 +770,20 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // Activity Events fetch methods
   const fetchActivityEventsHandler = useCallback(
     async (params?: ListActivityParams) => {
+      const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
         const { data } = await getActivityEvents(params);
+        if (seq !== activityRequestSeq.current) {
+          return;
+        }
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        setIsActivityLoading(false);
+        if (seq === activityRequestSeq.current) {
+          setIsActivityLoading(false);
+        }
       }
     },
     []
@@ -779,16 +791,22 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
+      const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
         const { data } = await getMyActivityFeed({ ...params, domain });
+        if (seq !== activityRequestSeq.current) {
+          return;
+        }
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        setIsActivityLoading(false);
+        if (seq === activityRequestSeq.current) {
+          setIsActivityLoading(false);
+        }
       }
     },
     [activeDomain]
@@ -796,16 +814,22 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const fetchFollowingActivityHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
+      const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
         const { data } = await getFollowingActivityFeed({ ...params, domain });
+        if (seq !== activityRequestSeq.current) {
+          return;
+        }
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        setIsActivityLoading(false);
+        if (seq === activityRequestSeq.current) {
+          setIsActivityLoading(false);
+        }
       }
     },
     [activeDomain]
