@@ -1151,6 +1151,11 @@ public class SearchRepository {
       return;
     }
 
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
+      return;
+    }
+
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -1420,16 +1425,42 @@ public class SearchRepository {
    */
   public void createEntitiesIndex(List<EntityInterface> entities) throws IOException {
     if (!nullOrEmpty(entities)) {
-      String entityType = entities.getFirst().getEntityReference().getType();
+      String entityType = null;
+      for (EntityInterface entity : entities) {
+        try {
+          EntityReference entityReference = entity != null ? entity.getEntityReference() : null;
+          if (entityReference != null) {
+            entityType = entityReference.getType();
+            if (!nullOrEmpty(entityType)) {
+              break;
+            }
+          }
+        } catch (Exception ie) {
+          LOG.error("Issue resolving entity type for bulk search index create", ie);
+        }
+      }
+      if (nullOrEmpty(entityType)) {
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
           for (EntityInterface entity : entities) {
-            SearchIndexRetryQueue.enqueue(
-                entity.getId() != null ? entity.getId().toString() : null,
-                entity.getFullyQualifiedName(),
-                entityType,
-                "createEntitiesIndex: Search client unavailable");
+            try {
+              if (Entity.isSearchIndexable(entity)) {
+                SearchIndexRetryQueue.enqueue(
+                    entity.getId() != null ? entity.getId().toString() : null,
+                    entity.getFullyQualifiedName(),
+                    entityType,
+                    "createEntitiesIndex: Search client unavailable");
+              }
+            } catch (Exception ie) {
+              LOG.error(
+                  "Issue checking search indexability for entity [{}] and entityType [{}]",
+                  entity != null ? entity.getId() : null,
+                  entityType,
+                  ie);
+            }
           }
           return;
         }
@@ -1437,13 +1468,16 @@ public class SearchRepository {
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
           try {
+            if (!Entity.isSearchIndexable(entity)) {
+              continue;
+            }
             SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
             docs.add(Collections.singletonMap(entity.getId().toString(), doc));
           } catch (Exception ie) {
             LOG.error(
                 "Issue in building search document for entity [{}] and entityType [{}]",
-                entity.getId(),
+                entity != null ? entity.getId() : null,
                 entityType,
                 ie);
           }
@@ -1626,6 +1660,11 @@ public class SearchRepository {
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
       return;
     }
 
@@ -1927,7 +1966,19 @@ public class SearchRepository {
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> typeEntities = entry.getValue();
+      List<EntityInterface> typeEntities = new ArrayList<>();
+      for (EntityInterface entity : entry.getValue()) {
+        if (Entity.isSearchIndexable(entity)) {
+          typeEntities.add(entity);
+        } else {
+          // Mirror updateEntityIndex: a now-non-indexable entity (e.g. a memory flipped to
+          // PRIVATE/SHARED) must have its stale document removed from the index.
+          deleteEntityIndex(entity);
+        }
+      }
+      if (typeEntities.isEmpty()) {
+        continue;
+      }
       Map<String, EntityInterface> typeEntitiesById =
           typeEntities.stream()
               .collect(
