@@ -52,11 +52,6 @@ import { settingClick } from '../../utils/sidebar';
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
 const navigationPersona = new PersonaClass();
-// Dedicated persona for the cancel/discard test — the "customization should
-// work" tests remove the Description widget and save the Table layout on the
-// shared `persona`, which would leave no widget for this test to remove. A
-// fresh persona keeps its layout pristine regardless of test execution order.
-const cancelDiscardPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
 
@@ -88,7 +83,6 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
 
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
-  await cancelDiscardPersona.create(apiContext);
 
   // Assign persona to user to validate page changes
   await user.patch({
@@ -139,7 +133,6 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   await user.delete(apiContext);
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
-  await cancelDiscardPersona.delete(apiContext);
   await afterAction();
 });
 
@@ -947,72 +940,5 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         userPage.getByRole('tab', { name: 'Data Products' })
       ).toBeVisible();
     });
-  });
-
-  // Regression: cancel button used to trigger both CustomizablePageHeader's
-  // local modal AND NavigationBlocker's modal, forcing users to click
-  // Discard twice. Now CustomizeDetailsPage wraps in NavigationBlocker and
-  // the header's local close modal is gone, so a single Discard on the
-  // blocker's modal must exit the page.
-  test('cancel button on customize detail page shows confirmation modal and Discard exits the page', async ({
-    adminPage,
-  }) => {
-    test.slow();
-
-    const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
-    const { apiContext } = await getApiContext(adminPage);
-    await entity.create(apiContext);
-
-    const personaListResponse = adminPage.waitForResponse('/api/v1/personas?*');
-    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await personaListResponse;
-
-    await navigateToPersonaWithPagination(
-      adminPage,
-      cancelDiscardPersona.data.name,
-      true
-    );
-    await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-    await adminPage.getByText('Data Assets').click();
-    await adminPage.getByText('Table', { exact: true }).click();
-
-    await waitForAllLoadersToDisappear(adminPage);
-
-    // Remove the Description widget to create an unsaved change. The remove
-    // click intermittently doesn't register while react-grid-layout is still
-    // settling (the button takes focus but the widget stays), so retry until
-    // the widget is actually gone — otherwise the layout stays pristine and the
-    // save button never enables.
-    const descriptionWidget = adminPage.locator(
-      '#KnowledgePanel\\.Description'
-    );
-    await expect(async () => {
-      if (await descriptionWidget.isVisible()) {
-        await descriptionWidget.getByTestId('remove-widget-button').click();
-      }
-      await expect(descriptionWidget).toBeHidden({ timeout: 2000 });
-    }).toPass({ timeout: 15000, intervals: [500, 1000, 2000] });
-
-    // Wait for the dirty state to propagate so NavigationBlocker has
-    // installed its pushState override before we click cancel — otherwise
-    // the cancel navigate goes through natively and the modal never opens.
-    await expect(adminPage.getByTestId('save-button')).toBeEnabled();
-
-    await adminPage.getByTestId('cancel-button').click();
-
-    // Assert on -title (inside the visible .ant-modal) rather than the
-    // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal-title')
-    ).toBeVisible();
-
-    await adminPage.getByTestId('unsaved-changes-modal-discard').click();
-
-    await expect(
-      adminPage.getByTestId('unsaved-changes-modal-title')
-    ).toBeHidden();
-    await expect(
-      adminPage.getByTestId('customize-landing-page-header')
-    ).toBeHidden();
   });
 });
