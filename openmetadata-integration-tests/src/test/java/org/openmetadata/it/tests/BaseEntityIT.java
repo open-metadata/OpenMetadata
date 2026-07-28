@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
-import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.EntityValidation;
 import org.openmetadata.it.util.SdkClients;
@@ -819,90 +818,6 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertTrue(
         finalFetch.getOwners() == null || finalFetch.getOwners().isEmpty(),
         "Owner should be removed");
-  }
-
-  /**
-   * Test: Editing owners must not crash when one owner is soft-deleted (issue #30117).
-   *
-   * <p>Reproduces the exact client behavior for every owner-supporting entity: a detail page loads
-   * the entity with include=all (so a soft-deleted owner is still present) and computes a positional
-   * JSON Patch. The server used to load the PATCH base with NON_DELETED, dropping that owner and
-   * shrinking the array, so the positional remove referenced an index past the end ("array item
-   * index out of range") and the dangling ownership could never be removed.
-   */
-  @Test
-  void patch_removeSoftDeletedOwner_removedWithoutCrash(TestNamespace ns) {
-    if (!supportsOwners || !supportsPatch) return;
-
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Owners are ordered by name, so the "zzz" owner sorts last and takes the highest positional
-    // index - the index that goes out of range once the server filters it from a NON_DELETED base.
-    User activeOwner = UserTestFactory.createUser(ns, "aaa_active_owner");
-    User doomedOwner = UserTestFactory.createUser(ns, "zzz_doomed_owner");
-
-    T created = createEntity(createMinimalRequest(ns));
-    String entityPath = entityPath(created.getId().toString());
-
-    // Assign both owners via an explicit whole-array add patch. This is robust across entities - it
-    // avoids the SDK update path's per-entity snapshot/diff quirks.
-    String ownersValue =
-        JsonUtils.pojoToJson(
-            List.of(activeOwner.getEntityReference(), doomedOwner.getEntityReference()));
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            entityPath,
-            JsonUtils.readTree(
-                "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":" + ownersValue + "}]"));
-
-    // The OWNS relationship survives a soft delete, so the user is genuinely still an owner.
-    client.users().delete(doomedOwner.getId().toString());
-
-    JsonNode ownersBefore = ownersWithIncludeAll(entityPath);
-    int doomedIndex = indexOfOwner(ownersBefore, doomedOwner.getId());
-    Assumptions.assumeTrue(
-        indexOfOwner(ownersBefore, activeOwner.getId()) >= 0 && doomedIndex >= 0,
-        "both explicit owners must be assigned and the soft-deleted one surfaced by include=all");
-
-    // The exact positional JSON Patch the owner widget computes from that include=all base. Before
-    // the fix this fails with "array item index is out of range"; executeForString throws on
-    // non-2xx.
-    JsonNode patch =
-        JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/owners/" + doomedIndex + "\"}]");
-    client.getHttpClient().executeForString(HttpMethod.PATCH, entityPath, patch);
-
-    JsonNode ownersAfter = ownersWithIncludeAll(entityPath);
-    assertEquals(
-        -1,
-        indexOfOwner(ownersAfter, doomedOwner.getId()),
-        "the dangling soft-deleted owner should be removed");
-    assertTrue(
-        indexOfOwner(ownersAfter, activeOwner.getId()) >= 0, "the active owner must be preserved");
-  }
-
-  private String entityPath(String id) {
-    String base = getResourcePath();
-    return base.endsWith("/") ? base + id : base + "/" + id;
-  }
-
-  private JsonNode ownersWithIncludeAll(String entityPath) {
-    String body =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .executeForString(HttpMethod.GET, entityPath + "?fields=owners&include=all", null);
-    return JsonUtils.readTree(body).path("owners");
-  }
-
-  private int indexOfOwner(JsonNode owners, UUID ownerId) {
-    int index = -1;
-    for (int i = 0; i < owners.size(); i++) {
-      if (ownerId.toString().equals(owners.get(i).path("id").asText())) {
-        index = i;
-      }
-    }
-    return index;
   }
 
   // ===================================================================

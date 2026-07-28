@@ -428,22 +428,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   // Fields whose change rewrites a glossary term's FQN during move operations.
   private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
-  // A PATCH's base ("original") must resolve OWNER references the same way the client diffed
-  // against. Detail pages fetch with include=all, so a soft-deleted owner is in the client's base;
-  // a
-  // NON_DELETED server base drops it and shrinks the array, so a positional JSON-Patch op goes out
-  // of range ("array item index out of range") and the dangling ownership can never be removed.
-  // Resolve owners with ALL here; the entity itself still loads NON_DELETED so a soft-deleted
-  // entity
-  // is not patched through this path. Trade-off: a client that instead diffs owners against a
-  // NON_DELETED view (a GET sending includeRelations=owners:non-deleted) can misalign against this
-  // longer base - the representation-aware fix (the PATCH declaring the base it diffed against) is
-  // the follow-up the issue flags as a design call. Experts / reviewers / followers share the
-  // latent
-  // crash but are validated on update against NON_DELETED, so they are left unchanged. See #30117.
-  private static final RelationIncludes PATCH_ORIGINAL_INCLUDES =
-      new RelationIncludes(NON_DELETED, Map.of(FIELD_OWNERS, ALL));
-
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
    * ({@code UserDAO.findEntityByName}), so the Guava cache must use the same normalization —
@@ -4293,7 +4277,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Get only the fields relevant to this patch operation
     T original;
     try (var ignored = phase("patchLoadOriginal")) {
-      original = get(null, id, patchFields, PATCH_ORIGINAL_INCLUDES, false);
+      original = get(null, id, patchFields, NON_DELETED, false);
     }
 
     // Validate ETag if If-Match header is provided
@@ -4355,7 +4339,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Get only the fields relevant to this patch operation
     T original;
     try (var ignored = phase("patchLoadOriginalByName")) {
-      original = getByName(null, fqn, patchFields, PATCH_ORIGINAL_INCLUDES, false);
+      original = getByName(null, fqn, patchFields, NON_DELETED, false);
     }
 
     // Validate ETag if If-Match header is provided
@@ -4409,7 +4393,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate and populate owners
     List<EntityReference> validatedOwners;
     try (var ignored = phase("patchValidateOwners")) {
-      validatedOwners = getValidatedOwnersForPatch(original.getOwners(), updated.getOwners());
+      validatedOwners = getValidatedOwners(updated.getOwners());
     }
     updated.setOwners(validatedOwners);
 
@@ -7861,47 +7845,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     refs.sort(Comparator.comparing(EntityReference::getName));
     return refs;
-  }
-
-  /**
-   * Owner validation for PATCH. Owners already assigned to the entity (present in {@code
-   * originalOwners}) are retained even when the user has since been soft-deleted - a deactivated user
-   * is still a valid, existing assignment. Only newly added owners are validated against {@code
-   * NON_DELETED}, so a deleted user still cannot be freshly assigned. This keeps unrelated edits
-   * (description, tags, ...) working on an entity that carries a dangling soft-deleted owner, which
-   * the PATCH base now surfaces (see {@link #PATCH_ORIGINAL_INCLUDES}). See issue #30117.
-   */
-  private List<EntityReference> getValidatedOwnersForPatch(
-      List<EntityReference> originalOwners, List<EntityReference> updatedOwners) {
-    List<EntityReference> result = updatedOwners;
-    boolean skipValidation =
-        nullOrEmpty(updatedOwners)
-            || updatedOwners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited()));
-    if (!skipValidation) {
-      Map<UUID, EntityReference> existingOwnersById = new HashMap<>();
-      for (EntityReference owner : listOrEmpty(originalOwners)) {
-        existingOwnersById.put(owner.getId(), owner);
-      }
-      // Retain owners already assigned, using the authoritative ref from the base (resolved with
-      // ALL, so a since-soft-deleted owner keeps its populated name/type and is not re-validated).
-      // Validate only newly added owners against NON_DELETED so a deleted user cannot be freshly
-      // assigned.
-      List<EntityReference> retainedOwners =
-          updatedOwners.stream()
-              .filter(owner -> existingOwnersById.containsKey(owner.getId()))
-              .map(owner -> existingOwnersById.get(owner.getId()))
-              .collect(Collectors.toList());
-      List<EntityReference> newOwners =
-          updatedOwners.stream()
-              .filter(owner -> !existingOwnersById.containsKey(owner.getId()))
-              .collect(Collectors.toList());
-      result = new ArrayList<>(retainedOwners);
-      result.addAll(listOrEmpty(validateOwners(newOwners)));
-      result.sort(
-          Comparator.comparing(
-              EntityReference::getName, Comparator.nullsLast(Comparator.naturalOrder())));
-    }
-    return result;
   }
 
   protected List<EntityReference> getValidatedDomains(List<EntityReference> domains) {
