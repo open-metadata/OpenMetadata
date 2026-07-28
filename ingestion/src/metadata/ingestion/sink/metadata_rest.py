@@ -25,6 +25,10 @@ from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.api.ai.createAIApplication import (
+    CreateAIApplicationRequest,
+)
+from metadata.generated.schema.api.ai.createLLMModel import CreateLLMModelRequest
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -259,6 +263,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestCaseRequest,
                     CreateTestSuiteRequest,
                     CreateTestDefinitionRequest,
+                    CreateAIApplicationRequest,
+                    CreateLLMModelRequest,
                     CreateMcpServerRequest,
                     CreateGlossaryRequest,
                     CreateMetricRequest,
