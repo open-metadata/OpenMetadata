@@ -752,7 +752,7 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
+    'No assets linked yet'
   );
 
   await page.getByTestId('domain-details-add-button').click();
@@ -858,7 +858,7 @@ export const addAssetsToDataProduct = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    "Looks like you haven't added any data assets yet."
+    'No assets linked yet'
   );
 
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
