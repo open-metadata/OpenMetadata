@@ -67,3 +67,25 @@ defineInlineTest(
   `import Something from './something';\nimport { Card, Divider } from '@openmetadata/ui-core-components';`,
   'does not re-home comments from a non-first antd import onto an unrelated statement'
 );
+
+const TYPE_OPTS = {
+  names: 'TabsProps',
+  from: 'antd',
+  to: '@openmetadata/ui-core-components',
+};
+
+defineInlineTest(
+  transform,
+  TYPE_OPTS,
+  `import type { TabsProps } from 'antd';`,
+  `import type { TabsProps } from '@openmetadata/ui-core-components';`,
+  'preserves importKind: type when the source declaration is a type-only import'
+);
+
+defineInlineTest(
+  transform,
+  TYPE_OPTS,
+  `import type { TabsProps } from 'antd';\nimport { Card } from '@openmetadata/ui-core-components';`,
+  `import type { TabsProps } from '@openmetadata/ui-core-components';\nimport { Card } from '@openmetadata/ui-core-components';`,
+  'does not merge a type-only specifier into an existing value import of the same target module'
+);
