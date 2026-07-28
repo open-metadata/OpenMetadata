@@ -20,7 +20,7 @@ const STYLE_EXT = /\.(less|css|scss)$/;
 export function parseAntdImports(source) {
   const found = [];
   const named =
-    /import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+['"]antd['"]/gs;
+    /import\s+(?:type\s+)?(?:[A-Za-z0-9_$]+\s*,\s*)?\{([^}]+)\}\s+from\s+['"]antd['"]/gs;
   for (const m of source.matchAll(named)) {
     for (const raw of m[1].split(',')) {
       const name = raw.trim().split(/\s+as\s+/)[0].trim();

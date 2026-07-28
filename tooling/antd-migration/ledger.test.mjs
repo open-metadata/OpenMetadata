@@ -7,6 +7,11 @@ test('parses named imports', () => {
   assert.deepEqual(parseAntdImports(src), ['Button', 'Divider']);
 });
 
+test('counts named specifiers in a combined default+named import', () => {
+  const src = `import Button, { Divider } from 'antd';`;
+  assert.deepEqual(parseAntdImports(src), ['Divider']);
+});
+
 test('parses type-only and multiline imports', () => {
   const src = `import type { TabsProps } from 'antd';\nimport {\n  Col,\n  Row,\n} from 'antd';`;
   assert.deepEqual(parseAntdImports(src), ['TabsProps', 'Col', 'Row']);
