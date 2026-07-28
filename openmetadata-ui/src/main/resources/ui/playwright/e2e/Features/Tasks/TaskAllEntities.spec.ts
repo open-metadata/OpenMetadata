@@ -64,6 +64,7 @@ interface TaskEntityConfig {
   build: (domain: Domain) => {
     entity: EntityLike;
     getData: () => TaskResponseData;
+    cleanup?: (apiContext: APIRequestContext) => Promise<unknown>;
   };
 }
 
@@ -255,12 +256,19 @@ const TASK_ENTITY_CONFIGS: TaskEntityConfig[] = [
     name: 'GlossaryTerm',
     entityType: 'glossaryTerm',
     endpoint: 'glossaryTerms',
-    build: (): { entity: EntityLike; getData: () => TaskResponseData } => {
-      const glossaryTerm = new GlossaryTerm();
+    build: (): {
+      entity: EntityLike;
+      getData: () => TaskResponseData;
+      cleanup: (apiContext: APIRequestContext) => Promise<unknown>;
+    } => {
+      const glossary = new Glossary();
+      const glossaryTerm = new GlossaryTerm(glossary);
+      glossaryTerm.createGlossary = true;
 
       return {
         entity: glossaryTerm,
         getData: () => toTaskData(glossaryTerm.responseData),
+        cleanup: (apiContext: APIRequestContext) => glossary.delete(apiContext),
       };
     },
   },
@@ -322,8 +330,11 @@ function runTaskSuite(config: TaskEntityConfig) {
     const newOwner = new UserClass();
     const domain = new Domain();
 
-    let entity: EntityLike;
+    let entity: EntityLike | undefined;
     let getData: () => TaskResponseData;
+    let cleanup:
+      | ((apiContext: APIRequestContext) => Promise<unknown>)
+      | undefined;
 
     test.beforeAll('Setup test data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -338,6 +349,7 @@ function runTaskSuite(config: TaskEntityConfig) {
         const built = config.build(domain);
         entity = built.entity;
         getData = built.getData;
+        cleanup = built.cleanup;
 
         await entity.create(apiContext);
         await apiContext.patch(`/api/v1/${config.endpoint}/${getData().id}`, {
@@ -359,7 +371,12 @@ function runTaskSuite(config: TaskEntityConfig) {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       try {
-        await entity.delete(apiContext);
+        if (entity) {
+          await entity.delete(apiContext);
+        }
+        if (cleanup) {
+          await cleanup(apiContext);
+        }
         await domain.delete(apiContext);
         await newOwner.delete(apiContext);
         await ownerUser.delete(apiContext);
