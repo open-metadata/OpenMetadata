@@ -47,6 +47,8 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -59,6 +61,9 @@ public final class AlertUtil {
   // Bounded + thread-safe — also evaluated from EventSubscriptionScheduler parallel streams.
   private static final Cache<String, Expression> COMPILED_CONDITIONS =
       Caffeine.newBuilder().maximumSize(1000).build();
+
+  private static final String FILTER_BY_EVENT_TYPE = "filterByEventType";
+  private static final String EVENT_TYPE_LIST_ARGUMENT = "eventTypeList";
 
   private AlertUtil() {}
 
@@ -290,10 +295,11 @@ public final class AlertUtil {
     }
 
     if (alertType.equals(CreateEventSubscription.AlertType.NOTIFICATION)) {
+      FilterResourceDescriptor descriptor =
+          EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0));
       Map<String, EventFilterRule> supportedFilters =
-          buildFilteringRulesMap(
-              EventsSubscriptionRegistry.getEntityNotificationDescriptor(resource.get(0))
-                  .getSupportedFilters());
+          buildFilteringRulesMap(descriptor.getSupportedFilters());
+      validateEventTypes(descriptor, input);
       // Input validation
       if (input != null) {
         return new FilteringRules()
@@ -326,6 +332,47 @@ public final class AlertUtil {
         .withResources(resource)
         .withRules(Collections.emptyList())
         .withActions(Collections.emptyList());
+  }
+
+  private static void validateEventTypes(
+      FilterResourceDescriptor descriptor, AlertFilteringInput input) {
+    if (input == null) {
+      return;
+    }
+    for (ArgumentsInput filter : listOrEmpty(input.getFilters())) {
+      // Excluding an event type the resource cannot produce is a no-op, not a silent no-op alert.
+      if (FILTER_BY_EVENT_TYPE.equals(filter.getName())
+          && filter.getEffect() != ArgumentsInput.Effect.EXCLUDE) {
+        eventTypeValues(filter).forEach(value -> validateEventType(descriptor, value));
+      }
+    }
+  }
+
+  private static List<String> eventTypeValues(ArgumentsInput filter) {
+    return listOrEmpty(filter.getArguments()).stream()
+        .filter(argument -> EVENT_TYPE_LIST_ARGUMENT.equals(argument.getName()))
+        .map(Argument::getInput)
+        .flatMap(input -> listOrEmpty(input).stream())
+        .toList();
+  }
+
+  private static void validateEventType(FilterResourceDescriptor descriptor, String value) {
+    EventType eventType = parse(value);
+    if (eventType == null
+        || !listOrEmpty(descriptor.getSupportedEventTypes()).contains(eventType)) {
+      throw new BadRequestException(
+          CatalogExceptionMessage.eventTypeNotSupportedByResource(descriptor.getName(), value));
+    }
+  }
+
+  private static EventType parse(String value) {
+    EventType eventType = null;
+    try {
+      eventType = EventType.fromValue(value);
+    } catch (IllegalArgumentException e) {
+      LOG.debug("Unknown event type '{}' in an alert filter", value);
+    }
+    return eventType;
   }
 
   private static Map<String, EventFilterRule> buildFilteringRulesMap(

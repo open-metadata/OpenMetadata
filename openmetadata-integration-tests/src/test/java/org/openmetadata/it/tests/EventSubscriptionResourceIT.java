@@ -7,11 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -284,6 +290,77 @@ public class EventSubscriptionResourceIT
     EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
     assertNotNull(subscription.getFilteringRules());
+  }
+
+  @Test
+  void test_unreachableEventType_400(TestNamespace ns) {
+    CreateEventSubscription request =
+        eventTypeSubscription(ns, "sub_bad_event", "glossaryTerm", "suggestionCreated");
+
+    Exception exception = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(
+        exception.getMessage().contains("suggestionCreated"),
+        "the error must name the offending event type, was: " + exception.getMessage());
+  }
+
+  @Test
+  void test_reachableEventType_200_OK(TestNamespace ns) {
+    EventSubscription subscription =
+        createEntity(
+            eventTypeSubscription(ns, "sub_thread_event", "glossaryTerm", "threadCreated"));
+    assertNotNull(subscription.getFilteringRules());
+  }
+
+  @Test
+  void test_notificationResourcesServeSupportedEventTypes() throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl() + "/v1/events/subscriptions/notification/resources"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode());
+
+    JsonNode glossaryTerm =
+        StreamSupport.stream(
+                new ObjectMapper().readTree(response.body()).get("data").spliterator(), false)
+            .filter(descriptor -> "glossaryTerm".equals(descriptor.get("name").asText()))
+            .findFirst()
+            .orElseThrow();
+    List<String> eventTypes =
+        StreamSupport.stream(glossaryTerm.get("supportedEventTypes").spliterator(), false)
+            .map(JsonNode::asText)
+            .toList();
+    assertTrue(eventTypes.contains("threadCreated"));
+    assertTrue(eventTypes.contains("entityCreated"));
+    assertFalse(eventTypes.contains("suggestionCreated"));
+  }
+
+  private CreateEventSubscription eventTypeSubscription(
+      TestNamespace ns, String name, String resource, String... eventTypes) {
+    return new CreateEventSubscription()
+        .withName(ns.prefix(name))
+        .withDescription("Subscription filtering on event types")
+        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withResources(List.of(resource))
+        .withEnabled(false)
+        .withInput(
+            new AlertFilteringInput()
+                .withFilters(
+                    List.of(
+                        new ArgumentsInput()
+                            .withName("filterByEventType")
+                            .withEffect(ArgumentsInput.Effect.INCLUDE)
+                            .withArguments(
+                                List.of(
+                                    new Argument()
+                                        .withName("eventTypeList")
+                                        .withInput(List.of(eventTypes)))))))
+        .withDestinations(getWebhookDestination(ns));
   }
 
   @Test

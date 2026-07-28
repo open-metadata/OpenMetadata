@@ -153,6 +153,12 @@ public final class CatalogExceptionMessage {
     return String.format("Resource type %s not found", resourceType);
   }
 
+  public static String eventTypeNotSupportedByResource(String resourceType, String eventType) {
+    return String.format(
+        "Resource %s does not produce event type %s, so an alert filtering on it can never fire",
+        resourceType, eventType);
+  }
+
   public static String entityTypeNotSupported(String entityType) {
     return String.format("Entity type %s not supported", entityType);
   }
