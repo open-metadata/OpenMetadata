@@ -187,6 +187,7 @@ export interface ListActivityParams {
   entityId?: string;
   actorId?: string;
   domains?: string;
+  domain?: string;
   days?: number;
   limit?: number;
 }

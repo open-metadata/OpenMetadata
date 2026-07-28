@@ -773,13 +773,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
-        const { data } = await getActivityEvents(params);
+        const domain =
+          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+        const { data } = await getActivityEvents({ domain, ...params });
         if (seq !== activityRequestSeq.current) {
           return;
         }
         setActivityEvents(data);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (seq === activityRequestSeq.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
         if (seq === activityRequestSeq.current) {
           setIsActivityLoading(false);
@@ -802,7 +806,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
         setActivityEvents(data);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (seq === activityRequestSeq.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
         if (seq === activityRequestSeq.current) {
           setIsActivityLoading(false);
@@ -825,7 +831,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         }
         setActivityEvents(data);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (seq === activityRequestSeq.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
         if (seq === activityRequestSeq.current) {
           setIsActivityLoading(false);

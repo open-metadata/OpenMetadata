@@ -105,6 +105,7 @@ public class ActivityResource {
       @Parameter(description = "Filter by actor (user) ID") @QueryParam("actorId") UUID actorId,
       @Parameter(description = "Filter by domain IDs (comma-separated)") @QueryParam("domains")
           String domainsParam,
+      @Parameter(description = "Filter by domain FQN") @QueryParam("domain") String domain,
       @Parameter(description = "Number of days to look back (default 7, max 30)")
           @DefaultValue("7")
           @Min(1)
@@ -121,8 +122,12 @@ public class ActivityResource {
     // Calculate timestamp for filtering
     long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
 
-    // Get user's domain context for filtering
-    List<UUID> domainIds = getEffectiveDomains(securityContext, domainsParam);
+    // Get user's domain context for filtering. The domain FQN form matches the other activity
+    // endpoints; the comma-separated id form is kept for existing callers.
+    List<UUID> domainIds =
+        nullOrEmpty(domain)
+            ? getEffectiveDomains(securityContext, domainsParam)
+            : getEffectiveDomainsByFqn(securityContext, domain);
 
     List<ActivityEvent> events;
 
