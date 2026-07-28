@@ -22,27 +22,31 @@ package org.openmetadata.service.jdbi3;
  * <p>Bucket definitions ({@code type} is the task-type column):
  *
  * <ul>
- *   <li>{@code open}   = {@code status IN SHARED_OPEN_STATUSES} OR
- *       {@code (type = DataAccessRequest AND status = Approved)}
- *   <li>{@code closed} = {@code status IN SHARED_TERMINAL_STATUSES} OR
- *       {@code (type <> DataAccessRequest AND status = Approved)}
+ *   <li>{@code open}   = {@code status IN SHARED_OPEN_STATUSES}
+ *       OR {@code (type = DataAccessRequest AND status = Approved)}
+ *   <li>{@code closed} = {@code status IN SHARED_TERMINAL_STATUSES}
+ *       OR {@code (type <> DataAccessRequest AND status = Approved)}
  *   <li>{@code active} = {@code status IN ACTIVE_STATUSES} (superset of {@code open}; kept for
- *       DAR-scoped callers that pre-narrow the query)
+ *       DAR-scoped callers that pre-narrow the query — includes Granted and ManualRevoke so the
+ *       {@code useDataAccessRequest} live-access lookup still finds granted DAR tasks)
  * </ul>
  *
- * <p>Bucket predicates are row-aware on {@code type}: {@code Approved} is terminal for non-DAR
- * task types (Glossary/DescriptionUpdate/etc.) and non-terminal for DataAccessRequest (means
- * "awaiting grant"). {@code Granted} and {@code ManualRevoke} live in {@code SHARED_OPEN_STATUSES}
- * so any hypothetical future task type reaching those statuses still lands in a bucket rather
- * than silently breaking the {@code openCount + completedCount = total} invariant.
+ * <p>Only {@code Approved} is bucketed row-aware on {@code type}: terminal for non-DAR types
+ * (Glossary/DescriptionUpdate/etc. — belongs in the Closed tab) and non-terminal for
+ * DataAccessRequest (means "awaiting grant" — belongs in the Open tab). {@code Granted} is
+ * DAR-only in practice, so it lives in {@code SHARED_TERMINAL_STATUSES} unconditionally — the
+ * requester's and reviewer's work is done and the task reads as closed (GitHub-issue model,
+ * revoke stays reachable from the closed task via {@code availableTransitions}). If a future
+ * task type ever adopts {@code Granted}, its rows will land in the Closed bucket by default;
+ * that's the intended fallback and matches how every other terminal-shaped status behaves.
  */
 public final class TaskBucketSql {
 
   public static final String SHARED_OPEN_STATUSES =
-      "'Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke'";
+      "'Open', 'InProgress', 'Pending', 'ManualRevoke'";
 
   public static final String SHARED_TERMINAL_STATUSES =
-      "'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired'";
+      "'Granted', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired'";
 
   public static final String ACTIVE_STATUSES =
       "'Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke'";
