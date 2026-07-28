@@ -217,17 +217,18 @@ export const FeedEditor = forwardRef<EditorContentRef, FeedEditorProp>(
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
           blotName: 'link-mention',
           onOpen: () => {
-            toggleMentionList(false);
+            toggleMentionList(true);
           },
           onClose: () => {
-            toggleMentionList(true);
+            // Defer so the Enter that picks a mention still sees the list open in
+            // handleKeyDown (quill-mention closes it before React's onKeyDown).
+            setTimeout(() => toggleMentionList(false), 0);
           },
           onSelect: (
             item: Record<string, any>,
 
             insertItem: (item: Record<string, any>) => void
           ) => {
-            toggleMentionList(true);
             insertItem(item);
           },
           source: debounce(userSuggestionRenderer, 300),
