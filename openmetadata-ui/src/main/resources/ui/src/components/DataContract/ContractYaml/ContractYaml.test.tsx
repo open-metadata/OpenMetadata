@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   DataContract,
