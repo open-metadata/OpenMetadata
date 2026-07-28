@@ -52,7 +52,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.dbtcloud.metadata import DbtcloudSource
+from metadata.ingestion.source.pipeline.dbtcloud.metadata import (
+    OBSERVABILITY_CACHE_SIZE,
+    DbtcloudSource,
+)
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
@@ -2086,6 +2089,110 @@ class DBTCloudUnitTest(TestCase):
         warnings = [call.args[0] for call in mock_logger.warning.call_args_list]
         self.assertTrue(any("could not be matched" in warning for warning in warnings))
         self.assertTrue(any("model.dbt_test_new.model_32" in warning for warning in warnings))
+
+    def test_observability_cache_is_bounded(self):
+        """
+        Every cache entry retains a full Pipeline entity plus its run history, so
+        the cache must evict instead of growing with the number of dbt Cloud jobs.
+        """
+        self.dbtcloud.observability_cache.clear()
+
+        for job_id in range(OBSERVABILITY_CACHE_SIZE + 25):
+            self.dbtcloud.observability_cache[(job_id, str(job_id))] = {"table_fqns": set()}
+
+        self.assertEqual(len(self.dbtcloud.observability_cache), OBSERVABILITY_CACHE_SIZE)
+        self.assertNotIn((0, "0"), self.dbtcloud.observability_cache)
+        self.assertIn(
+            (OBSERVABILITY_CACHE_SIZE + 24, str(OBSERVABILITY_CACHE_SIZE + 24)),
+            self.dbtcloud.observability_cache,
+        )
+
+    def test_context_table_fqns_deduplicates_shared_parents(self):
+        """
+        A dbt job resolves the same parent table once per model depending on it.
+        The tracked FQNs are a set, so the observability stage emits one entry
+        per table instead of one per dependency edge.
+        """
+        self.dbtcloud.observability_cache.clear()
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["latest_run_id"] = 70403110257794
+        ctx.__dict__["pipeline"] = "New job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = []
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+        shared_parent = Table(
+            id=uuid.uuid4(),
+            name="shared_parent",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.shared_parent",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+        children = [
+            Table(
+                id=uuid.uuid4(),
+                name=f"child_{index}",
+                fullyQualifiedName=f"local_redshift.dev.dbt_test_new.child_{index}",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            )
+            for index in range(2)
+        ]
+
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=mock_pipeline),
+            patch.object(
+                self.dbtcloud.metadata,
+                "search_in_any_service",
+                side_effect=table_search_side_effect([shared_parent, *children]),
+            ),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_get_models,
+        ):
+            mock_get_models.return_value = (
+                [
+                    DBTModel(
+                        uniqueId=f"model.dbt_test_new.child_{index}",
+                        name=f"child_{index}",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=["model.dbt_test_new.shared_parent"],
+                    )
+                    for index in range(2)
+                ]
+                + [
+                    DBTModel(
+                        uniqueId="model.dbt_test_new.shared_parent",
+                        name="shared_parent",
+                        dbtschema="dbt_test_new",
+                        database="dev",
+                        runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                        dependsOn=None,
+                    )
+                ],
+                [],
+                [],
+            )
+            edges = [result.right for result in self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)]
+
+        self.assertEqual(len([edge for edge in edges if edge is not None]), 2)
+        self.assertIsInstance(self.dbtcloud.context.get().current_table_fqns, set)
+        self.assertEqual(
+            self.dbtcloud.context.get().current_table_fqns,
+            {
+                "local_redshift.dev.dbt_test_new.shared_parent",
+                "local_redshift.dev.dbt_test_new.child_0",
+                "local_redshift.dev.dbt_test_new.child_1",
+            },
+        )
 
     def test_observability_cache_uses_set_for_table_fqns(self):
         """

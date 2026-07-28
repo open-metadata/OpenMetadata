@@ -81,6 +81,9 @@ STATUS_MAP = {
 
 WILDCARD_SERVICE = "*"
 
+# Number of (job, run) observability entries kept in memory at once
+OBSERVABILITY_CACHE_SIZE = 100
+
 # Number of unmatched dbt node ids listed in the "no lineage created" warning
 UNMATCHED_NODES_SAMPLE_SIZE = 10
 
@@ -101,8 +104,10 @@ class DbtcloudSource(PipelineServiceSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
-        # Cache for observability data: {(job_id, run_id): {models, parents, pipeline_entity, ...}}
-        self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}  # noqa: UP006
+        # Bounded cache for observability data: {(job_id, run_id): {pipeline_entity, runs, ...}}.
+        # Each entry retains a full Pipeline entity plus its run history, so it has to be
+        # capped: an unbounded dict grows with the number of jobs in the dbt Cloud account.
+        self.observability_cache: LRUCache = LRUCache(maxsize=OBSERVABILITY_CACHE_SIZE)
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
         self._warn_on_missing_db_service_names()
@@ -238,7 +243,7 @@ class DbtcloudSource(PipelineServiceSource):
 
             # Cache observability details - store in context for current job
             self.context.get().current_pipeline_entity = pipeline_entity
-            self.context.get().current_table_fqns = []
+            self.context.get().current_table_fqns = set()
             # Store pipeline FQN from entity to ensure exact match for status updates
             self.context.get().pipeline_fqn = str(pipeline_entity.fullyQualifiedName.root)
 
@@ -356,10 +361,10 @@ class DbtcloudSource(PipelineServiceSource):
         """
         Record a resolved table FQN so the observability stage can attach the
         job's run data to it, both for the pipeline being processed and for the
-        cached historical runs.
+        cached historical runs. Both collections are sets: a dbt job routinely
+        resolves the same table once per model that depends on it.
         """
-        if table_fqn not in self.context.get().current_table_fqns:
-            self.context.get().current_table_fqns.append(table_fqn)
+        self.context.get().current_table_fqns.add(table_fqn)
         if cache_key and cache_key in self.observability_cache:
             self.observability_cache[cache_key]["table_fqns"].add(table_fqn)
 
