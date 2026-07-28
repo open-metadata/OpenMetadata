@@ -24,6 +24,7 @@ import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
 import './components/entity-version-time-line.less';
+import './components/form-hint-doc.less';
 import './components/glossary.less';
 import './components/menu.less';
 import './components/pagination.less';

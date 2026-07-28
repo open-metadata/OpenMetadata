@@ -211,7 +211,7 @@ function ObservabilityAlertsTable({
   );
 
   return (
-    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:ring-0">
+    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
       {isAlertsEmpty ? (
         hasResourcePermissionError ? (
           errorStatePlaceholder

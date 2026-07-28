@@ -15,6 +15,7 @@ import {
   Box,
   Divider,
   Input,
+  Popover,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -89,8 +90,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   allOptionLabel,
   onSelectAll,
   popoverClassName,
-  popoverAlign = 'left',
-  popoverPlacement = 'bottom',
+  popoverPlacement = 'bottom start',
   placeholder,
 }) => {
   const { t } = useTranslation();
@@ -200,21 +200,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   );
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        close();
-      }
-    };
-    document.addEventListener('keydown', handler, true);
-
-    return () => document.removeEventListener('keydown', handler, true);
-  }, [isOpen, close]);
-
-  useEffect(() => {
     onOpenChange?.(isOpen);
   }, [isOpen, onOpenChange]);
 
@@ -222,28 +207,16 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     <div className="tw:relative tw:leading-0" ref={wrapperRef}>
       {renderTrigger({ isOpen, open, close })}
 
-      {isOpen && (
-        <button
-          aria-label="close picker"
-          className="tw:fixed tw:inset-0 tw:z-49 tw:cursor-default tw:bg-transparent tw:border-0 tw:p-0"
-          data-testid="picker-overlay"
-          tabIndex={-1}
-          type="button"
-          onClick={close}
-        />
-      )}
-
-      {isOpen && (
+      <Popover
+        className="tw:w-95 tw:overflow-hidden"
+        containerClassName={classNames('tw:flex tw:flex-col', popoverClassName)}
+        data-testid="picker-popover"
+        isOpen={isOpen}
+        placement={popoverPlacement}
+        triggerRef={wrapperRef}
+        onOpenChange={(open) => !open && close()}>
         <Box
-          className={classNames(
-            'tw:absolute tw:z-50 tw:w-95 tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:overflow-hidden',
-            popoverAlign === 'right' ? 'tw:right-0' : 'tw:left-0',
-            popoverPlacement === 'top'
-              ? 'tw:bottom-full tw:mb-1'
-              : 'tw:top-full tw:mt-1',
-            popoverClassName
-          )}
-          data-testid="picker-popover"
+          className="tw:contents"
           direction="col"
           onKeyDown={handleSearchKeyDown}>
           {searchable && (
@@ -363,6 +336,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               <AriaListBox
                 aria-label={t('label.asset-plural')}
                 className="tw:outline-hidden tw:flex tw:flex-col"
+                escapeKeyBehavior="none"
                 ref={listBoxRef}
                 selectedKeys={selectedIds}
                 selectionMode={selectionMode}
@@ -405,7 +379,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             </Box>
           )}
         </Box>
-      )}
+      </Popover>
     </div>
   );
 };

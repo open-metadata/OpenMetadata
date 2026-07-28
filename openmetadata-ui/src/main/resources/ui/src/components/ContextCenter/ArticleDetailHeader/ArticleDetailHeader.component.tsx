@@ -261,7 +261,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="success"
             size="lg"
             type="color">
@@ -278,7 +278,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return (
         <div data-testid="content-change-state">
           <Badge
-            className="tw:flex tw:items-center tw:gap-2 tw:ring-0"
+            className="tw:flex tw:items-center tw:gap-2 tw:outline-0"
             color="gray"
             size="lg"
             type="color">

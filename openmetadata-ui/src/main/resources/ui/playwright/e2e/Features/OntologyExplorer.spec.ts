@@ -560,7 +560,9 @@ test.describe('Ontology Explorer', () => {
         .locator('input');
       await searchInput.fill('__nonexistent_term_xyz__');
 
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).toBeVisible();
       await expect(
         page.locator('.ontology-g6-container canvas').first()
       ).not.toBeAttached();
@@ -574,10 +576,14 @@ test.describe('Ontology Explorer', () => {
         .getByTestId('ontology-graph-search')
         .locator('input');
       await searchInput.fill('__nonexistent_term_xyz__');
-      await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).toBeVisible();
 
       await searchInput.clear();
-      await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
+      await expect(
+        page.getByTestId('ontology-graph-search-empty')
+      ).not.toBeVisible();
     });
   });
 

@@ -57,6 +57,7 @@ describe('useCurrentUserStore', () => {
     recentlyViewed: [],
     recentlyViewedQuickLinks: [],
     marketplaceRecentSearches: [],
+    appMode: null,
   };
 
   describe('useCurrentUserPreferences', () => {
@@ -139,6 +140,7 @@ describe('useCurrentUserStore', () => {
         recentlyViewed: [],
         recentlyViewedQuickLinks: [],
         marketplaceRecentSearches: [],
+        appMode: null,
       });
     });
 
@@ -163,6 +165,7 @@ describe('useCurrentUserStore', () => {
             recentlyViewed: [],
             recentlyViewedQuickLinks: [],
             marketplaceRecentSearches: [],
+            appMode: null,
           },
         },
       });
@@ -178,6 +181,7 @@ describe('useCurrentUserStore', () => {
         recentlyViewed: [],
         recentlyViewedQuickLinks: [],
         marketplaceRecentSearches: [],
+        appMode: null,
       });
     });
 

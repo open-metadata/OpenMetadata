@@ -16,13 +16,44 @@
  *
  * The active mode is a string. OM core stays mode-agnostic — it knows
  * about the abstraction (a current mode value, a registry to look up
- * mode-specific routes) but never names specific modes. Consumers
- * (plugins, themes) register their modes at runtime through
- * `useAppRoutesRegistry`. The mode is persisted to `localStorage` via
- * Zustand persist middleware (see `useAppModeStore`).
+ * mode-specific routes, a boot resolver) but never names specific modes.
+ * Consumers (plugins, themes) register their modes at runtime through
+ * `useAppRoutesRegistry`.
+ *
+ * The active mode is scoped to a tab via `sessionStorage`, keyed by the
+ * value below. The stored payload is a tuple:
+ *
+ *   { personaAppMode: string | null, mode: string }
+ *
+ * `personaAppMode` snapshots what the resolver saw from the persona doc
+ * at write time, so the resolver can tell whether the persona has
+ * something new to say (invalidate the session) or not (keep the tab's
+ * chosen mode). See `useResolvedAppMode` for the precedence logic.
  */
 
-export const APP_MODE_STORAGE_KEY = 'om.appMode';
+export const APP_MODE_SESSION_KEY = 'omAppMode';
+
+/**
+ * Transient cross-tab hint written to `localStorage` alongside every
+ * `writeAppMode` call. Lets a freshly-opened tab (which has an empty
+ * `sessionStorage`) inherit the mode of a sibling tab when it's within
+ * the TTL window — modern browsers do not copy sessionStorage across
+ * user-opened tabs even for same-origin links, so without this hint
+ * cmd/middle-clicking an AI-only URL from an AI tab lands on Classic
+ * and 404s.
+ *
+ * The hint is NOT the "remember on next login" preference (that stays
+ * on `usePersistentStorage[user].appMode`, written only by the switcher
+ * checkbox). It's short-lived signalling between concurrent tabs.
+ */
+export const APP_MODE_HINT_STORAGE_KEY = 'omAppModeHint';
+
+/**
+ * Age above which the app-mode hint is treated as absent. Long enough
+ * to cover cmd-click → new-tab-load latency; short enough that closing
+ * every tab and returning later reads as a fresh session.
+ */
+export const APP_MODE_HINT_TTL_MS = 60_000;
 
 export const DEFAULT_APP_MODE = 'default';
 

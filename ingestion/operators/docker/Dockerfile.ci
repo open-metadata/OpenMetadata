@@ -32,6 +32,10 @@ RUN apt-get -qq update \
     libkrb5-dev \
     default-jre-headless \
     openssl \
+    # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
+    # mysql_config) and has no Linux wheels, so it always builds from source.
+    # The slim base omits pkg-config, unlike the python:3.10-bookworm base.
+    pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
     postgresql \

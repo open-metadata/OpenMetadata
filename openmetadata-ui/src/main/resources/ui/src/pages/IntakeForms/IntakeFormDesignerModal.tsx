@@ -271,7 +271,7 @@ const IntakeFormDesignerModal = ({
     isLoading: boolean
   ) => (
     <Box
-      className="tw:overflow-hidden tw:rounded-lg tw:ring-1 tw:ring-secondary"
+      className="tw:overflow-hidden tw:rounded-lg tw:outline-1 tw:outline-secondary"
       direction="col">
       <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
         <Typography

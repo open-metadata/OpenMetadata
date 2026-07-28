@@ -1,0 +1,64 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../variables.less';
+
+// Docs typography for the Form Hint column, matching the approved design:
+// 12.5px/1.55 body in the secondary text colour, with mono for inline code.
+// Scoped to the hint column so it cannot leak into other
+// RichTextEditorPreviewerV1 usages.
+.form-hint-doc {
+  font-size: 12.5px;
+  line-height: 1.55;
+
+  // Setting the size on this wrapper alone is NOT enough. The doc is rendered
+  // through RichTextEditorPreviewerV1, whose TipTap block editor declares its
+  // own 14px/20px on `.block-editor-wrapper .tiptap.ProseMirror p` — more
+  // specific than anything this wrapper inherits down, so the text stayed at
+  // 14px/20px. These selectors deliberately mirror that chain (and add
+  // `.form-hint-doc`) to out-specify it; a shorter selector silently loses.
+  .block-editor-wrapper .tiptap.ProseMirror {
+    font-size: 12.5px;
+    line-height: 1.55;
+
+    p,
+    li,
+    span {
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    // The design renders doc prose in the secondary text colour; the previewer
+    // defaults to the primary near-black.
+    p,
+    li {
+      color: @grey-600;
+    }
+
+  }
+
+  // Inline code spans carry parameter names, operators and literals in
+  // TestCaseForm.md. Geist Mono is registered globally in
+  // styles/geist-mono-variable.css; the Tailwind `font-mono` token resolves to
+  // --font-mono, which does not include it, so the stack is spelled out here.
+  //
+  // Only `code` is mono, deliberately: the docs mark parameter names with
+  // **bold**, but bold is also used for prose emphasis ("**Important Notes**"),
+  // so styling `strong` as mono would turn prose into code.
+  code {
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: @grey-800;
+  }
+}

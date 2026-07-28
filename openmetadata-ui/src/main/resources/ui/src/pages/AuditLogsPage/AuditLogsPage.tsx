@@ -397,7 +397,7 @@ const AuditLogsPage = () => {
                 <div className="tw:flex tw:gap-2 tw:flex-wrap tw:flex-1">
                   {activeFilters.map((filter) => (
                     <Badge
-                      className="tw:ring-0 tw:gap-1"
+                      className="tw:outline-0 tw:gap-1"
                       color="brand"
                       key={filter.category}
                       size="lg"

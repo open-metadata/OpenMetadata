@@ -21,8 +21,9 @@ export interface CockroachConnection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
+     * Initial database to connect to. Metadata reading is restricted to this database unless
+     * Ingest All Databases is enabled, in which case this database is used as the entry point
+     * to discover and scan all databases.
      */
     database: string;
     /**

@@ -32,9 +32,12 @@ import { BINARY_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
 const EntityHealthStatusPieChartWidget = ({
   className = '',
   chartFilter,
+  navigate: navigateProp,
+  redirectPath: testCasesPath,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const routerNavigate = useNavigate();
+  const navigate = navigateProp ?? routerNavigate;
   const [isLoading, setIsLoading] = useState(true);
   const [entityHealthStates, setEntityHealthStates] = useState<{
     healthy: number;
@@ -46,10 +49,14 @@ const EntityHealthStatusPieChartWidget = ({
     (_entry: CustomPieChartData, index: number) => {
       const status = BINARY_STATUS_PIE_SEGMENT_ORDER[index];
       if (status) {
-        navigate(getTestCaseTabPath(status));
+        const redirectPath = getTestCaseTabPath(status);
+        navigate({
+          ...redirectPath,
+          pathname: testCasesPath ?? redirectPath.pathname,
+        });
       }
     },
-    [navigate]
+    [navigate, testCasesPath]
   );
 
   const { data, chartLabel } = useMemo(

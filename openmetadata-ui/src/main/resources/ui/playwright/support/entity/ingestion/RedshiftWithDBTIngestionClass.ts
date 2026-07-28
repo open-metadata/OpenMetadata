@@ -98,12 +98,19 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    // no schema or database filters
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.schemaFilterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -192,9 +199,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
       await page.waitForTimeout(3000);
       await getAgentCard(page, response.data[0].name)
-        .getByTestId('more-actions')
+        .getByTestId('run-agent-button')
         .click();
-      await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
 

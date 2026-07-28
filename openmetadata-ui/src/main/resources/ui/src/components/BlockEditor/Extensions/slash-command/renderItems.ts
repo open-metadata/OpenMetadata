@@ -14,6 +14,7 @@ import { ReactRenderer } from '@tiptap/react';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
+import { getDialogContainer } from '../getDialogContainer';
 import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
@@ -41,7 +42,7 @@ const renderItems = () => {
       popup = tippy('body', {
         getReferenceClientRect:
           props.clientRect as Props['getReferenceClientRect'],
-        appendTo: () => document.body,
+        appendTo: () => getDialogContainer(props.editor.view),
         content: component.element,
         showOnCreate: true,
         interactive: true,

@@ -127,9 +127,9 @@ const sizes = sortCx({
 const circleStatusStyles = sortCx({
   complete: 'tw:bg-brand-solid tw:text-fg-white',
   current:
-    'tw:bg-brand-secondary tw:text-fg-brand-primary tw:ring-2 tw:ring-inset tw:ring-bg-brand-solid',
+    'tw:bg-brand-secondary tw:text-fg-brand-primary tw:outline-2 tw:-outline-offset-2 tw:outline-bg-brand-solid',
   incomplete:
-    'tw:bg-primary tw:text-fg-quaternary tw:ring-1 tw:ring-inset tw:ring-primary',
+    'tw:bg-primary tw:text-fg-quaternary tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
 });
 
 const titleStatusStyles = sortCx({

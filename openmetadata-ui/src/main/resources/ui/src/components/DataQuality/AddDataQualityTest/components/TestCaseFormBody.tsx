@@ -1045,6 +1045,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
                       label={t('message.select-test-level')}
                     />
                     <SelectionCardGroup
+                      layout="vertical"
                       options={testLevelOptions}
                       value={field.value}
                       onChange={(value) => {

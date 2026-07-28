@@ -50,8 +50,8 @@ class BigQuerySampler(SQASampler):
 
         connection_config = deepcopy(self.service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:  # pyright: ignore[reportAttributeAccessIssue]
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)  # pyright: ignore[reportAttributeAccessIssue]
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)

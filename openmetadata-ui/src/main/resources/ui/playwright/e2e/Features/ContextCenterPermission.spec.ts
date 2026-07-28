@@ -41,6 +41,7 @@ import {
   searchAndGetMemoryRow,
   uploadDisposableDocument,
   waitForDocumentInArchive,
+  waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test as testWithRolesPages } from '../fixtures/pages';
@@ -140,13 +141,11 @@ const FULL_PERMISSION_RULE = buildPermissionRule(
 let articleEntity: KnowledgeCenterClass;
 let documentId = '';
 let documentName = '';
-let folderId = '';
 let archivedDocumentId = '';
 
 let ownerMemoryId = '';
 let ownerMemoryTitle = '';
 
-let quickLinkId = '';
 let quickLinkDisplayName = '';
 
 let editAllOwnMemoryId = '';
@@ -173,14 +172,9 @@ test.describe('Context Center Permissions', () => {
     });
     await articleEntity.create(apiContext);
 
-    const folderRes = await apiContext.post(
-      '/api/v1/contextCenter/drive/folders',
-      {
-        data: { name: `cc_permission_folder_${uuid()}` },
-      }
-    );
-    const folderData = await folderRes.json();
-    folderId = folderData.id;
+    await apiContext.post('/api/v1/contextCenter/drive/folders', {
+      data: { name: `cc_permission_folder_${uuid()}` },
+    });
 
     documentName = `cc-permission-doc-${uuid()}.txt`;
     const docRes = await apiContext.post(
@@ -213,12 +207,13 @@ test.describe('Context Center Permissions', () => {
     );
     const archivedDocData = await archivedDocRes.json();
     archivedDocumentId = archivedDocData.id;
+    await waitForDocumentProcessingComplete(apiContext, archivedDocumentId);
     await apiContext.delete(
       `/api/v1/contextCenter/drive/files/${archivedDocumentId}?hardDelete=false`
     );
 
     quickLinkDisplayName = `CC Permission QuickLink ${uuid()}`;
-    const qlRes = await apiContext.post('/api/v1/contextCenter/pages', {
+    await apiContext.post('/api/v1/contextCenter/pages', {
       data: {
         name: `cc_permission_ql_${uuid()}`,
         displayName: quickLinkDisplayName,
@@ -227,7 +222,6 @@ test.describe('Context Center Permissions', () => {
         page: { url: 'https://example.com' },
       },
     });
-    quickLinkId = (await qlRes.json()).id;
 
     ownerMemoryTitle = `CC Permission Memory ${uuid()}`;
     const memoryRes = await apiContext.post(MEMORIES_API, {
@@ -384,67 +378,6 @@ test.describe('Context Center Permissions', () => {
     await earlyAlphabetAfterAction();
     await earlyAlphabetPage.close();
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-      browser
-    );
-
-    await articleEntity.delete(apiContext);
-    if (quickLinkId) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/pages/${quickLinkId}?hardDelete=true&recursive=true`
-        )
-        .catch(() => undefined);
-    }
-    if (folderId) {
-      await apiContext.delete(
-        `/api/v1/contextCenter/drive/folders/${folderId}?hardDelete=true`
-      );
-    }
-    if (documentId) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/files/${documentId}?hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-    if (archivedDocumentId) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/files/${archivedDocumentId}?hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-    for (const memoryId of [
-      ownerMemoryId,
-      editAllOwnMemoryId,
-      deleteAllOwnMemoryId,
-      allPermissionOwnMemoryId,
-      viewOnlyOwnMemoryId,
-      earlyAlphabetMemoryId,
-    ]) {
-      if (memoryId) {
-        await apiContext
-          .delete(`${MEMORIES_API}/${memoryId}?hardDelete=true`)
-          .catch(() => undefined);
-      }
-    }
-    for (const user of [
-      viewOnlyUser,
-      createAllUser,
-      editAllUser,
-      deleteAllUser,
-      allPermissionUser,
-      earlyAlphabetUser,
-    ]) {
-      if (user?.responseData?.id) {
-        await user.delete(apiContext);
-      }
-    }
     await afterAction();
   });
 
@@ -2046,7 +1979,10 @@ test.describe('Context Center Permissions', () => {
     test('admin user can edit and save a memory owned by another user', async ({
       browser,
     }) => {
-      const { page: adminPage, afterAction } = await performAdminLogin(browser);
+      const { page: adminPage, afterAction } = await performAdminLogin(
+        browser,
+        { navigate: true }
+      );
 
       await navigateToMemories(adminPage);
 
@@ -2333,7 +2269,10 @@ test.describe('Context Center Permissions', () => {
     test('selecting "Updated By" actually reorders rows by updatedBy', async ({
       browser,
     }) => {
-      const { page: adminPage, afterAction } = await performAdminLogin(browser);
+      const { page: adminPage, afterAction } = await performAdminLogin(
+        browser,
+        { navigate: true }
+      );
 
       await navigateToMemories(adminPage);
       await adminPage.getByRole('button', { name: /sort/i }).click();

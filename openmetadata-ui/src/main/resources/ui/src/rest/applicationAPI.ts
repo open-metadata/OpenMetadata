@@ -17,7 +17,11 @@ import { DataInsightLatestRun } from '../components/Settings/Applications/AppDet
 import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
-import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  PipelineState,
+  PipelineStatus,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
@@ -32,10 +36,30 @@ type AppListParams = ListParams & {
   endTs?: number;
 };
 
-interface GetAgentRunsParams {
-  service: string;
-  startTs?: number;
-  endTs?: number;
+/**
+ * AutoPilot's Collate agents are AI Automations instantiated per service. Only the
+ * identity fields are needed here, so this is kept independent of the full entity
+ * schema, which is not part of the OSS build.
+ */
+export interface CollateAgentAutomation {
+  id: string;
+  name: string;
+  fullyQualifiedName?: string;
+}
+
+/** A single run of an AI Automation's backing ingestion pipeline. */
+export interface AutomationPipelineRun {
+  pipelineState?: PipelineState;
+  startDate?: number;
+  endDate?: number;
+  timestamp?: number;
+  runId?: string;
+  status?: Array<{
+    records?: number;
+    updated_records?: number;
+    warnings?: number;
+    errors?: number;
+  }>;
 }
 
 export const getApplicationList = async (params?: AppListParams) => {
@@ -184,13 +208,31 @@ export const getApplicationLogs = (
   });
 };
 
-export const getAgentRuns = async (
-  applicationName: string,
-  params?: GetAgentRunsParams
+/** Lists the AI Automations AutoPilot runs for a service, in template order. */
+export const getAiAutomationsByService = async (serviceFqn: string) => {
+  const response = await APIClient.get<
+    PagingResponse<CollateAgentAutomation[]>
+  >('/ai/automations', {
+    // The list endpoint defaults to provider=user when omitted, which filters
+    // out AutoPilot's provider=automation entries; request them explicitly.
+    params: {
+      service: serviceFqn,
+      isTemplate: false,
+      provider: ProviderType.Automation,
+    },
+  });
+
+  return response.data;
+};
+
+export const getAiAutomationRuns = async (
+  id: string,
+  startTs?: number,
+  endTs?: number
 ) => {
-  const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
-    `/collate/apps/name/${applicationName}/agentRuns`,
-    { params }
+  const response = await APIClient.get<AutomationPipelineRun[]>(
+    `/ai/automations/${id}/runs`,
+    { params: { startTs, endTs } }
   );
 
   return response.data;

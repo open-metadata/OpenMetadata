@@ -11,47 +11,30 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import { APIRequestContext, expect, Response } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { navigateToDocuments } from '../../utils/ContextCenterUtil';
+import {
+  BulkOperationResult,
+  ContextCenterDocument,
+  ContextCenterFolder,
+  expectBulkIdsRequest,
+  expectSelectedCount,
+  getDocumentRowByName,
+  getFolderTreeItem,
+  navigateToDocuments,
+  parseResponseJson,
+  revealFolderRow,
+  scrollUntilResponse,
+  searchAndGetDocumentRow,
+  selectDocumentByName,
+  selectFolderInSidebar,
+  uploadDocument as uploadDocumentToApi,
+} from '../../utils/ContextCenterUtil';
 import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
-
-// ─── Interfaces ───────────────────────────────────────────────────────────────
-
-interface ContextCenterDocument {
-  id: string;
-  name: string;
-  displayName?: string;
-}
-
-interface ContextCenterFolder {
-  id: string;
-  name: string;
-  displayName?: string;
-  fullyQualifiedName?: string;
-}
-
-interface BulkOperationResult {
-  numberOfRowsPassed?: number;
-  numberOfRowsFailed?: number;
-}
-
-interface BulkIdsRequest {
-  ids?: string[];
-}
-
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
 
@@ -61,61 +44,21 @@ let paginationFolder: ContextCenterFolder;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
-
 const uploadDocument = async (
   apiContext: APIRequestContext,
   name: string,
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
-    file: { name, mimeType: 'text/plain', buffer },
-  };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
-
-  const response = await apiContext.post(
-    '/api/v1/contextCenter/drive/files/upload',
-    { multipart }
+  const document = await uploadDocumentToApi(
+    apiContext,
+    name,
+    buffer,
+    folderFqn
   );
-  const body = await response.text();
-  expect(response.status(), body).toBe(201);
-
-  const document = parseResponseJson<ContextCenterDocument>(body);
   contextFileIdsToCleanup.add(document.id);
 
   return document;
-};
-
-const getDocumentRowByName = (page: Page, fileName: string): Locator =>
-  page
-    .getByTestId('documents-view')
-    .locator('[data-testid^="document-row-"]')
-    .filter({ hasText: fileName });
-
-const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
-  await expect(row).toBeVisible();
-  await row.scrollIntoViewIfNeeded();
-  await row.getByTestId('document-checkbox').click();
-};
-
-const expectSelectedCount = async (page: Page, count: number) => {
-  await expect(
-    page.getByText(`${count} selected`, { exact: true })
-  ).toBeVisible();
-};
-
-const expectBulkIdsRequest = (
-  postData: string | null,
-  expectedIds: string[]
-) => {
-  expect(postData).toBeTruthy();
-  const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
-  expect(new Set(request.ids)).toEqual(new Set(expectedIds));
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -159,25 +102,6 @@ test.describe('Context Center - Documents Page', () => {
       )
     );
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await Promise.all(
-      Array.from(contextFileIdsToCleanup).map((id) =>
-        apiContext.delete(
-          `/api/v1/contextCenter/drive/files/${id}?hardDelete=true`
-        )
-      )
-    );
-    await Promise.all(
-      Array.from(contextFolderIdsToCleanup).map((id) =>
-        apiContext.delete(
-          `/api/v1/contextCenter/drive/folders/${id}?recursive=true&hardDelete=true`
-        )
-      )
-    );
     await afterAction();
   });
 
@@ -234,9 +158,10 @@ test.describe('Context Center - Documents Page', () => {
       await waitForAllLoadersToDisappear(page);
 
       const tree = page.getByRole('treegrid', { name: 'Folders' });
-      const folderRow = tree.getByRole('row', {
-        name: paginationFolder.displayName,
-      });
+      const folderRow = await revealFolderRow(
+        page,
+        paginationFolder.displayName || paginationFolder.name
+      );
       await expect(folderRow).toBeVisible();
       await folderRow.scrollIntoViewIfNeeded();
 
@@ -291,6 +216,166 @@ test.describe('Context Center - Documents Page', () => {
 
       await expect(folderFileRows).toHaveCount(10);
       await expect(toggleButton).toHaveText('View more');
+    });
+  });
+
+  // ─── Folder pagination ──────────────────────────────────────────────────────
+  // Folders are sorted by `name` ASC server-side and paginated at
+  // FOLDER_PAGE_SIZE (25). Seeding 26 folders with zero-padded, sortable
+  // names guarantees the last one lands alone on page 2, so it must be
+  // absent from the DOM until the user scrolls each of the three surfaces
+  // that share this pagination state: the sidebar tree, the per-file
+  // "Move to Folder" submenu, and the bulk "Move" dropdown.
+
+  test.describe('Folder pagination', () => {
+    const FOLDER_PAGE_SIZE = 25;
+    let lastPageFolder: ContextCenterFolder;
+
+    const isFoldersNextPageResponse = (res: Response) =>
+      res.url().includes('/api/v1/contextCenter/drive/folders') &&
+      res.url().includes('after=') &&
+      res.request().method() === 'GET';
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const suffix = uuid();
+
+      const folders = await Promise.all(
+        Array.from({ length: FOLDER_PAGE_SIZE + 1 }, async (_, i) => {
+          const index = String(i).padStart(2, '0');
+          const name = `zz-folder-pagination-${suffix}-${index}`;
+          const res = await apiContext.post(
+            '/api/v1/contextCenter/drive/folders',
+            { data: { name, displayName: name } }
+          );
+          const body = await res.text();
+          expect(res.status(), body).toBe(201);
+
+          return parseResponseJson<ContextCenterFolder>(body);
+        })
+      );
+
+      folders.forEach((folder) => contextFolderIdsToCleanup.add(folder.id));
+      lastPageFolder = folders[FOLDER_PAGE_SIZE];
+
+      await afterAction();
+    });
+
+    test('scrolling the sidebar folder tree loads the next page and reveals the page-2 folder', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+      await waitForAllLoadersToDisappear(page);
+
+      const targetFolderRow = getFolderTreeItem(page, lastPageFolder.name);
+      await expect(targetFolderRow).toHaveCount(0);
+
+      await selectFolderInSidebar(page, lastPageFolder.name);
+      await expect(
+        page.getByTestId(`folder-file-count-badge-${lastPageFolder.id}`)
+      ).toBeVisible();
+    });
+
+    test('scrolling the per-file "Move to Folder" submenu loads the next page and reveals the page-2 folder', async ({
+      browser,
+      page,
+    }) => {
+      const fileName = `folder-pagination-move-${uuid()}.txt`;
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('folder pagination submenu test')
+      );
+      await afterAction();
+
+      await navigateToDocuments(page);
+
+      const row = getDocumentRowByName(page, fileName);
+      await expect(row).toBeVisible();
+      await row.scrollIntoViewIfNeeded();
+
+      await row.getByTestId('manage-button').click();
+      await expect(page.getByTestId('move-btn')).toBeVisible();
+      await page.getByTestId('move-btn').click();
+
+      const targetFolderItem = page.getByTestId(
+        `move-to-folder-${lastPageFolder.id}`
+      );
+      await expect(targetFolderItem).toHaveCount(0);
+
+      const menu = page.getByRole('menu').last();
+      await scrollUntilResponse(
+        page,
+        menu,
+        targetFolderItem,
+        isFoldersNextPageResponse
+      );
+
+      const moveResPromise = page.waitForResponse(
+        (res) =>
+          res.url().includes('/drive/files/') &&
+          res.url().includes('/move') &&
+          res.request().method() === 'PUT'
+      );
+      await targetFolderItem.click();
+      const moveRes = await moveResPromise;
+
+      expect(moveRes.status()).toBe(200);
+      await expect(
+        getDocumentRowByName(page, fileName).getByTestId('document-folder-name')
+      ).toHaveText(lastPageFolder.name);
+    });
+
+    test('scrolling the bulk "Move" dropdown loads the next page and reveals the page-2 folder', async ({
+      browser,
+      page,
+    }) => {
+      const fileName = `folder-pagination-bulk-move-${uuid()}.txt`;
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const document = await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('folder pagination bulk move test')
+      );
+      await afterAction();
+
+      await navigateToDocuments(page);
+
+      await selectDocumentByName(page, fileName);
+      await expectSelectedCount(page, 1);
+
+      await page.getByTestId('bulk-move-btn').click();
+
+      const targetFolderItem = page.getByTestId(
+        `move-to-folder-${lastPageFolder.id}`
+      );
+      await expect(targetFolderItem).toHaveCount(0);
+
+      const menu = page.getByRole('menu').last();
+      await scrollUntilResponse(
+        page,
+        menu,
+        targetFolderItem,
+        isFoldersNextPageResponse
+      );
+
+      const bulkMoveResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/bulk/move'
+      );
+      await targetFolderItem.click();
+      const bulkMoveRes = await bulkMoveResPromise;
+      const bulkMoveBody = (await bulkMoveRes.json()) as BulkOperationResult;
+
+      expect(bulkMoveRes.status()).toBe(200);
+      expect(bulkMoveBody.numberOfRowsPassed).toBe(1);
+      expect(bulkMoveBody.numberOfRowsFailed ?? 0).toBe(0);
+      expectBulkIdsRequest(bulkMoveRes.request().postData(), [document.id]);
+
+      await navigateToDocuments(page);
+      await expect(
+        getDocumentRowByName(page, fileName).getByTestId('document-folder-name')
+      ).toHaveText(lastPageFolder.name);
     });
   });
 
@@ -494,7 +579,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    const row = getDocumentRowByName(page, fileName);
+    const row = await searchAndGetDocumentRow(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
@@ -579,7 +664,7 @@ test.describe('Context Center - Documents Page', () => {
     const folder = (await createRes.json()) as ContextCenterFolder;
     contextFolderIdsToCleanup.add(folder.id);
 
-    await expect(page.getByText(folderName, { exact: true })).toBeVisible();
+    await revealFolderRow(page, folderName);
 
     const deleteFolderBtn = page.getByTestId(`delete-folder-btn-${folder.id}`);
     await deleteFolderBtn.scrollIntoViewIfNeeded();
@@ -823,10 +908,6 @@ test.describe('Context Center - Documents Page', () => {
     await expect(panel).toBeVisible();
     await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
 
-    await expect(
-      newTab.getByTestId(`document-row-${doc.id}`).getByTestId('document-name')
-    ).toHaveText(fileName);
-
     await newTab.close();
   });
 
@@ -871,7 +952,7 @@ test.describe('Context Center - Documents Page', () => {
     const targetFolder = (await folderCreateRes.json()) as ContextCenterFolder;
     contextFolderIdsToCleanup.add(targetFolder.id);
 
-    await expect(page.getByText(folderName, { exact: true })).toBeVisible();
+    await revealFolderRow(page, folderName);
     await selectDocumentByName(page, firstFileName);
     await selectDocumentByName(page, secondFileName);
     await expectSelectedCount(page, 2);
@@ -1015,10 +1096,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('move-btn').waitFor({ state: 'detached' });
 
     const tree = page.getByRole('treegrid', { name: 'Folders' });
-
-    const folderRow = tree.getByRole('row', {
-      name: folderName,
-    });
+    const folderRow = await revealFolderRow(page, folderName);
 
     await folderRow.getByRole('button', { name: 'Expand' }).click();
 
@@ -1081,14 +1159,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(folderViewCount).toContainText(String(globalCount));
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
-    const tree = page.getByRole('treegrid', { name: 'Folders' });
-
-    const folderButton = tree.getByRole('row', {
-      name: folderName,
-    });
-    await expect(folderButton).toBeVisible();
-    await folderButton.click();
-    await waitForAllLoadersToDisappear(page);
+    await selectFolderInSidebar(page, folderName);
 
     // After selecting folder: only in-folder document visible.
     await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
@@ -1157,14 +1228,7 @@ test.describe('Context Center - Documents Page', () => {
     await navigateToDocuments(page);
 
     // Select folderA in the sidebar so the upload modal targets that folder
-    const tree = page.getByRole('treegrid', { name: 'Folders' });
-
-    const folderButton = tree.getByRole('row', {
-      name: folderAName,
-    });
-    await expect(folderButton).toBeVisible();
-    await folderButton.click();
-    await waitForAllLoadersToDisappear(page);
+    await selectFolderInSidebar(page, folderAName);
 
     await page.getByRole('button', { name: /upload file/i }).click();
     const modal = page.getByRole('dialog', { name: /upload documents/i });

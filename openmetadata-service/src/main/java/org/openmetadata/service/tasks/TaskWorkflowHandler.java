@@ -19,6 +19,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonPatch;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,7 +35,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
@@ -46,6 +49,8 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.ChangeEventHandler;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -56,6 +61,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPla
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.FieldPathUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * Handles workflow integration for Task entities.
@@ -657,9 +663,10 @@ public class TaskWorkflowHandler {
         // Entity-level: patch the entity so the versioned path runs — tag_usage is synced,
         // version is bumped, change event fires. Same code path as PATCH /v1/tables/{id} tags.
         patchEntityTags(entity, repository, user, tagsToAdd, tagsToRemove);
-      } else {
-        // Column/field-level: direct DAO write. The versioned path does not currently reach
-        // nested Column tags through this handler (pre-existing gap — tags apply, no bump).
+      } else if (!patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove)) {
+        // Fallback: field POJO could not be located (unusual container or renamed field).
+        // Keep the direct tag_usage write so the tag still applies — the audit/version gap
+        // in this branch is a knowingly-accepted degradation.
         String targetFqn = resolveTagTargetFqn(entity, fieldPath);
         if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
           repository.applyTagsDelete(tagsToRemove, targetFqn);
@@ -690,7 +697,76 @@ public class TaskWorkflowHandler {
     entity.setTags(mergeTags(entity.getTags(), tagsToAdd, tagsToRemove));
     JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
     if (patch != null && !patch.toJsonArray().isEmpty()) {
-      repository.patch(null, entity.getId(), user, patch, null, null);
+      PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
+      recordChangeEvent(response, user);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private boolean patchFieldTags(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      String fieldPath,
+      List<TagLabel> tagsToAdd,
+      List<TagLabel> tagsToRemove) {
+    Optional<Object> target = FieldPathUtils.findField(entity, fieldPath);
+    if (target.isEmpty()) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Could not locate field '{}' for TagUpdate; falling back to direct DAO",
+          fieldPath);
+      return false;
+    }
+    boolean applied = false;
+    try {
+      String originalJson = JsonUtils.pojoToJson(entity);
+      Object field = target.get();
+      Method getTags = field.getClass().getMethod("getTags");
+      Method setTags = field.getClass().getMethod("setTags", List.class);
+      List<TagLabel> current = (List<TagLabel>) getTags.invoke(field);
+      setTags.invoke(field, mergeTags(current, tagsToAdd, tagsToRemove));
+      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
+      if (patch != null && !patch.toJsonArray().isEmpty()) {
+        PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
+        recordChangeEvent(response, user);
+      }
+      applied = true;
+    } catch (NoSuchMethodException e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Field at '{}' has no tags setter; falling back to direct DAO",
+          fieldPath);
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] patchFieldTags failed at '{}': {}", fieldPath, e.getMessage(), e);
+    }
+    return applied;
+  }
+
+  private void recordChangeEvent(PatchResponse<?> response, String user) {
+    if (response == null) {
+      return;
+    }
+    EventType changeType = response.changeType();
+    if (changeType == null || changeType == EventType.ENTITY_NO_CHANGE) {
+      return;
+    }
+    Object patchedEntity = response.entity();
+    if (!(patchedEntity instanceof EntityInterface entityInterface)) {
+      return;
+    }
+    try {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(user, changeType, entityInterface);
+      Object entityForEvent = changeEvent.getEntity();
+      changeEvent = ChangeEventHandler.copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityForEvent));
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Failed to persist change event for entity '{}': {}",
+          entityInterface.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
     }
   }
 

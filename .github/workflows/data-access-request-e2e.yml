@@ -68,9 +68,9 @@ jobs:
           disable-reviews: true # To not auto approve changes
 
       - name: Trigger Collate Playwright run & wait
-        uses: the-actions-org/workflow-dispatch@v4
+        uses: benc-uk/workflow-dispatch@v1.3.2
+        timeout-minutes: 60
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         with:
           workflow: Workflows and Data Access Request E2E tests (from OpenMetadata PR)
@@ -78,4 +78,7 @@ jobs:
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
+          sync-status: true
+          wait-timeout-seconds: 3660
+          wait-interval-seconds: 60
           inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'

@@ -33,6 +33,10 @@ RUN dpkg --configure -a \
     libkrb5-dev \
     default-jre-headless \
     openssl \
+    # mysqlclient 2.2+ locates libmysqlclient through pkg-config (2.1.x used
+    # mysql_config) and has no Linux wheels, so it always builds from source.
+    # The slim base omits pkg-config, unlike the python:3.10-bookworm base.
+    pkg-config \
     # To ensure compatibility with unixodbc package
     odbcinst=2.3.11-2+deb12u1 \
     postgresql \
@@ -49,12 +53,13 @@ RUN dpkg --configure -a \
     # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
     # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5,
     # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
-    # wget -> tracked; upstream fix pending, no-op until Debian ships it).
+    # wget, perl*, libnss3 -> tracked; upstream fix pending, no-op until Debian ships it).
     # --only-upgrade is a no-op for packages not present in the base image.
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
          curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         perl perl-base perl-modules-5.36 libperl5.36 libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq

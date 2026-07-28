@@ -15,6 +15,7 @@ import { SERVICE_TYPE } from '../constant/service';
 import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
 import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { selectOnDemandSchedule } from './scheduleInterval';
 import { visitServiceDetailsPage } from './service';
 
 export const PROFILE_PIPELINES_URL = '/api/v1/services/ingestionPipelines';
@@ -97,11 +98,8 @@ export const submitAndCaptureCreatePayload = async (
 ): Promise<ProfileSampleConfig> => {
   await page.click('[data-testid="next-button"]');
 
-  await page.getByTestId('schedular-card-container').waitFor();
-  await page
-    .getByTestId('schedular-card-container')
-    .getByText('On Demand')
-    .click();
+  await page.getByTestId('schedule-interval-container').waitFor();
+  await selectOnDemandSchedule(page);
 
   const createResponsePromise = page.waitForResponse((response) =>
     isCreatePipelineCall(response.url(), response.request().method())
