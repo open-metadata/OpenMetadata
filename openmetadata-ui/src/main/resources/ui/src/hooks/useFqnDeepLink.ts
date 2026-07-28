@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { findFieldByFQN, getParentKeysToExpand } from '../utils/TablePureUtils';
 
 interface UseFqnDeepLinkProps<T> {
@@ -32,6 +32,9 @@ export const useFqnDeepLink = <
   openColumnDetailPanel,
   selectedColumn,
 }: UseFqnDeepLinkProps<T>) => {
+  const selectedColumnRef = useRef(selectedColumn);
+  selectedColumnRef.current = selectedColumn;
+
   useEffect(() => {
     if (!columnPart || !fqn) {
       return;
@@ -47,7 +50,8 @@ export const useFqnDeepLink = <
     const matchedField = findFieldByFQN(data, fullColumnFqn);
     if (matchedField) {
       if (
-        selectedColumn?.fullyQualifiedName !== matchedField.fullyQualifiedName
+        selectedColumnRef.current?.fullyQualifiedName !==
+        matchedField.fullyQualifiedName
       ) {
         openColumnDetailPanel(matchedField);
       }
@@ -57,7 +61,7 @@ export const useFqnDeepLink = <
     fqn,
     data,
     openColumnDetailPanel,
-    selectedColumn,
     setExpandedRowKeys,
+    // selectedColumn intentionally omitted — tracked via ref to avoid re-triggering on close
   ]);
 };

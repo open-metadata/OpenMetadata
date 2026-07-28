@@ -84,6 +84,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
+  const skipNextColumnSync = useRef(false);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage, isVersionView)
   );
@@ -137,7 +138,11 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Sync selected column from prop (deep link)
   useEffect(() => {
-    // If we have a direct columnFqn from props, try to find and select it
+    if (skipNextColumnSync.current) {
+      skipNextColumnSync.current = false;
+
+      return;
+    }
     if (columnFqn && extractedColumns.length > 0) {
       const col = findFieldByFQN(extractedColumns as Column[], columnFqn);
       if (col) {
@@ -258,6 +263,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
 
   const closeColumnDetailPanel = useCallback(() => {
+    skipNextColumnSync.current = true;
     setSelectedColumn(null);
 
     // Update URL to remove column FQN
