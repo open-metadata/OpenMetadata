@@ -1929,11 +1929,13 @@ class DbtSource(DbtServiceSource):
         """
         After test cases has been processed, add the tests results info
         """
+        node_name = "unknown"
         try:
             # Process the Test Status
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
-                logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
+                node_name = manifest_node.name
+                logger.debug(f"Adding DBT Test Case Results for node: {node_name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
                     logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
@@ -2014,7 +2016,14 @@ class DbtSource(DbtServiceSource):
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.debug(f"Failed to capture tests results for node: {manifest_node.name} {err}")
+            logger.warning(f"Failed to capture test results for node '{node_name}': {err}")
+            self.status.failed(
+                StackTraceError(
+                    name=f"DBT Test Result {node_name}",
+                    error=f"Failed to capture test results for node '{node_name}': {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def close(self):
         self.metadata.close()
