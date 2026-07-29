@@ -59,6 +59,8 @@ export const searchForEntityShouldWork = async (
   await page.waitForResponse(`api/v1/search/query?**`);
 
   await waitForAllLoadersToDisappear(page);
+  await page.getByRole('menuitem').filter({ hasText: 'Columns' }).click();
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.locator('[data-testid="entity-header-display-name"]', {
