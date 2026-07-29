@@ -123,6 +123,33 @@ class TestS3ErrorClassification:
 
         assert "authentication failed" in str(exc_info.value).lower()
 
+    @pytest.mark.parametrize(
+        ("error_code", "message"),
+        [
+            (
+                "InvalidAccessKeyId",
+                "The AWS Access Key Id you provided does not exist in our records.",
+            ),
+            (
+                "SignatureDoesNotMatch",
+                "The request signature we calculated does not match the signature you provided. "
+                "Check your key and signing method.",
+            ),
+        ],
+    )
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient")
+    def test_bad_key_client_error_reports_auth_failure(self, aws_client, error_code, message):
+        """These AWS codes render no 'credentials'/'accessdenied' text into str(exc), so the
+        substring matcher this replaced misreported them as a generic client-init failure."""
+        aws_client.return_value.get_client.side_effect = ClientError(
+            {"Error": {"Code": error_code, "Message": message}}, "ListBuckets"
+        )
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_s3_config()))
+
+        assert "authentication failed" in str(exc_info.value).lower()
+
     @patch("metadata.ingestion.source.database.dbt.dbt_config.list_s3_objects")
     @patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient")
     def test_no_such_bucket_reports_bucket_name(self, aws_client, list_objects):
