@@ -147,8 +147,7 @@ for (const entity of searchRBACEntities) {
   });
 }
 
-// unskip test once the backend issue get fixed #3289
-test.describe.skip(`Table Column`, () => {
+test.describe(`Table Column`, () => {
   const table = new TableClass();
   const user1 = new UserClass();
   const user2 = new UserClass();
@@ -160,6 +159,11 @@ test.describe.skip(`Table Column`, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await waitForSearchIndexed(
+      apiContext,
+      table.entityResponseData?.columns?.[0]?.fullyQualifiedName,
+      'tableColumn'
+    );
 
     const promises = [user1.create(apiContext), user2.create(apiContext)];
 
@@ -224,6 +228,20 @@ test.describe.skip(`Table Column`, () => {
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await Promise.all([
+      table.delete(apiContext),
+      user1.delete(apiContext),
+      user2.delete(apiContext),
+    ]);
+    await Promise.all([role1.delete(apiContext), role2.delete(apiContext)]);
+    await Promise.all([policy1.delete(apiContext), policy2.delete(apiContext)]);
+
+    await afterAction();
+  });
+
   test(`User with permission`, async ({ browser }) => {
     const userWithPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
@@ -232,7 +250,7 @@ test.describe.skip(`Table Column`, () => {
 
     await searchForEntityShouldWork(
       column.fullyQualifiedName ?? '',
-      column.displayName ?? '',
+      column.displayName ?? column.name ?? '',
       userWithPermissionPage
     );
   });
@@ -245,7 +263,7 @@ test.describe.skip(`Table Column`, () => {
 
     await searchForEntityShouldWorkShowNoResult(
       column.fullyQualifiedName ?? '',
-      column.displayName ?? '',
+      column.displayName ?? column.name ?? '',
       userWithoutPermissionPage
     );
   });
