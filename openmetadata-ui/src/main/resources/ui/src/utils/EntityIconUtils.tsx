@@ -23,7 +23,6 @@ import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
@@ -88,7 +87,7 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.POLICY]: PolicyIcon,
   [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
   [EntityType.USER]: UserIcon,
-  [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+  [EntityType.INGESTION_PIPELINE]: ENTITY_ICON_MAPPER[EntityType.INGESTION_PIPELINE].icon,
   [EntityType.ALERT]: AlertIcon,
   [EntityType.KPI]: KPIIcon,
   tagCategory: ClassificationIcon,
@@ -99,6 +98,12 @@ const entityIconMapping: Record<string, ElementType> = {
   services: ServicesIcon,
   automator: AutomatorBotIcon,
   notification: NotificationIcon,
+  [EntityType.LLM_SERVICE]: ENTITY_ICON_MAPPER[EntityType.LLM_SERVICE].icon,
+  [EntityType.MCP_SERVICE]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVICE].icon,
+  aiFrameworkControl: ENTITY_ICON_MAPPER['aiFrameworkControl'].icon,
+  aiGovernancePolicy: ENTITY_ICON_MAPPER['aiGovernancePolicy'].icon,
+  aiGovernanceFramework: ENTITY_ICON_MAPPER['aiGovernanceFramework'].icon,
+  [EntityType.AUDIT_REPORT]: ENTITY_ICON_MAPPER[EntityType.AUDIT_REPORT].icon,
   [EntityType.API_ENDPOINT]: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
   [EntityType.METRIC]: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
   [EntityType.API_SERVICE]: ENTITY_ICON_MAPPER[EntityType.API_SERVICE].icon,

@@ -28,6 +28,8 @@ import { ReactComponent as FolderIcon } from '../assets/svg/common/folder.svg';
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
+import { ReactComponent as AIFrameworkControl } from '../assets/svg/entity/ai-framework-control.svg';
+import { ReactComponent as AIGovernancePolicy } from '../assets/svg/entity/ai-governance-policy.svg';
 import { ReactComponent as APICollection } from '../assets/svg/entity/api-collection.svg';
 import { ReactComponent as APIEndpoint } from '../assets/svg/entity/api-endpoint.svg';
 import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
@@ -49,7 +51,9 @@ import { ReactComponent as DriveService } from '../assets/svg/entity/drive-servi
 import { ReactComponent as DynamicAgent } from '../assets/svg/entity/dynamic-agent.svg';
 import { ReactComponent as GlossaryTerm } from '../assets/svg/entity/glossary-term.svg';
 import { ReactComponent as Glossary } from '../assets/svg/entity/glossary.svg';
+import { ReactComponent as LLMService } from '../assets/svg/entity/llm-service.svg';
 import { ReactComponent as Marketplace } from '../assets/svg/entity/marketplace.svg';
+import { ReactComponent as MCPService } from '../assets/svg/entity/mcp-service.svg';
 import { ReactComponent as MessagingService } from '../assets/svg/entity/messaging-service.svg';
 import { ReactComponent as MetadataService } from '../assets/svg/entity/metadata-service.svg';
 import { ReactComponent as Metric } from '../assets/svg/entity/metric.svg';
@@ -578,6 +582,18 @@ export const ENTITY_ICON_MAPPER: Record<
     borderClass: 'tw:border-utility-blue-200',
     icon: CpuChip01,
   },
+  aiFrameworkControl: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: AIFrameworkControl,
+  },
+  aiGovernancePolicy: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: AIGovernancePolicy,
+  },
   [EntityType.LLM_MODEL]: {
     iconClass: 'tw:text-utility-purple-700',
     bgClass: 'tw:bg-utility-purple-50',
@@ -589,6 +605,18 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-utility-indigo-50',
     borderClass: 'tw:border-utility-indigo-200',
     icon: Server04,
+  },
+  [EntityType.LLM_SERVICE]: {
+    iconClass: 'tw:text-utility-indigo-700',
+    bgClass: 'tw:bg-utility-indigo-50',
+    borderClass: 'tw:border-utility-indigo-200',
+    icon: LLMService,
+  },
+  [EntityType.MCP_SERVICE]: {
+    iconClass: 'tw:text-utility-indigo-700',
+    bgClass: 'tw:bg-utility-indigo-50',
+    borderClass: 'tw:border-utility-indigo-200',
+    icon: MCPService,
   },
   [EntityType.TEST_SUITE]: {
     iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
