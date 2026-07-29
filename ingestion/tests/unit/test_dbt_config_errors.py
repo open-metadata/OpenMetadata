@@ -31,6 +31,9 @@ from metadata.ingestion.source.database.dbt.dbt_config import (
 
 def _dbt_cloud_config():
     config = MagicMock()
+    # singledispatch dispatches on args[0].__class__, so this is what routes the mock to the
+    # DbtCloudConfig handler; spec= cannot be used because pydantic v2 does not expose model
+    # field names via dir() on the class, which would block attribute mocking below.
     config.__class__ = DbtCloudConfig
     config.dbtCloudAccountId = "12345"
     config.dbtCloudProjectId = None
@@ -41,7 +44,7 @@ def _dbt_cloud_config():
 
 
 class TestDbtCloudErrorClassification:
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.TrackedREST")
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_401_api_error_reports_invalid_token(self, tracked_rest):
         tracked_rest.return_value.get.side_effect = APIError({"code": 401, "message": "unauthorized"})
 
@@ -50,7 +53,7 @@ class TestDbtCloudErrorClassification:
 
         assert "auth token" in str(exc_info.value).lower()
 
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.TrackedREST")
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_404_api_error_reports_bad_account_id(self, tracked_rest):
         tracked_rest.return_value.get.side_effect = APIError({"code": 404, "message": "not found"})
 
@@ -59,7 +62,7 @@ class TestDbtCloudErrorClassification:
 
         assert "12345" in str(exc_info.value)
 
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.TrackedREST")
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_transport_error_reports_connectivity(self, tracked_rest):
         tracked_rest.return_value.get.side_effect = RestTransportError("GET", "/runs", Exception("refused"))
 
@@ -68,7 +71,7 @@ class TestDbtCloudErrorClassification:
 
         assert "cloud.getdbt.com" in str(exc_info.value)
 
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.TrackedREST")
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_none_response_is_not_reported_as_no_runs_found(self, tracked_rest):
         """A swallowed 401 returns None from the client. That is a credential
         problem, not an empty account, and must not be mislabelled."""
@@ -81,7 +84,7 @@ class TestDbtCloudErrorClassification:
         assert "no completed dbt runs" not in message
         assert "credential" in message or "token" in message
 
-    @patch("metadata.ingestion.source.database.dbt.dbt_config.TrackedREST")
+    @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
     def test_empty_data_still_reports_no_runs_found(self, tracked_rest):
         tracked_rest.return_value.get.return_value = {"data": []}
 

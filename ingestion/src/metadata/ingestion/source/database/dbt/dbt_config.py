@@ -42,8 +42,6 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
-from metadata.ingestion.connections.source_api_client import TrackedREST
-from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
     DBT_MANIFEST_FILE_NAME,
@@ -231,6 +229,10 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_manifest = None
     dbt_run_results = None
     try:
+        # pylint: disable=import-outside-toplevel
+        from metadata.ingestion.connections.source_api_client import TrackedREST  # noqa: PLC0415
+        from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError  # noqa: PLC0415
+
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
