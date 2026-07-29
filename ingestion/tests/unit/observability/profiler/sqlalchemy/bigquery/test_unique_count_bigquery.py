@@ -13,6 +13,13 @@
 Test UniqueCount metric and validator for BigQuery dialect
 """
 
+import pytest
+
+pytest.importorskip(
+    "sqlalchemy_bigquery",
+    reason="sqlalchemy-bigquery not installed — skipping BigQuery SQL compilation tests",
+)
+
 from unittest.mock import Mock, patch
 
 from sqlalchemy import Column, Date, DateTime, Integer, String, create_engine
@@ -89,11 +96,7 @@ def test_unique_count_bigquery_timestamp_and_struct():
             sample=Orders,
         )
 
-    sql_ts = str(
-        captured_query_ts.statement.compile(
-            dialect=dialect, compile_kwargs={"literal_binds": True}
-        )
-    )
+    sql_ts = str(captured_query_ts.statement.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
 
     # Verify outer countif uses value_count integer alias and literal 1 (no timestamp type mismatch)
     assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in sql_ts
@@ -120,11 +123,7 @@ def test_unique_count_bigquery_timestamp_and_struct():
             sample=Orders,
         )
 
-    sql_date = str(
-        captured_query_date.statement.compile(
-            dialect=dialect, compile_kwargs={"literal_binds": True}
-        )
-    )
+    sql_date = str(captured_query_date.statement.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
 
     # Verify outer countif uses value_count integer alias and literal 1 (no date type mismatch)
     assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in sql_date
@@ -151,11 +150,7 @@ def test_unique_count_bigquery_timestamp_and_struct():
             sample=Orders,
         )
 
-    sql_struct = str(
-        captured_query_struct.statement.compile(
-            dialect=dialect, compile_kwargs={"literal_binds": True}
-        )
-    )
+    sql_struct = str(captured_query_struct.statement.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
 
     # Verify outer expression isolates countif(`value_count` = 1) without dotted path in outer query
     assert f"countif(`{VALUE_COUNT_ALIAS}` = 1) AS `uniqueCount`" in sql_struct
@@ -203,19 +198,11 @@ def test_column_values_to_be_unique_validator_bigquery():
     grouped_cte, entities = captured_args
 
     # Check CTE definition uses VALUE_COUNT_ALIAS
-    cte_sql = str(
-        grouped_cte.element.compile(
-            dialect=dialect, compile_kwargs={"literal_binds": True}
-        )
-    )
+    cte_sql = str(grouped_cte.element.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
     assert f"SELECT count(`customer`.`email`) AS `{VALUE_COUNT_ALIAS}`" in cte_sql
 
     # Note: unique_count expression is wrapped with .label(Metrics.uniqueCount.name)
     # in validator._run_results for result mapping keys.
     unique_count_expr = entities[1]
-    expr_sql = str(
-        unique_count_expr.element.compile(
-            dialect=dialect, compile_kwargs={"literal_binds": True}
-        )
-    )
+    expr_sql = str(unique_count_expr.element.compile(dialect=dialect, compile_kwargs={"literal_binds": True}))
     assert f"countif(`{VALUE_COUNT_ALIAS}` = 1)" in expr_sql
