@@ -13,6 +13,9 @@
 Define constants useful for the metadata ingestion
 """
 
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
+from metadata.generated.schema.entity.ai.mcpServer import McpServer
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
@@ -73,6 +76,8 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.llmService import LLMService
+from metadata.generated.schema.entity.services.mcpService import McpService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -138,6 +143,8 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchService": SearchService,
     "securityService": SecurityService,
     "driveService": DriveService,
+    "llmService": LLMService,
+    "mcpService": McpService,
     # Data Asset Entities
     "apiCollection": APICollection,
     "apiEndpoint": APIEndpoint,
@@ -153,6 +160,10 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "searchIndex": SearchIndex,
     "mlmodel": MlModel,
     "container": Container,
+    # AI Governance Entities
+    "llmModel": LLMModel,
+    "mcpServer": McpServer,
+    "aiApplication": AIApplication,
     # Drive Entities
     "directory": Directory,
     "file": File,

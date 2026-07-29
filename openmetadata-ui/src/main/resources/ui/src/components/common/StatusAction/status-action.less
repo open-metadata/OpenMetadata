@@ -18,12 +18,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
-    transition: width 0.3s ease;
-    border-radius: 8px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 500;
+    gap: var(--om-space-4);
+    transition: width var(--om-duration-300) ease;
+    border-radius: var(--om-radius-lg);
+    padding: var(--om-space-4) var(--om-space-12);
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-medium);
     height: 32px;
 
     .anticon {
@@ -33,9 +33,9 @@
     }
 
     .btn-text {
-      margin-left: 4px;
+      margin-left: var(--om-space-4);
       white-space: nowrap;
-      transition: opacity 0.3s ease;
+      transition: opacity var(--om-duration-300) ease;
     }
   }
 }
@@ -46,11 +46,11 @@
     color: var(--tw-color-text-white);
     border: 1px solid @blue-18;
     width: 90px;
-    padding: 4px 12px;
+    padding: var(--om-space-4) var(--om-space-12);
 
     &.icon-only {
       width: 32px;
-      padding: 4px;
+      padding: var(--om-space-4);
 
       .btn-text {
         opacity: 0;
@@ -75,7 +75,7 @@
     color: var(--tw-color-text-white);
     border: 1px solid @red-4;
     width: 32px;
-    padding: 4px;
+    padding: var(--om-space-4);
 
     .btn-text {
       opacity: 0;
@@ -85,12 +85,12 @@
 
     &.show-text {
       width: 90px;
-      padding: 4px 12px;
+      padding: var(--om-space-4) var(--om-space-12);
 
       .btn-text {
         opacity: 1;
         width: auto;
-        margin-left: 4px;
+        margin-left: var(--om-space-4);
       }
     }
 

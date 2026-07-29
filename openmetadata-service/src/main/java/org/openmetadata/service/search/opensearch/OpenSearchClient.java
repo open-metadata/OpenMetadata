@@ -564,6 +564,12 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return aggregationManager.getEntityTypeCounts(request, index, subjectContext);
+  }
+
+  @Override
   public Response aggregate(AggregationRequest request) throws IOException {
     return aggregationManager.aggregate(request);
   }

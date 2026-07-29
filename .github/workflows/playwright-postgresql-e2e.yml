@@ -243,10 +243,10 @@ jobs:
       toolchain: ${{ steps.fingerprints.outputs.toolchain }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -308,10 +308,10 @@ jobs:
           disable-reviews: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -428,7 +428,7 @@ jobs:
       lineage_representative_only: ${{ steps.select.outputs.lineage_representative_only }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
@@ -476,10 +476,10 @@ jobs:
       requires_airflow: ${{ steps.plan.outputs.requires_airflow }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -544,6 +544,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
         run: |
@@ -551,6 +552,7 @@ jobs:
             --project=chromium \
             --project=Basic \
             --project=Ingestion \
+            --project=ImportExport \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \
             --project=SearchRBAC \
@@ -599,10 +601,10 @@ jobs:
       ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -726,10 +728,10 @@ jobs:
 
       - name: Checkout
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -799,6 +801,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
         run: |
           npx playwright test --project=entity-data-setup --reporter=line
           test -s playwright/.auth/admin.json
@@ -925,10 +928,10 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
-          # actions/checkout@v5 refuses to fetch fork code under pull_request_target
+          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
           # unless the workflow opts in. The gate job already restricts this event to
           # "safe to test"-labelled fork PRs, and the build/test steps that consume this
           # tree run in docker containers — not directly in the workflow context — so
@@ -1393,7 +1396,7 @@ jobs:
       - name: Checkout
         id: checkout
         continue-on-error: true
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false

@@ -543,7 +543,10 @@ const ClassificationDetails = forwardRef(
                       loading={isLoading}
                       pagination={false}
                       rowKey="id"
-                      scroll={{ x: true, y: 'calc(100vh - 460px)' }}
+                      scroll={{
+                        x: 'max-content',
+                        y: 'calc(100vh - 380px - var(--ant-navbar-height))',
+                      }}
                       size="small"
                     />
                   )}

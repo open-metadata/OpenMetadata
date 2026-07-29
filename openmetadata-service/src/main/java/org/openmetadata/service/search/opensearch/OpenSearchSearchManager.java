@@ -170,20 +170,20 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       throw new IOException("OpenSearch client is not available");
     }
 
+    Query sourceUrlQuery =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(
+                            m ->
+                                m.term(
+                                    t -> t.field("sourceUrl").value(FieldValue.of(sourceUrl))))));
     SearchRequest searchRequest =
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(
-                        q ->
-                            q.bool(
-                                b ->
-                                    b.must(
-                                        m ->
-                                            m.term(
-                                                t ->
-                                                    t.field("sourceUrl")
-                                                        .value(FieldValue.of(sourceUrl)))))));
+                    .query(restrictToOrgWideMemories(sourceUrlQuery)));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     SearchResponse<JsonData> response;
@@ -285,7 +285,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
         new OpenSearchRequestBuilder()
-            .query(query)
+            .query(restrictToOrgWideMemories(query))
             .from(from)
             .size(size)
             .sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD)
@@ -692,6 +692,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
         requestBuilder.from(request.getFrom());
         requestBuilder.size(request.getSize());
+        applyContextMemoryVisibility(subjectContext, requestBuilder);
 
         // Add aggregations for NLQ query
         addAggregationsToNLQQuery(requestBuilder, request.getIndex());
@@ -976,7 +977,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
     try {
-      return client.search(s -> s.index(indexName).query(boolQuery).size(1000), JsonData.class);
+      return client.search(
+          s -> s.index(indexName).query(restrictToOrgWideMemories(boolQuery)).size(1000),
+          JsonData.class);
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
@@ -990,27 +993,32 @@ public class OpenSearchSearchManager implements SearchManagementClient {
    * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
    * memories. Non-memory documents are left untouched.
    */
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built outside {@link
+   * OpenSearchRequestBuilder} (which applies the same default in its {@code build}). These paths
+   * take no {@link SubjectContext}, so they cannot tell whose restricted memory a document is and
+   * must fail closed. Non-memory documents are unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) contextMemoryVisibility.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
   private void applyContextMemoryVisibility(
       SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext);
     if (visibilityBuilder != null) {
-      Query visibilityQuery = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
-      Query existingQuery = requestBuilder.query();
-      if (existingQuery != null) {
-        Query combinedQuery =
-            Query.of(
-                qb ->
-                    qb.bool(
-                        b -> {
-                          b.must(existingQuery);
-                          b.filter(visibilityQuery);
-                          return b;
-                        }));
-        requestBuilder.query(combinedQuery);
-      } else {
-        requestBuilder.query(visibilityQuery);
-      }
+      requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
+    }
+    // Admins get no filter but are still resolved. An unidentifiable subject is NOT resolved, so
+    // OpenSearchRequestBuilder#build falls back to its org-wide-only default instead of running the
+    // search unfiltered.
+    if (contextMemoryVisibility.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
     }
   }
 
@@ -1527,7 +1535,10 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
 
     baseQueryBuilder.minimumShouldMatch(1);
-    Query originalQuery = baseQueryBuilder.build();
+    // The subject's visibility filter was ANDed into the query this rewrite has just demoted to a
+    // should clause, where minimumShouldMatch(1) lets a name/displayName phrase match satisfy the
+    // query without it. Re-AND the memory guard so hierarchy search cannot become a bypass.
+    Query originalQuery = restrictToOrgWideMemories(baseQueryBuilder.build());
     requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
@@ -1783,7 +1794,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1838,7 +1849,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(query)
+                    .query(restrictToOrgWideMemories(query))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
@@ -1948,7 +1959,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SearchRequest.of(
             s ->
                 s.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-                    .query(finalBaseQuery)
+                    .query(restrictToOrgWideMemories(finalBaseQuery))
                     .size(1000));
 
     Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();

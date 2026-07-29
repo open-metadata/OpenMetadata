@@ -269,7 +269,7 @@ export const getDomainDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.Domain} />,
+      children: <GenericTab type={PageType.Domain} variant="flat" />,
     },
     ...(isVersionsView
       ? []

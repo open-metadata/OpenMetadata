@@ -507,6 +507,16 @@ def test_search_rbac_uses_an_isolated_single_worker_lane():
     assert planner.lane_bounds("search-rbac", "full") == (1, 8)
 
 
+def test_import_export_runs_in_its_own_lane_with_two_workers():
+    planner = load_script("build_playwright_shards")
+
+    assert "ImportExport" in planner.FULL_PROJECTS
+    assert planner.PROJECT_LANES["ImportExport"] == "import-export"
+    assert planner.LANE_WORKERS["import-export"] == 2
+    assert planner.lane_bounds("import-export", "full") == (1, 8)
+    assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
 def test_source_glob_matching_is_explicit():
     selector = load_script("select_playwright_tests")
 
@@ -1369,6 +1379,26 @@ def test_search_rbac_state_setup_maps_only_to_search_rbac():
 
     assert mapping["projects"] == ["SearchRBAC"]
     assert mapping["specs"] == ["playwright/e2e/Flow/SearchRBAC.spec.ts"]
+
+
+def test_search_impact_mapping_includes_ingestion_project_for_schema_search():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
+        in entry["sources"]
+    )
+    schema_search = (
+        SCRIPTS.parents[1]
+        / "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts"
+    ).read_text()
+
+    assert "playwright/e2e/Features/*Search*.spec.ts" in mapping["specs"]
+    assert "Ingestion" in mapping["projects"]
+    assert "tag: '@ingestion'" in schema_search
 
 
 def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():

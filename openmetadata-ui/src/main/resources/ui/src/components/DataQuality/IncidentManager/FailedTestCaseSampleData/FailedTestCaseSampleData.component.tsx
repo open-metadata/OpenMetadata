@@ -25,8 +25,12 @@ import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../../enums/Axios.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
-import { TableData } from '../../../../generated/tests/testCase';
+import {
+  TableData,
+  TestCaseStatus,
+} from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import {
   deleteTestCaseFailedSampleData,
@@ -148,14 +152,30 @@ const FailedTestCaseSampleData = ({
     return { columns, rows };
   };
 
-  const fetchFailedTestCaseSampleData = async () => {
+  // `isStale` guards against a late response overwriting state after the test
+  // case has changed (e.g. status moved away from Failed) while the request was
+  // in flight — otherwise the resolved response would restore stale rows.
+  const fetchFailedTestCaseSampleData = async (isStale?: () => boolean) => {
     if (testCaseData?.id) {
       setIsLoading(true);
       try {
         const response = await getTestCaseFailedSampleData(testCaseData.id);
-        setSampleData(getSampleDataWithType(response));
-      } catch {
-        setSampleData(undefined);
+        if (!isStale?.()) {
+          setSampleData(getSampleDataWithType(response));
+        }
+      } catch (error) {
+        if (!isStale?.()) {
+          setSampleData(undefined);
+          // A 404 is the backend's expected "no failed-rows sample stored"
+          // response (samples exist only for failing test cases with row-count
+          // computation enabled) — treat it as an empty state, not an error.
+          // Any other status (e.g. 403/500) is a real failure worth surfacing.
+          if (
+            (error as AxiosError)?.response?.status !== ClientErrors.NOT_FOUND
+          ) {
+            showErrorToast(error as AxiosError);
+          }
+        }
       } finally {
         setIsLoading(false);
       }
@@ -186,11 +206,29 @@ const FailedTestCaseSampleData = ({
     return;
   };
 
+  // Failed-rows samples are only ever stored for a failing test case, so the
+  // fetch is pointless (and guaranteed to 404) for any other status. Gating
+  // here avoids the request entirely for passing/aborted/queued test cases.
+  const isTestCaseFailed =
+    testCaseData?.testCaseResult?.testCaseStatus === TestCaseStatus.Failed;
+
   useEffect(() => {
-    if (hasViewSampleDataPermission) {
-      fetchFailedTestCaseSampleData();
+    let cancelled = false;
+    if (hasViewSampleDataPermission && isTestCaseFailed) {
+      fetchFailedTestCaseSampleData(() => cancelled);
+    } else {
+      // Clear any previously loaded sample so it doesn't linger when the test
+      // case is no longer failing (e.g. a status change on the mounted page),
+      // and reset loading so a non-failed test case shows its empty state
+      // immediately instead of waiting on any in-flight request.
+      setSampleData(undefined);
+      setIsLoading(false);
     }
-  }, [testCaseData?.id, hasViewSampleDataPermission]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [testCaseData?.id, hasViewSampleDataPermission, isTestCaseFailed]);
 
   if (!hasViewSampleDataPermission) {
     return <></>;
