@@ -1,11 +1,13 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -20,6 +22,34 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 class TestCaseRepositoryTest {
+
+  @Test
+  void readsPersistedTestSuiteRelationshipRevisions() {
+    UUID firstId = UUID.randomUUID();
+    UUID secondId = UUID.randomUUID();
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(collectionDAO.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(extensionDAO.getExtensionBatch(
+            List.of(firstId.toString(), secondId.toString()),
+            TestCaseRepository.TEST_SUITES_REVISION_EXTENSION))
+        .thenReturn(
+            List.of(
+                new CollectionDAO.ExtensionRecordWithId(
+                    firstId, TestCaseRepository.TEST_SUITES_REVISION_EXTENSION, "{\"revision\":7}"),
+                new CollectionDAO.ExtensionRecordWithId(
+                    secondId,
+                    TestCaseRepository.TEST_SUITES_REVISION_EXTENSION,
+                    "{\"revision\":11}")));
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      assertEquals(
+          Map.of(firstId, 7L, secondId, 11L),
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(firstId, secondId)));
+    }
+  }
 
   @Test
   void postUpdateHydratesTestSuitesBeforeLifecycleUpdate() {

@@ -63,11 +63,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
         charlen = re.search(r"\(([\d,]+)\)", col_raw_type.lower())
         if charlen:
             charlen = charlen.group(1)
-            if attype == "decimal":
+            if any(col_type.startswith(prefix) for prefix in complex_data_types):
+                # For complex types the regex above matches the parameters of a nested
+                # type instead, e.g. array<struct<a:decimal(16,4)>> yields "16,4".
+                # The nested fields are resolved later from `system_data_type`.
+                args = []
+            elif attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
-            elif attype.startswith("struct"):
-                args = []
             else:
                 args = (int(charlen),)
             coltype = coltype(*args)

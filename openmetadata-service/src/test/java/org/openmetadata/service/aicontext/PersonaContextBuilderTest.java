@@ -36,8 +36,12 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.aicontext.AssetContext;
+import org.openmetadata.schema.type.aicontext.DataQuality;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
+import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -230,6 +234,60 @@ class PersonaContextBuilderTest {
 
     assertSame(firstRule, ruleByEntity.get(firstEntity));
     assertSame(secondRule, ruleByEntity.get(equalButDistinctEntity));
+  }
+
+  @Test
+  void applyHeavySectionsCopiesLineageEdgesAndDataQualityPerFlags() {
+    LineageEdgeContext upstreamEdge =
+        new LineageEdgeContext()
+            .withFullyQualifiedName("svc.db.raw.orders")
+            .withColumns(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of("svc.db.raw.orders.id"))
+                        .withToColumn("svc.db.sch.orders.id")));
+    LineageEdgeContext downstreamEdge =
+        new LineageEdgeContext().withFullyQualifiedName("svc.db.analytics.orders");
+    DataQuality dataQuality = new DataQuality().withTotal(3).withPassed(2).withFailed(1);
+    AIContext heavy =
+        new AIContext()
+            .withUpstream(List.of("svc.db.raw.orders"))
+            .withUpstreamEdges(List.of(upstreamEdge))
+            .withDownstream(List.of("svc.db.analytics.orders"))
+            .withDownstreamEdges(List.of(downstreamEdge))
+            .withObservability(new Observability().withDataQuality(dataQuality));
+    AIContext context = new AIContext();
+
+    PersonaContextBuilder.applyHeavySections(context, heavy, true, true);
+
+    assertSame(heavy.getUpstream(), context.getUpstream());
+    assertSame(heavy.getUpstreamEdges(), context.getUpstreamEdges());
+    assertSame(heavy.getDownstream(), context.getDownstream());
+    assertSame(heavy.getDownstreamEdges(), context.getDownstreamEdges());
+    assertSame(dataQuality, context.getObservability().getDataQuality());
+  }
+
+  @Test
+  void applyHeavySectionsDoesNotCopyLineageWhenItWasNotRequested() {
+    DataQuality dataQuality = new DataQuality().withTotal(1).withPassed(1);
+    AIContext heavy =
+        new AIContext()
+            .withUpstream(List.of("svc.db.raw.orders"))
+            .withUpstreamEdges(
+                List.of(new LineageEdgeContext().withFullyQualifiedName("svc.db.raw.orders")))
+            .withObservability(new Observability().withDataQuality(dataQuality));
+    LineageEdgeContext existingEdge =
+        new LineageEdgeContext().withFullyQualifiedName("svc.db.existing.orders");
+    AIContext context =
+        new AIContext()
+            .withUpstream(List.of("svc.db.existing.orders"))
+            .withUpstreamEdges(List.of(existingEdge));
+
+    PersonaContextBuilder.applyHeavySections(context, heavy, false, true);
+
+    assertEquals(List.of("svc.db.existing.orders"), context.getUpstream());
+    assertEquals(List.of(existingEdge), context.getUpstreamEdges());
+    assertSame(dataQuality, context.getObservability().getDataQuality());
   }
 
   @Test

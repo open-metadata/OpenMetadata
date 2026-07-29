@@ -57,6 +57,7 @@ export interface Agent {
   after?: string;
   finishedAt?: string;
   failStep?: string;
+  enabled?: boolean;
 }
 
 export interface AgentsState {

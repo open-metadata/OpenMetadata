@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 
-import { File06 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { EntityType } from '../enums/entity.enum';
+import defaultServiceIconUrl from '../assets/svg/default-service-icon.svg';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
-import {
-  LANDING_WIDGET_DEFAULT_ICON_URL,
-  LANDING_WIDGET_ENTITY_ICON_URL_MAP,
-} from './LandingPageWidgetIconUtils.constants';
 import type { LandingPageWidgetIconSource } from './LandingPageWidgetIconUtils.interface';
+import searchClassBase from './SearchClassBase';
+import { EntityIconSize, ENTITY_ICON_SIZE_CLASS_MAP } from './TableUtils';
 
 export const getEntityIcon = (
   item: LandingPageWidgetIconSource,
-  className = 'w-8 h-8'
+  size: EntityIconSize = EntityIconSize.Size32,
+  className?: string
 ) => {
+  const iconClassName = classNames(className, ENTITY_ICON_SIZE_CLASS_MAP[size]);
   const entityType = item.entityType ?? item.type ?? '';
 
   if (item.serviceType) {
@@ -36,7 +35,7 @@ export const getEntityIcon = (
       return (
         <img
           alt={item.name ?? item.serviceType}
-          className={className}
+          className={iconClassName}
           src={serviceIconUrl}
         />
       );
@@ -44,27 +43,39 @@ export const getEntityIcon = (
 
     return (
       <DataAssetServiceLogo
-        className={className}
+        className={iconClassName}
         serviceType={item.serviceType}
       />
     );
   }
 
-  if (entityType === EntityType.KNOWLEDGE_PAGE) {
+  const customIconUrl =
+    customizeMyDataPageClassBase.getLandingPageWidgetEntityIconUrl(item);
+
+  if (customIconUrl) {
     return (
-      <File06
-        className={classNames('tw:text-quaternary', className)}
-        strokeWidth={1.5}
+      <img
+        alt={item.name ?? entityType}
+        className={iconClassName}
+        src={customIconUrl}
       />
     );
   }
 
-  const iconUrl =
-    customizeMyDataPageClassBase.getLandingPageWidgetEntityIconUrl(item) ??
-    LANDING_WIDGET_ENTITY_ICON_URL_MAP[entityType] ??
-    LANDING_WIDGET_DEFAULT_ICON_URL;
+  const entityIcon = searchClassBase.getEntityIcon(
+    entityType,
+    classNames('tw:text-quaternary tw:shrink-0', iconClassName)
+  );
+
+  if (entityIcon) {
+    return entityIcon;
+  }
 
   return (
-    <img alt={item.name ?? entityType} className={className} src={iconUrl} />
+    <img
+      alt={item.name ?? entityType}
+      className={iconClassName}
+      src={defaultServiceIconUrl}
+    />
   );
 };

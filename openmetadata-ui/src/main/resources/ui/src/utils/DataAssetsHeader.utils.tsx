@@ -120,7 +120,6 @@ export const ExtraInfoLabel = ({
           as="span"
           className="tw:whitespace-nowrap tw:text-secondary"
           data-testid={dataTestId ? `${dataTestId}-label` : undefined}
-          ellipsis={{ tooltip: true }}
           size="text-sm"
           weight="medium">
           {label}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, CloseButton } from '@openmetadata/ui-core-components';
+import { CloseButton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -40,10 +40,10 @@ const EndpointRow: FC<{
       style={{ background: colorFor(node.type) }}
     />
     <span className="tw:min-w-0">
-      <span className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary">
+      <span className="kg3d-panel-text-primary tw:block tw:truncate tw:text-sm tw:font-semibold">
         {node.name}
       </span>
-      <span className="tw:text-xs tw:text-tertiary">{sublabel}</span>
+      <span className="kg3d-panel-text-subtle tw:text-xs">{sublabel}</span>
     </span>
   </button>
 );
@@ -73,10 +73,10 @@ const DerivationChain: FC<{ path: string[] }> = ({ path }) => {
                   boxShadow: `0 0 9px ${dotColor}`,
                 }}
               />
-              <span className="tw:text-[13px] tw:font-semibold tw:text-secondary">
+              <span className="kg3d-panel-text-secondary tw:text-[13px] tw:font-semibold">
                 {step}
               </span>
-              <span className="tw:ml-auto tw:text-[10px] tw:text-quaternary">
+              <span className="kg3d-panel-text-muted tw:ml-auto tw:text-[10px]">
                 {t(isEndpoint ? 'label.asset' : 'label.term')}
               </span>
             </div>
@@ -109,35 +109,44 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
     : link.label;
 
   return (
-    <div className="dark-mode kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
+    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
       <div className="tw:flex tw:items-start tw:gap-3 tw:border-b tw:border-white/[0.08] tw:p-4">
         <span
           className="tw:mt-1 tw:size-3 tw:flex-none tw:rounded-full"
           style={{ background: accent, boxShadow: `0 0 12px ${accent}` }}
         />
         <div className="tw:min-w-0 tw:flex-1">
-          <div className="tw:text-base tw:font-bold tw:text-primary">
+          <div className="kg3d-panel-text-primary tw:text-base tw:font-bold">
             {t(isDerived ? 'label.derived-relationship' : 'label.relationship')}
           </div>
           <div className="tw:mt-1.5">
-            <Badge
-              color={isOntology ? 'warning' : 'blue'}
-              size="sm"
-              type="pill-color">
+            <span
+              className="kg3d-panel-pill"
+              style={{
+                color: accent,
+                background: hexRgba(accent, 0.14),
+                borderColor: hexRgba(accent, 0.35),
+              }}>
               {isDerived
                 ? t('label.ontology-inferred')
                 : isOntology
                 ? t('label.ontology')
                 : t('label.knowledge-graph')}
-            </Badge>
+            </span>
           </div>
         </div>
-        <CloseButton size="sm" onClick={onClose} />
+        <CloseButton
+          className="kg3d-panel-close"
+          label={t('label.close')}
+          size="xs"
+          theme="dark"
+          onClick={onClose}
+        />
       </div>
 
       {isDerived && link.relation && link.path ? (
         <div className="tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pt-4 tw:pb-4">
-          <p className="tw:mb-3 tw:text-xs tw:leading-relaxed tw:text-tertiary">
+          <p className="kg3d-panel-text-subtle tw:mb-3 tw:text-xs tw:leading-relaxed">
             <span
               className="tw:font-semibold"
               style={{ color: LINK_ONTOLOGY_COLOR }}>
@@ -154,7 +163,7 @@ const KnowledgeGraph3DEdgePanel: FC<KnowledgeGraph3DEdgePanelProps> = ({
               className="tw:size-2 tw:rounded-sm"
               style={{ background: accent }}
             />
-            <span className="tw:text-xs tw:font-semibold tw:tracking-wide tw:text-quaternary tw:uppercase">
+            <span className="kg3d-panel-text-muted tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase">
               {relationLabel}
             </span>
           </div>

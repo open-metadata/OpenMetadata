@@ -22,13 +22,14 @@ interface AgentGroupProps {
   addAgentSlot?: ReactNode;
   agentPermissions?: Record<string, AgentActionPermissions>;
   agents: Agent[];
+  allowedActions?: string[];
   canCreateAgent: boolean;
   dataTestId?: string;
   descKey: string;
   emptyPlaceholder?: ReactNode;
   icon: ReactNode;
   titleKey: string;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
@@ -38,6 +39,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   addAgentSlot,
   agentPermissions,
   agents,
+  allowedActions,
   canCreateAgent,
   dataTestId = 'agent-group',
   descKey,
@@ -92,16 +94,17 @@ const AgentGroup: FC<AgentGroupProps> = ({
           ))}
       </Box>
       {agents.length === 0 && emptyPlaceholder ? (
-        <div
-          className="tw:border tw:rounded-xl tw:border-secondary tw:bg-white tw:dark:bg-gray-900"
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
           data-testid="agent-group-empty-placeholder">
           {emptyPlaceholder}
-        </div>
+        </Box>
       ) : (
         <div className="tw:grid tw:gap-2.5">
           {agents.map((agent) => (
             <AgentCard
               agent={agent}
+              allowedActions={allowedActions}
               key={agent.id}
               permissions={agentPermissions?.[agent.fqn]}
               onAction={onAction}

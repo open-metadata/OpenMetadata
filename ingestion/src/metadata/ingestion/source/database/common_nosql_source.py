@@ -47,7 +47,11 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection, get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -93,11 +97,8 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self._connection = create_connection(self.service_connection)
         self.connection_obj = self._connection.client if self._connection else get_connection(self.service_connection)
 
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     def prepare(self):
         """

@@ -271,6 +271,7 @@ export const TableProfilerProvider = ({
         fields: [
           TabSpecificField.TEST_CASE_RESULT,
           TabSpecificField.INCIDENT_ID,
+          TabSpecificField.INCIDENT_STATUS,
         ],
 
         entityLink: generateEntityLink(datasetFQN ?? ''),

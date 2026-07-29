@@ -245,4 +245,115 @@ describe('useServiceProgressStream', () => {
 
     expect(capturedSignal?.aborted).toBe(true);
   });
+
+  it('opens one shared connection for subscribers to the same url', async () => {
+    mockFetchEventSource.mockImplementation(() => neverResolve());
+
+    const first = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'sharedService',
+        onEvent: jest.fn(),
+      })
+    );
+    const second = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'sharedService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
+
+    first.unmount();
+    second.unmount();
+  });
+
+  it('keeps the shared connection alive until the last subscriber unmounts', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    mockFetchEventSource.mockImplementation((_url, options) => {
+      capturedSignal = options?.signal ?? undefined;
+
+      return neverResolve();
+    });
+
+    const first = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'refCountService',
+        onEvent: jest.fn(),
+      })
+    );
+    const second = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'refCountService',
+        onEvent: jest.fn(),
+      })
+    );
+
+    await flushAsync();
+
+    first.unmount();
+
+    expect(capturedSignal?.aborted).toBe(false);
+
+    second.unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it('dispatches each frame to every subscriber of the shared connection', async () => {
+    const onEventA = jest.fn();
+    const onEventB = jest.fn();
+    let capturedOptions: StreamOptions;
+    mockFetchEventSource.mockImplementation(async (_url, options) => {
+      capturedOptions = options;
+      await options?.onopen?.({ ok: true, status: 200 } as Response);
+
+      return neverResolve();
+    });
+
+    const first = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fanOutService',
+        onEvent: onEventA,
+      })
+    );
+    const second = renderHook(() =>
+      useServiceProgressStream({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceFqn: 'fanOutService',
+        onEvent: onEventB,
+      })
+    );
+
+    await flushAsync();
+
+    expect(mockFetchEventSource).toHaveBeenCalledTimes(1);
+
+    const payload = {
+      pipelineFqn: 'fanOutService.metadata_agent',
+      runId: 'run-1',
+      event: { runId: 'run-1', timestamp: 1, updateType: 'PROCESSING' },
+    };
+    act(() => {
+      capturedOptions?.onmessage?.({
+        data: JSON.stringify(payload),
+        event: '',
+        id: '',
+        retry: undefined,
+      });
+    });
+
+    expect(onEventA).toHaveBeenCalledWith(payload);
+    expect(onEventB).toHaveBeenCalledWith(payload);
+
+    first.unmount();
+    second.unmount();
+  });
 });

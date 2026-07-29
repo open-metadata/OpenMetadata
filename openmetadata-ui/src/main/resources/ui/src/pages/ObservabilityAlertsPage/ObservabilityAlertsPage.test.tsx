@@ -96,11 +96,52 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   );
 
+  interface MockFeature {
+    key: string;
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+  }
+
+  interface MockAction {
+    key: string;
+    label: React.ReactNode;
+    onPress?: () => void;
+  }
+
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    features,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    features?: MockFeature[];
+    actions?: MockAction[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {features?.map((feature) => (
+        <div key={feature.key}>
+          <span>{feature.title}</span>
+          <span>{feature.description}</span>
+        </div>
+      ))}
+      {actions?.map((action) => (
+        <button key={action.key} onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
     Table: MockTable,
     TableCard: MockTableCard,
     Box: Passthrough,
     Button: Passthrough,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Popover: Passthrough,
     PopoverTrigger: Passthrough,
     Typography: Passthrough,
@@ -292,11 +333,12 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
-    const alertNameElement = await screen.findByText(
-      'message.adding-new-entity-is-easy-just-give-it-a-spin'
-    );
+    const emptyPlaceholder = await screen.findByTestId('empty-placeholder');
 
-    expect(alertNameElement).toBeInTheDocument();
+    expect(emptyPlaceholder).toBeInTheDocument();
+    expect(
+      screen.getByText('message.observability-alert-empty-heading')
+    ).toBeInTheDocument();
   });
 
   it('should call LimitWrapper with resource as eventsubscription', async () => {

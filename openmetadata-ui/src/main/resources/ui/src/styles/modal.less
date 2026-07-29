@@ -14,25 +14,25 @@
 @import './variables.less';
 
 .ant-modal-content {
-  border-radius: 8px;
-  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: var(--om-radius-lg);
+  box-shadow: 2px 4px 12px var(--om-legacy-color-0-0-0-0-2);
 }
 
 .ant-modal-header {
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
-  border-bottom: 1px solid #dde3ea;
+  border-top-left-radius: var(--om-radius-md);
+  border-top-right-radius: var(--om-radius-md);
+  border-bottom: 1px solid var(--om-legacy-color-dde3ea);
 }
 
 .ant-modal-footer {
-  padding: 16px 23px;
-  border-top: 1px solid #dde3ea;
+  padding: var(--om-space-16) var(--om-space-23);
+  border-top: 1px solid var(--om-legacy-color-dde3ea);
 }
 
 .ant-modal-footer .ant-btn-default {
   border: none;
   color: @primary-color;
-  margin-right: 5px;
+  margin-right: var(--om-space-5);
 }
 
 .ant-modal-footer .ant-btn .ant-btn-loading-icon {

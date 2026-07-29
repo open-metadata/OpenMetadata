@@ -31,7 +31,8 @@ from metadata.generated.schema.entity.utils.common.mwaaAuthConfig import (
     MwaaAuthentication,
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
-from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.ometa.client import ClientConfig, LimitsException
 from metadata.ingestion.source.pipeline.airflow.api.auth import (
     build_access_token_callback,
     build_basic_auth_callback,
@@ -48,6 +49,11 @@ from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Retry budget for the test call, summing to 6s. The client defaults (retry=3,
+# retry_wait=30) sleep ~180s on a 504, over the step budget.
+TEST_MAX_RETRIES = 2
+TEST_RETRY_WAIT_SECONDS = 2
 
 
 class AirflowApiClient:
@@ -100,6 +106,15 @@ class AirflowApiClient:
                 verify=verify_ssl,
             )
             self.client = TrackedREST(client_config, source_name="airflow_api")
+
+    @property
+    def _rest(self) -> TrackedREST:
+        """The REST client. ``client`` is None on the MWAA flavour, which reaches
+        Airflow through the AWS SDK instead - callers must branch on ``mwaa_client``
+        before reading this."""
+        if self.client is None:
+            raise SourceConnectionException("No Airflow REST client: this is an MWAA connection")
+        return self.client
 
     @property
     def api_version(self) -> str:
@@ -163,6 +178,30 @@ class AirflowApiClient:
 
         response = self.client.get(f"{self._prefix}/version")
         return self._parse_response(response)
+
+    def test_get_version(self) -> dict:
+        """Prove the host really is Airflow, for the test-connection gate.
+
+        Unlike ``get_version``, which is lenient over REST (parses to ``{}``, so a
+        200 HTML page passes) and a stub over MWAA: REST reads via ``get_raw`` so a
+        bad status/body raises, MWAA makes a real ``invoke_rest_api`` call.
+        """
+        if self.mwaa_client:
+            return self.mwaa_client.test_get_version()
+
+        try:
+            response = self._rest.get_raw(
+                f"{self._prefix}/version", retry_wait=TEST_RETRY_WAIT_SECONDS, retries=TEST_MAX_RETRIES
+            )
+        except LimitsException as rate_limited:
+            # A 429 surfaces as LimitsException, raised with no message, so its
+            # errorLog would be blank. Its cause is the driver's real HTTPError,
+            # which carries the status and a readable message - surface that.
+            if rate_limited.__cause__ is not None:
+                raise rate_limited.__cause__ from None
+            raise
+        response.raise_for_status()
+        return response.json()
 
     def list_dags(self, limit: int = 100, offset: int = 0) -> dict:
         if self.mwaa_client:

@@ -201,13 +201,20 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
   await page.waitForTimeout(1000);
+  const originElement = page.locator(originSelector);
   const destinationElement = page.locator(destinationSelector);
-  await destinationElement.waitFor();
-  await page.hover(originSelector);
+  await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);
+  await destinationElement.scrollIntoViewIfNeeded();
+  await originElement.hover();
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox()) as DOMRect;
+  const box = await destinationElement.boundingBox();
+  if (!box) {
+    throw new Error(
+      `Unable to locate lineage destination ${destinationSelector}`
+    );
+  }
   const x = box.x + 250;
   const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
@@ -239,6 +246,11 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+};
+
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -1029,10 +1041,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
-  await page.waitForTimeout(500);
-
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
+  await expect(fromNode).toBeVisible();
 
   // ensure node will be visible in the viewport
   await performZoomOut(page);

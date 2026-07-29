@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@untitledui/icons';
 import {
   Button,
   Col,
@@ -27,9 +29,9 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
+import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../enums/codemirror.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Status,
   TypedEvent,
@@ -47,11 +49,9 @@ import {
 } from '../../../../utils/Alerts/AlertsUtilPure';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import './alert-recent-events-tab.less';
@@ -151,24 +151,31 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     }
 
     if (isEmpty(alertRecentEvents)) {
+      const isFiltered = filter !== AlertRecentEventFilters.ALL;
+
       return (
-        <ErrorPlaceHolder
-          className="p-y-lg"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph className="w-max-500">
-            {filter === AlertRecentEventFilters.ALL ? (
-              <Transi18next
-                i18nKey="message.no-data-available-entity"
-                renderElement={<b />}
-                values={{
-                  entity: t('label.recent-event-plural'),
-                }}
-              />
-            ) : (
-              t('message.no-data-available-for-selected-filter')
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            description={t(
+              isFiltered
+                ? 'message.no-data-available-for-selected-filter'
+                : 'message.no-recent-events-description'
             )}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
+            icon={
+              isFiltered ? (
+                <FilterOffIcon className="tw:text-fg-quaternary" />
+              ) : (
+                <Bell01 className="tw:text-fg-brand-primary" />
+              )
+            }
+            title={t(
+              isFiltered
+                ? 'message.no-results-for-filters'
+                : 'message.no-recent-events'
+            )}
+            variant="blank"
+          />
+        </Box>
       );
     }
 

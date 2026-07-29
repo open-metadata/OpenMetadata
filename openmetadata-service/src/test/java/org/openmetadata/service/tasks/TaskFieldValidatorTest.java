@@ -17,6 +17,7 @@ package org.openmetadata.service.tasks;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
@@ -24,15 +25,14 @@ import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.TaskEntityType;
 
 /**
- * Unit tests for {@link TaskFieldValidator#validateDataAccessRequestDuration}. Every approved Data
- * Access Request reaches an {@code expiryTimer} boundary node whose {@code ${accessDuration}}
- * expression is built from {@code payload.duration}; a missing or malformed value would make that
- * timer unschedulable and fail the task mid-workflow, so it is rejected up front with a 400 ({@link
- * IllegalArgumentException}). ISO 8601 parsing itself is covered in {@code DurationUtilTest}.
+ * Unit tests for {@link TaskFieldValidator#validateDataAccessRequestExpiry}. Every approved Data
+ * Access Request reaches an {@code expiryTimer} boundary node. Creation-time validation requires a
+ * usable future {@code expirationDate} timestamp, so malformed payloads are rejected up front with
+ * a 400 ({@link IllegalArgumentException}).
  */
 class TaskFieldValidatorTest {
 
-  private static Task darTask(String duration) {
+  private static Task darTaskWithDurationOnly(String duration) {
     return new Task()
         .withType(TaskEntityType.DataAccessRequest)
         .withPayload(
@@ -42,42 +42,52 @@ class TaskFieldValidatorTest {
                 .withDuration(duration));
   }
 
+  private static Task darTaskWithExpirationDate(long expirationDate) {
+    return new Task()
+        .withType(TaskEntityType.DataAccessRequest)
+        .withPayload(
+            new DataAccessRequestPayload()
+                .withAccessType(DataAccessType.FullAccess)
+                .withReason("need access")
+                .withExpirationDate(expirationDate));
+  }
+
   @Test
   void nonDataAccessRequestTaskIsIgnored() {
     // Only DAR tasks carry an access duration; other task types must not be touched.
     Task task = new Task().withType(TaskEntityType.DescriptionUpdate);
-    assertDoesNotThrow(() -> TaskFieldValidator.validateDataAccessRequestDuration(task));
+    assertDoesNotThrow(() -> TaskFieldValidator.validateDataAccessRequestExpiry(task));
   }
 
   @Test
-  void validDayDurationPasses() {
-    assertDoesNotThrow(() -> TaskFieldValidator.validateDataAccessRequestDuration(darTask("P14D")));
-  }
-
-  @Test
-  void validTimeDurationPasses() {
+  void futureExpirationDatePasses() {
+    long expiresAt = System.currentTimeMillis() + Duration.ofDays(1).toMillis();
     assertDoesNotThrow(
-        () -> TaskFieldValidator.validateDataAccessRequestDuration(darTask("PT30S")));
+        () ->
+            TaskFieldValidator.validateDataAccessRequestExpiry(
+                darTaskWithExpirationDate(expiresAt)));
   }
 
   @Test
-  void missingDurationIsRejected() {
+  void missingExpirationDateIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> TaskFieldValidator.validateDataAccessRequestDuration(darTask(null)));
+        () -> TaskFieldValidator.validateDataAccessRequestExpiry(darTaskWithDurationOnly(null)));
   }
 
   @Test
-  void blankDurationIsRejected() {
+  void legacyDurationOnlyPayloadIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> TaskFieldValidator.validateDataAccessRequestDuration(darTask("   ")));
+        () -> TaskFieldValidator.validateDataAccessRequestExpiry(darTaskWithDurationOnly("P14D")));
   }
 
   @Test
-  void nonIsoDurationIsRejected() {
+  void pastExpirationDateIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> TaskFieldValidator.validateDataAccessRequestDuration(darTask("14 days")));
+        () ->
+            TaskFieldValidator.validateDataAccessRequestExpiry(
+                darTaskWithExpirationDate(System.currentTimeMillis() - 1)));
   }
 }

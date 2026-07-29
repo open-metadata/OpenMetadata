@@ -29,9 +29,6 @@ import org.slf4j.LoggerFactory;
 public final class ExternalTokenRefresher implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExternalTokenRefresher.class);
-  // Renew this far ahead of expiry so a flaky login endpoint has room for several 60s retries
-  // before the token actually dies (login TTL is ~1h, so 10m early is safe).
-  private static final Duration EXPIRY_BUFFER = Duration.ofMinutes(10);
   // Bounds BOTH the connect and the read phase of each login. Without a read timeout a slow or
   // half-open gateway would block http.send() forever on the single-thread scheduler, and the
   // token would never renew for the rest of the run.
@@ -125,12 +122,18 @@ public final class ExternalTokenRefresher implements AutoCloseable {
     }
   }
 
+  // Renew at half the token's remaining lifetime (~30m on the external cluster's ~1h token) rather
+  // than a fixed buffer before expiry. That leaves ~half the TTL as retry runway if the login
+  // endpoint is unreachable at renewal time: a ~10m login-endpoint outage that lands on the renewal
+  // window (observed 2026-07-17) burned through a fixed 10m buffer and let the token expire
+  // mid-seed; half-life gives the 60s retries far more room to catch the endpoint before the token
+  // actually dies.
   private long refreshDelaySeconds(final String token) {
     long delaySeconds = FALLBACK_REFRESH_SECONDS;
     final Long exp = expiryEpochSeconds(token);
     if (exp != null) {
       final long now = System.currentTimeMillis() / 1000;
-      delaySeconds = Math.max(60, exp - now - EXPIRY_BUFFER.toSeconds());
+      delaySeconds = Math.max(60, (exp - now) / 2);
     }
     return delaySeconds;
   }

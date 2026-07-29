@@ -177,7 +177,7 @@ const FileNodeView: FC<NodeViewProps> = ({
           isOpen={isPopupVisible}
           onOpenChange={handlePopoverVisibleChange}>
           <Button
-            className="tw:relative tw:block tw:w-full tw:p-0 tw:bg-transparent tw:shadow-none tw:ring-0 hover:tw:bg-transparent tw:[&>span]:flex"
+            className="tw:relative tw:block tw:w-full tw:p-0 tw:bg-transparent tw:shadow-none tw:after:outline-0 hover:tw:bg-transparent tw:[&>span]:flex"
             data-testid="add-image-container">
             {!isImage && (isMediaLoading || isUploading) && (
               <div className="upload-overlay">

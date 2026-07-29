@@ -35,6 +35,11 @@ export interface AIContext {
      */
     downstream?: string[];
     /**
+     * Immediate downstream lineage edges with optional column mappings. Supplements the
+     * downstream fully qualified name list.
+     */
+    downstreamEdges?: LineageEdgeContext[];
+    /**
      * Entity type of the asset (table, dashboard, pipeline, topic, ...).
      */
     entityType?: string;
@@ -56,18 +61,38 @@ export interface AIContext {
      */
     glossaryTerms?: KnowledgeItem[];
     /**
+     * Unique identifier of the asset this context describes.
+     */
+    id?: string;
+    /**
      * Metrics associated with the asset.
      */
     metrics?: KnowledgeItem[];
+    /**
+     * Name of the asset this context describes.
+     */
+    name?: string;
     /**
      * Runtime signals (profiled shape + data-quality standing) for query construction and
      * answer qualification.
      */
     observability?: Observability;
     /**
+     * Owners (users/teams) of the asset.
+     */
+    owners?: EntityReference[];
+    /**
      * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
      */
     resource?: string;
+    /**
+     * Reference (id, name, type) to the service the asset belongs to, when applicable.
+     */
+    service?: EntityReference;
+    /**
+     * Service type of the asset's service (e.g. Snowflake, BigQuery).
+     */
+    serviceType?: string;
     /**
      * Classification tags and tier applied to the asset (tag fully qualified names).
      */
@@ -76,6 +101,11 @@ export interface AIContext {
      * Immediate upstream lineage (fully qualified names).
      */
     upstream?: string[];
+    /**
+     * Immediate upstream lineage edges with optional column mappings. Supplements the upstream
+     * fully qualified name list.
+     */
+    upstreamEdges?: LineageEdgeContext[];
 }
 
 /**
@@ -96,7 +126,11 @@ export interface KnowledgeItem {
     contentTruncated?:   boolean;
     displayName?:        string;
     fullyQualifiedName?: string;
-    name?:               string;
+    /**
+     * Unique identifier of the knowledge entity.
+     */
+    id?:   string;
+    name?: string;
     /**
      * The entity type of the knowledge item.
      */
@@ -174,10 +208,16 @@ export interface FieldContext {
     /**
      * Field-level constraint (e.g. PRIMARY_KEY, NOT_NULL), when applicable.
      */
-    constraint?:  string;
-    dataType?:    string;
-    description?: string;
-    name?:        string;
+    constraint?: string;
+    dataType?:   string;
+    /**
+     * Raw data-type enum name of the field (e.g. VARCHAR, BIGINT — a ColumnDataType value for
+     * table columns), for programmatic type branching. `dataType` may carry the source display
+     * form (e.g. varchar(255)).
+     */
+    dataTypeEnum?: string;
+    description?:  string;
+    name?:         string;
 }
 
 /**
@@ -201,7 +241,11 @@ export interface PipelineContext {
  * generation.
  */
 export interface TableContext {
-    columns?:       FieldContext[];
+    columns?: FieldContext[];
+    /**
+     * The dbt/DDL model that produces this table (type, path, and defining SQL), when available.
+     */
+    dataModel?:     TableDataModel;
     foreignKeys?:   ForeignKey[];
     frequentJoins?: JoinHint[];
     /**
@@ -216,6 +260,34 @@ export interface TableContext {
      * DDL for tables and views, when available.
      */
     schemaDefinition?: string;
+}
+
+/**
+ * The dbt/DDL model that produces this table (type, path, and defining SQL), when
+ * available.
+ *
+ * The data model that produces a table — the dbt (or DDL) model behind it: its type, where
+ * the model file lives, and the SQL that defines the table. A strong signal for how the
+ * table is built and what logic it encodes.
+ */
+export interface TableDataModel {
+    /**
+     * Model type that produced the table (e.g. DBT or DDL).
+     */
+    modelType?: string;
+    /**
+     * Path to the model definition file (e.g. the dbt `.sql` model path).
+     */
+    path?: string;
+    /**
+     * The dbt project the model belongs to, when applicable.
+     */
+    sourceProject?: string;
+    /**
+     * SQL that defines the table: the compiled dbt/DDL model SQL when available, otherwise the
+     * raw templated model SQL. May be bounded server-side.
+     */
+    sql?: string;
 }
 
 /**
@@ -268,6 +340,46 @@ export interface TopicContext {
 }
 
 /**
+ * One immediate lineage edge of the asset: the neighboring asset's fully qualified name
+ * plus the column-level mappings recorded on the edge, when available.
+ */
+export interface LineageEdgeContext {
+    /**
+     * Column-level lineage recorded on this edge, capped server-side; fetch the full graph with
+     * the get_entity_lineage tool.
+     */
+    columns?: ColumnLineage[];
+    /**
+     * True when column-level lineage was truncated at the server-side per-edge cap; fetch the
+     * full graph with the get_entity_lineage tool.
+     */
+    columnsTruncated?: boolean;
+    /**
+     * Fully qualified name of the neighboring upstream or downstream asset.
+     */
+    fullyQualifiedName?: string;
+}
+
+export interface ColumnLineage {
+    /**
+     * One or more source columns identified by fully qualified column name used by
+     * transformation function to create destination column.
+     */
+    fromColumns?: string[];
+    /**
+     * Transformation function applied to source columns to create destination column. That is
+     * `function(fromColumns) -> toColumn`.
+     */
+    function?: string;
+    /**
+     * Destination column identified by fully qualified column name created by the
+     * transformation of source columns.
+     */
+    toColumn?: string;
+    [property: string]: any;
+}
+
+/**
  * Runtime signals (profiled shape + data-quality standing) for query construction and
  * answer qualification.
  *
@@ -283,6 +395,15 @@ export interface Observability {
      */
     profiledAt?: number;
     /**
+     * Sample size the profile ran on — a percentage when profileSampleType is PERCENTAGE,
+     * otherwise an absolute row count. Absent when the profile ran on the full dataset.
+     */
+    profileSample?: number;
+    /**
+     * Interpretation of profileSample: PERCENTAGE or ROWS.
+     */
+    profileSampleType?: string;
+    /**
      * Latest profiled row count.
      */
     rowCount?: number;
@@ -294,6 +415,11 @@ export interface Observability {
  */
 export interface ColumnProfileSummary {
     /**
+     * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+     * profiler computed it — lets an agent write exact filter predicates.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
+    /**
      * Number of distinct values observed.
      */
     distinctCount?: number;
@@ -301,6 +427,16 @@ export interface ColumnProfileSummary {
      * Observed maximum value (numeric/date columns).
      */
     max?: string;
+    /**
+     * Mean value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    mean?: number;
+    /**
+     * Median value (numeric/date columns; the profiler stores string-length stats here for text
+     * columns).
+     */
+    median?: number;
     /**
      * Observed minimum value (numeric/date columns).
      */
@@ -310,6 +446,37 @@ export interface ColumnProfileSummary {
      * Fraction of rows where this column is null (0..1).
      */
     nullProportion?: number;
+    /**
+     * Fraction of rows whose value occurs exactly once (0..1) — near 1 suggests a
+     * key/identifier column.
+     */
+    uniqueProportion?: number;
+}
+
+/**
+ * Top observed values with counts and percentages (plus an 'Others' bucket), when the
+ * profiler computed it — lets an agent write exact filter predicates.
+ *
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
 }
 
 /**
@@ -325,4 +492,55 @@ export interface DataQuality {
     openIncidents?: number;
     passed?:        number;
     total?:         number;
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Reference (id, name, type) to the service the asset belongs to, when applicable.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }

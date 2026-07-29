@@ -77,7 +77,7 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
-import { AgentType, App } from '../../generated/entity/applications/app';
+
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
@@ -107,7 +107,10 @@ import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
-import { getApplicationList } from '../../rest/applicationAPI';
+import {
+  CollateAgentAutomation,
+  getAiAutomationsByService,
+} from '../../rest/applicationAPI';
 import {
   getDashboards,
   getDataModels,
@@ -321,7 +324,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     Array<{ key: string; label: string }>
   >([]);
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
-  const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+  const [collateAgentsList, setCollateAgentsList] = useState<
+    CollateAgentAutomation[]
+  >([]);
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
@@ -550,27 +555,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, serviceCategory]);
 
   const fetchCollateAgentsList = useCallback(
-    async (paging?: Omit<Paging, 'total'>) => {
+    async (_paging?: Omit<Paging, 'total'>) => {
       try {
         setIsCollateAgentLoading(true);
-        const { data, paging: pagingRes } = await getApplicationList({
-          agentType: [
-            AgentType.CollateAI,
-            AgentType.CollateAIQualityAgent,
-            AgentType.CollateAITierAgent,
-          ],
-          ...paging,
-        });
+        // AutoPilot creates at most one automation per template, so the list is
+        // bounded and served in a single unpaginated fetch.
+        const { data } = await getAiAutomationsByService(decodedServiceFQN);
 
         setCollateAgentsList(data);
-        handleCollateAgentPagingChange(pagingRes);
+        handleCollateAgentPagingChange({ total: data.length });
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsCollateAgentLoading(false);
       }
     },
-    [handleCollateAgentPagingChange]
+    [decodedServiceFQN, handleCollateAgentPagingChange]
   );
 
   const getAllIngestionWorkflows = useCallback(

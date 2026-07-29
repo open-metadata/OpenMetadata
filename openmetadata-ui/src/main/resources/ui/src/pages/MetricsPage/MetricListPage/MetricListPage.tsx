@@ -20,8 +20,12 @@ import {
   Input,
 } from '@openmetadata/ui-core-components';
 import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import {
   AlertCircle,
-  BarChartSquare02,
   Check,
   ChevronDown,
   CursorClick01,
@@ -29,7 +33,7 @@ import {
   Edit03,
   Eye,
   EyeOff,
-  FileCheck02,
+  FileCheck03,
   Plus,
   SearchLg,
   Settings01,
@@ -67,10 +71,7 @@ import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -139,9 +140,6 @@ const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   updatedAt: 'label.last-updated',
 };
 
-// The Status filter shows the distinct metric statuses (the design's
-// Approved / In review / Draft) — not every EntityStatus enum value, several
-// of which collapse to the same "Draft" label and render as duplicates.
 const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
   EntityStatus.Approved,
   EntityStatus.InReview,
@@ -169,14 +167,10 @@ const MetricListPage = () => {
   } = usePaging();
 
   const { getResourcePermission } = usePermissionProvider();
-  const [permission, setPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-  const [error, setError] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const queryClient = useQueryClient();
+
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
   const [selectedMetricIds, setSelectedMetricIds] = useState<Key[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -195,151 +189,102 @@ const MetricListPage = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
 
-  // All filtering (search + status) and pagination is done server-side via the
-  // metric search index, so the Status filter and search stay consistent with
-  // pagination totals.
-  const fetchMetrics = useCallback(
-    async ({
-      page,
-      search,
-      status,
-      size,
-    }: {
-      page: number;
-      search: string;
-      status?: EntityStatus;
-      size: number;
-    }) => {
-      try {
-        setLoadingMore(true);
-        const response = await searchQuery({
-          query: search,
-          pageNumber: page,
-          pageSize: size,
-          searchIndex: SearchIndex.METRIC,
-          trackTotalHits: true,
-          queryFilter: status
-            ? getTermQuery({ entityStatus: status })
-            : undefined,
-        });
-        setMetrics(response.hits.hits.map((hit) => hit._source));
-        handlePagingChange({ total: response.hits.total.value });
-      } catch (error) {
-        const errorMessage = getErrorText(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.metric-plural'),
-          })
-        );
-        showErrorToast(errorMessage);
-        setError(errorMessage);
-      } finally {
-        setLoadingMore(false);
-      }
-    },
-    [handlePagingChange, t]
+  const debounceSetSearch = useMemo(
+    () => debounce(setDebouncedSearch, METRIC_SEARCH_DEBOUNCE_MS),
+    []
   );
 
-  const init = async () => {
-    try {
-      setLoading(true);
-      const permission = await getResourcePermission(ResourceEntity.METRIC);
-      setPermission(permission);
-      if (permission.ViewAll || permission.ViewBasic) {
-        await fetchMetrics({
-          page: currentPage,
-          search: searchText,
-          status: statusFilter,
-          size: pageSize,
-        });
-      }
-    } catch (error) {
-      const errorMessage = getErrorText(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.metric-plural'),
-        })
+  useEffect(() => () => debounceSetSearch.cancel(), [debounceSetSearch]);
+
+  const {
+    data: permission = DEFAULT_ENTITY_PERMISSION,
+    isPending: isPermissionPending,
+    error: permissionError,
+  } = useQuery({
+    queryKey: ['metric-list-permission', ResourceEntity.METRIC],
+    queryFn: () => getResourcePermission(ResourceEntity.METRIC),
+  });
+
+  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+
+  const {
+    data: searchResponse,
+    isPending: isMetricsPending,
+    isFetching: isMetricsFetching,
+    error: metricsError,
+  } = useQuery({
+    queryKey: [
+      'metric-listing',
+      {
+        search: debouncedSearch,
+        status: statusFilter,
+        page: currentPage,
+        size: pageSize,
+      },
+    ],
+    queryFn: () =>
+      searchQuery({
+        query: debouncedSearch,
+        pageNumber: currentPage,
+        pageSize,
+        searchIndex: SearchIndex.METRIC,
+        trackTotalHits: true,
+        queryFilter: statusFilter
+          ? getTermQuery({ entityStatus: statusFilter })
+          : undefined,
+      }),
+    enabled: hasViewPermission,
+    placeholderData: keepPreviousData,
+  });
+
+  const metrics = useMemo(
+    () => searchResponse?.hits.hits.map((hit) => hit._source) ?? [],
+    [searchResponse]
+  );
+
+  const isSearchPending = searchText.trim() !== debouncedSearch;
+
+  const totalMetrics = searchResponse?.hits.total.value ?? 0;
+
+  const listingError = permissionError ?? metricsError;
+  const listingErrorMessage = permissionError
+    ? t('server.fetch-entity-permissions-error', {
+        entity: t('label.metric-plural'),
+      })
+    : t('server.entity-fetch-error', { entity: t('label.metric-plural') });
+
+  useEffect(() => {
+    handlePagingChange({ total: totalMetrics });
+  }, [totalMetrics, handlePagingChange]);
+
+  useEffect(() => {
+    if (listingError) {
+      showErrorToast(
+        getErrorText(listingError as AxiosError, listingErrorMessage)
       );
-      showErrorToast(errorMessage);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [listingError, listingErrorMessage]);
 
-  // Search box changes debounce a fresh first-page query; filters and paging
-  // fetch immediately.
-  const debouncedSearchFetch = useMemo(
-    () =>
-      debounce(
-        (search: string, status: EntityStatus | undefined, size: number) => {
-          handlePageChange(INITIAL_PAGING_VALUE);
-          fetchMetrics({ page: INITIAL_PAGING_VALUE, search, status, size });
-        },
-        METRIC_SEARCH_DEBOUNCE_MS
-      ),
-    [fetchMetrics, handlePageChange]
-  );
-
-  useEffect(() => () => debouncedSearchFetch.cancel(), [debouncedSearchFetch]);
-
-  // Status/paging changes fetch immediately, so cancel any pending debounced
-  // search first — otherwise a search typed within the debounce window would
-  // fire later with its stale captured filters and clobber this result.
   const handleStatusFilterChange = useCallback(
     (status?: EntityStatus) => {
-      debouncedSearchFetch.cancel();
       setStatusFilter(status);
       handlePageChange(INITIAL_PAGING_VALUE);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status,
-        size: pageSize,
-      });
     },
-    [debouncedSearchFetch, fetchMetrics, handlePageChange, pageSize, searchText]
+    [handlePageChange]
   );
 
   const onPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
-      debouncedSearchFetch.cancel();
       handlePageChange(page);
-      fetchMetrics({
-        page,
-        search: searchText,
-        status: statusFilter,
-        size: pageSize,
-      });
     },
-    [
-      debouncedSearchFetch,
-      fetchMetrics,
-      handlePageChange,
-      pageSize,
-      searchText,
-      statusFilter,
-    ]
+    [handlePageChange]
   );
 
   const onShowSizeChange = useCallback(
     (size: number) => {
-      debouncedSearchFetch.cancel();
       handlePageSizeChange(size);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status: statusFilter,
-        size,
-      });
     },
-    [
-      debouncedSearchFetch,
-      fetchMetrics,
-      handlePageSizeChange,
-      searchText,
-      statusFilter,
-    ]
+    [handlePageSizeChange]
   );
 
   const glossaryTerms = useCallback(
@@ -457,9 +402,12 @@ const MetricListPage = () => {
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const text = getInputChangeValue(value);
       setSearchText(text);
-      debouncedSearchFetch(text, statusFilter, pageSize);
+      debounceSetSearch(text.trim());
+      if (currentPage !== INITIAL_PAGING_VALUE) {
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
     },
-    [debouncedSearchFetch, pageSize, statusFilter]
+    [currentPage, debounceSetSearch, handlePageChange]
   );
 
   const handleBulkDelete = useCallback(async () => {
@@ -475,31 +423,14 @@ const MetricListPage = () => {
       );
       setSelectedMetricIds([]);
       setIsDeleteDialogOpen(false);
-      // Deletion can shrink the result set below the current page; return to the
-      // first page so the user never lands on an empty page.
-      debouncedSearchFetch.cancel();
       handlePageChange(INITIAL_PAGING_VALUE);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status: statusFilter,
-        size: pageSize,
-      });
+      queryClient.invalidateQueries({ queryKey: ['metric-listing'] });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [
-    debouncedSearchFetch,
-    fetchMetrics,
-    handlePageChange,
-    pageSize,
-    searchText,
-    selectedMetrics,
-    statusFilter,
-    t,
-  ]);
+  }, [handlePageChange, queryClient, selectedMetrics, t]);
 
   const columns = useMemo(() => {
     const emptyDash = (
@@ -533,9 +464,6 @@ const MetricListPage = () => {
 
         return (
           <Box align="center" gap={3}>
-            <div className="metric-list-icon">
-              <BarChartSquare02 />
-            </div>
             <div className="metric-list-cell">
               <Link
                 className="metric-list-name"
@@ -697,18 +625,16 @@ const MetricListPage = () => {
     visibleColumns,
   ]);
 
-  useEffect(() => {
-    init();
-  }, []);
-
-  if (loading) {
+  if (isPermissionPending || (hasViewPermission && isMetricsPending)) {
     return <Loader />;
   }
 
-  if (error && !loading) {
+  if (listingError && !searchResponse) {
     return (
       <ErrorPlaceHolder>
-        <p className="text-center m-auto">{error}</p>
+        <p className="text-center m-auto">
+          {getErrorText(listingError as AxiosError, listingErrorMessage)}
+        </p>
       </ErrorPlaceHolder>
     );
   }
@@ -780,10 +706,14 @@ const MetricListPage = () => {
   );
 
   const isMetricListEmpty =
-    !loadingMore && metrics.length === 0 && !searchText && !statusFilter;
+    !isMetricsFetching &&
+    !isSearchPending &&
+    metrics.length === 0 &&
+    !searchText &&
+    !statusFilter;
 
   const metricEmptyState = (
-    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl">
       <EmptyPlaceholder
         actions={
           permission.Create
@@ -802,7 +732,7 @@ const MetricListPage = () => {
         features={[
           {
             key: 'define',
-            icon: <FileCheck02 className="tw:text-fg-brand-primary" />,
+            icon: <FileCheck03 className="tw:text-fg-brand-primary" />,
             title: t('label.define-it'),
             description: t('message.metric-define-it-description'),
           },
@@ -826,8 +756,11 @@ const MetricListPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.metric-plural')}>
-      <div className="p-b-md m-t-xs metric-list-page-stack">
+    <PageLayoutV1
+      pageTitle={t('label.metric-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div
+        className={`p-b-md metric-list-page-stack${isAiMode ? '' : ' m-t-xs'}`}>
         <div>
           {isAiMode ? (
             <HeaderShell
@@ -843,6 +776,8 @@ const MetricListPage = () => {
                   showHome={false}
                 />
               }
+              className="tw:mb-0!"
+              padding="comfortable"
               subtitle={t('message.metric-description')}
               title={t('label.metric-plural')}
               variant="gradient"
@@ -862,7 +797,10 @@ const MetricListPage = () => {
           )}
         </div>
         <div>
-          <div className="metric-list-table-card">
+          <div
+            className={`metric-list-table-card${
+              isMetricListEmpty ? ' metric-list-table-card--borderless' : ''
+            }`}>
             {isMetricListEmpty ? (
               metricEmptyState
             ) : (
@@ -1024,7 +962,7 @@ const MetricListPage = () => {
                   customPaginationProps={{
                     showPagination,
                     currentPage,
-                    isLoading: loadingMore,
+                    isLoading: isMetricsFetching,
                     isNumberBased: true,
                     pageSize,
                     paging,
@@ -1032,21 +970,24 @@ const MetricListPage = () => {
                     onShowSizeChange,
                   }}
                   dataSource={metrics}
-                  loading={loadingMore}
+                  loading={isMetricsFetching}
                   locale={{
-                    emptyText: (
-                      <ErrorPlaceHolder
-                        className="p-y-md border-none"
-                        doc={METRICS_DOCS}
-                        heading={t('label.metric')}
-                        permission={permission.Create}
-                        permissionValue={t('label.create-entity', {
-                          entity: t('label.metric'),
-                        })}
-                        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                        onClick={() => navigate(ROUTES.ADD_METRIC)}
-                      />
-                    ),
+                    emptyText:
+                      isMetricsFetching || isSearchPending ? (
+                        <Loader />
+                      ) : (
+                        <ErrorPlaceHolder
+                          className="p-y-md border-none"
+                          doc={METRICS_DOCS}
+                          heading={t('label.metric')}
+                          permission={permission.Create}
+                          permissionValue={t('label.create-entity', {
+                            entity: t('label.metric'),
+                          })}
+                          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                          onClick={() => navigate(ROUTES.ADD_METRIC)}
+                        />
+                      ),
                   }}
                   pagination={false}
                   rowKey="id"

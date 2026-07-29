@@ -450,10 +450,32 @@ const AddDomainForm = ({
     name: 'color',
   });
 
-  const coverImageField = useMemo(
-    () => domainClassBase.getCoverImageField(),
-    []
-  );
+  const coverImageField = useMemo(() => {
+    const field = domainClassBase.getCoverImageField();
+    if (!field) {
+      return null;
+    }
+
+    return {
+      ...field,
+      props: {
+        ...field.props,
+        onValidationError: (message: string) =>
+          form.setError('coverImage', { type: 'validate', message }),
+      },
+    };
+  }, [form]);
+
+  const coverImageValue = useWatch({
+    control: form.control,
+    name: 'coverImage',
+  });
+
+  useEffect(() => {
+    if (coverImageValue) {
+      form.clearErrors('coverImage');
+    }
+  }, [coverImageValue, form]);
 
   const createPermission = useMemo(() => {
     const resourceEntity =
@@ -758,7 +780,7 @@ const AddDomainForm = ({
       options: iconOptions,
       labels: {
         customIconUrl: t('label.icon-url'),
-        emptyState: t('message.no-entity-available', {
+        emptyState: t('label.no-entity-available', {
           entity: t('label.icon-plural'),
         }),
         enterIconUrl: t('label.enter-entity', {
@@ -1125,7 +1147,7 @@ const AddDomainForm = ({
         {({ field, fieldState }) => (
           <Box
             aria-invalid={fieldState.invalid || undefined}
-            className="tw:gap-[6px]"
+            className="tw:gap-1.5"
             direction="col">
             <FormItemLabel required label={t('label.description')} />
             <RichTextEditor

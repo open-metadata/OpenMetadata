@@ -354,17 +354,43 @@ const entityIconMapping: Record<string, ElementType> = {
   contextPlugin: ENTITY_ICON_MAPPER['contextPlugin'].icon,
   marketplace: ENTITY_ICON_MAPPER['marketplace'].icon,
   dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
+  [EntityType.AI_APPLICATION]:
+    ENTITY_ICON_MAPPER[EntityType.AI_APPLICATION].icon,
+  [EntityType.LLM_MODEL]: ENTITY_ICON_MAPPER[EntityType.LLM_MODEL].icon,
+  [EntityType.MCP_SERVER]: ENTITY_ICON_MAPPER[EntityType.MCP_SERVER].icon,
   dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
   report: ENTITY_ICON_MAPPER['report'].icon,
   testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
 };
 
+export enum EntityIconSize {
+  Size14 = 14,
+  Size16 = 16,
+  Size18 = 18,
+  Size20 = 20,
+  Size24 = 24,
+  Size32 = 32,
+}
+
+export const ENTITY_ICON_SIZE_CLASS_MAP: Record<EntityIconSize, string> = {
+  [EntityIconSize.Size14]: 'tw:w-3.5 tw:h-3.5',
+  [EntityIconSize.Size16]: 'tw:w-4 tw:h-4',
+  [EntityIconSize.Size18]: 'tw:w-4.5 tw:h-4.5',
+  [EntityIconSize.Size20]: 'tw:w-5 tw:h-5',
+  [EntityIconSize.Size24]: 'tw:w-6 tw:h-6',
+  [EntityIconSize.Size32]: 'tw:w-8 tw:h-8',
+};
+
 export const getEntityIcon = (
   indexType: string,
   iconClass = '',
-  iconStyle = {}
+  iconStyle = {},
+  size?: EntityIconSize
 ) => {
-  const className = iconClass;
+  const className = classNames(
+    iconClass,
+    size && ENTITY_ICON_SIZE_CLASS_MAP[size]
+  );
   const style: CSSProperties = iconStyle;
 
   const Icon = entityIconMapping[indexType];

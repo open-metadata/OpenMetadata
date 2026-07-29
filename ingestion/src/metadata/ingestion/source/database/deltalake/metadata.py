@@ -43,7 +43,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -85,11 +88,8 @@ class DeltalakeSource(DatabaseServiceSource):
         self.connection = cast("BaseConnection", self._connection).client
         self.client = self.connection.client
 
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045

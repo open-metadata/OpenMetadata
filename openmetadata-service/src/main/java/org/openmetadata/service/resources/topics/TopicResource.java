@@ -542,6 +542,33 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return addHref(uriInfo, topic);
   }
 
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "Delete sample data",
+      description = "Delete sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted sample data from the Topic",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Topic topic = repository.deleteSampleData(id);
+    return addHref(uriInfo, topic);
+  }
+
   @PUT
   @Path("/{id}/followers")
   @Operation(

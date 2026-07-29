@@ -125,7 +125,7 @@ EXPECTED_PIPELINE = [
 
 class FlinkUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("metadata.ingestion.source.pipeline.flink.connection.get_connection")
+    @patch("metadata.ingestion.source.pipeline.flink.connection.FlinkConnection._get_client")
     def __init__(self, methodName, flink_client, test_connection) -> None:  # noqa: N803
 
         super().__init__(methodName)
@@ -157,7 +157,7 @@ class TestFlinkTaskNames:
     def setup_method(self):
         with (
             patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
-            patch("metadata.ingestion.source.pipeline.flink.connection.get_connection"),
+            patch("metadata.ingestion.source.pipeline.flink.connection.FlinkConnection._get_client"),
         ):
             config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
             self.flink = FlinkSource.create(

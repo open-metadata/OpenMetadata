@@ -40,6 +40,7 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -47,6 +48,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -76,9 +79,40 @@ public class ReindexingUtil {
       List<? extends EntityInterface> entities) {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
     Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
+    Map<UUID, Long> prefetchedRelationshipRevisions = null;
     try {
       prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
       prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
+      if (Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType)) {
+        List<UUID> revisionedEntityIds =
+            entities.stream()
+                .filter(
+                    entity ->
+                        Entity.TEST_CASE.equals(entityType)
+                            || entity instanceof TestSuite testSuite
+                                && Boolean.FALSE.equals(testSuite.getBasic()))
+                .map(EntityInterface::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        @SuppressWarnings("unchecked")
+        Map<UUID, Long> suppliedRevisions =
+            (Map<UUID, Long>)
+                contextData.getOrDefault(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, Map.of());
+        List<UUID> missingRevisionIds =
+            revisionedEntityIds.stream().filter(id -> !suppliedRevisions.containsKey(id)).toList();
+        Map<UUID, Long> storedRevisions =
+            missingRevisionIds.isEmpty()
+                ? Map.of()
+                : Entity.TEST_CASE.equals(entityType)
+                    ? TestCaseRepository.getTestSuiteRelationshipRevisions(missingRevisionIds)
+                    : TestSuiteRepository.getTestsRelationshipRevisions(missingRevisionIds);
+        prefetchedRelationshipRevisions = new HashMap<>(revisionedEntityIds.size());
+        for (UUID entityId : revisionedEntityIds) {
+          prefetchedRelationshipRevisions.put(
+              entityId,
+              suppliedRevisions.getOrDefault(entityId, storedRevisions.getOrDefault(entityId, 0L)));
+        }
+      }
     } catch (Exception | LinkageError t) {
       // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
       // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
@@ -90,11 +124,15 @@ public class ReindexingUtil {
           entityType,
           t);
     }
-    if (prefetchedLineage != null || prefetchedServiceStyles != null) {
+    if (prefetchedLineage != null
+        || prefetchedServiceStyles != null
+        || prefetchedRelationshipRevisions != null) {
       int contextSize =
           Math.max(
-              prefetchedLineage != null ? prefetchedLineage.size() : 0,
-              prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0);
+              Math.max(
+                  prefetchedLineage != null ? prefetchedLineage.size() : 0,
+                  prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0),
+              prefetchedRelationshipRevisions != null ? prefetchedRelationshipRevisions.size() : 0);
       Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
       for (EntityInterface entity : entities) {
         UUID entityId = entity.getId();
@@ -105,8 +143,12 @@ public class ReindexingUtil {
             prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
         boolean hasStyle =
             prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId);
+        Long relationshipRevision =
+            prefetchedRelationshipRevisions != null
+                ? prefetchedRelationshipRevisions.get(entityId)
+                : null;
         // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
-        if (lineage == null && !hasStyle) {
+        if (lineage == null && !hasStyle && relationshipRevision == null) {
           continue;
         }
         DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
@@ -114,7 +156,8 @@ public class ReindexingUtil {
                 ? DocBuildContext.ServiceStylePrefetch.prefetched(
                     prefetchedServiceStyles.get(entityId))
                 : DocBuildContext.ServiceStylePrefetch.notPrefetched();
-        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStylePrefetch));
+        docBuildContexts.put(
+            entityId, DocBuildContext.of(lineage, serviceStylePrefetch, relationshipRevision));
       }
       contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
     }

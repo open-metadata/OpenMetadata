@@ -111,6 +111,29 @@ def _get_projection_details(columns: List[Dict], projection_parameters: Dict) ->
     return columns
 
 
+def _deduplicate_columns(columns: List[Dict], table_name: str) -> List[Dict]:  # noqa: UP006
+    """Return columns once by exact name, preserving the first occurrence."""
+    deduplicated_columns = []
+    seen_column_names = set()
+
+    for column in columns:
+        dedupe_key = column.get("name")
+
+        if dedupe_key in seen_column_names:
+            logger.warning(
+                "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
+                table_name,
+                dedupe_key,
+                column.get("system_data_type"),
+            )
+            continue
+
+        seen_column_names.add(dedupe_key)
+        deduplicated_columns.append(column)
+
+    return deduplicated_columns
+
+
 # pylint: disable=too-many-locals
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
@@ -132,7 +155,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         for c in metadata.partition_keys
     ]
-
     if kw.get("only_partition_columns"):
         # Return projected partition information to set partition type in `get_table_partition_details`
         # projected partition fields are stored in the form of `projection.<field_name>.type` as a table parameter
@@ -141,8 +163,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             for key_, value_ in metadata.parameters.items()
             if key_.startswith("projection") and key_.endswith("type")
         }
-        columns = _get_projection_details(columns, projection_parameters)
-        return columns  # noqa: RET504
+        return _get_projection_details(columns, projection_parameters)
 
     # Check if this is an Iceberg table
     if metadata.parameters.get("table_type") == "ICEBERG":
@@ -193,7 +214,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
 
             columns += current_columns
-            return columns  # noqa: TRY300
+            return _deduplicate_columns(columns, table_name)
 
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
@@ -222,7 +243,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         for c in metadata.columns
     ]
 
-    return columns
+    return _deduplicate_columns(columns, table_name)
 
 
 @reflection.cache

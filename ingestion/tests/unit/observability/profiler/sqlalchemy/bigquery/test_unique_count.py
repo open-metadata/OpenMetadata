@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Regression tests for the BigQuery uniqueCount COUNTIF branch (issue #30152).
+Tests for the BigQuery uniqueCount COUNTIF branch.
 
 The BigQuery branch of ``UniqueCount.query`` builds a ``countif`` that wraps a
 grouped occurrence-count subquery. It must reference that subquery's integer
@@ -22,8 +22,8 @@ column, otherwise:
   * nested STRUCT-subfield columns re-emit the dotted path ``customer.email``,
     which does not exist in the subquery, producing ``Unrecognized name: customer``.
 
-These tests compile the generated SQL against the BigQuery dialect (no live
-BigQuery needed) and assert the identifiers and bind parameter are well-formed.
+These tests compile the generated SQL against the BigQuery dialect and assert
+the identifiers and bind parameter are well-formed.
 """
 
 from unittest.mock import MagicMock

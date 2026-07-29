@@ -166,6 +166,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           collateAgentPagingInfo={collateAgentPagingInfo}
           collateAgentsList={collateAgentsList}
           isCollateAgentLoading={isCollateAgentLoading}
+          serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           workflowStartAt={workflowStartAt}
           onCollateAgentPageChange={onCollateAgentPageChange}

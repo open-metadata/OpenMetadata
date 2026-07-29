@@ -431,10 +431,9 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       onPageChange({
-        title: t('label.knowledge-center'),
+        title: t('label.context-center'),
         rightPanel: getRightPanelElement(),
         data: undefined,
-        header: null,
       });
     }, [getRightPanelElement]);
 
@@ -499,7 +498,7 @@ const KnowledgePageListComponent = forwardRef<
         <ErrorPlaceHolder
           className="border-none"
           permissionValue={t('label.view-entity', {
-            entity: t('label.knowledge-article-plural'),
+            entity: t('label.article-plural'),
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
@@ -542,7 +541,7 @@ const KnowledgePageListComponent = forwardRef<
               <div className="text-center text-sm font-normal">
                 <Typography.Paragraph>
                   {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                    entity: t('label.knowledge-page'),
+                    entity: t('label.article'),
                   })}
                 </Typography.Paragraph>
 

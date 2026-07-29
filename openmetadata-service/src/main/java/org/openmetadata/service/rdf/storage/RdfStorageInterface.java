@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import org.apache.jena.rdf.model.Model;
+import org.openmetadata.service.rdf.RdfWriteMode;
 
 /**
  * Interface for remote RDF storage implementations.
@@ -38,6 +39,14 @@ public interface RdfStorageInterface {
     for (EntityWriteRequest req : requests) {
       storeEntity(req.entityType(), req.entityId(), req.model());
     }
+  }
+
+  /**
+   * Bulk-write entity models using the requested reconciliation mode. Backends that do not support
+   * insert-only writes retain their existing behavior through the one-argument overload.
+   */
+  default void bulkStoreEntities(List<EntityWriteRequest> requests, RdfWriteMode writeMode) {
+    bulkStoreEntities(requests);
   }
 
   /** Payload for {@link #bulkStoreEntities}. */

@@ -266,8 +266,12 @@ const DeleteEntityModal = ({
                   className={({ isSelected }) =>
                     classNames(
                       'tw:cursor-pointer tw:rounded-xl tw:border tw:p-4 tw:transition-colors',
+                      // Selected stacks a 1px outline just outside the 1px border to read as
+                      // 2px. Outline (not ring) because WebKit does not pixel-snap
+                      // box-shadow; offset 0 matches where the non-inset ring sat. Not
+                      // `border-2` — that would consume layout and shift content on select.
                       isSelected
-                        ? 'tw:border-brand tw:ring-1 tw:ring-brand'
+                        ? 'tw:border-brand tw:outline-1 tw:outline-brand'
                         : 'tw:border-secondary'
                     )
                   }

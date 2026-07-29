@@ -130,6 +130,36 @@ class SearchIndexRetryQueueIT {
   }
 
   @Test
+  void testPlainUpsertPreservesExistingPropagationContext(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".entity";
+    String propagationContext =
+        "\n" + SearchIndexRetryQueueDAO.PROPAGATION_CONTEXT_TOKEN + "eyJwcmV2aW91c1ZlcnNpb24iOjF9";
+
+    retryQueueDAO.upsert(
+        entityId,
+        entityFqn,
+        "propagation failure" + propagationContext,
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
+    retryQueueDAO.upsert(
+        entityId,
+        entityFqn,
+        "new indexing failure",
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
+
+    SearchIndexRetryRecord record =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000).stream()
+            .filter(r -> r.getEntityId().equals(entityId))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("new indexing failure" + propagationContext, record.getFailureReason());
+
+    retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
   void testFindByStatuses(TestNamespace ns) {
     String id1 = UUID.randomUUID().toString();
     String id2 = UUID.randomUUID().toString();
@@ -210,8 +240,10 @@ class SearchIndexRetryQueueIT {
     retryQueueDAO.upsert(
         entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "table");
 
+    String claimToken = UUID.randomUUID().toString();
     int claimed =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+        retryQueueDAO.claimRecord(
+            entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, claimToken);
     assertEquals(1, claimed);
 
     List<SearchIndexRetryRecord> inProgress =
@@ -220,6 +252,7 @@ class SearchIndexRetryQueueIT {
         inProgress.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertEquals(SearchIndexRetryQueue.STATUS_IN_PROGRESS, record.getStatus());
     assertNotNull(record.getClaimedAt());
+    assertEquals(claimToken, record.getClaimToken());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
   }
@@ -233,11 +266,19 @@ class SearchIndexRetryQueueIT {
         entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_COMPLETED, "");
 
     int first =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
+        retryQueueDAO.claimRecord(
+            entityId,
+            entityFqn,
+            SearchIndexRetryQueue.STATUS_COMPLETED,
+            UUID.randomUUID().toString());
     assertEquals(1, first);
 
     int second =
-        retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_COMPLETED);
+        retryQueueDAO.claimRecord(
+            entityId,
+            entityFqn,
+            SearchIndexRetryQueue.STATUS_COMPLETED,
+            UUID.randomUUID().toString());
     assertEquals(0, second);
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
@@ -331,7 +372,8 @@ class SearchIndexRetryQueueIT {
 
     retryQueueDAO.upsert(
         entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "table");
-    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    retryQueueDAO.claimRecord(
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, UUID.randomUUID().toString());
 
     List<SearchIndexRetryRecord> inProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
@@ -350,6 +392,7 @@ class SearchIndexRetryQueueIT {
         pending.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertEquals(SearchIndexRetryQueue.STATUS_PENDING, record.getStatus());
     assertNull(record.getClaimedAt());
+    assertNull(record.getClaimToken());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
   }
@@ -360,7 +403,8 @@ class SearchIndexRetryQueueIT {
     String entityFqn = ns.prefix("rq") + ".entity";
 
     retryQueueDAO.upsert(entityId, entityFqn, "failure", SearchIndexRetryQueue.STATUS_PENDING, "");
-    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    retryQueueDAO.claimRecord(
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, UUID.randomUUID().toString());
 
     List<SearchIndexRetryRecord> inProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
@@ -389,10 +433,12 @@ class SearchIndexRetryQueueIT {
 
     retryQueueDAO.upsert(
         entityId, entityFqn, "initial", SearchIndexRetryQueue.STATUS_PENDING, "table");
-    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    String claimToken = UUID.randomUUID().toString();
+    retryQueueDAO.claimRecord(
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, claimToken);
 
     retryQueueDAO.updateFailureAndRetryCount(
-        entityId, entityFqn, "retry 1 failed", SearchIndexRetryQueue.STATUS_PENDING);
+        entityId, entityFqn, "retry 1 failed", SearchIndexRetryQueue.STATUS_PENDING, claimToken);
 
     List<SearchIndexRetryRecord> records =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_PENDING, 1000);
@@ -401,6 +447,7 @@ class SearchIndexRetryQueueIT {
     assertEquals(1, record.getRetryCount());
     assertEquals("retry 1 failed", record.getFailureReason());
     assertNotNull(record.getClaimedAt());
+    assertNull(record.getClaimToken());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
   }
@@ -412,20 +459,33 @@ class SearchIndexRetryQueueIT {
 
     retryQueueDAO.upsert(
         entityId, entityFqn, "initial", SearchIndexRetryQueue.STATUS_PENDING, "table");
-    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    String initialClaimToken = UUID.randomUUID().toString();
+    retryQueueDAO.claimRecord(
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, initialClaimToken);
     retryQueueDAO.updateFailureAndRetryCount(
-        entityId, entityFqn, "retry 1 failed", SearchIndexRetryQueue.STATUS_PENDING_RETRY_1);
+        entityId,
+        entityFqn,
+        "retry 1 failed",
+        SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+        initialClaimToken);
 
     List<SearchIndexRetryRecord> delayedFirstRetry = retryQueueDAO.claimPending(1000, 3600, 7200);
     assertTrue(
         delayedFirstRetry.stream().noneMatch(record -> record.getEntityId().equals(entityId)));
 
     List<SearchIndexRetryRecord> eligibleFirstRetry = retryQueueDAO.claimPending(1000, 0, 0);
-    assertTrue(
-        eligibleFirstRetry.stream().anyMatch(record -> record.getEntityId().equals(entityId)));
+    SearchIndexRetryRecord firstRetryClaim =
+        eligibleFirstRetry.stream()
+            .filter(record -> record.getEntityId().equals(entityId))
+            .findFirst()
+            .orElseThrow();
 
     retryQueueDAO.updateFailureAndRetryCount(
-        entityId, entityFqn, "retry 2 failed", SearchIndexRetryQueue.STATUS_PENDING_RETRY_2);
+        entityId,
+        entityFqn,
+        "retry 2 failed",
+        SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+        firstRetryClaim.getClaimToken());
 
     List<SearchIndexRetryRecord> delayedSecondRetry = retryQueueDAO.claimPending(1000, 0, 7200);
     assertTrue(
@@ -458,9 +518,10 @@ class SearchIndexRetryQueueIT {
       SearchIndexRetryQueue.STATUS_FAILED
     };
     for (int i = 0; i < 3; i++) {
-      retryQueueDAO.claimRecord(entityId, entityFqn, statusProgression[i]);
+      String claimToken = UUID.randomUUID().toString();
+      retryQueueDAO.claimRecord(entityId, entityFqn, statusProgression[i], claimToken);
       retryQueueDAO.updateFailureAndRetryCount(
-          entityId, entityFqn, "attempt " + (i + 1) + " failed", nextStatuses[i]);
+          entityId, entityFqn, "attempt " + (i + 1) + " failed", nextStatuses[i], claimToken);
     }
 
     List<SearchIndexRetryRecord> failed =
@@ -716,7 +777,8 @@ class SearchIndexRetryQueueIT {
 
     retryQueueDAO.upsert(
         entityId, entityFqn, "stale test", SearchIndexRetryQueue.STATUS_PENDING, "");
-    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    retryQueueDAO.claimRecord(
+        entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING, UUID.randomUUID().toString());
 
     List<SearchIndexRetryRecord> inProgress =
         retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_IN_PROGRESS, 1000);
@@ -735,6 +797,7 @@ class SearchIndexRetryQueueIT {
     SearchIndexRetryRecord record =
         pending.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertNull(record.getClaimedAt());
+    assertNull(record.getClaimToken());
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
   }

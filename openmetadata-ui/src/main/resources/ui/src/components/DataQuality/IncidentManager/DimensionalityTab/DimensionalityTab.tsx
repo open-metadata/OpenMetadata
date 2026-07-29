@@ -310,7 +310,7 @@ const DimensionalityTab = () => {
                 entityText: selectedDimension || '',
               })}
             </p>
-            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:ring-1 tw:ring-secondary">
+            <div className="tw:overflow-hidden tw:rounded-xl tw:shadow-xs tw:outline-1 tw:outline-secondary">
               <Table aria-label={selectedDimension ?? ''}>
                 <Table.Header columns={dimensionTableColumns}>
                   {(col) => (

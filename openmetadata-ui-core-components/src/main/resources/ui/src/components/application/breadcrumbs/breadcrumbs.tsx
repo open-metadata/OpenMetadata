@@ -104,7 +104,7 @@ const styles = sortCx({
   'button-white': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary',
     current:
-      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+      'tw:rounded-md tw:bg-primary tw:font-medium tw:text-secondary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
   },
   'button-gray': {
     link: 'tw:rounded-md tw:text-quaternary tw:hover:bg-secondary tw:hover:text-secondary',

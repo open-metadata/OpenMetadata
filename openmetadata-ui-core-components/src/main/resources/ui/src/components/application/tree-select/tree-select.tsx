@@ -285,11 +285,15 @@ export const TreeSelect = <T = unknown,>({
       <div className="tw:relative">
         <div
           className={cx(
-            'tw:relative tw:flex tw:w-full tw:cursor-text tw:flex-wrap tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset tw:transition tw:duration-100 tw:ease-linear',
+            // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+            // so rings thin/vanish in Safari when zoomed out.
+            'tw:relative tw:flex tw:w-full tw:cursor-text tw:flex-wrap tw:items-center tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
             sizes[size].root,
-            isOpen && 'tw:ring-2 tw:ring-brand',
-            isInvalid && 'tw:ring-error_subtle',
-            isInvalid && isOpen && 'tw:ring-2 tw:ring-error',
+            isOpen && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+            isInvalid && 'tw:outline-error_subtle',
+            isInvalid &&
+              isOpen &&
+              'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
             disabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle'
           )}
           data-testid={dataTestId}
@@ -303,7 +307,7 @@ export const TreeSelect = <T = unknown,>({
           {multiple &&
             selectedData.map((node) => (
               <span
-                className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:ring-1 tw:ring-primary tw:ring-inset"
+                className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                 key={node.id}>
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}
@@ -370,7 +374,7 @@ export const TreeSelect = <T = unknown,>({
         {isOpen && (
           <div
             className={cx(
-              'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:w-full tw:min-w-full tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt',
+              'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:w-full tw:min-w-full tw:rounded-lg tw:bg-primary tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
               popoverClassName
             )}
             data-testid={dataTestId ? `${dataTestId}-popover` : undefined}

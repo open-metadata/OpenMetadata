@@ -71,7 +71,7 @@ const ScheduleSelectionCards: FC<ScheduleSelectionCardsProps> = ({
                 />
               ) : (
                 <span
-                  className="tw:size-5 tw:rounded-full tw:ring-1 tw:ring-primary tw:ring-inset"
+                  className="tw:size-5 tw:rounded-full tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                   data-testid="unselected-indicator"
                 />
               )}

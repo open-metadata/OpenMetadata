@@ -21,6 +21,7 @@ import {
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
+import DataQualityProvider from './DataQualityProvider';
 
 const DATA_QUALITY_TEST_PATHS = {
   testCases: `/data-quality/${DataQualityPageTabs.TEST_CASES}`,
@@ -51,10 +52,13 @@ const renderDataQualityPage = (initialPath: string) =>
 // Mock navigation function
 const mockNavigate = jest.fn();
 
-// mock components
-jest.mock('./DataQualityProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+jest.mock('./DataQualityProvider', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  useDataQualityProvider: jest.fn().mockImplementation(() => ({})),
+}));
 jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
@@ -126,6 +130,16 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       testSuite: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      testCase: {
         Create: true,
         Delete: true,
         ViewAll: true,
@@ -238,6 +252,28 @@ describe('DataQualityPage', () => {
       expect(
         await screen.findByTestId('add-test-suite-btn')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('DataQualityContext create-action registration', () => {
+    it('should pass create handlers and permissions into DataQualityProvider', async () => {
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
+
+      await screen.findByTestId('data-insight-container');
+
+      await waitFor(() => {
+        const calls = (DataQualityProvider as unknown as jest.Mock).mock.calls;
+        const lastProps = calls[calls.length - 1][0];
+
+        expect(lastProps.createActions).toEqual(
+          expect.objectContaining({
+            canCreateTestCase: true,
+            canCreateBundleSuite: true,
+            onAddTestCase: expect.any(Function),
+            onAddBundleSuite: expect.any(Function),
+          })
+        );
+      });
     });
   });
 

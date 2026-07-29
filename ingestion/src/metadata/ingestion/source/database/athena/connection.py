@@ -39,7 +39,7 @@ from metadata.core.connections.test_connection.checks.database import (
     list_schemas,
     run_sql,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import chain_text
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
@@ -69,14 +69,9 @@ LIST_DATABASES = "athena:ListDatabases"
 LIST_TABLE_METADATA = "athena:ListTableMetadata"
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _all_of(*tokens: str) -> Matcher:
     """Match when every token is present in the error's cause-chain text."""
-    return lambda error: all(token in _message(error) for token in tokens)
+    return lambda error: all(token in chain_text(error) for token in tokens)
 
 
 _AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
@@ -90,7 +85,7 @@ def _authorization_error(error: BaseException) -> bool:
     fallback stands down for an authentication code, which AWS_ERRORS owns."""
     code = aws_error_code(error)
     return code in _AUTHORIZATION_CODES or (
-        code not in AWS_AUTHENTICATION_CODES and "not authorized" in _message(error)
+        code not in AWS_AUTHENTICATION_CODES and "not authorized" in chain_text(error)
     )
 
 
@@ -121,12 +116,6 @@ ATHENA_ERRORS = ErrorPack(
         fix="Athena could not write results to the staging location. Grant s3:PutObject on "
         "s3StagingDir, and if the bucket requires encryption, use a workgroup that sets "
         "server-side encryption on query results.",
-    ),
-    # By message, not by type: pyathena renders EndpointConnectionError into the
-    # SQLAlchemy error it raises, so the original type does not survive the chain.
-    when(Matchers.contains("could not connect to the endpoint")).diagnose(
-        "Cannot reach the AWS Athena endpoint",
-        fix="Check that awsRegion is correct and that the Athena endpoint is reachable from where ingestion runs.",
     ),
 ).including(AWS_ERRORS)
 

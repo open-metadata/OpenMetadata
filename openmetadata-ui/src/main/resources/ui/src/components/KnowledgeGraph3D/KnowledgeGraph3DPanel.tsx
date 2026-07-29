@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, CloseButton } from '@openmetadata/ui-core-components';
+import { CloseButton } from '@openmetadata/ui-core-components';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -23,7 +23,7 @@ import {
 import { KnowledgeGraph3DPanelProps } from './KnowledgeGraph3D.interface';
 import { colorFor } from './nodeCanvas';
 import { relationsOf, RELATION_LABEL_KEYS } from './rdfGraphAdapter';
-import { NodeType, RelationRow, SharedConceptRow } from './types';
+import { GraphNode3D, NodeType, RelationRow, SharedConceptRow } from './types';
 
 const MEMBER_ACCENT = '#26C281';
 const MAPPED_ACCENT = '#17B26A';
@@ -72,61 +72,82 @@ const Section: FC<SectionProps> = ({ accent, title, count, children }) => (
         className="tw:size-2 tw:rounded-sm"
         style={{ background: accent }}
       />
-      <span className="tw:text-xs tw:font-semibold tw:tracking-wide tw:text-quaternary tw:uppercase">
+      <span className="kg3d-panel-text-muted tw:text-xs tw:font-semibold tw:tracking-wide tw:uppercase">
         {title}
       </span>
-      <span className="tw:text-xs tw:text-quaternary">{count}</span>
+      <span className="kg3d-panel-text-subtle tw:text-xs">{count}</span>
     </div>
     {children}
   </div>
 );
 
-const RelationRowItem: FC<{ row: RelationRow }> = ({ row }) => {
+const RelationRowItem: FC<{
+  row: RelationRow;
+  onSelectNode: (node: GraphNode3D) => void;
+}> = ({ row, onSelectNode }) => {
   const { t } = useTranslation();
   const labelKey = RELATION_LABEL_KEYS[row.label];
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-2.5 tw:border-b tw:border-white/[0.08] tw:py-2">
+    <button
+      aria-label={`${t('label.focus-on-node')}: ${row.other.name}`}
+      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-center tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-white/[0.08] tw:py-2 tw:text-left"
+      data-testid={`kg3d-related-node-${row.other.id}`}
+      type="button"
+      onClick={() => onSelectNode(row.other)}>
       <span
         className="tw:size-2 tw:flex-none tw:rounded-full"
         style={{ background: colorFor(row.other.type) }}
       />
       <div className="tw:min-w-0">
-        <div className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary">
+        <div className="kg3d-panel-text-primary tw:truncate tw:text-sm tw:font-semibold">
           {row.other.name}
         </div>
-        <div className="tw:text-xs tw:text-tertiary">
+        <div className="kg3d-panel-text-subtle tw:text-xs">
           {row.direction === 'in' ? '← ' : ''}
           {labelKey ? t(labelKey) : row.label}
           {row.direction === 'out' ? ' →' : ''}
         </div>
       </div>
-    </div>
+    </button>
   );
 };
 
-const SharedRowItem: FC<{ row: SharedConceptRow }> = ({ row }) => (
-  <div className="tw:flex tw:items-start tw:gap-2.5 tw:border-b tw:border-white/[0.06] tw:py-1.5">
-    <span
-      className="tw:mt-1 tw:size-1.5 tw:flex-none tw:rounded-full"
-      style={{ background: colorFor('table') }}
-    />
-    <div>
-      <div className="tw:text-sm tw:font-medium tw:text-secondary">
-        {row.asset.name}
+const SharedRowItem: FC<{
+  row: SharedConceptRow;
+  onSelectNode: (node: GraphNode3D) => void;
+}> = ({ row, onSelectNode }) => {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      aria-label={`${t('label.focus-on-node')}: ${row.asset.name}`}
+      className="kg3d-panel-node-link tw:flex tw:w-full tw:items-start tw:gap-2.5 tw:border-x-0 tw:border-t-0 tw:border-b tw:border-white/[0.06] tw:py-1.5 tw:text-left"
+      data-testid={`kg3d-related-node-${row.asset.id}`}
+      type="button"
+      onClick={() => onSelectNode(row.asset)}>
+      <span
+        className="tw:mt-1 tw:size-1.5 tw:flex-none tw:rounded-full"
+        style={{ background: colorFor('table') }}
+      />
+      <div>
+        <div className="kg3d-panel-text-secondary tw:text-sm tw:font-medium">
+          {row.asset.name}
+        </div>
+        <div className="kg3d-panel-text-subtle tw:text-xs">
+          {row.via ? `${row.via} · ` : ''}
+          <span style={{ color: ONTOLOGY_PARTICLE_COLOR }}>{row.path}</span>
+        </div>
       </div>
-      <div className="tw:text-xs tw:text-tertiary">
-        {row.via ? `${row.via} · ` : ''}
-        <span style={{ color: ONTOLOGY_PARTICLE_COLOR }}>{row.path}</span>
-      </div>
-    </div>
-  </div>
-);
+    </button>
+  );
+};
 
 const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
   graph,
   node,
   onClose,
+  onSelectNode,
 }) => {
   const { t } = useTranslation();
   const relations = useMemo(
@@ -150,7 +171,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
     relations.members.length > 0;
 
   return (
-    <div className="dark-mode kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
+    <div className="kg3d-panel tw:absolute tw:top-3.5 tw:right-3.5 tw:bottom-3.5 tw:flex tw:w-80 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-white/10 tw:shadow-2xl">
       <div className="tw:border-b tw:border-white/[0.08] tw:p-4">
         <div className="tw:flex tw:items-start tw:gap-3">
           <span
@@ -158,16 +179,26 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             style={{ background: dotColor, boxShadow: `0 0 12px ${dotColor}` }}
           />
           <div className="tw:min-w-0 tw:flex-1">
-            <div className="tw:text-base tw:font-bold tw:break-words tw:text-primary">
+            <div className="kg3d-panel-text-primary tw:text-base tw:font-bold tw:break-words">
               {node.name}
             </div>
             <div className="tw:mt-1.5">
-              <Badge color="gray" size="sm" type="pill-color">
+              <span className="kg3d-panel-pill">
+                <span
+                  className="tw:size-1.5 tw:rounded-full"
+                  style={{ background: dotColor }}
+                />
                 {t(TYPE_LABEL_KEY[node.type])}
-              </Badge>
+              </span>
             </div>
           </div>
-          <CloseButton size="sm" onClick={onClose} />
+          <CloseButton
+            className="kg3d-panel-close"
+            label={t('label.close')}
+            size="xs"
+            theme="dark"
+            onClick={onClose}
+          />
         </div>
 
         {node.type === 'table' && (
@@ -205,6 +236,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
               <RelationRowItem
                 key={`${row.direction}-${row.label}-${row.other.id}`}
                 row={row}
+                onSelectNode={onSelectNode}
               />
             ))}
           </Section>
@@ -216,7 +248,11 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
             count={relations.shared.length}
             title={t('label.related-through-shared-concept-plural')}>
             {relations.shared.map((row) => (
-              <SharedRowItem key={row.asset.id} row={row} />
+              <SharedRowItem
+                key={row.asset.id}
+                row={row}
+                onSelectNode={onSelectNode}
+              />
             ))}
           </Section>
         )}
@@ -230,6 +266,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
               <RelationRowItem
                 key={`${row.direction}-${row.label}-${row.other.id}`}
                 row={row}
+                onSelectNode={onSelectNode}
               />
             ))}
           </Section>
@@ -244,6 +281,7 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
               <RelationRowItem
                 key={`${row.direction}-${row.label}-${row.other.id}`}
                 row={row}
+                onSelectNode={onSelectNode}
               />
             ))}
           </Section>
@@ -258,13 +296,14 @@ const KnowledgeGraph3DPanel: FC<KnowledgeGraph3DPanelProps> = ({
               <RelationRowItem
                 key={`${row.direction}-${row.label}-${row.other.id}`}
                 row={row}
+                onSelectNode={onSelectNode}
               />
             ))}
           </Section>
         )}
 
         {!hasBody && (
-          <div className="tw:py-6 tw:text-sm tw:text-tertiary">
+          <div className="kg3d-panel-text-subtle tw:py-6 tw:text-sm">
             {t('message.no-relation-at-level')}
           </div>
         )}

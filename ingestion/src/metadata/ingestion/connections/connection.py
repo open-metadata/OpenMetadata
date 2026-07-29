@@ -86,7 +86,11 @@ class BaseConnection(ABC, Generic[S, C]):
                 type(self).__name__,
             )
             self._was_closed = False
-        return self._get_client()
+        try:
+            return self._get_client()
+        except Exception:
+            self.close()
+            raise
 
     @abstractmethod
     def _get_client(self) -> C:

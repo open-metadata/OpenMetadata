@@ -116,7 +116,7 @@ function TeamAndUserSelectItemV2({
         className={[
           'tw:flex tw:min-h-9 tw:w-full tw:cursor-pointer tw:flex-wrap tw:items-center',
           'tw:gap-1.5 tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2',
-          'tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset',
+          'tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
         ].join(' ')}
         data-testid={`team-user-select-trigger-${destinationNumber}`}
         ref={triggerRef}

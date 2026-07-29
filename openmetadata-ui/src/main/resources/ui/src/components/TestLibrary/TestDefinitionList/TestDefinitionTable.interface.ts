@@ -25,4 +25,6 @@ export interface TestDefinitionTableProps {
   onEnableToggle: (record: TestDefinition, checked: boolean) => void;
   onEdit: (record: TestDefinition) => void;
   onDelete: (record: TestDefinition) => void;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }

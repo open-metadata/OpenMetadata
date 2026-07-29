@@ -155,7 +155,7 @@ const TagChip: FC<TagChipProps> = ({
         <ButtonUtility
           aria-label={t('label.remove')}
           className={classNames(
-            'tw:ml-1 tw:size-auto tw:shrink-0 tw:rounded-none tw:p-0 tw:text-inherit tw:shadow-none tw:ring-0 tw:hover:bg-transparent tw:hover:text-inherit',
+            'tw:ml-1 tw:size-auto tw:shrink-0 tw:rounded-none tw:p-0 tw:text-inherit tw:shadow-none tw:after:outline-0 tw:hover:bg-transparent tw:hover:text-inherit',
             sizeStyles[size].deleteIcon
           )}
           icon={XClose}

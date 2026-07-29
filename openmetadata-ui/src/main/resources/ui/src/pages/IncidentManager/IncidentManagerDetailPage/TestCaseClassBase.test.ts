@@ -80,6 +80,7 @@ describe('TestCaseClassBase', () => {
       'testDefinition',
       'owners',
       'incidentId',
+      'incidentStatus',
       'tags',
       'dataProducts',
       'domains',

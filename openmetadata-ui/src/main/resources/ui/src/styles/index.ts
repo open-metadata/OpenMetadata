@@ -24,6 +24,7 @@ import './components/badge.less';
 import './components/code-mirror.less';
 import './components/drawer.less';
 import './components/entity-version-time-line.less';
+import './components/form-hint-doc.less';
 import './components/glossary.less';
 import './components/menu.less';
 import './components/pagination.less';
@@ -46,4 +47,6 @@ import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
 import './temp.css';
+// Design tokens (--om-* aliases over globals.css). See ./tokens.css and ./specs/.
+import './tokens.css';
 import './tree.less';

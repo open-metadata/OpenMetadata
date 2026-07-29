@@ -1,5 +1,6 @@
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { borderAfter } from '@/utils/tailwindClasses';
 import {
   type FC,
   type PropsWithChildren,
@@ -20,7 +21,10 @@ import {
 export const styles = sortCx({
   common: {
     root: [
-      'tw:group/button-group tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:bg-primary tw:font-semibold tw:whitespace-nowrap tw:text-secondary tw:shadow-skeuomorphic tw:ring-1 tw:ring-primary tw:outline-brand tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
+      // `tw:relative` anchors the ::after border overlay (the element's own outline is
+      // reserved for the focus ring). No absolutely-positioned children, so it is inert.
+      'tw:group/button-group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:bg-primary tw:font-semibold tw:whitespace-nowrap tw:text-secondary tw:shadow-skeuomorphic tw:outline-brand tw:transition tw:duration-100 tw:ease-linear',
+      `${borderAfter} tw:after:outline-primary`,
       // Hover and focus styles
       'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
       // Disabled styles

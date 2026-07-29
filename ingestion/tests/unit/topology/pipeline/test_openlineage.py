@@ -233,6 +233,19 @@ class OpenLineageUnitTest(unittest.TestCase):
         ]
         self.open_lineage_source.client = self.mock_consumer
 
+    def test_close_disposes_the_owned_connection(self):
+        """close() defers to the base, which releases the connection the source
+        owns; the override only adds its own teardown on top."""
+        source = self.open_lineage_source
+        source._connection = MagicMock()
+        source.metadata = MagicMock()
+
+        source.close()
+
+        source._connection.close.assert_called_once()
+        source.metadata.compute_percentile.assert_called_once()
+        source.metadata.close.assert_called_once()
+
     def test_message_to_ol_event_valid_event(self):
         """Test conversion with a valid event."""
         result = message_to_open_lineage_event(VALID_EVENT)

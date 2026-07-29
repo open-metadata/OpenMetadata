@@ -26,6 +26,7 @@ export interface KnowledgeGraph3DProps {
 
 export interface KnowledgeGraph3DSceneProps {
   data: Graph3DData;
+  focusNodeId?: string;
   level: Level;
   gaps: boolean;
   selectedNodeId: string | null;
@@ -71,6 +72,7 @@ export interface KnowledgeGraph3DPanelProps {
   graph: Graph3DData;
   node: GraphNode3D;
   onClose: () => void;
+  onSelectNode: (node: GraphNode3D) => void;
 }
 
 export interface KnowledgeGraph3DEdgePanelProps {

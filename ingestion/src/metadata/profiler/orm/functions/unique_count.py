@@ -25,10 +25,6 @@ from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.orm.types.custom_image import CustomImage
 
-# Shared, dot-free alias for the grouped occurrence-count column. Both the outer
-# COUNTIF (BigQuery single-pass optimization) and the wrapping grouped CTE label
-# their integer occurrence-count with this name so the outer aggregate references
-# an integer column independent of the source column's SQL name or type. See #30152.
 UNIQUE_COUNT_VALUE_ALIAS = "value_count"
 
 
