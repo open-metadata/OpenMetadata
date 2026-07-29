@@ -1001,7 +1001,7 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if self._get_table_entity(table_fqn=parent_fqn):
+                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
                             upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
