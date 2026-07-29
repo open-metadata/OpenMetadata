@@ -84,6 +84,7 @@ from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
@@ -1928,12 +1929,12 @@ class DbtSource(DbtServiceSource):
         overridden when dbtUpdateDescriptions is enabled.
         """
         if description:
-            logger.debug(f"Patching DBT description for test case: {test_case.fullyQualifiedName.root}")
+            logger.debug(f"Patching DBT description for test case: {model_str(test_case.fullyQualifiedName)}")
             self.metadata.patch_description(
                 entity=TestCase,
                 source=test_case,
                 description=description,
-                force=self.source_config.dbtUpdateDescriptions,
+                force=bool(self.source_config.dbtUpdateDescriptions),
             )
 
     def add_dbt_test_result(self, dbt_test: dict):
