@@ -60,7 +60,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import TotalsDeclarer
-from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel
+from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel, DBTRun
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, datetime_to_ts
@@ -68,6 +68,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# dbt Cloud reports a run/step state both as text and as an integer code. The
+# integer codes are the ones documented for the v2 API - note that 1 is Queued,
+# not Success.
 STATUS_MAP = {
     "Success": StatusType.Successful.value,
     "Error": StatusType.Failed.value,
@@ -75,12 +78,21 @@ STATUS_MAP = {
     "Running": StatusType.Pending.value,
     "Starting": StatusType.Pending.value,
     "Queued": StatusType.Pending.value,
-    0: StatusType.Pending.value,
-    1: StatusType.Successful.value,
-    2: StatusType.Skipped.value,
+    1: StatusType.Pending.value,
+    2: StatusType.Pending.value,
+    3: StatusType.Pending.value,
+    10: StatusType.Successful.value,
+    20: StatusType.Failed.value,
+    30: StatusType.Skipped.value,
 }
 
 WILDCARD_SERVICE = "*"
+
+# A dbt Cloud job is modelled as this single task, against which every run is
+# reported. The job's run steps are the same clone/profile/deps/invoke sequence on
+# every pipeline, and materialising them as tasks costs an expanded API call per
+# job (~1.5s per run) while telling the user nothing the run status does not.
+DEFAULT_TASK_NAME = "Run"
 
 # Number of (job, run) observability entries kept in memory at once
 OBSERVABILITY_CACHE_SIZE = 100
@@ -195,38 +207,68 @@ class DbtcloudSource(PipelineServiceSource):
         )
         return self.metadata.get_by_name(entity=Table, fqn=table_fqn)
 
-    def _get_task_list(self, job_id: int) -> Optional[List[Task]]:  # noqa: UP006, UP045
+    def _fetch_runs(self, job_id: int) -> List[DBTRun]:  # noqa: UP006
         """
-        Method to collect all the tasks from dbt cloud job and return it in a task list
-        """
-        self.context.get().latest_run_id = None
-        self.context.get().latest_run = None
-        self.context.get().current_job_id = job_id
-        self.context.get().current_runs = None
-        try:
-            task_list: List[Task] = []  # noqa: UP006
-            runs_list: List = []  # noqa: UP006
-            # Consume generator and store runs for later use
-            for run in self.client.get_runs(job_id=job_id):
-                runs_list.append(run)
-                task = Task(
-                    name=str(run.id),
-                    sourceUrl=SourceUrl(run.href),
-                    startDate=str(run.started_at),
-                    endDate=str(run.finished_at),
-                )
-                task_list.append(task)
+        Runs backing the pipeline status time series.
 
-            if task_list:
-                self.context.get().latest_run_id = runs_list[0].id
-                # Store full run object and all runs for observability
-                self.context.get().latest_run = runs_list[0] if runs_list else None
-                self.context.get().current_runs = runs_list
-            return task_list or None  # noqa: TRY300
+        The lookback window is pushed to the API, so runs older than
+        ``statusLookbackDays`` are never transferred or paginated over. A job
+        that has not run inside the window still falls back to its most recent
+        run whatever its age, so a dormant pipeline keeps its last known
+        execution instead of showing none.
+        """
+        lookback_days = self.source_config.statusLookbackDays
+        runs = list(self.client.get_runs(job_id=job_id, lookback_days=lookback_days))
+        if not runs:
+            logger.debug(
+                f"No dbt Cloud run for job {job_id} within the last {lookback_days} day(s); "
+                f"falling back to the latest run"
+            )
+            latest_run = self.client.get_latest_run(job_id=job_id)
+            runs = [latest_run] if latest_run else []
+        return runs
+
+    def _load_runs(self, job: DBTJob) -> None:
+        """
+        Fetch the job's runs once and hold them on the context.
+
+        The status stage reports them and the lineage stage needs the newest run
+        id for its GraphQL query, so fetching here keeps both stages to a single
+        call per job.
+        """
+        ctx = self.context.get()
+        ctx.latest_run_id = None
+        ctx.latest_run = None
+        ctx.current_job_id = job.id
+        ctx.current_runs = None
+        try:
+            runs = self._fetch_runs(job_id=job.id)
+            if runs:
+                ctx.latest_run_id = runs[0].id
+                ctx.latest_run = runs[0]
+                ctx.current_runs = runs
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get tasks list due to : {exc}")
-        return None
+            logger.warning(f"Failed to get runs of job {job.name} due to : {exc}")
+
+    @staticmethod
+    def _get_task_list(job_url: str) -> List[Task]:  # noqa: UP006
+        """
+        The job's single task, carrying its whole run history.
+
+        Deriving tasks from the job's run steps would need a step-expanded API
+        call per job and yields the same clone/profile/deps/invoke sequence for
+        every pipeline. Reporting each run against one task keeps the executions
+        visible instead: the UI builds the Executions tab purely out of task
+        statuses, so a run recorded at pipeline level alone renders as nothing.
+        """
+        return [
+            Task(
+                name=DEFAULT_TASK_NAME,
+                displayName=DEFAULT_TASK_NAME,
+                sourceUrl=SourceUrl(job_url) if job_url else None,
+            )
+        ]
 
     def yield_pipeline(self, pipeline_details: DBTJob) -> Iterable[Either[CreatePipelineRequest]]:
         """
@@ -239,11 +281,13 @@ class DbtcloudSource(PipelineServiceSource):
                 f"{pipeline_details.project_id}/jobs/{pipeline_details.id}"
             )
 
+            self._load_runs(pipeline_details)
+
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.name),
                 description=Markdown(pipeline_details.description),
                 sourceUrl=SourceUrl(connection_url),
-                tasks=self._get_task_list(job_id=pipeline_details.id),
+                tasks=self._get_task_list(job_url=connection_url),
                 scheduleInterval=(str(pipeline_details.schedule.cron) if pipeline_details.schedule else None),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
@@ -518,21 +562,29 @@ class DbtcloudSource(PipelineServiceSource):
                 logger.warning(f"Failed to parse timestamp '{timestamp_str}': {exc}")
                 return None
 
-    def _map_run_status(self, status: Any) -> str:
+    @staticmethod
+    def _map_run_status(status: Any) -> str:
         """Map dbt Cloud run status to OpenMetadata StatusType."""
-        if status is None:
-            return StatusType.Pending.value
-        status_map = {
-            "Success": StatusType.Successful.value,
-            "Error": StatusType.Failed.value,
-            "Cancelled": StatusType.Skipped.value,
-            "Running": StatusType.Pending.value,
-            "Queued": StatusType.Pending.value,
-            0: StatusType.Pending.value,
-            1: StatusType.Successful.value,
-            2: StatusType.Skipped.value,
-        }
-        return status_map.get(status, StatusType.Pending.value)
+        return STATUS_MAP.get(status, StatusType.Pending.value)
+
+    def _build_task_statuses(self, run: DBTRun) -> List[TaskStatus]:  # noqa: UP006
+        """
+        The run's outcome, reported against the pipeline's single task.
+
+        Always one entry: the Executions tab iterates ``taskStatus`` and never
+        reads the pipeline level ``executionStatus``, so a run reported without
+        one is invisible in the UI - and ``PipelineRepository.addPipelineStatus``
+        iterates the list without a null check, answering HTTP 500 on a null.
+        """
+        return [
+            TaskStatus(
+                name=DEFAULT_TASK_NAME,
+                executionStatus=self._map_run_status(run.state or run.status),
+                startTime=self._parse_timestamp(run.started_at) if run.started_at else None,
+                endTime=self._parse_timestamp(run.finished_at) if run.finished_at else None,
+                logLink=run.href,
+            )
+        ]
 
     def _build_observability_from_run(
         self,
@@ -650,28 +702,23 @@ class DbtcloudSource(PipelineServiceSource):
             # using cached runs from context instead of making another API call
             runs = ctx.current_runs if hasattr(ctx, "current_runs") and ctx.current_runs else None
             if not runs:
-                runs = self.client.get_runs(job_id=pipeline_details.id)
+                runs = self._fetch_runs(job_id=pipeline_details.id)
 
-            for task in runs or []:
-                task_name = str(task.id)
-                task_status = TaskStatus(
-                    name=task_name,
-                    executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
-                    startTime=self._parse_timestamp(task.started_at) if task.started_at else None,
-                    endTime=self._parse_timestamp(task.finished_at) if task.finished_at else None,
-                )
+            for run in runs or []:
+                start_time = self._parse_timestamp(run.started_at) if run.started_at else None
+                end_time = self._parse_timestamp(run.finished_at) if run.finished_at else None
 
-                status_timestamp = task_status.endTime if task_status.endTime else task_status.startTime
+                status_timestamp = end_time if end_time else start_time
                 if status_timestamp is None:
                     logger.debug(
-                        f"Skipping pipeline status for task '{task_name}' in pipeline {pipeline_fqn}: "
+                        f"Skipping pipeline status for run '{run.id}' in pipeline {pipeline_fqn}: "
                         f"run has no start or finish timestamp"
                     )
                     continue
 
                 pipeline_status = PipelineStatus(
-                    executionStatus=task_status.executionStatus,
-                    taskStatus=[task_status],
+                    executionStatus=self._map_run_status(run.state or run.status),
+                    taskStatus=self._build_task_statuses(run),
                     timestamp=status_timestamp,
                 )
 

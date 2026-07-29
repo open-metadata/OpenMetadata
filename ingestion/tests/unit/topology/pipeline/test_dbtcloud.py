@@ -14,7 +14,7 @@ Test dbt cloud using the topology
 
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -52,7 +52,9 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.dbtcloud.client import build_created_at_range
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import (
+    DEFAULT_TASK_NAME,
     OBSERVABILITY_CACHE_SIZE,
     DbtcloudSource,
 )
@@ -93,9 +95,9 @@ MOCK_JOB_RESULT = json.loads(
         "created_at": "2024-05-27T10:42:10.111442+00:00",
         "updated_at": "2024-05-27T10:42:10.111459+00:00",
         "execute_steps": [
-          "dbt build",
           "dbt seed",
-          "dbt run"
+          "dbt run",
+          "dbt test"
         ],
         "state": 1,
         "deactivated": false,
@@ -402,6 +404,21 @@ MOCK_QUERY_RESULT = json.loads(
 """
 )
 
+MOCK_JOB_URL = "https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/jobs/70403103936332"
+
+
+def dbt_run(run_id, state="Success", status=10, finished_at="2024-05-28 10:42:52.622408+00:00"):
+    """A dbt Cloud run as the runs endpoint returns it."""
+    return DBTRun(
+        id=run_id,
+        status=status,
+        state=state,
+        href=f"https://abc12.us1.dbt.com/runs/{run_id}/",
+        started_at="2024-05-27 10:42:20.621788+00:00",
+        finished_at=finished_at,
+    )
+
+
 mock_dbtcloud_config = {
     "source": {
         "type": "dbtcloud",
@@ -479,21 +496,10 @@ MOCK_PIPELINE = Pipeline(
     ),
     tasks=[
         Task(
-            name="70403110257794",
-            sourceUrl=SourceUrl(
-                root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403110257794/"
-            ),
-            startDate="2024-05-27 10:42:20.621788+00:00",
-            endDate="2024-05-28 10:42:52.622408+00:00",
-        ),
-        Task(
-            name="70403111615088",
-            sourceUrl=SourceUrl(
-                root="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403111615088/"
-            ),
-            startDate="None",
-            endDate="None",
-        ),
+            name=DEFAULT_TASK_NAME,
+            displayName=DEFAULT_TASK_NAME,
+            sourceUrl=SourceUrl(root=MOCK_JOB_URL),
+        )
     ],
     service=EntityReference(id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"),
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
@@ -620,6 +626,120 @@ class DBTCloudUnitTest(TestCase):
         with patch.object(client.client, "get", side_effect=[MOCK_JOB_RESULT, Exception("boom")]):
             assert client.get_jobs_count() == 2
 
+    def test_build_created_at_range_spans_the_lookback_window(self):
+        """
+        dbt Cloud rejects an open-ended filter, so the window is a two-element
+        JSON array whose end sits past the newest run.
+        """
+        window = json.loads(build_created_at_range(7))
+        start = datetime.strptime(window[0], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        end = datetime.strptime(window[1], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+
+        assert len(window) == 2
+        assert abs((now - start).days - 7) <= 1
+        assert end > now
+
+    def test_get_runs_sends_the_lookback_window(self):
+        """
+        The window has to be pushed to the API: older runs must never be
+        transferred or paginated over.
+        """
+        with patch.object(self.dbtcloud.client.client, "get", return_value=MOCK_RUN_RESULT) as get:
+            list(self.dbtcloud.client.get_runs(job_id=1, lookback_days=3))
+
+        query_params = get.call_args.kwargs["data"]
+        window = json.loads(query_params["created_at__range"])
+        start = datetime.strptime(window[0], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
+        assert abs((datetime.now(timezone.utc) - start).days - 3) <= 1
+
+    def test_get_runs_without_lookback_sends_no_window(self):
+        with patch.object(self.dbtcloud.client.client, "get", return_value=MOCK_RUN_RESULT) as get:
+            list(self.dbtcloud.client.get_runs(job_id=1))
+
+        assert "created_at__range" not in get.call_args.kwargs["data"]
+
+    def test_fetch_runs_applies_configured_lookback(self):
+        self.dbtcloud.source_config.statusLookbackDays = 5
+
+        with (
+            patch.object(self.dbtcloud.client, "get_runs", return_value=iter([])) as get_runs,
+            patch.object(self.dbtcloud.client, "get_latest_run", return_value=None),
+        ):
+            self.dbtcloud._fetch_runs(job_id=42)
+
+        assert get_runs.call_args.kwargs["lookback_days"] == 5
+
+    def test_fetch_runs_reports_every_run_in_the_window(self):
+        """
+        The window is fetched in one plain call - no run is expanded, so cost is
+        one request per job whatever the run volume.
+        """
+        window = [dbt_run(1), dbt_run(2, state="Error", status=20), dbt_run(3)]
+
+        with (
+            patch.object(self.dbtcloud.client, "get_runs", return_value=iter(window)) as get_runs,
+            patch.object(self.dbtcloud.client, "get_latest_run") as get_latest_run,
+        ):
+            runs = self.dbtcloud._fetch_runs(job_id=42)
+
+        assert [run.id for run in runs] == [1, 2, 3]
+        assert get_runs.call_count == 1
+        get_latest_run.assert_not_called()
+
+    def test_fetch_runs_falls_back_to_latest_run_for_a_dormant_job(self):
+        """
+        A job that has not run inside the window would otherwise show no
+        execution at all, so its last known run is kept whatever its age.
+        """
+        latest_run = dbt_run(999)
+
+        with (
+            patch.object(self.dbtcloud.client, "get_runs", return_value=iter([])),
+            patch.object(self.dbtcloud.client, "get_latest_run", return_value=latest_run) as get_latest_run,
+        ):
+            runs = self.dbtcloud._fetch_runs(job_id=42)
+
+        assert runs == [latest_run]
+        assert get_latest_run.call_args.kwargs["job_id"] == 42
+
+    def test_pipeline_carries_one_default_task(self):
+        """
+        A dbt Cloud job is one task. Its run steps are the same
+        clone/profile/deps/invoke sequence on every pipeline and would cost an
+        expanded API call per job to materialise.
+        """
+        tasks = self.dbtcloud._get_task_list(job_url=MOCK_JOB_URL)
+
+        assert [task.name for task in tasks] == [DEFAULT_TASK_NAME]
+        assert tasks[0].sourceUrl.root == MOCK_JOB_URL
+        assert not tasks[0].downstreamTasks
+
+    def test_load_runs_holds_the_window_on_the_context(self):
+        # Other tests seed ctx.__dict__["latest_run_id"], which permanently shadows
+        # the pydantic extra the source writes to on the shared context instance.
+        for key in ("latest_run_id", "latest_run", "current_runs"):
+            self.dbtcloud.context.get().__dict__.pop(key, None)
+
+        with patch.object(self.dbtcloud.client, "get_runs", return_value=iter([dbt_run(999), dbt_run(998)])):
+            self.dbtcloud._load_runs(EXPECTED_JOB_DETAILS)
+
+        ctx = self.dbtcloud.context.get()
+        assert ctx.latest_run_id == 999
+        assert [run.id for run in ctx.current_runs] == [999, 998]
+
+    def test_load_runs_does_not_fail_the_pipeline(self):
+        """A run fetch that blows up must not stop the pipeline being created."""
+        for key in ("latest_run_id", "current_runs"):
+            self.dbtcloud.context.get().__dict__.pop(key, None)
+
+        with patch.object(self.dbtcloud.client, "get_runs", side_effect=Exception("boom")):
+            self.dbtcloud._load_runs(EXPECTED_JOB_DETAILS)
+
+        assert self.dbtcloud.context.get().latest_run_id is None
+        assert self.dbtcloud.context.get().current_runs is None
+
     def test_pipeline_name(self):
         assert self.dbtcloud.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME
 
@@ -631,7 +751,12 @@ class DBTCloudUnitTest(TestCase):
         """
         Test pipeline creation
         """
-        pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right  # noqa: RUF015
+        # Other tests seed ctx.__dict__["latest_run_id"], which permanently shadows
+        # the pydantic extra the source writes to on the shared context instance.
+        self.dbtcloud.context.get().__dict__.pop("latest_run_id", None)
+
+        with patch.object(self.dbtcloud.client, "get_runs", return_value=iter([dbt_run(111)])) as get_runs:
+            pipeline = list(self.dbtcloud.yield_pipeline(EXPECTED_JOB_DETAILS))[0].right  # noqa: RUF015
 
         # Compare individual fields instead of entire objects
         self.assertEqual(pipeline.name, EXPECTED_CREATED_PIPELINES.name)
@@ -639,6 +764,10 @@ class DBTCloudUnitTest(TestCase):
         self.assertEqual(pipeline.sourceUrl, EXPECTED_CREATED_PIPELINES.sourceUrl)
         self.assertEqual(pipeline.scheduleInterval, EXPECTED_CREATED_PIPELINES.scheduleInterval)
         self.assertEqual(pipeline.service, EXPECTED_CREATED_PIPELINES.service)
+        self.assertEqual([task.name for task in pipeline.tasks], [DEFAULT_TASK_NAME])
+        # one run fetch per job, shared with the status stage through the context
+        self.assertEqual(get_runs.call_count, 1)
+        self.assertEqual(self.dbtcloud.context.get().latest_run_id, 111)
 
     def test_yield_pipeline_usage(self):
         """
@@ -1167,25 +1296,17 @@ class DBTCloudUnitTest(TestCase):
         (which would cause the server to reject the run id with "Invalid task
         name").
         """
-        current_run = DBTRun(
-            id=111,
-            status=1,
-            state="Success",
-            started_at="2024-05-27 10:42:20.621788+00:00",
-            finished_at="2024-05-28 10:42:52.622408+00:00",
-        )
-
         ctx = self.dbtcloud.context.get()
         ctx.__dict__["pipeline"] = "Current job"
         ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
         ctx.__dict__["pipeline_fqn"] = "dbtcloud_pipeline_test.Previous job"
-        ctx.__dict__["current_runs"] = [current_run]
+        ctx.__dict__["current_runs"] = [dbt_run(111)]
 
         statuses = list(self.dbtcloud.yield_pipeline_status(EXPECTED_JOB_DETAILS))
 
         self.assertEqual(len(statuses), 1)
         self.assertEqual(statuses[0].right.pipeline_fqn, "dbtcloud_pipeline_test.Current job")
-        self.assertEqual(statuses[0].right.pipeline_status.taskStatus[0].name, "111")
+        self.assertEqual(statuses[0].right.pipeline_status.taskStatus[0].name, DEFAULT_TASK_NAME)
 
     def test_yield_pipeline_status_skips_runs_without_timestamp(self):
         """
@@ -1193,16 +1314,10 @@ class DBTCloudUnitTest(TestCase):
         and PipelineStatus.timestamp is a required integer - such runs must be
         skipped instead of raising a pydantic ValidationError.
         """
-        finished_run = DBTRun(
-            id=111,
-            status=1,
-            state="Success",
-            started_at="2024-05-27 10:42:20.621788+00:00",
-            finished_at="2024-05-28 10:42:52.622408+00:00",
-        )
+        finished_run = dbt_run(111)
         queued_run = DBTRun(
             id=222,
-            status=0,
+            status=1,
             state="Queued",
             started_at=None,
             finished_at=None,
@@ -1217,9 +1332,50 @@ class DBTCloudUnitTest(TestCase):
 
         self.assertEqual(len(statuses), 1)
         pipeline_status = statuses[0].right.pipeline_status
-        self.assertEqual(pipeline_status.taskStatus[0].name, "111")
+        self.assertEqual(pipeline_status.taskStatus[0].name, DEFAULT_TASK_NAME)
         self.assertIsNotNone(pipeline_status.timestamp)
-        self.assertEqual(pipeline_status.timestamp.root, pipeline_status.taskStatus[0].endTime.root)
+        self.assertEqual(pipeline_status.timestamp.root, self.dbtcloud._parse_timestamp(finished_run.finished_at).root)
+
+    def test_every_run_reports_its_own_status_against_the_default_task(self):
+        """
+        The Executions tab is rendered from taskStatus alone - the pipeline level
+        executionStatus is never read by the UI. So every run in the window must
+        carry a TaskStatus of its own, or a failed run silently disappears from
+        the execution history and the tab reads all-Success.
+        """
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["pipeline"] = "Current job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = [
+            dbt_run(111, finished_at="2024-05-28 10:42:52.622408+00:00"),
+            dbt_run(222, state="Error", status=20, finished_at="2024-05-27 10:42:52.622408+00:00"),
+            dbt_run(333, state="Cancelled", status=30, finished_at="2024-05-26 10:42:52.622408+00:00"),
+        ]
+
+        statuses = [
+            either.right.pipeline_status for either in self.dbtcloud.yield_pipeline_status(EXPECTED_JOB_DETAILS)
+        ]
+
+        assert [status.executionStatus.value for status in statuses] == ["Successful", "Failed", "Skipped"]
+        assert [[task.name for task in status.taskStatus] for status in statuses] == [[DEFAULT_TASK_NAME]] * 3
+        assert [status.taskStatus[0].executionStatus.value for status in statuses] == [
+            "Successful",
+            "Failed",
+            "Skipped",
+        ]
+        assert {status.timestamp.root for status in statuses} == {
+            self.dbtcloud._parse_timestamp(run.finished_at).root for run in ctx.current_runs
+        }
+
+    def test_task_status_links_back_to_the_dbt_cloud_run(self):
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["pipeline"] = "Current job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = [dbt_run(444)]
+
+        pipeline_status = next(iter(self.dbtcloud.yield_pipeline_status(EXPECTED_JOB_DETAILS))).right.pipeline_status
+
+        assert str(pipeline_status.taskStatus[0].logLink) == "https://abc12.us1.dbt.com/runs/444/"
 
     def test_get_table_pipeline_observability_with_context(self):
         """
@@ -1427,10 +1583,14 @@ class DBTCloudUnitTest(TestCase):
         self.assertEqual(self.dbtcloud._map_run_status("Running"), "Pending")
         self.assertEqual(self.dbtcloud._map_run_status("Queued"), "Pending")
 
-        # Test numeric statuses
-        self.assertEqual(self.dbtcloud._map_run_status(0), "Pending")
-        self.assertEqual(self.dbtcloud._map_run_status(1), "Successful")
-        self.assertEqual(self.dbtcloud._map_run_status(2), "Skipped")
+        # dbt Cloud's documented integer codes: 1 Queued, 2 Starting, 3 Running,
+        # 10 Success, 20 Error, 30 Cancelled. 1 is *not* Success.
+        self.assertEqual(self.dbtcloud._map_run_status(1), "Pending")
+        self.assertEqual(self.dbtcloud._map_run_status(2), "Pending")
+        self.assertEqual(self.dbtcloud._map_run_status(3), "Pending")
+        self.assertEqual(self.dbtcloud._map_run_status(10), "Successful")
+        self.assertEqual(self.dbtcloud._map_run_status(20), "Failed")
+        self.assertEqual(self.dbtcloud._map_run_status(30), "Skipped")
 
         # Test None and unknown statuses
         self.assertEqual(self.dbtcloud._map_run_status(None), "Pending")
