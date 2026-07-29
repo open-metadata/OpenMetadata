@@ -16,20 +16,21 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 
 class SettingsCacheDefaultCaseTest {
 
+  // Any settings type handled by the loader's default branch, i.e. one without its own case
+  private static final SettingsType SETTINGS_TYPE = SettingsType.WORKFLOW_SETTINGS;
+
   @AfterEach
   void cleanup() {
-    SettingsCache.CACHE.invalidate(SettingsType.MCP_CONFIGURATION.toString());
+    SettingsCache.CACHE.invalidate(SETTINGS_TYPE.toString());
   }
 
   @Test
   void testDefaultCaseWithNonNullResult() throws Exception {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SystemRepository mockSystemRepo = mock(SystemRepository.class);
-      String key = SettingsType.MCP_CONFIGURATION.toString();
+      String key = SETTINGS_TYPE.toString();
       Settings settings =
-          new Settings()
-              .withConfigType(SettingsType.MCP_CONFIGURATION)
-              .withConfigValue("test-value");
+          new Settings().withConfigType(SETTINGS_TYPE).withConfigValue("test-value");
       when(mockSystemRepo.getConfigWithKey(key)).thenReturn(settings);
       entityMock.when(Entity::getSystemRepository).thenReturn(mockSystemRepo);
 
@@ -45,7 +46,7 @@ class SettingsCacheDefaultCaseTest {
   void testDefaultCaseWithNullResult() {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SystemRepository mockSystemRepo = mock(SystemRepository.class);
-      String key = SettingsType.MCP_CONFIGURATION.toString();
+      String key = SETTINGS_TYPE.toString();
       when(mockSystemRepo.getConfigWithKey(key)).thenReturn(null);
       entityMock.when(Entity::getSystemRepository).thenReturn(mockSystemRepo);
 

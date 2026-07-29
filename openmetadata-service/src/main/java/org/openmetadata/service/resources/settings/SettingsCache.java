@@ -47,6 +47,7 @@ import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -290,14 +291,14 @@ public class SettingsCache {
     Settings storedMcpConfig =
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
-      org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration();
-      if (mcpConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
+      // YAML only overrides the defaults, so the setting is seeded even when it is absent there
+      MCPConfiguration mcpConfig = applicationConfig.getMcpConfiguration();
+      if (mcpConfig == null) {
+        mcpConfig = getDefaultMcpConfiguration();
       }
+      Settings setting =
+          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     Settings storedScimConfig =
@@ -560,6 +561,10 @@ public class SettingsCache {
     }
   }
 
+  private static MCPConfiguration getDefaultMcpConfiguration() {
+    return new MCPConfiguration();
+  }
+
   private static SmtpSettings getDefaultSmtpSettings() {
     return new SmtpSettings()
         .withPassword(StringUtils.EMPTY)
@@ -640,6 +645,15 @@ public class SettingsCache {
                 .withConfigValue(getDefaultSmtpSettings());
           }
           LOG.info("Loaded Email Setting");
+        }
+        case MCP_CONFIGURATION -> {
+          fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
+          if (fetchedSettings == null) {
+            return new Settings()
+                .withConfigType(MCP_CONFIGURATION)
+                .withConfigValue(getDefaultMcpConfiguration());
+          }
+          LOG.info("Loaded MCP Configuration");
         }
         case OPEN_METADATA_BASE_URL_CONFIGURATION -> fetchedSettings =
             Entity.getSystemRepository().getOMBaseUrlConfigInternal();
