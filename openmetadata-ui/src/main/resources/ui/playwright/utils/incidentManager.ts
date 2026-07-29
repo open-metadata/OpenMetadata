@@ -352,9 +352,11 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   };
 
   const previousRun = await fetchBaselineRun();
+  // Either signal alone is enough: `runId` is optional in the schema, so a
+  // conjunction deadlocks the poll when neither record carries one.
   const isNewRun = (latestRun: PipelineStatus) =>
-    latestRun.runId !== previousRun?.runId &&
-    (latestRun.timestamp ?? 0) >= (previousRun?.timestamp ?? 0);
+    latestRun.runId !== previousRun?.runId ||
+    (latestRun.timestamp ?? 0) > (previousRun?.timestamp ?? 0);
 
   // The orchestrator rejects the trigger until a freshly deployed workflow is
   // registered, so retry until it is accepted rather than sleeping for a
