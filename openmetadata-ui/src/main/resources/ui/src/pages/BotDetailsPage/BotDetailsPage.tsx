@@ -104,7 +104,7 @@ const BotDetailsPage = () => {
           ...response,
         }));
       } else {
-        throw t('message.unexpected-error');
+        throw t('server.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -120,7 +120,7 @@ const BotDetailsPage = () => {
       if (response) {
         setBotUserData((prevData) => ({ ...prevData, ...response }));
       } else {
-        throw t('message.unexpected-error');
+        throw t('server.unexpected-error');
       }
     } catch (error) {
       showErrorToast(error as AxiosError);

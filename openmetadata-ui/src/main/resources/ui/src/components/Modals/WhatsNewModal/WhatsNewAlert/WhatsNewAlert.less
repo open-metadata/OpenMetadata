@@ -18,11 +18,11 @@
   position: fixed;
   bottom: 32px;
   right: 32px;
-  z-index: 2000;
+  z-index: var(--om-z-2000);
 
   .whats-new-alert-card {
     border-radius: @border-rad-lg;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 24px var(--om-legacy-color-0-0-0-0-1);
     overflow: hidden;
     min-width: 420px;
     max-width: 578px;
@@ -33,12 +33,12 @@
   }
 
   .whats-new-alert-left {
-    background: linear-gradient(45deg, #0017e4 0%, #3793ff 100%);
+    background: linear-gradient(45deg, var(--om-legacy-color-0017e4) 0%, var(--om-legacy-color-3793ff) 100%);
 
     color: var(--tw-color-text-white);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--om-space-8);
     justify-content: center;
     min-width: 140px;
     padding: @size-lg 0;
@@ -51,35 +51,35 @@
 }
 
 .whats-new-alert-right {
-  padding: 16px 16px 16px 20px;
+  padding: var(--om-space-16) var(--om-space-16) var(--om-space-16) var(--om-space-20);
 
   .whats-new-alert-subtext {
     color: @text-color-tertiary;
-    font-weight: 400;
+    font-weight: var(--om-font-weight-regular);
   }
 }
 
 .whats-new-alert-close.anticon {
-  padding: 16px;
+  padding: var(--om-space-16);
   color: @grey-400;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
 }
 
 .whats-new-alert-version {
   .text-lg();
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
 
   color: @white !important;
 }
 
 .whats-new-alert-links {
   display: flex;
-  gap: 32px;
+  gap: var(--om-space-32);
 
   a.ant-btn {
     height: 28px;
     line-height: 28px;
-    color: #004eeb;
-    font-weight: 600;
+    color: var(--om-color-blue-dark-700);
+    font-weight: var(--om-font-weight-semibold);
   }
 }

@@ -17,7 +17,7 @@
 .reserve-right-sidebar {
   .import-footer {
     // Right side padding 20 + 64 width of sidebar
-    padding-right: 84px;
+    padding-right: var(--om-space-84);
   }
 }
 
@@ -30,14 +30,14 @@
 .bulk-edit-custom-property-select-dropdown.ant-select-dropdown {
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14);
+  border-radius: var(--om-radius-10);
+  box-shadow: 0 12px 32px var(--om-legacy-color-16-24-40-0-14);
   isolation: isolate;
   opacity: 1 !important;
   overflow: hidden;
-  padding: 6px;
+  padding: var(--om-space-6);
   transform: none !important;
-  z-index: 1500;
+  z-index: var(--om-z-1500);
 
   &::before {
     background: @white;
@@ -45,25 +45,25 @@
     content: '';
     inset: 0;
     position: absolute;
-    z-index: 0;
+    z-index: var(--om-z-0);
   }
 
   .rc-virtual-list {
     background: @white;
     position: relative;
-    z-index: 1;
+    z-index: var(--om-z-1);
   }
 
   .ant-select-item {
     align-items: center;
     background: @white;
-    border-radius: 6px;
+    border-radius: var(--om-radius-md);
     color: @grey-900;
     display: flex;
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     min-height: 38px;
-    padding: 8px 10px;
+    padding: var(--om-space-8) var(--om-space-10);
   }
 
   .ant-select-item-option-content {
@@ -86,7 +86,7 @@
   display: flex;
   flex-direction: column;
   font-family: @font-family;
-  gap: 20px;
+  gap: var(--om-space-20);
   min-height: calc(100vh - @om-navbar-height);
 }
 
@@ -95,10 +95,10 @@
   background: @white;
   border-bottom: 1px solid @grey-15;
   display: flex;
-  gap: 16px;
+  gap: var(--om-space-16);
   justify-content: space-between;
-  margin: 0 -24px;
-  padding: 12px 32px;
+  margin: 0 calc(-1 * var(--om-space-24));
+  padding: var(--om-space-12) var(--om-space-32);
 }
 
 .csv-workflow-title-block {
@@ -111,10 +111,10 @@
   color: @grey-600;
   display: flex;
   flex-wrap: wrap;
-  font-size: 12px;
-  gap: 6px;
+  font-size: var(--om-font-size-xs);
+  gap: var(--om-space-6);
   line-height: 18px;
-  margin-bottom: 2px;
+  margin-bottom: var(--om-space-2);
 
   a,
   span {
@@ -130,7 +130,7 @@
 .csv-workflow-breadcrumb-item {
   align-items: center;
   display: inline-flex;
-  gap: 6px;
+  gap: var(--om-space-6);
 }
 
 .csv-workflow-breadcrumb-separator {
@@ -141,12 +141,12 @@
   align-items: baseline;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--om-space-10);
 }
 
 .csv-workflow-title {
   color: @grey-900;
-  font-size: 16px;
+  font-size: var(--om-font-size-md);
   font-weight: @font-semibold;
   letter-spacing: -0.005em;
   line-height: 22px;
@@ -155,7 +155,7 @@
 
 .csv-workflow-description {
   color: @grey-600;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   line-height: 18px;
 }
 
@@ -163,7 +163,7 @@
   align-items: center;
   display: flex;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: var(--om-space-8);
   justify-content: flex-end;
   min-width: 340px;
 }
@@ -171,14 +171,14 @@
 .csv-workflow-step {
   align-items: center;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   color: @grey-600;
   display: inline-flex;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-weight: @font-medium;
-  gap: 6px;
+  gap: var(--om-space-6);
   line-height: 18px;
-  padding: 5px 10px 5px 6px;
+  padding: var(--om-space-5) var(--om-space-10) var(--om-space-5) var(--om-space-6);
   white-space: nowrap;
 
   &.active {
@@ -198,7 +198,7 @@
   border-radius: 50%;
   color: @grey-600;
   display: inline-flex;
-  font-size: 10px;
+  font-size: var(--om-font-size-10);
   font-weight: @font-semibold;
   height: 16px;
   justify-content: center;
@@ -227,9 +227,9 @@
 .csv-import-card {
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   box-shadow: @box-shadow-card-subtle;
-  padding: 24px;
+  padding: var(--om-space-24);
 }
 
 .bulk-edit-card {
@@ -239,7 +239,7 @@
 .csv-import-stack {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--om-space-20);
   width: 100%;
 }
 
@@ -256,18 +256,18 @@
   align-items: center;
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   box-shadow: @box-shadow-card-subtle;
   display: flex;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: var(--om-space-12);
+  padding: var(--om-space-14) var(--om-space-16);
   width: 100%;
 }
 
 .csv-selected-file-icon {
   align-items: center;
   background: @primary-50;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   color: @primary-6;
   display: flex;
   flex-shrink: 0;
@@ -280,13 +280,13 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--om-space-2);
   min-width: 0;
 }
 
 .csv-selected-file-name {
   color: @grey-900;
-  font-size: 15px;
+  font-size: var(--om-font-size-15);
   font-weight: @font-semibold;
   line-height: 22px;
   overflow: hidden;
@@ -296,7 +296,7 @@
 
 .csv-selected-file-meta {
   color: @grey-600;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   line-height: 18px;
 }
 
@@ -304,7 +304,7 @@
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   color: @grey-500;
   cursor: pointer;
   display: inline-flex;
@@ -325,19 +325,19 @@
   display: flex;
   justify-content: center;
   min-height: calc(100vh - 360px);
-  padding: 48px 0;
+  padding: var(--om-space-48) 0;
 }
 
 .csv-import-processing-card {
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 14px;
+  border-radius: var(--om-radius-14);
   box-shadow: @box-shadow-card-subtle;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: var(--om-space-22);
   max-width: 520px;
-  padding: 44px 48px;
+  padding: var(--om-space-44) var(--om-space-48);
   width: 100%;
 }
 
@@ -349,16 +349,16 @@
 .csv-processing-stage-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--om-space-14);
 }
 
 .csv-processing-stage {
   align-items: center;
   color: @grey-600;
   display: flex;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-weight: @font-medium;
-  gap: 12px;
+  gap: var(--om-space-12);
   line-height: 20px;
 }
 
@@ -404,28 +404,28 @@
   bottom: 0;
   flex-shrink: 0;
   display: flex;
-  gap: 10px;
+  gap: var(--om-space-10);
   justify-content: flex-end;
-  margin: auto -24px 0;
-  padding: 16px 24px;
+  margin: auto calc(-1 * var(--om-space-24)) 0;
+  padding: var(--om-space-16) var(--om-space-24);
   position: sticky;
-  z-index: 5;
+  z-index: var(--om-z-5);
 
   button {
-    border-radius: 8px !important;
-    font-size: 14px !important;
+    border-radius: var(--om-radius-lg) !important;
+    font-size: var(--om-font-size-sm) !important;
     font-weight: @font-semibold !important;
     min-height: 40px !important;
-    padding: 9px 16px !important;
+    padding: var(--om-space-9) var(--om-space-16) !important;
   }
 }
 
 .csv-import-copy h2 {
   color: @grey-900;
-  font-size: 18px;
+  font-size: var(--om-font-size-lg);
   font-weight: @font-semibold;
   line-height: 24px;
-  margin: 0 0 4px;
+  margin: 0 0 var(--om-space-4);
 }
 
 .csv-import-copy p {
@@ -440,7 +440,7 @@
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .csv-import-action-row.justify-center {
@@ -448,11 +448,11 @@
 }
 
 .csv-import-action-row button {
-  border-radius: 8px !important;
-  font-size: 13px !important;
+  border-radius: var(--om-radius-lg) !important;
+  font-size: var(--om-font-size-13) !important;
   font-weight: @font-medium !important;
   min-height: 34px !important;
-  padding: 7px 12px !important;
+  padding: var(--om-space-7) var(--om-space-12) !important;
 
   [data-icon] {
     height: 16px !important;
@@ -467,20 +467,20 @@
 .csv-import-required code,
 .csv-column-name code {
   background: @grey-36;
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   color: @grey-800;
   font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-  font-size: 12px;
-  padding: 2px 7px;
+  font-size: var(--om-font-size-xs);
+  padding: var(--om-space-2) var(--om-space-7);
 }
 
 .csv-import-upload-card {
   .ant-upload.ant-upload-drag {
     background: @grey-26;
     border: 1.5px dashed @grey-40;
-    border-radius: 12px;
-    padding: 40px 24px;
-    transition: background 160ms ease, border-color 160ms ease;
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-40) var(--om-space-24);
+    transition: background var(--om-duration-160) ease, border-color var(--om-duration-160) ease;
 
     &:hover {
       background: @primary-50;
@@ -492,7 +492,7 @@
     }
 
     .ant-space {
-      gap: 16px !important;
+      gap: var(--om-space-16) !important;
     }
 
     svg {
@@ -502,7 +502,7 @@
 
     .ant-typography {
       color: @grey-900;
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
       font-weight: @font-semibold;
       line-height: 22px;
     }
@@ -516,28 +516,28 @@
   .ant-alert {
     background: @primary-50;
     border: 1px solid @primary-2;
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
     color: @primary-8;
-    font-size: 13px;
-    margin-top: 18px;
-    padding: 12px 14px;
+    font-size: var(--om-font-size-13);
+    margin-top: var(--om-space-18);
+    padding: var(--om-space-12) var(--om-space-14);
   }
 }
 
 .csv-import-banner-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .csv-import-abort-state {
   align-items: center;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--om-space-16);
   justify-content: center;
   min-height: 220px;
-  padding: 24px;
+  padding: var(--om-space-24);
   text-align: center;
 
   p {
@@ -550,25 +550,25 @@
 .csv-import-grid-toolbar {
   align-items: center;
   display: flex;
-  gap: 16px;
+  gap: var(--om-space-16);
   justify-content: space-between;
 }
 
 .csv-import-card .om-rdg:not(.bulk-edit-rdg) {
   border-color: @grey-15;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   overflow: hidden;
 
   .rdg {
     background: @white;
     font-family: @font-family;
-    font-size: 12.5px;
+    font-size: var(--om-font-size-12_5);
   }
 
   .rdg-header-row {
     background: @grey-26;
     color: @grey-800;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     font-weight: @font-semibold;
   }
 
@@ -576,7 +576,7 @@
     border-color: @grey-15;
     color: @grey-900;
     line-height: 18px;
-    padding: 0 12px;
+    padding: 0 var(--om-space-12);
   }
 
   .rdg-row .rdg-cell[aria-colindex='1'],
@@ -591,14 +591,14 @@
   align-items: center;
   display: flex;
   flex-wrap: nowrap;
-  gap: 12px;
-  padding: 20px;
+  gap: var(--om-space-12);
+  padding: var(--om-space-20);
 
   button {
-    font-size: 13px !important;
+    font-size: var(--om-font-size-13) !important;
     height: 34px;
     min-height: 34px;
-    padding: 7px 12px !important;
+    padding: var(--om-space-7) var(--om-space-12) !important;
 
     [data-icon] {
       height: 16px !important;
@@ -615,7 +615,7 @@
   align-items: center;
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--om-space-8);
   margin-left: auto;
 }
 
@@ -630,7 +630,7 @@
   min-height: 34px;
 
   input {
-    font-size: 13px !important;
+    font-size: var(--om-font-size-13) !important;
     height: 34px !important;
     line-height: 18px !important;
   }
@@ -643,31 +643,31 @@
 
 .bulk-edit-edited-pill {
   flex-shrink: 0;
-  font-size: 12px !important;
+  font-size: var(--om-font-size-xs) !important;
   font-weight: @font-medium !important;
   line-height: 14px !important;
-  padding: 2px 8px !important;
+  padding: var(--om-space-2) var(--om-space-8) !important;
 }
 
 .bulk-edit-grid-shell {
-  padding: 0 20px;
+  padding: 0 var(--om-space-20);
 }
 
 .bulk-edit-add-row-bar {
   align-items: center;
   background: @grey-26;
   border: 1px solid @grey-15;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   display: flex;
-  gap: 12px;
+  gap: var(--om-space-12);
   justify-content: space-between;
-  margin: 14px 20px 0;
-  padding: 12px 14px;
+  margin: var(--om-space-14) var(--om-space-20) 0;
+  padding: var(--om-space-12) var(--om-space-14);
 
   .bulk-edit-add-row-btn {
-    font-size: 13px !important;
+    font-size: var(--om-font-size-13) !important;
     min-height: 34px !important;
-    padding: 7px 12px !important;
+    padding: var(--om-space-7) var(--om-space-12) !important;
 
     [data-icon] {
       height: 16px !important;
@@ -680,13 +680,13 @@
   align-items: center;
   display: flex;
   flex: 1;
-  gap: 12px;
+  gap: var(--om-space-12);
   min-width: 0;
 }
 
 .bulk-edit-add-row-hint {
   color: @grey-600;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   line-height: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -696,12 +696,12 @@
 .bulk-edit-add-row-actions {
   display: flex;
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .bulk-edit-rdg {
   border-color: @grey-15;
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   overflow: hidden;
 
   .rdg {
@@ -711,7 +711,7 @@
 
     background: @white;
     font-family: @font-family;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     font-weight: @font-regular;
     height: min(60vh, calc(100vh - 400px));
     min-height: 280px;
@@ -720,7 +720,7 @@
   .rdg-header-row {
     background: @grey-26;
     color: @grey-800;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     font-weight: @font-semibold;
   }
 
@@ -730,11 +730,11 @@
     color: @grey-900;
     display: flex;
     font-family: @font-family;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     font-weight: @font-regular;
     line-height: 20px;
     min-width: 0;
-    padding: 0 12px;
+    padding: 0 var(--om-space-12);
   }
 
   .rdg-cell-select {
@@ -744,7 +744,7 @@
   .bulk-edit-select-cell {
     align-items: center;
     display: flex;
-    gap: 8px;
+    gap: var(--om-space-8);
     justify-content: space-between;
     min-width: 0;
     width: 100%;
@@ -784,14 +784,14 @@
     .ant-select-selection-item {
       color: @grey-900;
       font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-      font-size: 12.5px;
+      font-size: var(--om-font-size-12_5);
       line-height: 24px;
-      padding-right: 20px;
+      padding-right: var(--om-space-20);
     }
 
     .ant-select-arrow {
       color: @grey-400;
-      margin-top: -7px;
+      margin-top: calc(-1 * var(--om-space-7));
       right: 0;
     }
   }
@@ -823,7 +823,7 @@
 
   .bulk-edit-custom-property-placeholder {
     color: @grey-500;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
     line-height: 20px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -838,7 +838,7 @@
   .rdg-cell-expressionLanguage,
   .rdg-cell-entityStatus {
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-    font-size: 12.5px;
+    font-size: var(--om-font-size-12_5);
   }
 
   .rdg-row {
@@ -879,14 +879,14 @@
   .rdg-cell-description {
     align-items: flex-start;
     overflow-wrap: anywhere;
-    padding-top: 8px;
+    padding-top: var(--om-space-8);
     white-space: normal;
     word-break: break-word;
 
     &:has(.bulk-edit-description-editor) {
       box-shadow: none;
       overflow: visible;
-      z-index: 6;
+      z-index: var(--om-z-6);
     }
   }
 
@@ -905,7 +905,7 @@
   .bulk-edit-name-cell {
     align-items: center;
     display: flex;
-    gap: 8px;
+    gap: var(--om-space-8);
     justify-content: space-between;
     min-width: 0;
     width: 100%;
@@ -1781,7 +1781,7 @@
 .csv-import-log-line {
   color: @grey-700;
   font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
-  font-size: 11.5px;
+  font-size: var(--om-font-size-11_5);
 }
 
 .csv-import-log-line-error {
@@ -1793,7 +1793,7 @@
 }
 
 .csv-column-reference-modal {
-  padding-bottom: 24px;
+  padding-bottom: var(--om-space-24);
 }
 
 .csv-column-reference-table {
@@ -1804,7 +1804,7 @@
 .csv-column-reference-empty {
   color: @grey-600;
   margin: 0;
-  padding: 16px 0;
+  padding: var(--om-space-16) 0;
 }
 
 .csv-column-reference-table table {
@@ -1816,7 +1816,7 @@
 .csv-column-reference-table td {
   border-bottom: 1px solid @grey-15;
   color: @grey-700;
-  padding: 12px 16px;
+  padding: var(--om-space-12) var(--om-space-16);
   text-align: left;
   vertical-align: top;
 }
@@ -1824,14 +1824,14 @@
 .csv-column-reference-table th {
   background: @grey-36;
   color: @grey-900;
-  font-weight: 600;
+  font-weight: var(--om-font-weight-semibold);
 }
 
 .csv-column-name {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .csv-import-page-stack .import-footer {
@@ -1842,19 +1842,19 @@
   display: flex;
   float: none !important;
   flex-shrink: 0;
-  gap: 10px;
+  gap: var(--om-space-10);
   justify-content: space-between;
-  margin: auto -24px 0;
-  padding: 12px 32px;
+  margin: auto calc(-1 * var(--om-space-24)) 0;
+  padding: var(--om-space-12) var(--om-space-32);
   position: sticky;
-  z-index: 5;
+  z-index: var(--om-z-5);
 
   button {
-    border-radius: 8px !important;
+    border-radius: var(--om-radius-lg) !important;
     font-size: @font-size-base !important;
     font-weight: @font-semibold !important;
     min-height: 38px !important;
-    padding: 8px 14px !important;
+    padding: var(--om-space-8) var(--om-space-14) !important;
   }
 }
 
@@ -1872,7 +1872,7 @@
 .csv-import-wizard-footer-actions {
   align-items: center;
   display: flex;
-  gap: 10px;
+  gap: var(--om-space-10);
   justify-content: flex-end;
   margin-left: auto;
 }

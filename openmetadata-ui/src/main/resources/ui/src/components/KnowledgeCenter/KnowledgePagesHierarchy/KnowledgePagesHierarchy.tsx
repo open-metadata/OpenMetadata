@@ -88,6 +88,7 @@ import {
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
+  remapSubtreeFqn,
   updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
@@ -154,6 +155,10 @@ const KnowledgePagesHierarchy = forwardRef<
       hierarchyPaginationInitialState
     );
 
+    const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
+    const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
+    const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
       try {
@@ -166,7 +171,10 @@ const KnowledgePagesHierarchy = forwardRef<
         ): PageHierarchy[] => {
           const unloaded: PageHierarchy[] = [];
           nodes.forEach((n) => {
-            if (n.childrenCount > (n.children?.length ?? 0)) {
+            const isExhausted = nodesWithNoMoreChildrenRef.current.has(
+              n.fullyQualifiedName
+            );
+            if (n.childrenCount > (n.children?.length ?? 0) && !isExhausted) {
               unloaded.push(n);
             } else if (n.children) {
               unloaded.push(...collectUnloadedExpandableNodes(n.children));
@@ -181,19 +189,45 @@ const KnowledgePagesHierarchy = forwardRef<
 
         while (nodesPendingChildren.length > 0) {
           const childrenResults = await Promise.all(
-            nodesPendingChildren.map((node) =>
-              getPageHierarchyFromES(node.fullyQualifiedName)
-            )
+            nodesPendingChildren.map((node) => {
+              const offset =
+                nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+                node.children?.length ??
+                0;
+
+              return getPageHierarchyFromES(
+                node.fullyQualifiedName,
+                undefined,
+                offset,
+                KNOWLEDGE_CENTER_PAGINATION_LIMIT
+              );
+            })
           );
 
           nodesPendingChildren.forEach((node, index) => {
-            fetchedChildrenByParentFqn.set(
+            const fetchedChildren = childrenResults[index].data;
+            const offset =
+              nodeChildrenOffsetRef.current.get(node.fullyQualifiedName) ??
+              node.children?.length ??
+              0;
+
+            nodeChildrenOffsetRef.current.set(
               node.fullyQualifiedName,
-              childrenResults[index].data
+              offset + fetchedChildren.length
             );
+
+            if (fetchedChildren.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+              nodesWithNoMoreChildrenRef.current.add(node.fullyQualifiedName);
+            }
+
+            fetchedChildrenByParentFqn.set(node.fullyQualifiedName, [
+              ...(fetchedChildrenByParentFqn.get(node.fullyQualifiedName) ??
+                []),
+              ...fetchedChildren,
+            ]);
             traversalHierarchy = updateTreeData(
               traversalHierarchy,
-              childrenResults[index].data,
+              fetchedChildren,
               node.fullyQualifiedName
             );
           });
@@ -299,6 +333,9 @@ const KnowledgePagesHierarchy = forwardRef<
           if (forceRefresh) {
             setExpandedKeys([]);
             setIsUserExpandedAll(false);
+            nodesWithNoMoreChildrenRef.current.clear();
+            nodesLoadingChildrenRef.current.clear();
+            nodeChildrenOffsetRef.current.clear();
           }
           if (isCreateHash) {
             consumedCreateHashFqnRef.current = fqn;
@@ -339,16 +376,43 @@ const KnowledgePagesHierarchy = forwardRef<
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
-        if (!node || node.childrenCount <= (node.children?.length ?? 0)) {
+        const loadedCount = node?.children?.length ?? 0;
+        if (!node || node.childrenCount <= loadedCount) {
           return;
         }
+        if (
+          nodesLoadingChildrenRef.current.has(nodeKey) ||
+          nodesWithNoMoreChildrenRef.current.has(nodeKey)
+        ) {
+          return;
+        }
+        nodesLoadingChildrenRef.current.add(nodeKey);
         try {
-          const { data: children } = await getPageHierarchyFromES(nodeKey);
+          const fetchOffset =
+            nodeChildrenOffsetRef.current.get(nodeKey) ?? loadedCount;
+          const { data: children } = await getPageHierarchyFromES(
+            nodeKey,
+            undefined,
+            fetchOffset,
+            KNOWLEDGE_CENTER_PAGINATION_LIMIT
+          );
+          nodeChildrenOffsetRef.current.set(
+            nodeKey,
+            fetchOffset + children.length
+          );
+          if (children.length < KNOWLEDGE_CENTER_PAGINATION_LIMIT) {
+            nodesWithNoMoreChildrenRef.current.add(nodeKey);
+          }
+          if (children.length === 0) {
+            return;
+          }
           setKnowledgePageHierarchy(
             updateTreeData(knowledgePageHierarchy, children, nodeKey)
           );
         } catch {
           // do nothing
+        } finally {
+          nodesLoadingChildrenRef.current.delete(nodeKey);
         }
       },
       [knowledgePageHierarchy]
@@ -467,10 +531,32 @@ const KnowledgePagesHierarchy = forwardRef<
             targetNode.fullyQualifiedName
           );
 
+          nodesWithNoMoreChildrenRef.current.delete(
+            targetNode.fullyQualifiedName
+          );
+          nodesLoadingChildrenRef.current.delete(targetNode.fullyQualifiedName);
+          nodeChildrenOffsetRef.current.delete(targetNode.fullyQualifiedName);
+
+          const targetChildrenWithMovedSubtree = targetNodeChildren.data.map(
+            (child) =>
+              child.fullyQualifiedName === newSourceFQN &&
+              isEmpty(child.children) &&
+              !isEmpty(sourceNode.children)
+                ? {
+                    ...child,
+                    children: remapSubtreeFqn(
+                      sourceNode.children ?? [],
+                      oldSourceFQN,
+                      newSourceFQN
+                    ),
+                  }
+                : child
+          );
+
           setKnowledgePageHierarchy((prev) =>
             getUpdatePageHierarchy(
               prev,
-              { ...targetNode, children: targetNodeChildren.data },
+              { ...targetNode, children: targetChildrenWithMovedSubtree },
               true
             )
           );
@@ -479,6 +565,16 @@ const KnowledgePagesHierarchy = forwardRef<
 
           if (sourceNodeParent) {
             const sourceNodeParentChildren = await getPageHierarchyFromES(
+              sourceNodeParent.fullyQualifiedName
+            );
+
+            nodesWithNoMoreChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodesLoadingChildrenRef.current.delete(
+              sourceNodeParent.fullyQualifiedName
+            );
+            nodeChildrenOffsetRef.current.delete(
               sourceNodeParent.fullyQualifiedName
             );
 
@@ -696,8 +792,11 @@ const KnowledgePagesHierarchy = forwardRef<
       fetchKnowledgePagesTotalCount();
     }, [fetchKnowledgePagesTotalCount]);
 
+    const autoExpandedForKeyRef = useRef<string | undefined>(undefined);
+
     useEffect(() => {
-      if (activeKey) {
+      if (activeKey && autoExpandedForKeyRef.current !== activeKey) {
+        autoExpandedForKeyRef.current = activeKey;
         setExpandedKeys((prev) =>
           uniq([
             ...prev,

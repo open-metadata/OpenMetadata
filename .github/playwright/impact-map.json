@@ -193,7 +193,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
-      "projects": ["chromium", "Basic", "DomainIsolation"],
+      "projects": ["chromium", "Basic", "DomainIsolation", "Reindex"],
       "specs": [
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
@@ -265,6 +265,45 @@
         "playwright/e2e/Flow/Navbar.spec.ts",
         "playwright/e2e/Pages/EntityHeaderBreadcrumb.spec.ts",
         "playwright/e2e/Pages/DataMarketplace.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ContextCenter/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeCenter/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/KnowledgeCenter.constant.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterUtils.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterPureUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterClassBase.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/KnowledgePageRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/ContextMemoryIndex.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/search/security/ContextMemorySearchVisibility.java",
+        "openmetadata-spec/src/main/resources/json/schema/entity/context/**",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/contextFile.json",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/folder.json",
+        "openmetadata-spec/src/main/resources/json/schema/api/context/**",
+        "openmetadata-spec/src/main/resources/json/schema/api/data/createContextFile.json",
+        "openmetadata-spec/src/main/resources/json/schema/api/data/moveContextFileRequest.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
+        "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Features/ContextCenterArchive.spec.ts",
+        "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts"
       ]
     }
   ]

@@ -16,10 +16,10 @@
 .ant-pagination {
   .ant-pagination-item {
     height: 40px;
-    padding: 4px;
+    padding: var(--om-space-4);
     border: none;
-    border-radius: 8px;
-    margin-right: 4px;
+    border-radius: var(--om-radius-lg);
+    margin-right: var(--om-space-4);
   }
   .ant-pagination-item-active {
     background-color: @primary-button-background;
@@ -31,19 +31,19 @@
       border: none;
 
       .ant-select-selection-item {
-        font-weight: 600;
+        font-weight: var(--om-font-weight-semibold);
         color: @grey-500;
       }
     }
     .ant-select-arrow {
       color: @grey-500;
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
   }
 
   .ant-pagination-next,
   .ant-pagination-prev {
-    margin-right: 0px;
+    margin-right: 0;
     button {
       border: none;
     }
@@ -58,19 +58,19 @@
     .ant-btn-text[disabled] {
       background-color: transparent;
       border: transparent;
-      color: rgba(0, 0, 0, 0.25);
+      color: var(--om-legacy-color-0-0-0-0-25);
     }
   }
 
   .ant-btn:disabled {
     background-color: transparent;
     border: transparent;
-    color: rgba(0, 0, 0, 0.25);
+    color: var(--om-legacy-color-0-0-0-0-25);
   }
   .pagination-button {
     color: @grey-500;
     font-weight: @font-semibold;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -79,6 +79,6 @@
   .pagination-indicator {
     color: @grey-700;
     font-weight: @font-medium;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
   }
 }
