@@ -10630,4 +10630,160 @@ public class WorkflowDefinitionResourceIT {
       LOG.warn("Cleanup error: {}", e.getMessage());
     }
   }
+
+  /**
+   * Trigger filter is an EXCLUSION filter: if the JsonLogic evaluates to TRUE for the entity, the
+   * workflow does NOT trigger; if it evaluates to FALSE, or the filter is unparseable garbage
+   * (returns false from RuleEngine on any exception), the workflow triggers normally.
+   *
+   * <p>Original design: PR #22437 (return {@code !jsonFilter}, comment: "if jsonLogic evaluates
+   * to true, then don't trigger the workflow"). Task Redesign (PR #25894) accidentally dropped
+   * the {@code !} inversion and flipped this to inclusion, breaking every customer with a real
+   * JsonLogic filter or a legacy poisoned filter value like {@code "\"\""}.
+   *
+   * <p>Test exercises three cases end to end against the real trigger BPMN + FilterEntityImpl:
+   * a valid filter that does NOT match (triggers), a valid filter that matches (excludes), and
+   * a poisoned filter that fails to parse (falls open, triggers).
+   */
+  @Test
+  @Order(200)
+  void test_EventTriggerFilterIsExclusionAndFailsOpen(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+
+    String workflowName = ns.prefix("exclusionFilterWorkflow").substring(0, 30);
+    String glossaryName = ns.prefix("exclusionGlossary").substring(0, 30);
+    String triggerMarker = "trigger";
+    String excludeMarker = "skipme";
+
+    createExclusionFilterWorkflow(client, workflowName, excludeMarker);
+    Glossary glossary = createExclusionGlossary(client, glossaryName);
+
+    GlossaryTerm triggeringTerm =
+        createTerm(client, glossary, "triggering_term", triggerMarker + " content");
+    GlossaryTerm excludedTerm =
+        createTerm(client, glossary, "excluded_term", excludeMarker + " content");
+
+    awaitDisplayNamePrefixedWith(client, triggeringTerm.getId(), "[TRIGGERED]");
+    assertDisplayNameUnchangedAfterQuietPeriod(client, excludedTerm.getId());
+
+    patchFilterOn(client, workflowName, "\"\\\"\\\"\"");
+    GlossaryTerm poisonedTerm =
+        createTerm(client, glossary, "poisoned_term", "any content, filter is broken");
+    awaitDisplayNamePrefixedWith(client, poisonedTerm.getId(), "[TRIGGERED]");
+  }
+
+  private void createExclusionFilterWorkflow(
+      OpenMetadataClient client, String workflowName, String excludeMarker) throws Exception {
+    // JsonLogic: description contains excludeMarker → excludes term from workflow trigger.
+    String filterLogic =
+        String.format(
+            "{\\\"in\\\": [\\\"%s\\\", {\\\"var\\\": \\\"description\\\"}]}", excludeMarker);
+    String workflowJson =
+        String.format(
+            """
+            {
+              "name": "%s",
+              "displayName": "Exclusion Filter Test Workflow",
+              "description": "Verifies the trigger filter behaves as an exclusion filter",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["glossaryTerm"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["reviewers"],
+                  "filter": {"glossaryTerm": "%s"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"type": "startEvent", "subType": "startEvent", "name": "start", "displayName": "Start"},
+                {
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "name": "MarkTriggered",
+                  "displayName": "Mark Triggered",
+                  "config": {"fieldName": "displayName", "fieldValue": "[TRIGGERED]"},
+                  "input": ["relatedEntity", "updatedBy"],
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"},
+                  "output": []
+                },
+                {"type": "endEvent", "subType": "endEvent", "name": "end", "displayName": "End"}
+              ],
+              "edges": [
+                {"from": "start", "to": "MarkTriggered"},
+                {"from": "MarkTriggered", "to": "end"}
+              ],
+              "config": {"storeStageStatus": false}
+            }
+            """,
+            workflowName, filterLogic);
+    CreateWorkflowDefinition workflow =
+        MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class);
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST, BASE_PATH, workflow, RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(response));
+    waitForWorkflowDeployment(client, workflowName);
+  }
+
+  private Glossary createExclusionGlossary(OpenMetadataClient client, String name)
+      throws Exception {
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription("Glossary for exclusion filter test");
+    return client.glossaries().create(create);
+  }
+
+  private GlossaryTerm createTerm(
+      OpenMetadataClient client, Glossary glossary, String name, String description)
+      throws Exception {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDisplayName(name)
+            .withDescription(description)
+            .withGlossary(glossary.getFullyQualifiedName());
+    return client.glossaryTerms().create(create);
+  }
+
+  private void patchFilterOn(
+      OpenMetadataClient client, String workflowName, String filterMapJsonValue) throws Exception {
+    WorkflowDefinition workflow = client.workflowDefinitions().getByName(workflowName, null);
+    String patchStr =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryTerm\":%s}}]",
+            filterMapJsonValue);
+    client.workflowDefinitions().patch(workflow.getId(), MAPPER.readTree(patchStr));
+  }
+
+  private void awaitDisplayNamePrefixedWith(
+      OpenMetadataClient client, UUID termId, String expectedPrefix) {
+    await("glossary term " + termId + " displayName starts with " + expectedPrefix)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              GlossaryTerm current = client.glossaryTerms().get(termId);
+              return current.getDisplayName() != null
+                  && current.getDisplayName().startsWith(expectedPrefix);
+            });
+  }
+
+  private void assertDisplayNameUnchangedAfterQuietPeriod(OpenMetadataClient client, UUID termId)
+      throws Exception {
+    String originalDisplayName = client.glossaryTerms().get(termId).getDisplayName();
+    simulateWork(Duration.ofSeconds(20).toMillis());
+    GlossaryTerm current = client.glossaryTerms().get(termId);
+    assertEquals(
+        originalDisplayName,
+        current.getDisplayName(),
+        "Excluded term must not be touched by workflow, but displayName changed to "
+            + current.getDisplayName());
+  }
 }
