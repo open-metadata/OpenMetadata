@@ -33,7 +33,9 @@ from metadata.utils.constants import THREE_MIN
 
 class MicroStrategyConnection(BaseConnection[MicroStrategyConnectionConfig, MicroStrategyClient]):
     def _get_client(self) -> MicroStrategyClient:
-        return MicroStrategyClient(self.service_connection)
+        client = MicroStrategyClient(self.service_connection)
+        self._on_close(client.close_api_session)
+        return client
 
     def test_connection(
         self,
