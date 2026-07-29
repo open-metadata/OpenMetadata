@@ -78,6 +78,50 @@ const ensureHyperlinkCustomProperty = async (
   expect(put.status()).toBe(200);
 };
 
+const seedIntakeForm = async (
+  api: APIRequestContext,
+  propName: string
+) => {
+  const res = await api.put('/api/v1/governance/intakeForms', {
+    data: {
+      name: DP_INTAKE_NAME,
+      entityType: 'dataProduct',
+      enabled: true,
+      requiredFields: [
+        {
+          fieldPath: `extension.${propName}`,
+          fieldLabel: 'Doc Link',
+          fieldKind: 'customProperty',
+        },
+      ],
+    },
+  });
+  expect([200, 201]).toContain(res.status());
+};
+
+const deleteCustomProperty = async (
+  api: APIRequestContext,
+  entityType: string,
+  propertyName: string
+) => {
+  const typeRes = await api.get(
+    `/api/v1/metadata/types/name/${entityType}?fields=customProperties`
+  );
+  if (typeRes.status() !== 200) {
+    return;
+  }
+  const type = await typeRes.json();
+  const existing = (type.customProperties ?? []).find(
+    (cp: { name: string }) => cp.name === propertyName
+  );
+  if (!existing) {
+    return;
+  }
+  await api.delete(
+    `/api/v1/metadata/types/${type.id}/customProperties/${propertyName}`
+  );
+};
+
 test.describe(
   'Data Product Intake Form — Hyperlink custom property',
   { tag: ['@Governance'] },
@@ -97,6 +141,9 @@ test.describe(
         'dataProduct',
         docLinkPropName
       );
+      // Seed the intake form once here so it is present for all three tests
+      // and not recreated mid-test while other specs may be running concurrently.
+      await seedIntakeForm(apiContext, docLinkPropName);
       await domain.create(apiContext);
       await afterAction();
     });
@@ -104,6 +151,7 @@ test.describe(
     test.afterAll('Tear down', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
+      await deleteCustomProperty(apiContext, 'dataProduct', docLinkPropName);
       await domain.delete(apiContext);
       await afterAction();
     });
@@ -113,26 +161,6 @@ test.describe(
       page,
     }) => {
       test.slow();
-
-      await test.step('Seed intake form requiring the hyperlink property', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        const res = await apiContext.put('/api/v1/governance/intakeForms', {
-          data: {
-            name: DP_INTAKE_NAME,
-            entityType: 'dataProduct',
-            enabled: true,
-            requiredFields: [
-              {
-                fieldPath: `extension.${docLinkPropName}`,
-                fieldLabel: 'Doc Link',
-                fieldKind: 'customProperty',
-              },
-            ],
-          },
-        });
-        expect([200, 201]).toContain(res.status());
-        await afterAction();
-      });
 
       await redirectToHomePage(page);
       await domain.visitEntityPage(page);
@@ -209,26 +237,6 @@ test.describe(
       page,
     }) => {
       test.slow();
-
-      await test.step('Seed intake form requiring the hyperlink property', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        const res = await apiContext.put('/api/v1/governance/intakeForms', {
-          data: {
-            name: DP_INTAKE_NAME,
-            entityType: 'dataProduct',
-            enabled: true,
-            requiredFields: [
-              {
-                fieldPath: `extension.${docLinkPropName}`,
-                fieldLabel: 'Doc Link',
-                fieldKind: 'customProperty',
-              },
-            ],
-          },
-        });
-        expect([200, 201]).toContain(res.status());
-        await afterAction();
-      });
 
       await redirectToHomePage(page);
       await domain.visitEntityPage(page);
@@ -319,26 +327,6 @@ test.describe(
       page,
     }) => {
       test.slow();
-
-      await test.step('Seed intake form requiring the hyperlink property', async () => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        const res = await apiContext.put('/api/v1/governance/intakeForms', {
-          data: {
-            name: DP_INTAKE_NAME,
-            entityType: 'dataProduct',
-            enabled: true,
-            requiredFields: [
-              {
-                fieldPath: `extension.${docLinkPropName}`,
-                fieldLabel: 'Doc Link',
-                fieldKind: 'customProperty',
-              },
-            ],
-          },
-        });
-        expect([200, 201]).toContain(res.status());
-        await afterAction();
-      });
 
       await redirectToHomePage(page);
       await domain.visitEntityPage(page);
