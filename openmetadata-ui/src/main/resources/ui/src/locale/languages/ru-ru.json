@@ -527,7 +527,7 @@
     "cost": "Стоимость",
     "cost-analysis": "Оценка цены",
     "count": "Количество",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} задач выполняется",
     "count-running": "{{count}} выполняется",
     "cover-image": "Обложка",
     "covered": "Покрыто",
