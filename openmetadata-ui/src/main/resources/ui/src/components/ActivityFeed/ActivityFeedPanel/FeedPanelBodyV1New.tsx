@@ -45,7 +45,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
     // drawer the card is the thread's root post, so it shows when it started.
     const postTs = isOpenInDrawer
       ? feed?.threadTs
-      : (feed?.updatedAt ?? feed?.threadTs);
+      : feed?.updatedAt ?? feed?.threadTs;
 
     return feed
       ? ({

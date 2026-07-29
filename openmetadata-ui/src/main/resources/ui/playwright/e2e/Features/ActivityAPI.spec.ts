@@ -386,8 +386,9 @@ test.describe(
       });
 
       await test.step('The conversation created last sorts above the activity', async () => {
-        const feedItemTexts: string[] =
-          await getActivityFeedItems(page).allTextContents();
+        const feedItemTexts: string[] = await getActivityFeedItems(
+          page
+        ).allTextContents();
         const conversationIndex = feedItemTexts.findIndex((text: string) =>
           text.includes(conversationMessage)
         );
