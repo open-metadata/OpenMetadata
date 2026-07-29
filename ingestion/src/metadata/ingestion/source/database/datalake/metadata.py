@@ -168,39 +168,36 @@ class DatalakeSource(DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
+
+        Errors are allowed to propagate so the topology producer wrapper
+        (`_run_node_producer`) records a clean StackTraceError. Do NOT yield an
+        Either(left=...) here: the framework treats each yielded item as a
+        schema-name string, and a yielded Either would surface downstream as a
+        masked ``TypeError: expected string or bytes-like object``.
         """
-        try:
-            for schema_name in self.client.get_database_schema_names(
-                self.service_connection.bucketName
-            ):
-                schema_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                )
-
-                if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (
-                        schema_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else schema_name
-                    ),
-                ):
-                    self.status.filter(schema_fqn, "Bucket Filtered Out")
-                    continue
-
-                yield schema_name
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name="Bucket",
-                    error=f"Unexpected exception to yield bucket: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
+        for schema_name in self.client.get_database_schema_names(
+            self.service_connection.bucketName
+        ):
+            schema_fqn = fqn.build(
+                self.metadata,
+                entity_type=DatabaseSchema,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=schema_name,
             )
+
+            if filter_by_schema(
+                self.config.sourceConfig.config.schemaFilterPattern,
+                (
+                    schema_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else schema_name
+                ),
+            ):
+                self.status.filter(schema_fqn, "Bucket Filtered Out")
+                continue
+
+            yield schema_name
 
     def yield_database_schema(
         self, schema_name: str

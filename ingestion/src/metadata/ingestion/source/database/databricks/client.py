@@ -33,6 +33,9 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_COLUMN_LINEAGE,
     DATABRICKS_GET_TABLE_LINEAGE,
 )
+from metadata.ingestion.source.database.databricks.user_agent import (
+    get_databricks_user_agent,
+)
 from metadata.utils.constants import QUERY_WITH_DBT, QUERY_WITH_OM_VERSION
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger
@@ -71,6 +74,7 @@ class DatabricksClient:
         self.headers = {
             **self._get_auth_header(),
             "Content-Type": "application/json",
+            "User-Agent": get_databricks_user_agent(),
         }
         self.api_timeout = self.config.connectionTimeout or 120
         self._entity_table_lineage_executed: bool = False

@@ -393,8 +393,10 @@ jobs:
 
   scale-it-external:
     # Runs after search-it (shared instance, singleton reindex app). max-parallel: 1 so the matrix
-    # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
-    # cluster collide and the db/es counts would mix cohorts.
+    # entries seed + reindex one at a time — two concurrent reindexes on one cluster collide and the
+    # db/es counts would mix cohorts. Default cohort is 100k only; a 500k run took >5h and was
+    # cancelled every night without ever completing. Larger sizes can still be requested on demand
+    # via the scaleSeeds dispatch input (e.g. [100000, 500000]).
     needs: [search-it-external]
     if: ${{ always() && github.event.inputs.runScaleIt == 'true' }}
     runs-on: ubuntu-latest
@@ -403,7 +405,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
+        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000]') }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
