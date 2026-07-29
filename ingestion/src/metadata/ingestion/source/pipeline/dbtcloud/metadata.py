@@ -97,6 +97,9 @@ DEFAULT_TASK_NAME = "Run"
 # Number of (job, run) observability entries kept in memory at once
 OBSERVABILITY_CACHE_SIZE = 100
 
+# Number of exact-FQN table lookups kept in memory at once
+EXACT_FQN_CACHE_SIZE = 1024
+
 # Number of unmatched dbt node ids listed in the "no lineage created" warning
 UNMATCHED_NODES_SAMPLE_SIZE = 10
 
@@ -123,6 +126,8 @@ class DbtcloudSource(PipelineServiceSource):
         self.observability_cache: LRUCache = LRUCache(maxsize=OBSERVABILITY_CACHE_SIZE)
         # Bounded cache for resolved SQL dialects keyed by database service name
         self._dialect_cache: LRUCache = LRUCache(maxsize=128)
+        # Bounded cache for the exact-FQN table fallback, keyed by table FQN
+        self._exact_fqn_cache: LRUCache = LRUCache(maxsize=EXACT_FQN_CACHE_SIZE)
 
     def _resolve_table_entity(self, db_service_name: Optional[str], node: DBTModel) -> Optional[Table]:  # noqa: UP045
         """
@@ -195,7 +200,15 @@ class DbtcloudSource(PipelineServiceSource):
         return model_str(table.fullyQualifiedName) if table.fullyQualifiedName else ""
 
     def _get_table_by_exact_fqn(self, db_service_name: str, node: DBTModel) -> Optional[Table]:  # noqa: UP045
-        """Look the table up by its deterministic FQN, bypassing the search index."""
+        """
+        Look the table up by its deterministic FQN, bypassing the search index.
+
+        Cached, unlike the search that precedes it: ``_search_es_entity`` already
+        memoises every search behind an LRU, but ``get_by_name`` is a plain REST
+        call and a table shared by several dbt models is resolved once per model.
+        Misses are cached too - this only runs once the search has already
+        failed, so an unresolvable node is the hot path here.
+        """
         table_fqn = fqn.build(
             metadata=None,
             entity_type=Table,
@@ -205,7 +218,9 @@ class DbtcloudSource(PipelineServiceSource):
             table_name=node.name,
             skip_es_search=True,
         )
-        return self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        if table_fqn not in self._exact_fqn_cache:
+            self._exact_fqn_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+        return self._exact_fqn_cache[table_fqn]
 
     def _fetch_runs(self, job_id: int) -> List[DBTRun]:  # noqa: UP006
         """

@@ -2130,6 +2130,29 @@ class DBTCloudUnitTest(TestCase):
             "local_redshift.dev.dbt_test_new.test_table",
         )
 
+    def test_exact_fqn_fallback_is_cached_across_models(self):
+        """
+        The search ahead of the fallback is memoised by `_search_es_entity`, but
+        `get_by_name` is a plain REST call - and a table shared by several dbt
+        models reaches it once per model. Misses are cached too: the fallback
+        only runs once the search has already failed.
+        """
+        node = DBTModel(
+            uniqueId="model.dbt_test_new.shared_parent",
+            name="shared_parent",
+            dbtschema="dbt_test_new",
+            database="dev",
+        )
+
+        with (
+            patch.object(self.dbtcloud.metadata, "search_in_any_service", return_value=None),
+            patch.object(self.dbtcloud.metadata, "get_by_name", return_value=None) as mock_get_by_name,
+        ):
+            for _ in range(5):
+                self.assertIsNone(self.dbtcloud._resolve_table_entity("local_redshift", node))
+
+        self.assertEqual(mock_get_by_name.call_count, 1)
+
     def test_resolve_table_entity_never_looks_up_a_wildcard_fqn(self):
         """
         With no configured service there is no deterministic FQN to fall back to,
