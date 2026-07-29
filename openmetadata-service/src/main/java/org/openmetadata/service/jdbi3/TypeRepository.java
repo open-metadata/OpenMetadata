@@ -457,7 +457,8 @@ public class TypeRepository extends EntityRepository<Type> {
       if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
         IntakeFormRepository intakeFormRepository =
             (IntakeFormRepository) Entity.getEntityRepository(Entity.INTAKE_FORM);
-        intakeFormRepository.removeCustomPropertyField(updated.getName(), property.getName());
+        intakeFormRepository.removeCustomPropertyField(
+            updated.getName(), property.getName(), updated.getUpdatedBy());
       }
 
       // Remove from TypeRegistry cache

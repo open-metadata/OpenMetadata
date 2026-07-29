@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.INTAKE_FORM;
 
 import lombok.extern.slf4j.Slf4j;
@@ -94,17 +95,23 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     return form;
   }
 
-  public void removeCustomPropertyField(String entityType, String propertyName) {
+  /**
+   * Drops a deleted custom property from this entityType's IntakeForm. Routed through the standard
+   * EntityUpdater so the cascade increments the version and produces a changeDescription and change
+   * event — storing directly would leave the version untouched, letting a client PUT a stale copy
+   * past the optimistic-lock check.
+   */
+  public void removeCustomPropertyField(String entityType, String propertyName, String updatedBy) {
     String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
-    if (json == null) {
-      return;
+    if (!nullOrEmpty(json)) {
+      IntakeForm original = JsonUtils.readValue(json, IntakeForm.class);
+      IntakeFormUtil.synchronizeFields(original);
+      IntakeForm updated = JsonUtils.deepCopy(original, IntakeForm.class);
+      if (IntakeFormUtil.removeCustomPropertyField(updated, propertyName)) {
+        updated.setUpdatedBy(updatedBy);
+        getUpdater(original, updated, Operation.PATCH, null).update();
+      }
     }
-    IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
-    if (!IntakeFormUtil.removeCustomPropertyField(form, propertyName)) {
-      return;
-    }
-    form.setUpdatedAt(System.currentTimeMillis());
-    store(form, true);
   }
 
   private void ensureUniquePerEntityType(IntakeForm entity, boolean update) {

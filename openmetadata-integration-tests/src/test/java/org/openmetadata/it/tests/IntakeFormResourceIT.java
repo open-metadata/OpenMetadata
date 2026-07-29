@@ -82,6 +82,8 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class IntakeFormResourceIT {
 
   private static final String INTAKE_FORMS_PATH = "/v1/governance/intakeForms";
+  private static final Double INITIAL_ENTITY_VERSION = 0.1;
+  private static final String FORM_FIELDS_FIELD = "formFields";
   private static final String RISK_PROPERTY = "intakeRiskAssessment";
   private static final String DOMAIN_OWNER_PROPERTY = "intakeDomainOwner";
   private static final String DOMAIN_AUDIENCE_PROPERTY = "intakeDomainAudience";
@@ -1878,6 +1880,30 @@ public class IntakeFormResourceIT {
         form.getFormFields().stream()
             .anyMatch(field -> ("extension." + deletedProperty).equals(field.getFieldPath())));
     assertTrue(form.getRequiredFields().isEmpty());
+    assertPruneWasVersioned(form, deletedProperty);
+  }
+
+  /**
+   * The prune must go through the standard update path: storing the mutated form directly would
+   * leave the version untouched, so a client holding a pre-prune copy could PUT it back and still
+   * pass the optimistic-lock check.
+   */
+  private static void assertPruneWasVersioned(IntakeForm form, String deletedProperty) {
+    assertTrue(
+        form.getVersion() > INITIAL_ENTITY_VERSION,
+        "Pruning custom property '"
+            + deletedProperty
+            + "' must increment the IntakeForm version, but it stayed at "
+            + form.getVersion());
+    assertNotNull(form.getUpdatedBy());
+    assertNotNull(form.getChangeDescription());
+    assertTrue(
+        form.getChangeDescription().getFieldsUpdated().stream()
+            .anyMatch(field -> FORM_FIELDS_FIELD.equals(field.getName())),
+        "Pruning must record a '"
+            + FORM_FIELDS_FIELD
+            + "' change, got: "
+            + form.getChangeDescription().getFieldsUpdated());
   }
 
   private static void assertDeletedAndSurvivingExtensionValues(
