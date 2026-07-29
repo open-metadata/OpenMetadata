@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, FeaturedIcon } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  AlertTriangle,
+  Check,
   CheckCircle,
   Download01,
   Minus,
@@ -141,6 +143,18 @@ export const CsvJobsTray = () => {
     () => visibleJobs.filter((job) => TERMINAL_STATUSES.includes(job.status)),
     [visibleJobs]
   );
+
+  const launcherVariant = useMemo<StatusVariant>(() => {
+    if (activeJobs.length > 0) {
+      return 'running';
+    }
+
+    if (visibleJobs.some((job) => job.status === 'COMPLETED')) {
+      return 'success';
+    }
+
+    return 'error';
+  }, [activeJobs, visibleJobs]);
 
   const handleCancel = useCallback(async (jobId: string) => {
     try {
@@ -411,13 +425,28 @@ export const CsvJobsTray = () => {
             className="csv-jobs-tray-launcher"
             type="button"
             onClick={handleOpen}>
-            <span className="csv-jobs-tray-launcher-count">
-              {activeJobs.length || visibleJobs.length}
-            </span>
+            {launcherVariant === 'running' ? (
+              <span className="csv-jobs-tray-launcher-count">
+                {activeJobs.length}
+              </span>
+            ) : (
+              <FeaturedIcon
+                className={`tw:size-7 tw:text-fg-white ${
+                  launcherVariant === 'success'
+                    ? 'tw:bg-success-solid'
+                    : 'tw:bg-error-solid'
+                }`}
+                color={launcherVariant === 'success' ? 'success' : 'error'}
+                icon={launcherVariant === 'success' ? Check : AlertTriangle}
+                size="sm"
+              />
+            )}
             <span className="csv-jobs-tray-launcher-label">
-              {activeJobs.length > 0
+              {launcherVariant === 'running'
                 ? t('label.count-jobs-running', { count: activeJobs.length })
-                : t('label.background-job-plural')}
+                : launcherVariant === 'success'
+                ? t('label.completed')
+                : t('label.failed')}
             </span>
           </button>
         </div>
