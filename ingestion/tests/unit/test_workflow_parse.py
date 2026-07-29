@@ -364,7 +364,7 @@ class TestWorkflowParse(TestCase):
                         },
                     }
                 },
-                "sourceConfig": {"config": {"type": "PipelineMetadata", "includeLineage": True}},
+                "sourceConfig": {"config": {"type": "PipelineMetadata", "includeLineage": True, "includePipelineObservability": False}},
             },
             "sink": {"type": "metadata-rest", "config": {}},
             "workflowConfig": {

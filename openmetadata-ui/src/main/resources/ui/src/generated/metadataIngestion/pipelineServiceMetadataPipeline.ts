@@ -19,6 +19,10 @@ export interface PipelineServiceMetadataPipeline {
      */
     includeLineage?: boolean;
     /**
+     * Optional configuration to turn off pipeline observability extraction.
+     */
+    includePipelineObservability?: boolean;
+    /**
      * Set the 'Include Owners' toggle to control whether to include owners to the ingested
      * entity if the owner email matches with a user stored in the OM server as part of metadata
      * ingestion. If the ingested entity already exists and has an owner, the owner will not be
