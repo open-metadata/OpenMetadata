@@ -249,3 +249,31 @@ export const DummySetActiveActivityComponent = ({
     </div>
   );
 };
+
+export const DummyFeedFqnComponent = ({ fqn }: { fqn: string }) => {
+  const { t } = useTranslation();
+  const { getFeedData, entityThread, entityThreadFqn } =
+    useActivityFeedProvider();
+
+  const handleFetch = () => {
+    getFeedData(
+      FeedFilter.ALL,
+      undefined,
+      ThreadType.Conversation,
+      EntityType.TABLE,
+      fqn
+    );
+  };
+
+  return (
+    <div>
+      <button data-testid="fetch-feed" onClick={handleFetch}>
+        {t('label.submit')}
+      </button>
+      <span data-testid="entity-thread-fqn">{entityThreadFqn ?? 'none'}</span>
+      <span data-testid="entity-thread-ids">
+        {entityThread.map((thread) => thread.id).join(',') || 'empty'}
+      </span>
+    </div>
+  );
+};

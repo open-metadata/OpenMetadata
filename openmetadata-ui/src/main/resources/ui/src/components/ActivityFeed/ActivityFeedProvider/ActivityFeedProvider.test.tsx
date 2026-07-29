@@ -44,6 +44,7 @@ import {
   DummyChildrenMentionsComponent,
   DummyChildrenTaskCloseComponent,
   DummyEntityActivityFeedComponent,
+  DummyFeedFqnComponent,
   DummySetActiveActivityComponent,
 } from './DummyTestComponent';
 
@@ -584,6 +585,120 @@ describe('ActivityFeedProvider', () => {
           'none'
         );
       });
+    });
+  });
+
+  describe('Out of order responses', () => {
+    it('ignores a feed response for an entity the user has already navigated away from', async () => {
+      let resolveFirstEntity: (value: {
+        data: { id: string }[];
+        paging: Record<string, never>;
+      }) => void = () => undefined;
+
+      (getAllFeeds as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirstEntity = resolve;
+            })
+        )
+        .mockResolvedValueOnce({
+          data: [{ id: 'thread-from-second-entity' }],
+          paging: {},
+        });
+
+      const { rerender } = render(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent fqn="first.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      rerender(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent fqn="second.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('entity-thread-fqn')).toHaveTextContent(
+          'second.entity'
+        )
+      );
+
+      await act(async () => {
+        resolveFirstEntity({
+          data: [{ id: 'thread-from-first-entity' }],
+          paging: {},
+        });
+      });
+
+      expect(screen.getByTestId('entity-thread-fqn')).toHaveTextContent(
+        'second.entity'
+      );
+      expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
+        'thread-from-second-entity'
+      );
+    });
+
+    it('ignores a thread lookup for an activity that is no longer selected', async () => {
+      let resolveFirstActivity: (value: {
+        data: { id: string; posts: [] };
+      }) => void = () => undefined;
+
+      (getFeedById as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirstActivity = resolve;
+            })
+        )
+        .mockResolvedValueOnce({ data: { id: 'activity-second', posts: [] } });
+
+      const baseActivity = {
+        timestamp: 1234567890,
+        eventType: 'entityUpdated' as ActivityEvent['eventType'],
+        actor: { id: 'user-1', type: 'user', name: 'testuser' },
+        entity: { id: 'entity-1', type: 'table', name: 'testTable' },
+        about: '<#E::table::test>',
+      };
+
+      const { rerender } = render(
+        <ActivityFeedProvider>
+          <DummySetActiveActivityComponent
+            activity={{ ...baseActivity, id: 'activity-first' }}
+          />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      rerender(
+        <ActivityFeedProvider>
+          <DummySetActiveActivityComponent
+            activity={{ ...baseActivity, id: 'activity-second' }}
+          />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('set-active'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
+          'activity-second'
+        )
+      );
+
+      await act(async () => {
+        resolveFirstActivity({ data: { id: 'activity-first', posts: [] } });
+      });
+
+      expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
+        'activity-second'
+      );
     });
   });
 });

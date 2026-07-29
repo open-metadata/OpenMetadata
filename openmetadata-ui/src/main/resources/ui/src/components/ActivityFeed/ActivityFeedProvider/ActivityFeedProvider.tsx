@@ -21,6 +21,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -104,6 +105,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [entityThreadFqn, setEntityThreadFqn] = useState<string>();
+  // Entity/thread each in-flight request was made for. A response that arrives
+  // after the user has moved on is discarded rather than overwriting the current
+  // one, which otherwise happens whenever two requests overlap and the older
+  // resolves last.
+  const requestedFeedFqnRef = useRef<string | undefined>(undefined);
+  const requestedActivityThreadIdRef = useRef<string | undefined>(undefined);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   // For tasks - using Task type directly
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -350,6 +357,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     ) => {
       try {
         setLoading(true);
+        requestedFeedFqnRef.current = fqn;
         const feedFilterType = filterType ?? FeedFilter.ALL;
         let userId = undefined;
 
@@ -370,9 +378,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId,
           limit
         );
-        setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
-        setEntityThreadFqn(fqn);
-        setEntityPaging(paging);
+        if (requestedFeedFqnRef.current === fqn) {
+          setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
+          setEntityThreadFqn(fqn);
+          setEntityPaging(paging);
+        }
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -381,7 +391,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           })
         );
       } finally {
-        setLoading(false);
+        if (requestedFeedFqnRef.current === fqn) {
+          setLoading(false);
+        }
       }
     },
     [currentUser, user, getTaskData]
@@ -675,6 +687,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const setActiveActivity = useCallback(async (activity?: ActivityEvent) => {
     setSelectedActivity(activity);
     setActivityThread(undefined);
+    requestedActivityThreadIdRef.current = activity?.id;
 
     if (activity?.id) {
       try {
@@ -683,7 +696,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         // `about` instead would return whichever conversation on that entity
         // was updated last, which is usually somebody else's.
         const { data: thread } = await getFeedById(activity.id);
-        setActivityThread(thread);
+
+        // Selecting another activity while this was in flight must win, or its
+        // comments — and anything posted into them — bind to the wrong thread.
+        if (requestedActivityThreadIdRef.current === activity.id) {
+          setActivityThread(thread);
+        }
       } catch {
         // Activities created natively in 2.0 have no thread until the first
         // comment is posted, so a miss here is expected.
