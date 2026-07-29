@@ -94,7 +94,13 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
         'flat-left-panel': variant === 'flat',
       })}
       cols={8}
-      containerPadding={[0, 0]}
+      // react-grid-layout rounds each item's `left` and `width` independently, so
+      // although the two exact values sum to the container width, each rounding
+      // can add just under half a pixel and the last column can land 1px past the
+      // container -- taking the widget card's right border with it. A 1px
+      // horizontal containerPadding pulls the exact right edge in to
+      // `width - 1`, which the rounding can never exceed.
+      containerPadding={[1, 0]}
       isDraggable={false}
       isResizable={false}
       margin={[GRID_VERTICAL_MARGIN, GRID_VERTICAL_MARGIN]}
