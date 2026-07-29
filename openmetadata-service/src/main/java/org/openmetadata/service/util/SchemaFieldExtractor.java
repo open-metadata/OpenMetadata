@@ -39,8 +39,20 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 @Slf4j
 public class SchemaFieldExtractor {
 
+  private static final String ENTITY_SCHEMA_DIRECTORY = "json/schema/entity/";
+  private static final String DEFAULT_SCHEMA_SUBDIRECTORY = "data";
+  private static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
+  private static final String JSON_FILE_EXTENSION = "json";
+  private static final String JSON_FILE_SUFFIX = "." + JSON_FILE_EXTENSION;
+
   private static final Map<String, Map<String, FieldDefinition>> entityFieldsCache =
       new ConcurrentHashMap<>();
+
+  /**
+   * Entity type to the classpath location of its schema, populated by {@link #getAllEntityTypes()}.
+   * Discovery and loading therefore read the same directory layout and cannot drift apart.
+   */
+  private static final Map<String, String> entityTypeToSchemaPath = new ConcurrentHashMap<>();
 
   /**
    * Entity types intentionally excluded from schema field extraction cache initialization. These
@@ -128,25 +140,14 @@ public class SchemaFieldExtractor {
 
   public static List<String> getAllEntityTypes() {
     List<String> entityTypes = new ArrayList<>();
-    String schemaDirectory = "json/schema/entity/";
 
     try (ScanResult scanResult =
-        new ClassGraph().acceptPaths(schemaDirectory).enableMemoryMapping().scan()) {
+        new ClassGraph().acceptPaths(ENTITY_SCHEMA_DIRECTORY).enableMemoryMapping().scan()) {
 
-      List<Resource> resources = scanResult.getResourcesWithExtension("json");
-
-      for (Resource resource : resources) {
-        try (InputStream is = resource.open()) {
-          JSONObject jsonSchema = new JSONObject(new JSONTokener(is));
-          if (isEntityType(jsonSchema)) {
-            String path = resource.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            String entityType = fileName.substring(0, fileName.length() - 5); // Remove ".json"
-            entityTypes.add(entityType);
-            LOG.debug("Found entity type: {}", entityType);
-          }
-        } catch (Exception e) {
-          LOG.error("Error reading schema file {}: {}", resource.getPath(), e.getMessage());
+      for (Resource resource : scanResult.getResourcesWithExtension(JSON_FILE_EXTENSION)) {
+        String entityType = registerEntitySchema(resource);
+        if (entityType != null) {
+          entityTypes.add(entityType);
         }
       }
     } catch (Exception e) {
@@ -156,8 +157,44 @@ public class SchemaFieldExtractor {
     return entityTypes;
   }
 
+  /**
+   * Records where an entity schema actually lives so that the loader never has to guess its
+   * subdirectory. Returns the entity type, or null when the resource is not an entity schema.
+   */
+  private static String registerEntitySchema(Resource resource) {
+    String entityType = null;
+    try (InputStream is = resource.open()) {
+      JSONObject jsonSchema = new JSONObject(new JSONTokener(is));
+      if (isEntityType(jsonSchema)) {
+        entityType = schemaNameOf(resource.getPath());
+        recordSchemaPath(entityType, resource.getPath());
+        LOG.debug("Found entity type: {} at {}", entityType, resource.getPath());
+      }
+    } catch (Exception e) {
+      LOG.error("Error reading schema file {}: {}", resource.getPath(), e.getMessage());
+    }
+    return entityType;
+  }
+
+  private static void recordSchemaPath(String entityType, String schemaPath) {
+    String previousPath = entityTypeToSchemaPath.put(entityType, schemaPath);
+    if (previousPath != null && !previousPath.equals(schemaPath)) {
+      LOG.warn(
+          "Entity type '{}' is declared by two schemas: '{}' and '{}'. Using '{}'.",
+          entityType,
+          previousPath,
+          schemaPath,
+          schemaPath);
+    }
+  }
+
+  private static String schemaNameOf(String schemaPath) {
+    String fileName = schemaPath.substring(schemaPath.lastIndexOf('/') + 1);
+    return fileName.substring(0, fileName.length() - JSON_FILE_SUFFIX.length());
+  }
+
   private static boolean isEntityType(JSONObject jsonSchema) {
-    return "@om-entity-type".equals(jsonSchema.optString("$comment"));
+    return ENTITY_TYPE_ANNOTATION.equals(jsonSchema.optString("$comment"));
   }
 
   private static Schema loadMainSchema(
@@ -610,33 +647,28 @@ public class SchemaFieldExtractor {
     return baseSchemaDirectory + schemaFileName;
   }
 
+  /**
+   * Resolves the schema path recorded while scanning {@value #ENTITY_SCHEMA_DIRECTORY}. Entity types
+   * the scan never discovered (schemas without the {@value #ENTITY_TYPE_ANNOTATION} annotation, still
+   * reachable through the {@code /fields/{entityType}} endpoint) keep the historical
+   * {@value #DEFAULT_SCHEMA_SUBDIRECTORY} subdirectory assumption.
+   */
   private static String determineSchemaPath(String entityType) {
-    String subdirectory = getEntitySubdirectory(entityType);
-    return "json/schema/entity/" + subdirectory + "/" + entityType + ".json";
+    String discoveredPath = discoveredSchemaPaths().get(entityType);
+    return discoveredPath != null
+        ? discoveredPath
+        : ENTITY_SCHEMA_DIRECTORY
+            + DEFAULT_SCHEMA_SUBDIRECTORY
+            + "/"
+            + entityType
+            + JSON_FILE_SUFFIX;
   }
 
-  private static String getEntitySubdirectory(String entityType) {
-    Map<String, String> entityTypeToSubdirectory =
-        Map.ofEntries(
-            Map.entry("dashboard", "data"),
-            Map.entry("table", "data"),
-            Map.entry("pipeline", "data"),
-            Map.entry("votes", "data"),
-            Map.entry("learningResource", "learning"),
-            Map.entry("dataProduct", "domains"),
-            Map.entry("domain", "domains"),
-            Map.entry("notificationTemplate", "events"),
-            Map.entry("tag", "classification"),
-            Map.entry("classification", "classification"),
-            Map.entry("agentExecution", "ai"),
-            Map.entry("aiApplication", "ai"),
-            Map.entry("aiGovernancePolicy", "ai"),
-            Map.entry("llmModel", "ai"),
-            Map.entry("page", "data"),
-            Map.entry("promptTemplate", "ai"),
-            Map.entry("tableColumn", "column"),
-            Map.entry("dashboardDataModelColumn", "column"));
-    return entityTypeToSubdirectory.getOrDefault(entityType, "data");
+  private static Map<String, String> discoveredSchemaPaths() {
+    if (entityTypeToSchemaPath.isEmpty()) {
+      getAllEntityTypes();
+    }
+    return entityTypeToSchemaPath;
   }
 
   @Slf4j
