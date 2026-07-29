@@ -98,31 +98,40 @@ const assertPopoverInteractiveAndFiltersOptions = async (
   await closeQuickFilterPopover(page);
 };
 
-// react-aria positions the popover `absolute` in document coordinates. If its
-// option list is not contained, that list's scrollable overflow reaches <html>
-// and makes the page scrollable behind the drawer — so picking an option below
-// the fold scrolls the focused input into view and drags the whole app with it.
+// react-aria's Checkbox hides its real input in a `position: absolute` span. If
+// the option list is not its containing block, those inputs escape the list's
+// clip and extend <html>'s scroll area — so picking an option below the fold
+// scrolls the focused input into view and drags the whole app with it.
 const assertOffScreenOptionKeepsPageInPlace = async (
   page: Page,
   entityTypeKey: string
 ) => {
+  const pageMetrics = () =>
+    page.evaluate(() => ({
+      scrollY: window.scrollY,
+      scrollHeight: document.documentElement.scrollHeight,
+    }));
+
+  // Compare against the drawer's own resting metrics rather than absolute
+  // zeroes, so a surface whose page legitimately scrolls does not read as a
+  // containment failure.
+  const beforePopover = await pageMetrics();
+
   await openQuickFilter(page, entityTypeKey);
 
+  // The regression only exists once the list overflows its max-height. Assert
+  // that precondition instead of silently passing on a sparse environment.
   const optionList = popover(page).getByTestId('quick-filter-option-list');
+  await expect
+    .poll(() =>
+      optionList.evaluate((list) => list.scrollHeight > list.clientHeight)
+    )
+    .toBe(true);
   await optionList.evaluate((list) => list.scrollTo(0, list.scrollHeight));
 
   await popover(page).locator('[data-testid$="-checkbox"]').last().click();
 
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          document.documentElement.scrollHeight -
-          document.documentElement.clientHeight
-      )
-    )
-    .toBe(0);
+  await expect.poll(pageMetrics).toEqual(beforePopover);
 
   await closeQuickFilterPopover(page);
 };
