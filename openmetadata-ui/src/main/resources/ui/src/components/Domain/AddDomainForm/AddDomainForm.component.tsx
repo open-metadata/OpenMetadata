@@ -144,8 +144,9 @@ const isHyperlinkValue = (value: unknown): value is Hyperlink =>
 
 const normalizeHyperlinkValue = (value: Hyperlink): Hyperlink => {
   const displayText = value.displayText?.trim();
+  const { displayText: _displayText, ...rest } = value;
 
-  return displayText ? { url: value.url, displayText } : { url: value.url };
+  return displayText ? { ...rest, displayText } : rest;
 };
 
 const unwrapSelectItemValue = (raw: unknown): unknown => {
