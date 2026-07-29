@@ -877,6 +877,7 @@ export const waitForSearchResult = async (
         }
         await waitForAllLoadersToDisappear(page);
         await tabSelector?.click();
+        await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
       },
