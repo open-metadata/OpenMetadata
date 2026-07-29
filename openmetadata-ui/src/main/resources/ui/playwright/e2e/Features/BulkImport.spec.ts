@@ -1029,9 +1029,6 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  // Skip this test for now, since it is not working in AUT but working in local and CI
-  // <Mostly around the config since it is working in local and CI and not working in AUT>
-  // eslint-disable-next-line playwright/no-skipped-test -- skipped: fails in AUT but works locally
   test('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
