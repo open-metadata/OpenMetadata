@@ -850,7 +850,8 @@ export const verifyDomainLinkInCard = async (
 export const waitForSearchResult = async (
   page: Page,
   searchTerm: string,
-  result: Locator
+  result: Locator,
+  tabSelector?: Locator
 ) => {
   let hasSubmittedSearch = false;
 
@@ -874,6 +875,8 @@ export const waitForSearchResult = async (
           ]);
           hasSubmittedSearch = true;
         }
+        await waitForAllLoadersToDisappear(page);
+        await tabSelector?.click();
         await waitForAllLoadersToDisappear(page);
 
         return result.isVisible();
