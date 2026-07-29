@@ -674,18 +674,17 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setSelectedActivity(activity);
     setActivityThread(undefined);
 
-    if (activity?.about) {
+    if (activity?.id) {
       try {
-        const response = await getAllFeeds(
-          activity.about,
-          undefined,
-          ThreadType.Conversation
-        );
-        if (response.data.length > 0) {
-          setActivityThread(response.data[0]);
-        }
+        // The 2.0 migration reuses the legacy thread id as the activity event
+        // id, so this is the activity's own comment thread. Looking it up by
+        // `about` instead would return whichever conversation on that entity
+        // was updated last, which is usually somebody else's.
+        const { data: thread } = await getFeedById(activity.id);
+        setActivityThread(thread);
       } catch {
-        // No thread found for this activity, which is fine
+        // Activities created natively in 2.0 have no thread until the first
+        // comment is posted, so a miss here is expected.
       }
     }
   }, []);
@@ -716,8 +715,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             type: ThreadType.Conversation,
           };
 
+          // Deliberately not added to `entityThread`: this thread is the
+          // activity's comment container, and the feed list would render it as
+          // a second, standalone conversation card next to the activity.
           const createdThread = await postThread(threadData);
-          setEntityThread((prev) => [createdThread, ...prev]);
 
           await postFeedById(createdThread.id, {
             message,

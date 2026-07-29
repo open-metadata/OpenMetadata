@@ -40,16 +40,23 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       return undefined;
     }
 
+    // In a list the card is a timeline entry, so it shows the thread's last
+    // activity — the same key the merged feed is ordered by. Expanded in the
+    // drawer the card is the thread's root post, so it shows when it started.
+    const postTs = isOpenInDrawer
+      ? feed?.threadTs
+      : (feed?.updatedAt ?? feed?.threadTs);
+
     return feed
       ? ({
           message: feed.message,
-          postTs: feed.threadTs,
+          postTs,
           from: feed.createdBy,
           id: feed.id,
           reactions: feed.reactions,
         } as Post)
       : undefined;
-  }, [feed, isActivityEvent]);
+  }, [feed, isActivityEvent, isOpenInDrawer]);
 
   const handleFeedClick = useCallback(() => {
     if (feed) {

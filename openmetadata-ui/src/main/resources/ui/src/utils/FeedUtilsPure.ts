@@ -34,7 +34,11 @@ import type {
   EntityTestResultSummaryObject,
   Thread,
 } from '../generated/entity/feed/thread';
-import { TestCaseStatus, ThreadType } from '../generated/entity/feed/thread';
+import {
+  GeneratedBy,
+  TestCaseStatus,
+  ThreadType,
+} from '../generated/entity/feed/thread';
 import type { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
@@ -131,6 +135,15 @@ export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
 
   return { updatedFeedList, relativeDays };
 };
+
+/**
+ * The 2.0 migration copied every system-generated thread into `activity_stream` and left
+ * the original row in the thread store, and 2.0 no longer persists system threads at all.
+ * Anything still marked `system` in a feed response is therefore a duplicate of an
+ * activity event and must not be rendered or counted alongside it.
+ */
+export const filterUserGeneratedThreads = (threads: Thread[] = []): Thread[] =>
+  threads.filter((thread) => thread.generatedBy !== GeneratedBy.System);
 
 export const getReplyText = (
   count: number,

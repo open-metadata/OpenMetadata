@@ -55,11 +55,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import {
-  GeneratedBy,
-  Thread,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -71,7 +67,10 @@ import { getTaskCounts, Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getFeedCounts } from '../../../utils/FeedUtilsPure';
+import {
+  filterUserGeneratedThreads,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -428,33 +427,41 @@ export const ActivityFeedTab = ({
     }
   }, [feedCount, activeDomain]);
 
-  // User conversations live only in the legacy feed store, so every count has to
-  // add them to the activity events rather than read either source alone.
-  const allActivityCount = useMemo(
-    () =>
-      (activityEvents?.length ?? 0) +
-      (entityThread ?? []).filter(
-        (feed) => feed.generatedBy !== GeneratedBy.System
-      ).length,
-    [activityEvents, entityThread]
-  );
+  // `entityThread` is reused by the Mentions tab, so the conversation part of the
+  // All count is snapshotted while the All tab owns it. Counting both sources is
+  // required because user conversations live only in the legacy feed store, and
+  // it keeps the badge equal to the number of cards ActivityFeedListV1New draws.
+  const [allTabConversationCount, setAllTabConversationCount] =
+    useState<number>(0);
+  const isActivityFeedLoading = loading || Boolean(isActivityLoading);
 
   useEffect(() => {
-    const activityCount = allActivityCount;
-
-    if (activityCount > 0) {
-      setCountData((prev) => {
-        const newData = {
-          ...prev.data,
-          conversationCount: activityCount,
-          totalCount: activityCount + (prev.data.totalTasksCount ?? 0),
-        };
-        onUpdateFeedCount?.(newData);
-
-        return { ...prev, data: newData };
-      });
+    if (activeTab === ActivityFeedTabs.ALL && !isActivityFeedLoading) {
+      setAllTabConversationCount(
+        filterUserGeneratedThreads(entityThread).length
+      );
     }
-  }, [allActivityCount, onUpdateFeedCount]);
+  }, [activeTab, entityThread, isActivityFeedLoading]);
+
+  const allActivityCount =
+    (activityEvents?.length ?? 0) + allTabConversationCount;
+
+  useEffect(() => {
+    if (isActivityFeedLoading) {
+      return;
+    }
+
+    setCountData((prev) => {
+      const newData = {
+        ...prev.data,
+        conversationCount: allActivityCount,
+        totalCount: allActivityCount + (prev.data.totalTasksCount ?? 0),
+      };
+      onUpdateFeedCount?.(newData);
+
+      return { ...prev, data: newData };
+    });
+  }, [allActivityCount, isActivityFeedLoading, onUpdateFeedCount]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -463,9 +470,16 @@ export const ActivityFeedTab = ({
       }
       if (selectedThread?.id !== feed?.id) {
         setActiveThread(feed);
+        setActiveActivity(undefined);
       }
     },
-    [setActiveThread, isTaskActiveTab, isMentionTabSelected, selectedThread]
+    [
+      setActiveThread,
+      setActiveActivity,
+      isTaskActiveTab,
+      isMentionTabSelected,
+      selectedThread,
+    ]
   );
 
   const handleTaskClick = useCallback(
@@ -754,7 +768,7 @@ export const ActivityFeedTab = ({
                     <span>{t('label.all')}</span>
                   </Space>
 
-                  <span>
+                  <span data-testid="left-panel-all-count">
                     {!isUserEntity &&
                       getCountBadge(
                         allActivityCount,
@@ -857,7 +871,7 @@ export const ActivityFeedTab = ({
         ) : (
           <ActivityFeedListV1New
             hidePopover
-            activeFeedId={selectedThread?.id}
+            activeFeedId={selectedThread?.id ?? selectedActivity?.id}
             activityList={activityEvents}
             componentsVisibility={componentsVisibility}
             emptyPlaceholderText={placeholderText}
@@ -866,6 +880,7 @@ export const ActivityFeedTab = ({
             isForFeedTab={false}
             isFullWidth={isFullWidth}
             isLoading={(isFirstLoad && loading) || (isActivityLoading ?? false)}
+            selectedActivity={selectedActivity}
             selectedThread={selectedThread}
             showThread={false}
             onActivityClick={handleActivityClick}

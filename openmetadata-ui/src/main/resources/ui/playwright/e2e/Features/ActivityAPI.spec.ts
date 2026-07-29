@@ -16,6 +16,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import {
   createConversationThread,
   FEED_ITEM_TIMEOUT,
+  getActivityFeedItems,
   getFeedItemByText,
   getTableLeafName,
   insertActivityEventForTest,
@@ -318,6 +319,120 @@ test.describe(
 
       await page.keyboard.press('Escape');
       await expect(filterMenu).not.toBeVisible();
+    });
+  }
+);
+
+test.describe(
+  'Activity API - Mixed activity and conversations',
+  { tag: [DOMAIN_TAGS.DISCOVERY] },
+  () => {
+    let mixedFeedTable: TableClass;
+    const activitySummary = `Mixed feed activity ${uuid()}`;
+    const conversationMessage = `Mixed feed conversation ${uuid()}`;
+
+    test.beforeAll(
+      'Setup: seed one table with an activity event and a conversation',
+      async () => {
+        const { apiContext, afterAction } = await createAdminApiContext();
+
+        mixedFeedTable = new TableClass();
+
+        try {
+          await mixedFeedTable.create(apiContext);
+          await insertActivityEventForTest(
+            apiContext,
+            mixedFeedTable,
+            activitySummary,
+            'DescriptionUpdated'
+          );
+          await createConversationThread(
+            apiContext,
+            mixedFeedTable,
+            conversationMessage
+          );
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    test.afterAll('Cleanup: delete table', async () => {
+      const { apiContext, afterAction } = await createAdminApiContext();
+
+      try {
+        await mixedFeedTable.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await waitForAllLoadersToDisappear(page);
+      await visitTableActivityFeed(page, mixedFeedTable);
+    });
+
+    test('renders conversations alongside activity events, newest first', async ({
+      page,
+    }) => {
+      await test.step('Both sources render in the same list', async () => {
+        await expect(
+          await getFeedItemByText(page, activitySummary)
+        ).toBeVisible();
+        await expect(
+          await getFeedItemByText(page, conversationMessage)
+        ).toBeVisible();
+      });
+
+      await test.step('The conversation created last sorts above the activity', async () => {
+        const feedItemTexts: string[] =
+          await getActivityFeedItems(page).allTextContents();
+        const conversationIndex = feedItemTexts.findIndex((text: string) =>
+          text.includes(conversationMessage)
+        );
+        const activityIndex = feedItemTexts.findIndex((text: string) =>
+          text.includes(activitySummary)
+        );
+
+        expect(conversationIndex).toBeGreaterThanOrEqual(0);
+        expect(conversationIndex).toBeLessThan(activityIndex);
+      });
+
+      await test.step('The All badge counts both sources', async () => {
+        const feedItemCount = await getActivityFeedItems(page).count();
+
+        await expect(
+          page.getByTestId('left-panel-all-count').getByTestId('filter-count')
+        ).toHaveText(String(feedItemCount));
+      });
+    });
+
+    test('keeps the selected conversation open instead of reverting to an activity', async ({
+      page,
+    }) => {
+      const activityItem = await getFeedItemByText(page, activitySummary);
+
+      await test.step('Selecting an activity opens the activity panel', async () => {
+        await activityItem.click();
+
+        await expect(page.locator('#activity-panel')).toBeVisible();
+      });
+
+      await test.step('Selecting a conversation keeps the conversation panel open', async () => {
+        const conversationItem = await getFeedItemByText(
+          page,
+          conversationMessage
+        );
+
+        await conversationItem.click();
+
+        const feedPanel = page.locator('#feed-panel');
+
+        await expect(feedPanel).toBeVisible();
+        await expect(feedPanel).toContainText(conversationMessage);
+        await expect(page.locator('#activity-panel')).toBeHidden();
+      });
     });
   }
 );

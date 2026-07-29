@@ -26,6 +26,7 @@ import {
   deleteThread,
   getAllFeeds,
   getEntityActivityByFqn,
+  getFeedById,
   getMyActivityFeed,
   postFeedById,
   postThread,
@@ -471,10 +472,7 @@ describe('ActivityFeedProvider', () => {
     };
 
     it('should create a new thread when posting first comment on activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValueOnce({
-        data: [],
-        paging: {},
-      });
+      (getFeedById as jest.Mock).mockRejectedValueOnce(new Error('not found'));
 
       await act(async () => {
         render(
@@ -497,13 +495,8 @@ describe('ActivityFeedProvider', () => {
     });
 
     it('should add to existing thread when posting comment on activity with thread', async () => {
-      const existingThread = {
-        id: 'existing-thread-123',
-        posts: [],
-      };
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [existingThread],
-        paging: {},
+      (getFeedById as jest.Mock).mockResolvedValue({
+        data: { id: mockActivity.id, posts: [] },
       });
 
       await act(async () => {
@@ -517,7 +510,9 @@ describe('ActivityFeedProvider', () => {
       fireEvent.click(screen.getByTestId('set-active'));
 
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalled();
+        expect(screen.getByTestId('activity-thread-id')).toHaveTextContent(
+          mockActivity.id
+        );
       });
     });
   });
@@ -533,10 +528,9 @@ describe('ActivityFeedProvider', () => {
       summary: 'Updated tags',
     };
 
-    it('should fetch associated threads when setting active activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [{ id: 'thread-for-activity', posts: [] }],
-        paging: {},
+    it('should fetch the activity own comment thread by id', async () => {
+      (getFeedById as jest.Mock).mockResolvedValue({
+        data: { id: mockActivity.id, posts: [] },
       });
 
       await act(async () => {
@@ -550,19 +544,12 @@ describe('ActivityFeedProvider', () => {
       fireEvent.click(screen.getByTestId('set-active'));
 
       await waitFor(() => {
-        expect(getAllFeeds).toHaveBeenCalledWith(
-          '<#E::table::test>',
-          undefined,
-          'Conversation'
-        );
+        expect(getFeedById).toHaveBeenCalledWith(mockActivity.id);
       });
     });
 
     it('should handle no existing thread for activity', async () => {
-      (getAllFeeds as jest.Mock).mockResolvedValue({
-        data: [],
-        paging: {},
-      });
+      (getFeedById as jest.Mock).mockRejectedValue(new Error('not found'));
 
       await act(async () => {
         render(
