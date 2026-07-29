@@ -1160,24 +1160,18 @@ class DbtSource(DbtServiceSource):
                             ),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Lineage upstream nodes",
-                                error=(
-                                    "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                else:
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt lineage edge dropped: upstream table '{upstream_node}' "
+                        f"could not be resolved in OpenMetadata for '{to_entity.fullyQualifiedName.root}'.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1264,24 +1258,18 @@ class DbtSource(DbtServiceSource):
                             lineageDetails=LineageDetails(source=LineageSource.DbtLineage),
                         )
                     )
-                    if lineage_request is not None:
-                        yield Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage_request,
-                                override_lineage=self.source_config.overrideLineage,
-                            )
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage_request,
+                            override_lineage=self.source_config.overrideLineage,
                         )
-                    else:
-                        yield Either(
-                            left=StackTraceError(
-                                name="DBT Exposure lineage",
-                                error=(
-                                    "Error to create DBT Exposure lineage",
-                                    f"{str(exposure_spec)[:20]}...",
-                                ),
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                    )
+                else:
+                    self.status.warning(
+                        upstream_node,
+                        f"dbt exposure lineage edge dropped: upstream table '{upstream_node}' "
+                        f"could not be resolved in OpenMetadata for exposure '{manifest_node.name}'.",
+                    )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())

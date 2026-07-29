@@ -3645,3 +3645,51 @@ class TestRemoveManifestNonRequiredKeys(TestCase):
         assert manifest_dict["parent_map"] == {}
         assert manifest_dict["child_map"] == {}
         assert manifest_dict["group_map"] == []
+
+
+class TestDbtLineageUnresolvedUpstream:
+    """create_dbt_lineage / create_dbt_exposures_lineage must report dropped edges."""
+
+    def _source(self):
+        source = MagicMock(spec=DbtSource)
+        source.status = MagicMock()
+        source.source_config = MagicMock(overrideLineage=False)
+        return source
+
+    def test_unresolved_upstream_records_a_status_warning(self):
+        source = self._source()
+        source._get_table_entity.return_value = None
+
+        to_entity = MagicMock()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert results == []
+        source.status.warning.assert_called_once()
+        _key, reason = source.status.warning.call_args[0]
+        assert "svc.db.sch.raw_orders" in reason
+        assert "svc.db.sch.orders" in reason
+
+    def test_resolved_upstream_emits_no_warning(self):
+        source = self._source()
+        from_entity = MagicMock()
+        from_entity.id.root = uuid.uuid4()
+        source._get_table_entity.return_value = from_entity
+
+        to_entity = MagicMock()
+        to_entity.id.root = uuid.uuid4()
+        to_entity.fullyQualifiedName.root = "svc.db.sch.orders"
+        data_model_link = MagicMock()
+        data_model_link.table_entity = to_entity
+        data_model_link.datamodel.upstream = ["svc.db.sch.raw_orders"]
+        data_model_link.datamodel.sql = None
+
+        results = list(DbtSource.create_dbt_lineage(source, data_model_link))
+
+        assert len(results) == 1
+        assert results[0].right is not None
+        source.status.warning.assert_not_called()
