@@ -16,7 +16,9 @@ Test Microstrategy using the topology
 from datetime import datetime
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardConnection,
@@ -226,3 +228,40 @@ class MicroStrategyUnitTest(TestCase):
         assert len(self.microstrategy.chart_source_state) == 2
         for fqn in self.microstrategy.chart_source_state:
             assert "mock_microstrategy" in fqn
+
+
+def test_microstrategy_connection_logs_out_on_close():
+    """The owner carries the API-session logout, so closing the owner logs out."""
+    from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+        MicroStrategyConnection as MicroStrategyConnectionConfig,
+    )
+    from metadata.ingestion.source.dashboard.microstrategy.connection import (
+        MicroStrategyConnection,
+    )
+
+    service_connection = MicroStrategyConnectionConfig(
+        hostPort="https://demo.microstrategy.com", username="username", password="password"
+    )
+    with patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls:
+        client = mock_client_cls.return_value
+        connection = MicroStrategyConnection(service_connection)
+        assert connection.client is client
+        connection.close()
+        client.close_api_session.assert_called_once()
+
+
+def test_microstrategy_logs_out_when_init_test_connection_fails():
+    """A test-connection failure in __init__ still logs out the API session the
+    client opened when it was built."""
+    with (
+        patch("metadata.ingestion.source.dashboard.microstrategy.connection.MicroStrategyClient") as mock_client_cls,
+        patch(
+            "metadata.ingestion.source.dashboard.dashboard_service.run_test_connection",
+            side_effect=RuntimeError("cannot connect"),
+        ),
+        pytest.raises(RuntimeError),
+    ):
+        client = mock_client_cls.return_value
+        MicrostrategySource.create(mock_micro_config["source"], MagicMock())
+
+    client.close_api_session.assert_called_once()

@@ -456,7 +456,10 @@ class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
         except Exception as exc:
             msg = f"Unknown error connecting with {connection}: {exc}."
             raise SourceConnectionException(msg) from exc
-        if isinstance(client, Engine):
+        # The Airflow 2.x backend engine is airflow's process-global
+        # settings.engine (borrowed, not OM-built); disposing it would tear down
+        # the host Airflow pool. Only dispose engines this connection built.
+        if isinstance(client, Engine) and client is not getattr(settings, "engine", None):
             self._on_close(client.dispose)
         return client
 

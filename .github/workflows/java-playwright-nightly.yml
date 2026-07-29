@@ -129,7 +129,7 @@ jobs:
 
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # On a PR, test the PR head (the changed code). workflow_dispatch honours the
           # dispatched ref so feature branches can validate the nightly matrix before merge.
@@ -220,7 +220,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
@@ -389,7 +389,7 @@ jobs:
           swap-storage: true
 
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
