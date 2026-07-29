@@ -32,9 +32,6 @@ on:
       - "openmetadata-ui/**"
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
   group: playwright-visual-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
@@ -44,6 +41,8 @@ jobs:
     name: playwright-visual-regression
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: read
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be # v1.3.1
