@@ -84,6 +84,7 @@ public class IntakeFormResourceIT {
   private static final String INTAKE_FORMS_PATH = "/v1/governance/intakeForms";
   private static final Double INITIAL_ENTITY_VERSION = 0.1;
   private static final String FORM_FIELDS_FIELD = "formFields";
+  private static final String INTAKE_FORM_ENTITY_TYPE = "intakeForm";
   private static final String RISK_PROPERTY = "intakeRiskAssessment";
   private static final String DOMAIN_OWNER_PROPERTY = "intakeDomainOwner";
   private static final String DOMAIN_AUDIENCE_PROPERTY = "intakeDomainAudience";
@@ -1202,10 +1203,12 @@ public class IntakeFormResourceIT {
                   customPropertyFormField(glossaryTermProperty, true),
                   customPropertyFormField(survivingGlossaryTermProperty, false)));
 
+      long pruneStartTs = System.currentTimeMillis();
       deleteCustomProperty("dataProduct", dataProductProperty);
       deleteCustomProperty("domain", domainProperty);
       deleteCustomProperty("glossaryTerm", glossaryTermProperty);
 
+      assertPruneEmittedChangeEvent(dataProductForm.getId(), pruneStartTs);
       assertDeletedPropertyPruned(
           getIntakeFormById(dataProductForm.getId()),
           dataProductProperty,
@@ -1881,6 +1884,37 @@ public class IntakeFormResourceIT {
             .anyMatch(field -> ("extension." + deletedProperty).equals(field.getFieldPath())));
     assertTrue(form.getRequiredFields().isEmpty());
     assertPruneWasVersioned(form, deletedProperty);
+  }
+
+  /**
+   * Change events are emitted by ChangeEventHandler, a REST response filter that only ever sees the
+   * Type request driving this cascade. Without an explicit event the IntakeForm changes version with
+   * nothing for subscribers to consume, so assert one was recorded.
+   */
+  private static void assertPruneEmittedChangeEvent(UUID formId, long sinceTs) throws Exception {
+    ObjectNode events =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/events?entityUpdated=" + INTAKE_FORM_ENTITY_TYPE + "&timestamp=" + sinceTs,
+                null,
+                ObjectNode.class);
+    ArrayNode data = (ArrayNode) events.path("data");
+    boolean emitted = false;
+    for (int i = 0; i < data.size(); i++) {
+      if (formId.toString().equals(data.get(i).path("entityId").asText())) {
+        emitted = true;
+
+        break;
+      }
+    }
+    assertTrue(
+        emitted,
+        "Pruning a custom property must record an "
+            + INTAKE_FORM_ENTITY_TYPE
+            + " change event for form "
+            + formId);
   }
 
   /**
