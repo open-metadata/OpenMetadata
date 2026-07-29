@@ -64,6 +64,7 @@ import {
   RequiredField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
+import { Hyperlink } from '../../../generated/type/customProperties/complexTypes';
 import {
   LabelType,
   State,
@@ -81,6 +82,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
+import { isValidUrl } from '../../../utils/SSOUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -134,18 +136,13 @@ const isFormSelectItem = (value: unknown): value is DomainFormSelectItem =>
   'id' in value &&
   'value' in value;
 
-const isHyperlinkValue = (
-  value: unknown
-): value is { url: string; displayText?: string } =>
+const isHyperlinkValue = (value: unknown): value is Hyperlink =>
   typeof value === 'object' &&
   value !== null &&
   'url' in value &&
-  typeof (value as { url: unknown }).url === 'string';
+  typeof value.url === 'string';
 
-const normalizeHyperlinkValue = (value: {
-  url: string;
-  displayText?: string;
-}): { url: string; displayText?: string } => {
+const normalizeHyperlinkValue = (value: Hyperlink): Hyperlink => {
   const displayText = value.displayText?.trim();
 
   return displayText ? { url: value.url, displayText } : { url: value.url };
@@ -990,21 +987,6 @@ const AddDomainForm = ({
   });
 
   const extensionFields: FieldProp[] = useMemo(() => {
-    const validateSafeUrl = (urlValue?: string): true | string => {
-      if (!urlValue) {
-        return true;
-      }
-      try {
-        const { protocol } = new URL(urlValue);
-
-        return ['http:', 'https:'].includes(protocol)
-          ? true
-          : t('message.url-must-use-http-or-https');
-      } catch {
-        return t('message.invalid-url');
-      }
-    };
-
     return extensionRequiredFields.flatMap((rf): FieldProp[] => {
       const propertyName = rf.fieldPath.startsWith('extension.')
         ? rf.fieldPath.substring('extension.'.length)
@@ -1039,7 +1021,13 @@ const AddDomainForm = ({
                 hint: t('message.hyperlink-url-helper'),
               },
               required: true,
-              rules: { ...requiredRule, validate: validateSafeUrl },
+              rules: {
+                ...requiredRule,
+                validate: (urlValue?: string) =>
+                  !urlValue ||
+                  isValidUrl(urlValue) ||
+                  t('message.url-must-start-with-http-or-https'),
+              },
               type: FieldTypes.TEXT,
             },
             {
