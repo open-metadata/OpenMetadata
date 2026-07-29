@@ -12,15 +12,15 @@
  */
 @import '../../../styles/variables.less';
 
-@markdown-bg-color: #f8f8fa;
+@markdown-bg-color: var(--om-legacy-color-f8f8fa);
 
 .service-doc-panel {
   .service-doc-panel-focused {
-    padding: 14px 16px 20px;
+    padding: var(--om-space-14) var(--om-space-16) var(--om-space-20);
   }
 
   .service-doc-content {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     word-break: break-word;
     overflow-wrap: break-word;
 
@@ -42,34 +42,34 @@
     }
 
     h1 {
-      font-size: 24px;
+      font-size: var(--om-font-size-display-xs);
       line-height: 48px;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
 
     h2 {
-      font-size: 20px;
+      font-size: var(--om-font-size-xl);
       line-height: 32px;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
 
     h3 {
-      font-size: 18px;
-      font-weight: 500;
+      font-size: var(--om-font-size-lg);
+      font-weight: var(--om-font-weight-medium);
     }
 
     h4 {
-      font-size: 16px;
-      font-weight: 500;
+      font-size: var(--om-font-size-md);
+      font-weight: var(--om-font-weight-medium);
     }
 
     h5 {
-      font-size: 14px;
-      font-weight: 500;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-medium);
     }
 
     p {
-      margin: 4px 0;
+      margin: var(--om-space-4) 0;
       line-height: 24px;
     }
 
@@ -84,34 +84,34 @@
 
     ul,
     ol {
-      margin: 4px 0;
-      padding-inline-start: 42px;
+      margin: var(--om-space-4) 0;
+      padding-inline-start: var(--om-space-42);
       list-style: disc;
     }
 
     strong {
-      font-weight: bold;
+      font-weight: var(--om-font-weight-bold);
     }
 
     code {
       white-space: break-spaces;
       background: @markdown-bg-color;
       color: @text-color;
-      padding: 1px 4px;
-      border-radius: 4px;
+      padding: var(--om-space-1) var(--om-space-4);
+      border-radius: var(--om-radius-sm);
     }
 
     pre {
       position: relative;
-      margin: 8px 0;
+      margin: var(--om-space-8) 0;
       padding: 0;
       background: transparent;
 
       code {
         display: block;
-        padding: 15px 40px 15px 15px;
+        padding: var(--om-space-15) var(--om-space-40) var(--om-space-15) var(--om-space-15);
         overflow: auto;
-        border-radius: 8px;
+        border-radius: var(--om-radius-lg);
         border-bottom: 2px solid @border-color;
         background: @markdown-bg-color;
 
@@ -125,9 +125,9 @@
         top: 6px;
         right: 6px;
         opacity: 0;
-        transition: opacity 0.2s;
+        transition: opacity var(--om-duration-200);
         background: @markdown-bg-color;
-        border-radius: 4px;
+        border-radius: var(--om-radius-sm);
 
         &[data-copied='true'] {
           opacity: 0.4;
@@ -145,25 +145,25 @@
 
     blockquote {
       border-left: 4px solid @border-color;
-      margin: 4px 0;
-      padding-left: 12px;
+      margin: var(--om-space-4) 0;
+      padding-left: var(--om-space-12);
     }
 
     table {
       border-collapse: collapse;
       width: 100%;
-      margin: 8px 0;
+      margin: var(--om-space-8) 0;
     }
 
     th,
     td {
       border: 1px solid @border-color;
-      padding: 8px 16px;
+      padding: var(--om-space-8) var(--om-space-16);
     }
 
     th {
       background: @markdown-bg-color;
-      font-weight: 500;
+      font-weight: var(--om-font-weight-medium);
     }
 
     section {
@@ -173,24 +173,24 @@
     section[data-highlighted='true'] {
       background-color: @primary-50;
       border-left: 3px solid @primary-6;
-      padding-bottom: 12px;
-      margin-top: 12px;
+      padding-bottom: var(--om-space-12);
+      margin-top: var(--om-space-12);
       transition: ease-in-out;
     }
 
     .admonition {
-      border-radius: 8px;
-      border-left: 8px solid #afafc1;
-      padding: 16px 16px 16px 48px !important;
+      border-radius: var(--om-radius-lg);
+      border-left: 8px solid var(--om-legacy-color-afafc1);
+      padding: var(--om-space-16) var(--om-space-16) var(--om-space-16) var(--om-space-48) !important;
       background-color: @markdown-bg-color;
       position: relative;
-      margin: 10px 24px;
+      margin: var(--om-space-10) var(--om-space-24);
       margin-bottom: 0;
 
       &::before {
         position: absolute;
         left: 12px;
-        font-size: 18px;
+        font-size: var(--om-font-size-lg);
         content: 'ℹ️';
       }
 
@@ -203,7 +203,7 @@
       &.admonition-warning,
       &.admonition-caution {
         border-left-color: @warning-color;
-        background: #fff3dc;
+        background: var(--om-legacy-color-fff3dc);
 
         &::before {
           content: '⚠️';
@@ -212,7 +212,7 @@
 
       &.admonition-danger {
         border-left-color: @error-color;
-        background: #ff4c3b1a;
+        background: var(--om-legacy-color-255-76-59-0-102);
 
         &::before {
           content: '🚨';
@@ -221,7 +221,7 @@
 
       &.admonition-tip {
         border-left-color: @success-color;
-        background: #f6ffed;
+        background: var(--om-legacy-color-f6ffed);
 
         &::before {
           content: '💡';
@@ -248,31 +248,31 @@
 
     h2 {
       padding-top: 0 !important;
-      font-size: 18px;
+      font-size: var(--om-font-size-lg);
       line-height: 28px;
     }
 
     h3 {
       padding-top: @padding-sm !important;
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
       line-height: 24px;
     }
 
     p,
     li {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       line-height: 22px;
     }
 
     ul,
     ol {
-      padding-inline-start: 24px;
+      padding-inline-start: var(--om-space-24);
     }
 
     pre code {
       max-height: 220px;
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
     }
 
@@ -287,14 +287,14 @@
   .focused-service-docs {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--om-space-14);
     color: var(--tw-color-text-primary);
   }
 
   .focused-service-docs-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--om-space-10);
   }
 
   .focused-service-docs-logo-wrap {
@@ -321,27 +321,27 @@
 
   .focused-service-docs-title {
     color: var(--tw-color-text-primary);
-    font-size: 16px;
-    font-weight: 700;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-bold);
     line-height: 28px;
   }
 
   .focused-service-docs-subtitle {
     color: var(--tw-color-text-secondary);
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     line-height: 18px;
   }
 
   .focused-service-docs-intro {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--om-space-4);
   }
 
   .focused-service-docs-eyebrow {
     color: var(--tw-color-text-brand-secondary);
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-bold);
     letter-spacing: 0.06em;
     line-height: 18px;
     text-transform: uppercase;
@@ -351,8 +351,8 @@
   .focused-service-docs-section > h1 {
     margin: 0;
     color: var(--tw-color-text-primary);
-    font-size: 18px;
-    font-weight: 700;
+    font-size: var(--om-font-size-lg);
+    font-weight: var(--om-font-weight-bold);
     line-height: 28px;
   }
 
@@ -360,29 +360,29 @@
   .focused-service-docs-link-section p {
     margin: 0;
     color: var(--tw-color-text-secondary);
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     line-height: 22px;
   }
 
   .focused-service-docs-section {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    margin-top: 4px;
-    padding-top: 14px;
+    gap: var(--om-space-10);
+    margin-top: var(--om-space-4);
+    padding-top: var(--om-space-14);
     border-top: 1px solid var(--tw-color-border-secondary);
   }
 
   .focused-doc-auth-grid {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: var(--om-space-10);
   }
 
   .focused-doc-auth-card {
-    padding: 10px;
+    padding: var(--om-space-10);
     border: 1px solid var(--tw-color-border-secondary);
-    border-radius: 10px;
+    border-radius: var(--om-radius-10);
   }
 
   .focused-doc-auth-card-password {
@@ -398,23 +398,23 @@
   .focused-doc-auth-title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    gap: var(--om-space-8);
+    margin-bottom: var(--om-space-6);
     color: var(--tw-color-text-primary);
-    font-size: 14px;
-    font-weight: 700;
+    font-size: var(--om-font-size-sm);
+    font-weight: var(--om-font-weight-bold);
     line-height: 22px;
   }
 
   .focused-doc-auth-card p {
     margin: 0;
     color: var(--tw-color-text-secondary);
-    font-size: 12px;
+    font-size: var(--om-font-size-xs);
     line-height: 18px;
   }
 
   .focused-doc-markdown {
-    margin-top: 6px;
+    margin-top: var(--om-space-6);
 
     .block-editor-wrapper .tiptap.ProseMirror {
       h1 {
@@ -423,10 +423,10 @@
 
       h2,
       h3 {
-        padding: 10px 0 4px !important;
+        padding: var(--om-space-10) 0 var(--om-space-4) !important;
         color: var(--tw-color-text-primary) !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
+        font-size: var(--om-font-size-md) !important;
+        font-weight: var(--om-font-weight-bold) !important;
         line-height: 24px !important;
       }
 
@@ -440,38 +440,38 @@
       h4,
       h5,
       h6 {
-        padding: 4px 0 2px !important;
+        padding: var(--om-space-4) 0 var(--om-space-2) !important;
         color: var(--tw-color-text-primary) !important;
-        font-size: 14px !important;
-        font-weight: 700 !important;
+        font-size: var(--om-font-size-sm) !important;
+        font-weight: var(--om-font-weight-bold) !important;
         line-height: 22px !important;
       }
 
       p,
       li {
         color: var(--tw-color-text-secondary) !important;
-        font-size: 14px !important;
+        font-size: var(--om-font-size-sm) !important;
         line-height: 22px !important;
       }
 
       p {
-        margin: 3px 0 !important;
+        margin: var(--om-space-3) 0 !important;
       }
 
       ul,
       ol {
-        margin: 3px 0 !important;
-        padding-inline-start: 16px !important;
+        margin: var(--om-space-3) 0 !important;
+        padding-inline-start: var(--om-space-16) !important;
       }
 
       pre {
-        margin: 8px 0 !important;
+        margin: var(--om-space-8) 0 !important;
       }
 
       pre code {
         max-height: 180px;
-        border-radius: 10px;
-        font-size: 12px !important;
+        border-radius: var(--om-radius-10);
+        font-size: var(--om-font-size-xs) !important;
         line-height: 18px !important;
       }
     }
@@ -488,10 +488,10 @@
 
     h2,
     h3 {
-      padding: 10px 0 4px !important;
+      padding: var(--om-space-10) 0 var(--om-space-4) !important;
       color: var(--tw-color-text-primary);
-      font-size: 16px;
-      font-weight: 700;
+      font-size: var(--om-font-size-md);
+      font-weight: var(--om-font-weight-bold);
       line-height: 28px;
     }
 
@@ -505,45 +505,45 @@
     h4,
     h5,
     h6 {
-      padding: 4px 0 2px !important;
+      padding: var(--om-space-4) 0 var(--om-space-2) !important;
       color: var(--tw-color-text-primary);
-      font-size: 14px;
-      font-weight: 700;
+      font-size: var(--om-font-size-sm);
+      font-weight: var(--om-font-weight-bold);
       line-height: 22px;
     }
 
     p,
     li {
       color: var(--tw-color-text-secondary);
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       line-height: 22px;
     }
 
     p {
-      margin: 3px 0;
+      margin: var(--om-space-3) 0;
     }
 
     ul,
     ol {
-      margin: 3px 0;
-      padding-inline-start: 16px;
+      margin: var(--om-space-3) 0;
+      padding-inline-start: var(--om-space-16);
     }
 
     pre code {
       max-height: 180px;
-      border-radius: 10px;
-      font-size: 12px;
+      border-radius: var(--om-radius-10);
+      font-size: var(--om-font-size-xs);
       line-height: 18px;
     }
   }
 
   .focused-service-docs-field-markdown {
-    margin-top: 10px;
+    margin-top: var(--om-space-10);
   }
 
   .focused-service-docs-section + .focused-service-docs-field-markdown {
-    margin-top: 4px;
-    padding-top: 14px;
+    margin-top: var(--om-space-4);
+    padding-top: var(--om-space-14);
     border-top: 1px solid var(--tw-color-border-secondary);
   }
 
@@ -553,8 +553,8 @@
     .block-editor-wrapper .tiptap.ProseMirror {
       h2,
       h3 {
-        padding-top: 14px !important;
-        font-size: 16px !important;
+        padding-top: var(--om-space-14) !important;
+        font-size: var(--om-font-size-md) !important;
         line-height: 28px !important;
       }
 
@@ -570,8 +570,8 @@
   .focused-service-docs-link-section {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding-top: 12px;
+    gap: var(--om-space-6);
+    padding-top: var(--om-space-12);
     border-top: 1px solid var(--tw-color-border-secondary);
   }
 
@@ -579,15 +579,15 @@
     display: flex;
     min-height: 38px;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
+    gap: var(--om-space-10);
+    padding: var(--om-space-8) var(--om-space-10);
     border: 1px solid var(--tw-color-border-secondary);
-    border-radius: 8px;
+    border-radius: var(--om-radius-lg);
     background: var(--tw-color-bg-primary);
     box-shadow: var(--tw-shadow-xs);
     color: var(--tw-color-text-brand-secondary);
-    font-size: 12px;
-    font-weight: 700;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-bold);
     line-height: 22px;
 
     span {

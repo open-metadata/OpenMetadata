@@ -146,7 +146,7 @@ const AdminPermissionDebugger: React.FC = () => {
 
   const handleEvaluate = async (values: EvaluationFormValues) => {
     if (!selectedUsername) {
-      showErrorToast(t('message.please-select-user-first'));
+      showErrorToast(t('message.select-user-first'));
 
       return;
     }
