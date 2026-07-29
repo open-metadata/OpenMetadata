@@ -358,25 +358,25 @@ test.describe('Context Center Articles', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Center')
-      ).toContainText('Knowledge Center');
+        page.getByTestId('explore-tree-title-Context Center')
+      ).toContainText('Context Center');
 
       await page
-        .locator('div')
-        .filter({ hasText: /^Knowledge Center$/ })
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: /^Context Center$/ })
         .locator('svg')
         .first()
         .click();
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Page')
-      ).toContainText('Knowledge Page');
+        page.getByTestId('explore-tree-title-Articles')
+      ).toContainText('Articles');
 
       const apiRes = page.waitForResponse(
         '/api/v1/search/query?q=&index=dataAsset*'
       );
 
-      await page.getByTestId('explore-tree-title-Knowledge Page').click();
+      await page.getByTestId('explore-tree-title-Articles').click();
       const response = await apiRes;
       const responseData = await response.json();
 
@@ -964,7 +964,7 @@ test.describe('Context Center Articles', () => {
     ).toBeVisible();
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
       updatedTitle
     );
 
