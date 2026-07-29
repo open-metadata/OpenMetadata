@@ -59,8 +59,8 @@ const VARIANT_CONFIG = {
     description: 'tw:text-sm tw:mt-2',
   },
   compact: {
-    header: 'tw:h-[30px] tw:flex-none tw:text-xs tw:rounded-[4px]',
-    titleSection: 'tw:px-[10px] tw:py-[6px] tw:pl-1',
+    header: 'tw:h-[30px] tw:flex-none tw:text-xs tw:rounded-sm',
+    titleSection: 'tw:px-2.5 tw:py-1.5 tw:pl-1',
     entityName: 'tw:!text-[11px] tw:!font-normal',
     iconSize: 'tw:size-[9px]',
     title: 'tw:text-xs tw:font-medium tw:!mb-0',
