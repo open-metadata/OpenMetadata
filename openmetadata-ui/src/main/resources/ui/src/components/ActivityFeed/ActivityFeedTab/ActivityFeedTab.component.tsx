@@ -448,9 +448,17 @@ export const ActivityFeedTab = ({
       return;
     }
 
+    // Switching entity or domain leaves the previous request in flight; without
+    // this guard it can resolve last and show the old entity's count.
+    let isCurrentRequest = true;
+
     getEntityConversationCount(entityType, fqn)
-      .then(setConversationCount)
-      .catch(() => setConversationCount(0));
+      .then((count) => isCurrentRequest && setConversationCount(count))
+      .catch(() => isCurrentRequest && setConversationCount(0));
+
+    return () => {
+      isCurrentRequest = false;
+    };
   }, [isAllActiveTab, isUserEntity, fqn, entityType, activeDomain]);
 
   const allActivityCount = (activityEvents?.length ?? 0) + conversationCount;

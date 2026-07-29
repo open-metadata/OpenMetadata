@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -26,6 +32,7 @@ const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
 const mockGetEntityConversationCount = jest.fn();
+const mockUseFqn = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -43,7 +50,7 @@ jest.mock('../../../hooks/useDomainStore', () => ({
 }));
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: () => ({ fqn: 'test.db.table' }),
+  useFqn: () => mockUseFqn(),
 }));
 
 jest.mock('../../../utils/useRequiredParams', () => ({
@@ -178,6 +185,7 @@ describe('ActivityFeedTab', () => {
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
     mockGetEntityConversationCount.mockResolvedValue(0);
+    mockUseFqn.mockReturnValue({ fqn: 'test.db.table' });
   });
 
   describe('All badge counts conversations on every sub-tab', () => {
@@ -205,6 +213,47 @@ describe('ActivityFeedTab', () => {
       await waitFor(() => expect(mockGetFeedData).toHaveBeenCalled());
 
       expect(mockGetEntityConversationCount).not.toHaveBeenCalled();
+    });
+
+    it('ignores an in-flight count from the previous entity', async () => {
+      let resolvePreviousEntity: (count: number) => void = () => undefined;
+      mockGetEntityConversationCount
+        .mockImplementationOnce(
+          () =>
+            new Promise<number>((resolve) => {
+              resolvePreviousEntity = resolve;
+            })
+        )
+        .mockResolvedValueOnce(2);
+
+      const { rerender } = renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(mockGetEntityConversationCount).toHaveBeenCalledTimes(1)
+      );
+
+      mockUseFqn.mockReturnValue({ fqn: 'another.db.table' });
+      rerender(
+        <MemoryRouter>
+          <ActivityFeedTab {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      await waitFor(() =>
+        expect(mockGetEntityConversationCount).toHaveBeenCalledTimes(2)
+      );
+
+      await act(async () => {
+        resolvePreviousEntity(7);
+      });
+
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId('left-panel-all-count')
+            .querySelector('[data-testid="filter-count"]')
+        ).toHaveTextContent('2')
+      );
     });
   });
 
