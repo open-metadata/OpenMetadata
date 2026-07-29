@@ -17,13 +17,16 @@ import json
 from collections import Counter
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import column, func
+from sqlalchemy import Integer, column, func
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
-from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
+from metadata.profiler.orm.functions.unique_count import (
+    UNIQUE_COUNT_VALUE_ALIAS,
+    _unique_count_query_mapper,
+)
 from metadata.profiler.orm.registry import NOT_COMPUTE, Dialects
 from metadata.utils.logger import profiler_logger
 
@@ -67,7 +70,11 @@ class UniqueCount(QueryMetric):
 
         # TODO: Move all connectors from subquery to COUNT(IF) or COUNTIF for peformance
         if session.get_bind().dialect.name == Dialects.BigQuery:
-            return func.countif(col == 1).label(self.name())
+            # Reference the wrapping subquery's integer occurrence-count via a shared,
+            # dot-free alias instead of the reconstructed source column. This keeps the
+            # bind parameter typed as INT64 and the identifier resolvable for non-integer
+            # (TIMESTAMP/DATE) and nested STRUCT-subfield columns. See #30152.
+            return func.countif(column(UNIQUE_COUNT_VALUE_ALIAS, Integer()) == 1).label(self.name())
 
         unique_count_query = _unique_count_query_mapper[session.get_bind().dialect.name](col, session, sample)
         only_once_sub = unique_count_query.subquery("only_once")
