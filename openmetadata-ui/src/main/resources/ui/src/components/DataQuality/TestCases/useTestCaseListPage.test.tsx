@@ -361,6 +361,61 @@ describe('useTestCaseListPage', () => {
     expect(csv).toContain('filtered-final');
   });
 
+  it('should reconcile a filtered export when an inserted test case shifts later pages', async () => {
+    const firstPage = Array.from({ length: 50 }, (_, index) =>
+      buildTestCase(`filtered-${index}`, `svc.tbl.filtered-${index}`)
+    );
+    const finalTestCase = buildTestCase('filtered-50', 'svc.tbl.filtered-50');
+    const insertedTestCase = buildTestCase(
+      'filtered-inserted',
+      'svc.tbl.filtered-inserted'
+    );
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [],
+        paging: { total: 10 },
+      })
+      .mockResolvedValueOnce({
+        data: firstPage,
+        paging: { total: 51 },
+      })
+      .mockResolvedValueOnce({
+        data: [firstPage[49], finalTestCase],
+        paging: { total: 52 },
+      })
+      .mockResolvedValueOnce({
+        data: [insertedTestCase, ...firstPage.slice(0, 49)],
+        paging: { total: 52 },
+      })
+      .mockResolvedValueOnce({
+        data: [firstPage[49], finalTestCase],
+        paging: { total: 52 },
+      });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(getListTestCaseBySearch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sortField: 'fullyQualifiedName.keyword',
+        sortType: 'asc',
+      })
+    );
+    expect(csv).toContain('filtered-inserted');
+    expect(csv.split('\n')).toHaveLength(53);
+  });
+
   it('should refetch for the requested page when the pagination handler is called', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 

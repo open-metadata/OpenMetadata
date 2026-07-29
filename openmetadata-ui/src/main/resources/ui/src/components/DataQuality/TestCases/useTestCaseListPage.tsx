@@ -17,6 +17,7 @@ import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
@@ -47,6 +48,9 @@ export type {
   FilterOptionData as TestCaseFilterOptionData,
   FilterValue as TestCaseFilterValue,
 } from './FilterChip.interface';
+
+const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
+const MAX_EXPORT_PASSES = 3;
 
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
@@ -138,27 +142,36 @@ export const useTestCaseListPage = () => {
       includeAllTests: true,
       fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TESTSUITE],
       q: searchValue ? `*${searchValue}*` : undefined,
+      sortField: EXPORT_SORT_FIELD,
+      sortType: SORT_ORDER.ASC,
     };
-    const testCases: TestCase[] = [];
-    let offset = 0;
-    let total: number | undefined;
-
+    const testCasesById = new Map<string, TestCase>();
+    let pass = 0;
+    let total = 0;
     do {
-      const response = await getListTestCaseBySearch({
-        ...exportParams,
-        limit: PAGE_SIZE_LARGE,
-        offset,
-      });
-      testCases.push(...response.data);
-      total = response.paging.total ?? testCases.length;
-      offset += response.data.length;
+      let offset = 0;
 
-      if (response.data.length === 0) {
-        break;
-      }
-    } while (offset < total);
+      do {
+        const response = await getListTestCaseBySearch({
+          ...exportParams,
+          limit: PAGE_SIZE_LARGE,
+          offset,
+        });
+        response.data.forEach((testCase) =>
+          testCasesById.set(testCase.id, testCase)
+        );
+        total = response.paging.total ?? testCasesById.size;
+        offset += response.data.length;
 
-    return convertTestCasesToCSV(testCases);
+        if (response.data.length === 0) {
+          break;
+        }
+      } while (offset < total);
+
+      pass += 1;
+    } while (testCasesById.size < total && pass < MAX_EXPORT_PASSES);
+
+    return convertTestCasesToCSV([...testCasesById.values()]);
   }, [params, searchValue, selectedFilter]);
 
   const filteredExportAction =
