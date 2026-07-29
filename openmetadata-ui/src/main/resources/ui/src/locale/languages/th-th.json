@@ -527,7 +527,7 @@
     "cost": "ค่า",
     "cost-analysis": "การวิเคราะห์ต้นทุน",
     "count": "จำนวน",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "กำลังเรียกใช้งาน {{count}} งาน",
     "count-running": "{{count}} กำลังรัน",
     "cover-image": "ปก",
     "covered": "ครอบคลุม",
