@@ -527,7 +527,7 @@
     "cost": "Cost",
     "cost-analysis": "Cost Analysis",
     "count": "Count",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} jobs running",
     "count-running": "{{count}} running",
     "cover-image": "Cover",
     "covered": "Covered",
