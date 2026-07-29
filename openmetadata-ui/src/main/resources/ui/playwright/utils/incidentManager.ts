@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import {
+  PipelineState,
+  PipelineStatus,
+} from '../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
@@ -234,47 +238,130 @@ export const assignIncident = async (data: {
   ).toContainText('Assigned');
 };
 
+// Attempts at 0s, +1s, +2s, +3s — the 6s worst case covers the settling time
+// the previous fixed sleep was guessing at, without paying it on every run.
+const PIPELINE_REQUEST_ATTEMPTS = 4;
+
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
   pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
+  const encodedPipelineFqn = encodeURIComponent(
+    pipeline?.['fullyQualifiedName']
+  );
+
+  // `fetched` separates "the pipeline has not run yet" from "the status read
+  // failed" — both yield no run, but only the former is a safe baseline.
+  const fetchLatestPipelineStatus = async (): Promise<{
+    fetched: boolean;
+    run?: PipelineStatus;
+  }> => {
+    const pipelineStatusResponse = await apiContext.get(
+      `/api/v1/services/ingestionPipelines/${encodedPipelineFqn}/pipelineStatus?limit=1`
+    );
+
+    if (pipelineStatusResponse.ok()) {
+      const body = await pipelineStatusResponse.json();
+      const statuses: PipelineStatus[] = Array.isArray(body?.data)
+        ? body.data
+        : [];
+
+      if (statuses[0]) {
+        return { fetched: true, run: statuses[0] };
+      }
+    }
+
+    const ingestionPipelineResponse = await apiContext.get(
+      `/api/v1/services/ingestionPipelines/name/${encodedPipelineFqn}?fields=pipelineStatuses`
+    );
+
+    if (!ingestionPipelineResponse.ok()) {
+      return { fetched: false };
+    }
+
+    const ingestionPipeline = await ingestionPipelineResponse.json();
+
+    return { fetched: true, run: ingestionPipeline?.pipelineStatuses?.[0] };
+  };
+
+  const requestWithRetry = async (
+    request: () => Promise<Awaited<ReturnType<APIRequestContext['post']>>>
+  ) => {
+    let response = await request();
+
+    for (
+      let attempt = 1;
+      attempt < PIPELINE_REQUEST_ATTEMPTS && !response.ok();
+      attempt++
+    ) {
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded backoff before retrying a rejected request
+      await page.waitForTimeout(1000 * attempt);
+      response = await request();
+    }
+
+    return response;
+  };
+
   const executePipelineRequest = async (
     label: string,
     request: () => Promise<Awaited<ReturnType<APIRequestContext['post']>>>
   ) => {
-    let lastStatus: number | undefined;
-    let lastBody = '';
+    const response = await requestWithRetry(request);
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const response = await request();
+    if (!response.ok()) {
+      throw new Error(
+        `${label} failed for ingestion pipeline ${pipeline?.['id']} (${
+          pipeline?.['fullyQualifiedName']
+        }): HTTP ${response.status()} ${await response.text()}`
+      );
+    }
 
-      if (response.ok()) {
-        return response;
+    return response;
+  };
+
+  const triggerPipeline = () =>
+    apiContext.post(
+      `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+    );
+
+  // Airflow queues the DAG asynchronously, so the previous run's `success`
+  // record stays the latest one for a while after triggering. Remember it here
+  // so the poll below waits for a genuinely new run instead of reading the old
+  // one and letting the caller assert on stale results. A baseline we failed to
+  // read would defeat that, so retry and then fail loudly rather than silently
+  // treating the previous run as new.
+  const fetchBaselineRun = async () => {
+    for (let attempt = 1; attempt <= PIPELINE_REQUEST_ATTEMPTS; attempt++) {
+      const { fetched, run } = await fetchLatestPipelineStatus();
+
+      if (fetched) {
+        return run;
       }
 
-      lastStatus = response.status();
-      lastBody = await response.text();
-
-      if (attempt < 3) {
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded retry for transient pipeline readiness
+      if (attempt < PIPELINE_REQUEST_ATTEMPTS) {
+        // eslint-disable-next-line playwright/no-wait-for-timeout -- bounded backoff before re-reading the baseline status
         await page.waitForTimeout(1000 * attempt);
       }
     }
 
     throw new Error(
-      `${label} failed for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']}): HTTP ${lastStatus} ${lastBody}`
+      `Unable to read the status baseline for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']})`
     );
   };
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-  await page.waitForTimeout(5000);
-  const response = await apiContext.post(
-    `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-  );
+  const previousRun = await fetchBaselineRun();
+  const isNewRun = (latestRun: PipelineStatus) =>
+    latestRun.runId !== previousRun?.runId &&
+    (latestRun.timestamp ?? 0) >= (previousRun?.timestamp ?? 0);
 
-  if (response.status() !== 200) {
+  // The orchestrator rejects the trigger until a freshly deployed workflow is
+  // registered, so retry until it is accepted rather than sleeping for a
+  // guessed settling time.
+  const response = await requestWithRetry(triggerPipeline);
+
+  if (!response.ok()) {
     // re-deploy the pipeline then trigger it
     await executePipelineRequest('Pipeline deploy', () =>
       apiContext.post(
@@ -282,59 +369,29 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
       )
     );
 
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
-    await page.waitForTimeout(5000);
-
-    await executePipelineRequest('Pipeline trigger', () =>
-      apiContext.post(
-        `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-      )
-    );
+    await executePipelineRequest('Pipeline trigger', triggerPipeline);
   }
-
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for pipeline run to complete
-  await page.waitForTimeout(2000);
 
   await expect
     .poll(
       async () => {
-        const pipelineStatusResponse = await apiContext.get(
-          `/api/v1/services/ingestionPipelines/${encodeURIComponent(
-            pipeline?.['fullyQualifiedName']
-          )}/pipelineStatus?limit=1`
-        );
+        const { run: latestRun } = await fetchLatestPipelineStatus();
 
-        if (pipelineStatusResponse.ok()) {
-          const body = await pipelineStatusResponse.json();
-          const statuses = Array.isArray(body?.data) ? body.data : [];
-
-          if (statuses[0]?.pipelineState) {
-            return statuses[0].pipelineState;
-          }
+        if (!latestRun || !isNewRun(latestRun)) {
+          return PipelineState.Queued;
         }
 
-        const ingestionPipelineResponse = await apiContext.get(
-          `/api/v1/services/ingestionPipelines/name/${encodeURIComponent(
-            pipeline?.['fullyQualifiedName']
-          )}?fields=pipelineStatuses`
-        );
-
-        if (!ingestionPipelineResponse.ok()) {
-          return 'running';
-        }
-
-        const ingestionPipeline = await ingestionPipelineResponse.json();
-
-        return (
-          ingestionPipeline?.pipelineStatuses?.[0]?.pipelineState ?? 'running'
-        );
+        return latestRun.pipelineState ?? PipelineState.Queued;
       },
       {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for the pipeline to be successful',
+        message: `Wait for a new run of ingestion pipeline ${
+          pipeline?.['fullyQualifiedName']
+        } to be successful (run recorded before trigger: ${
+          previousRun?.runId ?? 'none'
+        })`,
         timeout: 300_000,
-        intervals: [5_000, 10_000, 15_000],
+        intervals: [2_000, 5_000, 10_000],
       }
     )
-    .toBe('success');
+    .toBe(PipelineState.Success);
 };
