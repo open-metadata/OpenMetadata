@@ -518,25 +518,16 @@ export class OverviewPageObject extends RightPanelBase {
   }
 
   private async openOwnerSelector(): Promise<void> {
+    await this.waitForLoadersToDisappear();
     await this.editOwnersIcon.scrollIntoViewIfNeeded();
 
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        await expect(this.editOwnersIcon).toBeVisible({ timeout: 10_000 });
-        await expect(this.editOwnersIcon).toBeEnabled();
-        await this.editOwnersIcon.click();
-        await expect(this.selectOwnerTabs).toBeVisible({ timeout: 10_000 });
+    await expect(this.editOwnersIcon).toBeVisible({ timeout: 10_000 });
+    await expect(this.editOwnersIcon).toBeEnabled();
 
-        return;
-      } catch (error) {
-        if (attempt === 1) {
-          throw error;
-        }
+    await this.editOwnersIcon.click();
 
-        await this.page.keyboard.press('Escape');
-        await this.waitForLoadersToDisappear();
-      }
-    }
+    await expect(this.selectOwnerTabs).toBeVisible({ timeout: 10_000 });
+    await expect(this.selectOwnerTabsRoleTab).toBeVisible({ timeout: 10_000 });
   }
 
   /**
