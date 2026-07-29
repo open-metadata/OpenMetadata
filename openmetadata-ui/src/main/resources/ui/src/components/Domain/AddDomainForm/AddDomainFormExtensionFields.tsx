@@ -928,7 +928,9 @@ const MissingDefinitionField = ({
       rules={{ validate: () => (isRequired ? message : true) }}>
       {({ fieldState }) => (
         <ExtensionFieldContainer
-          error={fieldState.error?.message ?? (isRequired ? undefined : message)}
+          error={
+            fieldState.error?.message ?? (isRequired ? undefined : message)
+          }
           isRequired={isRequired}
           label={label}>
           <div data-testid={dataTestId} />

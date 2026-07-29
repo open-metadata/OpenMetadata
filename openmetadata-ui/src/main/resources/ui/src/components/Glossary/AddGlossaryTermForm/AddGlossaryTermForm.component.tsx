@@ -209,7 +209,6 @@ const AddGlossaryTermForm = ({
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
-
   const handleSave: FormProps['onFinish'] = async (formObj) => {
     const {
       name,
@@ -636,7 +635,6 @@ const AddGlossaryTermForm = ({
             </Space>
           )}
         </div>
-
       </Form>
 
       {/* Rendered as a sibling of the antd Form, not inside it: this emits its
