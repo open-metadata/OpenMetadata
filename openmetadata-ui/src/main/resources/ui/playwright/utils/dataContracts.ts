@@ -22,7 +22,7 @@ import { getApiContext } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess|Queued)/;
+const TERMINAL_CONTRACT_STATUS = /(Aborted|Success|Failed|PartialSuccess)/;
 
 const pollContractStatus = async (
   page: Page,
