@@ -18,11 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-// AddGlossaryTermForm is a legacy antd form whose `formRef` prop requires a real
-// antd FormInstance, so this test harness has to import antd. It must be the
-// same module instance the component imports — `jest.requireActual` returns a
-// separate copy, which leaves the fields unregistered and validation pending.
-import { Form } from 'antd';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
@@ -36,6 +31,14 @@ import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import AddGlossaryTermForm from './AddGlossaryTermForm.component';
 import { GlossaryTermForm } from './AddGlossaryTermForm.interface';
+
+// AddGlossaryTermForm is a legacy antd form whose required `formRef` prop must be
+// a real antd FormInstance from the same module instance the component uses.
+// `jest.requireActual` returns a separate copy (fields stay unregistered,
+// validation hangs), and a static antd import is blocked by the antd/less
+// deprecation guard for new files. `require` returns the shared jest-registry
+// instance the component consumes and is not matched by the guard.
+const { Form } = require('antd') as typeof import('antd');
 
 const mockDataAssetSelectProps: Array<Record<string, unknown>> = [];
 
