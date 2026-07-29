@@ -2375,19 +2375,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   /**
    * Whether a single entity instance should be written to the search index on the live
-   * create/update path. Defaults to true; override to keep specific instances out of the index
-   * (e.g. {@link ContextMemoryRepository} excludes non-org-wide memories). The bulk reindex applies
-   * the same rule at the DB-query level via {@link #getReindexFilter()}.
+   * create/update path. Defaults to true; override to keep specific instances out of the index.
+   * The bulk reindex applies the same rule at the DB-query level via {@link #getReindexFilter()}.
    */
   public boolean isSearchIndexable(EntityInterface entity) {
     return true;
   }
 
   /**
+   * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
+   * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
+   * reachable through the vector path (e.g. {@link ContextMemoryRepository} keeps non-org-wide
+   * memories out because vector chunks carry no visibility fields to filter on).
+   */
+  public boolean isVectorEmbeddable(EntityInterface entity) {
+    return isSearchIndexable(entity);
+  }
+
+  /**
    * Filter the search reindex uses to both list and count this entity's rows. Defaults to all rows;
-   * override to keep specific instances out of the search index (e.g. {@link ContextMemoryRepository}
-   * excludes non-org-wide memories). The reader and every entity-count site share this filter so the
-   * job total matches what actually gets indexed.
+   * override to keep specific instances out of the search index. The reader and every entity-count
+   * site share this filter so the job total matches what actually gets indexed.
    */
   public ListFilter getReindexFilter() {
     return new ListFilter(Include.ALL);

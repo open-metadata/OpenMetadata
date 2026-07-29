@@ -15,13 +15,13 @@
 .entity-header-title {
   flex: 1;
   .ant-typography-ellipsis.entity-header-name {
-    margin-bottom: 0px;
+    margin-bottom: 0;
     display: block;
     color: @grey-900;
     min-width: 0;
   }
   .ant-typography-ellipsis.entity-header-display-name {
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
     color: @grey-700;
   }
 }
@@ -38,9 +38,9 @@
 }
 
 .ant-btn.entity-follow-button {
-  border-radius: 16px;
+  border-radius: var(--om-radius-2xl);
   background-color: @primary-button-background;
-  padding: 4px 12px;
+  padding: var(--om-space-4) var(--om-space-12);
   border: none;
   width: fit-content;
   height: auto;
@@ -58,7 +58,7 @@
     color: @primary-color;
   }
   span.ant-typography {
-    margin-left: 0px;
+    margin-left: 0;
   }
 
   &:hover {
@@ -73,7 +73,7 @@
 }
 
 .ant-btn.copy-button {
-  border-radius: 6px;
+  border-radius: var(--om-radius-md);
   border: 1px solid @border-light;
   background: @background-color;
   color: @background-color;

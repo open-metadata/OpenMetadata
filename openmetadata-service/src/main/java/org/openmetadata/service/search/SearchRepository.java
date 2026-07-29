@@ -416,6 +416,7 @@ public class SearchRepository {
   }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
+  private Map<String, IndexMapping> aliasIndexMap;
 
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
@@ -545,6 +546,21 @@ public class SearchRepository {
   private void loadIndexMappings() {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
+    aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+  }
+
+  private static Map<String, IndexMapping> buildAliasIndexMap(
+      Map<String, IndexMapping> mappingsByKey) {
+    Map<String, IndexMapping> mappingsByAlias = new HashMap<>();
+    if (mappingsByKey != null) {
+      for (IndexMapping mapping : mappingsByKey.values()) {
+        String alias = mapping.getAlias(null);
+        if (alias != null && !mappingsByKey.containsKey(alias)) {
+          mappingsByAlias.putIfAbsent(alias, mapping);
+        }
+      }
+    }
+    return mappingsByAlias;
   }
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
@@ -1138,6 +1154,9 @@ public class SearchRepository {
       return token;
     }
     IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping == null && aliasIndexMap != null) {
+      mapping = aliasIndexMap.get(token);
+    }
     if (mapping != null) {
       return mapping.getIndexName(clusterAlias);
     }
@@ -4147,6 +4166,11 @@ public class SearchRepository {
 
   public Response getEntityTypeCounts(SearchRequest request, String index) throws IOException {
     return searchClient.getEntityTypeCounts(request, index);
+  }
+
+  public Response getEntityTypeCounts(
+      SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    return searchClient.getEntityTypeCounts(request, index, subjectContext);
   }
 
   public JsonObject aggregate(
