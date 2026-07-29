@@ -382,9 +382,7 @@ test.describe('Domains', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify empty state message
-      await expect(page.getByTestId('no-data-placeholder')).toContainText(
-        "Looks like you haven't added any data assets yet."
-      );
+      await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
       const addButton = page.getByTestId('data-assets-add-button');
       await expect(addButton).toBeVisible();

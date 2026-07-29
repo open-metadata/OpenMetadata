@@ -14,7 +14,7 @@
 
 .welcome-screen-container {
   .ant-card-head {
-    padding-top: 16px;
+    padding-top: var(--om-space-16);
     border-bottom: unset;
 
     .welcome-screen-close-btn {
@@ -33,28 +33,28 @@
 }
 
 .welcome-screen-header-first-line {
-  font-size: 30px;
-  font-weight: 500;
+  font-size: var(--om-font-size-display-sm);
+  font-weight: var(--om-font-weight-medium);
   color: @text-grey-muted;
 }
 .welcome-screen-header-second-line {
-  font-size: 42px;
-  font-weight: 800;
-  color: #000;
+  font-size: var(--om-font-size-42);
+  font-weight: var(--om-font-weight-extrabold);
+  color: var(--om-color-black);
   line-height: 40px;
 }
 
 .welcome-screen-header-divider {
   min-width: 90%;
   width: 90%;
-  border-top: 1.5px solid rgba(113, 71, 232, 0.35);
-  margin: 8px 0;
+  border-top: 1.5px solid var(--om-legacy-color-113-71-232-0-35);
+  margin: var(--om-space-8) 0;
 }
 
 .welcome-screen-button-text {
   color: @primary-color;
   text-decoration: underline;
-  font-size: 1rem;
+  font-size: var(--om-font-size-md);
   line-height: 1.5rem;
 }
 

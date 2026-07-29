@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -37,9 +38,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * so it is applied for every non-admin subject regardless of the RBAC access-control toggle.
  * Disabling RBAC search filtering must never expose another user's private memories.
  *
- * <p>Current live writes and reindexing exclude restricted memories at index time. This filter
- * remains as defense-in-depth for documents written before that policy was introduced and for
- * mixed-version deployments during an upgrade.
+ * <p>Every memory is indexed, whatever its visibility, so that owners and shared principals keep
+ * finding their own restricted memories through the search-backed {@code /contextCenter/memories}
+ * listing and global search. That makes this filter the sole enforcement point on the search side:
+ * every path that can return a ContextMemory document to a caller must apply it.
  *
  * <p>The produced query is engine-agnostic via {@link QueryBuilderFactory}, so the same builder
  * serves both Elasticsearch and OpenSearch. Each OR-group is a bool with only {@code should}
@@ -73,14 +75,51 @@ public class ContextMemorySearchVisibility {
     return filter;
   }
 
-  private boolean isVisibilityEnforced(SubjectContext subjectContext) {
+  /**
+   * Returns a filter admitting only org-wide ({@link MemoryVisibility#ENTITY}) memories. This is the
+   * fail-closed default for search paths that carry no {@link SubjectContext} and therefore cannot
+   * decide who a restricted memory belongs to — they get the memories everyone may read and nothing
+   * else. Like {@link #buildVisibilityFilter}, non-memory documents always pass.
+   */
+  public OMQueryBuilder buildOrgWideOnlyFilter() {
+    return scopeMemoriesTo(
+        queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
+  }
+
+  /**
+   * The document-level equivalent of {@link #buildOrgWideOnlyFilter}, for fetch-by-id paths that
+   * run no query to filter. Returns false only for a restricted (non-org-wide) context memory;
+   * every other document passes.
+   */
+  public static boolean isOrgWideReadable(Map<String, Object> document) {
+    boolean readable = true;
+    if (document != null && Entity.CONTEXT_MEMORY.equals(document.get(FIELD_ENTITY_TYPE))) {
+      readable = MemoryVisibility.ENTITY.value().equals(document.get(FIELD_VISIBILITY));
+    }
+    return readable;
+  }
+
+  /**
+   * Whether the subject is identifiable enough to decide memory visibility from. Only then may a
+   * caller mark the request as resolved; an unidentifiable subject must fall back to the
+   * org-wide-only default rather than search unfiltered.
+   */
+  public boolean isSubjectResolvable(SubjectContext subjectContext) {
     return subjectContext != null
-        && !subjectContext.isAdmin()
         && subjectContext.user() != null
         && subjectContext.user().getId() != null;
   }
 
+  private boolean isVisibilityEnforced(SubjectContext subjectContext) {
+    return isSubjectResolvable(subjectContext) && !subjectContext.isAdmin();
+  }
+
   private OMQueryBuilder buildFilter(User user) {
+    return scopeMemoriesTo(buildVisibleToUserClause(user));
+  }
+
+  /** Applies {@code memoryClause} to context memory documents only, letting every other type pass. */
+  private OMQueryBuilder scopeMemoriesTo(OMQueryBuilder memoryClause) {
     OMQueryBuilder nonMemory =
         queryBuilderFactory
             .boolQuery()
@@ -92,7 +131,7 @@ public class ContextMemorySearchVisibility {
             .must(
                 List.of(
                     queryBuilderFactory.termQuery(FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY),
-                    buildVisibleToUserClause(user)));
+                    memoryClause));
     return queryBuilderFactory.boolQuery().should(List.of(nonMemory, memoryVisible));
   }
 
