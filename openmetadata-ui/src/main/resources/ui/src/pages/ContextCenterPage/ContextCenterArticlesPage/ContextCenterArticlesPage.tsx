@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -444,7 +445,6 @@ const ContextCenterArticlesPage = () => {
           style={showArticlesEmptyState ? { display: 'none' } : undefined}>
           {/* left */}
           <ReflexElement
-            propagateDimensions
             className={classNames('left-panel', {
               'left-panel-collapsed': !leftSidebar,
             })}

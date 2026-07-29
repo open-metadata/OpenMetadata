@@ -16,35 +16,35 @@
 .contract-security-form {
   .contract-consumer-security-card {
     .ant-card-body {
-      padding: 20px 0;
+      padding: var(--om-space-20) 0;
 
       .contract-consumer-security-card-row {
-        padding: 20px 20px 0 20px;
+        padding: var(--om-space-20) var(--om-space-20) 0 var(--om-space-20);
       }
 
       .contract-consumer-security-card-rule-container {
-        padding: 0 20px;
+        padding: 0 var(--om-space-20);
 
         .contract-consumer-security-card-rule-delete-button {
-          margin-top: 10px;
+          margin-top: var(--om-space-10);
           border: 1px solid @grey-34;
-          border-radius: 8px;
+          border-radius: var(--om-radius-lg);
           color: @grey-34;
           width: 40px;
           height: 40px;
 
           .anticon {
-            font-size: 12px;
+            font-size: var(--om-font-size-xs);
           }
         }
       }
 
       .add-row-filter-button {
         span {
-          font-weight: 600;
+          font-weight: var(--om-font-weight-semibold);
         }
         .anticon {
-          font-size: 14px;
+          font-size: var(--om-font-size-sm);
           rotate: 45deg;
         }
       }
@@ -53,16 +53,16 @@
         display: flex;
         justify-content: flex-end;
         align-items: center;
-        padding: 24px 16px;
+        padding: var(--om-space-24) var(--om-space-16);
         border-top: 1px solid @grey-200;
 
         .delete-consumer-filter-button {
           color: @red-1;
           span {
-            font-weight: 600;
+            font-weight: var(--om-font-weight-semibold);
           }
           .anticon {
-            font-size: 14px;
+            font-size: var(--om-font-size-sm);
           }
 
           &:hover {
@@ -75,10 +75,10 @@
 
   .add-policy-button {
     span {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
     .anticon {
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       rotate: 45deg;
     }
   }
@@ -115,13 +115,13 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        gap: 12px;
+        gap: var(--om-space-12);
 
         .enable-form-item {
           margin-bottom: 0;
 
           .ant-switch {
-            margin-left: 2px;
+            margin-left: var(--om-space-2);
             width: 44px;
             height: 24px;
 
@@ -132,7 +132,7 @@
               left: 4px;
 
               &::before {
-                border-radius: 20px;
+                border-radius: var(--om-radius-20);
               }
             }
           }
@@ -151,17 +151,17 @@
         }
 
         .consumer-form-item-title {
-          font-size: 16px;
-          font-weight: 600;
+          font-size: var(--om-font-size-md);
+          font-weight: var(--om-font-weight-semibold);
           line-height: 32px;
         }
 
         .ant-btn.edit-expand-button {
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           border: 1px solid @border-light;
 
           svg {
-            font-size: 20px;
+            font-size: var(--om-font-size-xl);
             color: @grey-600;
           }
         }
@@ -173,7 +173,7 @@
           align-items: center;
           justify-content: center;
           padding: 0;
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           background: transparent;
           border-color: @error-color;
 
@@ -188,11 +188,11 @@
         .ant-btn.expand-collapse-icon {
           width: 30px;
           height: 30px;
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           border: 1px solid @border-light;
 
           svg {
-            font-size: 20px;
+            font-size: var(--om-font-size-xl);
             color: @grey-600;
           }
         }
@@ -209,10 +209,10 @@
       padding: 0;
 
       .semantic-form-item-content {
-        padding: 20px;
+        padding: var(--om-space-20);
 
         .ant-switch {
-          margin-left: 2px;
+          margin-left: var(--om-space-2);
           width: 36px;
           height: 20px;
 
@@ -223,7 +223,7 @@
             left: 3px;
 
             &::before {
-              border-radius: 20px;
+              border-radius: var(--om-radius-20);
             }
           }
         }
@@ -240,32 +240,32 @@
   .semantic-form-item-actions {
     display: flex;
     justify-content: space-between;
-    padding: 16px 24px;
+    padding: var(--om-space-16) var(--om-space-24);
     border-top: 1px solid @grey-200;
   }
 }
 
 .row-filter-title {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 0 20px 12px 20px;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
+  padding: 0 var(--om-space-20) var(--om-space-12) var(--om-space-20);
 }
 
 .contract-form-content-container {
   .consumer-title-container {
     .consumer-title {
-      font-size: 16px;
-      font-weight: 500;
-      font-weight: 500;
+      font-size: var(--om-font-size-md);
+      font-weight: var(--om-font-weight-medium);
+      font-weight: var(--om-font-weight-medium);
       color: @grey-900;
     }
 
     .consumer-description {
       margin-bottom: 0;
-      font-size: 14px;
+      font-size: var(--om-font-size-sm);
       color: @grey-600;
-      font-weight: 400;
+      font-weight: var(--om-font-weight-regular);
     }
   }
 }

@@ -21,30 +21,30 @@
 
 .filter-selection-chips-wrapper {
   display: flex;
-  gap: 8px;
+  gap: var(--om-space-8);
   flex-wrap: wrap;
   flex: 1;
 }
 
 .filter-selection-chip {
   display: flex;
-  padding: 8px 14px;
+  padding: var(--om-space-8) var(--om-space-14);
   align-items: center;
-  gap: 2px;
-  border-radius: 5px;
+  gap: var(--om-space-2);
+  border-radius: var(--om-radius-5);
   background-color: @primary-50; // #EFF8FF
 }
 
 .filter-selection-chip-content {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--om-space-4);
 }
 
 .filter-selection-label {
   color: @grey-600;
   font-family: @font-family;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-weight: @font-medium;
   line-height: 20px;
 }
@@ -63,7 +63,7 @@
 }
 
 .filter-selection-remove-btn {
-  margin-left: 8px;
+  margin-left: var(--om-space-8);
   padding: 0;
   border: none;
   background: none;
@@ -79,7 +79,7 @@
 
 .filter-selection-clear-all {
   color: @primary-6 !important;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-weight: @font-medium;
   padding: 0;
 
