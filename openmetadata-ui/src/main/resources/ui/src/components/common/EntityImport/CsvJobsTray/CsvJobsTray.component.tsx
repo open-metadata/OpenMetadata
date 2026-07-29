@@ -150,7 +150,7 @@ export const CsvJobsTray = () => {
   useEffect(() => {
     const newlyFinished = visibleJobs.filter(
       (job) =>
-        (job.status === 'COMPLETED' || job.status === 'FAILED') &&
+        TERMINAL_STATUSES.includes(job.status) &&
         !autoOpenedJobIds.current.has(job.jobId)
     );
 
