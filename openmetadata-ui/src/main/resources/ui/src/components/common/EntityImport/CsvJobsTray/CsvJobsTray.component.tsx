@@ -434,25 +434,38 @@ export const CsvJobsTray = () => {
           </div>
         </div>
       )}
-      {!open && activeJobs.length > 0 && (
+      {!open && !isEmpty(visibleJobs) && (
         <div className="csv-jobs-tray-launcher-wrap">
           <button
             className="csv-jobs-tray-launcher"
             type="button"
             onClick={handleOpen}>
-            <span className="csv-jobs-tray-launcher-count">
-              {activeJobs.length}
-            </span>
-            <span className="csv-jobs-tray-launcher-label">
-              {t('label.count-jobs-running', { count: activeJobs.length })}
-              <span
-                aria-hidden
-                className="tw:ml-1 tw:inline-flex tw:items-end tw:gap-0.5 tw:align-text-bottom">
-                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current" />
-                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:150ms]" />
-                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:300ms]" />
-              </span>
-            </span>
+            {activeJobs.length > 0 ? (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {activeJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.count-jobs-running', { count: activeJobs.length })}
+                  <span
+                    aria-hidden
+                    className="tw:ml-1 tw:inline-flex tw:items-end tw:gap-0.5 tw:align-text-bottom">
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:150ms]" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:300ms]" />
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {visibleJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.background-job-plural')}
+                </span>
+              </>
+            )}
           </button>
         </div>
       )}
