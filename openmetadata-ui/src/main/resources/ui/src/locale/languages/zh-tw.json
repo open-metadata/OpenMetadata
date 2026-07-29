@@ -3514,7 +3514,7 @@
     "instance-identifier": "唯一識別此組態執行個體的名稱。",
     "intake-form-all-types-covered": "每種支援的實體類型都已存在接收表單。請編輯現有表單以變更其必填欄位。",
     "intake-form-created-successfully": "接收表單建立成功",
-    "intake-form-custom-properties-help": "為此實體類型定義的任何自訂屬性都可以標記為必填。請在「設定 → 自訂屬性」中管理自訂屬性目錄。",
+    "intake-form-custom-properties-help": "選擇要包含在表單中的自訂屬性，然後標記必須填寫的欄位。請在「設定 → 自訂屬性」中管理自訂屬性目錄。",
     "intake-form-deleted-successfully": "接收表單刪除成功",
     "intake-form-description-placeholder": "選填 — 說明此接收表單所強制執行的治理政策",
     "intake-form-enabled-help": "停用時，接收表單會被儲存，但不會在 API 層強制執行。",

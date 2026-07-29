@@ -3514,7 +3514,7 @@
     "instance-identifier": "Een naam die deze configuratie-instantie uniek identificeert.",
     "intake-form-all-types-covered": "Er bestaat al een aanmeldformulier voor elk ondersteund entiteitstype. Bewerk een bestaand formulier om de verplichte velden te wijzigen.",
     "intake-form-created-successfully": "Aanmeldformulier succesvol aangemaakt",
-    "intake-form-custom-properties-help": "Elke aangepaste eigenschap die voor dit entiteitstype is gedefinieerd, kan als verplicht worden gemarkeerd. Beheer de catalogus van aangepaste eigenschappen in Instellingen → Aangepaste eigenschappen.",
+    "intake-form-custom-properties-help": "Kies welke aangepaste eigenschappen in het formulier worden opgenomen en markeer vervolgens de velden die moeten worden ingevuld. Beheer de catalogus van aangepaste eigenschappen in Instellingen → Aangepaste eigenschappen.",
     "intake-form-deleted-successfully": "Aanmeldformulier succesvol verwijderd",
     "intake-form-description-placeholder": "Optioneel — leg uit welk governancebeleid dit aanmeldformulier afdwingt",
     "intake-form-enabled-help": "Indien uitgeschakeld wordt het aanmeldformulier opgeslagen, maar niet afgedwongen op de API-laag.",

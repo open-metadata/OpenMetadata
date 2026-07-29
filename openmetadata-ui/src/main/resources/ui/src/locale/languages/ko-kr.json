@@ -3514,7 +3514,7 @@
     "instance-identifier": "이 구성 인스턴스를 고유하게 식별하는 이름입니다.",
     "intake-form-all-types-covered": "지원되는 모든 엔터티 유형에 대해 접수 양식이 이미 존재합니다. 필수 필드를 변경하려면 기존 양식을 편집하세요.",
     "intake-form-created-successfully": "접수 양식이 성공적으로 생성되었습니다",
-    "intake-form-custom-properties-help": "이 엔터티 유형에 정의된 모든 사용자 지정 속성을 필수로 표시할 수 있습니다. 사용자 지정 속성 카탈로그는 설정 → 사용자 지정 속성에서 관리하세요.",
+    "intake-form-custom-properties-help": "양식에 포함할 사용자 지정 속성을 선택한 다음 반드시 입력해야 하는 필드를 표시하세요. 사용자 지정 속성 카탈로그는 설정 → 사용자 지정 속성에서 관리하세요.",
     "intake-form-deleted-successfully": "접수 양식이 성공적으로 삭제되었습니다",
     "intake-form-description-placeholder": "선택 사항 — 이 접수 양식이 적용하는 거버넌스 정책을 설명하세요",
     "intake-form-enabled-help": "비활성화하면 접수 양식은 저장되지만 API 계층에서 적용되지 않습니다.",

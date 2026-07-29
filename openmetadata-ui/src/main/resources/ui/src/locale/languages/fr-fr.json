@@ -3514,7 +3514,7 @@
     "instance-identifier": "Un nom qui identifie de manière unique cette instance de configuration.",
     "intake-form-all-types-covered": "Un formulaire d'admission existe pour chaque type d'entité pris en charge. Modifiez-en un existant pour changer ses champs obligatoires.",
     "intake-form-created-successfully": "Formulaire d'admission créé avec succès",
-    "intake-form-custom-properties-help": "Toute propriété personnalisée définie pour ce type d'entité peut être marquée comme obligatoire. Gérez le catalogue des propriétés personnalisées dans Paramètres → Propriétés personnalisées.",
+    "intake-form-custom-properties-help": "Choisissez les propriétés personnalisées à inclure dans le formulaire, puis marquez les champs qui doivent être renseignés. Gérez le catalogue des propriétés personnalisées dans Paramètres → Propriétés personnalisées.",
     "intake-form-deleted-successfully": "Formulaire d'admission supprimé avec succès",
     "intake-form-description-placeholder": "Facultatif — expliquez la politique de gouvernance appliquée par ce formulaire d'admission",
     "intake-form-enabled-help": "Lorsqu'il est désactivé, le formulaire d'admission est enregistré mais non appliqué au niveau de l'API.",

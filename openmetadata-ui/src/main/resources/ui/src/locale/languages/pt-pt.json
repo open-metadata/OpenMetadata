@@ -3514,7 +3514,7 @@
     "instance-identifier": "Um nome que identifica exclusivamente esta instância de configuração.",
     "intake-form-all-types-covered": "Já existe um formulário de admissão para cada tipo de entidade suportado. Edite um existente para alterar os seus campos obrigatórios.",
     "intake-form-created-successfully": "Formulário de admissão criado com sucesso",
-    "intake-form-custom-properties-help": "Qualquer propriedade personalizada definida para este tipo de entidade pode ser marcada como obrigatória. Faça a gestão do catálogo de propriedades personalizadas em Definições → Propriedades personalizadas.",
+    "intake-form-custom-properties-help": "Escolha as propriedades personalizadas a incluir no formulário e, em seguida, marque os campos que têm de ser preenchidos. Faça a gestão do catálogo de propriedades personalizadas em Definições → Propriedades personalizadas.",
     "intake-form-deleted-successfully": "Formulário de admissão eliminado com sucesso",
     "intake-form-description-placeholder": "Opcional — explique a política de governação que este formulário de admissão aplica",
     "intake-form-enabled-help": "Quando desativado, o formulário de admissão é guardado, mas não é aplicado na camada da API.",

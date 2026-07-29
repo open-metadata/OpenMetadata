@@ -3514,7 +3514,7 @@
     "instance-identifier": "Ein Name, der diese Konfigurationsinstanz eindeutig identifiziert.",
     "intake-form-all-types-covered": "Für jeden unterstützten Entitätstyp existiert bereits ein Aufnahmeformular. Bearbeiten Sie ein vorhandenes, um seine Pflichtfelder zu ändern.",
     "intake-form-created-successfully": "Aufnahmeformular erfolgreich erstellt",
-    "intake-form-custom-properties-help": "Jede für diesen Entitätstyp definierte benutzerdefinierte Eigenschaft kann als erforderlich markiert werden. Verwalten Sie den Katalog benutzerdefinierter Eigenschaften unter Einstellungen → Benutzerdefinierte Eigenschaften.",
+    "intake-form-custom-properties-help": "Wählen Sie die benutzerdefinierten Eigenschaften aus, die im Formular enthalten sein sollen, und markieren Sie anschließend die Pflichtfelder. Verwalten Sie den Katalog benutzerdefinierter Eigenschaften unter Einstellungen → Benutzerdefinierte Eigenschaften.",
     "intake-form-deleted-successfully": "Aufnahmeformular erfolgreich gelöscht",
     "intake-form-description-placeholder": "Optional – erläutern Sie die Governance-Richtlinie, die dieses Aufnahmeformular durchsetzt",
     "intake-form-enabled-help": "Wenn deaktiviert, wird das Aufnahmeformular gespeichert, aber nicht auf API-Ebene durchgesetzt.",

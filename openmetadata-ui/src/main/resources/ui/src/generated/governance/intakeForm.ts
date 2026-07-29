@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 /**
- * An IntakeForm declares additional required fields that must be populated when creating or
- * updating a governance entity (Data Product, Domain, Glossary Term). These are
- * org-configurable and layer on top of the schema's own required fields. Enforced
- * identically at the API and UI layers so both contracts match.
+ * An IntakeForm declares the fields shown when creating or updating a governance entity (Data
+ * Product, Domain, Glossary Term) and which of those fields are required. Required fields are
+ * enforced identically at the API and UI layers so both contracts match.
  */
 export interface IntakeForm {
     /**
@@ -47,6 +46,11 @@ export interface IntakeForm {
      */
     fullyQualifiedName?: string;
     /**
+     * Fields included in this IntakeForm. Fields with required=true are enforced on top of the
+     * schema-required fields.
+     */
+    formFields?: IntakeFormField[];
+    /**
      * Link to the resource corresponding to this entity.
      */
     href?: string;
@@ -67,8 +71,7 @@ export interface IntakeForm {
      */
     owners?: EntityReference[];
     /**
-     * Additional required fields enforced by this IntakeForm on top of the schema-required
-     * fields.
+     * Deprecated compatibility view of the required entries in formFields.
      */
     requiredFields?: RequiredField[];
     /**
@@ -219,6 +222,30 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * A field included in this IntakeForm.
+ */
+export interface IntakeFormField {
+    /**
+     * Optional override for the validation error message when a required field is missing.
+     */
+    errorMessage?: string;
+    fieldKind:     FieldKind;
+    /**
+     * Human-friendly label used on the intake form UI and in validation error messages.
+     */
+    fieldLabel: string;
+    /**
+     * Path to the field on the entity. Native paths are simple attribute names (e.g.,
+     * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
+     */
+    fieldPath: string;
+    /**
+     * Whether this field must have a value before the entity can be created or updated.
+     */
+    required?: boolean;
 }
 
 /**

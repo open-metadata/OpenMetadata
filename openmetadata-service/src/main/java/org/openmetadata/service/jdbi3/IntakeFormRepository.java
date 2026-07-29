@@ -23,11 +23,12 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.IntakeFormResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.IntakeFormUtil;
 
 @Slf4j
 @Repository
 public class IntakeFormRepository extends EntityRepository<IntakeForm> {
-  private static final String UPDATE_FIELDS = "owners,requiredFields,enabled,entityType";
+  private static final String UPDATE_FIELDS = "owners,formFields,requiredFields,enabled,entityType";
 
   public IntakeFormRepository() {
     super(
@@ -42,7 +43,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
 
   @Override
   public void setFields(IntakeForm entity, Fields fields, RelationIncludes relationIncludes) {
-    // No inherited or lazy fields — all state lives on the entity JSON
+    IntakeFormUtil.synchronizeFields(entity);
   }
 
   @Override
@@ -55,17 +56,24 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     if (entity.getEntityType() == null) {
       throw new IllegalArgumentException("IntakeForm requires entityType");
     }
+    IntakeFormUtil.synchronizeFields(entity);
     ensureUniquePerEntityType(entity, update);
   }
 
   @Override
   public void storeEntity(IntakeForm entity, boolean update) {
+    IntakeFormUtil.synchronizeFields(entity);
     store(entity, update);
   }
 
   @Override
   public void storeRelationships(IntakeForm entity) {
     // No cross-entity relationships for IntakeForm
+  }
+
+  @Override
+  protected boolean shouldCleanupFqnDependents() {
+    return false;
   }
 
   /**
@@ -79,10 +87,24 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
     if (json == null) return null;
     IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
+    IntakeFormUtil.synchronizeFields(form);
     if (Boolean.FALSE.equals(form.getEnabled())) {
       return null;
     }
     return form;
+  }
+
+  public void removeCustomPropertyField(String entityType, String propertyName) {
+    String json = Entity.getCollectionDAO().intakeFormDAO().findByEntityType(entityType);
+    if (json == null) {
+      return;
+    }
+    IntakeForm form = JsonUtils.readValue(json, IntakeForm.class);
+    if (!IntakeFormUtil.removeCustomPropertyField(form, propertyName)) {
+      return;
+    }
+    form.setUpdatedAt(System.currentTimeMillis());
+    store(form, true);
   }
 
   private void ensureUniquePerEntityType(IntakeForm entity, boolean update) {
@@ -117,6 +139,7 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("entityType", original.getEntityType(), updated.getEntityType());
       recordChange("enabled", original.getEnabled(), updated.getEnabled());
+      recordChange("formFields", original.getFormFields(), updated.getFormFields());
       recordChange("requiredFields", original.getRequiredFields(), updated.getRequiredFields());
     }
   }

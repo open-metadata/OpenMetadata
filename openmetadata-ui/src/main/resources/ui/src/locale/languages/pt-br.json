@@ -3514,7 +3514,7 @@
     "instance-identifier": "Um nome que identifica exclusivamente esta instância de configuração.",
     "intake-form-all-types-covered": "Já existe um formulário de entrada para cada tipo de entidade compatível. Edite um existente para alterar seus campos obrigatórios.",
     "intake-form-created-successfully": "Formulário de entrada criado com sucesso",
-    "intake-form-custom-properties-help": "Qualquer propriedade personalizada definida para este tipo de entidade pode ser marcada como obrigatória. Gerencie o catálogo de propriedades personalizadas em Configurações → Propriedades personalizadas.",
+    "intake-form-custom-properties-help": "Escolha quais propriedades personalizadas serão incluídas no formulário e, em seguida, marque os campos que devem ser preenchidos. Gerencie o catálogo de propriedades personalizadas em Configurações → Propriedades personalizadas.",
     "intake-form-deleted-successfully": "Formulário de entrada excluído com sucesso",
     "intake-form-description-placeholder": "Opcional — explique a política de governança que este formulário de entrada aplica",
     "intake-form-enabled-help": "Quando desativado, o formulário de entrada é salvo, mas não é aplicado na camada da API.",

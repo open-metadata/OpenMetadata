@@ -3514,7 +3514,7 @@
     "instance-identifier": "唯一标识此配置实例的名称",
     "intake-form-all-types-covered": "每种受支持的实体类型都已存在接收表单。请编辑现有表单以更改其必填字段。",
     "intake-form-created-successfully": "接收表单创建成功",
-    "intake-form-custom-properties-help": "为此实体类型定义的任何自定义属性都可以标记为必填。请在“设置 → 自定义属性”中管理自定义属性目录。",
+    "intake-form-custom-properties-help": "选择要包含在表单中的自定义属性，然后标记必须填写的字段。请在“设置 → 自定义属性”中管理自定义属性目录。",
     "intake-form-deleted-successfully": "接收表单删除成功",
     "intake-form-description-placeholder": "可选 — 说明此接收表单所强制执行的治理策略",
     "intake-form-enabled-help": "禁用时，接收表单会被保存，但不会在 API 层强制执行。",

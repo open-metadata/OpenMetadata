@@ -3514,7 +3514,7 @@
     "instance-identifier": "Bu yapılandırma örneğini benzersiz şekilde tanımlayan bir Ad.",
     "intake-form-all-types-covered": "Desteklenen her varlık türü için bir giriş formu zaten var. Zorunlu alanlarını değiştirmek için mevcut bir formu düzenleyin.",
     "intake-form-created-successfully": "Giriş formu başarıyla oluşturuldu",
-    "intake-form-custom-properties-help": "Bu varlık türü için tanımlanan herhangi bir özel özellik zorunlu olarak işaretlenebilir. Özel özellikler kataloğunu Ayarlar → Özel Özellikler bölümünden yönetin.",
+    "intake-form-custom-properties-help": "Forma eklenecek özel özellikleri seçin, ardından doldurulması gereken alanları işaretleyin. Özel özellikler kataloğunu Ayarlar → Özel Özellikler bölümünden yönetin.",
     "intake-form-deleted-successfully": "Giriş formu başarıyla silindi",
     "intake-form-description-placeholder": "İsteğe bağlı — bu giriş formunun uyguladığı yönetişim politikasını açıklayın",
     "intake-form-enabled-help": "Devre dışı bırakıldığında giriş formu kaydedilir ancak API katmanında uygulanmaz.",

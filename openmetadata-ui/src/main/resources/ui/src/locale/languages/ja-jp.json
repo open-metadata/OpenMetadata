@@ -3514,7 +3514,7 @@
     "instance-identifier": "この構成インスタンスを一意に識別する名前",
     "intake-form-all-types-covered": "サポートされているすべてのエンティティタイプに受付フォームが既に存在します。必須フィールドを変更するには既存のものを編集してください。",
     "intake-form-created-successfully": "受付フォームが正常に作成されました",
-    "intake-form-custom-properties-help": "このエンティティタイプに定義された任意のカスタムプロパティを必須に指定できます。カスタムプロパティのカタログは「設定 → カスタムプロパティ」で管理します。",
+    "intake-form-custom-properties-help": "フォームに含めるカスタムプロパティを選択し、入力を必須にするフィールドを指定します。カスタムプロパティのカタログは「設定 → カスタムプロパティ」で管理します。",
     "intake-form-deleted-successfully": "受付フォームが正常に削除されました",
     "intake-form-description-placeholder": "任意 — この受付フォームが適用するガバナンスポリシーを説明します",
     "intake-form-enabled-help": "無効にすると、受付フォームは保存されますが、API 層では適用されません。",

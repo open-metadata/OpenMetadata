@@ -3514,7 +3514,7 @@
     "instance-identifier": "Un nombre que identifica de manera única esta instancia de configuración.",
     "intake-form-all-types-covered": "Ya existe un formulario de admisión para cada tipo de entidad compatible. Edita uno existente para cambiar sus campos obligatorios.",
     "intake-form-created-successfully": "Formulario de admisión creado correctamente",
-    "intake-form-custom-properties-help": "Cualquier propiedad personalizada definida para este tipo de entidad puede marcarse como obligatoria. Gestiona el catálogo de propiedades personalizadas en Configuración → Propiedades personalizadas.",
+    "intake-form-custom-properties-help": "Elige qué propiedades personalizadas se incluirán en el formulario y, después, marca los campos que deben completarse. Gestiona el catálogo de propiedades personalizadas en Configuración → Propiedades personalizadas.",
     "intake-form-deleted-successfully": "Formulario de admisión eliminado correctamente",
     "intake-form-description-placeholder": "Opcional: explica la política de gobernanza que aplica este formulario de admisión",
     "intake-form-enabled-help": "Cuando está desactivado, el formulario de admisión se guarda pero no se aplica en la capa de la API.",
