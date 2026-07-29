@@ -463,7 +463,16 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the modal
+        // actually appears.
+        const addWidgetModal = adminPage.getByTestId('add-widget-modal');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(addWidgetModal).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
         await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
@@ -607,7 +616,16 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByTestId('add-widget-button');
         await expect(addWidgetButton).toBeVisible();
         await expect(addWidgetButton).toBeEnabled();
-        await addWidgetButton.click();
+
+        // Under CI load the react-grid-layout is still settling after the
+        // "Add tab" dialog closes; the first click can land on a detaching
+        // element and never open the widget picker. Retry until the modal
+        // actually appears.
+        const addWidgetModal = adminPage.getByTestId('add-widget-modal');
+        await expect(async () => {
+          await addWidgetButton.click();
+          await expect(addWidgetModal).toBeVisible({ timeout: 5000 });
+        }).toPass({ timeout: 30000 });
         await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage

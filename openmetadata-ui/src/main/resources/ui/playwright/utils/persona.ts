@@ -80,14 +80,29 @@ export const checkPersonaInProfile = async (
  */
 export const setPersonaAsDefault = async (page: Page) => {
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('set-as-default-button').click();
 
-  const setAsDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const setAsDefaultButton = page.getByTestId('set-as-default-button');
+  await setAsDefaultButton.waitFor({ state: 'visible' });
+  await setAsDefaultButton.click();
+
+  // Wait for the confirmation modal to be actually rendered so the subsequent
+  // click on "Yes" cannot race the modal open animation.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  await expect(setAsDefaultConfirmationModal).toBeVisible();
 
-  await setAsDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
+  // /api/v1/personas/* that happens to be in flight.
+  const setAsDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await setAsDefaultConfirmationModal
+    .getByRole('button', { name: 'Yes' })
+    .click();
   await setAsDefaultResponse;
 };
 
@@ -144,13 +159,28 @@ export const removePersonaDefault = async (
   await navigateToPersonaWithPagination(page, personaName ?? '');
 
   await page.getByTestId('manage-button').click();
-  await page.getByTestId('remove-default-button').click();
 
-  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const removeDefaultButton = page.getByTestId('remove-default-button');
+  await removeDefaultButton.waitFor({ state: 'visible' });
+  await removeDefaultButton.click();
+
+  // Wait for the confirmation modal to be actually rendered so the subsequent
+  // click on "Yes" cannot race the modal open animation.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
+  await expect(removeDefaultConfirmationModal).toBeVisible();
 
-  await removeDefaultConfirmationModal.getByText('Yes').click();
+  // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
+  // /api/v1/personas/* that happens to be in flight.
+  const removeDefaultResponse = page.waitForResponse(
+    (response) =>
+      /\/api\/v1\/personas\/[^/]+$/.test(response.url()) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await removeDefaultConfirmationModal
+    .getByRole('button', { name: 'Yes' })
+    .click();
   await removeDefaultResponse;
 };
