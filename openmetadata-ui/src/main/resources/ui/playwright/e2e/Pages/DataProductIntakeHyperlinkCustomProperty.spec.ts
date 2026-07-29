@@ -78,10 +78,7 @@ const ensureHyperlinkCustomProperty = async (
   expect(put.status()).toBe(200);
 };
 
-const seedIntakeForm = async (
-  api: APIRequestContext,
-  propName: string
-) => {
+const seedIntakeForm = async (api: APIRequestContext, propName: string) => {
   const res = await api.put('/api/v1/governance/intakeForms', {
     data: {
       name: DP_INTAKE_NAME,
