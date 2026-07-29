@@ -21,7 +21,7 @@ import { FC, useCallback, useMemo } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactFlowInstance } from 'reactflow';
+import type { ReactFlowInstance } from 'reactflow';
 import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
 import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';

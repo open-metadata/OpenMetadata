@@ -675,6 +675,47 @@ class LineageSceneResolverTest {
   }
 
   @Test
+  void assetSceneAppliesNodeLimitToTemporaryLineageTableHops() {
+    String rawOrders = "sample_data.ecommerce_db.shopify.raw_order";
+    String factOrders = "sample_data.ecommerce_db.shopify.fact_orders";
+    EsLineageData concreteEdge =
+        edge("temp-lineage", rawOrders, Entity.TABLE, factOrders, Entity.TABLE)
+            .withTempLineageTables(
+                List.of(
+                    new TempLineageTable()
+                        .withFromEntity(rawOrders)
+                        .withToEntity("tmp_order_staging"),
+                    new TempLineageTable()
+                        .withFromEntity("tmp_order_staging")
+                        .withToEntity("tmp_order_enriched"),
+                    new TempLineageTable()
+                        .withFromEntity("tmp_order_enriched")
+                        .withToEntity(factOrders)));
+    SearchLineageResult lineage =
+        result(
+            List.of(
+                table(rawOrders, "sample_data", "ecommerce_db", "shopify", List.of("id")),
+                table(factOrders, "sample_data", "ecommerce_db", "shopify", List.of("id"))),
+            List.of(concreteEdge));
+
+    LineageScene scene =
+        RESOLVER.resolveScene(
+            rawOrders, Entity.TABLE, LineageLens.SERVICE, LineageBand.ASSET, lineage, 3);
+
+    Set<String> visibleNodeIds =
+        scene.getNodes().stream().map(LineageSceneNode::getId).collect(Collectors.toSet());
+
+    assertEquals(3, scene.getNodes().size());
+    assertEquals(1, scene.getHiddenNodeCount());
+    assertTrue(
+        scene.getEdges().stream()
+            .allMatch(
+                edge ->
+                    visibleNodeIds.contains(edge.getFrom())
+                        && visibleNodeIds.contains(edge.getTo())));
+  }
+
+  @Test
   void concreteEdgeIgnoresAdditionalPipelineFields() {
     UUID pipelineId = uuid("daily-pipeline");
     Map<String, Object> pipeline =

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Edge, Node, useReactFlow, useViewport } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { useReactFlow, useViewport } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';

@@ -129,6 +129,9 @@ const LineageLayers = ({
 
   const handleSceneLensSelection = useCallback(
     (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
       const [lens] = [...keys];
       if (lens && onSceneLensChange) {
         onSceneLensChange(lens as LineageLens);
@@ -140,6 +143,9 @@ const LineageLayers = ({
 
   const handleSceneBandSelection = useCallback(
     (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
       const [band] = [...keys];
       if (band && onSceneBandChange) {
         onSceneBandChange(band as LineageBand);
@@ -249,7 +255,8 @@ const LineageLayers = ({
 
   const handleSelectionChange = useCallback(
     (keys: Selection) => {
-      const nextSelection = [...(keys as Set<string>)];
+      const nextSelection =
+        keys === 'all' ? [...renderedValues] : [...keys].map(String);
       const [changed] = xor([...selectedKeys], nextSelection);
 
       if (changed) {
@@ -264,7 +271,7 @@ const LineageLayers = ({
         }
       }
     },
-    [selectedKeys, handlePlatformViewChange, handleLayerClick]
+    [selectedKeys, renderedValues, handlePlatformViewChange, handleLayerClick]
   );
 
   const sceneControls = useMemo(() => {

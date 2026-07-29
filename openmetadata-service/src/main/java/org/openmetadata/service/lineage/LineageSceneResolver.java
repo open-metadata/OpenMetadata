@@ -1420,6 +1420,7 @@ public class LineageSceneResolver {
       Ref focusRef,
       int size) {
     Map<String, LineageSceneNode> nodes = new LinkedHashMap<>();
+    Map<String, String> nodeIdsByFqn = new LinkedHashMap<>();
     Map<String, Set<String>> countedAssetIdsByNode = new LinkedHashMap<>();
     Map<String, Set<String>> syntheticCountKindsByNode = new LinkedHashMap<>();
     Map<String, RollupEdge> edgeByKey = new LinkedHashMap<>();
@@ -1436,6 +1437,7 @@ public class LineageSceneResolver {
         Ref ref = selectRef(asset, lens, band, focusRef, selectionLevel);
         addNode(
             nodes,
+            nodeIdsByFqn,
             countedAssetIdsByNode,
             syntheticCountKindsByNode,
             ref,
@@ -1461,6 +1463,7 @@ public class LineageSceneResolver {
       }
       addNode(
           nodes,
+          nodeIdsByFqn,
           countedAssetIdsByNode,
           syntheticCountKindsByNode,
           fromRef,
@@ -1470,6 +1473,7 @@ public class LineageSceneResolver {
           isGhost(fromAsset, focusRef));
       addNode(
           nodes,
+          nodeIdsByFqn,
           countedAssetIdsByNode,
           syntheticCountKindsByNode,
           toRef,
@@ -1478,7 +1482,7 @@ public class LineageSceneResolver {
           focusRef,
           isGhost(toAsset, focusRef));
       if (shouldExpandTemporaryLineage(edge, fromRef, toRef, fromAsset, toAsset, band)) {
-        addTemporaryLineage(nodes, edgeByKey, edge);
+        addTemporaryLineage(nodes, nodeIdsByFqn, edgeByKey, edge);
       } else {
         addEdges(edgeByKey, edge, fromRef, toRef, fromAsset, toAsset, band);
       }
@@ -1488,6 +1492,7 @@ public class LineageSceneResolver {
         Ref ref = selectRef(asset, lens, band, focusRef, selectionLevel);
         addNode(
             nodes,
+            nodeIdsByFqn,
             countedAssetIdsByNode,
             syntheticCountKindsByNode,
             ref,
@@ -1775,6 +1780,7 @@ public class LineageSceneResolver {
 
   private static void addNode(
       Map<String, LineageSceneNode> nodes,
+      Map<String, String> nodeIdsByFqn,
       Map<String, Set<String>> countedAssetIdsByNode,
       Map<String, Set<String>> syntheticCountKindsByNode,
       Ref ref,
@@ -1810,6 +1816,9 @@ public class LineageSceneResolver {
                     .withIsGhost(isGhost)
                     .withCertification(certification(asset.self().sourceEntity()))
                     .withSourceEntity(ref.sourceEntity()));
+    if (!nullOrEmpty(node.getFullyQualifiedName())) {
+      nodeIdsByFqn.putIfAbsent(node.getFullyQualifiedName(), node.getId());
+    }
     mergeNodeCounts(node, countedAssetIdsByNode, syntheticCountKindsByNode, ref, asset);
   }
 
@@ -1987,23 +1996,27 @@ public class LineageSceneResolver {
   }
 
   private static void addTemporaryLineage(
-      Map<String, LineageSceneNode> nodes, Map<String, RollupEdge> edgeByKey, EsLineageData edge) {
+      Map<String, LineageSceneNode> nodes,
+      Map<String, String> nodeIdsByFqn,
+      Map<String, RollupEdge> edgeByKey,
+      EsLineageData edge) {
     for (TempLineageTable hop : edge.getTempLineageTables()) {
       if (hop == null || nullOrEmpty(hop.getFromEntity()) || nullOrEmpty(hop.getToEntity())) {
         continue;
       }
-      String from = temporaryLineageNodeId(nodes, hop.getFromEntity());
-      String to = temporaryLineageNodeId(nodes, hop.getToEntity());
+      String from = temporaryLineageNodeId(nodes, nodeIdsByFqn, hop.getFromEntity());
+      String to = temporaryLineageNodeId(nodes, nodeIdsByFqn, hop.getToEntity());
       addRollup(edgeByKey, edge, from, to, LineageBand.ASSET, false);
     }
   }
 
   private static String temporaryLineageNodeId(
-      Map<String, LineageSceneNode> nodes, String fullyQualifiedName) {
-    for (LineageSceneNode node : nodes.values()) {
-      if (Objects.equals(node.getFullyQualifiedName(), fullyQualifiedName)) {
-        return node.getId();
-      }
+      Map<String, LineageSceneNode> nodes,
+      Map<String, String> nodeIdsByFqn,
+      String fullyQualifiedName) {
+    String existingNodeId = nodeIdsByFqn.get(fullyQualifiedName);
+    if (existingNodeId != null) {
+      return existingNodeId;
     }
 
     String nodeId = "temp_" + fullyQualifiedName;
@@ -2034,6 +2047,7 @@ public class LineageSceneResolver {
                 .withIsExpandable(false)
                 .withIsGhost(false)
                 .withSourceEntity(sourceEntity));
+    nodeIdsByFqn.put(fullyQualifiedName, nodeId);
     return nodeId;
   }
 

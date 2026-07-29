@@ -389,15 +389,13 @@ const CustomControls: FC<{
             ? t('label.zoom-in')
             : t('label.edit-entity', { entity: t('label.lineage') })
         }>
-        <TooltipTrigger>
-          <Button
-            color={isEditMode ? 'primary' : 'secondary'}
-            data-testid="edit-lineage"
-            iconLeading={EditIcon}
-            isDisabled={isLayerBand}
-            onClick={toggleEditMode}
-          />
-        </TooltipTrigger>
+        <Button
+          color={isEditMode ? 'primary' : 'secondary'}
+          data-testid="edit-lineage"
+          iconLeading={EditIcon}
+          isDisabled={isLayerBand}
+          onClick={toggleEditMode}
+        />
       </Tooltip>
     ) : null;
   }, [

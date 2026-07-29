@@ -172,7 +172,7 @@ export function useCanvasEdgeRenderer({
       const weight = Number(edge.data?.weight ?? 1);
       const isRollup = Boolean(edge.data?.isRollup);
       const strokeWidth =
-        isRollup && Number.isFinite(weight)
+        isRollup && Number.isFinite(weight) && weight > 1
           ? Math.max(
               style.strokeWidth,
               Math.min(7, style.strokeWidth + Math.log2(weight + 1))
@@ -242,7 +242,11 @@ export function useCanvasEdgeRenderer({
         ctx.strokeStyle = pathStroke;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(x, y, labelWidth, labelHeight, 9);
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(x, y, labelWidth, labelHeight, 9);
+        } else {
+          ctx.rect(x, y, labelWidth, labelHeight);
+        }
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = colors.labelText;
