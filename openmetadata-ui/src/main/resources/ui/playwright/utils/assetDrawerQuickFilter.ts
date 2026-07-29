@@ -98,6 +98,35 @@ const assertPopoverInteractiveAndFiltersOptions = async (
   await closeQuickFilterPopover(page);
 };
 
+// react-aria positions the popover `absolute` in document coordinates. If its
+// option list is not contained, that list's scrollable overflow reaches <html>
+// and makes the page scrollable behind the drawer — so picking an option below
+// the fold scrolls the focused input into view and drags the whole app with it.
+const assertOffScreenOptionKeepsPageInPlace = async (
+  page: Page,
+  entityTypeKey: string
+) => {
+  await openQuickFilter(page, entityTypeKey);
+
+  const optionList = popover(page).getByTestId('quick-filter-option-list');
+  await optionList.evaluate((list) => list.scrollTo(0, list.scrollHeight));
+
+  await popover(page).locator('[data-testid$="-checkbox"]').last().click();
+
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollHeight -
+          document.documentElement.clientHeight
+      )
+    )
+    .toBe(0);
+
+  await closeQuickFilterPopover(page);
+};
+
 const assertCloseDiscardsSelection = async (
   page: Page,
   entityTypeKey: string
@@ -160,6 +189,10 @@ export const runDrawerQuickFilterMatrix = async (
 
   await test.step(`[${ctx.surface}] popover is interactive and filters its options`, async () => {
     await assertPopoverInteractiveAndFiltersOptions(page, entityTypeKey);
+  });
+
+  await test.step(`[${ctx.surface}] picking an off-screen option does not scroll the page`, async () => {
+    await assertOffScreenOptionKeepsPageInPlace(page, entityTypeKey);
   });
 
   await test.step(`[${ctx.surface}] Close discards the staged selection`, async () => {
