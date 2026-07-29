@@ -150,9 +150,7 @@ const AppInstall = () => {
         }
       }
     } catch (_) {
-      showErrorToast(
-        t('message.no-application-schema-found', { appName: fqn })
-      );
+      showErrorToast(t('server.no-application-schema-found', { appName: fqn }));
     } finally {
       setIsLoading(false);
     }

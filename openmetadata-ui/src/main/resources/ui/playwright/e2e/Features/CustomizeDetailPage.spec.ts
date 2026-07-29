@@ -52,6 +52,11 @@ import { settingClick } from '../../utils/sidebar';
 const persona = new PersonaClass();
 // Keeping it separate so that it won't affect other tests
 const navigationPersona = new PersonaClass();
+// Dedicated persona for the cancel/discard test — the "customization should
+// work" tests remove the Description widget and save the Table layout on the
+// shared `persona`, which would leave no widget for this test to remove. A
+// fresh persona keeps its layout pristine regardless of test execution order.
+const cancelDiscardPersona = new PersonaClass();
 const adminUser = new AdminClass();
 const user = new UserClass();
 
@@ -83,6 +88,7 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
 
   await persona.create(apiContext);
   await navigationPersona.create(apiContext);
+  await cancelDiscardPersona.create(apiContext);
 
   // Assign persona to user to validate page changes
   await user.patch({
@@ -133,6 +139,7 @@ test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   await user.delete(apiContext);
   await persona.delete(apiContext);
   await navigationPersona.delete(apiContext);
+  await cancelDiscardPersona.delete(apiContext);
   await afterAction();
 });
 

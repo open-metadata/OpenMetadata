@@ -18,18 +18,18 @@
   position: fixed;
   right: 30px;
   bottom: -100%;
-  z-index: 1;
+  z-index: var(--om-z-1);
 
   .ant-card {
     position: relative;
     width: 338px;
     overflow: hidden;
-    border-radius: 14px;
-    box-shadow: 0 0 20px rgba(117, 117, 117, 0.3);
+    border-radius: var(--om-radius-14);
+    box-shadow: 0 0 20px var(--om-legacy-color-117-117-117-0-3);
     border: 1px solid @primary-color;
 
     .ant-card-body {
-      padding: 26px;
+      padding: var(--om-space-26);
     }
   }
 
@@ -41,19 +41,19 @@
 
   .github-star-popup-header {
     color: @primary-color;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: var(--om-font-size-md);
+    font-weight: var(--om-font-weight-semibold);
   }
 
   .github-star-popup-description {
-    margin-top: 10px;
+    margin-top: var(--om-space-10);
     color: @text-color;
-    font-size: 12px;
-    font-weight: 400;
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-regular);
   }
 
   .github-action-button-group {
-    border-radius: 4px;
+    border-radius: var(--om-radius-sm);
     border: @global-border;
     overflow: hidden;
 
@@ -71,7 +71,7 @@
     }
 
     .github-star-button {
-      background: linear-gradient(0.5turn, rgba(0, 0, 0, 0.2), transparent);
+      background: linear-gradient(0.5turn, var(--om-legacy-color-0-0-0-0-2), transparent);
       border-right: @global-border;
 
       &:hover {
@@ -82,13 +82,13 @@
 }
 
 .github-star-popup-card-with-alert {
-  animation: scrollInWithAlert 2s normal forwards ease-in-out;
-  animation-delay: 1s;
+  animation: scrollInWithAlert var(--om-duration-2000) normal forwards ease-in-out;
+  animation-delay: var(--om-duration-1000);
 }
 
 .github-star-popup-card-without-alert {
-  animation: scrollInWithoutAlert 2s normal forwards ease-in-out;
-  animation-delay: 1s;
+  animation: scrollInWithoutAlert var(--om-duration-2000) normal forwards ease-in-out;
+  animation-delay: var(--om-duration-1000);
 }
 
 @keyframes scrollInWithAlert {
