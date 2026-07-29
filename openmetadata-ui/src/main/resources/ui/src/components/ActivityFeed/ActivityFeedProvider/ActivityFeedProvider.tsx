@@ -384,12 +384,16 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setEntityPaging(paging);
         }
       } catch (err) {
-        showErrorToast(
-          err as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.activity-feed'),
-          })
-        );
+        // A request the user has already navigated away from must not report
+        // anything either, or the new entity shows an error raised for the old.
+        if (requestedFeedFqnRef.current === fqn) {
+          showErrorToast(
+            err as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.activity-feed'),
+            })
+          );
+        }
       } finally {
         if (requestedFeedFqnRef.current === fqn) {
           setLoading(false);

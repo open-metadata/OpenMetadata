@@ -33,6 +33,7 @@ import {
   removeActivityReaction,
 } from '../../../rest/feedsAPI';
 import { listMyVisibleTasks, listTasks } from '../../../rest/tasksAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from './ActivityFeedProvider';
 import {
   DummyActivityCommentComponent,
@@ -642,6 +643,47 @@ describe('ActivityFeedProvider', () => {
       expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
         'thread-from-second-entity'
       );
+    });
+
+    it('does not surface an error toast for an entity the user has already navigated away from', async () => {
+      let rejectFirstEntity: (reason: Error) => void = () => undefined;
+
+      (getAllFeeds as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectFirstEntity = reject;
+            })
+        )
+        .mockResolvedValueOnce({ data: [], paging: {} });
+
+      const { rerender } = render(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent fqn="first.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      rerender(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent fqn="second.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('entity-thread-fqn')).toHaveTextContent(
+          'second.entity'
+        )
+      );
+
+      await act(async () => {
+        rejectFirstEntity(new Error('request failed after navigation'));
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('ignores a thread lookup for an activity that is no longer selected', async () => {
