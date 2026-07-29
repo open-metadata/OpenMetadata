@@ -29,6 +29,9 @@ import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
+const TEST_SUITE_RESPONSE_CACHE_TTL_MS = 30_000;
+const TEST_SUITE_RESPONSE_CACHE_MAX_SIZE = 20;
+
 export interface UseTestSuitesDataProps {
   searchValue: string;
   owner: string;
@@ -71,7 +74,13 @@ export const useTestSuitesData = ({
   // (main #29561): only the latest request is allowed to update state.
   const latestRequestId = useRef(0);
   const responseCache = useRef(
-    new Map<string, Awaited<ReturnType<typeof getListTestSuitesBySearch>>>()
+    new Map<
+      string,
+      {
+        cachedAt: number;
+        response: Awaited<ReturnType<typeof getListTestSuitesBySearch>>;
+      }
+    >()
   );
 
   const fetchTestSuites = async (
@@ -95,15 +104,19 @@ export const useTestSuitesData = ({
       sortType: SORT_ORDER.DESC,
     };
     const cacheKey = JSON.stringify(requestParams);
-    const cachedResponse = responseCache.current.get(cacheKey);
+    const cachedEntry = responseCache.current.get(cacheKey);
 
-    if (cachedResponse) {
-      setTestSuites(cachedResponse.data);
-      handlePagingChange(cachedResponse.paging);
+    if (
+      cachedEntry &&
+      Date.now() - cachedEntry.cachedAt < TEST_SUITE_RESPONSE_CACHE_TTL_MS
+    ) {
+      setTestSuites(cachedEntry.response.data);
+      handlePagingChange(cachedEntry.response.paging);
       setIsLoading(false);
 
       return;
     }
+    responseCache.current.delete(cacheKey);
 
     setIsLoading(true);
     try {
@@ -111,7 +124,16 @@ export const useTestSuitesData = ({
       if (requestId !== latestRequestId.current) {
         return;
       }
-      responseCache.current.set(cacheKey, result);
+      if (responseCache.current.size >= TEST_SUITE_RESPONSE_CACHE_MAX_SIZE) {
+        const oldestCacheKey = responseCache.current.keys().next().value;
+        if (oldestCacheKey) {
+          responseCache.current.delete(oldestCacheKey);
+        }
+      }
+      responseCache.current.set(cacheKey, {
+        cachedAt: Date.now(),
+        response: result,
+      });
       setTestSuites(result.data);
       handlePagingChange(result.paging);
     } catch (error) {

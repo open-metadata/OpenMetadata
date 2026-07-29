@@ -14,10 +14,12 @@ import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
@@ -128,7 +130,7 @@ export const useTestCaseListPage = () => {
 
   const exportFilteredTestCases = useCallback(async () => {
     const updatedParams = getTestCaseFiltersValue(params, selectedFilter);
-    const { data } = await getListTestCaseBySearch({
+    const exportParams = {
       ...updatedParams,
       testCaseStatus: isEmpty(params.testCaseStatus)
         ? undefined
@@ -136,12 +138,28 @@ export const useTestCaseListPage = () => {
       includeAllTests: true,
       fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TESTSUITE],
       q: searchValue ? `*${searchValue}*` : undefined,
-      limit: paging.paging.total,
-      offset: 0,
-    });
+    };
+    const testCases: TestCase[] = [];
+    let offset = 0;
+    let total: number | undefined;
 
-    return convertTestCasesToCSV(data);
-  }, [paging.paging.total, params, searchValue, selectedFilter]);
+    do {
+      const response = await getListTestCaseBySearch({
+        ...exportParams,
+        limit: PAGE_SIZE_LARGE,
+        offset,
+      });
+      testCases.push(...response.data);
+      total = response.paging.total ?? testCases.length;
+      offset += response.data.length;
+
+      if (response.data.length === 0) {
+        break;
+      }
+    } while (offset < total);
+
+    return convertTestCasesToCSV(testCases);
+  }, [params, searchValue, selectedFilter]);
 
   const filteredExportAction =
     hasActiveFilters || searchValue ? exportFilteredTestCases : undefined;
