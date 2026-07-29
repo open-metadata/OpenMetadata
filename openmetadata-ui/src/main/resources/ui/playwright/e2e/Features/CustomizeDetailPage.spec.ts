@@ -466,14 +466,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Under CI load the react-grid-layout is still settling after the
         // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the modal
-        // actually appears.
-        const addWidgetModal = adminPage.getByTestId('add-widget-modal');
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
         await expect(async () => {
           await addWidgetButton.click();
-          await expect(addWidgetModal).toBeVisible({ timeout: 5000 });
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
         }).toPass({ timeout: 30000 });
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
@@ -619,14 +619,14 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         // Under CI load the react-grid-layout is still settling after the
         // "Add tab" dialog closes; the first click can land on a detaching
-        // element and never open the widget picker. Retry until the modal
-        // actually appears.
-        const addWidgetModal = adminPage.getByTestId('add-widget-modal');
+        // element and never open the widget picker. Retry until the picker's
+        // inner content appears — `add-widget-modal` itself is the antd
+        // `.ant-modal-root` wrapper (0×0), which always reports hidden.
+        const widgetInfoTabs = adminPage.getByTestId('widget-info-tabs');
         await expect(async () => {
           await addWidgetButton.click();
-          await expect(addWidgetModal).toBeVisible({ timeout: 5000 });
+          await expect(widgetInfoTabs).toBeVisible({ timeout: 5000 });
         }).toPass({ timeout: 30000 });
-        await expect(adminPage.getByTestId('widget-info-tabs')).toBeVisible();
 
         await adminPage
           .getByTestId('add-widget-modal')
