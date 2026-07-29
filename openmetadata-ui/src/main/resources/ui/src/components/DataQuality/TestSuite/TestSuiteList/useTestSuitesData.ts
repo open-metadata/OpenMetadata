@@ -70,6 +70,9 @@ export const useTestSuitesData = ({
   // Guards against out-of-order responses when the tab/filters change mid-fetch
   // (main #29561): only the latest request is allowed to update state.
   const latestRequestId = useRef(0);
+  const responseCache = useRef(
+    new Map<string, Awaited<ReturnType<typeof getListTestSuitesBySearch>>>()
+  );
 
   const fetchTestSuites = async (
     page = INITIAL_PAGING_VALUE,
@@ -77,26 +80,38 @@ export const useTestSuitesData = ({
   ) => {
     const requestId = latestRequestId.current + 1;
     latestRequestId.current = requestId;
+    const requestParams = {
+      ...fetchParams,
+      fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
+      q: searchValue ? `*${searchValue}*` : undefined,
+      owner: ownerFilterValue?.key,
+      offset: (page - 1) * pageSize,
+      includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
+      testSuiteType:
+        subTab === DataQualitySubTabs.TABLE_SUITES
+          ? TestSuiteType.basic
+          : TestSuiteType.logical,
+      sortField: 'lastResultTimestamp',
+      sortType: SORT_ORDER.DESC,
+    };
+    const cacheKey = JSON.stringify(requestParams);
+    const cachedResponse = responseCache.current.get(cacheKey);
+
+    if (cachedResponse) {
+      setTestSuites(cachedResponse.data);
+      handlePagingChange(cachedResponse.paging);
+      setIsLoading(false);
+
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const result = await getListTestSuitesBySearch({
-        ...fetchParams,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        owner: ownerFilterValue?.key,
-        offset: (page - 1) * pageSize,
-        includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
-        testSuiteType:
-          subTab === DataQualitySubTabs.TABLE_SUITES
-            ? TestSuiteType.basic
-            : TestSuiteType.logical,
-        sortField: 'lastResultTimestamp',
-        sortType: SORT_ORDER.DESC,
-      });
+      const result = await getListTestSuitesBySearch(requestParams);
       if (requestId !== latestRequestId.current) {
         return;
       }
+      responseCache.current.set(cacheKey, result);
       setTestSuites(result.data);
       handlePagingChange(result.paging);
     } catch (error) {

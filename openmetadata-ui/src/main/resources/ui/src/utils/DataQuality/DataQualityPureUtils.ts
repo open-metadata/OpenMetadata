@@ -203,13 +203,14 @@ export const transformToTestCaseStatusObject = (
 
     if (status === 'success') {
       acc.success += count;
+      acc.total += count;
     } else if (status === 'failed') {
       acc.failed += count;
+      acc.total += count;
     } else if (status === 'aborted') {
       acc.aborted += count;
+      acc.total += count;
     }
-
-    acc.total += count;
 
     return acc;
   }, outputData);
@@ -671,9 +672,29 @@ export function getColumnNameFromColumnFilterKey(
     : columnFilterKey;
 }
 
-export const getTestCaseTabPath = (testCaseStatus: TestCaseStatus) => ({
+export const getTestCaseTabPath = (
+  testCaseStatus: TestCaseStatus,
+  filters?: DataQualityDashboardChartFilters
+) => ({
   pathname: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
-  search: QueryString.stringify({ testCaseStatus }),
+  search: QueryString.stringify(
+    {
+      testCaseStatus,
+      lastRunRange:
+        filters?.startTs && filters.endTs
+          ? { startTs: filters.startTs, endTs: filters.endTs }
+          : undefined,
+      tags: filters?.tags,
+      tier: filters?.tier?.[0],
+      dataProductFqn: filters?.dataProductFqns?.[0],
+      tableFqn: filters?.entityFQN,
+      serviceName: filters?.serviceName,
+      testPlatforms: filters?.testPlatforms,
+      dataQualityDimension: filters?.dataQualityDimension,
+      testCaseType: filters?.testCaseType,
+    },
+    { arrayFormat: 'brackets' }
+  ),
 });
 
 export const transformToTestCaseStatusByDimension = (

@@ -133,6 +133,7 @@ const TestCaseStatusAreaChartWidget = ({
           count: +cur['testCase.fullyQualifiedName'],
         };
       });
+      updatedData.sort((first, second) => first.timestamp - second.timestamp);
 
       setChartData(updatedData);
     } catch {

@@ -14,6 +14,7 @@
 import { Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
+import { unparse } from 'papaparse';
 import type { ReactElement, ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
@@ -25,9 +26,12 @@ import { ExportData } from '../components/Entity/EntityExportModalProvider/Entit
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/entity/feed/thread';
+import type { TestCase } from '../generated/tests/testCase';
+import { TagSource } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
+import { getEntityColumnFQN, getEntityFQN } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 
 export const getTestCaseResultCount = (
@@ -50,13 +54,70 @@ interface TestCasePermission {
   EditAll: boolean;
 }
 
+const TEST_CASE_CSV_HEADERS = [
+  'name',
+  'displayName',
+  'description',
+  'testDefinition',
+  'entityFQN',
+  'testSuite',
+  'parameterValues',
+  'computePassedFailedRowCount',
+  'useDynamicAssertion',
+  'inspectionQuery',
+  'tags',
+  'glossaryTerms',
+];
+
+export const convertTestCasesToCSV = (testCases: TestCase[]): string =>
+  unparse({
+    fields: TEST_CASE_CSV_HEADERS,
+    data: testCases.map((testCase) => ({
+      name: testCase.name,
+      displayName: testCase.displayName ?? '',
+      description: testCase.description ?? '',
+      testDefinition:
+        testCase.testDefinition?.fullyQualifiedName ??
+        testCase.testDefinition?.name ??
+        '',
+      entityFQN:
+        testCase.entityFQN ??
+        (testCase.entityLink?.includes('::columns::')
+          ? getEntityColumnFQN(testCase.entityLink)
+          : getEntityFQN(testCase.entityLink ?? '')),
+      testSuite:
+        testCase.testSuite?.fullyQualifiedName ??
+        testCase.testSuite?.name ??
+        '',
+      parameterValues:
+        testCase.parameterValues
+          ?.map((value) => JSON.stringify(value))
+          .join(';') ?? '',
+      computePassedFailedRowCount:
+        testCase.computePassedFailedRowCount?.toString() ?? '',
+      useDynamicAssertion: testCase.useDynamicAssertion?.toString() ?? '',
+      inspectionQuery: testCase.inspectionQuery ?? '',
+      tags:
+        testCase.tags
+          ?.filter((tag) => tag.source === TagSource.Classification)
+          .map((tag) => tag.tagFQN)
+          .join(';') ?? '',
+      glossaryTerms:
+        testCase.tags
+          ?.filter((tag) => tag.source === TagSource.Glossary)
+          .map((tag) => tag.tagFQN)
+          .join(';') ?? '',
+    })),
+  });
+
 export const getTestCaseManageMenuItems = (
   fqn: string,
   permission: TestCasePermission,
   deleted: boolean,
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
-  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE
+  sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  onExport: ExportData['onExport'] = exportTestCasesInCSV
 ): ManageMenuItem[] => {
   const { ViewAll, EditAll } = permission;
 
@@ -98,7 +159,7 @@ export const getTestCaseManageMenuItems = (
             onClick: () =>
               showModal({
                 name: fqn,
-                onExport: exportTestCasesInCSV,
+                onExport,
                 exportTypes: [ExportTypes.CSV],
               }),
           },

@@ -34,6 +34,7 @@ const mockLocation = { search: '' };
 const mockHandlePageChange = jest.fn();
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
+const mockShowModal = jest.fn();
 
 const mockPermissions: {
   testCase: Record<string, boolean>;
@@ -72,7 +73,9 @@ jest.mock('../../../pages/DataQuality/DataQualityProvider', () => ({
 jest.mock(
   '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
   () => ({
-    useEntityExportModalProvider: jest.fn(() => ({ showModal: jest.fn() })),
+    useEntityExportModalProvider: jest.fn(() => ({
+      showModal: mockShowModal,
+    })),
   })
 );
 
@@ -122,6 +125,7 @@ const buildTestCase = (
 describe('useTestCaseListPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockShowModal.mockClear();
     mockLocation.search = '';
     mockPermissions.testCase = { ViewAll: true, ViewBasic: true };
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
@@ -266,6 +270,40 @@ describe('useTestCaseListPage', () => {
         expect.objectContaining({ q: '*orders*' })
       )
     );
+  });
+
+  it('should export only the test cases matching the active query', async () => {
+    const filteredTestCase = buildTestCase('filtered-test', 'svc.tbl.test', {
+      entityFQN: 'svc.tbl',
+      testDefinition: { fullyQualifiedName: 'tableRowCountToEqual' },
+      testSuite: { fullyQualifiedName: 'svc.tbl.testSuite' },
+    });
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [filteredTestCase],
+      paging: { total: 1 },
+    });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        includeAllTests: true,
+        offset: 0,
+        q: '*filtered*',
+      })
+    );
+    expect(csv).toContain('filtered-test');
   });
 
   it('should refetch for the requested page when the pagination handler is called', async () => {

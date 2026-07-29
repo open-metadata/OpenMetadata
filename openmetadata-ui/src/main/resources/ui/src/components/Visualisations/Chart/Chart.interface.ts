@@ -39,6 +39,7 @@ export interface CustomPieChartProps {
   name: string;
   data: CustomPieChartData[];
   label?: React.ReactNode;
+  minAngle?: number;
   onSegmentClick?: (segment: CustomPieChartData, index: number) => void;
   showLegends?: boolean;
 }

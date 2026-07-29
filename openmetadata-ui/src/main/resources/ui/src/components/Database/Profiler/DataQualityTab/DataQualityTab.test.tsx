@@ -640,7 +640,10 @@ describe('DataQualityTab test', () => {
       );
     });
 
-    expect(await screen.findByTestId('next-previous')).toBeInTheDocument();
+    const pagination = await screen.findByTestId('next-previous');
+
+    expect(pagination).toBeInTheDocument();
+    expect(pagination.parentElement).toHaveClass('dq-pagination-sticky');
   });
 
   it('Should not show NextPrevious when showPagination is false', async () => {

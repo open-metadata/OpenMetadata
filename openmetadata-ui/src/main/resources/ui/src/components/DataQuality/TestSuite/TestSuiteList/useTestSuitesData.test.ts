@@ -188,6 +188,26 @@ describe('useTestSuitesData', () => {
     );
   });
 
+  it('should reuse a previously loaded sub-tab instead of fetching it again', async () => {
+    const { rerender } = renderData(buildProps());
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.BUNDLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    rerender(buildProps({ subTab: DataQualitySubTabs.TABLE_SUITES }));
+
+    await waitFor(() =>
+      expect(mockGetListTestSuitesBySearch).toHaveBeenCalledTimes(2)
+    );
+  });
+
   it('should pass the wildcard query and the owner filter key to the fetch', async () => {
     renderData(
       buildProps({

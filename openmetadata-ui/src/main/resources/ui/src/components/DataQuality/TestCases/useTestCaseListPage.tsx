@@ -10,18 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
+import {
+  convertTestCasesToCSV,
+  getTestCaseManageMenuItems,
+} from '../../../utils/TestCaseUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useTestCaseActions } from './useTestCaseActions';
 import { useTestCaseFilterOptions } from './useTestCaseFilterOptions';
@@ -119,6 +126,26 @@ export const useTestCaseListPage = () => {
     setTestCase,
   });
 
+  const exportFilteredTestCases = useCallback(async () => {
+    const updatedParams = getTestCaseFiltersValue(params, selectedFilter);
+    const { data } = await getListTestCaseBySearch({
+      ...updatedParams,
+      testCaseStatus: isEmpty(params.testCaseStatus)
+        ? undefined
+        : params.testCaseStatus,
+      includeAllTests: true,
+      fields: [TabSpecificField.TEST_DEFINITION, TabSpecificField.TESTSUITE],
+      q: searchValue ? `*${searchValue}*` : undefined,
+      limit: paging.paging.total,
+      offset: 0,
+    });
+
+    return convertTestCasesToCSV(data);
+  }, [paging.paging.total, params, searchValue, selectedFilter]);
+
+  const filteredExportAction =
+    hasActiveFilters || searchValue ? exportFilteredTestCases : undefined;
+
   const extraDropdownContent = useMemo(
     () =>
       getTestCaseManageMenuItems(
@@ -139,9 +166,11 @@ export const useTestCaseListPage = () => {
         },
         false,
         navigate,
-        showModal
+        showModal,
+        undefined,
+        filteredExportAction
       ),
-    [permissions, navigate, showModal]
+    [permissions, navigate, showModal, filteredExportAction]
   );
 
   return {

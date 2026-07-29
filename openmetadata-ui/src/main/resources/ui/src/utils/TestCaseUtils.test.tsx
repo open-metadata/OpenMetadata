@@ -16,8 +16,13 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { MemoryRouter } from 'react-router-dom';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TagSource } from '../generated/type/tagLabel';
 import { exportTestCasesInCSV } from '../rest/testAPI';
-import { ExtraTestCaseDropdownOptions } from './TestCaseUtils';
+import {
+  convertTestCasesToCSV,
+  ExtraTestCaseDropdownOptions,
+  getTestCaseManageMenuItems,
+} from './TestCaseUtils';
 
 // Mock dependencies
 jest.mock('../rest/testAPI');
@@ -37,6 +42,72 @@ jest.mock('./EntityPureUtils', () => ({
 }));
 
 describe('TestCaseUtils', () => {
+  describe('convertTestCasesToCSV', () => {
+    it('exports only the supplied test cases using the import-compatible columns', () => {
+      const csv = convertTestCasesToCSV([
+        {
+          name: 'column_values_to_be_unique',
+          displayName: 'Unique values',
+          description: 'Checks uniqueness',
+          entityLink: '<#E::table::service.db.schema.table::columns::column>',
+          testDefinition: {
+            fullyQualifiedName: 'columnValuesToBeUnique',
+          },
+          testSuite: {
+            fullyQualifiedName: 'service.db.schema.table.testSuite',
+          },
+          parameterValues: [{ name: 'columnName', value: 'column' }],
+          computePassedFailedRowCount: true,
+          useDynamicAssertion: false,
+          inspectionQuery: 'select * from table',
+          tags: [
+            {
+              source: TagSource.Classification,
+              tagFQN: 'PII.Sensitive',
+            },
+            {
+              source: TagSource.Glossary,
+              tagFQN: 'Glossary.Term',
+            },
+          ],
+        } as TestCase,
+      ]);
+
+      expect(csv).toContain(
+        'name,displayName,description,testDefinition,entityFQN,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms'
+      );
+      expect(csv).toContain('column_values_to_be_unique');
+      expect(csv).toContain('columnValuesToBeUnique');
+      expect(csv).toContain('service.db.schema.table.column');
+      expect(csv).toContain('PII.Sensitive');
+      expect(csv).toContain('Glossary.Term');
+    });
+  });
+
+  describe('getTestCaseManageMenuItems', () => {
+    it('uses the supplied filtered export action', () => {
+      const onExport = jest.fn().mockResolvedValue('filtered csv');
+      const showModal = jest.fn();
+      const items = getTestCaseManageMenuItems(
+        '*',
+        { ViewAll: true, EditAll: false },
+        false,
+        jest.fn(),
+        showModal,
+        undefined,
+        onExport
+      );
+
+      items[0].onClick?.();
+
+      expect(showModal).toHaveBeenCalledWith({
+        name: '*',
+        onExport,
+        exportTypes: [ExportTypes.CSV],
+      });
+    });
+  });
+
   describe('ExtraTestCaseDropdownOptions', () => {
     const mockNavigate = jest.fn();
     const mockShowModal = jest.fn();
