@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/driftProbeAlt/duplicateProbe.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Duplicate Probe Alternate",
+  "$comment": "@om-entity-type",
+  "description": "Test-only duplicate of driftProbe/duplicateProbe.json placed in a second subdirectory, so that duplicate resolution stays independent of classpath scan order.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the probe entity.",
+      "type": "string"
+    }
+  }
+}
