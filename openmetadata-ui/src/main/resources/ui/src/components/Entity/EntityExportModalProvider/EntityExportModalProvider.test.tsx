@@ -534,7 +534,7 @@ describe('EntityExportModalProvider component', () => {
       await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
 
       expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
-        'message.unexpected-error'
+        'server.unexpected-error'
       );
       expect(screen.getByTestId('polled-export-error')).not.toHaveTextContent(
         'sensitive backend detail'
@@ -581,7 +581,7 @@ describe('EntityExportModalProvider component', () => {
       expect(getCsvAsyncJob).toHaveBeenCalledTimes(6);
       expect(onError).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
-        'message.unexpected-error'
+        'server.unexpected-error'
       );
     } finally {
       (getCsvAsyncJob as jest.Mock).mockReset();
@@ -842,7 +842,7 @@ describe('EntityExportModalProvider component', () => {
     expect(onError).toHaveBeenCalledTimes(1);
     // The raw backend error must not leak into the UI; a generic message shows.
     expect(screen.getByTestId('export-error')).toHaveTextContent(
-      'message.unexpected-error'
+      'server.unexpected-error'
     );
     expect(screen.getByTestId('export-error')).not.toHaveTextContent(
       'sensitive backend detail'
