@@ -44,7 +44,7 @@
     border: 1px solid @grey-300;
     border-radius: @border-rad-xs;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all var(--om-duration-300) ease;
     background: var(--tw-color-bg-primary);
     position: relative;
 
@@ -52,7 +52,7 @@
       position: absolute;
       top: -8px;
       left: 10%;
-      z-index: 1;
+      z-index: var(--om-z-1);
     }
 
     .ant-card-body {
@@ -68,7 +68,7 @@
         // byte-for-byte what those utilities produced.
         .selection-body {
           display: flex;
-          gap: 12px;
+          gap: var(--om-space-12);
           min-width: 0;
         }
 
@@ -81,7 +81,7 @@
           border-radius: 50%;
           background-color: @grey-100;
           border: 6px solid @grey-50;
-          transition: all 0.3s ease;
+          transition: all var(--om-duration-300) ease;
           flex-shrink: 0;
 
           svg {
@@ -116,7 +116,7 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
+          transition: all var(--om-duration-300) ease;
 
           &.unchecked {
             border: 1px solid @grey-300;

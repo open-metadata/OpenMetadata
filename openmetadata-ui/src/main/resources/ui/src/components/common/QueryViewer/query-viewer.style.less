@@ -14,7 +14,7 @@
 
 .dbt-tab-container {
   .ant-card-body {
-    padding: 1px 0 0 8px;
+    padding: var(--om-space-1) 0 0 var(--om-space-8);
   }
 
   .query-editor {
@@ -26,12 +26,12 @@
   .query-lines {
     height: 26px;
     margin-right: 0;
-    border-radius: 12px;
+    border-radius: var(--om-radius-xl);
     color: @text-grey-muted;
     border: @global-border;
-    background-color: #eeeeee;
+    background-color: var(--om-legacy-color-eeeeee);
     display: flex;
     align-items: center;
-    padding: 0 8px;
+    padding: 0 var(--om-space-8);
   }
 }

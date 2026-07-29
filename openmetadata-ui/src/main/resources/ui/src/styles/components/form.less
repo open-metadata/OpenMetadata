@@ -15,10 +15,10 @@
 
 .form-container {
   background-color: var(--tw-color-bg-primary);
-  padding: 28px 20px;
+  padding: var(--om-space-28) var(--om-space-20);
   border-width: 1px;
-  border-radius: 8px;
-  box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.04);
+  border-radius: var(--om-radius-lg);
+  box-shadow: 2px 4px 10px var(--om-legacy-color-0-0-0-0-04);
   width: 700px;
 }
 
@@ -30,7 +30,7 @@
       display: block;
       flex: 0 0 40%;
       max-width: 40%;
-      padding: 0px;
+      padding: 0;
       align-self: center;
     }
 
@@ -63,9 +63,9 @@
     .ant-form-item-required-mark-optional
   )::after {
   display: inline-block;
-  margin-left: 4px;
+  margin-left: var(--om-space-4);
   color: @red-14;
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   line-height: 1;
   content: '*';
 }
@@ -133,9 +133,9 @@
 
   .ant-form-item-label > label.ant-form-item-required::after {
     display: inline-block;
-    margin-left: 4px;
+    margin-left: var(--om-space-4);
     color: @highlight-color;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     font-family: SimSun, sans-serif;
     line-height: 1;
     content: '*';
@@ -148,7 +148,7 @@
       padding: @size-sm;
 
       p:last-child {
-        padding-bottom: 75px;
+        padding-bottom: var(--om-space-75);
       }
     }
 
