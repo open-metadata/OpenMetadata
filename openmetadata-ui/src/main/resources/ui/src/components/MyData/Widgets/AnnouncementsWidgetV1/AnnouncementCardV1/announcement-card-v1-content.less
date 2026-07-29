@@ -42,7 +42,7 @@
         color: @primary-color;
         text-decoration: none;
         cursor: pointer;
-        transition: color 0.2s ease;
+        transition: color var(--om-duration-200) ease;
 
         &:hover {
           color: @primary-color;
@@ -51,7 +51,7 @@
         &:focus {
           outline: 2px solid @primary-color;
           outline-offset: 2px;
-          border-radius: 2px;
+          border-radius: var(--om-radius-xs);
         }
       }
 
@@ -62,7 +62,7 @@
       }
 
       .announcement-card-entity-icon {
-        margin: 0 0 0 2px;
+        margin: 0 0 0 var(--om-space-2);
         color: @primary-color;
 
         svg {
@@ -75,12 +75,12 @@
         color: @primary-color;
         text-decoration: none;
         cursor: pointer;
-        transition: color 0.2s ease;
+        transition: color var(--om-duration-200) ease;
 
         &:focus {
           outline: 2px solid @primary-color;
           outline-offset: 2px;
-          border-radius: 2px;
+          border-radius: var(--om-radius-xs);
         }
       }
 
