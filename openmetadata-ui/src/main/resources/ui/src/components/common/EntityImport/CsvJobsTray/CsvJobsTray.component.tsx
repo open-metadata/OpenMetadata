@@ -363,7 +363,7 @@ export const CsvJobsTray = () => {
               </Button>
             )}
             <Button
-              className="csv-jobs-tray-close"
+              className="csv-jobs-tray-close tw:-mr-1.5"
               color="link-gray"
               iconLeading={Minus}
               onPress={() => setOpen(false)}
@@ -388,21 +388,23 @@ export const CsvJobsTray = () => {
                       )}
                     </span>
                     <div className="csv-jobs-tray-body">
-                      <span className="csv-jobs-tray-title">
-                        {renderJobTitle(job)}
+                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
+                        <span className="csv-jobs-tray-title tw:min-w-0">
+                          {renderJobTitle(job)}
+                        </span>
+                        {variant !== 'running' && (
+                          <span
+                            aria-hidden="true"
+                            className={`csv-jobs-tray-state csv-jobs-tray-state-${variant} tw:shrink-0`}>
+                            {renderStatusIcon(job)}
+                          </span>
+                        )}
                       </span>
                       <span className="csv-jobs-tray-sub">
                         {renderJobSubLine(job)}
                       </span>
                     </div>
-                    <div className="csv-jobs-tray-actions tw:items-start!">
-                      {variant !== 'running' && (
-                        <span
-                          aria-hidden="true"
-                          className={`csv-jobs-tray-state csv-jobs-tray-state-${variant}`}>
-                          {renderStatusIcon(job)}
-                        </span>
-                      )}
+                    <div className="csv-jobs-tray-actions">
                       {renderJobRowActions(job)}
                     </div>
                   </div>
