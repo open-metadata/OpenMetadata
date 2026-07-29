@@ -69,6 +69,7 @@ import { getEntityUserLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   filterUserGeneratedThreads,
+  getEntityConversationCount,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -427,24 +428,32 @@ export const ActivityFeedTab = ({
     }
   }, [feedCount, activeDomain]);
 
-  // `entityThread` is reused by the Mentions tab, so the conversation part of the
-  // All count is snapshotted while the All tab owns it. Counting both sources is
-  // required because user conversations live only in the legacy feed store, and
-  // it keeps the badge equal to the number of cards ActivityFeedListV1New draws.
-  const [allTabConversationCount, setAllTabConversationCount] =
-    useState<number>(0);
+  // User conversations live only in the legacy feed store, so the All count has to
+  // add them to the activity events. On the All tab that number comes from the very
+  // list being rendered, which keeps the badge equal to the number of cards drawn.
+  // The other sub-tabs reuse `entityThread` for their own results, so there it is
+  // fetched separately rather than left at zero.
+  const [conversationCount, setConversationCount] = useState<number>(0);
   const isActivityFeedLoading = loading || Boolean(isActivityLoading);
+  const isAllActiveTab = activeTab === ActivityFeedTabs.ALL;
 
   useEffect(() => {
-    if (activeTab === ActivityFeedTabs.ALL && !isActivityFeedLoading) {
-      setAllTabConversationCount(
-        filterUserGeneratedThreads(entityThread).length
-      );
+    if (isAllActiveTab && !isActivityFeedLoading) {
+      setConversationCount(filterUserGeneratedThreads(entityThread).length);
     }
-  }, [activeTab, entityThread, isActivityFeedLoading]);
+  }, [isAllActiveTab, entityThread, isActivityFeedLoading]);
 
-  const allActivityCount =
-    (activityEvents?.length ?? 0) + allTabConversationCount;
+  useEffect(() => {
+    if (isAllActiveTab || isUserEntity || !fqn || !entityType) {
+      return;
+    }
+
+    getEntityConversationCount(entityType, fqn)
+      .then(setConversationCount)
+      .catch(() => setConversationCount(0));
+  }, [isAllActiveTab, isUserEntity, fqn, entityType, activeDomain]);
+
+  const allActivityCount = (activityEvents?.length ?? 0) + conversationCount;
 
   useEffect(() => {
     if (isActivityFeedLoading) {

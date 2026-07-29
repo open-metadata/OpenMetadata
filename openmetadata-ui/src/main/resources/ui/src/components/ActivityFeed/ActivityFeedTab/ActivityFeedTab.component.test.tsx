@@ -25,6 +25,7 @@ const mockGetFeedData = jest.fn();
 const mockGetTaskData = jest.fn();
 const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
+const mockGetEntityConversationCount = jest.fn();
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -105,6 +106,9 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
       closedTaskCount: 0,
     })
   ),
+  filterUserGeneratedThreads: jest.fn((threads = []) => threads),
+  getEntityConversationCount: (...args: unknown[]) =>
+    mockGetEntityConversationCount(...args),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -173,6 +177,35 @@ describe('ActivityFeedTab', () => {
     });
     mockGetFeedData.mockResolvedValue(undefined);
     mockGetTaskData.mockResolvedValue(undefined);
+    mockGetEntityConversationCount.mockResolvedValue(0);
+  });
+
+  describe('All badge counts conversations on every sub-tab', () => {
+    it('fetches the conversation count when the page opens on a non-All sub-tab', async () => {
+      mockGetEntityConversationCount.mockResolvedValue(3);
+
+      renderComponent(ActivityFeedTabs.TASKS);
+
+      await waitFor(() =>
+        expect(mockGetEntityConversationCount).toHaveBeenCalled()
+      );
+
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId('left-panel-all-count')
+            .querySelector('[data-testid="filter-count"]')
+        ).toHaveTextContent('3')
+      );
+    });
+
+    it('does not fetch the conversation count on the All sub-tab, where the list supplies it', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => expect(mockGetFeedData).toHaveBeenCalled());
+
+      expect(mockGetEntityConversationCount).not.toHaveBeenCalled();
+    });
   });
 
   describe('Bug 1 — feedFilter uses ActivityFeedTabs.MENTIONS enum', () => {

@@ -18,6 +18,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { PAGE_SIZE_LARGE } from '../constants/constants';
 import {
   EntityField,
   entityLinkRegEx,
@@ -43,6 +44,7 @@ import type { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
+  getAllFeeds,
   getEntityActivityByFqn,
   getFeedById,
   updatePost,
@@ -51,7 +53,7 @@ import {
 import { getTaskCounts } from '../rest/tasksAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
@@ -144,6 +146,30 @@ export const getFeedListWithRelativeDays = (feedList: Thread[]) => {
  */
 export const filterUserGeneratedThreads = (threads: Thread[] = []): Thread[] =>
   threads.filter((thread) => thread.generatedBy !== GeneratedBy.System);
+
+/**
+ * Counts the user conversations on an entity independently of the feed list the All tab
+ * renders, so the All badge is correct even when the page opens on Tasks or Mentions.
+ * Capped at `limit` for the same reason the activity count is: neither `/v1/feed/count`
+ * nor the list paging exposes a `generatedBy`-aware total today.
+ */
+export const getEntityConversationCount = async (
+  entityType: string,
+  entityFqn: string,
+  limit = PAGE_SIZE_LARGE
+): Promise<number> => {
+  const { data } = await getAllFeeds(
+    getEntityFeedLink(entityType, entityFqn),
+    undefined,
+    ThreadType.Conversation,
+    undefined,
+    undefined,
+    undefined,
+    limit
+  );
+
+  return filterUserGeneratedThreads(data).length;
+};
 
 export const getReplyText = (
   count: number,
