@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   DatePicker,
-  Divider,
   FieldProp,
   FieldTypes,
   FormField,
@@ -27,6 +26,7 @@ import {
   Input,
   TimePicker,
   TimePickerValue,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -309,7 +309,10 @@ const HyperlinkExtensionField = ({
         }}>
         {({ field, fieldState }) => (
           <Input
-            hint={fieldState.error?.message}
+            hint={
+              fieldState.error?.message ??
+              t('message.enter-a-valid-link-example')
+            }
             inputDataTestId={`${dataTestId}-url`}
             isInvalid={fieldState.invalid}
             isRequired={isRequired}
@@ -326,7 +329,10 @@ const HyperlinkExtensionField = ({
       <FormField control={control} name={displayTextName}>
         {({ field, fieldState }) => (
           <Input
-            hint={fieldState.error?.message}
+            hint={
+              fieldState.error?.message ??
+              t('message.enter-text-to-display-for-link')
+            }
             inputDataTestId={`${dataTestId}-displayText`}
             isInvalid={fieldState.invalid}
             label={t('label.display-text')}
@@ -361,13 +367,13 @@ const MarkdownExtensionField = ({
           error={fieldState.error?.message}
           isRequired={isRequired}
           label={labelNode}>
-          <div data-testid={dataTestId}>
+          <Box data-testid={dataTestId} direction="col">
             <RichTextEditor
               className="new-form-style"
               initialValue={typeof field.value === 'string' ? field.value : ''}
               onTextChange={field.onChange}
             />
-          </div>
+          </Box>
         </ExtensionFieldContainer>
       )}
     </FormField>
@@ -475,10 +481,13 @@ const DateTimeExtensionInput = ({
   };
 
   return (
-    <Box className="tw:gap-3" data-testid={dataTestId}>
+    <Box className="tw:w-full tw:gap-3" data-testid={dataTestId}>
       {type !== 'time' && (
         <DatePicker
           aria-label={label}
+          // DatePicker's trigger is an intrinsic-width Button; stretch it to
+          // fill its flex cell so the date field matches the other inputs.
+          className="tw:flex-1 tw:*:w-full tw:[&_button]:w-full tw:[&_button]:justify-start"
           isInvalid={isInvalid}
           value={
             (date
@@ -499,12 +508,14 @@ const DateTimeExtensionInput = ({
         />
       )}
       {type !== 'date' && (
-        <TimePicker
-          aria-label={label}
-          isInvalid={isInvalid}
-          value={time}
-          onChange={handleTimeChange}
-        />
+        <Box className="tw:flex-1" direction="col">
+          <TimePicker
+            aria-label={label}
+            isInvalid={isInvalid}
+            value={time}
+            onChange={handleTimeChange}
+          />
+        </Box>
       )}
     </Box>
   );
@@ -630,7 +641,7 @@ const SqlQueryExtensionField = ({
           error={fieldState.error?.message}
           isRequired={isRequired}
           label={labelNode}>
-          <div data-testid={dataTestId}>
+          <Box data-testid={dataTestId} direction="col">
             <SchemaEditor
               uncontrolled
               autoFormat={false}
@@ -640,7 +651,7 @@ const SqlQueryExtensionField = ({
               value={typeof field.value === 'string' ? field.value : ''}
               onChange={field.onChange}
             />
-          </div>
+          </Box>
         </ExtensionFieldContainer>
       )}
     </FormField>
@@ -835,7 +846,7 @@ const ReferenceExtensionField = ({
     type: FieldTypes.USER_TEAM_SELECT_INPUT,
   };
 
-  return <div>{getField(field)}</div>;
+  return <Box direction="col">{getField(field)}</Box>;
 };
 
 const SimpleExtensionField = ({
@@ -863,10 +874,10 @@ const SimpleExtensionField = ({
       value: EMAIL_REG_EX,
     };
   }
+  const durationHint =
+    kind === 'duration' ? t('message.duration-in-iso-format') : undefined;
   const field: FieldProp = {
     id: `root/${name.replace('.', '/')}`,
-    helperText:
-      kind === 'duration' ? t('message.duration-in-iso-format') : undefined,
     label: labelNode,
     name,
     placeholder:
@@ -894,7 +905,14 @@ const SimpleExtensionField = ({
         : FieldTypes.TEXT,
   };
 
-  return <div>{getField(field)}</div>;
+  return (
+    <Box direction="col">
+      {getField(field)}
+      {durationHint && (
+        <HintText className="tw:mt-1.5">{durationHint}</HintText>
+      )}
+    </Box>
+  );
 };
 
 /**
@@ -933,7 +951,7 @@ const MissingDefinitionField = ({
           }
           isRequired={isRequired}
           label={label}>
-          <div data-testid={dataTestId} />
+          <Box data-testid={dataTestId} />
         </ExtensionFieldContainer>
       )}
     </FormField>
@@ -977,12 +995,12 @@ const ExtensionField = ({
 
   const resolvedDefinition = definition;
   const labelNode: ReactNode = definition ? (
-    <span className="tw:inline-flex tw:items-center tw:gap-2">
+    <Box inline align="center" gap={2}>
       {label}
       <CustomPropertyTypeBadge
         propertyTypeName={definition.propertyType.name}
       />
-    </span>
+    </Box>
   ) : (
     label
   );
@@ -1047,7 +1065,15 @@ const AddDomainFormExtensionFields = ({
 
   return (
     <Box data-testid="custom-properties-section" direction="col" gap={6}>
-      <Divider label={t('label.custom-property-plural')} labelAlign="start" />
+      <Box className="tw:pt-2" direction="col" gap={3}>
+        <Typography
+          as="span"
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="semibold">
+          {t('label.custom-property-plural')}
+        </Typography>
+      </Box>
       {formFields.map((formField) => {
         const propertyName = getExtensionPropertyName(formField.fieldPath);
 

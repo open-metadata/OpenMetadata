@@ -67,6 +67,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Divider: ({ label }: { label?: ReactNode }) => (
     <div role="separator">{label}</div>
   ),
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
+  ),
   Button: ({
     children,
     onPress,
