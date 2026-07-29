@@ -22,9 +22,15 @@ import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../..
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import MyTaskWidget from './MyTaskWidget';
 
+// A name carrying characters that must not survive into the path unescaped —
+// an ordinary fixture name cannot distinguish an encoded link from a raw one.
+const PATH_SENSITIVE_USERNAME = 'a.b/c d';
+
+const mockCurrentUser = { ...mockUserData };
+
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    currentUser: mockUserData,
+    currentUser: mockCurrentUser,
   })),
 }));
 
@@ -102,6 +108,7 @@ const renderMyTaskWidget = (props = {}) => {
 describe('MyTaskWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCurrentUser.name = mockUserData.name;
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
       getTaskData: jest.fn(),
@@ -137,6 +144,9 @@ describe('MyTaskWidget', () => {
 
   it('builds an absolute, encoded view more link for the task tab', () => {
     // The link was hand-rolled as `users/${name}/task` — relative and unencoded.
+    // The expected href is spelled out rather than interpolated so that dropping
+    // getEncodedFqn (or the leading slash) fails here.
+    mockCurrentUser.name = PATH_SENSITIVE_USERNAME;
     (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
       loading: false,
       getTaskData: jest.fn(),
@@ -151,7 +161,7 @@ describe('MyTaskWidget', () => {
 
     expect(screen.getByText('label.view-more').closest('a')).toHaveAttribute(
       'href',
-      `/users/${mockUserData.name}/task`
+      '/users/a.b%2Fc%20d/task'
     );
   });
 
