@@ -42,6 +42,8 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtLocalConfig import
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
     DbtS3Config,
 )
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import APIError, ClientConfig, RestTransportError
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
     DBT_MANIFEST_FILE_NAME,
@@ -229,10 +231,6 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
     dbt_manifest = None
     dbt_run_results = None
     try:
-        # pylint: disable=import-outside-toplevel
-        from metadata.ingestion.connections.source_api_client import TrackedREST
-        from metadata.ingestion.ometa.client import ClientConfig
-
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
@@ -260,25 +258,33 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
 
         try:
             response = client.get(f"/accounts/{account_id}/runs", data=params_data)
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "401" in error_msg or "unauthorized" in error_msg:
+        except APIError as exc:
+            if exc.code == 401:
                 raise DBTConfigException(
                     "Invalid dbt Cloud auth token. Please verify your token has "
                     "'Account Viewer' permissions and is not expired."
                 ) from exc
-            if "404" in error_msg:
+            if exc.code == 404:
                 raise DBTConfigException(
                     f"dbt Cloud account ID '{account_id}' not found. Please verify the account ID is correct."
                 ) from exc
-            if "connection" in error_msg or "timeout" in error_msg:
-                raise DBTConfigException(
-                    f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
-                    "Please verify the URL is correct and accessible."
-                ) from exc
+            raise DBTConfigException(f"dbt Cloud API error {exc.code}: {exc}") from exc
+        except RestTransportError as exc:
+            raise DBTConfigException(
+                f"Unable to connect to dbt Cloud at '{config.dbtCloudUrl}'. "
+                "Please verify the URL is correct and accessible."
+            ) from exc
+        except Exception as exc:
             raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
 
-        if not response or not response.get("data"):
+        if response is None:
+            raise DBTConfigException(  # noqa: TRY301
+                f"No response from dbt Cloud for account '{account_id}'. This usually means the "
+                "auth token is invalid or expired, or the credential lacks 'Account Viewer' "
+                "permission. Please verify your dbt Cloud credentials."
+            )
+
+        if not response.get("data"):
             filter_info = []
             if project_id:
                 filter_info.append(f"project ID '{project_id}'")
