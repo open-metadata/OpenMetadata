@@ -649,6 +649,10 @@ public class SettingsCache {
         case MCP_CONFIGURATION -> {
           fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
           if (fetchedSettings == null) {
+            // getConfigWithKey() returns null both for a missing row and for a failed read, so an
+            // unreadable setting is indistinguishable from an unset one. Warn either way: falling
+            // back to the defaults narrows MCP CORS to localhost until the setting is read again.
+            LOG.warn("Setting {} could not be read, using default MCP Configuration", settingsName);
             return new Settings()
                 .withConfigType(MCP_CONFIGURATION)
                 .withConfigValue(getDefaultMcpConfiguration());
