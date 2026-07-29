@@ -3482,6 +3482,8 @@
     "hex-color-validation": "有効な HEX コードではありません",
     "hi-user-welcome-to": "{{user}} さん、ようこそ",
     "hide-raw-connection-log-lines": "生の接続ログを非表示 ({{count}})",
+    "hyperlink-display-text-helper": "リンクに表示するテキストを入力してください。例：「会社ドキュメント」。",
+    "hyperlink-url-helper": "有効なリンクを入力してください。例：https://www.example.com。",
     "icon-aspect-ratio": "アイコンのアスペクト比は1:1で、推奨サイズは64 x 64 pxです",
     "identity-doc-description": "サービス名は、カタログ、リネージュ、インジェスト実行全体でこの接続を識別します。安定していて分かりやすい名前を選んでください — 後から変更できません。説明は任意です。多くのチームは説明を省略し、オーナーとタグを利用しています。",
     "identity-doc-title": "一度名付ければ、いつでも見つかる",

@@ -3482,6 +3482,8 @@
     "hex-color-validation": "A entrada non é un código HEX válido.",
     "hi-user-welcome-to": "Ola {{user}}, benvido a",
     "hide-raw-connection-log-lines": "Ocultar rexistro de conexión en bruto ({{count}})",
+    "hyperlink-display-text-helper": "Introduza o texto que se mostrará para a ligazón. Por exemplo, «Documentos da empresa».",
+    "hyperlink-url-helper": "Introduza unha ligazón válida. Por exemplo, https://www.example.com.",
     "icon-aspect-ratio": "A relación de aspecto da icona debe ser 1:1 e o tamaño recomendado debe ser 64 x 64 px",
     "identity-doc-description": "O nome do servizo identifica esta conexión no catálogo, na liñaxe e nas execucións de inxesta. Escolle un nome estable e recoñecible — non se pode cambiar despois. A descrición é opcional; a maioría dos equipos omítena e usan propietarios e etiquetas.",
     "identity-doc-title": "Noméao unha vez, atópao para sempre",

@@ -640,4 +640,46 @@ describe('transformDomainFormData', () => {
     expect(result.extension?.notes).toBe('plain text stays as-is');
     expect(result.extension?.count).toBe(7);
   });
+
+  it('keeps a hyperlink { url, displayText } object intact', () => {
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        docLink: {
+          url: 'https://www.google.com',
+          displayText: 'Google',
+        },
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.docLink).toEqual({
+      url: 'https://www.google.com',
+      displayText: 'Google',
+    });
+  });
+
+  it('drops an empty/whitespace hyperlink displayText, keeping only url', () => {
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        docLink: { url: 'https://www.google.com', displayText: '   ' },
+        bareLink: { url: 'https://example.com' },
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.docLink).toEqual({
+      url: 'https://www.google.com',
+    });
+    expect(result.extension?.bareLink).toEqual({ url: 'https://example.com' });
+  });
 });

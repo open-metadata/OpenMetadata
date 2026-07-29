@@ -3482,6 +3482,8 @@
     "hex-color-validation": "Indata är inte en giltig HEX-kod.",
     "hi-user-welcome-to": "Hej {{user}}, välkommen till",
     "hide-raw-connection-log-lines": "Dölj rå anslutningslogg ({{count}})",
+    "hyperlink-display-text-helper": "Ange texten som ska visas för länken. Till exempel ”Företagsdokument”.",
+    "hyperlink-url-helper": "Ange en giltig länk. Till exempel https://www.example.com.",
     "icon-aspect-ratio": "Ikonens bildförhållande bör vara 1:1 och rekommenderad storlek bör vara 64 x 64 px",
     "identity-doc-description": "Tjänstens namn identifierar den här anslutningen i katalogen, härkomsten och inläsningskörningarna. Välj ett stabilt och igenkännbart namn — det kan inte ändras senare. Beskrivningen är valfri; de flesta team hoppar över den och använder ägare och taggar i stället.",
     "identity-doc-title": "Namnge en gång, hitta för alltid",

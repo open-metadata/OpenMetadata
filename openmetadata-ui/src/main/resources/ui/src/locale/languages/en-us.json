@@ -3482,6 +3482,8 @@
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Hi {{user}}, Welcome to",
     "hide-raw-connection-log-lines": "Hide raw connection log ({{count}})",
+    "hyperlink-display-text-helper": "Enter the text to display for the link. For example, “Company Docs”.",
+    "hyperlink-url-helper": "Enter a valid link. For example, https://www.example.com.",
     "icon-aspect-ratio": "Icon aspect ratio should be 1:1 and recommended size should be 64 x 64 px",
     "identity-doc-description": "The service name identifies this connection across the catalog, lineage, and ingestion runs. Pick something stable and recognizable — it can’t be changed later. A description is optional; most teams skip it and rely on owners and tags instead.",
     "identity-doc-title": "Name it once, find it forever",

@@ -3482,6 +3482,8 @@
     "hex-color-validation": "Invoer is geen geldige HEX-code.",
     "hi-user-welcome-to": "Hoi {{user}}, welkom bij",
     "hide-raw-connection-log-lines": "Ruwe verbindingslog verbergen ({{count}})",
+    "hyperlink-display-text-helper": "Voer de tekst in die voor de link wordt weergegeven. Bijvoorbeeld “Bedrijfsdocumenten”.",
+    "hyperlink-url-helper": "Voer een geldige link in. Bijvoorbeeld: https://www.example.com.",
     "icon-aspect-ratio": "De beeldverhouding van het pictogram moet 1:1 zijn en de aanbevolen grootte moet 64 x 64 px zijn",
     "identity-doc-description": "De servicenaam identificeert deze verbinding in de catalogus, lineage en ingestion-runs. Kies een stabiele, herkenbare naam — deze kan later niet worden gewijzigd. Een beschrijving is optioneel; de meeste teams slaan die over en gebruiken eigenaren en tags.",
     "identity-doc-title": "Eén keer benoemen, altijd terugvinden",

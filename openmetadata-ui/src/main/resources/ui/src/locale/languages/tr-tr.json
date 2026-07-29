@@ -3482,6 +3482,8 @@
     "hex-color-validation": "Giriş geçerli bir HEX kodu değil.",
     "hi-user-welcome-to": "Merhaba {{user}}, Hoş Geldiniz",
     "hide-raw-connection-log-lines": "Ham bağlantı günlüğünü gizle ({{count}})",
+    "hyperlink-display-text-helper": "Bağlantı için görüntülenecek metni girin. Örneğin, “Şirket Belgeleri”.",
+    "hyperlink-url-helper": "Geçerli bir bağlantı girin. Örneğin, https://www.example.com.",
     "icon-aspect-ratio": "Simge en boy oranı 1:1 olmalı ve önerilen boyut 64 x 64 piksel olmalıdır",
     "identity-doc-description": "Servis adı bu bağlantıyı katalog, veri soyağacı ve alım çalıştırmaları genelinde tanımlar. Kalıcı ve tanınabilir bir ad seçin — daha sonra değiştirilemez. Açıklama isteğe bağlıdır; çoğu ekip bunu atlayıp sahipleri ve etiketleri kullanır.",
     "identity-doc-title": "Bir kez adlandırın, her zaman bulun",

@@ -3482,6 +3482,8 @@
     "hex-color-validation": "입력이 유효한 HEX 코드가 아닙니다.",
     "hi-user-welcome-to": "안녕하세요 {{user}}님, 환영합니다",
     "hide-raw-connection-log-lines": "원시 연결 로그 숨기기 ({{count}})",
+    "hyperlink-display-text-helper": "링크에 표시할 텍스트를 입력하세요. 예: “회사 문서”.",
+    "hyperlink-url-helper": "유효한 링크를 입력하세요. 예: https://www.example.com.",
     "icon-aspect-ratio": "아이콘 종횡비는 1:1이어야 하며 권장 크기는 64 x 64 px입니다",
     "identity-doc-description": "서비스 이름은 카탈로그, 리니지, 수집 실행 전반에서 이 연결을 식별합니다. 안정적이고 알아보기 쉬운 이름을 선택하세요 — 나중에 변경할 수 없습니다. 설명은 선택 사항이며, 대부분의 팀은 설명 대신 소유자와 태그를 활용합니다.",
     "identity-doc-title": "한 번 지은 이름, 언제나 찾을 수 있습니다",

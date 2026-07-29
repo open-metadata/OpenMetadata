@@ -31,6 +31,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RegisterOptions, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { HYPERLINK_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
 import {
   DATA_PRODUCT_TYPE_LABEL_KEYS,
   PORTFOLIO_PRIORITY_LABEL_KEYS,
@@ -133,12 +134,32 @@ const isFormSelectItem = (value: unknown): value is DomainFormSelectItem =>
   'id' in value &&
   'value' in value;
 
+const isHyperlinkValue = (
+  value: unknown
+): value is { url: string; displayText?: string } =>
+  typeof value === 'object' &&
+  value !== null &&
+  'url' in value &&
+  typeof (value as { url: unknown }).url === 'string';
+
+const normalizeHyperlinkValue = (value: {
+  url: string;
+  displayText?: string;
+}): { url: string; displayText?: string } => {
+  const displayText = value.displayText?.trim();
+
+  return displayText ? { url: value.url, displayText } : { url: value.url };
+};
+
 const unwrapSelectItemValue = (raw: unknown): unknown => {
   if (Array.isArray(raw)) {
     return raw.map((item) => (isFormSelectItem(item) ? item.value : item));
   }
   if (isFormSelectItem(raw)) {
     return raw.value;
+  }
+  if (isHyperlinkValue(raw)) {
+    return normalizeHyperlinkValue(raw);
   }
 
   return raw;
@@ -969,7 +990,22 @@ const AddDomainForm = ({
   });
 
   const extensionFields: FieldProp[] = useMemo(() => {
-    return extensionRequiredFields.map((rf): FieldProp => {
+    const validateSafeUrl = (urlValue?: string): true | string => {
+      if (!urlValue) {
+        return true;
+      }
+      try {
+        const { protocol } = new URL(urlValue);
+
+        return ['http:', 'https:'].includes(protocol)
+          ? true
+          : t('message.url-must-use-http-or-https');
+      } catch {
+        return t('message.invalid-url');
+      }
+    };
+
+    return extensionRequiredFields.flatMap((rf): FieldProp[] => {
       const propertyName = rf.fieldPath.startsWith('extension.')
         ? rf.fieldPath.substring('extension.'.length)
         : rf.fieldPath;
@@ -986,6 +1022,46 @@ const AddDomainForm = ({
       const requiredRule: RegisterOptions = { required: requiredMessage };
 
       switch (propertyTypeName) {
+        case HYPERLINK_TYPE_CUSTOM_PROPERTY: {
+          return [
+            {
+              id: `${baseId}/url`,
+              label: t('label.entity-hyphen-value', {
+                entity: rf.fieldLabel,
+                value: t('label.url-uppercase'),
+              }),
+              name: `${baseName}.url`,
+              placeholder: t('label.enter-entity', {
+                entity: t('label.url-uppercase'),
+              }),
+              props: {
+                'data-testid': `${dataTestId}-url`,
+                hint: t('message.hyperlink-url-helper'),
+              },
+              required: true,
+              rules: { ...requiredRule, validate: validateSafeUrl },
+              type: FieldTypes.TEXT,
+            },
+            {
+              id: `${baseId}/displayText`,
+              label: t('label.entity-hyphen-value', {
+                entity: rf.fieldLabel,
+                value: t('label.display-text'),
+              }),
+              name: `${baseName}.displayText`,
+              placeholder: t('label.enter-entity', {
+                entity: t('label.display-text'),
+              }),
+              props: {
+                'data-testid': `${dataTestId}-displayText`,
+                hint: t('message.hyperlink-display-text-helper'),
+              },
+              required: true,
+              rules: requiredRule,
+              type: FieldTypes.TEXT,
+            },
+          ];
+        }
         case 'enum': {
           const enumConfig = config as
             | { values?: string[]; multiSelect?: boolean }
@@ -996,20 +1072,22 @@ const AddDomainForm = ({
             value: v,
           }));
 
-          return {
-            id: baseId,
-            label: rf.fieldLabel,
-            name: baseName,
-            placeholder: rf.fieldLabel,
-            props: {
-              'data-testid': dataTestId,
-              options,
-              multiple: enumConfig?.multiSelect,
+          return [
+            {
+              id: baseId,
+              label: rf.fieldLabel,
+              name: baseName,
+              placeholder: rf.fieldLabel,
+              props: {
+                'data-testid': dataTestId,
+                options,
+                multiple: enumConfig?.multiSelect,
+              },
+              required: true,
+              rules: requiredRule,
+              type: FieldTypes.SELECT,
             },
-            required: true,
-            rules: requiredRule,
-            type: FieldTypes.SELECT,
-          };
+          ];
         }
         case 'entityReference':
         case 'entityReferenceList': {
@@ -1026,50 +1104,56 @@ const AddDomainForm = ({
             allowedTypes.length === 1 && allowedTypes[0] === 'user';
           const isMulti = propertyTypeName === 'entityReferenceList';
 
-          return {
-            id: baseId,
-            label: rf.fieldLabel,
-            name: baseName,
-            placeholder: rf.fieldLabel,
-            props: {
-              'data-testid': dataTestId,
-              filterOption: () => true,
-              multiple: isMulti,
-              onFocus: handleUserTeamFocus,
-              onSearchChange: (searchText: string) =>
-                debouncedUserTeamSearch(searchText),
-              options: isUserOnly ? userOnlyOptions : userTeamOptions,
+          return [
+            {
+              id: baseId,
+              label: rf.fieldLabel,
+              name: baseName,
+              placeholder: rf.fieldLabel,
+              props: {
+                'data-testid': dataTestId,
+                filterOption: () => true,
+                multiple: isMulti,
+                onFocus: handleUserTeamFocus,
+                onSearchChange: (searchText: string) =>
+                  debouncedUserTeamSearch(searchText),
+                options: isUserOnly ? userOnlyOptions : userTeamOptions,
+              },
+              required: true,
+              rules: requiredRule,
+              type: FieldTypes.USER_TEAM_SELECT_INPUT,
             },
-            required: true,
-            rules: requiredRule,
-            type: FieldTypes.USER_TEAM_SELECT_INPUT,
-          };
+          ];
         }
         case 'integer':
         case 'number': {
-          return {
-            id: baseId,
-            label: rf.fieldLabel,
-            name: baseName,
-            placeholder: rf.fieldLabel,
-            props: { 'data-testid': dataTestId },
-            required: true,
-            rules: requiredRule,
-            type: FieldTypes.NUMBER,
-          };
+          return [
+            {
+              id: baseId,
+              label: rf.fieldLabel,
+              name: baseName,
+              placeholder: rf.fieldLabel,
+              props: { 'data-testid': dataTestId },
+              required: true,
+              rules: requiredRule,
+              type: FieldTypes.NUMBER,
+            },
+          ];
         }
         case 'string':
         default: {
-          return {
-            id: baseId,
-            label: rf.fieldLabel,
-            name: baseName,
-            placeholder: rf.fieldLabel,
-            props: { 'data-testid': dataTestId },
-            required: true,
-            rules: requiredRule,
-            type: FieldTypes.TEXT,
-          };
+          return [
+            {
+              id: baseId,
+              label: rf.fieldLabel,
+              name: baseName,
+              placeholder: rf.fieldLabel,
+              props: { 'data-testid': dataTestId },
+              required: true,
+              rules: requiredRule,
+              type: FieldTypes.TEXT,
+            },
+          ];
         }
       }
     });

@@ -3482,6 +3482,8 @@
     "hex-color-validation": "A entrada não é um código HEX válido.",
     "hi-user-welcome-to": "Olá {{user}}, Bem-vindo(a) ao",
     "hide-raw-connection-log-lines": "Ocultar registo de ligação bruto ({{count}})",
+    "hyperlink-display-text-helper": "Introduza o texto a apresentar para a ligação. Por exemplo, “Documentos da empresa”.",
+    "hyperlink-url-helper": "Introduza uma ligação válida. Por exemplo, https://www.example.com.",
     "icon-aspect-ratio": "A proporção do ícone deve ser 1:1 e o tamanho recomendado deve ser 64 x 64 px",
     "identity-doc-description": "O nome do serviço identifica esta ligação no catálogo, na linhagem e nas execuções de ingestão. Escolha um nome estável e reconhecível — não pode ser alterado mais tarde. A descrição é opcional; a maioria das equipas dispensa-a e usa proprietários e etiquetas.",
     "identity-doc-title": "Dê o nome uma vez, encontre-o para sempre",

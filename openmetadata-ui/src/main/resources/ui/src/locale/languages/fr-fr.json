@@ -3482,6 +3482,8 @@
     "hex-color-validation": "Code hexadécimal non valide.",
     "hi-user-welcome-to": "Bonjour {{user}}, Bienvenue sur",
     "hide-raw-connection-log-lines": "Masquer le journal de connexion brut ({{count}})",
+    "hyperlink-display-text-helper": "Saisissez le texte à afficher pour le lien. Par exemple, « Documents de l’entreprise ».",
+    "hyperlink-url-helper": "Saisissez un lien valide. Par exemple, https://www.example.com.",
     "icon-aspect-ratio": "Le rapport d'aspect de l'icône doit être 1:1 et la taille recommandée doit être 64 x 64 px",
     "identity-doc-description": "Le nom du service identifie cette connexion dans le catalogue, le lignage et les exécutions d’ingestion. Choisissez un nom stable et reconnaissable — il ne pourra plus être modifié. La description est facultative ; la plupart des équipes s’en passent et utilisent les propriétaires et les tags.",
     "identity-doc-title": "Nommez-le une fois, retrouvez-le toujours",

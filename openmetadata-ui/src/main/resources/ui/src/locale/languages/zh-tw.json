@@ -3482,6 +3482,8 @@
     "hex-color-validation": "輸入不是有效的 HEX 色碼。",
     "hi-user-welcome-to": "嗨 {{user}}，歡迎來到",
     "hide-raw-connection-log-lines": "隱藏原始連線日誌 ({{count}})",
+    "hyperlink-display-text-helper": "請輸入用於顯示該連結的文字。例如：「公司文件」。",
+    "hyperlink-url-helper": "請輸入有效的連結。例如：https://www.example.com。",
     "icon-aspect-ratio": "圖示長寬比應為1:1，建議大小應為64 x 64像素",
     "identity-doc-description": "服務名稱用於在目錄、資料血緣與擷取執行中識別此連線。請選擇穩定且易於辨識的名稱 — 之後無法變更。描述為選填；多數團隊會略過描述，改用擁有者與標籤。",
     "identity-doc-title": "一次命名，隨時可尋",

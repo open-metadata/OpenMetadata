@@ -99,6 +99,10 @@ export interface FieldPropsMap {
   isDisabled?: boolean;
   filterOption?: (option: FormSelectItem, searchText: string) => boolean;
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  // Inline helper text rendered beneath the control (via the base Input's
+  // `hint`). Use this for per-field guidance instead of `helperText`, which
+  // renders as a warning alert banner.
+  hint?: ReactNode;
   emptyStateLabel?: string;
   initialValue?: string;
   items?: FormSelectItem[];

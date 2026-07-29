@@ -3482,6 +3482,8 @@
     "hex-color-validation": "输入不是有效的 HEX 颜色代码",
     "hi-user-welcome-to": "Hi {{user}}, 欢迎来到",
     "hide-raw-connection-log-lines": "隐藏原始连接日志 ({{count}})",
+    "hyperlink-display-text-helper": "请输入用于显示该链接的文本。例如：“公司文档”。",
+    "hyperlink-url-helper": "请输入有效的链接。例如：https://www.example.com。",
     "icon-aspect-ratio": "图标宽高比应为1:1，建议尺寸为64 x 64像素",
     "identity-doc-description": "服务名称用于在目录、血缘和摄取运行中标识此连接。请选择一个稳定且易识别的名称 — 之后无法更改。描述为可选项；多数团队会跳过描述，改用所有者和标签。",
     "identity-doc-title": "一次命名，随时可寻",
