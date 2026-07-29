@@ -18,6 +18,7 @@ FULL_PROJECTS = {
     "chromium",
     "Basic",
     "Ingestion",
+    "ImportExport",
     "DataAssetRulesEnabled",
     "DataAssetRulesDisabled",
     "SearchRBAC",
@@ -32,6 +33,7 @@ PROJECT_LANES = {
     "chromium": "chromium",
     "Basic": "chromium",
     "Ingestion": "ingestion",
+    "ImportExport": "import-export",
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
     "SearchRBAC": "search-rbac",
@@ -48,6 +50,7 @@ PROJECT_DEPENDENCIES = {
 LANE_WORKERS = {
     "domain-isolation": 1,
     "global-state": 1,
+    "import-export": 2,
     "ingestion": 1,
     "reindex": 1,
     "search": 1,
@@ -347,6 +350,7 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
     if lane in {
         "domain-isolation",
         "global-state",
+        "import-export",
         "ingestion",
         "reindex",
         "search",
