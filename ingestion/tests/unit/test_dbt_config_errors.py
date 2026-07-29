@@ -92,7 +92,7 @@ class TestDbtCloudErrorClassification:
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_dbt_cloud_config()))
 
-        assert "cloud.getdbt.com" in str(exc_info.value)
+        assert "Unable to connect to dbt Cloud" in str(exc_info.value)
 
     @pytest.mark.parametrize("status_code", [401, 403])
     @patch("metadata.ingestion.connections.source_api_client.TrackedREST")
