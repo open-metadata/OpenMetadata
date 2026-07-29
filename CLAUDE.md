@@ -234,6 +234,79 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - Custom styles in `.less` files with component-specific naming (legacy pattern, avoid for new code)
 - Follow BEM naming convention for custom CSS classes when writing raw CSS
 
+### Styling direction: UntitledUI + Tailwind (go-forward); Antd + Less (deprecated)
+
+**New UI work uses UntitledUI components (`@openmetadata/ui-core-components`) +
+Tailwind (`tw:` prefix), styled from the design tokens in
+[`globals.css`](openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css).
+Do NOT add new Ant Design components or new `.less` files — those stacks are
+being migrated away.** When you touch an Antd/Less component, convert it to
+UntitledUI/Tailwind. Run `yarn tw-audit` for the live migration-debt inventory
+(currently ~864 files import `antd`, 449 `.less` files remain).
+
+**Never hardcode a visual value in `.tsx`/`.ts`:**
+- No arbitrary Tailwind values for color/spacing/radius: `tw:bg-[#2e90fa]` →
+  `tw:bg-brand-500`, `tw:p-[8px]` → `tw:p-2`, `tw:rounded-[8px]` →
+  `tw:rounded-lg`. Use a token utility.
+- No raw hex / `rgb()` in JSX, chart configs, SVG props, or `style={{}}` — use a
+  token utility (`tw:*-<token>`) or `var(--color-*)`. `yarn tw-audit:report`
+  tells you which token each raw hex matches.
+- No `tw:ring-*` to draw an edge (enforced eslint rule) — use `border`/`outline`.
+  See [`docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md).
+
+**Read the relevant spec in
+[`specs/`](openmetadata-ui/src/main/resources/ui/specs/) before UI work**
+(foundations, utility reference, and UntitledUI component specs).
+
+**Run before committing:**
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn tw-audit    # CI: exits 1 on hardcoded color/spacing/radius Tailwind values
+yarn tw-guard    # CI: fails on NEW antd imports or NEW .less files
+```
+
+Supporting: `yarn tw-audit:report` (full inventory + which token each raw hex
+matches).
+
+### Legacy styling: LESS/CSS `--om-*` tokens (deprecated Antd/Less stack)
+
+> This covers the **deprecated** Antd/Less side. Use it only when maintaining
+> existing `.less`; do not create new `.less` files. For new work use the
+> UntitledUI + Tailwind section above.
+
+**Before writing or modifying any UI code, read the relevant spec file in
+[`openmetadata-ui/src/main/resources/ui/specs/`](openmetadata-ui/src/main/resources/ui/specs/).**
+Start with `specs/README.md`; consult the matching `specs/foundations/*.md`
+(color, spacing, typography, radius, elevation, motion), the master
+`specs/tokens/token-reference.md`, and the `specs/components/*.md` file for the
+component you are touching.
+
+**Use only tokens from
+[`openmetadata-ui/src/main/resources/ui/src/styles/tokens.css`](openmetadata-ui/src/main/resources/ui/src/styles/tokens.css)**
+(the two-layer design token file: Layer 1 = upstream `globals.css` primitives →
+Layer 2 = `--om-*` aliases that reference them, which components use). In any
+`.less`/`.css` component style, reference `var(--om-*)` — never a raw hex,
+`rgb()`/`rgba()`, px spacing, raw font-size/weight, border-radius, box-shadow
+color, z-index, or transition duration. If a value has no token, add it to
+`tokens.css` as an `--om-*` alias (referencing the upstream `globals.css` token,
+or holding the raw value if there is no upstream equivalent), not to the
+component. Existing LESS `@variable` usage (`variables.less`) is still allowed as
+the legacy bridge layer; prefer `var(--om-*)` for new work.
+
+**Run the token audit before committing — zero errors required:**
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
+yarn token-audit          # CI-ready; exits 1 on any error (hardcoded colors / spacing)
+```
+
+Supporting commands: `yarn token-audit:report` (full inventory + suggested
+token per value), `yarn token-migrate` (safe, idempotent codemod of raw values →
+tokens), `yarn token-gen` (regenerate the generated block of `tokens.css` and
+the token reference), `yarn token-test` (engine unit tests). Errors =
+hardcoded colors + spacing (fail CI); warnings = uncommon/off-grid values.
+
 ### UI considerations
 
 - Do not use string literals at any place. You should use useTranslation hook and use it like const {t} = useTranslation(). And for example if you want to have "Run" as string, you should be using { t('label.run') }, this label is defined in locales.

@@ -13,25 +13,25 @@
 @import (reference) '../../../../styles/variables.less';
 
 .test-title {
-  margin-top: 12px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 600;
+  margin-top: var(--om-space-12);
+  margin-bottom: var(--om-space-10);
+  font-size: var(--om-font-size-13);
+  font-weight: var(--om-font-weight-semibold);
 }
 
 .incident-test-title {
-  margin-bottom: 10px;
-  font-size: 13px;
-  font-weight: 600;
+  margin-bottom: var(--om-space-10);
+  font-size: var(--om-font-size-13);
+  font-weight: var(--om-font-weight-semibold);
 }
 
 .incident-filter-buttons-container {
   display: flex;
-  gap: 10px;
+  gap: var(--om-space-10);
   overflow-x: auto;
-  margin-right: -12px;
-  padding-bottom: 8px;
-  margin-bottom: 16px;
+  margin-right: calc(-1 * var(--om-space-12));
+  padding-bottom: var(--om-space-8);
+  margin-bottom: var(--om-space-16);
 
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -42,30 +42,30 @@
 }
 
 .data-quality-test-overview-section {
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   border: 1px solid @grey-15;
 }
 .data-quality-test-overview-section-row {
-  padding-top: 12px;
-  padding-bottom: 12px;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-top: var(--om-space-12);
+  padding-bottom: var(--om-space-12);
+  padding-left: var(--om-space-16);
+  padding-right: var(--om-space-16);
 }
 .data-quality-tab-content {
-  padding-left: 16px;
+  padding-left: var(--om-space-16);
   height: 100vh;
   background-color: var(--tw-color-bg-primary);
 }
 .dotted-row {
   border-bottom: 1px dashed @grey-15;
-  padding-bottom: 10px;
+  padding-bottom: var(--om-space-10);
 }
 .stat-card-vertical-divider {
   width: 1px;
   align-self: stretch;
   background-color: @grey-15;
-  margin-top: 12px !important;
-  margin-bottom: 12px !important;
+  margin-top: var(--om-space-12) !important;
+  margin-bottom: var(--om-space-12) !important;
 }
 .data-quality-tab-container {
   border: 0px !important;
@@ -73,22 +73,22 @@
   .tab-header-container {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    font-weight: 400;
+    gap: var(--om-space-8);
+    font-size: var(--om-font-size-xs);
+    font-weight: var(--om-font-weight-regular);
     &.active {
-      font-weight: 600;
+      font-weight: var(--om-font-weight-semibold);
     }
     .data-quality-tab-count {
-      border-radius: 4px;
+      border-radius: var(--om-radius-sm);
       background-color: @grey-9;
       border: 1px solid @grey-38;
       color: @grey-600;
-      font-size: 11px;
-      font-weight: 500;
-      padding: 0px 4px;
+      font-size: var(--om-font-size-11);
+      font-weight: var(--om-font-weight-medium);
+      padding: 0 var(--om-space-4);
       &.active {
-        font-weight: 600;
+        font-weight: var(--om-font-weight-semibold);
         background-color: @primary-6;
         border-color: @primary-7;
         color: @primary-6;
@@ -103,10 +103,10 @@
       }
     }
     .ant-tabs-nav {
-      padding-left: 16px;
+      padding-left: var(--om-space-16);
       position: sticky;
       top: 54px;
-      z-index: 3;
+      z-index: var(--om-z-3);
       background-color: var(--tw-color-bg-primary);
       .ant-tabs-nav-wrap {
         .ant-tabs-nav-list {
@@ -115,12 +115,12 @@
           display: inline-flex;
 
           .ant-tabs-tab {
-            font-weight: 500;
+            font-weight: var(--om-font-weight-medium);
             color: @grey-10;
             border: none;
             width: auto;
             flex: none;
-            padding: 10px 0px !important;
+            padding: var(--om-space-10) 0 !important;
 
             &.ant-tabs-tab-active {
               color: @primary-6;
@@ -149,35 +149,35 @@
   }
 
   .incidents-tab-content {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--om-space-16);
+    padding-right: var(--om-space-16);
     background-color: var(--tw-color-bg-primary);
     .incidents-stats-container {
       display: flex;
       border: 1px solid @grey-15;
-      border-radius: 8px;
+      border-radius: var(--om-radius-lg);
       flex-direction: column;
-      margin-bottom: 14px;
+      margin-bottom: var(--om-space-14);
       position: static;
       top: 48px;
-      z-index: 2;
+      z-index: var(--om-z-2);
       background: var(--tw-color-bg-primary);
 
       .incidents-stats-cards-container {
         display: flex;
         border-bottom: 1px solid @grey-15;
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: var(--om-radius-lg);
+        border-bottom-right-radius: var(--om-radius-lg);
       }
       .incident-stat-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        margin: 6px;
+        margin: var(--om-space-6);
         border: 1px solid transparent;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all var(--om-duration-200) ease;
         outline: none;
 
         // Button reset styles for accessibility
@@ -190,14 +190,14 @@
         appearance: none;
 
         .stat-count {
-          font-size: 13px;
-          font-weight: 600;
+          font-size: var(--om-font-size-13);
+          font-weight: var(--om-font-weight-semibold);
           display: block;
         }
 
         .stat-label {
-          font-size: 12px;
-          font-weight: 400;
+          font-size: var(--om-font-size-xs);
+          font-weight: var(--om-font-weight-regular);
           display: block;
         }
 
@@ -205,7 +205,7 @@
           width: 25%;
 
           &:hover {
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.new {
               color: @purple-2;
             }
@@ -215,17 +215,17 @@
           }
           .stat-count.new {
             color: @grey-600;
-            font-weight: 600;
+            font-weight: var(--om-font-weight-semibold);
           }
 
           .stat-label.new {
             color: @grey-600;
-            font-weight: 400;
+            font-weight: var(--om-font-weight-regular);
           }
 
           &.active {
             background-color: @purple-1;
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.new {
               color: @purple-2;
             }
@@ -238,7 +238,7 @@
         &.ack-card {
           width: 50%;
           &:hover {
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.ack {
               color: @blue-3;
             }
@@ -248,7 +248,7 @@
           }
           .stat-count.ack {
             color: @grey-600;
-            font-weight: 600;
+            font-weight: var(--om-font-weight-semibold);
           }
 
           .stat-label.ack {
@@ -257,7 +257,7 @@
 
           &.active {
             background-color: @blue-22;
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.ack {
               color: @blue-3;
             }
@@ -271,10 +271,10 @@
           width: 25%;
           .stat-count.assigned {
             color: @grey-600;
-            font-weight: 600;
+            font-weight: var(--om-font-weight-semibold);
           }
           &:hover {
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.assigned {
               color: @yellow-11;
             }
@@ -288,7 +288,7 @@
 
           &.active {
             background-color: @yellow-10;
-            border-radius: 6px;
+            border-radius: var(--om-radius-md);
             .stat-count.assigned {
               color: @yellow-11;
             }
@@ -304,15 +304,15 @@
       display: flex;
       position: relative;
       align-items: center;
-      gap: 8px;
+      gap: var(--om-space-8);
       width: 100%;
       border: none;
-      padding-top: 6px;
-      padding-bottom: 6px;
-      padding-left: 12px;
-      padding-right: 12px;
-      border-bottom-right-radius: 8px;
-      border-bottom-left-radius: 8px;
+      padding-top: var(--om-space-6);
+      padding-bottom: var(--om-space-6);
+      padding-left: var(--om-space-12);
+      padding-right: var(--om-space-12);
+      border-bottom-right-radius: var(--om-radius-lg);
+      border-bottom-left-radius: var(--om-radius-lg);
       background-color: var(--tw-color-bg-primary);
       &.active {
         background-color: @green-9;
@@ -321,64 +321,64 @@
         background-color: @green-9;
       }
       .resolved-label {
-        font-size: 12px;
-        font-weight: 400;
+        font-size: var(--om-font-size-xs);
+        font-weight: var(--om-font-weight-regular);
         color: @green-600;
       }
 
       .resolved-value {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--om-font-size-xs);
+        font-weight: var(--om-font-weight-semibold);
         color: @green-600;
       }
     }
 
     .test-cases-section {
       .incident-cards-section {
-        margin-right: -16px;
-        margin-left: -16px;
+        margin-right: calc(-1 * var(--om-space-16));
+        margin-left: calc(-1 * var(--om-space-16));
         .no-incidents {
           text-align: center;
-          padding: 24px;
+          padding: var(--om-space-24);
 
           .text-grey-muted {
             color: @grey-10;
-            font-size: 14px;
+            font-size: var(--om-font-size-sm);
           }
         }
       }
     }
   }
   .test-case-cards-section {
-    margin-top: 16px;
+    margin-top: var(--om-space-16);
   }
 
   .test-case-card {
-    padding-bottom: 8px;
+    padding-bottom: var(--om-space-8);
     border: 0.6px solid @grey-15;
-    margin-right: 16px;
-    border-radius: 10px !important;
-    margin-left: 16px;
+    margin-right: var(--om-space-16);
+    border-radius: var(--om-radius-10) !important;
+    margin-left: var(--om-space-16);
 
     .test-case-card-content {
       width: 100%;
       .test-case-header {
-        border-top-right-radius: 10px !important;
-        border-top-left-radius: 10px !important;
-        padding-top: 12px;
+        border-top-right-radius: var(--om-radius-10) !important;
+        border-top-left-radius: var(--om-radius-10) !important;
+        padding-top: var(--om-space-12);
         display: flex;
         background-color: @grey-9;
         justify-content: space-between;
         align-items: center;
-        gap: 24px;
-        padding-bottom: 12px;
+        gap: var(--om-space-24);
+        padding-bottom: var(--om-space-12);
         .test-case-title-section {
           flex: 1;
-          padding-left: 16px;
+          padding-left: var(--om-space-16);
           .test-case-name {
-            font-size: 12px;
+            font-size: var(--om-font-size-xs);
             color: @grey-900;
-            font-weight: 500;
+            font-weight: var(--om-font-weight-medium);
             line-height: 20px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -393,9 +393,9 @@
           flex-shrink: 0;
           display: flex;
           align-items: flex-start;
-          padding-right: 14px;
+          padding-right: var(--om-space-14);
           .status-badge {
-            border-radius: 16px;
+            border-radius: var(--om-radius-2xl);
             &.failure {
               background-color: @red-9;
               color: @red-10;
@@ -421,52 +421,52 @@
       .test-case-details {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: var(--om-space-8);
 
-        padding-top: 10px;
+        padding-top: var(--om-space-10);
         .test-case-detail-item {
           display: flex;
           align-items: center;
-          padding-left: 16px;
-          padding-right: 16px;
-          gap: 4px;
+          padding-left: var(--om-space-16);
+          padding-right: var(--om-space-16);
+          gap: var(--om-space-4);
           .detail-label {
-            font-size: 13px;
+            font-size: var(--om-font-size-13);
             color: @grey-700;
             min-width: 60px;
-            font-weight: 400;
+            font-weight: var(--om-font-weight-regular);
 
             &::after {
               content: ':';
-              margin-left: 2px;
+              margin-left: var(--om-space-2);
             }
           }
 
           .detail-value {
-            font-size: 12px;
+            font-size: var(--om-font-size-xs);
             color: @grey-900;
-            font-weight: 500;
+            font-weight: var(--om-font-weight-medium);
           }
 
           .assignee-info {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-left: 4px;
+            gap: var(--om-space-6);
+            margin-left: var(--om-space-4);
             .assignee-avatar {
               background-color: @primary-7;
               color: var(--tw-color-text-white);
-              font-size: 13px !important;
-              font-weight: 600;
+              font-size: var(--om-font-size-13) !important;
+              font-weight: var(--om-font-weight-semibold);
               .ant-avatar-string {
                 line-height: 16px !important;
               }
             }
 
             .assignee-name {
-              font-size: 12px;
+              font-size: var(--om-font-size-xs);
               color: @grey-11;
-              font-weight: 500;
+              font-weight: var(--om-font-weight-medium);
             }
           }
         }
@@ -476,14 +476,14 @@
 
   .no-test-cases {
     text-align: center;
-    padding: 32px 16px;
+    padding: var(--om-space-32) var(--om-space-16);
     color: @grey-10;
   }
   .no-data-placeholder {
     color: @grey-500 !important;
-    font-size: 13px;
+    font-size: var(--om-font-size-13);
   }
   .searchbar-container {
-    margin-bottom: 4px !important;
+    margin-bottom: var(--om-space-4) !important;
   }
 }

@@ -382,7 +382,7 @@ test.describe.fixme('Domains', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify empty state message
-      await expect(page.getByText('No assets linked yet')).toBeVisible();
+      await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
       const addButton = page.getByTestId('data-assets-add-button');
       await expect(addButton).toBeVisible();
