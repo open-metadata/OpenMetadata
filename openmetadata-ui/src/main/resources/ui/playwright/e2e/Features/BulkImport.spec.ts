@@ -1070,7 +1070,13 @@ test.describe('Bulk Import Export', () => {
       await page
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      await startCsvPreviewAndWaitForGrid(page);
+      await page
+        .getByText('Import is in progress.')
+        .waitFor({ state: 'detached', timeout: 90000 });
+      await page
+        .locator('.rdg-header-row')
+        .first()
+        .waitFor({ state: 'visible', timeout: 90000 });
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
