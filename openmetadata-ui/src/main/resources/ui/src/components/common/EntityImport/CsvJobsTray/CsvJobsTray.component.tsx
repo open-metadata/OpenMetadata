@@ -13,6 +13,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  Check,
   CheckCircle,
   Download01,
   Minus,
@@ -93,6 +94,9 @@ export const CsvJobsTray = () => {
   const [open, setOpen] = useState(false);
   const [cancellingJobId, setCancellingJobId] = useState<string>();
   const [downloadingJobId, setDownloadingJobId] = useState<string>();
+  const [downloadedJobIds, setDownloadedJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -186,6 +190,12 @@ export const CsvJobsTray = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      setDownloadedJobIds((current) => {
+        const next = new Set(current);
+        next.add(job.jobId);
+
+        return next;
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -383,6 +393,8 @@ export const CsvJobsTray = () => {
                     <span className="csv-jobs-tray-kind-icon">
                       {variant === 'running' ? (
                         renderStatusIcon(job)
+                      ) : downloadedJobIds.has(job.jobId) ? (
+                        <Check size={16} />
                       ) : (
                         <KindIcon size={16} />
                       )}
