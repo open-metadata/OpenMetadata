@@ -147,7 +147,6 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
-
   useEffect(() => {
     const newlyFinished = visibleJobs.filter(
       (job) =>
