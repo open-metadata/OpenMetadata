@@ -751,7 +751,7 @@ export const addAssetsToDomain = async (
   }
   await checkAssetsCount(page, 0);
 
-  await expect(page.getByText('No assets linked yet')).toBeVisible();
+  await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
   await page.getByTestId('domain-details-add-button').click();
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
@@ -855,7 +855,7 @@ export const addAssetsToDataProduct = async (
   await page.getByTestId('assets').click();
   await checkAssetsCount(page, 0);
 
-  await expect(page.getByText('No assets linked yet')).toBeVisible();
+  await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByTestId('data-product-details-add-button').click();
