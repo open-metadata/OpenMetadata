@@ -143,14 +143,16 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
+
   useEffect(() => {
-    const newlyCompleted = visibleJobs.filter(
+    const newlyFinished = visibleJobs.filter(
       (job) =>
-        job.status === 'COMPLETED' && !autoOpenedJobIds.current.has(job.jobId)
+        (job.status === 'COMPLETED' || job.status === 'FAILED') &&
+        !autoOpenedJobIds.current.has(job.jobId)
     );
 
-    if (!isEmpty(newlyCompleted)) {
-      newlyCompleted.forEach((job) => autoOpenedJobIds.current.add(job.jobId));
+    if (!isEmpty(newlyFinished)) {
+      newlyFinished.forEach((job) => autoOpenedJobIds.current.add(job.jobId));
       setOpen(true);
     }
   }, [visibleJobs]);
@@ -340,7 +342,7 @@ export const CsvJobsTray = () => {
   return (
     <div className="csv-jobs-tray">
       {open && (
-        <div className="csv-jobs-tray-popover">
+        <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">
             <div className="csv-jobs-tray-title-wrap">
               <h3>{t('label.background-job-plural')}</h3>
@@ -393,7 +395,7 @@ export const CsvJobsTray = () => {
                         {renderJobSubLine(job)}
                       </span>
                     </div>
-                    <div className="csv-jobs-tray-actions">
+                    <div className="csv-jobs-tray-actions tw:items-start!">
                       {variant !== 'running' && (
                         <span
                           aria-hidden="true"
