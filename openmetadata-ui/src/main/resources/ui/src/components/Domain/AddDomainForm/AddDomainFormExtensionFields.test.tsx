@@ -394,6 +394,7 @@ describe('AddDomainFormExtensionFields', () => {
         'message.custom-property-definition-unavailable'
       )
     );
+
     // A plain text input here would submit an untyped value the backend rejects.
     expect(screen.queryAllByRole('textbox', { hidden: true })).toHaveLength(0);
   });

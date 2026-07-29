@@ -24,11 +24,7 @@ import {
 // separate copy, which leaves the fields unregistered and validation pending.
 import { Form } from 'antd';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
-import {
-  Config,
-  CustomProperty,
-  EntityReference,
-} from '../../../generated/entity/type';
+import { Config, CustomProperty } from '../../../generated/entity/type';
 import {
   FieldKind,
   IntakeForm,
