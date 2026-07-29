@@ -8,8 +8,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,12 +81,23 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 @Slf4j
 public class WorkflowHandler {
   private ProcessEngine processEngine;
+  private HikariDataSource migrationPool;
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
   private final boolean isMigrationContext;
 
   private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
+
+  // Bounded pool for Flowable's migration ProcessEngine. Flowable opens a fresh connection per
+  // command in migration context; without a pool that becomes one physical TCP+auth per command,
+  // which on a cloud Postgres with a session-count-throttling pooler in front (pgbouncer / RDS
+  // Proxy) stalls the redeploy loop. The pool caps concurrent physical sessions and lets Flowable
+  // reuse them across commands. Kept small — migration runs single-threaded and the async executor
+  // is disabled in this context (see setAsyncExecutorActivate(!isMigrationContext) below).
+  private static final int MIGRATION_POOL_MAX_SIZE = 10;
+  private static final long MIGRATION_POOL_CONNECTION_TIMEOUT_MS = 30_000L;
+  private static final String MIGRATION_POOL_NAME = "flowable-migration-pool";
 
   /**
    * Message name used by the Collate Policy Agent node's await event. The batch coordinator delivers
@@ -148,55 +159,37 @@ public class WorkflowHandler {
             config.getPipelineServiceClientConfiguration()));
   }
 
-  private static DataSource migrationDataSource(ProcessEngineConfiguration config) {
+  private DataSource migrationDataSource(ProcessEngineConfiguration config) {
+    DataSource result;
     if (config.getDataSource() != null) {
-      return config.getDataSource();
+      result = config.getDataSource();
+    } else {
+      closeMigrationPool();
+      HikariConfig hikariConfig = new HikariConfig();
+      hikariConfig.setJdbcUrl(config.getJdbcUrl());
+      hikariConfig.setUsername(config.getJdbcUsername());
+      hikariConfig.setPassword(config.getJdbcPassword());
+      hikariConfig.setDriverClassName(config.getJdbcDriver());
+      hikariConfig.setMaximumPoolSize(MIGRATION_POOL_MAX_SIZE);
+      hikariConfig.setMinimumIdle(1);
+      hikariConfig.setConnectionTimeout(MIGRATION_POOL_CONNECTION_TIMEOUT_MS);
+      hikariConfig.setPoolName(MIGRATION_POOL_NAME);
+      // Defer real DB connect to first getConnection() rather than pool construction: Flowable
+      // engine init issues its own SELECTs immediately, so fast-fail on unreachable DB is
+      // preserved through the very next call — and this keeps unit tests (which never open a
+      // real socket) from paying for eager validation.
+      hikariConfig.setInitializationFailTimeout(-1);
+      migrationPool = new HikariDataSource(hikariConfig);
+      result = migrationPool;
     }
-    String url = config.getJdbcUrl();
-    String user = config.getJdbcUsername();
-    String password = config.getJdbcPassword();
-    return new DataSource() {
-      @Override
-      public java.io.PrintWriter getLogWriter() {
-        return null;
-      }
+    return result;
+  }
 
-      @Override
-      public void setLogWriter(java.io.PrintWriter out) {}
-
-      @Override
-      public void setLoginTimeout(int seconds) {}
-
-      @Override
-      public int getLoginTimeout() {
-        return 0;
-      }
-
-      @Override
-      public java.util.logging.Logger getParentLogger() {
-        return java.util.logging.Logger.getLogger("migration");
-      }
-
-      @Override
-      public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw new SQLException("Not a wrapper");
-      }
-
-      @Override
-      public boolean isWrapperFor(Class<?> iface) {
-        return false;
-      }
-
-      @Override
-      public java.sql.Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(url, user, password);
-      }
-
-      @Override
-      public java.sql.Connection getConnection(String u, String p) throws SQLException {
-        return DriverManager.getConnection(url, u, p);
-      }
-    };
+  private void closeMigrationPool() {
+    if (migrationPool != null && !migrationPool.isClosed()) {
+      migrationPool.close();
+    }
+    migrationPool = null;
   }
 
   public void initializeNewProcessEngine(
@@ -311,6 +304,7 @@ public class WorkflowHandler {
       // Transitioning from migration mode to runtime mode
       LOG.info("Transitioning WorkflowHandler from migration mode to runtime mode");
       ProcessEngines.destroy();
+      instance.closeMigrationPool();
       instance = new WorkflowHandler(config, false);
     } else {
       LOG.info("WorkflowHandler already initialized in correct mode.");
