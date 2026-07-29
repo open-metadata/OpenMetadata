@@ -19,6 +19,7 @@ import {
   HYPERLINK_TYPE_CUSTOM_PROPERTY,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
   SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { SearchIndex } from '../enums/search.enum';
@@ -63,6 +64,12 @@ const unwrapEntityReference = (
   return isEntityReference(value.value) ? value.value : undefined;
 };
 
+const toFiniteNumber = (raw: unknown): number | undefined => {
+  const numericValue = Number(raw);
+
+  return Number.isFinite(numericValue) ? numericValue : undefined;
+};
+
 const serializeTimeInterval = (
   raw: unknown
 ): Record<string, number> | undefined => {
@@ -73,11 +80,15 @@ const serializeTimeInterval = (
   const interval = Object.fromEntries(
     ['start', 'end']
       .filter((key) => !isEmptyExtensionValue(raw[key]))
-      .map((key) => [key, Number(raw[key])])
+      .map((key) => [key, toFiniteNumber(raw[key])])
+      .filter(([, value]) => value !== undefined)
   );
 
   return isEmptyExtensionValue(interval) ? undefined : interval;
 };
+
+const serializeTableValue = (raw: unknown): unknown =>
+  hasPopulatedTableRows(raw) ? raw : undefined;
 
 const serializeHyperlink = (
   raw: unknown
@@ -157,11 +168,15 @@ export const serializeExtensionValue = (
     case 'integer':
     case 'number':
     case 'timestamp':
-      serializedValue = Number(raw);
+      serializedValue = toFiniteNumber(raw);
 
       break;
     case 'timeInterval':
       serializedValue = serializeTimeInterval(raw);
+
+      break;
+    case TABLE_TYPE_CUSTOM_PROPERTY:
+      serializedValue = serializeTableValue(raw);
 
       break;
     case 'enum': {

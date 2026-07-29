@@ -196,7 +196,7 @@ const ExtensionFieldContainer = ({
 }) => (
   <Box
     aria-invalid={error ? true : undefined}
-    className="tw:gap-[6px]"
+    className="tw:gap-1.5"
     direction="col">
     <FormItemLabel label={label} required={isRequired} />
     {children}
@@ -364,7 +364,7 @@ const MarkdownExtensionField = ({
           <div data-testid={dataTestId}>
             <RichTextEditor
               className="new-form-style"
-              initialValue=""
+              initialValue={typeof field.value === 'string' ? field.value : ''}
               onTextChange={field.onChange}
             />
           </div>

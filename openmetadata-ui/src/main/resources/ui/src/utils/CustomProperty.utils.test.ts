@@ -416,6 +416,51 @@ describe('CustomProperty.utils', () => {
       );
     });
 
+    it.each(['integer', 'number', 'timestamp'])(
+      'omits a non-numeric %s value instead of sending NaN',
+      (propertyType) => {
+        expect(
+          serializeExtensionValue(createCustomProperty(propertyType), 'abc')
+        ).toBeUndefined();
+      }
+    );
+
+    it('omits a non-numeric time interval bound instead of sending NaN', () => {
+      expect(
+        serializeExtensionValue(createCustomProperty('timeInterval'), {
+          start: 'abc',
+          end: '1753741800000',
+        })
+      ).toEqual({ end: 1753741800000 });
+    });
+
+    it('omits a table value that has no populated rows', () => {
+      const definition = createCustomProperty('table-cp', {
+        columns: ['name'],
+      });
+
+      expect(
+        serializeExtensionValue(definition, { columns: ['name'], rows: [] })
+      ).toBeUndefined();
+      expect(
+        serializeExtensionValue(definition, {
+          columns: ['name'],
+          rows: [{ name: '' }],
+        })
+      ).toBeUndefined();
+    });
+
+    it('keeps a table value that has populated rows', () => {
+      const tableValue = { columns: ['name'], rows: [{ name: 'orders' }] };
+
+      expect(
+        serializeExtensionValue(
+          createCustomProperty('table-cp', { columns: ['name'] }),
+          tableValue
+        )
+      ).toEqual(tableValue);
+    });
+
     it('coerces populated time interval bounds and omits empty bounds', () => {
       const definition = createCustomProperty('timeInterval');
 
