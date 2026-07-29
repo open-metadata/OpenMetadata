@@ -58,7 +58,7 @@
 
   .hide--line.one--child {
     margin-top: 0;
-    padding-top: 16px;
+    padding-top: var(--om-space-16);
   }
 
   .group.rule_group {
@@ -80,14 +80,14 @@
     }
 
     label {
-      font-weight: normal;
-      margin-bottom: 6px;
+      font-weight: var(--om-font-weight-regular);
+      margin-bottom: var(--om-space-6);
     }
   }
 
   .query-builder-container {
     .group-or-rule-container.rule-container {
-      padding: 0px;
+      padding: 0;
 
       .rule.group-or-rule {
         .rule--header {
@@ -100,11 +100,11 @@
     }
 
     .group-or-rule-container.group-container {
-      padding: 0px;
+      padding: 0;
 
       .group.rule_group {
         .group--field {
-          margin: 0px;
+          margin: 0;
           flex: 0 1 25%;
 
           .ant-select {
@@ -122,7 +122,7 @@
 
           .group--actions.group--actions--tr {
             justify-content: flex-start;
-            margin: 0px;
+            margin: 0;
           }
 
           .action.action--ADD-GROUP {
@@ -135,26 +135,26 @@
 
           .action.action--ADD-RULE {
             position: static !important;
-            margin-top: 8px;
+            margin-top: var(--om-space-8);
           }
         }
 
         .rule--body--wrapper {
           .rule--body {
-            margin: 0px;
+            margin: 0;
             display: flex;
-            gap: 16px;
+            gap: var(--om-space-16);
 
             .group--field,
             .rule--field,
             .rule--operator,
             .rule--value,
             .widget--widget {
-              margin: 0px;
+              margin: 0;
               flex: 1;
 
               .ant-col {
-                padding: 0px !important; // remove padding from ant-col inline styling by antd
+                padding: 0 !important; // remove padding from ant-col inline styling by antd
               }
             }
 
@@ -177,15 +177,15 @@
     }
 
     .group--children {
-      padding: 0px;
-      margin: 0px;
+      padding: 0;
+      margin: 0;
 
       .group-or-rule-container.group-container,
       .group-or-rule-container.rule-container {
         .group.group-or-rule,
         .rule.group-or-rule {
           background: inherit;
-          padding: 0px;
+          padding: 0;
           border: none;
 
           .group--header {
@@ -195,7 +195,7 @@
           }
 
           &:not(:first-child) {
-            padding: 16px 8px;
+            padding: var(--om-space-16) var(--om-space-8);
           }
         }
       }
@@ -219,17 +219,17 @@
 
 .json-logic-field-select {
   .ant-select-item-group {
-    padding-left: 8px;
+    padding-left: var(--om-space-8);
     position: relative;
     color: @text-color;
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     background-color: @grey-6;
   }
 
   /* Add vertical line for children */
   .ant-select-item-option-grouped {
     position: relative;
-    padding-left: 32px;
+    padding-left: var(--om-space-32);
     /* Indentation for child items */
   }
 
