@@ -95,9 +95,7 @@ export const DomainDisplay = ({
                 remainingCount <= 9 ? 'h-6 w-6' : ''
               }`}
               data-testid="domain-count-button">
-              <span className="ant-typography domain-count-label">
-                {`+${remainingCount}`}
-              </span>
+              <span className="domain-count-label">{`+${remainingCount}`}</span>
             </Typography.Text>
           </Dropdown>
         </div>

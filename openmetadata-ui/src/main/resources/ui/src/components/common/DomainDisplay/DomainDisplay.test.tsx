@@ -113,7 +113,8 @@ describe('DomainDisplay Component', () => {
 
     expect(screen.getByText('Domain One')).toBeInTheDocument();
     expect(screen.getByTestId('domain-count-button')).toBeInTheDocument();
-    expect(screen.getByText('+2')).toBeInTheDocument();
+    expect(screen.getByText('+2')).toHaveClass('domain-count-label');
+    expect(screen.getByText('+2')).not.toHaveClass('ant-typography');
     expect(screen.queryByText('Domain Two')).not.toBeInTheDocument();
     expect(screen.queryByText('Domain Three')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('domain-icon')).toHaveLength(1);
