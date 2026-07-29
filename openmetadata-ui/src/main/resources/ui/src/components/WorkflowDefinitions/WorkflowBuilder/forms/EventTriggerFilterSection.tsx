@@ -65,7 +65,9 @@ export const EventTriggerFilterSection: React.FC<
   return (
     <div className="tw:mt-6">
       <FormField
-        description={t('message.entities-matching-this-filter-will-not-trigger')}
+        description={t(
+          'message.entities-matching-this-filter-will-not-trigger'
+        )}
         label={t('label.exclude-filter')}
         showInfoIcon={false}>
         {showAddButton ? (
