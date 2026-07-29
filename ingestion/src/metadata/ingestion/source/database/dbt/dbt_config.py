@@ -296,7 +296,9 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals  # noqa: C901
         except Exception as exc:
             raise DBTConfigException(f"Error connecting to dbt Cloud: {exc}") from exc
 
-        if response is None:
+        # The client returns None for an error body it cannot classify, and can surface a raw
+        # Response on paths that bypass JSON decoding. Neither carries usable run data.
+        if not isinstance(response, dict):
             raise DBTConfigException(  # noqa: TRY301
                 f"No usable response from dbt Cloud for account '{account_id}'. The API returned "
                 "an error the client could not classify, so the status was not preserved. "
