@@ -528,7 +528,7 @@
     "cost": "Coste",
     "cost-analysis": "Análisis de Coste",
     "count": "Conteo",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} trabajos en ejecución",
     "count-running": "{{count}} en ejecución",
     "cover-image": "Cubrir",
     "covered": "Cubierto",

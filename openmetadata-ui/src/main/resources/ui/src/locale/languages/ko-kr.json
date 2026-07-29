@@ -528,7 +528,7 @@
     "cost": "비용",
     "cost-analysis": "비용 분석",
     "count": "개수",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}}개 작업 실행 중",
     "count-running": "{{count}}개 실행 중",
     "cover-image": "씌우다",
     "covered": "포함됨",

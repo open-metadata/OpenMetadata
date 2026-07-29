@@ -528,7 +528,7 @@
     "cost": "Kosten",
     "cost-analysis": "Kostenanalyse",
     "count": "Aantal",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} taken worden uitgevoerd",
     "count-running": "{{count}} actief",
     "cover-image": "Omslag",
     "covered": "Gedekt",

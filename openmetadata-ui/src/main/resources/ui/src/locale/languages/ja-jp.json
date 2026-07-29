@@ -528,7 +528,7 @@
     "cost": "コスト",
     "cost-analysis": "コスト分析",
     "count": "件数",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} 件のジョブを実行中",
     "count-running": "{{count}} 件実行中",
     "cover-image": "カバー",
     "covered": "カバー済み",

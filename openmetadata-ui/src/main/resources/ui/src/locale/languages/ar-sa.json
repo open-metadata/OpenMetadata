@@ -528,7 +528,7 @@
     "cost": "التكلفة",
     "cost-analysis": "تحليل التكلفة",
     "count": "العدد",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} مهام قيد التشغيل",
     "count-running": "{{count}} قيد التشغيل",
     "cover-image": "غلاف",
     "covered": "مغطى",

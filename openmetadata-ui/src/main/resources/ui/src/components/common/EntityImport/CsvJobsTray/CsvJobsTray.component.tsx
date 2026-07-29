@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, FeaturedIcon } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
-  AlertTriangle,
-  Check,
   CheckCircle,
   Download01,
   Minus,
@@ -99,6 +97,7 @@ export const CsvJobsTray = () => {
     () => new Set()
   );
   const hasLoadedInitialJobs = useRef(false);
+  const autoOpenedJobIds = useRef<Set<string>>(new Set());
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -144,17 +143,17 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
-  const launcherVariant = useMemo<StatusVariant>(() => {
-    if (activeJobs.length > 0) {
-      return 'running';
-    }
+  useEffect(() => {
+    const newlyCompleted = visibleJobs.filter(
+      (job) =>
+        job.status === 'COMPLETED' && !autoOpenedJobIds.current.has(job.jobId)
+    );
 
-    if (visibleJobs.some((job) => job.status === 'COMPLETED')) {
-      return 'success';
+    if (!isEmpty(newlyCompleted)) {
+      newlyCompleted.forEach((job) => autoOpenedJobIds.current.add(job.jobId));
+      setOpen(true);
     }
-
-    return 'error';
-  }, [activeJobs, visibleJobs]);
+  }, [visibleJobs]);
 
   const handleCancel = useCallback(async (jobId: string) => {
     try {
@@ -419,34 +418,24 @@ export const CsvJobsTray = () => {
           </div>
         </div>
       )}
-      {!open && (
+      {!open && activeJobs.length > 0 && (
         <div className="csv-jobs-tray-launcher-wrap">
           <button
             className="csv-jobs-tray-launcher"
             type="button"
             onClick={handleOpen}>
-            {launcherVariant === 'running' ? (
-              <span className="csv-jobs-tray-launcher-count">
-                {activeJobs.length}
-              </span>
-            ) : (
-              <FeaturedIcon
-                className={`tw:size-7 tw:text-fg-white ${
-                  launcherVariant === 'success'
-                    ? 'tw:bg-success-solid'
-                    : 'tw:bg-error-solid'
-                }`}
-                color={launcherVariant === 'success' ? 'success' : 'error'}
-                icon={launcherVariant === 'success' ? Check : AlertTriangle}
-                size="sm"
-              />
-            )}
+            <span className="csv-jobs-tray-launcher-count">
+              {activeJobs.length}
+            </span>
             <span className="csv-jobs-tray-launcher-label">
-              {launcherVariant === 'running'
-                ? t('label.count-jobs-running', { count: activeJobs.length })
-                : launcherVariant === 'success'
-                ? t('label.completed')
-                : t('label.failed')}
+              {t('label.count-jobs-running', { count: activeJobs.length })}
+              <span
+                aria-hidden
+                className="tw:ml-1 tw:inline-flex tw:items-end tw:gap-0.5 tw:align-text-bottom">
+                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current" />
+                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:150ms]" />
+                <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:300ms]" />
+              </span>
             </span>
           </button>
         </div>

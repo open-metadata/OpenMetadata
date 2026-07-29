@@ -528,7 +528,7 @@
     "cost": "成本",
     "cost-analysis": "成本分析",
     "count": "計數",
-    "count-jobs-running": "{{count}} jobs running…",
+    "count-jobs-running": "{{count}} 個作業正在執行",
     "count-running": "{{count}} 個執行中",
     "cover-image": "封面",
     "covered": "已涵蓋",
