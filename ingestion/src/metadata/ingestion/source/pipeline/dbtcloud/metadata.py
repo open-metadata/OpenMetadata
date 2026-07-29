@@ -218,6 +218,8 @@ class DbtcloudSource(PipelineServiceSource):
             table_name=node.name,
             skip_es_search=True,
         )
+        if not table_fqn:
+            return None
         if table_fqn not in self._exact_fqn_cache:
             self._exact_fqn_cache[table_fqn] = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
         return self._exact_fqn_cache[table_fqn]
