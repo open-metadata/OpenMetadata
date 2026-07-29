@@ -61,10 +61,16 @@ def test_full_common_shard_count_is_capped_at_24():
     assert planner.shard_count(units, "chromium", "full") == 24
 
 
-def test_common_lane_keeps_one_minute_of_allocation_reserve():
+def test_common_lane_matches_target_execution_budget():
+    # Chromium was previously held one minute below TARGET_MS as a safety
+    # reserve; that reserve was removed when the suite grew to ~90% of the
+    # 24-shard × 3-worker capacity ceiling — the planner started refusing
+    # otherwise-valid plans whose heaviest shard was 0.1 min over the old
+    # 19-min budget. Aligning chromium with TARGET_MS is the stop-gap;
+    # follow-up work is trimming the heaviest individual tests.
     planner = load_script("build_playwright_shards")
 
-    assert planner.shard_budget_ms_for_lane("chromium") == 19 * 60 * 1000
+    assert planner.shard_budget_ms_for_lane("chromium") == 20 * 60 * 1000
     assert planner.shard_budget_ms_for_lane("search") == 20 * 60 * 1000
 
 
@@ -449,7 +455,7 @@ def test_hook_heavy_subsuites_in_audited_suite_stay_atomic():
     ]
 
 
-def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
+def test_common_shards_enforce_the_twenty_minute_budget(tmp_path):
     planner = load_script("build_playwright_shards")
     within_budget = planner.Unit(
         "chromium",
@@ -457,7 +463,7 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "within",
         grep_titles={("chromium", "within.spec.ts", "within")},
         test_ids={"within"},
-        weight_ms=19 * 60 * 1000,
+        weight_ms=20 * 60 * 1000,
     )
     above_budget = planner.Unit(
         "chromium",
@@ -465,11 +471,11 @@ def test_common_shards_enforce_the_nineteen_minute_budget(tmp_path):
         "above",
         grep_titles={("chromium", "above.spec.ts", "above")},
         test_ids={"above"},
-        weight_ms=19 * 60 * 1000 + 1,
+        weight_ms=20 * 60 * 1000 + 1,
     )
 
     planner.write_plan(tmp_path, "chromium", 0, [within_budget])
-    with pytest.raises(SystemExit, match="above the 19-minute plan budget"):
+    with pytest.raises(SystemExit, match="above the 20-minute plan budget"):
         planner.write_plan(tmp_path, "chromium", 1, [above_budget])
 
 
