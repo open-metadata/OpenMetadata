@@ -532,7 +532,7 @@ test.describe('Glossary tests', () => {
         await selectActiveGlossary(page, glossary2.data.displayName);
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
-        await page.getByText('No assets linked yet').waitFor();
+        await page.getByTestId('empty-placeholder').waitFor();
 
         await dashboardEntity.visitEntityPage(page);
 
