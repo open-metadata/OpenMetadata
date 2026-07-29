@@ -46,28 +46,28 @@
 }
 
 .csv-jobs-tray-launcher-wrap {
-  animation: csv-jobs-tray-slide-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: csv-jobs-tray-slide-in var(--om-duration-240) cubic-bezier(0.2, 0.7, 0.2, 1);
   bottom: 88px;
   position: fixed;
   right: 20px;
-  z-index: 900;
+  z-index: var(--om-z-900);
 }
 
 .csv-jobs-tray-launcher {
   align-items: center;
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   box-shadow: @box-shadow-elevated-multi;
   color: @grey-900;
   cursor: pointer;
   display: inline-flex;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-semibold;
-  gap: 8px;
+  gap: var(--om-space-8);
   line-height: 18px;
-  padding: 6px 16px 6px 6px;
-  transition: background 120ms ease;
+  padding: var(--om-space-6) var(--om-space-16) var(--om-space-6) var(--om-space-6);
+  transition: background var(--om-duration-120) ease;
 
   &:hover {
     background: @grey-26;
@@ -77,17 +77,17 @@
 .csv-jobs-tray-launcher-count {
   align-items: center;
   background: @primary-6;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   color: @white;
   display: inline-flex;
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--om-font-size-xs);
   font-variant-numeric: tabular-nums;
   font-weight: @font-bold;
   height: 28px;
   justify-content: center;
   min-width: 28px;
-  padding: 0 8px;
+  padding: 0 var(--om-space-8);
 }
 
 .csv-jobs-tray-launcher-label {
@@ -96,17 +96,17 @@
 }
 
 .csv-jobs-tray-popover {
-  animation: csv-jobs-tray-slide-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: csv-jobs-tray-slide-in var(--om-duration-240) cubic-bezier(0.2, 0.7, 0.2, 1);
   background: @white;
   border: 1px solid @grey-15;
-  border-radius: 12px;
+  border-radius: var(--om-radius-xl);
   bottom: 88px;
   box-shadow: @box-shadow-elevated-multi;
   overflow: hidden;
   position: fixed;
   right: 20px;
   width: 340px;
-  z-index: 900;
+  z-index: var(--om-z-900);
 }
 
 .csv-jobs-tray-header {
@@ -114,21 +114,21 @@
   background: @white;
   border-bottom: 1px solid @grey-15;
   display: flex;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: var(--om-space-8);
+  padding: var(--om-space-12) var(--om-space-14);
 }
 
 .csv-jobs-tray-title-wrap {
   align-items: center;
   display: flex;
   flex: 1 1 auto;
-  gap: 8px;
+  gap: var(--om-space-8);
   min-width: 0;
 }
 
 .csv-jobs-tray-popover h3 {
   color: @grey-900;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-semibold;
   line-height: 18px;
   margin: 0;
@@ -136,21 +136,21 @@
 
 .csv-jobs-tray-header-count {
   background: @primary-50;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   color: @primary-6;
-  font-size: 11px;
+  font-size: var(--om-font-size-11);
   font-weight: @font-semibold;
   line-height: 16px;
-  padding: 1px 7px;
+  padding: var(--om-space-1) var(--om-space-7);
   white-space: nowrap;
 }
 
 .csv-jobs-tray-clear,
 .csv-jobs-tray-close {
-  border-radius: 6px !important;
+  border-radius: var(--om-radius-md) !important;
   height: 26px !important;
   min-height: 26px !important;
-  padding: 0 8px !important;
+  padding: 0 var(--om-space-8) !important;
 
   [data-icon] {
     height: 14px !important;
@@ -160,7 +160,7 @@
 
 .csv-jobs-tray-clear {
   color: @grey-700 !important;
-  font-size: 12px !important;
+  font-size: var(--om-font-size-xs) !important;
   font-weight: @font-medium !important;
 }
 
@@ -180,8 +180,8 @@
   border-bottom: 1px solid @grey-15;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--om-space-10);
+  padding: var(--om-space-12) var(--om-space-14);
 }
 
 .csv-jobs-tray-item:last-child {
@@ -191,20 +191,20 @@
 .csv-jobs-tray-item-row {
   align-items: flex-start;
   display: flex;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .csv-jobs-tray-body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--om-space-2);
   min-width: 0;
 }
 
 .csv-jobs-tray-title {
   color: @grey-900;
-  font-size: 13px;
+  font-size: var(--om-font-size-13);
   font-weight: @font-semibold;
   line-height: 18px;
   overflow: hidden;
@@ -214,7 +214,7 @@
 
 .csv-jobs-tray-sub {
   color: @grey-600;
-  font-size: 11.5px;
+  font-size: var(--om-font-size-11_5);
   font-variant-numeric: tabular-nums;
   line-height: 16px;
 }
@@ -223,15 +223,15 @@
   align-items: center;
   display: flex;
   flex: 0 0 auto;
-  gap: 8px;
+  gap: var(--om-space-8);
 }
 
 .csv-jobs-tray-action {
-  border-radius: 6px !important;
-  font-size: 12px !important;
+  border-radius: var(--om-radius-md) !important;
+  font-size: var(--om-font-size-xs) !important;
   font-weight: @font-medium !important;
   min-height: 28px !important;
-  padding: 4px 10px !important;
+  padding: var(--om-space-4) var(--om-space-10) !important;
 
   [data-icon] {
     height: 14px !important;
@@ -240,7 +240,7 @@
 }
 
 .csv-jobs-tray-dismiss {
-  border-radius: 6px !important;
+  border-radius: var(--om-radius-md) !important;
   height: 26px !important;
   min-height: 26px !important;
   padding: 0 !important;
@@ -256,7 +256,7 @@
 .csv-jobs-tray-kind-icon {
   align-items: center;
   background: @primary-50;
-  border-radius: 8px;
+  border-radius: var(--om-radius-lg);
   color: @primary-6;
   display: inline-flex;
   flex: 0 0 auto;
@@ -294,12 +294,12 @@
 }
 
 .csv-jobs-tray-status-spin {
-  animation: csv-jobs-tray-spin 1.4s linear infinite;
+  animation: csv-jobs-tray-spin var(--om-duration-1400) linear infinite;
 }
 
 .csv-jobs-tray-progress {
   background: @grey-100;
-  border-radius: 999px;
+  border-radius: var(--om-radius-999);
   height: 4px;
   overflow: hidden;
   position: relative;
@@ -309,7 +309,7 @@
   border-radius: inherit;
   display: block;
   height: 100%;
-  transition: width 220ms ease;
+  transition: width var(--om-duration-220) ease;
 }
 
 .csv-jobs-tray-progress-running span {
@@ -317,11 +317,11 @@
   position: relative;
 
   &::after {
-    animation: csv-jobs-tray-shimmer 1.6s infinite linear;
+    animation: csv-jobs-tray-shimmer var(--om-duration-1600) infinite linear;
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.4),
+      var(--om-legacy-color-255-255-255-0-4),
       transparent
     );
     content: '';
