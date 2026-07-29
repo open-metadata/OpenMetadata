@@ -72,22 +72,15 @@ const scrollIntoViewCenter = async (locator: Locator) => {
     .catch(() => undefined);
 };
 
-// The CSV jobs tray (position:fixed, bottom-right, high z-index) stays open
-// after a job completes and can cover grid cells, blocking clicks. Minimize it
-// before proceeding with grid interactions.
-const closeCsvJobsTrayIfVisible = async (page: Page) => {
-  const tray = page.locator('.csv-jobs-tray-popover');
-
-  if (!(await waitForVisibleLocator(tray, 500))) {
-    return;
-  }
-
-  const closeBtn = page.locator('.csv-jobs-tray-close');
-
-  if (await waitForVisibleLocator(closeBtn, 500)) {
-    await closeBtn.click();
-    await tray.waitFor({ state: 'hidden' });
-  }
+// The CSV jobs tray is position:fixed at bottom-right and can appear at any
+// moment during a test (mid-fill, mid-modal, mid-drag) as background jobs
+// complete. Injecting pointer-events:none once disables click interception for
+// the entire page session — no need to poll or dismiss at every step.
+const disableCsvJobsTrayInterception = async (page: Page) => {
+  await page.addStyleTag({
+    content:
+      '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }',
+  });
 };
 
 const getTextEditorCandidates = (page: Page) => {
@@ -1001,6 +994,11 @@ export const startCsvPreviewAndWaitForGrid = async (
 ) => {
   const timeout = options?.timeout ?? 90000;
 
+  // Disable the CSV jobs tray's click interception for the entire page session.
+  // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
+  // one-shot CSS injection is more robust than polling at specific steps.
+  await disableCsvJobsTrayInterception(page);
+
   if (
     !(await waitForVisibleLocator(
       page.locator('.rdg-header-row').first(),
@@ -1021,9 +1019,6 @@ export const startCsvPreviewAndWaitForGrid = async (
     .locator('.rdg-header-row')
     .first()
     .waitFor({ state: 'visible', timeout });
-
-  // Dismiss any CSV jobs tray visible over the grid before callers interact with cells.
-  await closeCsvJobsTrayIfVisible(page);
 };
 
 export const uploadCSVAndWaitForGrid = async (
@@ -1706,9 +1701,6 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
     fs.mkdirSync('downloads', { recursive: true });
     fs.writeFileSync(path.join('downloads', `${fileName}.csv`), csvContent);
   } finally {
-    // Dismiss the tray that appears when the export job completes so it doesn't
-    // intercept clicks on the grid during the subsequent import step.
-    await closeCsvJobsTrayIfVisible(page);
     await afterAction();
   }
 };
