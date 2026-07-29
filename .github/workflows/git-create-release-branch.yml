@@ -27,7 +27,7 @@ jobs:
         permission-workflows: write
 
     - name: Checkout Repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v4
       with:
         ref: ${{ inputs.base_branch_name }}
         token: ${{ steps.generate_token.outputs.token }}
