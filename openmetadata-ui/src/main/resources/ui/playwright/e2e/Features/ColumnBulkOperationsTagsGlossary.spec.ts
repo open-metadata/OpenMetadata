@@ -136,7 +136,6 @@ function getColumnRowCheckbox(page: Page, rowId: string) {
 }
 
 test.describe('Column Bulk Operations - Tags & Glossary Select in Drawer', () => {
-
   const CLASSIFICATION_TAG_FQN = 'PII.Sensitive';
   const table = new TableClass();
   const glossaryTerm = new GlossaryTerm();
