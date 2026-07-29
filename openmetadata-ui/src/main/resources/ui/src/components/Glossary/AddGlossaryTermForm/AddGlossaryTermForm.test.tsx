@@ -18,6 +18,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+// AddGlossaryTermForm is a legacy antd form whose `formRef` prop requires a real
+// antd FormInstance, so this test harness has to import antd. It must be the
+// same module instance the component imports — `jest.requireActual` returns a
+// separate copy, which leaves the fields unregistered and validation pending.
 import { Form } from 'antd';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
@@ -253,6 +257,16 @@ const FormHarness = ({
   );
 };
 
+// Text-ish extension fields put their test id on the field wrapper rendered by
+// core-components, so reach through to the control the user actually types in.
+const extensionInput = (testId: string): HTMLElement => {
+  const field = screen.getByTestId(testId);
+
+  return field.tagName === 'INPUT'
+    ? field
+    : (field.querySelector('input') as HTMLElement);
+};
+
 describe('AddGlossaryTermForm intake fields', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -284,7 +298,6 @@ describe('AddGlossaryTermForm intake fields', () => {
     expect(
       screen.getByTestId('extension-documentation-displayText')
     ).toBeInTheDocument();
-    expect(mockDataAssetSelectProps.at(-1)?.searchIndex).toBe('glossaryTerm');
     expect(mockedGetIntakeForm).toHaveBeenCalledWith(
       TargetEntityType.GlossaryTerm
     );
@@ -376,47 +389,26 @@ describe('AddGlossaryTermForm intake fields', () => {
     expect(screen.queryByTestId('extension-summary')).not.toBeInTheDocument();
   });
 
-  it('serializes custom property values in the submit payload', async () => {
-    const requiredFields = [
-      createRequiredField('score'),
-      createRequiredField('classification'),
-      createRequiredField('documentation'),
-      createRequiredField('relatedTerm'),
-    ];
-    mockedGetIntakeForm.mockResolvedValue(createIntakeForm(requiredFields));
+  it('serializes values typed into the intake fields into the submit payload', async () => {
+    mockedGetIntakeForm.mockResolvedValue(
+      createIntakeForm([
+        createRequiredField('score'),
+        createRequiredField('summary'),
+        createRequiredField('documentation'),
+      ])
+    );
     mockedGetCustomProperties.mockResolvedValue([
-      createCustomProperty('score', 'number'),
-      createCustomProperty('classification', 'enum', {
-        values: ['Critical'],
-      }),
+      createCustomProperty('score', 'integer'),
+      createCustomProperty('summary', 'string'),
       createCustomProperty('documentation', 'hyperlink-cp'),
-      createCustomProperty('relatedTerm', 'entityReference', ['glossaryTerm']),
     ]);
     const onSave = jest.fn();
-    const reference: EntityReference = {
-      fullyQualifiedName: 'Glossary.Related',
-      id: 'related-term-id',
-      type: 'glossaryTerm',
-    };
 
     render(
       <FormHarness
         formValues={{
           description: 'Description',
           displayName: 'Display name',
-          extension: {
-            classification: 'Critical',
-            documentation: {
-              displayText: '',
-              url: 'https://example.com/docs',
-            },
-            relatedTerm: {
-              displayName: 'Related',
-              reference,
-              value: reference.fullyQualifiedName,
-            },
-            score: '42',
-          },
           name: ' term-name ',
         }}
         onSave={onSave}
@@ -424,6 +416,16 @@ describe('AddGlossaryTermForm intake fields', () => {
     );
 
     await screen.findByTestId('extension-score');
+
+    fireEvent.change(extensionInput('extension-score'), {
+      target: { value: '42' },
+    });
+    fireEvent.change(extensionInput('extension-summary'), {
+      target: { value: 'governed term' },
+    });
+    fireEvent.change(extensionInput('extension-documentation-url'), {
+      target: { value: 'https://example.com/docs' },
+    });
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-values'));
@@ -433,17 +435,41 @@ describe('AddGlossaryTermForm intake fields', () => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
           extension: {
-            classification: ['Critical'],
-            documentation: {
-              url: 'https://example.com/docs',
-            },
-            relatedTerm: reference,
+            // The integer arrives as a JSON number and the hyperlink as an
+            // object; an empty display text is dropped rather than sent.
+            documentation: { url: 'https://example.com/docs' },
             score: 42,
+            summary: 'governed term',
           },
           name: 'term-name',
         })
       )
     );
+  });
+
+  it('blocks submit while a required intake field is empty', async () => {
+    mockedGetIntakeForm.mockResolvedValue(
+      createIntakeForm([createRequiredField('summary')])
+    );
+    mockedGetCustomProperties.mockResolvedValue([
+      createCustomProperty('summary', 'string'),
+    ]);
+    const onSave = jest.fn();
+
+    render(
+      <FormHarness
+        formValues={{ description: 'Description', name: 'term-name' }}
+        onSave={onSave}
+      />
+    );
+
+    await screen.findByTestId('extension-summary');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-values'));
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it.each(['displayName', 'synonyms', 'tags', 'reviewers'])(

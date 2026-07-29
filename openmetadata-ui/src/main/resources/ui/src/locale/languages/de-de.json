@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "URL-Pfad für das Navbar-Logo.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "Erfassen Sie benutzerdefinierte Metadaten, um Ihre Datenobjekte durch die Erweiterung der Attribute zu bereichern.",
+    "custom-property-definition-unavailable": "„{{field}}“ konnte nicht geladen werden und kann daher nicht ausgefüllt werden. Aktualisieren Sie die Seite und versuchen Sie es erneut.",
     "custom-property-empty-description": "Administratoren können benutzerdefinierte Eigenschaften für {{entity}} erstellen, um für Ihre Organisation spezifische Details zu erfassen.",
     "custom-property-is-set-to-message": "{{fieldName}} ist gesetzt auf",
     "custom-property-name-validation": "Der Name muss mit einem Buchstaben oder einer Zahl beginnen. Ungültige Zeichen: \" * : ^ $ \\ < > & ~ /",

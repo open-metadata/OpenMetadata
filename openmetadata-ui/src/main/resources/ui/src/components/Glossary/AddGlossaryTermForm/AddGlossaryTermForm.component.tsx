@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Divider } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
@@ -42,7 +41,6 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
-import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { referenceURLValidator } from '../../../utils/GlossaryPureUtils';
 import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
@@ -50,7 +48,9 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
-import GlossaryTermIntakeFields from './GlossaryTermIntakeFields.component';
+import GlossaryTermIntakeFields, {
+  GlossaryTermIntakeFieldsHandle,
+} from './GlossaryTermIntakeFields.component';
 
 const ARRAY_VALUED_NATIVE_FIELDS = new Set(['tags', 'synonyms']);
 
@@ -70,6 +70,7 @@ const AddGlossaryTermForm = ({
     []
   );
   const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
+  const intakeFieldsRef = useRef<GlossaryTermIntakeFieldsHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +209,7 @@ const AddGlossaryTermForm = ({
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
 
+
   const handleSave: FormProps['onFinish'] = async (formObj) => {
     const {
       name,
@@ -220,8 +222,14 @@ const AddGlossaryTermForm = ({
       relatedTerms = [],
       color,
       iconURL,
-      extension: rawExtension,
     } = formObj;
+
+    // The intake custom properties live in their own RHF form outside this antd
+    // Form, so antd's own validation pass cannot see them — validate explicitly
+    // and abort so RHF renders the inline errors.
+    if (!editMode && !(await (intakeFieldsRef.current?.validate() ?? true))) {
+      return;
+    }
 
     const selectedOwners =
       ownersList.length > 0
@@ -238,22 +246,9 @@ const AddGlossaryTermForm = ({
       iconURL,
     };
 
-    const extension = Object.entries(
-      (rawExtension ?? {}) as Record<string, unknown>
-    ).reduce<Record<string, unknown>>((result, [propertyName, rawValue]) => {
-      const definition = customProperties.find(
-        (property) => property.name === propertyName
-      );
-      const serializedValue = definition
-        ? serializeExtensionValue(definition, rawValue)
-        : rawValue;
-
-      if (serializedValue !== undefined) {
-        result[propertyName] = serializedValue;
-      }
-
-      return result;
-    }, {});
+    const extension = editMode
+      ? {}
+      : intakeFieldsRef.current?.getExtension() ?? {};
 
     const data = {
       name: name.trim(),
@@ -642,22 +637,21 @@ const AddGlossaryTermForm = ({
           )}
         </div>
 
-        {!editMode &&
-          customPropertiesLoaded &&
-          extensionFormFields.length > 0 && (
-            <div className="m-t-md" data-testid="custom-properties-section">
-              <Divider
-                className="m-b-md"
-                label={t('label.custom-property-plural')}
-                labelAlign="start"
-              />
-              <GlossaryTermIntakeFields
-                customProperties={customProperties}
-                formFields={extensionFormFields}
-              />
-            </div>
-          )}
       </Form>
+
+      {/* Rendered as a sibling of the antd Form, not inside it: this emits its
+          own <form> element and nesting forms is invalid HTML. The modal's Save
+          button sits in the footer outside both forms, so it still drives
+          submission via the antd instance. */}
+      {!editMode &&
+        customPropertiesLoaded &&
+        extensionFormFields.length > 0 && (
+          <GlossaryTermIntakeFields
+            customProperties={customProperties}
+            formFields={extensionFormFields}
+            ref={intakeFieldsRef}
+          />
+        )}
     </>
   );
 };

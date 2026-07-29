@@ -897,6 +897,47 @@ const SimpleExtensionField = ({
   return <div>{getField(field)}</div>;
 };
 
+/**
+ * Placeholder for a configured intake property whose definition could not be
+ * loaded (the custom-property request failed). A required one blocks submit via
+ * a validation rule that can never pass, so the form cannot post a value it is
+ * unable to type.
+ */
+const MissingDefinitionField = ({
+  control,
+  dataTestId,
+  isRequired,
+  label,
+  name,
+}: {
+  control: Control<DomainFormValues>;
+  dataTestId: string;
+  isRequired: boolean;
+  label: string;
+  name: `extensionFormValues.${string}`;
+}) => {
+  const { t } = useTranslation();
+  const message = t('message.custom-property-definition-unavailable', {
+    field: label,
+  });
+
+  return (
+    <FormField
+      control={control}
+      name={name}
+      rules={{ validate: () => (isRequired ? message : true) }}>
+      {({ fieldState }) => (
+        <ExtensionFieldContainer
+          error={fieldState.error?.message ?? (isRequired ? undefined : message)}
+          isRequired={isRequired}
+          label={label}>
+          <div data-testid={dataTestId} />
+        </ExtensionFieldContainer>
+      )}
+    </FormField>
+  );
+};
+
 const ExtensionField = ({
   control,
   definition,
@@ -917,12 +958,22 @@ const ExtensionField = ({
   const requiredMessage =
     formField.errorMessage ||
     t('label.field-required', { field: formField.fieldLabel });
-  const fallbackDefinition: CustomProperty = {
-    description: '',
-    name: propertyName,
-    propertyType: { id: '', type: 'type', name: 'string' },
-  };
-  const resolvedDefinition = definition ?? fallbackDefinition;
+  // Without the definition we cannot pick the right widget or serialize the
+  // value, so a text input here would submit an untyped string and the backend
+  // would reject it. Surface the failure instead of collecting a bad value.
+  if (!definition) {
+    return (
+      <MissingDefinitionField
+        control={control}
+        dataTestId={dataTestId}
+        isRequired={isRequired}
+        label={label}
+        name={name}
+      />
+    );
+  }
+
+  const resolvedDefinition = definition;
   const labelNode: ReactNode = definition ? (
     <span className="tw:inline-flex tw:items-center tw:gap-2">
       {label}

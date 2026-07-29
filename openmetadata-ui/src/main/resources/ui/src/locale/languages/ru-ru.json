@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "URL-путь для логотипа панели навигации.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "Создавайте и настраивайте новые поля для объектов",
+    "custom-property-definition-unavailable": "Не удалось загрузить «{{field}}», поэтому заполнить это поле нельзя. Обновите страницу и попробуйте снова.",
     "custom-property-empty-description": "Администраторы могут создавать пользовательские свойства для {{entity}}, чтобы фиксировать сведения, специфичные для вашей организации.",
     "custom-property-is-set-to-message": "Значение поля {{fieldName}} изменено на",
     "custom-property-name-validation": "Имя должно начинаться с буквы или цифры. Недопустимые символы: \" * : ^ $ \\ < > & ~ /",

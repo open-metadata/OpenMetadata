@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "导航栏 Logo 指向的 URL 地址",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": " 获取自定义元数据, 通过扩展属性来丰富数据资产",
+    "custom-property-definition-unavailable": "无法加载“{{field}}”，因此无法填写。请刷新页面后重试。",
     "custom-property-empty-description": "管理员可以为 {{entity}} 创建自定义属性，以捕获特定于您组织的详细信息。",
     "custom-property-is-set-to-message": "{{fieldName}}设置为",
     "custom-property-name-validation": "名称必须以字母或数字开头。无效字符：\" * : ^ $ \\ < > & ~ /",

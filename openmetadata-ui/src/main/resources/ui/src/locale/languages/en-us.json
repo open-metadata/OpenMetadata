@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "URL path for the navbar logo.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
+    "custom-property-definition-unavailable": "\"{{field}}\" could not be loaded, so it cannot be filled in. Refresh the page and try again.",
     "custom-property-empty-description": "Admins can create custom properties for {{entity}} to capture details specific to your organization.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "Name must start with a letter or number. Invalid characters: \" * : ^ $ \\ < > & ~ /",

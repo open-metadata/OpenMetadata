@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "내비게이션 바 로고의 URL 경로입니다.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "속성을 확장하여 데이터 자산을 풍부하게 하는 사용자 정의 메타데이터를 캡처합니다.",
+    "custom-property-definition-unavailable": "\"{{field}}\"을(를) 불러오지 못해 입력할 수 없습니다. 페이지를 새로 고친 후 다시 시도하세요.",
     "custom-property-empty-description": "관리자는 조직에 특화된 세부 정보를 기록하기 위해 {{entity}}에 대한 사용자 지정 속성을 만들 수 있습니다.",
     "custom-property-is-set-to-message": "{{fieldName}}이(가) 다음으로 설정되었습니다",
     "custom-property-name-validation": "이름은 문자나 숫자로 시작해야 합니다. 잘못된 문자: \" * : ^ $ \\ < > & ~ /",

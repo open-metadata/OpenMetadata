@@ -270,6 +270,9 @@ const MissingDefinitionHarness = ({
         customProperties={[]}
         formFields={formFields}
       />
+      <button type="button" onClick={() => void form.trigger()}>
+        validate
+      </button>
     </FormProvider>
   );
 };
@@ -376,6 +379,24 @@ describe('AddDomainFormExtensionFields', () => {
       ).toHaveTextContent(badgeText);
     }
   );
+
+  it('blocks submit for a required property whose definition failed to load', async () => {
+    const definition = buildDefinition('hyperlink-cp');
+
+    render(
+      <MissingDefinitionHarness formFields={[buildFormField(definition)]} />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'validate' }));
+
+    await waitFor(() =>
+      expect(document.body).toHaveTextContent(
+        'message.custom-property-definition-unavailable'
+      )
+    );
+    // A plain text input here would submit an untyped value the backend rejects.
+    expect(screen.queryAllByRole('textbox', { hidden: true })).toHaveLength(0);
+  });
 
   it('omits the type badge when the property has no definition', () => {
     const definition = buildDefinition('string');

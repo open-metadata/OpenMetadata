@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "ナビゲーションバーのロゴ用の URL パス",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "属性を拡張して、データアセットに独自のメタデータを追加できます。",
+    "custom-property-definition-unavailable": "「{{field}}」を読み込めなかったため、入力できません。ページを再読み込みして、もう一度お試しください。",
     "custom-property-empty-description": "管理者は、組織固有の詳細を記録するために {{entity}} のカスタムプロパティを作成できます。",
     "custom-property-is-set-to-message": "{{fieldName}} に設定されています",
     "custom-property-name-validation": "名前は文字または数字で始まる必要があります。無効な文字: \" * : ^ $ \\ < > & ~ /",

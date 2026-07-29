@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "مسار رابط شعار شريط التنقل.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "التقط بيانات وصفية مخصصة لإثراء أصول البيانات الخاصة بك عن طريق توسيع السمات.",
+    "custom-property-definition-unavailable": "تعذّر تحميل \"{{field}}\"، لذا لا يمكن تعبئته. حدّث الصفحة وحاول مرة أخرى.",
     "custom-property-empty-description": "يمكن للمسؤولين إنشاء خصائص مخصصة لـ {{entity}} لالتقاط التفاصيل الخاصة بمؤسستك.",
     "custom-property-is-set-to-message": "تم تعيين {{fieldName}} إلى",
     "custom-property-name-validation": "يجب أن يبدأ الاسم بحرف أو رقم. أحرف غير صالحة: \" * : ^ $ \\ < > & ~ /",

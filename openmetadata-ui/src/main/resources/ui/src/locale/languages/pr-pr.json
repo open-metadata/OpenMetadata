@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "مسیر URL برای لوگوی نوار ناوبری.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "متادیتای سفارشی را برای غنی‌سازی دارایی‌های داده‌ای خود با افزودن ویژگی‌های اضافی ضبط کنید.",
+    "custom-property-definition-unavailable": "بارگذاری «{{field}}» ممکن نشد، بنابراین نمی‌توان آن را تکمیل کرد. صفحه را تازه‌سازی کنید و دوباره تلاش کنید.",
     "custom-property-empty-description": "مدیران می‌توانند برای {{entity}} ویژگی‌های سفارشی ایجاد کنند تا جزئیات خاص سازمان شما را ثبت کنند.",
     "custom-property-is-set-to-message": "{{fieldName}} به مقدار",
     "custom-property-name-validation": "نام باید با یک حرف یا عدد شروع شود. نویسه‌های نامعتبر: \" * : ^ $ \\ < > & ~ /",

@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "Ruta URL para o logotipo da barra de navegación.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "Captura metadatos personalizados para enriquecer os teus activos de datos estendendo os atributos.",
+    "custom-property-definition-unavailable": "Non se puido cargar «{{field}}», polo que non se pode cubrir. Actualiza a páxina e téntao de novo.",
     "custom-property-empty-description": "Os administradores poden crear propiedades personalizadas para {{entity}} para capturar detalles específicos da súa organización.",
     "custom-property-is-set-to-message": "{{fieldName}} está configurado para",
     "custom-property-name-validation": "O nome debe comezar por letra ou número. Caracteres inválidos: \" * : ^ $ \\ < > & ~ /",

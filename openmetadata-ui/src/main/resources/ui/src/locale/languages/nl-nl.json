@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "URL-pad voor het navigatiebalk-logo.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "Leg aangepaste metadata vast om uw data-assets te verrijken door het uitbreiden van de attributen.",
+    "custom-property-definition-unavailable": "\"{{field}}\" kon niet worden geladen en kan daarom niet worden ingevuld. Vernieuw de pagina en probeer het opnieuw.",
     "custom-property-empty-description": "Beheerders kunnen aangepaste eigenschappen voor {{entity}} maken om details vast te leggen die specifiek zijn voor uw organisatie.",
     "custom-property-is-set-to-message": "{{fieldName}} is ingesteld op",
     "custom-property-name-validation": "De naam moet beginnen met een letter of cijfer. Ongeldige tekens: \" * : ^ $ \\ < > & ~ /",

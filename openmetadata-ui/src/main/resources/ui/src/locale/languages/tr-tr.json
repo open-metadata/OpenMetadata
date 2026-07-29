@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "Gezinme çubuğu logosu için URL yolu.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "Nitelikleri genişleterek veri varlıklarınızı zenginleştirmek için özel metadata yakalayın.",
+    "custom-property-definition-unavailable": "\"{{field}}\" yüklenemedi, bu nedenle doldurulamıyor. Sayfayı yenileyip tekrar deneyin.",
     "custom-property-empty-description": "Yöneticiler, kuruluşunuza özgü ayrıntıları yakalamak için {{entity}} için özel özellikler oluşturabilir.",
     "custom-property-is-set-to-message": "{{fieldName}} şuna ayarlandı:",
     "custom-property-name-validation": "İsim bir harf veya sayı ile başlamalıdır. Geçersiz karakterler: \" * : ^ $ \\ < > & ~ /",

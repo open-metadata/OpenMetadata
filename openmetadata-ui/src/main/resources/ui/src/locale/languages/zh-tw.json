@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "導覽列標誌的 URL 路徑。",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "透過擴充屬性來擷取自訂元資料，以豐富您的資料資產。",
+    "custom-property-definition-unavailable": "無法載入「{{field}}」，因此無法填寫。請重新整理頁面後再試一次。",
     "custom-property-empty-description": "管理員可以為 {{entity}} 建立自訂屬性，以擷取特定於您組織的詳細資訊。",
     "custom-property-is-set-to-message": "{{fieldName}} 已設定為",
     "custom-property-name-validation": "名稱必須以字母或數字開頭。無效字元：\" * : ^ $ \\ < > & ~ /",

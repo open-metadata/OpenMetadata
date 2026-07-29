@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "נתיב URL עבור לוגו סרגל הניווט.",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": " לכוד מטא-דאטה מותאמים אישית להעשרת נכסי הנתונים שלך על ידי הרחבת התכונות.",
+    "custom-property-definition-unavailable": "לא ניתן היה לטעון את \"{{field}}\", ולכן לא ניתן למלא אותו. רענן את הדף ונסה שוב.",
     "custom-property-empty-description": "מנהלים יכולים ליצור מאפיינים מותאמים אישית עבור {{entity}} כדי לתעד פרטים הספציפיים לארגון שלך.",
     "custom-property-is-set-to-message": "{{fieldName}} מוגדר ל",
     "custom-property-name-validation": "השם חייב להתחיל באות או במספר. תווים לא חוקיים: \" * : ^ $ \\ < > & ~ /",

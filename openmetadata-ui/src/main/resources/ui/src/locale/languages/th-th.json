@@ -3178,6 +3178,7 @@
     "custom-monogram-url-path-message": "เส้นทาง URL สำหรับโลโก้ในแถบด้านบน",
     "custom-properties-defined-by-admins": "Custom properties for {{entity}} are defined by admins in Settings → Custom Properties.",
     "custom-properties-description": "จับข้อมูลเมตาที่กำหนดเองเพื่อเสริมสินทรัพย์ข้อมูลของคุณโดยการขยายคุณสมบัติ",
+    "custom-property-definition-unavailable": "ไม่สามารถโหลด \"{{field}}\" ได้ จึงไม่สามารถกรอกข้อมูลได้ โปรดรีเฟรชหน้าและลองใหม่อีกครั้ง",
     "custom-property-empty-description": "ผู้ดูแลระบบสามารถสร้างคุณสมบัติที่กำหนดเองสำหรับ {{entity}} เพื่อบันทึกรายละเอียดที่เฉพาะเจาะจงกับองค์กรของคุณ",
     "custom-property-is-set-to-message": "{{fieldName}} ถูกตั้งค่าเป็น",
     "custom-property-name-validation": "ชื่อต้องขึ้นต้นด้วยตัวอักษรหรือตัวเลข ตัวอักษรที่ไม่ถูกต้อง: \" * : ^ $ \\ < > & ~ /",
