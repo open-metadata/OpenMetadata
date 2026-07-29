@@ -54,7 +54,16 @@ LANE_WORKERS = {
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
-COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
+# Chromium lane budget. Was 19 min; bumped to align with TARGET_MS after the
+# chromium suite grew to ~1053 min of test content on 2026-07-28 (~90% of the
+# 24-shard × 3-worker × EFFICIENCY ceiling). The heaviest LPT-balanced shard
+# was predicted at 19.1 min — 0.1 min over budget — and the planner refused
+# to build a plan, blocking the merge queue. Matching TARGET_MS gives enough
+# headroom for that plan without changing runtime; the predicted shard time
+# is unchanged, we're just widening the acceptance threshold. Longer-term,
+# split the top individual tests (two 10-min TestCaseImportExportE2eFlow
+# cases lead the list) instead of raising this ceiling again.
+COMMON_SHARD_BUDGET_MS = 20 * 60 * 1000
 EFFICIENCY = 0.85
 COMMON_MAX_SHARDS = 24
 FALLBACK_TEST_MS = 20_000
