@@ -915,16 +915,58 @@ export const verifyDomainPropagation = async (
   childFqn: string,
   childSearchTerm: string
 ) => {
-  const entityCard = page.getByTestId(`table-data-card_${childFqn}`);
-  const domainLink = entityCard
-    .getByTestId('domain-link')
-    .filter({ hasText: domain.displayName, visible: true })
-    .first();
+  // Domain propagation from the parent service to its children — and the
+  // subsequent search reindex — is eventually consistent. Gate on the search
+  // API actually reflecting the propagated domain before touching the UI, so
+  // the test converges on real backend state instead of racing a fixed UI-poll
+  // window under CI load.
+  const { apiContext, afterAction } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            childSearchTerm
+          )}&index=all&from=0&size=10`
+        );
 
-  await waitForSearchResult(page, childSearchTerm, domainLink, 90_000);
-  await expect(entityCard).toBeVisible();
-  await expect(domainLink).toBeVisible();
-  await expect(domainLink).toContainText(domain.displayName);
+        const hits: {
+          _source?: {
+            name?: string;
+            fullyQualifiedName?: string;
+            domains?: { name?: string; fullyQualifiedName?: string }[];
+          };
+        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        const source = hits.find(
+          (hit) => hit._source?.fullyQualifiedName === childFqn
+        )?._source;
+
+        return Boolean(
+          source?.domains?.some(
+            (entityDomain) =>
+              entityDomain.fullyQualifiedName === domain.fullyQualifiedName ||
+              entityDomain.name === domain.name
+          )
+        );
+      },
+      { timeout: 90_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+  await afterAction();
+
+  // The propagated domain is now indexed. Run a single explore search and
+  // web-first wait for the entity card, then assert it carries the domain by
+  // display name. (The old poll reloaded the page between attempts, dropping
+  // the search term so it could never re-find the card; and the explore card
+  // renders domains via DomainLabel, which exposes no `domain-link` testid.)
+  const searchBox = page.getByTestId('searchBox');
+  await searchBox.fill(childSearchTerm);
+  await searchBox.press('Enter');
+  await waitForAllLoadersToDisappear(page);
+
+  const entityCard = page.getByTestId(`table-data-card_${childFqn}`);
+  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {

@@ -507,6 +507,16 @@ def test_search_rbac_uses_an_isolated_single_worker_lane():
     assert planner.lane_bounds("search-rbac", "full") == (1, 8)
 
 
+def test_import_export_runs_in_its_own_lane_with_two_workers():
+    planner = load_script("build_playwright_shards")
+
+    assert "ImportExport" in planner.FULL_PROJECTS
+    assert planner.PROJECT_LANES["ImportExport"] == "import-export"
+    assert planner.LANE_WORKERS["import-export"] == 2
+    assert planner.lane_bounds("import-export", "full") == (1, 8)
+    assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
 def test_source_glob_matching_is_explicit():
     selector = load_script("select_playwright_tests")
 

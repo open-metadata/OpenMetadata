@@ -894,7 +894,7 @@ public class SearchResource {
             .withPostFilter(postFilter)
             .withDomains(domains);
 
-    return searchRepository.getEntityTypeCounts(request, index);
+    return searchRepository.getEntityTypeCounts(request, index, subjectContext);
   }
 
   @POST
