@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -61,6 +62,18 @@ class SettingsCacheMcpConfigurationTest {
 
       assertEquals("https://openmetadata.example.com", mcpConfig.getBaseUrl());
       assertEquals(Boolean.FALSE, mcpConfig.getEnabled());
+    }
+  }
+
+  @Test
+  void testSeedingIsSkippedWhenTheSettingCannotBeRead() {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      SystemRepository mockSystemRepo = mock(SystemRepository.class);
+      when(mockSystemRepo.settingExists(KEY)).thenThrow(new IllegalStateException("db is down"));
+      entityMock.when(Entity::getSystemRepository).thenReturn(mockSystemRepo);
+
+      // Seeding upserts, so an unreadable row must never be treated as a missing one
+      assertFalse(SettingsCache.isMcpConfigurationAbsent());
     }
   }
 

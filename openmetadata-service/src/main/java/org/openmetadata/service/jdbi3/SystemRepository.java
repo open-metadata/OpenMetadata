@@ -201,6 +201,15 @@ public class SystemRepository {
     return null;
   }
 
+  /**
+   * Unlike {@link #getConfigWithKey(String)}, a read failure is reported as an exception rather
+   * than as an absent setting. Callers that seed defaults must use this, because seeding writes an
+   * upsert: treating an unreadable row as a missing one would overwrite a stored configuration.
+   */
+  public boolean settingExists(String key) {
+    return dao.getConfigWithKey(key) != null;
+  }
+
   private Settings prepareFetchedSettings(Settings fetchedSettings) {
     if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();

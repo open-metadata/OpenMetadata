@@ -288,9 +288,7 @@ public class SettingsCache {
     }
 
     // Initialize MCP Configuration
-    Settings storedMcpConfig =
-        Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
-    if (storedMcpConfig == null) {
+    if (isMcpConfigurationAbsent()) {
       // YAML only overrides the defaults, so the setting is seeded even when it is absent there
       MCPConfiguration mcpConfig = applicationConfig.getMcpConfiguration();
       if (mcpConfig == null) {
@@ -563,6 +561,21 @@ public class SettingsCache {
 
   private static MCPConfiguration getDefaultMcpConfiguration() {
     return new MCPConfiguration();
+  }
+
+  /**
+   * Seeding upserts, so it must run only on a row that is known to be missing. A read failure is
+   * reported as "present" to leave a stored configuration untouched; the loader serves the defaults
+   * for that startup instead.
+   */
+  static boolean isMcpConfigurationAbsent() {
+    boolean absent = false;
+    try {
+      absent = !Entity.getSystemRepository().settingExists(MCP_CONFIGURATION.toString());
+    } catch (Exception ex) {
+      LOG.error("Could not read setting {}, skipping default seeding", MCP_CONFIGURATION, ex);
+    }
+    return absent;
   }
 
   private static SmtpSettings getDefaultSmtpSettings() {
