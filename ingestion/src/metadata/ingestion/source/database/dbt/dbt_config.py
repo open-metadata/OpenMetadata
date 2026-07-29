@@ -671,57 +671,92 @@ def _(config: DbtGcsConfig):
         raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")  # noqa: B904
 
 
+def _get_azure_client(config: DbtAzureConfig):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import AzureError, ClientAuthenticationError  # noqa: PLC0415
+
+    try:
+        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+    except ClientAuthenticationError as auth_exc:
+        logger.error(
+            f"Failed to authenticate with Azure: {str(auth_exc)}. "  # noqa: RUF010
+            "Please check your Azure credentials and permissions."
+        )
+        raise DBTConfigException(
+            "Azure authentication failed. Please verify your credentials and permissions."
+        ) from auth_exc
+    except AzureError as azure_exc:
+        logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010
+        raise DBTConfigException(
+            "Failed to initialize Azure client. Please check your Azure configuration."
+        ) from azure_exc
+    return client
+
+
+def _list_azure_containers(client):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import ClientAuthenticationError, HttpResponseError  # noqa: PLC0415
+
+    try:
+        container_dicts = list(client.list_containers())
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException("Access denied when listing Azure containers. Please check your permissions.") from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                "Access denied when listing Azure containers. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
+    return [client.get_container_client(container["name"]) for container in container_dicts]
+
+
+def _get_azure_container_client(client, bucket_name: str):
+    # pylint: disable=import-outside-toplevel
+    from azure.core.exceptions import (  # noqa: PLC0415
+        ClientAuthenticationError,
+        HttpResponseError,
+        ResourceNotFoundError,
+    )
+
+    try:
+        container_client = client.get_container_client(bucket_name)
+        # Verify container exists by attempting to get properties
+        container_client.get_container_properties()
+    except ResourceNotFoundError as exc:
+        raise DBTConfigException(
+            f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+        ) from exc
+    except ClientAuthenticationError as exc:
+        raise DBTConfigException(
+            f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+        ) from exc
+    except HttpResponseError as exc:
+        if exc.status_code == 404:
+            raise DBTConfigException(
+                f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
+            ) from exc
+        if exc.status_code == 403:
+            raise DBTConfigException(
+                f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
+    return container_client
+
+
 @get_dbt_details.register
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        # pylint: disable=import-outside-toplevel
-        from azure.core.exceptions import AzureError, ClientAuthenticationError
-
-        try:
-            client = AzureClient(config.dbtSecurityConfig).create_blob_client()
-        except ClientAuthenticationError as auth_exc:
-            logger.error(
-                f"Failed to authenticate with Azure: {str(auth_exc)}. "  # noqa: RUF010
-                "Please check your Azure credentials and permissions."
-            )
-            raise DBTConfigException(
-                "Azure authentication failed. Please verify your credentials and permissions."
-            ) from auth_exc
-        except AzureError as azure_exc:
-            logger.error(f"Failed to create Azure client: {str(azure_exc)}")  # noqa: RUF010
-            raise DBTConfigException(
-                "Failed to initialize Azure client. Please check your Azure configuration."
-            ) from azure_exc
+        client = _get_azure_client(config)
 
         if not bucket_name:
-            try:
-                container_dicts = list(client.list_containers())
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing Azure containers. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list Azure containers: {exc}") from exc
-            containers = [client.get_container_client(container["name"]) for container in container_dicts]
+            containers = _list_azure_containers(client)
         else:
-            try:
-                container_client = client.get_container_client(bucket_name)
-                # Verify container exists by attempting to get properties
-                container_client.get_container_properties()
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "not found" in error_msg or "does not exist" in error_msg:
-                    raise DBTConfigException(
-                        f"Azure container '{bucket_name}' not found. Please verify the container name is correct."
-                    ) from exc
-                if "authorization" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to Azure container '{bucket_name}'. Please check your permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to access Azure container '{bucket_name}': {exc}") from exc
-            containers = [container_client]
+            containers = [_get_azure_container_client(client, bucket_name)]
 
         for container_client in containers:
             container_name = container_client.container_name

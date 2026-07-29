@@ -20,6 +20,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError, NoCredentialsError
 
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
+    DbtAzureConfig,
+)
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
 )
@@ -167,5 +170,64 @@ class TestS3ErrorClassification:
 
         with pytest.raises(DBTConfigException) as exc_info:
             list(get_dbt_details(_s3_config()))
+
+        assert "permission" in str(exc_info.value).lower()
+
+
+def _azure_config():
+    config = MagicMock()
+    # singledispatch dispatches on args[0].__class__, so this is what routes the mock to the
+    # DbtAzureConfig handler; spec= cannot be used because pydantic v2 does not expose model
+    # field names via dir() on the class, which would block attribute mocking below.
+    config.__class__ = DbtAzureConfig
+    config.dbtPrefixConfig.dbtBucketName = "my-container"
+    config.dbtPrefixConfig.dbtObjectPrefix = "dbt/"
+    return config
+
+
+class TestAzureErrorClassification:
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AzureClient")
+    def test_missing_container_reports_container_name(self, azure_client):
+        from azure.core.exceptions import ResourceNotFoundError
+
+        blob_client = azure_client.return_value.create_blob_client.return_value
+        blob_client.get_container_client.return_value.get_container_properties.side_effect = ResourceNotFoundError(
+            "container not found"
+        )
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_azure_config()))
+
+        assert "my-container" in str(exc_info.value)
+        assert "not found" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AzureClient")
+    def test_auth_error_reports_permissions(self, azure_client):
+        from azure.core.exceptions import ClientAuthenticationError
+
+        blob_client = azure_client.return_value.create_blob_client.return_value
+        blob_client.get_container_client.return_value.get_container_properties.side_effect = ClientAuthenticationError(
+            "forbidden"
+        )
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_azure_config()))
+
+        assert "permission" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AzureClient")
+    def test_disabled_account_http_error_reports_permissions(self, azure_client):
+        """A 403 HttpResponseError whose message never says 'forbidden' or 'authorization' —
+        the substring matcher this replaced fell through to the generic 'Failed to access
+        Azure container' message for this case instead of the permissions message."""
+        from azure.core.exceptions import HttpResponseError
+
+        exc = HttpResponseError("The specified account is disabled.")
+        exc.status_code = 403
+        blob_client = azure_client.return_value.create_blob_client.return_value
+        blob_client.get_container_client.return_value.get_container_properties.side_effect = exc
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_azure_config()))
 
         assert "permission" in str(exc_info.value).lower()
