@@ -15,7 +15,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TabItem } from './DraggableTabs';
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   getTabDisplayName: jest.fn().mockReturnValue('Test Tab'),
 }));
 

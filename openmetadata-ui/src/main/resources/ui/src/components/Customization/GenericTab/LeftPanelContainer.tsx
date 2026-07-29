@@ -17,7 +17,7 @@ import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 import './generic-tab.less';
