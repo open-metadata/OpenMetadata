@@ -193,7 +193,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Domain/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/DataProduct/**"
       ],
-      "projects": ["chromium", "Basic", "DomainIsolation"],
+      "projects": ["chromium", "Basic", "DomainIsolation", "Reindex"],
       "specs": [
         "playwright/e2e/**/*Domain*.spec.ts",
         "playwright/e2e/**/*DataProduct*.spec.ts",
@@ -305,6 +305,40 @@
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts"
       ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/WorkflowDefinitions/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/workflowAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/workflowAPI.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/workflowDefinitionsAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useWorkflow*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Workflow*",
+        "openmetadata-ui/src/main/resources/ui/src/constants/WorkflowBuilder.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/generated/governance/**",
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/governance/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/governance/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/**",
+        "openmetadata-spec/src/main/resources/json/schema/governance/workflows/**",
+        "openmetadata-spec/src/main/resources/json/schema/api/governance/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/Workflows/**/*.spec.ts"]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
+        "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/OntologyExplorer*.spec.ts"]
     }
   ]
 }

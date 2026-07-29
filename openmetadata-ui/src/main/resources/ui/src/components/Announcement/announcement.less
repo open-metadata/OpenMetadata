@@ -13,16 +13,16 @@
 @import (reference) '../../styles/variables.less';
 
 .announcement-thread-body {
-  margin-top: 16px;
+  margin-top: var(--om-space-16);
 
   .text-announcement {
     color: @announcement-border;
   }
 
   .ant-card.announcement-thread-card {
-    margin-top: 20px;
-    padding-top: 8px;
-    border-radius: 8px;
+    margin-top: var(--om-space-20);
+    padding-top: var(--om-space-8);
+    border-radius: var(--om-radius-lg);
     border: 1px solid @announcement-border;
     background: @announcement-background;
 
@@ -38,21 +38,21 @@
         width: 1px;
         background: @announcement-border-light;
         height: calc(100% - 10px);
-        z-index: 1;
+        z-index: var(--om-z-1);
       }
 
       .assignee-item {
         margin: 0;
-        z-index: 10;
+        z-index: var(--om-z-10);
       }
 
       .ant-avatar-group {
-        z-index: 10;
+        z-index: var(--om-z-10);
       }
     }
 
     .arrow-icon {
-      font-size: 10px;
+      font-size: var(--om-font-size-10);
     }
 
     .rotate-180 {
@@ -62,7 +62,7 @@
 }
 
 .feed-line {
-  margin-left: 8px;
+  margin-left: var(--om-space-8);
   background: @announcement-border-light;
   width: 1px;
   height: calc(100% - 10px);
