@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -57,6 +57,20 @@ const OMFieldSelect: FC<FieldProps> = ({
     setInputValue(selectedLabel);
   }
 
+  // ComboBox now uses controlled `items` (not defaultItems) so React Aria no
+  // longer applies a built-in contains-filter. Filter client-side so the user
+  // still sees only items that match their typed text.
+  const filteredItems = useMemo(() => {
+    if (!inputValue || inputValue === selectedLabel) {
+      return selectItems;
+    }
+    const lower = inputValue.toLowerCase();
+
+    return selectItems.filter((item) =>
+      item.label.toLowerCase().includes(lower)
+    );
+  }, [selectItems, inputValue, selectedLabel]);
+
   return (
     <Select.ComboBox
       // Keep the popup open on transiently-empty filter results — React Aria
@@ -64,7 +78,7 @@ const OMFieldSelect: FC<FieldProps> = ({
       allowsEmptyCollection
       inputValue={inputValue}
       isDisabled={readonly}
-      items={selectItems}
+      items={filteredItems}
       placeholder={placeholder ?? 'Select field'}
       selectedKey={selectedKey ?? undefined}
       shortcut={false}

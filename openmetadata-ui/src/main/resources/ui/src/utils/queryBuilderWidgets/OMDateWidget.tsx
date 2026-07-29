@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -19,9 +19,9 @@ import type { FC } from 'react';
 // builder's string-based date values. Native <input> is used instead.
 const classNameValue =
   'tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary ' +
-  'tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset tw:outline-hidden ' +
-  'tw:transition tw:duration-100 focus:tw:ring-2 focus:tw:ring-brand ' +
-  'disabled:tw:cursor-not-allowed disabled:tw:bg-disabled-subtle disabled:tw:text-disabled';
+  'tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary ' +
+  'tw:transition-[outline-color,outline-width] tw:duration-100 tw:focus:outline-2 tw:focus:-outline-offset-1 tw:focus:outline-brand ' +
+  'tw:disabled:cursor-not-allowed tw:disabled:bg-disabled-subtle tw:disabled:text-disabled';
 
 const NATIVE_FORMATS = {
   time: 'HH:mm:ss',

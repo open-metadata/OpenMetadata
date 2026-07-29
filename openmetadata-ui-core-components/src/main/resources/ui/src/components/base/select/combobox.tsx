@@ -227,12 +227,16 @@ export const ComboBox = ({
 
   return (
     <SelectContext.Provider value={selectContextValue}>
-      {/* defaultItems must live on the ComboBox (not the inner ListBox) so
-          React Aria owns the collection and applies its contains-filter to
-          the typed input — with items only on the ListBox, react-aria ≥1.17
-          loses the options' textValue and any typed filter matches nothing,
-          which closes the popup and reverts the input. */}
-      <AriaComboBox defaultItems={items} menuTrigger="focus" {...otherProps}>
+      {/* items must live on the ComboBox (not the inner ListBox) so React
+          Aria owns the collection. Using controlled `items` (not defaultItems)
+          ensures that callers who manage their own item list — e.g. async
+          loaders that call setItems() after a fetch — see updates reflected in
+          the dropdown.  The previous `defaultItems` form only initialised the
+          internal collection once and silently ignored subsequent prop changes
+          (standard uncontrolled-state behaviour). With `items` being
+          controlled, callers that want client-side filtering must do it
+          themselves before passing items in. */}
+      <AriaComboBox items={items} menuTrigger="focus" {...otherProps}>
         {(state) => (
           <div className="tw:flex tw:flex-col tw:gap-1.5">
             {otherProps.label && (
