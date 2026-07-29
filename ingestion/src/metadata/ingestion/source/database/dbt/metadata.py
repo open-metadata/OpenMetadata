@@ -104,6 +104,8 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
     DbtServiceSource,
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
     check_ephemeral_node,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
@@ -656,8 +658,10 @@ class DbtSource(DbtServiceSource):
         """
         upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
         self.context.get().dbt_tests[key] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node}
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [fqn for _, fqn in upstream_nodes]
-        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = dict(upstream_nodes)
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM.value] = [node.fqn for node in upstream_nodes]
+        self.context.get().dbt_tests[key][DbtCommonEnum.UPSTREAM_BY_NAME.value] = build_upstream_name_map(
+            upstream_nodes
+        )
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = self._get_latest_result(dbt_objects, key)
 
     def add_dbt_exposure(self, key: str, manifest_node, manifest_entities):
@@ -691,10 +695,10 @@ class DbtSource(DbtServiceSource):
             upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
             self.context.get().dbt_tests[key + "_freshness"] = {DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new}
             self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM.value] = [
-                fqn for _, fqn in upstream_nodes
+                node.fqn for node in upstream_nodes
             ]
-            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = dict(
-                upstream_nodes
+            self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.UPSTREAM_BY_NAME.value] = (
+                build_upstream_name_map(upstream_nodes)
             )
             self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
 
@@ -940,14 +944,14 @@ class DbtSource(DbtServiceSource):
         """
         Method to fetch the upstream nodes
         """
-        return [fqn for _, fqn in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
+        return [node.fqn for node in self.parse_upstream_nodes_with_names(manifest_entities, dbt_node)]
 
     def parse_upstream_nodes_with_names(self, manifest_entities, dbt_node):
         """
-        Method to fetch the upstream nodes as (dbt node name, table FQN) pairs.
+        Method to fetch the upstream nodes as UpstreamNode entries.
 
-        The dbt node name is kept alongside the FQN because the FQN is built from the
-        model alias, while dbt ``ref()`` expressions carry the model name.
+        The dbt names are kept alongside the FQN because the FQN is built from the model
+        alias, while dbt ``ref()`` expressions carry the model name.
         """
         upstream_nodes = []
         if (
@@ -998,7 +1002,7 @@ class DbtSource(DbtServiceSource):
 
                         # check if the parent table exists in OM before adding it to the upstream list
                         if self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append((parent_node.name, parent_fqn))
+                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")

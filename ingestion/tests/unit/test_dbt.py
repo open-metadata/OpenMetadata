@@ -37,6 +37,8 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.dbt_utils import (
+    build_upstream_name_map,
+    build_upstream_node,
     convert_java_to_python_format,
     find_domain_by_name,
     find_entity_by_type_and_fqn,
@@ -59,7 +61,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_time_interval,
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
-from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
+from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.tag_utils import get_tag_labels
 
@@ -714,6 +716,71 @@ class DbtUnitTest(TestCase):
             "results": "",
         }
         self.assertEqual("svc.db.sch.ORDERS", get_dbt_test_primary_table_fqn(dbt_test))
+
+    def test_build_upstream_name_map_marks_duplicate_names_ambiguous(self):
+        """A model and a source table can share a dbt name; the bare name must not
+        silently resolve to whichever happened to be indexed last."""
+        name_map = build_upstream_name_map(
+            [
+                UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders"),
+                UpstreamNode(name="orders", qualified_name="raw.orders", fqn="svc.db.raw.orders"),
+            ]
+        )
+        self.assertIsNone(name_map["orders"])
+        self.assertEqual("svc.db.sch.orders", name_map["jaffle_shop.orders"])
+        self.assertEqual("svc.db.raw.orders", name_map["raw.orders"])
+
+    def test_build_upstream_name_map_keeps_unambiguous_names(self):
+        name_map = build_upstream_name_map(
+            [
+                UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders"),
+                UpstreamNode(name="customers", qualified_name="jaffle_shop.customers", fqn="svc.db.sch.customers"),
+            ]
+        )
+        self.assertEqual("svc.db.sch.orders", name_map["orders"])
+        self.assertEqual("svc.db.sch.customers", name_map["customers"])
+
+    def test_dbt_relationships_test_resolves_via_source_namespace(self):
+        """When a model and a source table share a name, the source() namespace must
+        disambiguate rather than the lookup collapsing to one of them."""
+        manifest_node = SimpleNamespace(
+            name="relationships_orders_customer_id",
+            column_name="customer_id",
+            test_metadata=SimpleNamespace(
+                name="relationships",
+                kwargs={
+                    "to": "source('raw', 'orders')",
+                    "field": "id",
+                    "column_name": "customer_id",
+                    "model": "{{ get_where_subquery(ref('jaffle_shop', 'orders')) }}",
+                },
+            ),
+        )
+        source_node = UpstreamNode(name="orders", qualified_name="raw.orders", fqn="svc.db.raw.orders")
+        model_node = UpstreamNode(name="orders", qualified_name="jaffle_shop.orders", fqn="svc.db.sch.orders")
+
+        # Asserted for both orderings so the result cannot depend on which entry the
+        # name map happened to index last
+        for upstream_nodes in ([source_node, model_node], [model_node, source_node]):
+            dbt_test = {
+                "manifest_node": manifest_node,
+                "upstream": [node.fqn for node in upstream_nodes],
+                "upstream_by_name": build_upstream_name_map(upstream_nodes),
+                "results": "",
+            }
+            self.assertEqual("svc.db.sch.orders", get_dbt_test_primary_table_fqn(dbt_test))
+
+    def test_build_upstream_node_namespaces_source_and_model(self):
+        model_node = SimpleNamespace(name="orders", package_name="jaffle_shop")
+        self.assertEqual(
+            "jaffle_shop.orders",
+            build_upstream_node(model_node, "svc.db.sch.orders").qualified_name,
+        )
+        source_node = SimpleNamespace(name="orders", package_name="jaffle_shop", source_name="raw")
+        self.assertEqual(
+            "raw.orders",
+            build_upstream_node(source_node, "svc.db.raw.orders").qualified_name,
+        )
 
     def test_get_manifest_column_name(self):
         self.assertEqual(

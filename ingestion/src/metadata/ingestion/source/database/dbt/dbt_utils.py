@@ -31,7 +31,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     DbtCommonEnum,
     RawQueriesEnum,
 )
-from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation
+from metadata.ingestion.source.database.dbt.models import SnapshotNodeLocation, UpstreamNode
 from metadata.utils import entity_link
 from metadata.utils.logger import ingestion_logger
 
@@ -718,10 +718,15 @@ def get_dbt_test_description(manifest_node) -> Optional[str]:  # noqa: UP045
     return description
 
 
-# Matches a dbt ``ref()``/``source()`` expression, capturing the last quoted argument,
-# which is the model or table name. Handles ref('t'), ref("pkg", "t"), source('s', 't')
-# and the get_where_subquery(...) wrapper dbt adds to test_metadata.kwargs['model'].
-_DBT_REF_PATTERN = re.compile(r"\b(?:ref|source)\(\s*['\"](?:[^'\"]+['\"]\s*,\s*['\"])*([^'\"]+)['\"]\s*\)")
+# Matches a dbt ``ref()``/``source()`` expression, capturing the optional namespace
+# (package for ref, source name for source) and the model/table name. Handles ref('t'),
+# ref("pkg", "t"), source('s', 't') and the get_where_subquery(...) wrapper dbt adds to
+# test_metadata.kwargs['model'].
+_DBT_REF_PATTERN = re.compile(r"\b(?:ref|source)\(\s*['\"]([^'\"]+)['\"]\s*(?:,\s*['\"]([^'\"]+)['\"]\s*)?\)")
+
+# Marks a bare dbt name claimed by more than one upstream table. Looking such a name up
+# must fall through to the other resolution strategies rather than pick an arbitrary one.
+_AMBIGUOUS_NAME = None
 
 
 def _get_test_kwargs(manifest_node) -> Dict[str, Any]:  # noqa: UP006
@@ -730,17 +735,58 @@ def _get_test_kwargs(manifest_node) -> Dict[str, Any]:  # noqa: UP006
     return kwargs if isinstance(kwargs, dict) else {}
 
 
-def _extract_dbt_model_name(reference: Any) -> Optional[str]:  # noqa: UP045
-    """Return the model/source name referenced by a dbt ``ref()``/``source()`` expression."""
+def _extract_dbt_reference(reference: Any) -> Optional[Tuple[Optional[str], str]]:  # noqa: UP045, UP006
+    """Return ``(namespace, name)`` for a dbt ``ref()``/``source()`` expression.
+
+    ``ref('model')`` yields ``(None, 'model')`` while the two-argument ``ref('pkg', 'model')``
+    and ``source('source_name', 'table')`` forms yield their namespace, which disambiguates
+    names reused across packages or between a model and a source table.
+    """
     match = _DBT_REF_PATTERN.search(str(reference)) if reference else None
-    return match.group(1) if match else None
+    resolved = None
+    if match:
+        first, second = match.group(1), match.group(2)
+        resolved = (first, second) if second else (None, first)
+    return resolved
+
+
+def build_upstream_node(parent_node, parent_fqn: str) -> UpstreamNode:
+    """Pair a dbt manifest node with its table FQN, recording the namespace that a
+    ``ref('pkg', 'model')`` or ``source('source_name', 'table')`` reference would use."""
+    namespace = getattr(parent_node, "source_name", None) or getattr(parent_node, "package_name", None)
+    return UpstreamNode(
+        name=parent_node.name,
+        qualified_name=f"{namespace}.{parent_node.name}" if namespace else None,
+        fqn=parent_fqn,
+    )
+
+
+def build_upstream_name_map(upstream_nodes) -> Dict[str, str]:  # noqa: UP006
+    """Index upstream nodes by dbt name so a ``ref()``/``source()`` can be resolved exactly.
+
+    Both the qualified (``namespace.name``) and bare names are indexed. A bare name claimed
+    by two different tables is marked ambiguous instead of silently keeping the last one.
+    """
+    name_map = {}
+    for node in upstream_nodes:
+        if node.qualified_name:
+            name_map[node.qualified_name] = node.fqn
+        if node.name in name_map and name_map[node.name] != node.fqn:
+            name_map[node.name] = _AMBIGUOUS_NAME
+        else:
+            name_map.setdefault(node.name, node.fqn)
+    return name_map
 
 
 def _match_fqn_by_table_name(upstream_list, table_name: str) -> Optional[str]:  # noqa: UP045
     """Match on the FQN's table segment, case-insensitively so that warehouses which
-    upper-case identifiers (Snowflake) still line up with lower-case dbt model names."""
+    upper-case identifiers (Snowflake) still line up with lower-case dbt model names.
+
+    Returns nothing when several upstreams match, since the choice would be arbitrary.
+    """
     suffix = f".{table_name}".lower()
-    return next((fqn for fqn in upstream_list if fqn.lower().endswith(suffix)), None)
+    matches = [fqn for fqn in upstream_list if fqn.lower().endswith(suffix)]
+    return matches[0] if len(matches) == 1 else None
 
 
 def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optional[str]:  # noqa: UP045
@@ -750,10 +796,13 @@ def _resolve_upstream_fqn(upstream_list, upstream_by_name, reference) -> Optiona
     upstream FQN is built from the model *alias*; the two diverge whenever a project
     sets ``alias:``, and a suffix match alone then silently fails.
     """
-    model_name = _extract_dbt_model_name(reference)
+    dbt_reference = _extract_dbt_reference(reference)
     resolved = None
-    if model_name:
-        resolved = upstream_by_name.get(model_name) or _match_fqn_by_table_name(upstream_list, model_name)
+    if dbt_reference:
+        namespace, name = dbt_reference
+        if namespace:
+            resolved = upstream_by_name.get(f"{namespace}.{name}")
+        resolved = resolved or upstream_by_name.get(name) or _match_fqn_by_table_name(upstream_list, name)
     return resolved
 
 
