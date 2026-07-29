@@ -168,7 +168,10 @@ const MyTaskWidget = ({
 
             {/* Widget Footer */}
             <WidgetFooter
-              moreButtonLink={`users/${currentUser?.name}/task`}
+              moreButtonLink={getUserPath(
+                currentUser?.name ?? '',
+                UserPageTabs.TASK
+              )}
               moreButtonText={t('label.view-more')}
               showMoreButton={showWidgetFooterMoreButton}
             />

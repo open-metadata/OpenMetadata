@@ -45,6 +45,7 @@ import {
   getChartPreviewByName,
 } from '../../../../rest/DataInsightAPI';
 import { generatePalette } from '../../../../styles/colorPallet';
+import { getDataInsightPathWithFqn } from '../../../../utils/DataInsightPureUtils';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -357,7 +358,7 @@ const TotalDataAssetsWidget = ({
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
         onSortChange={(key) => setSelectedSortBy(key)}
-        onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
+        onTitleClick={() => navigate(getDataInsightPathWithFqn())}
       />
     ),
     [

@@ -34,6 +34,13 @@ import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
 import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
 import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
 
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
 // Mock dependencies
 jest.mock('../../../../rest/DataInsightAPI', () => ({
   getChartPreviewByName: jest.fn(),
@@ -95,9 +102,12 @@ jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
         sortOptions,
         selectedSortBy,
         onSortChange,
+        onTitleClick,
       }) => (
         <div data-testid="widget-header">
-          <span>{title}</span>
+          <span data-testid="widget-title" onClick={onTitleClick}>
+            {title}
+          </span>
           {isEditView && (
             <button
               data-testid="remove-widget-button"
@@ -224,6 +234,20 @@ describe('TotalDataAssetsWidget', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getChartPreviewByName as jest.Mock).mockResolvedValue(mockChartData);
+  });
+
+  describe('Navigation', () => {
+    it('should navigate to the data assets tab on title click', async () => {
+      // The bare /data-insights route has no tab segment, which leaves the page
+      // dependent on an in-page redirect. Link straight to the real tab.
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      fireEvent.click(screen.getByTestId('widget-title'));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/data-insights/data-assets');
+    });
   });
 
   describe('Component Rendering', () => {

@@ -452,8 +452,14 @@ test('Total Data Assets Widget', async ({ page }) => {
       page,
       widgetKey,
       'Total Data Assets',
-      '/data-insights'
+      '/data-insights/data-assets'
     );
+
+    // The tab-less /data-insights is not a landable route — it only renders via
+    // an in-page redirect. Assert the tab is in the URL and that the page
+    // actually painted, so a widget pointing at the bare route (or a page stuck
+    // on its loader) fails here instead of passing a substring check.
+    await expect(page.getByTestId('data-insight-container')).toBeVisible();
   });
 
   await test.step('Test widget filters', async () => {
@@ -700,7 +706,7 @@ test('Data Products Widget', async ({ page }) => {
       page,
       widgetKey,
       'Data Products',
-      '/explore?tab=data_product'
+      '/dataProduct'
     );
   });
 
@@ -727,7 +733,7 @@ test('Data Products Widget', async ({ page }) => {
     await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await verifyWidgetFooterViewMore(page, {
       widgetKey,
-      link: '/explore',
+      link: '/dataProduct',
     });
   });
 

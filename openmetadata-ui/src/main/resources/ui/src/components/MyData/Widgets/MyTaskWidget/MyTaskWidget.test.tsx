@@ -13,7 +13,10 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { TaskEntityStatus, TaskEntityType } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider as mockUseActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
@@ -130,6 +133,26 @@ describe('MyTaskWidget', () => {
     renderMyTaskWidget();
 
     expect(screen.getByTestId('KnowledgePanel.MyTask')).toBeInTheDocument();
+  });
+
+  it('builds an absolute, encoded view more link for the task tab', () => {
+    // The link was hand-rolled as `users/${name}/task` — relative and unencoded.
+    (mockUseActivityFeedProvider as jest.Mock).mockReturnValue({
+      loading: false,
+      getTaskData: jest.fn(),
+      tasks: Array.from({ length: PAGE_SIZE_BASE + 1 }, (_, index) => ({
+        ...mockTasks[0],
+        id: `${index}`,
+        taskId: `TASK-${index}`,
+      })),
+    });
+
+    renderMyTaskWidget();
+
+    expect(screen.getByText('label.view-more').closest('a')).toHaveAttribute(
+      'href',
+      `/users/${mockUserData.name}/task`
+    );
   });
 
   it('calls getFeedData on mount with correct parameters', () => {
