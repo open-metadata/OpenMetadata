@@ -36,6 +36,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.common.utils.CommonUtil;
@@ -102,7 +103,13 @@ public class EntityCsvTest {
 
   @BeforeAll
   public static void setup() {
-    Entity.registerEntity(Table.class, Entity.TABLE, Mockito.mock(TableRepository.class));
+    TableRepository tableRepository = Mockito.mock(TableRepository.class);
+    // This registration is global and never torn down, so the stand-in must answer the indexing
+    // policy hooks the way the real repository does. A bare mock answers false, which would make
+    // Entity.isSearchIndexable report every table as non-indexable for the rest of the JVM.
+    Mockito.doReturn(true).when(tableRepository).isSearchIndexable(ArgumentMatchers.any());
+    Mockito.doReturn(true).when(tableRepository).isVectorEmbeddable(ArgumentMatchers.any());
+    Entity.registerEntity(Table.class, Entity.TABLE, tableRepository);
   }
 
   @Test

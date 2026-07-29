@@ -25,31 +25,31 @@
   max-width: 350px !important;
 
   .ant-popover-inner-content {
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: var(--om-radius-xl);
+    padding: var(--om-space-20);
   }
 
   .certification-card {
     .ant-card-head {
-      padding: 0px;
+      padding: 0;
       width: 100%;
       border: none;
     }
 
     .ant-card-body {
-      padding: 0px;
+      padding: 0;
 
       .ant-radio-group {
         width: 100%;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: var(--om-space-10);
 
         .ant-collapse-item {
           width: 100%;
           border: 1px solid @grey-200;
-          border-radius: 12px;
-          padding: 16px;
+          border-radius: var(--om-radius-xl);
+          padding: var(--om-space-16);
         }
       }
 
@@ -61,9 +61,9 @@
 
       .certification-card-item {
         position: relative;
-        padding: 16px 16px 16px 12px;
+        padding: var(--om-space-16) var(--om-space-16) var(--om-space-16) var(--om-space-12);
         border: 1px solid @grey-200;
-        border-radius: 12px;
+        border-radius: var(--om-radius-xl);
         display: flex;
         align-items: center;
       }
@@ -71,22 +71,22 @@
       .certification-card-content {
         display: flex;
         align-items: flex-start;
-        gap: 12px;
+        gap: var(--om-space-12);
 
         img {
-          margin-top: 4px;
+          margin-top: var(--om-space-4);
         }
       }
     }
 
     .ant-card-head-title {
-      padding: 0px;
+      padding: 0;
     }
   }
 
   .certification-icon {
     svg {
-      margin-top: 4px;
+      margin-top: var(--om-space-4);
     }
   }
 }
