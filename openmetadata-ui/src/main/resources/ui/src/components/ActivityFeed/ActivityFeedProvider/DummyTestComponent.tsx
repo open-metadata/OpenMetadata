@@ -250,19 +250,21 @@ export const DummySetActiveActivityComponent = ({
   );
 };
 
-export const DummyFeedFqnComponent = ({ fqn }: { fqn: string }) => {
+export const DummyFeedFqnComponent = ({
+  fqn,
+  after,
+  filter = FeedFilter.ALL,
+}: {
+  fqn: string;
+  after?: string;
+  filter?: FeedFilter;
+}) => {
   const { t } = useTranslation();
   const { getFeedData, entityThread, entityThreadFqn } =
     useActivityFeedProvider();
 
   const handleFetch = () => {
-    getFeedData(
-      FeedFilter.ALL,
-      undefined,
-      ThreadType.Conversation,
-      EntityType.TABLE,
-      fqn
-    );
+    getFeedData(filter, after, ThreadType.Conversation, EntityType.TABLE, fqn);
   };
 
   return (

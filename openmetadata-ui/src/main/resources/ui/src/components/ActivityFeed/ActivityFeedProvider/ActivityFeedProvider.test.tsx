@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../generated/type/reaction';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
@@ -642,6 +643,113 @@ describe('ActivityFeedProvider', () => {
       );
       expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
         'thread-from-second-entity'
+      );
+    });
+
+    it('ignores a superseded response for the same entity fetched with a different filter', async () => {
+      let resolvePreviousView: (value: {
+        data: { id: string }[];
+        paging: Record<string, never>;
+      }) => void = () => undefined;
+
+      (getAllFeeds as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolvePreviousView = resolve;
+            })
+        )
+        .mockResolvedValueOnce({
+          data: [{ id: 'thread-from-current-view' }],
+          paging: {},
+        });
+
+      const { rerender } = render(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent filter={FeedFilter.ALL} fqn="same.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      rerender(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent
+            filter={FeedFilter.MENTIONS}
+            fqn="same.entity"
+          />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
+          'thread-from-current-view'
+        )
+      );
+
+      await act(async () => {
+        resolvePreviousView({
+          data: [{ id: 'thread-from-previous-view' }],
+          paging: {},
+        });
+      });
+
+      expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
+        'thread-from-current-view'
+      );
+    });
+
+    it('does not append a stale page to a list that has since been replaced', async () => {
+      let resolvePendingPage: (value: {
+        data: { id: string }[];
+        paging: Record<string, never>;
+      }) => void = () => undefined;
+
+      (getAllFeeds as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolvePendingPage = resolve;
+            })
+        )
+        .mockResolvedValueOnce({
+          data: [{ id: 'thread-after-reset' }],
+          paging: {},
+        });
+
+      const { rerender } = render(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent after="cursor-1" fqn="same.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      rerender(
+        <ActivityFeedProvider>
+          <DummyFeedFqnComponent fqn="same.entity" />
+        </ActivityFeedProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('fetch-feed'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
+          'thread-after-reset'
+        )
+      );
+
+      await act(async () => {
+        resolvePendingPage({ data: [{ id: 'stale-page-thread' }], paging: {} });
+      });
+
+      expect(screen.getByTestId('entity-thread-ids')).toHaveTextContent(
+        'thread-after-reset'
+      );
+      expect(screen.getByTestId('entity-thread-ids')).not.toHaveTextContent(
+        'stale-page-thread'
       );
     });
 

@@ -105,11 +105,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
   const [entityThreadFqn, setEntityThreadFqn] = useState<string>();
-  // Entity/thread each in-flight request was made for. A response that arrives
-  // after the user has moved on is discarded rather than overwriting the current
-  // one, which otherwise happens whenever two requests overlap and the older
-  // resolves last.
-  const requestedFeedFqnRef = useRef<string | undefined>(undefined);
+  // Issuing a feed request supersedes every earlier one, whatever entity, filter
+  // or cursor it used. Only the newest may touch state: an older response would
+  // otherwise replace the current conversations, or append its page to a list
+  // that has since been reset, whenever two requests overlap and it resolves last.
+  const latestFeedRequestRef = useRef<number>(0);
   const requestedActivityThreadIdRef = useRef<string | undefined>(undefined);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   // For tasks - using Task type directly
@@ -355,9 +355,10 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       taskStatusGroup?: TaskStatusGroup,
       limit?: number
     ) => {
+      const requestId = ++latestFeedRequestRef.current;
+
       try {
         setLoading(true);
-        requestedFeedFqnRef.current = fqn;
         const feedFilterType = filterType ?? FeedFilter.ALL;
         let userId = undefined;
 
@@ -378,7 +379,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           userId,
           limit
         );
-        if (requestedFeedFqnRef.current === fqn) {
+        if (latestFeedRequestRef.current === requestId) {
           setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
           setEntityThreadFqn(fqn);
           setEntityPaging(paging);
@@ -386,7 +387,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       } catch (err) {
         // A request the user has already navigated away from must not report
         // anything either, or the new entity shows an error raised for the old.
-        if (requestedFeedFqnRef.current === fqn) {
+        if (latestFeedRequestRef.current === requestId) {
           showErrorToast(
             err as AxiosError,
             t('server.entity-fetch-error', {
@@ -395,7 +396,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           );
         }
       } finally {
-        if (requestedFeedFqnRef.current === fqn) {
+        if (latestFeedRequestRef.current === requestId) {
           setLoading(false);
         }
       }
