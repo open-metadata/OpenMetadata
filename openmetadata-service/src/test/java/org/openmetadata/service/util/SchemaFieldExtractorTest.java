@@ -77,6 +77,12 @@ class SchemaFieldExtractorTest {
   }
 
   @Test
+  void resolvesDuplicateEntityTypeToTheFirstSchemaPathInScanOrder() throws Throwable {
+    assertEquals(
+        "json/schema/entity/driftProbe/duplicateProbe.json", determineSchemaPath("duplicateProbe"));
+  }
+
+  @Test
   void fallsBackToDataSubdirectoryForUndiscoveredEntityType() throws Throwable {
     assertEquals(
         "json/schema/entity/data/notAnEntityType.json", determineSchemaPath("notAnEntityType"));

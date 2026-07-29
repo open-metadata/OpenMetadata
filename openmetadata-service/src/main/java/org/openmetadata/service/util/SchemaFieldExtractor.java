@@ -7,6 +7,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -144,7 +145,8 @@ public class SchemaFieldExtractor {
     try (ScanResult scanResult =
         new ClassGraph().acceptPaths(ENTITY_SCHEMA_DIRECTORY).enableMemoryMapping().scan()) {
 
-      for (Resource resource : scanResult.getResourcesWithExtension(JSON_FILE_EXTENSION)) {
+      for (Resource resource :
+          schemasInStableOrder(scanResult.getResourcesWithExtension(JSON_FILE_EXTENSION))) {
         String entityType = registerEntitySchema(resource);
         if (entityType != null) {
           entityTypes.add(entityType);
@@ -176,15 +178,24 @@ public class SchemaFieldExtractor {
     return entityType;
   }
 
+  /**
+   * ClassGraph does not guarantee a stable order across scans, so schemas are visited by path and
+   * the first one to claim an entity type keeps it. Two modules declaring the same entity type then
+   * resolve to the same schema on every run rather than to whichever jar was scanned last.
+   */
+  private static List<Resource> schemasInStableOrder(List<Resource> resources) {
+    return resources.stream().sorted(Comparator.comparing(Resource::getPath)).toList();
+  }
+
   private static void recordSchemaPath(String entityType, String schemaPath) {
-    String previousPath = entityTypeToSchemaPath.put(entityType, schemaPath);
-    if (previousPath != null && !previousPath.equals(schemaPath)) {
+    String claimedPath = entityTypeToSchemaPath.putIfAbsent(entityType, schemaPath);
+    if (claimedPath != null && !claimedPath.equals(schemaPath)) {
       LOG.warn(
-          "Entity type '{}' is declared by two schemas: '{}' and '{}'. Using '{}'.",
+          "Entity type '{}' is declared by both '{}' and '{}'. Using '{}'.",
           entityType,
-          previousPath,
+          claimedPath,
           schemaPath,
-          schemaPath);
+          claimedPath);
     }
   }
 
