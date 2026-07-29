@@ -735,6 +735,7 @@ test.describe('Context Center Articles', () => {
     ).not.toBeVisible();
 
     await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -750,6 +751,98 @@ test.describe('Context Center Articles', () => {
       `${parent.fullyQualifiedName}.${child.name}`
     );
     await cleanupAfterAction();
+  });
+
+  test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({
+    page,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const grandparent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Grandparent ${uuid()}`,
+      name: `cc_deep_grandparent_${uuid()}`,
+    });
+    const parent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Parent ${uuid()}`,
+      name: `cc_deep_parent_${uuid()}`,
+    });
+    const child = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Child ${uuid()}`,
+      name: `cc_deep_child_${uuid()}`,
+    });
+
+    const patchParent = async (
+      pageId: string,
+      parentEntity: KnowledgeCenterResponseDataType
+    ) => {
+      await apiContext.patch(`/api/v1/contextCenter/pages/${pageId}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/parent',
+            value: {
+              id: parentEntity.id,
+              type: 'page',
+              fullyQualifiedName: parentEntity.fullyQualifiedName,
+              displayName: parentEntity.displayName,
+              name: parentEntity.name,
+            },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+    };
+
+    await patchParent(parent.id, grandparent);
+    await patchParent(child.id, parent);
+    await afterAction();
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) =>
+      pageErrors.push(error.stack ?? error.message)
+    );
+
+    await navigateToArticles(page);
+    await scrollHierarchyToNode(page, grandparent.displayName);
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${grandparent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${parent.displayName}`)
+    ).toBeVisible();
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await page.getByLabel('Collapse All').click();
+    await expect(page.getByLabel('Expand All')).toBeVisible();
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    for (const displayName of [
+      grandparent.displayName,
+      parent.displayName,
+      child.displayName,
+    ]) {
+      await expect(page.getByTestId(`page-node-${displayName}`)).toHaveCount(1);
+    }
+
+    expect(pageErrors).toEqual([]);
   });
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({
@@ -871,7 +964,7 @@ test.describe('Context Center Articles', () => {
     ).toBeVisible();
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
       updatedTitle
     );
 
