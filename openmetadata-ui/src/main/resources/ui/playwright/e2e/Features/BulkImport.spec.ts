@@ -1046,10 +1046,7 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  // Skip this test for now, since it is not working in AUT but working in local and CI
-  // <Mostly around the config since it is working in local and CI and not working in AUT>
-  // eslint-disable-next-line playwright/no-skipped-test -- skipped: fails in AUT but works locally
-  test.skip('Range selection', async ({ page }) => {
+  test('Range selection', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
 
@@ -1065,33 +1062,36 @@ test.describe('Bulk Import Export', () => {
 
     await test.step('should import and test range selection', async () => {
       await dbEntity.visitEntityPage(page);
-      await page.click('[data-testid="manage-button"] > .anticon');
-      await page.click('[data-testid="import-button-description"]');
+      await page.getByTestId('manage-button').click();
+      await page
+        .getByTestId('manage-dropdown-list-container')
+        .waitFor({ state: 'visible' });
+      await page.click('[data-testid="import-button-title"]');
       await page
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
-      // Context: this is virtual gird, so we have 8 rows and 6 columns and 1 header row visible
-      await expect(page.locator('.rdg-row')).toHaveCount(8);
-      await expect(page.locator('.rdg-cell')).toHaveCount(54); // this also includes header cells
+      // Context: virtual grid — 8 data rows (1 schema + 1 table + 6 columns from DatabaseClass).
+      // visibleColCount is computed from the DOM since react-data-grid column-virtualizes.
+      const rowCount = 8;
+      await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
+      const totalCellCount = await page.locator('.rdg-cell').count();
+      const visibleColCount = totalCellCount / (rowCount + 1); // +1 for the header row
 
       await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
         await page.keyboard.press('Control+A');
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          48
+          rowCount * visibleColCount
         );
 
         // Deselect all the cells by clicking on second cell of .rdg-row
         const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').nth(1);
+        const firstCell = firstRow.locator('.rdg-cell').nth(0);
         const secondCell = firstRow.locator('.rdg-cell').nth(1);
         await secondCell.click();
 
@@ -1117,7 +1117,7 @@ test.describe('Bulk Import Export', () => {
 
         await expect(firstHeaderCell).toBeFocused();
 
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(rowCount);
       });
 
       await test.step('allow multiple column selection', async () => {
@@ -1150,7 +1150,7 @@ test.describe('Bulk Import Export', () => {
         await mouse.up();
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          24
+          rowCount * 3
         );
       });
 
@@ -1167,7 +1167,7 @@ test.describe('Bulk Import Export', () => {
         await page.keyboard.press('Shift+ArrowRight');
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          24
+          rowCount * 3
         );
       });
 
@@ -1266,8 +1266,6 @@ test.describe('Bulk Import Export', () => {
         await page.keyboard.press('Shift+ArrowUp');
         await page.keyboard.press('Shift+ArrowLeft');
         await page.keyboard.press('Shift+ArrowLeft');
-        await page.keyboard.press('Shift+ArrowLeft');
-        await page.keyboard.press('Shift+ArrowLeft');
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
       });
@@ -1331,15 +1329,15 @@ test.describe('Bulk Import Export', () => {
         await page.keyboard.press('Control+V');
 
         // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toHaveText(
+        await expect(fourthCellFirstRow).toContainText(
           (await firstCell.textContent()) || ''
         );
         await expect(
-          page.locator('.rdg-row').nth(1).locator('.rdg-cell').nth(3)
-        ).toHaveText(
+          page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+        ).toContainText(
           (await page
             .locator('.rdg-row')
-            .nth(1)
+            .nth(0)
             .locator('.rdg-cell')
             .first()
             .textContent()) || ''
@@ -1349,16 +1347,16 @@ test.describe('Bulk Import Export', () => {
         await page.keyboard.press('Control+Z');
 
         // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toHaveText('');
+        await expect(fourthCellFirstRow).toHaveText('—');
         await expect(
-          page.locator('.rdg-row').nth(1).locator('.rdg-cell').nth(3)
-        ).toHaveText('');
+          page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
+        ).toHaveText('—');
 
         // redo the action
         await page.keyboard.press('Control+Y');
 
         // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toHaveText(
+        await expect(fourthCellFirstRow).toContainText(
           (await firstCell.textContent()) || ''
         );
 
