@@ -11,16 +11,26 @@ on:
         required: true
         default: "main"
 permissions:
-  contents: write
+  contents: read
 jobs:
   create-release-branch:
     name: Create Release Branch ${{ inputs.release_branch_name }}
     runs-on: ubuntu-latest
     steps:
+    - name: Generate GitHub App token
+      id: generate_token
+      uses: actions/create-github-app-token@v3
+      with:
+        app-id: ${{ secrets.GH_BOT_ID }}
+        private-key: ${{ secrets.GH_BOT_PK }}
+        permission-contents: write
+        permission-workflows: write
+
     - name: Checkout Repo
       uses: actions/checkout@v5
       with:
         ref: ${{ inputs.base_branch_name }}
+        token: ${{ steps.generate_token.outputs.token }}
     - name: Update application versions
       run: |
         make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}
