@@ -17,12 +17,12 @@
   display: flex;
   align-items: center;
   border-radius: @border-rad-md;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--om-font-size-sm);
+  font-weight: var(--om-font-weight-medium);
   line-height: 22px;
   height: 28px;
   width: 7px;
-  padding: 0 2px;
+  padding: 0 var(--om-space-2);
   margin: 0;
   cursor: pointer;
   border: 1px solid;
@@ -65,15 +65,15 @@
 
   &.latest {
     width: fit-content;
-    padding: @padding-xss 10px;
+    padding: @padding-xss var(--om-space-10);
   }
 
   &.pipeline-status {
     border: 1px solid;
-    gap: 4px;
+    gap: var(--om-space-4);
 
     svg {
-      font-size: 12px;
+      font-size: var(--om-font-size-xs);
     }
   }
 }

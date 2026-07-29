@@ -13,24 +13,24 @@
 @import (reference) '../../../../styles/variables.less';
 
 .task-resolution-steps-container {
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   background-color: @grey-1;
-  padding: 24px;
+  padding: var(--om-space-24);
   overflow-x: auto;
 }
 .incident-manager-details-label {
-  font-size: 14px;
+  font-size: var(--om-font-size-sm);
   font-style: normal;
-  font-weight: 400;
+  font-weight: var(--om-font-weight-regular);
   line-height: 20px;
 }
 .task-resolution-steps-container-new {
-  border-radius: 10px;
+  border-radius: var(--om-radius-10);
   background-color: @grey-9;
   border: 0.5px solid @grey-15;
-  padding: 24px;
+  padding: var(--om-space-24);
   overflow-x: auto;
-  margin-bottom: -20px;
+  margin-bottom: calc(-1 * var(--om-space-20));
   .incident-title {
     width: 116px;
   }

@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -106,7 +107,7 @@ public class IncidentTaskIntegrationIT {
     TestCaseResolutionPayload payload =
         JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
     assertEquals(task.getId(), payload.getTestCaseResolutionStatusId());
-    assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.New);
+    assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.New, null);
   }
 
   @Test
@@ -144,7 +145,7 @@ public class IncidentTaskIntegrationIT {
 
     client.tasks().resolve(stateId.toString(), new ResolveTask().withTransitionId("ack"));
     Task ackedTask = awaitIncidentTask(client, stateId, TaskEntityStatus.InProgress, "ack", null);
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Ack);
+    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Ack, null);
 
     client
         .tasks()
@@ -157,7 +158,8 @@ public class IncidentTaskIntegrationIT {
         awaitIncidentTask(
             client, stateId, TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
     assertEquals(ackedTask.getId(), assignedTask.getId());
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Assigned);
+    assertLatestTcrsEventually(
+        client, stateId, TestCaseResolutionStatusTypes.Assigned, shared.USER1.getName());
 
     client
         .tasks()
@@ -176,7 +178,7 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
     assertNotNull(completedTask.getResolution());
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved);
+    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved, null);
   }
 
   @Test
@@ -201,7 +203,8 @@ public class IncidentTaskIntegrationIT {
         awaitIncidentTask(
             client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER2.getName());
     assertEquals(task.getId(), assignedTask.getId());
-    assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.Assigned);
+    assertLatestTcrsEventually(
+        client, task.getId(), TestCaseResolutionStatusTypes.Assigned, shared.USER2.getName());
   }
 
   @Test
@@ -236,7 +239,80 @@ public class IncidentTaskIntegrationIT {
         awaitIncidentTask(
             client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER2.getName());
     assertEquals(task.getId(), reassignedTask.getId());
-    assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.Assigned);
+
+    // Reassign is a self-loop on the `assigned` stage, so the mirror has to follow the
+    // assignee rather than the stage.
+    assertLatestTcrsEventually(
+        client, task.getId(), TestCaseResolutionStatusTypes.Assigned, shared.USER2.getName());
+    assertEquals(
+        List.of(shared.USER1.getName(), shared.USER2.getName()),
+        assignedAssigneeNames(client, task.getId()),
+        "every assignment appends its own record");
+  }
+
+  @Test
+  void testUpdatesThatDoNotChangeTheMirror_AppendNothing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+
+    TestCase testCase = createTestCase(client, ns, "incident-no-op-update");
+    createFailedTestResult(client, testCase);
+
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    UUID stateId = task.getId();
+
+    client
+        .tasks()
+        .resolve(
+            stateId.toString(),
+            new ResolveTask()
+                .withTransitionId("assign")
+                .withPayload(assigneePayload(shared.USER1_REF)));
+    awaitIncidentTask(
+        client, stateId, TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+    assertLatestTcrsEventually(
+        client, stateId, TestCaseResolutionStatusTypes.Assigned, shared.USER1.getName());
+
+    int recordsAfterAssign = tcrsTimeline(client, stateId).size();
+
+    client.tasks().addComment(stateId.toString(), "still investigating");
+    client
+        .tasks()
+        .patch(
+            stateId.toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"no mirror change\"}]"));
+
+    assertEquals(
+        recordsAfterAssign,
+        tcrsTimeline(client, stateId).size(),
+        "comments and unrelated patches must not append TCRS records");
+
+    client
+        .tasks()
+        .resolve(
+            stateId.toString(),
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("Resolved via integration test")
+                .withPayload(
+                    resolutionPayload(
+                        "False positive",
+                        "Resolved via integration test",
+                        TestCaseFailureReasonType.FalsePositive)));
+    awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
+    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved, null);
+
+    int recordsAfterResolve = tcrsTimeline(client, stateId).size();
+    assertEquals(
+        recordsAfterAssign + 1, recordsAfterResolve, "resolving appends exactly one record");
+
+    client.tasks().addComment(stateId.toString(), "post-mortem note");
+    assertEquals(
+        recordsAfterResolve,
+        tcrsTimeline(client, stateId).size(),
+        "commenting on a resolved incident must not duplicate the Resolved record");
   }
 
   @Test
@@ -265,7 +341,7 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, task.getId(), TaskEntityStatus.Completed, "resolved", null);
     assertEquals(task.getId(), completedTask.getId());
-    assertTcrsStatusEventually(client, task.getId(), TestCaseResolutionStatusTypes.Resolved);
+    assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.Resolved, null);
   }
 
   @Test
@@ -359,7 +435,7 @@ public class IncidentTaskIntegrationIT {
 
     Task reopened = awaitIncidentTask(client, stateId, TaskEntityStatus.InProgress, "ack", null);
     assertEquals(stateId, reopened.getId(), "reopen must reuse the same incident task");
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Ack);
+    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Ack, null);
     assertEquals(
         1,
         countIncidentTasksForTestCase(client, testCase),
@@ -393,7 +469,8 @@ public class IncidentTaskIntegrationIT {
         awaitIncidentTask(
             client, stateId, TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
     assertEquals(stateId, reopened.getId(), "reopen must reuse the same incident task");
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Assigned);
+    assertLatestTcrsEventually(
+        client, stateId, TestCaseResolutionStatusTypes.Assigned, shared.USER1.getName());
     assertEquals(
         1,
         countIncidentTasksForTestCase(client, testCase),
@@ -433,7 +510,7 @@ public class IncidentTaskIntegrationIT {
                         .withTestCaseFailureComment("Final resolution")));
 
     awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
-    assertTcrsStatusEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved);
+    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved, null);
     awaitTestCaseIncidentId(client, testCase, null);
     assertEquals(
         1,
@@ -627,18 +704,49 @@ public class IncidentTaskIntegrationIT {
         .orElse(null);
   }
 
-  private void assertTcrsStatusEventually(
-      OpenMetadataClient client, UUID stateId, TestCaseResolutionStatusTypes expectedStatus) {
+  /** The stateId's records oldest first, so the last element is the one consumers render. */
+  private List<TestCaseResolutionStatus> tcrsTimeline(OpenMetadataClient client, UUID stateId) {
+    return listTcrsForStateId(client, stateId).stream()
+        .sorted(Comparator.comparing(TestCaseResolutionStatus::getTimestamp))
+        .toList();
+  }
+
+  private void assertLatestTcrsEventually(
+      OpenMetadataClient client,
+      UUID stateId,
+      TestCaseResolutionStatusTypes expectedStatus,
+      String expectedAssignee) {
     await()
         .atMost(TASK_TIMEOUT)
         .pollInterval(Duration.ofMillis(250))
         .untilAsserted(
-            () ->
-                assertTrue(
-                    listTcrsForStateId(client, stateId).stream()
-                        .anyMatch(
-                            record -> record.getTestCaseResolutionStatusType() == expectedStatus),
-                    "Expected mirrored TCRS status " + expectedStatus + " for stateId " + stateId));
+            () -> {
+              List<TestCaseResolutionStatus> timeline = tcrsTimeline(client, stateId);
+              assertFalse(timeline.isEmpty(), "no TCRS records for stateId " + stateId);
+              TestCaseResolutionStatus latest = timeline.getLast();
+              assertEquals(expectedStatus, latest.getTestCaseResolutionStatusType());
+              assertEquals(expectedAssignee, tcrsAssigneeName(latest));
+            });
+  }
+
+  private List<String> assignedAssigneeNames(OpenMetadataClient client, UUID stateId) {
+    return tcrsTimeline(client, stateId).stream()
+        .filter(
+            record ->
+                record.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Assigned)
+        .map(IncidentTaskIntegrationIT::tcrsAssigneeName)
+        .toList();
+  }
+
+  private static String tcrsAssigneeName(TestCaseResolutionStatus record) {
+    if (record.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned) {
+      return null;
+    }
+    Assigned assigned =
+        JsonUtils.convertValue(record.getTestCaseResolutionStatusDetails(), Assigned.class);
+    return assigned != null && assigned.getAssignee() != null
+        ? assigned.getAssignee().getName()
+        : null;
   }
 
   @SuppressWarnings("unchecked")
