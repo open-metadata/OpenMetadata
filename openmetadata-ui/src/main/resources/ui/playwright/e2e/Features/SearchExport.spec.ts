@@ -73,7 +73,10 @@ const fetchCompletedExportCsv = async (
   return resultResponse.text();
 };
 
-test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
+test.describe(
+  'Search Export',
+  { tag: ['@Features', '@Discovery', '@import-export'] },
+  () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 

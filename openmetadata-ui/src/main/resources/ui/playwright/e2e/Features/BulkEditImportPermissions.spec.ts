@@ -125,7 +125,10 @@ const verifyAllBulkRoutes = async (page: Page, shouldHaveAccess: boolean) => {
   }
 };
 
-test.describe('Bulk Edit / Import - Non-admin permissions', () => {
+test.describe(
+  'Bulk Edit / Import - Non-admin permissions',
+  { tag: '@import-export' },
+  () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async ({ browser }) => {

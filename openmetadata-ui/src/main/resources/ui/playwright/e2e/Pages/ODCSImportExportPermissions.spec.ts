@@ -144,7 +144,10 @@ const performODCSExport = async (page: Page) => {
   return download;
 };
 
-test.describe('ODCS Import/Export - RBAC Permissions', () => {
+test.describe(
+  'ODCS Import/Export - RBAC Permissions',
+  { tag: '@import-export' },
+  () => {
   const tableWithContract = new TableClass();
   const tableWithoutContract = new TableClass();
 

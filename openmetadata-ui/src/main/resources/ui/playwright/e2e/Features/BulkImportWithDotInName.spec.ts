@@ -144,7 +144,10 @@ async function deleteDatabaseService(
  *
  * Example FQN in CSV: """local.mysql"".default" (quotes are doubled for escaping)
  */
-test.describe('Bulk Import Export with Dot in Service Name', () => {
+test.describe(
+  'Bulk Import Export with Dot in Service Name',
+  { tag: '@import-export' },
+  () => {
   /**
    * Test export and re-import of a database service with a dot in the name.
    * This verifies that:

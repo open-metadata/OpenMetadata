@@ -91,7 +91,10 @@ const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonym
 ,"Test1234","Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.","<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,,
 ,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,,`;
 
-test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
+test.describe(
+  'CSV Import with Commas and Quotes - All Entity Types',
+  { tag: '@import-export' },
+  () => {
   let createCsvImportPromise: () => Promise<void>;
 
   test.beforeEach(async ({ page }) => {

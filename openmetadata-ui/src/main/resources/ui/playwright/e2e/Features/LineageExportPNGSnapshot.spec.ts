@@ -33,7 +33,10 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const LINEAGE_URL =
   '/table/sample_data.ecommerce_db.shopify.raw_customer/lineage?fullscreen=true';
 
-test.describe('Lineage PNG export — snapshot regression', () => {
+test.describe(
+  'Lineage PNG export — snapshot regression',
+  { tag: '@import-export' },
+  () => {
   test('exported PNG includes edge lines between nodes', async ({ page }) => {
     // Navigate to the lineage view and wait for lineage data to load
     const lineageResponsePromise = page.waitForResponse(

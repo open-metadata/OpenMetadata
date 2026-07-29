@@ -917,7 +917,10 @@ const expectImportedMetricComplexFields = async (metricName: string) => {
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Metrics bulk import, export, and edit', () => {
+test.describe(
+  'Metrics bulk import, export, and edit',
+  { tag: '@import-export' },
+  () => {
   test.beforeAll(async () => {
     test.setTimeout(180_000);
     const adminContext = await createAdminApiContext();
