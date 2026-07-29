@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INTAKE_FORM;
 
 import lombok.extern.slf4j.Slf4j;
@@ -110,6 +111,12 @@ public class IntakeFormRepository extends EntityRepository<IntakeForm> {
       if (IntakeFormUtil.removeCustomPropertyField(updated, propertyName)) {
         updated.setUpdatedBy(updatedBy);
         getUpdater(original, updated, Operation.PATCH, null).update();
+        // Change events are normally emitted by ChangeEventHandler, a REST
+        // response filter. This cascade runs inside the Type update request, so
+        // that filter only ever sees the Type — without this the IntakeForm
+        // silently changes version with no event for subscribers to consume.
+        createAndInsertChangeEvent(
+            original, updated, updated.getChangeDescription(), ENTITY_UPDATED);
       }
     }
   }
