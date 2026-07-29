@@ -1100,7 +1100,9 @@ test.describe('Bulk Import Export', () => {
 
         await expect(firstHeaderCell).toBeFocused();
 
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(rowCount);
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
+          rowCount
+        );
       });
 
       await test.step('allow multiple column selection', async () => {
