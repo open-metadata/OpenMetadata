@@ -37,6 +37,9 @@ export interface ActivityFeedProviderContextType {
   activityThread: Thread | undefined;
   // For regular feeds (conversations, announcements)
   entityThread: Thread[];
+  // FQN `entityThread` was fetched for, so consumers can tell whether it still
+  // describes the previous entity after a route change.
+  entityThreadFqn: string | undefined;
   selectedThread: Thread | undefined;
   // For tasks - using Task type directly
   tasks: Task[];

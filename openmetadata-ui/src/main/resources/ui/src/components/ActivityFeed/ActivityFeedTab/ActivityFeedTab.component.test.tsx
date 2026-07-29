@@ -33,6 +33,7 @@ const mockGetTaskCounts = jest.fn();
 const mockUseRequiredParams = jest.fn();
 const mockGetEntityConversationCount = jest.fn();
 const mockUseFqn = jest.fn();
+let mockProviderOverrides: Record<string, unknown> = {};
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
@@ -66,6 +67,7 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     selectedThread: null,
     setActiveThread: jest.fn(),
     entityThread: [],
+    entityThreadFqn: undefined,
     getFeedData: mockGetFeedData,
     getTaskData: mockGetTaskData,
     loading: false,
@@ -80,6 +82,7 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     userId: '',
     selectedActivity: null,
     setActiveActivity: jest.fn(),
+    ...mockProviderOverrides,
   }),
 }));
 
@@ -186,6 +189,7 @@ describe('ActivityFeedTab', () => {
     mockGetTaskData.mockResolvedValue(undefined);
     mockGetEntityConversationCount.mockResolvedValue(0);
     mockUseFqn.mockReturnValue({ fqn: 'test.db.table' });
+    mockProviderOverrides = {};
   });
 
   describe('All badge counts conversations on every sub-tab', () => {
@@ -213,6 +217,46 @@ describe('ActivityFeedTab', () => {
       await waitFor(() => expect(mockGetFeedData).toHaveBeenCalled());
 
       expect(mockGetEntityConversationCount).not.toHaveBeenCalled();
+    });
+
+    it('counts the loaded threads on the All sub-tab once they belong to the current entity', async () => {
+      mockProviderOverrides = {
+        entityThread: [
+          { id: 't1', generatedBy: 'user' },
+          { id: 't2', generatedBy: 'user' },
+        ],
+        entityThreadFqn: 'test.db.table',
+      };
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() =>
+        expect(
+          screen
+            .getByTestId('left-panel-all-count')
+            .querySelector('[data-testid="filter-count"]')
+        ).toHaveTextContent('2')
+      );
+    });
+
+    it('does not count threads still belonging to the previously viewed entity', async () => {
+      mockProviderOverrides = {
+        entityThread: [
+          { id: 't1', generatedBy: 'user' },
+          { id: 't2', generatedBy: 'user' },
+        ],
+        entityThreadFqn: 'previous.db.table',
+      };
+
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() => expect(mockGetFeedData).toHaveBeenCalled());
+
+      expect(
+        screen
+          .getByTestId('left-panel-all-count')
+          .querySelector('[data-testid="filter-count"]')
+      ).toHaveTextContent('0');
     });
 
     it('ignores an in-flight count from the previous entity', async () => {

@@ -149,6 +149,7 @@ export const ActivityFeedTab = ({
     selectedThread,
     setActiveThread,
     entityThread,
+    entityThreadFqn,
     getFeedData,
     getTaskData,
     loading,
@@ -437,11 +438,20 @@ export const ActivityFeedTab = ({
   const isActivityFeedLoading = loading || Boolean(isActivityLoading);
   const isAllActiveTab = activeTab === ActivityFeedTabs.ALL;
 
+  // `entityThread` holds whatever the last feed request returned, so straight after
+  // a route change it still describes the previous entity. `entityThreadFqn` says
+  // which entity it belongs to, so the count is only taken while the two agree.
   useEffect(() => {
-    if (isAllActiveTab && !isActivityFeedLoading) {
+    if (isAllActiveTab && !isActivityFeedLoading && entityThreadFqn === fqn) {
       setConversationCount(filterUserGeneratedThreads(entityThread).length);
     }
-  }, [isAllActiveTab, entityThread, isActivityFeedLoading]);
+  }, [
+    isAllActiveTab,
+    entityThread,
+    entityThreadFqn,
+    isActivityFeedLoading,
+    fqn,
+  ]);
 
   useEffect(() => {
     if (isAllActiveTab || isUserEntity || !fqn || !entityType) {

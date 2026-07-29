@@ -103,6 +103,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isActivityLoading, setIsActivityLoading] = useState(false);
   // For regular feeds (conversations, announcements)
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
+  const [entityThreadFqn, setEntityThreadFqn] = useState<string>();
   const [selectedThread, setSelectedThread] = useState<Thread>();
   // For tasks - using Task type directly
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -370,6 +371,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
+        setEntityThreadFqn(fqn);
         setEntityPaging(paging);
       } catch (err) {
         showErrorToast(
@@ -838,6 +840,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const activityFeedContextValues = useMemo(() => {
     return {
       entityThread,
+      entityThreadFqn,
       selectedThread,
       tasks,
       selectedTask,
@@ -881,6 +884,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     };
   }, [
     entityThread,
+    entityThreadFqn,
     selectedThread,
     tasks,
     selectedTask,
