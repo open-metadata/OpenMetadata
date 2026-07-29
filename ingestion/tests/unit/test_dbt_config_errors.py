@@ -18,9 +18,13 @@ DBTConfigException message shown to the user.
 from unittest.mock import MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError, NoCredentialsError
 
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtCloudConfig import (
     DbtCloudConfig,
+)
+from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
+    DbtS3Config,
 )
 from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.source.database.dbt.dbt_config import (
@@ -92,3 +96,49 @@ class TestDbtCloudErrorClassification:
             list(get_dbt_details(_dbt_cloud_config()))
 
         assert "no completed dbt runs" in str(exc_info.value).lower()
+
+
+def _s3_config():
+    config = MagicMock()
+    # singledispatch dispatches on args[0].__class__, so this is what routes the mock to the
+    # DbtS3Config handler; spec= cannot be used because pydantic v2 does not expose model
+    # field names via dir() on the class, which would block attribute mocking below.
+    config.__class__ = DbtS3Config
+    config.dbtPrefixConfig.dbtBucketName = "my-bucket"
+    config.dbtPrefixConfig.dbtObjectPrefix = "dbt/"
+    return config
+
+
+def _client_error(code):
+    return ClientError({"Error": {"Code": code, "Message": code}}, "ListObjectsV2")
+
+
+class TestS3ErrorClassification:
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient")
+    def test_missing_credentials_reports_auth_failure(self, aws_client):
+        aws_client.return_value.get_client.side_effect = NoCredentialsError()
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_s3_config()))
+
+        assert "authentication failed" in str(exc_info.value).lower()
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.list_s3_objects")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient")
+    def test_no_such_bucket_reports_bucket_name(self, aws_client, list_objects):
+        list_objects.side_effect = _client_error("NoSuchBucket")
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_s3_config()))
+
+        assert "my-bucket" in str(exc_info.value)
+
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.list_s3_objects")
+    @patch("metadata.ingestion.source.database.dbt.dbt_config.AWSClient")
+    def test_access_denied_reports_iam_permissions(self, aws_client, list_objects):
+        list_objects.side_effect = _client_error("AccessDenied")
+
+        with pytest.raises(DBTConfigException) as exc_info:
+            list(get_dbt_details(_s3_config()))
+
+        assert "permission" in str(exc_info.value).lower()

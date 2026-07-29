@@ -21,9 +21,11 @@ from functools import singledispatch
 from typing import Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 import requests
+from botocore.exceptions import ClientError, NoCredentialsError, PartialCredentialsError
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
+from metadata.core.connections.test_connection.aws import aws_error_code
 from metadata.generated.schema.metadataIngestion.dbtconfig.dbtAzureConfig import (
     DbtAzureConfig,
 )
@@ -496,33 +498,65 @@ def download_dbt_files(
         raise DBTConfigException(f"No valid dbt manifest.json found. {error_details}")
 
 
+def _get_s3_client(config: DbtS3Config):
+    try:
+        client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
+    except (NoCredentialsError, PartialCredentialsError) as exc:
+        raise DBTConfigException(
+            "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+        ) from exc
+    except ClientError as exc:
+        if aws_error_code(exc) in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+            raise DBTConfigException(
+                "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
+            ) from exc
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
+    return client
+
+
+def _list_s3_buckets(client, bucket_name: str | None) -> list[dict]:
+    if bucket_name:
+        return [{"Name": bucket_name}]
+    try:
+        buckets = client.list_buckets()["Buckets"]
+    except ClientError as exc:
+        if aws_error_code(exc) in ("AccessDenied", "Forbidden"):
+            raise DBTConfigException(
+                "Access denied when listing S3 buckets. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
+    return buckets
+
+
+def _get_s3_blob_grouped(client, current_bucket: str, kwargs: dict):
+    try:
+        blob_grouped = get_blobs_grouped_by_dir(blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs)))
+    except ClientError as exc:
+        error_code = aws_error_code(exc)
+        if error_code == "NoSuchBucket":
+            raise DBTConfigException(
+                f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
+            ) from exc
+        if error_code in ("AccessDenied", "Forbidden"):
+            raise DBTConfigException(
+                f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
+            ) from exc
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    except Exception as exc:
+        raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+    return blob_grouped
+
+
 @get_dbt_details.register
 def _(config: DbtS3Config):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-
-        try:
-            client = AWSClient(config.dbtSecurityConfig).get_client(service_name="s3")
-        except Exception as exc:
-            error_msg = str(exc).lower()
-            if "credentials" in error_msg or "accessdenied" in error_msg:
-                raise DBTConfigException(
-                    "AWS authentication failed. Please verify your AWS Access Key ID and Secret Access Key are correct."
-                ) from exc
-            raise DBTConfigException(f"Failed to initialize AWS S3 client: {exc}") from exc
-
-        if not bucket_name:
-            try:
-                buckets = client.list_buckets()["Buckets"]
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        "Access denied when listing S3 buckets. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list S3 buckets: {exc}") from exc
-        else:
-            buckets = [{"Name": bucket_name}]
+        client = _get_s3_client(config)
+        buckets = _list_s3_buckets(client, bucket_name)
 
         for bucket in buckets:
             current_bucket = bucket["Name"]
@@ -531,19 +565,7 @@ def _(config: DbtS3Config):
                 kwargs["Prefix"] = prefix if prefix.endswith("/") else f"{prefix}/"
 
             logger.debug(f"Listing S3 objects in s3://{current_bucket}/{prefix or ''}")
-            try:
-                blob_grouped = get_blobs_grouped_by_dir(blobs=(obj["Key"] for obj in list_s3_objects(client, **kwargs)))
-            except Exception as exc:
-                error_msg = str(exc).lower()
-                if "nosuchbucket" in error_msg:
-                    raise DBTConfigException(
-                        f"S3 bucket '{current_bucket}' not found. Please verify the bucket name is correct."
-                    ) from exc
-                if "accessdenied" in error_msg or "forbidden" in error_msg:
-                    raise DBTConfigException(
-                        f"Access denied to S3 bucket '{current_bucket}'. Please check your IAM permissions."
-                    ) from exc
-                raise DBTConfigException(f"Failed to list objects in S3 bucket '{current_bucket}': {exc}") from exc
+            blob_grouped = _get_s3_blob_grouped(client, current_bucket, kwargs)
 
             if not blob_grouped:
                 prefix_path = prefix or ""
