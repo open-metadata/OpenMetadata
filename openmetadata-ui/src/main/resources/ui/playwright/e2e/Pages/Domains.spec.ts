@@ -384,7 +384,9 @@ test.describe('Domains', () => {
       // Verify empty state message
       await expect(page.getByTestId('empty-placeholder')).toBeVisible();
 
-      const addButton = page.getByTestId('data-assets-add-button');
+      // `CreatePlaceholder` applies the action's `data-assets-add-button` as the
+      // button's DOM id, so this CTA has no testid to select it by.
+      const addButton = page.locator('#data-assets-add-button');
       await expect(addButton).toBeVisible();
       await addButton.click();
 

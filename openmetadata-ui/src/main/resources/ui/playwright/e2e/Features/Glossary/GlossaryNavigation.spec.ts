@@ -241,11 +241,10 @@ test.describe('Glossary Navigation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
 
-      // A glossary with zero terms renders the empty-glossary placeholder
-      // (ErrorPlaceHolder with message.no-glossary-term), not the
-      // "No Glossary Term found" row that a non-matching status filter shows.
+      // A glossary with zero terms renders the empty-glossary placeholder, not
+      // the "No Glossary Term found" row that a non-matching status filter shows.
       await expect(
-        page.getByText(/there are no Glossary Terms defined/i)
+        page.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       // Verify add term button is available
