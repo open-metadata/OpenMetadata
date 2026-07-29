@@ -31,6 +31,39 @@ current_time_ms() {
   python3 -c "import time; print(int(time.time() * 1000))"
 }
 
+# ----- Phase timing (opt-in via OM_TIMING_LOG) -------------------------------
+# When OM_TIMING_LOG points at a writable path, om_phase_start/end record a
+# tab-separated `<phase>\t<duration_seconds>` line for each wrapped phase.
+# CI's prepare-playwright-fixture job sets OM_TIMING_LOG and renders the file
+# as a step-summary table so we can see which phase of run_local_docker_main
+# owns the ~10 min setup cost. When OM_TIMING_LOG is unset the helpers still
+# echo human-readable markers but do not touch disk — safe for local runs.
+_om_phase_current=""
+_om_phase_started=0
+
+om_phase_start() {
+  _om_phase_current="$1"
+  _om_phase_started=$(date +%s)
+  printf '::group::phase.%s\n' "$_om_phase_current"
+  printf '▶ phase.%s.start ts=%s\n' "$_om_phase_current" "$_om_phase_started"
+}
+
+om_phase_end() {
+  local finished duration
+  if [[ -z "$_om_phase_current" ]]; then
+    return 0
+  fi
+  finished=$(date +%s)
+  duration=$((finished - _om_phase_started))
+  printf '◀ phase.%s.end ts=%s dur=%ss\n' "$_om_phase_current" "$finished" "$duration"
+  printf '::endgroup::\n'
+  if [[ -n "${OM_TIMING_LOG:-}" ]]; then
+    printf '%s\t%s\n' "$_om_phase_current" "$duration" >> "$OM_TIMING_LOG"
+  fi
+  _om_phase_current=""
+  _om_phase_started=0
+}
+
 run_with_timeout() {
   local secs=$1
   shift
@@ -355,6 +388,7 @@ run_local_docker_main() {
 
   cd "$RUN_LOCAL_DOCKER_DIR/.." || exit 1
 
+  om_phase_start "compose_down_prev"
   echo "Stopping any previous Local Docker Containers"
   docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans
   docker compose -f docker/development/docker-compose.yml down --remove-orphans
@@ -364,6 +398,7 @@ run_local_docker_main() {
       docker compose -f docker/development/docker-compose.yml -f "$extra_compose_file" down --remove-orphans
     done
   fi
+  om_phase_end
 
   if [[ $skipMaven == "false" ]]; then
     if [[ $mode == "no-ui" ]]; then
@@ -431,6 +466,7 @@ run_local_docker_main() {
     done
   fi
 
+  om_phase_start "docker_build_up"
   if [[ $includeIngestion == "true" ]]; then
     echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
     docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && \
@@ -450,11 +486,14 @@ run_local_docker_main() {
     echo "Failed to start Docker instances!"
     exit 1
   fi
+  om_phase_end
 
+  om_phase_start "wait_search_index"
   until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
     echo 'Checking if Elastic Search instance is up...\n'
     sleep 5
   done
+  om_phase_end
 
   if [[ $includeIngestion == "true" ]]; then
     get_airflow_token() {
@@ -476,13 +515,16 @@ run_local_docker_main() {
       echo "$access_token"
     }
 
+    om_phase_start "wait_airflow_api"
     echo "Waiting for Airflow API to be ready..."
     until AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null && [ -n "$AIRFLOW_ACCESS_TOKEN" ]; do
       echo 'Checking if Airflow API is reachable...'
       sleep 5
     done
     echo "✓ Airflow API is ready, token obtained"
+    om_phase_end
 
+    om_phase_start "wait_sample_data_dag"
     echo "Checking if Sample Data DAG is available..."
     until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
       IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
@@ -499,12 +541,15 @@ run_local_docker_main() {
       AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null
     done
     echo "✓ Sample Data DAG is available"
+    om_phase_end
   fi
 
+  om_phase_start "wait_om_server"
   until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
     echo 'Checking if OM Server is reachable...\n'
     sleep 5
   done
+  om_phase_end
 
   if [[ $includeIngestion == "true" ]]; then
     unpause_dag() {
@@ -549,6 +594,7 @@ run_local_docker_main() {
       fi
     }
 
+    om_phase_start "dag_ingest_sample_data"
     unpause_dag "sample_data"
     unpause_dag "extended_sample_data"
 
@@ -592,22 +638,27 @@ run_local_docker_main() {
       echo "✗ Startup requires sample data ingestion to complete before continuing."
       exit 1
     fi
+    om_phase_end
 
+    om_phase_start "dag_ingest_secondary"
     sleep 5
     unpause_dag "sample_usage"
     sleep 5
     unpause_dag "index_metadata"
     sleep 2
     unpause_dag "sample_lineage"
+    om_phase_end
   else
     echo "Skipping Airflow DAG setup (ingestion disabled)"
   fi
 
+  om_phase_start "reindex_search"
   echo "✔running reindexing"
   ensure_app_installed "SearchIndexingApplication"
   if ! trigger_app_and_wait "SearchIndexingApplication" "" "$APP_RUN_WAIT_TIMEOUT_SECONDS"; then
     exit 1
   fi
+  om_phase_end
 
   tput setaf 2
   echo "✔ OpenMetadata is up and running"
