@@ -23,9 +23,10 @@ to ask for it manually again.
   "run spotless", "format Java", or similar.
 - CI posts a `Java checkstyle failed` / `Fix Java checkstyle` comment on a PR
   (the project's bot phrases the instruction as "Please run
-  `mvn spotless:apply` in the root of your repository and commit the changes").
-- After the assistant has finished authoring or editing any `.java` files —
-  before opening a PR or pushing a commit that touches Java.
+  `mvn spotless:apply` in the root of your repository and commit the changes to
+  this PR").
+- After you have finished authoring or editing any `.java` files — before
+  opening a PR or pushing a commit that touches Java.
 
 ## Arguments
 
@@ -65,19 +66,32 @@ Expect reformatting in `.java` files only. If Spotless touches `pom.xml` or
 other non-Java files, that's also fine — Spotless is configured for those too
 in this repo.
 
-### Step 3: Stage and commit (only if the user asked to commit)
+### Step 3: Commit
 
-Do NOT auto-commit. Report the changed file list to the user and let them
-decide whether to fold the formatting into the in-progress commit or make a
-separate "Fix Java checkstyle" commit. Follow the repo convention: the
-existing branch history already uses `Fix Java checkstyle` as the commit title
-for bot-triggered formatting-only commits.
+Do not fold the reformat into an unrelated commit. If the user asked you to
+commit, follow their preference (fold into the in-progress commit, or make a
+separate one). Otherwise, when you are confident the change is a purely
+mechanical formatting reformat, you may commit it on its own as a
+`Fix Java checkstyle` commit — this matches the repo's existing history for
+bot-triggered formatting-only commits. If you are unsure whether the diff is
+purely mechanical, do NOT auto-commit: surface the changed-file list and let the
+user decide.
 
 ## Notes
 
 - Spotless config lives in the root `pom.xml` (`spotless-maven-plugin`
-  section). Do not redefine formatting rules inline in source files.
-- If Spotless keeps rewriting a change the user just made, re-read the config
-  — Spotless is the source of truth, not the IDE.
-- The analogous UI command is `yarn pretty` (see the `test-locally` skill /
-  CLAUDE.md for the UI lint flow); this skill is Java-only.
+  section) — `googleJavaFormat` + `removeUnusedImports`. Do not redefine
+  formatting rules inline in source files.
+- If Spotless keeps rewriting a change you just made, re-read the config —
+  Spotless is the source of truth, not the IDE.
+- CI enforcement lives in `.github/workflows/java-checkstyle.yml`: the
+  `java-checkstyle` job runs `mvn spotless:apply` and fails (`git diff-files`)
+  if the tree was not already formatted, posting the "Please run
+  `mvn spotless:apply`" comment.
+
+## Out of scope
+
+- UI / TypeScript formatting — use the `ui-checkstyle` skill
+  (ESLint + Prettier + organize-imports); this skill is Java-only.
+- Python formatting — use `make py_format` (**ruff** lint-fix + format; see
+  `ingestion/Makefile`). *(Note: this is ruff, not black/isort/pycln.)*
