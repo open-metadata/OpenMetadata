@@ -59,8 +59,7 @@ const isTabSearchQueryResponse = (response: Response) => {
   return (
     isSearchQueryResponse(response, index) &&
     searchParams.get('size') === SEARCH_RESULT_SIZE &&
-    searchParams.get('from') === '0' &&
-    Boolean(ENTITY_TYPE_TO_TAB_TESTID[index])
+    searchParams.get('from') === '0'
   );
 };
 
