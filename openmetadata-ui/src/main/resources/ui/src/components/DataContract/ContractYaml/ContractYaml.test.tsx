@@ -23,6 +23,13 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import ContractYaml from './ContractYaml.component';
 
+type MockSchemaEditorProps = {
+  className?: string;
+  editorClass?: string;
+  mode?: { name?: string };
+  value?: string;
+};
+
 jest.mock('js-yaml', () => ({
   dump: jest.fn(),
 }));
@@ -37,7 +44,7 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
     editorClass,
     mode,
     value,
-  }: any) {
+  }: MockSchemaEditorProps) {
     return (
       <div className={className} data-testid="schema-editor">
         <div data-testid="editor-class">{editorClass}</div>
