@@ -190,10 +190,12 @@ export function useGridEditController({
   dataSource,
   setDataSource,
   columns,
+  rowIdKey = 'id',
 }: {
   dataSource: Record<string, string>[];
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
-  columns: Column<Record<string, string>[]>[];
+  columns: Column<Record<string, string>>[];
+  rowIdKey?: string | null;
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -813,10 +815,13 @@ export function useGridEditController({
           }
         }, 1);
 
-        return [...data, { id: data.length + '' }];
+        return [
+          ...data,
+          rowIdKey === null ? {} : { [rowIdKey]: data.length + '' },
+        ];
       }
     );
-  }, [gridContainer, setDataSource]);
+  }, [gridContainer, rowIdKey, setDataSource]);
 
   const focusFirstCell = useCallback(() => {
     const firstCell = gridContainer?.querySelector(

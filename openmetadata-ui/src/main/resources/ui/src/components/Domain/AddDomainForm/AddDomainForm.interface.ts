@@ -14,7 +14,47 @@ import { FormInstance } from 'antd';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { TagLabel } from '../../../generated/type/tagLabel';
+import { CoverImageFileValue } from '../../../utils/CoverImageUploadUtils';
 import { DomainFormType } from '../DomainPage.interface';
+
+export interface DomainFormSelectItem extends FormSelectItem {
+  value:
+    | TagLabel
+    | EntityReference
+    | DomainType
+    | DataProductType
+    | PortfolioPriority
+    | Visibility
+    | string;
+}
+
+export interface DomainFormValues {
+  name: string;
+  displayName: string;
+  description: string;
+  color: string;
+  iconURL: string;
+  coverImage: CoverImageFileValue | null;
+  tags: DomainFormSelectItem[];
+  glossaryTerms: TagLabel[];
+  owners: DomainFormSelectItem[];
+  experts: DomainFormSelectItem[];
+  reviewers: DomainFormSelectItem[];
+  domainType: DomainFormSelectItem | null;
+  domains: DomainFormSelectItem | undefined;
+  dataProductType: DomainFormSelectItem | null;
+  visibility: DomainFormSelectItem | null;
+  portfolioPriority: DomainFormSelectItem | null;
+  extension?: Record<string, unknown>;
+  extensionDefinitions?: Record<string, CustomProperty>;
+  extensionFormValues?: Record<string, unknown>;
+}
+
 
 export interface AddDomainFormProps {
   isFormInDialog: boolean;
