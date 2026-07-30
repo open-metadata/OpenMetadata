@@ -17,17 +17,28 @@ import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/inter/800.css';
 import '@fontsource/inter/900.css';
+import { useEffect } from 'react';
+import { I18nextProvider } from 'react-i18next';
 import type { Preview, StoryFn, StoryContext } from '@storybook/react';
+import { CORE_LOCALES } from '../src/locale';
 import '../src/styles/storybook.css';
+import i18n from './i18n';
 import './index.css';
 
 type ThemeMode = 'light' | 'dark' | 'both';
 
-const renderInTheme = (Story: StoryFn, mode: 'light' | 'dark') => {
-  const className = mode === 'dark' ? 'dark-mode tw:bg-primary' : 'tw:bg-primary';
+const RTL_LOCALES = new Set(['ar-SA', 'he-HE']);
+
+const renderInTheme = (
+  Story: StoryFn,
+  mode: 'light' | 'dark',
+  dir: 'ltr' | 'rtl'
+) => {
+  const className =
+    mode === 'dark' ? 'dark-mode tw:bg-primary' : 'tw:bg-primary';
 
   return (
-    <div className={className}>
+    <div className={className} dir={dir}>
       <div className="tw:p-6">
         <Story />
       </div>
@@ -59,23 +70,46 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    locale: {
+      name: 'Locale',
+      description: 'i18n language for library strings',
+      defaultValue: 'en-US',
+      toolbar: {
+        icon: 'globe',
+        items: CORE_LOCALES.map((code) => ({
+          value: code,
+          title: RTL_LOCALES.has(code) ? `${code} (RTL)` : code,
+        })),
+        dynamicTitle: true,
+      },
+    },
   },
   decorators: [
     (Story: StoryFn, ctx: StoryContext) => {
-      const parameterTheme = (ctx.parameters?.theme as ThemeMode | undefined);
+      const parameterTheme = ctx.parameters?.theme as ThemeMode | undefined;
       const globalTheme = ctx.globals.theme as ThemeMode;
       const theme: ThemeMode = parameterTheme ?? globalTheme;
+      const locale = ctx.globals.locale as string;
+      const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
-      if (theme === 'both') {
-        return (
-          <div className="tw:grid tw:grid-cols-1 tw:gap-4">
-            {renderInTheme(Story, 'light')}
-            {renderInTheme(Story, 'dark')}
-          </div>
-        );
-      }
+      useEffect(() => {
+        if (i18n.language !== locale) {
+          void i18n.changeLanguage(locale);
+        }
+      }, [locale]);
 
-      return renderInTheme(Story, theme);
+      return (
+        <I18nextProvider i18n={i18n}>
+          {theme === 'both' ? (
+            <div className="tw:grid tw:grid-cols-1 tw:gap-4">
+              {renderInTheme(Story, 'light', dir)}
+              {renderInTheme(Story, 'dark', dir)}
+            </div>
+          ) : (
+            renderInTheme(Story, theme, dir)
+          )}
+        </I18nextProvider>
+      );
     },
   ],
 };
