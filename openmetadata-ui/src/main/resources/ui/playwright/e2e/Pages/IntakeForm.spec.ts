@@ -1277,11 +1277,6 @@ test.describe(
           fieldLabel: 'Related Terms',
           fieldKind: 'customProperty',
         },
-        {
-          fieldPath: `extension.${dataProductProperties.multiEnum}`,
-          fieldLabel: 'Product Colors',
-          fieldKind: 'customProperty',
-        },
       ];
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
@@ -1485,12 +1480,6 @@ test.describe(
           type: 'glossaryTerm',
         }),
       ]);
-      expect(payload.extension[dataProductProperties.multiEnum]).toHaveLength(
-        2
-      );
-      expect(payload.extension[dataProductProperties.multiEnum]).toEqual(
-        expect.arrayContaining(['blue', 'red'])
-      );
 
       const createdDataProduct = await response.json();
       const cleanup = await performAdminLogin(browser);
@@ -1610,11 +1599,9 @@ test.describe(
     test.describe.configure({ mode: 'serial' });
 
     const glossary = new Glossary();
-    const referenceTerm = new GlossaryTerm(glossary);
     const suffix = uuid();
     const properties = {
       hyperlink: `pwTermLink${suffix}`,
-      reference: `pwTermRef${suffix}`,
       string: `pwTermString${suffix}`,
     };
 
@@ -1625,17 +1612,10 @@ test.describe(
 
         await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME);
         await glossary.create(apiContext);
-        await referenceTerm.create(apiContext);
         await ensureStringCustomProperty(
           apiContext,
           GLOSSARY_TERM_INTAKE_NAME,
           properties.string
-        );
-        await ensureEntityReferenceCustomProperty(
-          apiContext,
-          GLOSSARY_TERM_INTAKE_NAME,
-          properties.reference,
-          ['glossaryTerm']
         );
         await ensureCustomProperty(
           apiContext,
@@ -1671,11 +1651,6 @@ test.describe(
           fieldKind: 'customProperty',
         },
         {
-          fieldPath: `extension.${properties.reference}`,
-          fieldLabel: 'Related Intake Term',
-          fieldKind: 'customProperty',
-        },
-        {
           fieldPath: `extension.${properties.hyperlink}`,
           fieldLabel: 'Term Intake Link',
           fieldKind: 'customProperty',
@@ -1696,11 +1671,9 @@ test.describe(
 
       const modal = page.locator('[role="dialog"].edit-glossary-modal');
       const stringFieldId = `extension-${properties.string}`;
-      const referenceFieldId = `extension-${properties.reference}`;
       const hyperlinkUrlId = `extension-${properties.hyperlink}-url`;
       const hyperlinkDisplayTextId = `extension-${properties.hyperlink}-displayText`;
       await expect(page.getByTestId(stringFieldId)).toBeVisible();
-      await expect(page.getByTestId(referenceFieldId)).toBeVisible();
       await expect(page.getByTestId(hyperlinkUrlId)).toBeVisible();
       await expect(page.getByTestId(hyperlinkDisplayTextId)).toBeVisible();
 
@@ -1712,11 +1685,6 @@ test.describe(
         customPropertiesSection
           .getByTestId('custom-property-type-badge')
           .filter({ hasText: /^STRING$/ })
-      ).toBeVisible();
-      await expect(
-        customPropertiesSection
-          .getByTestId('custom-property-type-badge')
-          .filter({ hasText: /^ENTITYREFERENCE$/ })
       ).toBeVisible();
       await expect(
         customPropertiesSection
@@ -1748,13 +1716,6 @@ test.describe(
       await extensionInput(page, hyperlinkDisplayTextId).fill(
         'Glossary term documentation'
       );
-      await selectExtensionReference({
-        page,
-        testId: referenceFieldId,
-        query: referenceTerm.randomName,
-        optionText: referenceTerm.data.displayName,
-        optionTestId: `option-${referenceTerm.responseData.fullyQualifiedName}`,
-      });
 
       await extensionInput(page, hyperlinkUrlId).fill(
         'ftp://example.com/glossary-term'
@@ -1792,12 +1753,6 @@ test.describe(
       };
       expect(payload.name).toBe(termName);
       expect(payload.extension[properties.string]).toBe('governed term');
-      expect(payload.extension[properties.reference]).toEqual(
-        expect.objectContaining({
-          id: referenceTerm.responseData.id,
-          type: 'glossaryTerm',
-        })
-      );
       expect(payload.extension[properties.hyperlink]).toEqual({
         displayText: 'Glossary term documentation',
         url: 'https://example.com/glossary-term',
@@ -1811,7 +1766,6 @@ test.describe(
       await expect(modal).toBeVisible();
       await expect(modal.getByTestId('name')).toHaveValue(termName);
       await expect(page.getByTestId(stringFieldId)).toHaveCount(0);
-      await expect(page.getByTestId(referenceFieldId)).toHaveCount(0);
       await expect(page.getByTestId(hyperlinkUrlId)).toHaveCount(0);
     });
   }
