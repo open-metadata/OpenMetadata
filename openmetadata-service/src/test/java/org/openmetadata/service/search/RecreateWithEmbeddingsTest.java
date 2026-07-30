@@ -54,11 +54,9 @@ class RecreateWithEmbeddingsTest {
 
   @Test
   void shouldStageChunkRecreate_ignoresRemovedRecreateIndexFlag() {
-    // Regression: SearchIndexAppConfigSanitizer strips the removed recreateIndex option from
-    // every persisted app config before jobData is built, so getRecreateIndex() is always null
-    // in app-driven runs. Gating chunk staging on Boolean.TRUE.equals(recreateIndex) therefore
-    // never passed — no staged generation, no alias promotion, no orphan sweep — while every
-    // per-entity index kept recreating. Staging must not consult that flag.
+    // SearchIndexAppConfigSanitizer strips the removed recreateIndex option from every persisted
+    // config before jobData is built, so app-driven runs always carry recreateIndex = null —
+    // staging must not consult it.
     Map<String, Object> sanitizedConfig = Map.of("entities", List.of("all"), "batchSize", 100);
     EventPublisherJob jobData = JsonUtils.convertValue(sanitizedConfig, EventPublisherJob.class);
     assertNull(jobData.getRecreateIndex(), "sanitizer-shaped config carries no recreateIndex");

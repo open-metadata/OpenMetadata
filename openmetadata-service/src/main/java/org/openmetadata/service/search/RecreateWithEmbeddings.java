@@ -69,10 +69,9 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
 
   /**
    * Full-coverage, job-driven runs stage the chunk recreate. Deliberately independent of {@code
-   * jobData.recreateIndex}: search reindexes always run in recreate mode since that flag was
-   * dropped, and SearchIndexAppConfigSanitizer strips it from every persisted config — so gating
-   * chunk staging on it can never pass and silently disables the staged recreate for every
-   * app-driven run (see the regression test).
+   * jobData.recreateIndex}: search reindexes always run in recreate mode, and
+   * SearchIndexAppConfigSanitizer strips that removed flag from every persisted config, so it is
+   * always null here and must not gate staging.
    */
   static boolean shouldStageChunkRecreate(EventPublisherJob jobData, Set<String> entities) {
     return jobData != null && entities != null && coversAllVectorTypes(entities);

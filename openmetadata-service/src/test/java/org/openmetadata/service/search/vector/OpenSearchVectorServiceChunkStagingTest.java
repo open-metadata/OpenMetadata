@@ -2,11 +2,25 @@ package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.function.Function;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import os.org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import os.org.opensearch.client.util.ObjectBuilder;
 
 class OpenSearchVectorServiceChunkStagingTest {
 
@@ -74,5 +88,29 @@ class OpenSearchVectorServiceChunkStagingTest {
       assertTrue(action.has("add"));
       assertFalse(action.has("remove_index"));
     }
+  }
+
+  @Test
+  void beginStagedChunkRecreate_abortsWhenTheLiveTargetProbeIsIndeterminate() throws IOException {
+    // A probe failure (timeout, cluster error) must abort the recreate: a null live target would
+    // make the orphan sweep treat the live aliased generation as an orphan and delete it.
+    OpenSearchClient client = mock(OpenSearchClient.class);
+    OpenSearchIndicesClient indices = mock(OpenSearchIndicesClient.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.embedQuery(any(String.class))).thenReturn(new float[] {0.1f});
+    when(client.indices()).thenReturn(indices);
+    when(indices.existsAlias(
+            ArgumentMatchers
+                .<Function<ExistsAliasRequest.Builder, ObjectBuilder<ExistsAliasRequest>>>any()))
+        .thenThrow(new IOException("cluster unreachable"));
+
+    OpenSearchVectorService service = new OpenSearchVectorService(client, embeddingClient);
+
+    RuntimeException failure =
+        assertThrows(RuntimeException.class, service::beginStagedChunkRecreate);
+    assertTrue(
+        failure.getMessage().contains("live chunk target"),
+        "abort must name the unresolved live target. Got: " + failure.getMessage());
+    verify(client, never()).generic();
   }
 }

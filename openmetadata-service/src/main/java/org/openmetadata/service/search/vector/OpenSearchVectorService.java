@@ -441,7 +441,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     preflightEmbedding();
     synchronized (stagedChunkLock) {
       String base = getChunkIndexName();
-      String liveTarget = resolveLiveChunkTarget(base);
+      String liveTarget = requireResolvedLiveChunkTarget(base);
       deleteOrphanChunkGenerations(base, liveTarget);
       String generation = nextChunkGenerationName(base);
       try {
@@ -560,7 +560,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
       if (generation != null) {
         String base = getChunkIndexName();
-        String oldTarget = resolveLiveChunkTarget(base);
+        String oldTarget = requireResolvedLiveChunkTarget(base);
         try {
           executeGenericRequest(
               "POST",
@@ -656,36 +656,51 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * The physical index currently serving chunk reads: the alias target when the read name is an
    * alias (post-promotion layout), the legacy physical index when it exists under the read name,
-   * or null on a fresh install.
+   * or null on a fresh install. Throws when the cluster cannot answer, so callers can distinguish
+   * "nothing is live" from "could not tell".
+   */
+  private String resolveLiveChunkTargetStrict(String base) throws IOException {
+    String target = null;
+    // Boolean alias probe first: on the pre-promotion physical-index layout no alias exists, and
+    // a direct GET /_alias/{base} logs that expected 404 as an ERROR with a stack trace.
+    if (client.indices().existsAlias(a -> a.name(base)).value()) {
+      String response = executeGenericRequest("GET", "/_alias/" + base, null);
+      Iterator<String> names = MAPPER.readTree(response).fieldNames();
+      if (names.hasNext()) {
+        target = names.next();
+      }
+    } else if (client.indices().exists(x -> x.index(base)).value()) {
+      LOG.debug("No alias named {} — serving chunks from the legacy physical index", base);
+      target = base;
+    }
+    return target;
+  }
+
+  /**
+   * Lenient resolution for the ensure/create path: a wrongly-null target there can only make an
+   * index create attempt fail and be retried — it can never delete anything.
    */
   private String resolveLiveChunkTarget(String base) {
     String target = null;
     try {
-      // Quiet boolean probe first: on the pre-promotion physical-index layout no alias exists,
-      // and a direct GET /_alias/{base} would make executeGenericRequest log the expected 404 as
-      // an ERROR with a full stack trace — once per process, on every instance.
-      if (client.indices().existsAlias(a -> a.name(base)).value()) {
-        String response = executeGenericRequest("GET", "/_alias/" + base, null);
-        Iterator<String> names = MAPPER.readTree(response).fieldNames();
-        if (names.hasNext()) {
-          target = names.next();
-        }
-      } else {
-        LOG.debug("No alias named {} — checking for a legacy physical index", base);
-      }
+      target = resolveLiveChunkTargetStrict(base);
     } catch (Exception e) {
-      LOG.debug("Alias lookup for {} failed: {}", base, e.getMessage());
-    }
-    if (target == null) {
-      try {
-        if (client.indices().exists(x -> x.index(base)).value()) {
-          target = base;
-        }
-      } catch (Exception e) {
-        LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
-      }
+      LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
     }
     return target;
+  }
+
+  /**
+   * Strict resolution for destructive paths (orphan sweep, alias swap): an indeterminate probe
+   * aborts the operation, because a null target would read as "nothing is live" and let the sweep
+   * delete the live generation.
+   */
+  private String requireResolvedLiveChunkTarget(String base) {
+    try {
+      return resolveLiveChunkTargetStrict(base);
+    } catch (Exception e) {
+      throw new RuntimeException("Cannot determine the live chunk target for " + base, e);
+    }
   }
 
   /**
