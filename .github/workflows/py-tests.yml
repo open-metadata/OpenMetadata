@@ -25,16 +25,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
-  # MySQL + Elasticsearch lane. This lane also owns the unit-test matrix and the
-  # combined-coverage/Sonar push, which are database-independent and must not be
-  # duplicated in py-tests-postgres.
-  #
-  # -s true : skip Maven; the shared workflow builds the distribution once and the
-  #           shards restore it as an artifact.
-  # -i false: skip the Airflow ingestion image and the sample_data DAG seeding. No
-  #           Python integration test consumes the seeded sample data — the Airflow
-  #           connector tests are mocked at TrackedREST, and usage/test_sample_usage.py
-  #           reads ingestion/examples/sample_data from disk and creates its own service.
+  # Owns the unit-test and coverage jobs; they are database-independent, so
+  # py-tests-postgres must not also run them.
+  # -s true: distribution comes from the shared build job. -i false: no test needs Airflow.
   python:
     uses: ./.github/workflows/py-tests-shared.yml
     with:
@@ -45,10 +38,8 @@ jobs:
       run-coverage: true
     secrets: inherit
 
-  # Set "py-tests / py-tests-status" as the sole required check for this workflow.
-  # Kept in the caller so the required check context survives the move to a reusable
-  # workflow; a job inside py-tests-shared.yml would report as
-  # "py-tests / python / <job>" instead and break the ruleset.
+  # The sole required check for this workflow. Must stay in the caller: inside
+  # py-tests-shared.yml it would report as "py-tests / python / <job>".
   py-tests-status:
     name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
     needs: python

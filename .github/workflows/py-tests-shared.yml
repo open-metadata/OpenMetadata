@@ -11,15 +11,9 @@
 
 name: py-tests-shared
 
-# Shared job graph for the Python ingestion test lanes. py-tests.yml (MySQL +
-# Elasticsearch) and py-tests-postgres.yml (PostgreSQL + OpenSearch) were identical
-# apart from the compose flags, the artifact names, and whether the unit-test and
-# coverage jobs run.
-#
-# Callers keep their own triggers AND their own `py-tests-status` job, so the existing
-# required check contexts ("py-tests / py-tests-status", "py-tests-postgres /
-# py-tests-status") survive this refactor unchanged. Do not move that job in here
-# without migrating the repository ruleset atomically.
+# Shared job graph for py-tests.yml (MySQL) and py-tests-postgres.yml (PostgreSQL).
+# Callers own their `py-tests-status` job: moving it here renames the required check
+# context and breaks the ruleset.
 
 on:
   workflow_call:
@@ -106,17 +100,7 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true
 
-  # Build the backend distribution ONCE per run instead of once per integration shard.
-  # docker/development/Dockerfile consumes exactly one artifact —
-  # openmetadata-dist/target/openmetadata-*.tar.gz — so the shards can restore it and
-  # run run_local_docker.sh with `-s true` (skip Maven).
-  #
-  # The Maven dependency cache is restore-only on purpose. This workflow only ever runs
-  # on pull_request_target / merge_group, whose cache writes are scoped to
-  # refs/pull/N/merge and refs/heads/gh-readonly-queue/** — refs no other run can read.
-  # Saving here would burn quota (the repo sits near the 10 GB cap) for entries nothing
-  # can consume. A `push: main` warming job is what makes this cache hit; see the
-  # follow-up tracked alongside this change.
+  # Produces the one artifact docker/development/Dockerfile needs, so shards can skip Maven.
   build-distribution:
     name: Build Backend Distribution
     needs: changes
@@ -137,6 +121,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      # Restore-only: pull_request_target / merge_group writes are scoped to refs no
+      # other run can read, so saving would only consume the repo's cache quota.
       - name: Restore Maven dependencies
         uses: actions/cache/restore@v5
         with:
@@ -294,8 +280,7 @@ jobs:
         if: matrix.shard.name == 'shard-2'
         run: bash .github/scripts/configure_docker_storage.sh
 
-      # Must land before the setup action: docker/development/Dockerfile COPYs this
-      # tarball, and `-s true` in compose-args means Maven never runs on this runner.
+      # Must precede the setup action, which builds the server image from this tarball.
       - name: Download backend distribution
         uses: actions/download-artifact@v7
         with:
@@ -419,9 +404,7 @@ jobs:
           docker compose down --remove-orphans || true
           sudo rm -rf "${PWD}/docker-volume"
 
-  # Cross-checks that the jobs which were supposed to run actually ran. Callers surface
-  # this verdict through their own `py-tests-status` job, which owns the required check
-  # context name.
+  # Cross-checks that the jobs which were supposed to run actually ran.
   verify:
     name: Verify Expected Jobs
     needs: [changes, build-distribution, py-unit-tests, py-integration-tests]
