@@ -113,7 +113,15 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Explore/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
       ],
-      "projects": ["chromium", "Basic", "search-nightly", "Reindex", "GlobalSettings"],
+      "projects": [
+        "chromium",
+        "Basic",
+        "Ingestion",
+        "ImportExport",
+        "search-nightly",
+        "Reindex",
+        "GlobalSettings"
+      ],
       "specs": [
         "playwright/e2e/Pages/Explore*.spec.ts",
         "playwright/e2e/Features/*Search*.spec.ts",
@@ -173,7 +181,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": ["chromium", "Basic", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/Glossary/**/*.spec.ts",
         "playwright/e2e/Pages/*Glossary*.spec.ts",
@@ -219,7 +227,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Auth/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Login/**"
       ],
-      "projects": ["chromium", "Basic", "SearchRBAC"],
+      "projects": ["chromium", "Basic", "SearchRBAC", "ImportExport"],
       "specs": [
         "playwright/e2e/**/*Permission*.spec.ts",
         "playwright/e2e/Pages/Login*.spec.ts",
