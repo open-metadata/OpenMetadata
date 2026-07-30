@@ -33,6 +33,8 @@ import {
   KnowledgeGraphProps,
 } from './KnowledgeGraph.interface';
 
+const mockNavigate = jest.fn();
+
 jest.mock('@antv/g6', () => ({
   Graph: jest.fn().mockImplementation(() => ({
     render: jest.fn().mockResolvedValue(undefined),
@@ -415,7 +417,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 const MockGraph = Graph as jest.MockedClass<typeof Graph>;
-const mockNavigate = jest.fn();
 
 function makeEntity(overrides: Partial<EntityReference> = {}): EntityReference {
   return {
