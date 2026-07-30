@@ -8,7 +8,8 @@
     "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
     {
