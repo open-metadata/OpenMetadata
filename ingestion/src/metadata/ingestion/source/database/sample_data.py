@@ -927,7 +927,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             logger.debug(f"Traceback: {traceback.format_exc()}")
             self.has_drive_data = False
 
-        self.ai_governance = AIGovernanceSampleData(
+        # Optional, like the drive bundle above: a sampleDataFolder that predates this
+        # fixture set should cost us the AI Governance showcase, not the whole catalog.
+        self.ai_governance = AIGovernanceSampleData.load_optional(
             Path(sample_data_folder) / "ai_governance",
             metadata,
         )
@@ -984,8 +986,9 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
         yield from self.process_service_batch()
         yield from self.ingest_data_contracts()
         yield from self.ingest_sagemaker_models()
-        for request in self.ai_governance.iter_requests():
-            yield Either(left=None, right=request)
+        if self.ai_governance is not None:
+            for request in self.ai_governance.iter_requests():
+                yield Either(left=None, right=request)
 
     def ingest_domains(self) -> Iterable[Either[CreateDomainRequest]]:
         """Ingest sample domains"""

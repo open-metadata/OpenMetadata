@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import traceback
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, ClassVar, TypeAlias
 
@@ -40,6 +41,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -48,6 +50,8 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
     from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+logger = ingestion_logger()
 
 AIGovernanceRequest: TypeAlias = (
     CreateLLMServiceRequest
@@ -95,6 +99,28 @@ class AIGovernanceSampleData:
         self.applications = self._read_json("applications.json")
         self.lineage = self._read_json("lineage.json")
         self._validate_contract()
+
+    @classmethod
+    def load_optional(cls, fixture_folder: Path, metadata: OpenMetadata) -> AIGovernanceSampleData | None:
+        """Build the loader, or return None when the bundle is absent or off-contract.
+
+        `sampleDataFolder` is caller-supplied, and deployments routinely point it at
+        their own pinned copy of the sample data rather than the one shipped here. Such
+        a copy predates this fixture set, or lags a change to `_EXPECTED_COUNTS`, and
+        raising then aborts the whole sample data workflow before any entity is
+        written — including the tables, lineage and test cases that have nothing to do
+        with AI Governance. No other ingestion stage depends on this bundle, so callers
+        that want the rest of the catalog use this instead of the constructor.
+
+        The constructor still raises, so a caller that genuinely requires the bundle
+        keeps the strict signal.
+        """
+        try:
+            return cls(fixture_folder, metadata)
+        except AIGovernanceSampleDataError as exc:
+            logger.warning(f"AI Governance sample data not ingested: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            return None
 
     def _read_json(self, filename: str) -> Any:
         fixture_path = self.fixture_folder / filename
