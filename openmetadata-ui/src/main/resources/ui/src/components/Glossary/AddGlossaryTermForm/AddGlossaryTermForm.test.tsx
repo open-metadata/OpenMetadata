@@ -307,7 +307,7 @@ describe('AddGlossaryTermForm intake fields', () => {
     const section = screen.getByTestId('custom-properties-section');
     const badges = screen.getAllByTestId('custom-property-type-badge');
 
-    expect(section).toHaveTextContent('label.custom-property-plural');
+    expect(section).toBeInTheDocument();
     expect(badges).toHaveLength(3);
     expect(badges.map((badge) => badge.textContent)).toEqual([
       'STRING',

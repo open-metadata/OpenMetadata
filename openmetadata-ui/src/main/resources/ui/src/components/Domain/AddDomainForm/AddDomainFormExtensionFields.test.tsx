@@ -351,7 +351,7 @@ describe('AddDomainFormExtensionFields', () => {
     expect(screen.getAllByRole('textbox', { hidden: true })).toHaveLength(2);
   });
 
-  it('groups the intake fields under a Custom Properties section', () => {
+  it('groups the intake fields under a custom properties section', () => {
     const definition = buildDefinition('string');
 
     render(<ExtensionFieldsHarness definition={definition} />);
@@ -359,7 +359,9 @@ describe('AddDomainFormExtensionFields', () => {
     const section = screen.getByTestId('custom-properties-section');
 
     expect(section).toBeInTheDocument();
-    expect(section).toHaveTextContent('label.custom-property-plural');
+    expect(section).toContainElement(
+      screen.getByTestId(`extension-${definition.name}`)
+    );
   });
 
   it.each([
