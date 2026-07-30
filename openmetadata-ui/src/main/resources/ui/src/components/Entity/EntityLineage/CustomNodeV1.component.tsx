@@ -35,7 +35,6 @@ import {
   getExpandHandle,
   getNodeClassNames,
 } from './CustomNode.utils';
-import './entity-lineage.style.less';
 import {
   ExpandCollapseHandlesProps,
   NodeHandlesProps,

@@ -678,7 +678,7 @@ const LineageMapControls = ({
                 : t(getBandLabelKey(band))
             }
             tooltipPlacement="left"
-            onClick={(event) => {
+            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
               event.stopPropagation();
               onBandChange(band);
             }}

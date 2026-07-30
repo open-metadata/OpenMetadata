@@ -157,12 +157,22 @@ export class DashboardDataModelClass extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.post(
+    let serviceResponse = await apiContext.post(
       '/api/v1/services/dashboardServices',
       {
         data: this.service,
       }
     );
+    // A leftover service from a previous run (or a rare uuid collision) makes
+    // the beforeAll flake with a 409. Fall back to fetching the existing
+    // service so the test can reuse it and stay deterministic.
+    if (serviceResponse.status() === 409) {
+      serviceResponse = await apiContext.get(
+        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          this.service.name
+        )}`
+      );
+    }
     if (!serviceResponse.ok()) {
       throw new Error(
         `Dashboard service create failed (${serviceResponse.status()}): ${await serviceResponse.text()}`
