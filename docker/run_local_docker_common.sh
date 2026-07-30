@@ -466,27 +466,47 @@ run_local_docker_main() {
     done
   fi
 
-  om_phase_start "docker_build_up"
   if [[ $includeIngestion == "true" ]]; then
+    om_phase_start "docker_build"
     echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
-    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && \
-      docker compose "${COMPOSE_ARGS[@]}" up -d
+    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}"
+    build_rc=$?
+    om_phase_end
+    if [ $build_rc -ne 0 ]; then
+      echo "Failed to build Docker images!"
+      exit 1
+    fi
+
+    om_phase_start "docker_up"
+    docker compose "${COMPOSE_ARGS[@]}" up -d
+    up_rc=$?
+    om_phase_end
   else
+    om_phase_start "docker_build"
     echo "Building services without ingestion"
-    docker compose "${COMPOSE_ARGS[@]}" build $SEARCH_SERVICE $DB_SERVICE execute-migrate-all openmetadata-server || exit 1
+    docker compose "${COMPOSE_ARGS[@]}" build $SEARCH_SERVICE $DB_SERVICE execute-migrate-all openmetadata-server
+    build_rc=$?
+    om_phase_end
+    if [ $build_rc -ne 0 ]; then
+      echo "Failed to build Docker images!"
+      exit 1
+    fi
+
     if [[ -n "${OM_ADDITIONAL_UP_SERVICES:-}" ]]; then
       for extra_compose_file in $OM_ADDITIONAL_UP_SERVICES; do
         additional_up_services+=("$extra_compose_file")
       done
     fi
+    om_phase_start "docker_up"
     docker compose "${COMPOSE_ARGS[@]}" up -d "${additional_up_services[@]}" $SEARCH_SERVICE $DB_SERVICE execute-migrate-all openmetadata-server
+    up_rc=$?
+    om_phase_end
   fi
 
-  if [ $? -ne 0 ]; then
+  if [ "$up_rc" -ne 0 ]; then
     echo "Failed to start Docker instances!"
     exit 1
   fi
-  om_phase_end
 
   om_phase_start "wait_search_index"
   until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
