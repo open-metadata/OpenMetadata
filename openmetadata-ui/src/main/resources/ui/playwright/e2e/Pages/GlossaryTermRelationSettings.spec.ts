@@ -124,6 +124,28 @@ const deleteRelationInUi = async (page: Page, name: string) => {
   }).toPass();
 };
 
+// Parallel test workers can push the table past PAGE_SIZE_BASE, putting the
+// target row on page 2+. Navigate forward page-by-page until the row is
+// visible, so individual CRUD tests remain stable regardless of total count.
+const findRowAcrossPages = async (page: Page, testId: string): Promise<void> => {
+  while (!(await page.getByTestId(testId).isVisible())) {
+    const nextBtn = page.getByRole('button', { name: 'Next Page' }).first();
+    const hasNextPage = (await nextBtn.count()) > 0 && (await nextBtn.isEnabled());
+
+    if (!hasNextPage) {
+      throw new Error(`testId "${testId}" not found on any page`);
+    }
+
+    const nextPageResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/glossaryTermRelationSettings/relationTypes') &&
+        response.request().method() === 'GET'
+    );
+    await nextBtn.click();
+    await nextPageResponse;
+  }
+};
+
 test.describe('Glossary Term Relation Settings', () => {
   test.beforeEach(async ({ page }) => {
     await authenticateAdminPage(page);
@@ -173,6 +195,7 @@ test.describe('Glossary Term Relation Settings', () => {
 
       await goToRelationSettings(page);
 
+      await findRowAcrossPages(page, `edit-${relationName}-btn`);
       await page.getByTestId(`edit-${relationName}-btn`).click();
       await expect(page.getByTestId('relation-type-drawer')).toBeVisible();
 
@@ -221,6 +244,7 @@ test.describe('Glossary Term Relation Settings', () => {
 
       await goToRelationSettings(page);
 
+      await findRowAcrossPages(page, `relation-name-${relationName}`);
       await expect(
         page.getByTestId(`relation-name-${relationName}`)
       ).toBeVisible();
@@ -243,6 +267,7 @@ test.describe('Glossary Term Relation Settings', () => {
   }) => {
     await goToRelationSettings(page);
 
+    await findRowAcrossPages(page, `relation-name-${SYSTEM_DEFINED_RELATION}`);
     await expect(
       page.getByTestId(`relation-name-${SYSTEM_DEFINED_RELATION}`)
     ).toBeVisible();
