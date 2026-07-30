@@ -19,6 +19,7 @@ import jsoncPlugin from 'eslint-plugin-jsonc';
 import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
@@ -98,6 +99,7 @@ export default [
       jest,
       'jest-formatting': jestFormatting,
       i18next,
+      sonarjs,
     },
 
     rules: {
@@ -212,6 +214,37 @@ export default [
             'Do not use Tailwind `ring-*` to draw an edge — it compiles to box-shadow, which WebKit does not pixel-snap, so it thins/vanishes in Safari when zoomed. Use `border-*`, or `outline-1 -outline-offset-1 outline-<token>`. Where the outline is already the focus ring, use `borderAfter` + `after:outline-<token>`. See docs/colors.md §2.3.1.',
         },
       ],
+
+      // SonarJS — same engine and rule ids (Sxxxx) as the SonarCloud analysis
+      // that already runs on every UI PR, so a finding here is the finding
+      // Sonar reports, only faster and in the editor.
+      //
+      // ONLY rules with zero existing violations across src/ are listed. ESLint
+      // reports per file, not per added line, so a rule with a legacy backlog
+      // would fail PRs for code they merely touched. The high-backlog rules —
+      // no-duplicate-string (640), cognitive-complexity (85), no-collapsible-if
+      // (21), no-redundant-jump (14), no-duplicated-branches (9),
+      // no-identical-functions (6) — are deliberately NOT here: SonarCloud's
+      // Clean-as-You-Code gate scopes them to new lines, which ESLint cannot do.
+      // Also held back for a small backlog, mostly in tests: no-extra-arguments
+      // (20), prefer-object-literal (1), no-redundant-boolean (1).
+      // Promote a rule here once its backlog is cleared.
+      'sonarjs/no-identical-conditions': 'error',
+      'sonarjs/no-identical-expressions': 'error',
+      'sonarjs/no-gratuitous-expressions': 'error',
+      'sonarjs/no-inverted-boolean-check': 'error',
+      'sonarjs/no-useless-catch': 'error',
+      'sonarjs/no-element-overwrite': 'error',
+      'sonarjs/no-empty-collection': 'error',
+      'sonarjs/no-same-line-conditional': 'error',
+      'sonarjs/no-use-of-empty-return-value': 'error',
+      'sonarjs/non-existent-operator': 'error',
+      'sonarjs/no-ignored-return': 'error',
+      'sonarjs/no-nested-switch': 'error',
+      'sonarjs/no-globals-shadowing': 'error',
+      'sonarjs/prefer-while': 'error',
+      'sonarjs/no-unthrown-error': 'error',
+      'sonarjs/no-misleading-array-reverse': 'error',
     },
   },
 
