@@ -752,11 +752,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [decodedServiceFQN, include, permissions.dashboard]
   );
 
-  // Fetch Data Model count to show it in tab label
+  // Fetch Data Model count to show it in tab label. This owns `dataModelPaging`
+  // only — `isServiceLoading` and the entity paging belong to `getOtherDetails`,
+  // and driving them from here left the entity tab's table spinning forever
+  // because this effect re-runs on every tab change.
   const fetchDashboardsDataModel = useCallback(
     async (params?: ListDataModelParams) => {
       try {
-        setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
           fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
@@ -766,9 +768,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        handlePagingChange(pagingObject);
-      } finally {
-        setIsServiceLoading(false);
+        setDataModelPaging(pagingObject);
       }
     },
     [decodedServiceFQN, include]
