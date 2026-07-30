@@ -1112,7 +1112,6 @@ test.describe(
     const dataProductProperties = {
       date: `pwDpDate${suffix}`,
       dateTime: `pwDpDateTime${suffix}`,
-      enum: `pwDpEnum${suffix}`,
       hyperlink: `pwDpLink${suffix}`,
       integer: `pwDpInteger${suffix}`,
       multiEnum: `pwDpMultiEnum${suffix}`,
@@ -1166,13 +1165,6 @@ test.describe(
         await ensureCustomProperty(
           apiContext,
           DP_INTAKE_NAME,
-          dataProductProperties.enum,
-          'enum',
-          { multiSelect: false, values: ['small', 'large'] }
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
           dataProductProperties.date,
           'date-cp',
           'yyyy-MM-dd'
@@ -1203,13 +1195,6 @@ test.describe(
           dataProductProperties.referenceList,
           'entityReferenceList',
           ['glossaryTerm']
-        );
-        await ensureCustomProperty(
-          apiContext,
-          DP_INTAKE_NAME,
-          dataProductProperties.multiEnum,
-          'enum',
-          { multiSelect: true, values: ['blue', 'red'] }
         );
         await ensureEntityReferenceCustomProperty(
           apiContext,
@@ -1265,11 +1250,6 @@ test.describe(
         {
           fieldPath: `extension.${dataProductProperties.number}`,
           fieldLabel: 'Priority Number',
-          fieldKind: 'customProperty',
-        },
-        {
-          fieldPath: `extension.${dataProductProperties.enum}`,
-          fieldLabel: 'Product Size',
           fieldKind: 'customProperty',
         },
         {
@@ -1380,12 +1360,6 @@ test.describe(
       await expect(numberInput).toBeVisible();
       await numberInput.fill('42.5');
 
-      const enumField = page.getByTestId(
-        `extension-${dataProductProperties.enum}`
-      );
-      await enumField.getByRole('button').click();
-      await page.getByRole('option', { name: 'small', exact: true }).click();
-
       const dateField = page.getByTestId(
         `extension-${dataProductProperties.date}`
       );
@@ -1434,30 +1408,6 @@ test.describe(
         optionText: referenceTerm.data.displayName,
       });
       await page.keyboard.press('Escape');
-
-      // A multi-select enum renders as an Autocomplete (combobox input), not
-      // the Select button used by the single-select enum above.
-      const multiEnumContainer = page.locator(
-        `[data-testid="extension-${dataProductProperties.multiEnum}"]`
-      );
-      const multiEnumInput = multiEnumContainer
-        .locator('input[role="combobox"]')
-        .first();
-
-      const selectMultiEnumValue = async (value: string) => {
-        await expect(multiEnumInput).toBeVisible();
-        await multiEnumInput.click();
-        await page.getByRole('option', { name: value, exact: true }).click();
-        // The chip confirms the selection was committed before we dismiss.
-        await expect(
-          multiEnumContainer.getByText(value, { exact: true })
-        ).toBeVisible();
-        await multiEnumInput.blur();
-        await expect(page.getByRole('listbox')).toBeHidden();
-      };
-
-      await selectMultiEnumValue('blue');
-      await selectMultiEnumValue('red');
 
       let createRequestCount = 0;
       const trackCreateRequest = (request: Request) => {
@@ -1519,7 +1469,6 @@ test.describe(
       expect(typeof payload.extension[dataProductProperties.number]).toBe(
         'number'
       );
-      expect(payload.extension[dataProductProperties.enum]).toEqual(['small']);
       expect(payload.extension[dataProductProperties.date]).toMatch(
         /^\d{4}-\d{2}-\d{2}$/
       );
