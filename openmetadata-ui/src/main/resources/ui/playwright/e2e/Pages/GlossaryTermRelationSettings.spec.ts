@@ -127,12 +127,24 @@ const deleteRelationInUi = async (page: Page, name: string) => {
 // Parallel test workers can push the table past PAGE_SIZE_BASE, putting the
 // target row on page 2+. Navigate forward page-by-page until the row is
 // visible, so individual CRUD tests remain stable regardless of total count.
+//
+// Uses waitFor (not isVisible) so React has time to flush new rows after each
+// page navigation before we decide whether to advance. isVisible() is
+// instantaneous and would read the stale DOM from the previous page,
+// causing the loop to skip the target and eventually throw.
 const findRowAcrossPages = async (page: Page, testId: string): Promise<void> => {
-  while (!(await page.getByTestId(testId).isVisible())) {
-    const nextBtn = page.getByRole('button', { name: 'Next Page' }).first();
-    const hasNextPage = (await nextBtn.count()) > 0 && (await nextBtn.isEnabled());
+  const target = page.getByTestId(testId);
 
-    if (!hasNextPage) {
+  while (true) {
+    const found = await target
+      .waitFor({ state: 'visible', timeout: 3_000 })
+      .then(() => true, () => false);
+
+    if (found) return;
+
+    const nextBtn = page.getByRole('button', { name: 'Next Page' }).first();
+
+    if ((await nextBtn.count()) === 0 || !(await nextBtn.isEnabled())) {
       throw new Error(`testId "${testId}" not found on any page`);
     }
 
