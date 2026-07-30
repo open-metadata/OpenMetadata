@@ -16,6 +16,8 @@ package org.openmetadata.service.notifications.recipients.context;
 import java.util.Objects;
 import lombok.Getter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 
@@ -25,6 +27,7 @@ import org.openmetadata.schema.entity.teams.User;
  * Represents a recipient that should receive notifications via email. Two EmailRecipient instances
  * are equal if they have the same email address.
  */
+@Slf4j
 @Getter
 @ToString
 public final class EmailRecipient extends Recipient {
@@ -38,19 +41,30 @@ public final class EmailRecipient extends Recipient {
    * Create an email recipient from a user.
    *
    * @param user the user to create a recipient from
-   * @return an EmailRecipient instance
+   * @return an EmailRecipient instance, or null if the user has no email address
    */
   public static EmailRecipient fromUser(User user) {
+    if (CommonUtil.nullOrEmpty(user.getEmail())) {
+      LOG.debug("Skipping user {} as an email recipient: no email address", user.getName());
+      return null;
+    }
     return new EmailRecipient(user.getEmail());
   }
 
   /**
    * Create an email recipient from a team.
    *
+   * Team email is optional, so teams without one are skipped the same way teams without a webhook
+   * configured are skipped by {@link WebhookRecipient#fromTeam}.
+   *
    * @param team the team to create a recipient from
-   * @return an EmailRecipient instance
+   * @return an EmailRecipient instance, or null if the team has no email address
    */
   public static EmailRecipient fromTeam(Team team) {
+    if (CommonUtil.nullOrEmpty(team.getEmail())) {
+      LOG.debug("Skipping team {} as an email recipient: no email address", team.getName());
+      return null;
+    }
     return new EmailRecipient(team.getEmail());
   }
 
