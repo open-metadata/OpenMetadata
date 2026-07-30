@@ -42,7 +42,7 @@ describe('useOntologyTermDetails', () => {
     expect(mockGetGlossaryTermsById).not.toHaveBeenCalled();
   });
 
-  it('fetches with conceptMappings and attributes fields and sets termDetails on success', async () => {
+  it('fetches the declared and inherited attribute fields and sets termDetails on success', async () => {
     const fetched = term(VALID_UUID, 'term-1');
     mockGetGlossaryTermsById.mockResolvedValue(fetched);
 
@@ -51,7 +51,12 @@ describe('useOntologyTermDetails', () => {
     await waitFor(() => expect(result.current.termDetails).toBe(fetched));
 
     expect(mockGetGlossaryTermsById).toHaveBeenCalledWith(VALID_UUID, {
-      fields: ['conceptMappings', 'attributes'],
+      fields: [
+        'conceptMappings',
+        'attributes',
+        'effectiveAttributes',
+        'realizedIn',
+      ],
     });
   });
 

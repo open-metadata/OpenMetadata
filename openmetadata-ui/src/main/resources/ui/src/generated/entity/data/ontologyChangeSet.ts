@@ -78,12 +78,16 @@ export interface OperationResult {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ *
  * Reference to the data contract for this entity.
  *
  * Glossary that this term belongs to.
  *
  * Parent glossary term that this term is child of. When `null` this term is the root term
  * of the glossary.
+ *
+ * Data asset realizing the concept.
  *
  * Resolved first-class relationship type.
  *
@@ -236,6 +240,10 @@ export interface OntologyAttribute {
      */
     datatypeIri?: string;
     /**
+     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+     */
+    declaringTerm?: EntityReference;
+    /**
      * Human-readable meaning of the attribute.
      */
     description?: string;
@@ -247,6 +255,12 @@ export interface OntologyAttribute {
      * Stable identifier used by drafts and version diffs.
      */
     id: string;
+    /**
+     * True when the attribute is contributed by an ancestor concept rather than declared on the
+     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
+     * concept's own `attributes`.
+     */
+    inherited?: boolean;
     /**
      * Canonical IRI of the OWL datatype property.
      */
@@ -418,6 +432,8 @@ export enum RestrictionKind {
 /**
  * How this relation edge originated.
  *
+ * How this realization edge originated. Defaults to 'Manual'.
+ *
  * How this relation edge originated. Defaults to 'Manual'.
  */
 export enum Provenance {
@@ -537,6 +553,11 @@ export interface GlossaryTerm {
      */
     conceptMappings?: ConceptMapping[];
     /**
+     * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
+     * emits the term as an `owl:Class` and a `skos:Concept`.
+     */
+    conceptType?: OntologyConceptType;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -565,6 +586,12 @@ export interface GlossaryTerm {
      * from the Glossary it belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Attributes declared by this concept together with those inherited from its ancestors
+     * through subsumption. Computed by the server on read and never stored; inherited entries
+     * carry `inherited` and `declaringTerm`.
+     */
+    effectiveAttributes?: OntologyAttribute[];
     /**
      * Approval status of the glossary term.
      */
@@ -631,6 +658,11 @@ export interface GlossaryTerm {
     parent?:   EntityReference;
     provider?: ProviderType;
     /**
+     * Data assets that physically realize this concept. Distinct from tag labels, which only
+     * record that an asset references the concept.
+     */
+    realizedIn?: AssetRealization[];
+    /**
      * Link to a reference from an external glossary.
      */
     references?: TermReference[];
@@ -679,6 +711,19 @@ export interface GlossaryTerm {
 }
 
 /**
+ * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
+ * emits the term as an `owl:Class` and a `skos:Concept`.
+ *
+ * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
+ * round-trip with the typing they were authored with.
+ */
+export enum OntologyConceptType {
+    Both = "BOTH",
+    OwlClass = "OWL_CLASS",
+    SkosConcept = "SKOS_CONCEPT",
+}
+
+/**
  * Pinned source provenance when this term belongs to an application ontology subset.
  *
  * Pinned source identity and versions for a concept materialized into an application
@@ -724,6 +769,41 @@ export interface OntologyTermStructure {
 export interface Relationship {
     relationshipType:   EntityReference;
     targetSourceTermId: string;
+}
+
+/**
+ * A data asset that physically realizes an ontology concept. Unlike a tag label, which
+ * records that an asset merely references a concept, a realization records that the asset
+ * stores the instances of the concept.
+ */
+export interface AssetRealization {
+    /**
+     * Data asset realizing the concept.
+     */
+    asset: EntityReference;
+    /**
+     * Human-readable note about how the asset realizes the concept.
+     */
+    description?: string;
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id?: string;
+    /**
+     * How this realization edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    role?:       RealizationRole;
+}
+
+/**
+ * Role the asset plays in realizing the concept. At most one asset may be the primary store
+ * of a concept.
+ */
+export enum RealizationRole {
+    Derived = "DERIVED",
+    PrimaryStore = "PRIMARY_STORE",
+    Replica = "REPLICA",
 }
 
 export interface TermReference {

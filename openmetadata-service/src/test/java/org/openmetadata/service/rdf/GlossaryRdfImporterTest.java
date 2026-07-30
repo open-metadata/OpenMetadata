@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.StringReader;
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.DatatypeIntent;
+import org.openmetadata.service.rdf.GlossaryRdfImporter.RelationIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
 
 /** Unit tests for the OWL/SKOS &rarr; glossary-term parsing in {@link GlossaryRdfImporter}. */
@@ -135,9 +138,18 @@ class GlossaryRdfImporterTest {
         HCP + "AlphaParent",
         child.parentIri,
         "the lexicographically smallest internal IRI is the structural parent");
-    assertEquals(1, child.relations.size(), "the additional internal parent is retained once");
-    assertEquals("broader", child.relations.getFirst().relationshipType());
-    assertEquals(HCP + "ZuluParent", child.relations.getFirst().targetIri());
+    assertEquals(
+        2,
+        child.relations.size(),
+        "the additional internal parent keeps a relation per asserted predicate");
+    assertEquals(
+        Set.of("broader", "subClassOf"),
+        child.relations.stream().map(RelationIntent::relationshipType).collect(Collectors.toSet()),
+        "skos:broader stays associative while rdfs:subClassOf keeps asserting subsumption");
+    assertTrue(
+        child.relations.stream()
+            .allMatch(relation -> (HCP + "ZuluParent").equals(relation.targetIri())),
+        "both relations point at the demoted parent");
     assertEquals(1, child.conceptMappings.size(), "the external parent is retained as a mapping");
     assertEquals(
         ConceptMapping.ConceptMappingType.BROAD_MATCH,

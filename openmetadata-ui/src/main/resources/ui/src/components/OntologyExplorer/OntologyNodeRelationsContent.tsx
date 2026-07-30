@@ -337,6 +337,7 @@ export const OntologyNodeRelationsContent: React.FC<
       {isValidUUID(termId) ? (
         <OntologyConceptAttributes
           attributes={termDetails?.attributes ?? []}
+          effectiveAttributes={termDetails?.effectiveAttributes}
           isEditMode={isEditMode}
           termId={termId}
           onTermUpdate={setTermDetails}

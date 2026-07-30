@@ -59,6 +59,15 @@
       "description": "Whether the attribute identifies instances of the concept.",
       "type": "boolean",
       "default": false
+    },
+    "inherited": {
+      "description": "True when the attribute is contributed by an ancestor concept rather than declared on the concept itself. Only set on computed `effectiveAttributes`; never valid inside a concept's own `attributes`.",
+      "type": "boolean",
+      "default": false
+    },
+    "declaringTerm": {
+      "description": "Ancestor concept that declares this attribute. Only set when `inherited` is true.",
+      "$ref": "entityReference.json"
     }
   },
   "required": ["id", "name", "dataType", "isIdentifier"],

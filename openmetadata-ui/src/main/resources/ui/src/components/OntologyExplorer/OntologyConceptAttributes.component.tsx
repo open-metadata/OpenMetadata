@@ -23,7 +23,7 @@ import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuidv4 } from 'uuid';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -37,6 +37,11 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 export interface OntologyConceptAttributesProps {
   readonly termId: string;
   readonly attributes: OntologyAttribute[];
+  /**
+   * Attributes the concept declares plus those its ancestors contribute through subsumption.
+   * Inherited entries render read-only, since they are edited on the concept that declares them.
+   */
+  readonly effectiveAttributes?: OntologyAttribute[];
   readonly isEditMode: boolean;
   readonly showEditControls?: boolean;
   readonly variant?: 'default' | 'inspector';
@@ -60,12 +65,18 @@ export const OntologyConceptAttributes: React.FC<
 > = ({
   termId,
   attributes,
+  effectiveAttributes,
   isEditMode,
   showEditControls = isEditMode,
   variant = 'default',
   onTermUpdate,
 }) => {
   const { t } = useTranslation();
+  const inheritedAttributes = useMemo(
+    () =>
+      (effectiveAttributes ?? []).filter((attribute) => attribute.inherited),
+    [effectiveAttributes]
+  );
   const [isAdding, setIsAdding] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [draftName, setDraftName] = useState('');
@@ -272,6 +283,27 @@ export const OntologyConceptAttributes: React.FC<
     );
   };
 
+  const renderInheritedAttributeRow = (attribute: OntologyAttribute) => (
+    <div
+      className={classNames(
+        'tw:flex tw:items-center tw:gap-2 tw:border tw:border-dashed tw:border-secondary tw:bg-secondary',
+        isInspector ? 'tw:rounded-lg tw:px-2.5 tw:py-2' : 'tw:rounded-lg tw:p-3'
+      )}
+      data-testid={`inherited-attribute-${attribute.name}`}
+      key={`${attribute.declaringTerm?.id}-${attribute.id}`}>
+      <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-secondary">
+        {attribute.name}
+      </span>
+      <Badge color="gray" size="sm" type="color">
+        {t('label.inherited-from')}{' '}
+        {attribute.declaringTerm?.displayName ?? attribute.declaringTerm?.name}
+      </Badge>
+      <span className="tw:font-mono tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-tertiary">
+        {attribute.dataType.toLowerCase()}
+      </span>
+    </div>
+  );
+
   const renderAddForm = () => (
     <Card
       className={classNames(
@@ -366,15 +398,16 @@ export const OntologyConceptAttributes: React.FC<
               'tw:rounded-full tw:border tw:border-secondary tw:bg-tertiary tw:px-2 tw:py-px tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-secondary'
           )}>
           {isInspector ? (
-            attributes.length
+            attributes.length + inheritedAttributes.length
           ) : (
             <Badge color="gray" size="sm" type="color">
-              {attributes.length}
+              {attributes.length + inheritedAttributes.length}
             </Badge>
           )}
         </span>
       </div>
       {attributes.map(renderAttributeRow)}
+      {inheritedAttributes.map(renderInheritedAttributeRow)}
       {showEditControls ? (
         isAdding ? (
           renderAddForm()

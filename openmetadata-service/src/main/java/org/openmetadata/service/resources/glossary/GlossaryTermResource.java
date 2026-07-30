@@ -121,7 +121,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,"
+          + "effectiveAttributes,realizedIn";
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.

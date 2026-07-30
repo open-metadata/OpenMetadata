@@ -32,6 +32,7 @@ import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
 import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
+import { OntologyConceptRealization } from './OntologyConceptRealization.component';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
 import { isTermNode, isValidUUID } from './utils/graphBuilders';
@@ -586,7 +587,18 @@ const OntologyAuthoringInspector = ({
         <OntologyConceptAttributes
           showEditControls
           attributes={termDetails?.attributes ?? []}
+          effectiveAttributes={termDetails?.effectiveAttributes}
           isEditMode={isEditable}
+          termId={termId}
+          variant="inspector"
+          onTermUpdate={setTermDetails}
+        />
+      ) : null}
+
+      {isValidUUID(termId) ? (
+        <OntologyConceptRealization
+          isEditMode={isEditable}
+          realizations={termDetails?.realizedIn ?? []}
           termId={termId}
           variant="inspector"
           onTermUpdate={setTermDetails}

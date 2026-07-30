@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.OntologyAnnexRevision;
 import org.openmetadata.schema.type.OntologyAnnexSource;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyNamespace;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RdfValidationReport;
@@ -129,6 +130,7 @@ public class GlossaryRdfImporter {
   private static final String NARROW_MATCH_TYPE = "narrowMatch";
   private static final String RELATED_MATCH_TYPE = "relatedMatch";
   private static final String BROADER_TYPE = "broader";
+  private static final String SUBCLASS_OF_TYPE = "subClassOf";
   private static final int MAX_RDF_PAYLOAD_CHARS = 10 * 1024 * 1024;
   private static final String DOCTYPE_TOKEN = "<!DOCTYPE";
   private static final String RDF_XML_LANG = "RDF/XML";
@@ -467,7 +469,25 @@ public class GlossaryRdfImporter {
     intent.description = firstLiteral(resource, model, SKOS + "definition", RDFS + "comment");
     intent.synonyms = listLiterals(resource, model.getProperty(SKOS, "altLabel"));
     intent.schemeIri = firstResourceUri(resource, model.getProperty(SKOS, "inScheme"));
+    intent.conceptType = detectConceptType(resource, model);
     return intent;
+  }
+
+  /**
+   * Record which vocabulary asserted the concept so the export re-emits it the way the source
+   * declared it. A resource typed as both stays dual-typed.
+   */
+  private OntologyConceptType detectConceptType(Resource resource, Model model) {
+    Property type = model.getProperty(RDF, "type");
+    boolean isOwlClass = resource.hasProperty(type, model.getResource(OWL + "Class"));
+    boolean isSkosConcept = resource.hasProperty(type, model.getResource(SKOS + "Concept"));
+    if (isOwlClass && !isSkosConcept) {
+      return OntologyConceptType.OWL_CLASS;
+    }
+    if (isSkosConcept && !isOwlClass) {
+      return OntologyConceptType.SKOS_CONCEPT;
+    }
+    return OntologyConceptType.BOTH;
   }
 
   private void extractEdges(Model model, TermIntent intent, Set<String> internalIris) {
@@ -489,7 +509,7 @@ public class GlossaryRdfImporter {
     boolean internal = internalIris.contains(targetIri);
     ConceptMapping.ConceptMappingType mappingType = mappingTypeFor(predicate);
     if (isHierarchical(predicate)) {
-      assignParent(intent, targetIri, internal);
+      assignParent(intent, targetIri, internal, predicate);
     } else if (mappingType != null && !internal) {
       addConceptMapping(intent, targetIri, mappingType);
     } else if (internal) {
@@ -501,7 +521,14 @@ public class GlossaryRdfImporter {
     return (SKOS + "broader").equals(predicate) || (RDFS + "subClassOf").equals(predicate);
   }
 
-  private void assignParent(TermIntent intent, String targetIri, boolean internal) {
+  /**
+   * A term keeps one structural parent, chosen deterministically as the lexicographically smallest
+   * target IRI. Every other asserted parent becomes a typed relation that preserves the predicate
+   * the source used, so an {@code rdfs:subClassOf} axiom is not weakened into {@code skos:broader}
+   * on the way back out.
+   */
+  private void assignParent(
+      TermIntent intent, String targetIri, boolean internal, String predicate) {
     if (!internal) {
       addConceptMapping(intent, targetIri, ConceptMapping.ConceptMappingType.BROAD_MATCH);
       return;
@@ -511,14 +538,29 @@ public class GlossaryRdfImporter {
     }
     if (intent.parentIri == null || targetIri.compareTo(intent.parentIri) < 0) {
       String previousParent = intent.parentIri;
+      String previousPredicate = intent.parentPredicate;
       intent.parentIri = targetIri;
-      removeRelation(intent, "broader", targetIri);
+      intent.parentPredicate = predicate;
+      removeHierarchicalRelations(intent, targetIri);
       if (previousParent != null) {
-        addTypedRelation(intent, BROADER_TYPE, SKOS + "broader", previousParent);
+        addHierarchicalRelation(intent, previousPredicate, previousParent);
       }
     } else {
-      addTypedRelation(intent, BROADER_TYPE, SKOS + "broader", targetIri);
+      addHierarchicalRelation(intent, predicate, targetIri);
     }
+  }
+
+  private void addHierarchicalRelation(TermIntent intent, String predicate, String targetIri) {
+    addTypedRelation(intent, hierarchicalRelationType(predicate), predicate, targetIri);
+  }
+
+  private void removeHierarchicalRelations(TermIntent intent, String targetIri) {
+    removeRelation(intent, BROADER_TYPE, targetIri);
+    removeRelation(intent, SUBCLASS_OF_TYPE, targetIri);
+  }
+
+  private static String hierarchicalRelationType(String predicate) {
+    return (RDFS + "subClassOf").equals(predicate) ? SUBCLASS_OF_TYPE : BROADER_TYPE;
   }
 
   private void addRelation(TermIntent intent, String predicate, String targetIri) {
@@ -531,7 +573,10 @@ public class GlossaryRdfImporter {
 
   private void addTypedRelation(
       TermIntent intent, String relationType, String predicateIri, String targetIri) {
-    if (BROADER_TYPE.equals(relationType) && targetIri.equals(intent.parentIri)) {
+    boolean duplicatesStructuralParent =
+        (BROADER_TYPE.equals(relationType) || SUBCLASS_OF_TYPE.equals(relationType))
+            && targetIri.equals(intent.parentIri);
+    if (duplicatesStructuralParent) {
       return;
     }
     boolean exists =
@@ -995,6 +1040,7 @@ public class GlossaryRdfImporter {
         .withDescription(nullOrEmpty(intent.description) ? intent.displayName : intent.description)
         .withSynonyms(intent.synonyms)
         .withIri(toUri(intent.iri))
+        .withConceptType(intent.conceptType)
         .withAttributes(intent.attributes)
         .withConceptMappings(intent.conceptMappings)
         .withUpdatedBy(user)
@@ -1265,7 +1311,9 @@ public class GlossaryRdfImporter {
     String description;
     List<String> synonyms;
     String parentIri;
+    String parentPredicate;
     String schemeIri;
+    OntologyConceptType conceptType;
     final List<ConceptMapping> conceptMappings = new ArrayList<>();
     final List<RelationIntent> relations = new ArrayList<>();
     final List<OntologyAttribute> attributes = new ArrayList<>();

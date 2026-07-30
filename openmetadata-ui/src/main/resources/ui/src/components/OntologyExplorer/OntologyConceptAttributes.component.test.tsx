@@ -56,6 +56,21 @@ const ATTRIBUTES: OntologyAttribute[] = [
   },
 ];
 
+const INHERITED_ATTRIBUTES: OntologyAttribute[] = [
+  {
+    id: 'attr-3',
+    name: 'email',
+    dataType: DataType.String,
+    isIdentifier: false,
+    inherited: true,
+    declaringTerm: {
+      id: 'b1c2d3e4-0000-0000-0000-000000000002',
+      type: 'glossaryTerm',
+      name: 'Person',
+    },
+  },
+];
+
 describe('OntologyConceptAttributes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -85,6 +100,55 @@ describe('OntologyConceptAttributes', () => {
     expect(screen.getByTestId('ontology-attribute-rating')).toHaveTextContent(
       'stars'
     );
+  });
+
+  it('renders inherited attributes read-only and names the concept declaring them', () => {
+    render(
+      <OntologyConceptAttributes
+        isEditMode
+        attributes={ATTRIBUTES}
+        effectiveAttributes={[...ATTRIBUTES, ...INHERITED_ATTRIBUTES]}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+
+    const inherited = screen.getByTestId('inherited-attribute-email');
+
+    expect(inherited).toHaveTextContent('label.inherited-from');
+    expect(inherited).toHaveTextContent('Person');
+    expect(
+      screen.queryByTestId('remove-attribute-email')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts declared and inherited attributes together', () => {
+    render(
+      <OntologyConceptAttributes
+        attributes={ATTRIBUTES}
+        effectiveAttributes={[...ATTRIBUTES, ...INHERITED_ATTRIBUTES]}
+        isEditMode={false}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-attributes')).toHaveTextContent('3');
+  });
+
+  it('renders only declared attributes when no effective set is supplied', () => {
+    render(
+      <OntologyConceptAttributes
+        attributes={ATTRIBUTES}
+        isEditMode={false}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('inherited-attribute-email')
+    ).not.toBeInTheDocument();
   });
 
   it('hides authoring controls outside edit mode', () => {

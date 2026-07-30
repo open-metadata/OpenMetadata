@@ -40,6 +40,8 @@ export interface OntologySourceProvenance {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Ancestor concept that declares this attribute. Only set when `inherited` is true.
  */
 export interface EntityReference {
     /**
@@ -110,6 +112,10 @@ export interface OntologyAttribute {
      */
     datatypeIri?: string;
     /**
+     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+     */
+    declaringTerm?: EntityReference;
+    /**
      * Human-readable meaning of the attribute.
      */
     description?: string;
@@ -121,6 +127,12 @@ export interface OntologyAttribute {
      * Stable identifier used by drafts and version diffs.
      */
     id: string;
+    /**
+     * True when the attribute is contributed by an ancestor concept rather than declared on the
+     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
+     * concept's own `attributes`.
+     */
+    inherited?: boolean;
     /**
      * Canonical IRI of the OWL datatype property.
      */

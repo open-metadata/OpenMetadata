@@ -114,6 +114,10 @@ export interface OntologyConfiguration {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ *
+ * Data asset realizing the concept.
  */
 export interface EntityReference {
     /**
@@ -467,6 +471,10 @@ export interface CreateGlossaryTermRequest {
     parent?:   string;
     provider?: ProviderType;
     /**
+     * Data assets that physically realize this concept.
+     */
+    realizedIn?: AssetRealization[];
+    /**
      * Link to a reference from an external glossary.
      */
     references?: TermReference[];
@@ -499,6 +507,10 @@ export interface OntologyAttribute {
      */
     datatypeIri?: string;
     /**
+     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+     */
+    declaringTerm?: EntityReference;
+    /**
      * Human-readable meaning of the attribute.
      */
     description?: string;
@@ -510,6 +522,12 @@ export interface OntologyAttribute {
      * Stable identifier used by drafts and version diffs.
      */
     id: string;
+    /**
+     * True when the attribute is contributed by an ancestor concept rather than declared on the
+     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
+     * concept's own `attributes`.
+     */
+    inherited?: boolean;
     /**
      * Canonical IRI of the OWL datatype property.
      */
@@ -574,6 +592,53 @@ export enum ConceptMappingType {
     NarrowMatch = "NARROW_MATCH",
     RelatedMatch = "RELATED_MATCH",
     SameAs = "SAME_AS",
+}
+
+/**
+ * A data asset that physically realizes an ontology concept. Unlike a tag label, which
+ * records that an asset merely references a concept, a realization records that the asset
+ * stores the instances of the concept.
+ */
+export interface AssetRealization {
+    /**
+     * Data asset realizing the concept.
+     */
+    asset: EntityReference;
+    /**
+     * Human-readable note about how the asset realizes the concept.
+     */
+    description?: string;
+    /**
+     * Stable identifier used by drafts and version diffs.
+     */
+    id?: string;
+    /**
+     * How this realization edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    role?:       RealizationRole;
+}
+
+/**
+ * How this realization edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
+}
+
+/**
+ * Role the asset plays in realizing the concept. At most one asset may be the primary store
+ * of a concept.
+ */
+export enum RealizationRole {
+    Derived = "DERIVED",
+    PrimaryStore = "PRIMARY_STORE",
+    Replica = "REPLICA",
 }
 
 export interface TermReference {

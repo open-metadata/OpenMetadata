@@ -9,6 +9,7 @@ import java.util.List;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
@@ -20,6 +21,10 @@ public class GlossaryTermMapper implements EntityMapper<GlossaryTerm, CreateGlos
         .withSynonyms(create.getSynonyms())
         .withAttributes(create.getAttributes())
         .withConceptMappings(create.getConceptMappings())
+        .withRealizedIn(create.getRealizedIn())
+        // A concept authored here expresses no source vocabulary, so it stays usable from both.
+        // Imported concepts get their asserted vocabulary from the RDF importer instead.
+        .withConceptType(OntologyConceptType.BOTH)
         .withIri(create.getIri())
         .withStyle(create.getStyle())
         .withGlossary(getEntityReferenceByName(Entity.GLOSSARY, create.getGlossary()))

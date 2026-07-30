@@ -11,68 +11,32 @@
  *  limitations under the License.
  */
 /**
- * A typed attribute governed by an ontology concept.
+ * A data asset that physically realizes an ontology concept. Unlike a tag label, which
+ * records that an asset merely references a concept, a realization records that the asset
+ * stores the instances of the concept.
  */
-export interface OntologyAttribute {
-    dataType: DataType;
+export interface AssetRealization {
     /**
-     * Exact RDF datatype IRI preserved for ontology round trips.
+     * Data asset realizing the concept.
      */
-    datatypeIri?: string;
+    asset: EntityReference;
     /**
-     * Ancestor concept that declares this attribute. Only set when `inherited` is true.
-     */
-    declaringTerm?: EntityReference;
-    /**
-     * Human-readable meaning of the attribute.
+     * Human-readable note about how the asset realizes the concept.
      */
     description?: string;
     /**
-     * Allowed values when dataType is ENUM.
-     */
-    enumValues?: string[];
-    /**
      * Stable identifier used by drafts and version diffs.
      */
-    id: string;
+    id?: string;
     /**
-     * True when the attribute is contributed by an ancestor concept rather than declared on the
-     * concept itself. Only set on computed `effectiveAttributes`; never valid inside a
-     * concept's own `attributes`.
+     * How this realization edge originated. Defaults to 'Manual'.
      */
-    inherited?: boolean;
-    /**
-     * Canonical IRI of the OWL datatype property.
-     */
-    iri?: string;
-    /**
-     * Whether the attribute identifies instances of the concept.
-     */
-    isIdentifier: boolean;
-    /**
-     * Name of the attribute within its concept.
-     */
-    name: string;
-    /**
-     * Optional unit IRI or display symbol.
-     */
-    unit?: string;
+    provenance?: Provenance;
+    role?:       RealizationRole;
 }
 
 /**
- * Supported value type for an ontology attribute.
- */
-export enum DataType {
-    Boolean = "BOOLEAN",
-    Date = "DATE",
-    Decimal = "DECIMAL",
-    Enum = "ENUM",
-    Integer = "INTEGER",
-    String = "STRING",
-}
-
-/**
- * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ * Data asset realizing the concept.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -120,4 +84,26 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * How this realization edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
+}
+
+/**
+ * Role the asset plays in realizing the concept. At most one asset may be the primary store
+ * of a concept.
+ */
+export enum RealizationRole {
+    Derived = "DERIVED",
+    PrimaryStore = "PRIMARY_STORE",
+    Replica = "REPLICA",
 }

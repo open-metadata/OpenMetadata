@@ -44,11 +44,14 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.AssetRealization;
+import org.openmetadata.schema.type.AssetRealizationRole;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyNamespace;
 import org.openmetadata.schema.type.OntologyPrefix;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
@@ -66,7 +69,8 @@ public final class GlossaryOntologyExporter {
   private static final String OM = "https://open-metadata.org/ontology/";
   private static final String RELATED_TO_TYPE = "relatedTo";
   private static final String DEFAULT_TERM_FIELDS =
-      "attributes,conceptMappings,entityStatus,parent,relatedTerms,synonyms";
+      "attributes,conceptMappings,entityStatus,parent,realizedIn,relatedTerms,synonyms";
+  private static final String MAPPED_TO_PREDICATE = "mappedTo";
   private final URI publicBaseUri;
   private final OntologyAnnexDAO annexDAO;
   private final OntologyExpressionRdfWriter expressionWriter;
@@ -197,8 +201,7 @@ public final class GlossaryOntologyExporter {
 
   private Resource addTerm(final Model model, final Resource scheme, final GlossaryTerm term) {
     final Resource resource = model.createResource(termIri(term));
-    resource.addProperty(RDF.type, OWL2.Class);
-    resource.addProperty(RDF.type, SKOS.Concept);
+    addConceptTypes(model, resource, term);
     resource.addProperty(RDF.type, model.createResource(OM + "GlossaryTerm"));
     resource.addProperty(SKOS.inScheme, scheme);
     resource.addProperty(SKOS.prefLabel, displayName(term));
@@ -211,6 +214,24 @@ public final class GlossaryOntologyExporter {
     }
     addAttributes(model, resource, term.getAttributes());
     return resource;
+  }
+
+  /**
+   * Emit the vocabulary the term was authored with. A term imported from a pure SKOS thesaurus
+   * round-trips as a {@code skos:Concept} alone, and one imported from an OWL ontology as an {@code
+   * owl:Class} alone. Terms created in OpenMetadata carry no preference and are emitted as both, so
+   * they remain usable from either vocabulary.
+   */
+  private void addConceptTypes(
+      final Model model, final Resource resource, final GlossaryTerm term) {
+    final OntologyConceptType conceptType =
+        term.getConceptType() == null ? OntologyConceptType.BOTH : term.getConceptType();
+    if (conceptType != OntologyConceptType.SKOS_CONCEPT) {
+      resource.addProperty(RDF.type, OWL2.Class);
+    }
+    if (conceptType != OntologyConceptType.OWL_CLASS) {
+      resource.addProperty(RDF.type, SKOS.Concept);
+    }
   }
 
   private String termIri(final GlossaryTerm term) {
@@ -274,6 +295,7 @@ public final class GlossaryOntologyExporter {
     for (final GlossaryTerm term : terms) {
       addHierarchy(model, scheme, term, resources, includeRelations);
       addMappings(model, resources.get(term.getId()), term.getConceptMappings());
+      addRealizations(model, resources.get(term.getId()), term.getRealizedIn());
       if (includeRelations) {
         addRelations(
             model, resources.get(term.getId()), term.getRelatedTerms(), resources, usedTypes);
@@ -308,6 +330,33 @@ public final class GlossaryOntologyExporter {
           mappingProperty(mapping.getMappingType()),
           model.createResource(mapping.getConceptIri().toString()));
     }
+  }
+
+  /**
+   * Link a concept to the data assets that store its instances. Every realization emits {@code
+   * om:mappedTo} so a consumer can answer "what realizes this concept" in one hop, plus a
+   * role-specific predicate so the primary store stays distinguishable from derived copies.
+   */
+  private void addRealizations(
+      final Model model, final Resource term, final List<AssetRealization> realizations) {
+    for (final AssetRealization realization : listOrEmpty(realizations)) {
+      final Resource asset = model.createResource(assetIri(realization.getAsset()));
+      term.addProperty(model.createProperty(OM, MAPPED_TO_PREDICATE), asset);
+      term.addProperty(model.createProperty(OM, rolePredicate(realization.getRole())), asset);
+    }
+  }
+
+  private String assetIri(final EntityReference asset) {
+    return publicBaseUri.resolve("entity/" + asset.getType() + "/" + asset.getId()).toString();
+  }
+
+  private static String rolePredicate(final AssetRealizationRole role) {
+    final AssetRealizationRole resolved = role == null ? AssetRealizationRole.PRIMARY_STORE : role;
+    return switch (resolved) {
+      case PRIMARY_STORE -> "hasPrimaryStore";
+      case DERIVED -> "hasDerivedAsset";
+      case REPLICA -> "hasReplica";
+    };
   }
 
   private static Property mappingProperty(final ConceptMapping.ConceptMappingType mappingType) {

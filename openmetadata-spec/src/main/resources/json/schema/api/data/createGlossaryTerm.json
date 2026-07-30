@@ -71,6 +71,13 @@
         "$ref": "../../type/ontologyAttribute.json"
       }
     },
+    "realizedIn": {
+      "description": "Data assets that physically realize this concept.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/assetRealization.json"
+      }
+    },
     "reviewers": {
       "description": "User or Team references of the reviewers for this glossary.",
       "$ref": "../../type/entityReferenceList.json"

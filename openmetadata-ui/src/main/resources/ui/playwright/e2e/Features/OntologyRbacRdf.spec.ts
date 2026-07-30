@@ -21,7 +21,12 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
-import { navigateToOntologyExplorer } from '../../utils/ontologyExplorer';
+import {
+  navigateToOntologyExplorer,
+  readNodePositions,
+  releaseOntologyEditLease,
+  waitForGraphLoaded,
+} from '../../utils/ontologyExplorer';
 import { performUserLogin } from '../../utils/user';
 
 const suffix = uuid().replaceAll('-', '');
@@ -105,6 +110,41 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
       ).toBeDisabled();
       await expect(page.getByTestId('ontology-pack-dry-run')).toBeHidden();
       await expect(page.getByTestId('ontology-pack-install')).toBeHidden();
+    } finally {
+      await afterAction();
+    }
+  });
+
+  /**
+   * The concept panels must key off the same glossary edit permission as the rest of the Studio, so
+   * a non-admin steward gets authoring controls without needing elevated rights.
+   */
+  test('exposes concept authoring controls to a steward, not just an admin', async ({
+    browser,
+  }) => {
+    const { page, afterAction } = await performUserLogin(browser, steward);
+
+    try {
+      await navigateToOntologyExplorer(page);
+      await fixture.selectInStudio(page);
+      await page.getByTestId('mode-tab-edit').click();
+      await expect(
+        page.getByTestId('ontology-edit-lease-status')
+      ).toContainText('Active');
+      await waitForGraphLoaded(page);
+
+      const positions = await readNodePositions(page);
+      const position = positions[term.responseData.id];
+      expect(position).toBeDefined();
+      await page.mouse.click(position.x, position.y);
+
+      await expect(
+        page.getByTestId('ontology-authoring-inspector')
+      ).toBeVisible();
+      await expect(page.getByTestId('add-attribute')).toBeVisible();
+      await expect(page.getByTestId('add-realization')).toBeVisible();
+
+      await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
     } finally {
       await afterAction();
     }

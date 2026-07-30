@@ -630,6 +630,33 @@ om:hasGlossaryTerm a owl:ObjectProperty ;
     rdfs:domain om:Entity ;
     rdfs:range om:GlossaryTerm .
 
+om:mappedTo a owl:ObjectProperty ;
+    rdfs:label "mapped to" ;
+    rdfs:comment "Data asset that stores the instances of this concept. Stronger than om:hasGlossaryTerm, which only records that an asset references the concept." ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "has primary store" ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasDerivedAsset a owl:ObjectProperty ;
+    rdfs:label "has derived asset" ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
+om:hasReplica a owl:ObjectProperty ;
+    rdfs:label "has replica" ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
+    rdfs:subPropertyOf om:mappedTo ;
+    rdfs:domain om:GlossaryTerm ;
+    rdfs:range om:DataAsset .
+
 om:hasOwner a owl:ObjectProperty ;
     rdfs:label "has owner" ;
     rdfs:subPropertyOf dcat:contactPoint ;

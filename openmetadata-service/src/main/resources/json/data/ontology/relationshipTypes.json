@@ -198,5 +198,45 @@
     "provider": "system",
     "rdfPredicate": "http://www.w3.org/2000/01/rdf-schema#seeAlso",
     "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["TRANSITIVE"],
+    "crossGlossaryAllowed": true,
+    "description": "Every instance of this concept is also an instance of the target concept. Unlike broader, this asserts subsumption, so the target's attributes apply to this concept.",
+    "displayName": "Subclass Of",
+    "fullyQualifiedName": "subClassOf",
+    "id": "b4835e47-a093-310b-bfcd-7bd444ba2351",
+    "inverse": {
+      "fullyQualifiedName": "superClassOf",
+      "id": "c77b3b67-54f0-3a65-85ae-96ae88306c8d",
+      "name": "superClassOf",
+      "type": "relationshipType"
+    },
+    "name": "subClassOf",
+    "paletteKey": "TEAL",
+    "provider": "system",
+    "rdfPredicate": "http://www.w3.org/2000/01/rdf-schema#subClassOf",
+    "systemDefined": true
+  },
+  {
+    "category": "OWL_SKOS",
+    "characteristics": ["TRANSITIVE"],
+    "crossGlossaryAllowed": true,
+    "description": "Every instance of the target concept is also an instance of this concept.",
+    "displayName": "Superclass Of",
+    "fullyQualifiedName": "superClassOf",
+    "id": "c77b3b67-54f0-3a65-85ae-96ae88306c8d",
+    "inverse": {
+      "fullyQualifiedName": "subClassOf",
+      "id": "b4835e47-a093-310b-bfcd-7bd444ba2351",
+      "name": "subClassOf",
+      "type": "relationshipType"
+    },
+    "name": "superClassOf",
+    "paletteKey": "PURPLE",
+    "provider": "system",
+    "rdfPredicate": "https://open-metadata.org/ontology/superClassOf",
+    "systemDefined": true
   }
 ]

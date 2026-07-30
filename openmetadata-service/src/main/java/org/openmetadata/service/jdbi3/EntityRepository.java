@@ -963,8 +963,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!requiresParentForInheritance(entity, fields)) {
       return;
     }
-    String inheritableFields = getInheritableFields();
     EntityReference parentRef = getParentReference(entity);
+    String inheritableFields =
+        parentRef == null ? getInheritableFields() : getInheritableFields(parentRef.getType());
     EntityInterface parent = getCachedInheritanceParent(parentRef, inheritableFields);
     if (parent == null) {
       parent = resolveInheritanceParentLeniently(entity, inheritableFields);
@@ -1007,6 +1008,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /**
+   * Fields to load on a parent of the given type. Entities whose parent may be one of several types
+   * override this when a field is only valid on some of them; requesting a field a parent type does
+   * not declare is rejected as an unknown field.
+   */
+  protected String getInheritableFields(String parentEntityType) {
+    return getInheritableFields();
   }
 
   /** Get the list of propagatable fields to child entities in the search index **/
@@ -1286,7 +1296,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected void setInheritedFields(List<T> entities, Fields fields) {
     if (entities.isEmpty()) return;
-    String inheritableFields = getInheritableFields();
 
     var parentRefMap = new HashMap<UUID, EntityReference>();
     for (var entity : entities) {
@@ -1312,9 +1321,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     var loadedParents = new HashMap<UUID, EntityInterface>();
     var missingRefsByType = new HashMap<String, List<EntityReference>>();
     for (var entry : refsByType.entrySet()) {
+      String parentFields = getInheritableFields(entry.getKey());
       var missingRefs = new ArrayList<EntityReference>();
       for (var ref : entry.getValue()) {
-        var cachedParent = getCachedInheritanceParent(ref, inheritableFields);
+        var cachedParent = getCachedInheritanceParent(ref, parentFields);
         if (cachedParent != null) {
           loadedParents.put(ref.getId(), cachedParent);
         } else {
@@ -1327,13 +1337,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     for (var entry : missingRefsByType.entrySet()) {
+      String parentFields = getInheritableFields(entry.getKey());
       List<? extends EntityInterface> parents =
-          Entity.getEntitiesForInheritance(entry.getValue(), inheritableFields, ALL);
+          Entity.getEntitiesForInheritance(entry.getValue(), parentFields, ALL);
       for (var parent : parents) {
         loadedParents.put(parent.getId(), parent);
         var parentRef = parentRefMap.get(parent.getId());
         if (parentRef != null) {
-          cacheInheritanceParent(parentRef, inheritableFields, parent);
+          cacheInheritanceParent(parentRef, parentFields, parent);
         }
       }
     }
