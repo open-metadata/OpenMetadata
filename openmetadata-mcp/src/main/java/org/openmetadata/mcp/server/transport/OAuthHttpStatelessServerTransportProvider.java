@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
@@ -75,6 +76,28 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
 
+  // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
+  // the CORS preflight fail, and the user just sees a network error.
+  //   MCP-Protocol-Version - required since protocol 2025-06-18
+  //   Mcp-Method, Mcp-Name - required since protocol 2026-07-28, so gateways can route and meter
+  //                          requests without reading the JSON body
+  //   Mcp-Client-Name      - our own header, read by AuthEnrichedMcpContextExtractor
+  static final String CORS_ALLOWED_HEADERS =
+      String.join(
+          ", ",
+          List.of(
+              "Content-Type",
+              "Authorization",
+              "Accept",
+              "MCP-Protocol-Version",
+              "Mcp-Method",
+              "Mcp-Name",
+              AuthEnrichedMcpContextExtractor.CLIENT_NAME));
+
+  // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
+  // response headers unless we expose them, so without this the client cannot start the OAuth flow.
+  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
+
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
   // For multi-node production deployments, consider database-backed rate limiting.
@@ -119,8 +142,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Create Authorization Server metadata (RFC 8414)
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
+    authProvider.setIssuer(issuer);
     OAuthMetadata metadata = new OAuthMetadata();
-    metadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    metadata.setIssuer(URI.create(issuer));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     metadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     metadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -191,9 +216,11 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private void rebuildMetadata(String baseUrl) {
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
     List<String> supportedScopes = getSupportedScopesForProvider();
+    String issuer = baseUrl + mcpEndpoint;
+    authProvider.setIssuer(issuer);
 
     OAuthMetadata newMetadata = new OAuthMetadata();
-    newMetadata.setIssuer(URI.create(baseUrl + mcpEndpoint));
+    newMetadata.setIssuer(URI.create(issuer));
     newMetadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
     newMetadata.setTokenEndpoint(URI.create(baseUrl + mcpEndpoint + "/token"));
     newMetadata.setRegistrationEndpoint(URI.create(baseUrl + mcpEndpoint + "/register"));
@@ -292,7 +319,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     if (origin != null && allowedOrigins.contains(origin)) {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+      response.setHeader("Access-Control-Allow-Headers", CORS_ALLOWED_HEADERS);
+      response.setHeader("Access-Control-Expose-Headers", CORS_EXPOSED_HEADERS);
       response.setHeader("Access-Control-Max-Age", "3600");
       response.setHeader("Vary", "Origin");
       LOG.debug("CORS headers set for allowed origin: {}", origin);

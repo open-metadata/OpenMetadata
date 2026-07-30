@@ -26,6 +26,22 @@ class OAuthHttpStatelessServerTransportProviderTest {
     assertThat(sanitize(null)).isEqualTo("null");
   }
 
+  // ── CORS allowed headers ──────────────────────────────────────────────────
+
+  @Test
+  void corsAllowedHeaders_includeHeadersMcpClientsMustSend() {
+    // A browser MCP client sends these on the POST. If one is missing from the allowlist, the
+    // preflight fails and the client sees a network error instead of a protocol error.
+    assertThat(OAuthHttpStatelessServerTransportProvider.CORS_ALLOWED_HEADERS)
+        .contains("Content-Type")
+        .contains("Authorization")
+        .contains("Accept")
+        .contains("MCP-Protocol-Version")
+        .contains("Mcp-Method")
+        .contains("Mcp-Name")
+        .contains("Mcp-Client-Name");
+  }
+
   // Note: the committed-response guard in handleAuthorizeRequest() cannot be meaningfully
   // exercised at unit level because handleAuthorizeRequest is private and the class constructor
   // requires a full running auth stack. The guard is covered by integration tests.

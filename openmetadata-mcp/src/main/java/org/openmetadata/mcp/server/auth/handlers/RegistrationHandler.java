@@ -4,6 +4,7 @@ import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -41,6 +42,18 @@ public class RegistrationHandler {
   private static final Set<String> BLOCKED_REDIRECT_SCHEMES =
       Set.of("javascript", "data", "file", "blob", "vbscript");
   private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
+  private static final String SCHEME_HTTP = "http";
+  private static final String SCHEME_HTTPS = "https";
+
+  // OpenID Connect application_type values. MCP protocol 2026-07-28 asks clients to send this so we
+  // apply the right redirect URI rules instead of rejecting loopback URIs from CLI/desktop apps.
+  // Most MCP clients are native (CLI, desktop, IDE) and we have always accepted their loopback and
+  // custom-scheme redirect URIs, so a missing value means "native" and nothing changes for them.
+  // Only a client that says it is "web" gets the stricter https-only rule.
+  private static final String APPLICATION_TYPE_NATIVE = "native";
+  private static final String APPLICATION_TYPE_WEB = "web";
+  private static final Set<String> SUPPORTED_APPLICATION_TYPES =
+      Set.of(APPLICATION_TYPE_NATIVE, APPLICATION_TYPE_WEB);
 
   private final OAuthClientRepository clientRepository;
 
@@ -98,6 +111,11 @@ public class RegistrationHandler {
                     ? metadata.getResponseTypes()
                     : List.of("code"));
             clientInfo.setScope(metadata.getScope());
+
+            // Echoed back so the client can see which value we applied (RFC 7591 §3.2.1). Not
+            // stored: application_type only decides which redirect URI rules run at registration,
+            // and the URIs that passed those rules are what we persist.
+            clientInfo.setApplicationType(metadata.getApplicationType());
 
             // Optional metadata
             clientInfo.setClientUri(metadata.getClientUri());
@@ -162,35 +180,7 @@ public class RegistrationHandler {
       }
     }
 
-    // redirect_uris is REQUIRED per RFC 7591 Section 2
-    if (metadata.getRedirectUris() == null || metadata.getRedirectUris().isEmpty()) {
-      throw new RegistrationException(
-          "invalid_redirect_uri", "At least one redirect_uri must be provided");
-    }
-    validateListSize(metadata.getRedirectUris(), "redirect_uris", MAX_REDIRECT_URIS);
-
-    // Validate redirect URI schemes and hosts
-    // RFC 8252 Section 7.1: native apps may use private-use URI schemes (e.g. cursor://, vscode://)
-    // RFC 8252 Section 7.3: http redirect URIs MUST use loopback addresses only
-    for (URI uri : metadata.getRedirectUris()) {
-      String scheme = uri.getScheme();
-      if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase())) {
-        throw new RegistrationException(
-            "invalid_redirect_uri", "redirect_uri uses a disallowed scheme: " + uri);
-      }
-      if (uri.getFragment() != null) {
-        throw new RegistrationException(
-            "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
-      }
-      if ("http".equalsIgnoreCase(scheme)) {
-        String host = uri.getHost();
-        if (host == null || !LOOPBACK_HOSTS.contains(host)) {
-          throw new RegistrationException(
-              "invalid_redirect_uri",
-              "http redirect_uri must use localhost/loopback address: " + uri);
-        }
-      }
-    }
+    validateRedirectUris(metadata);
 
     // Validate supported grant types
     if (metadata.getGrantTypes() != null) {
@@ -223,6 +213,87 @@ public class RegistrationHandler {
             "Unsupported token_endpoint_auth_method: " + metadata.getTokenEndpointAuthMethod());
       }
     }
+  }
+
+  /**
+   * Validates redirect URIs against RFC 8252 and the client's declared application_type.
+   *
+   * <p>RFC 8252 lets native apps use custom schemes such as cursor:// or vscode://, and allows http
+   * only for loopback addresses.
+   *
+   * @param metadata The client registration metadata
+   * @throws RegistrationException if any redirect URI is not acceptable
+   */
+  private void validateRedirectUris(OAuthClientMetadata metadata) throws RegistrationException {
+    // redirect_uris is REQUIRED per RFC 7591 Section 2
+    if (metadata.getRedirectUris() == null || metadata.getRedirectUris().isEmpty()) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "At least one redirect_uri must be provided");
+    }
+    validateListSize(metadata.getRedirectUris(), "redirect_uris", MAX_REDIRECT_URIS);
+
+    String applicationType = resolveApplicationType(metadata);
+    for (URI uri : metadata.getRedirectUris()) {
+      validateRedirectUri(uri, applicationType);
+    }
+  }
+
+  private void validateRedirectUri(URI uri, String applicationType) throws RegistrationException {
+    String scheme = uri.getScheme();
+    if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "redirect_uri uses a disallowed scheme: " + uri);
+    }
+    if (uri.getFragment() != null) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
+    }
+    if (APPLICATION_TYPE_WEB.equals(applicationType)) {
+      validateWebRedirectUri(uri, scheme);
+    } else if (SCHEME_HTTP.equalsIgnoreCase(scheme) && !isLoopback(uri)) {
+      throw new RegistrationException(
+          "invalid_redirect_uri", "http redirect_uri must use localhost/loopback address: " + uri);
+    }
+  }
+
+  /**
+   * A web client must use https, so http and custom schemes are both rejected.
+   *
+   * <p>OpenID Connect also bans loopback hosts for web clients. We deliberately allow them: an https
+   * loopback redirect is a normal local-development setup, and rejecting it would break a client
+   * that already registers successfully today. Requiring https is enough to catch the real mistakes.
+   */
+  private void validateWebRedirectUri(URI uri, String scheme) throws RegistrationException {
+    if (!SCHEME_HTTPS.equalsIgnoreCase(scheme)) {
+      throw new RegistrationException(
+          "invalid_redirect_uri",
+          "redirect_uri must use https when application_type is web: " + uri);
+    }
+  }
+
+  private boolean isLoopback(URI uri) {
+    return uri.getHost() != null && LOOPBACK_HOSTS.contains(uri.getHost());
+  }
+
+  /**
+   * Resolves the declared application_type, defaulting to native when absent.
+   *
+   * @param metadata The client registration metadata
+   * @return The application type to apply
+   * @throws RegistrationException if the declared application_type is not supported
+   */
+  private String resolveApplicationType(OAuthClientMetadata metadata) throws RegistrationException {
+    String declared = metadata.getApplicationType();
+    if (declared == null) {
+      declared = APPLICATION_TYPE_NATIVE;
+    } else if (!SUPPORTED_APPLICATION_TYPES.contains(declared)) {
+      throw new RegistrationException(
+          "invalid_client_metadata",
+          "Unsupported application_type: "
+              + declared
+              + ". Supported values are 'native' and 'web'.");
+    }
+    return declared;
   }
 
   private boolean isSupportedGrantType(String grantType) {
