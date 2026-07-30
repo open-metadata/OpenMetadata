@@ -22,7 +22,7 @@ import { test } from '../fixtures/pages';
 // loading and error states are covered by AssetHealthWidget.utils.test.ts.
 
 // sample_data table with no test suite and no contract -> those rows show setup CTAs
-const EMPTY_TABLE_FQN = 'sample_data.ecommerce_db.shopify.global_market';
+const EMPTY_TABLE_FQN = 'sample_data.ecommerce_db.shopify.fact_sale';
 // the one sample_data table that ships with a native test suite + test cases
 const TEST_SUITE_TABLE_FQN = 'sample_data.ecommerce_db.shopify.dim_address';
 
