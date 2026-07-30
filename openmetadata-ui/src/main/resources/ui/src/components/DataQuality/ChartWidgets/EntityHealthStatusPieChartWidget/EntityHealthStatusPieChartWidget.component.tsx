@@ -18,16 +18,13 @@ import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-gre
 import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
-import {
-  getPieChartLabel,
-  getTestCaseTabPath,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+import { getTestCaseTabPath } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
 import { BINARY_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
-
 const EntityHealthStatusPieChartWidget = ({
   className = '',
   chartFilter,

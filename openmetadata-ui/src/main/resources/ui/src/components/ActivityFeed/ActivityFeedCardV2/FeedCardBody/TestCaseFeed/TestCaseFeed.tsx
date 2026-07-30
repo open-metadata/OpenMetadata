@@ -21,11 +21,9 @@ import {
   EntityTestResultSummaryObject,
   TestCaseStatus,
 } from '../../../../../generated/entity/feed/thread';
-import {
-  formatTestStatusData,
-  getTestCaseResultCount,
-} from '../../../../../utils/FeedUtils';
+import { formatTestStatusData } from '../../../../../utils/FeedUtils';
 import { translateWithNestedKeys } from '../../../../../utils/i18next/LocalUtil';
+import { getTestCaseResultCount } from '../../../../../utils/TestCaseUtils';
 import TestSummaryGraph from '../../../../Database/Profiler/TestSummary/TestSummaryGraph';
 import './test-case-feed.less';
 import { TestCaseFeedProps } from './TestCaseFeed.interface';

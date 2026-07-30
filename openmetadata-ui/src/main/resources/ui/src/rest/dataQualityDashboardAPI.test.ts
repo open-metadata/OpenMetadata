@@ -20,7 +20,7 @@ import {
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
   buildMustEsFilterForTier,
-} from '../utils/DataQuality/DataQualityUtils';
+} from '../utils/DataQuality/DataQualityPureUtils';
 import {
   fetchCountOfIncidentStatusTypeByDays,
   fetchEntityCoveredWithDQ,
@@ -32,16 +32,16 @@ import {
   fetchTotalEntityCount,
 } from './dataQualityDashboardAPI';
 import { getDataQualityReport } from './testAPI';
-
 jest.mock('./testAPI', () => ({
   getDataQualityReport: jest.fn(),
 }));
 
-jest.mock('../utils/DataQuality/DataQualityUtils', () => ({
+jest.mock('../utils/DataQuality/DataQualityPureUtils', () => ({
   buildMustEsFilterForOwner: jest.fn(),
   buildMustEsFilterForTags: jest.fn(),
   buildMustEsFilterForTier: jest.fn(),
   buildDataQualityDashboardFilters: jest.fn().mockReturnValue([]),
+  buildMustEsFilterForDataProducts: jest.fn(),
 }));
 
 describe('dataQualityDashboardAPI', () => {
