@@ -651,7 +651,7 @@ class AirflowSource(PipelineServiceSource):
                     yield dag
                 except ValidationError as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
+                    logger.warning(f"Error building pydantic model for {serialized_dag[0]} - {err}")
                     self.status.failed(
                         StackTraceError(
                             name=serialized_dag[0],
@@ -661,7 +661,7 @@ class AirflowSource(PipelineServiceSource):
                     )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+                    logger.warning(f"Wild error yielding dag {serialized_dag[0]} - {err}")
                     self.status.failed(
                         StackTraceError(
                             name=serialized_dag[0],
