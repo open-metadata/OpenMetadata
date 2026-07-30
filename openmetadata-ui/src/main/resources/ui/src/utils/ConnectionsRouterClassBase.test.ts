@@ -35,7 +35,7 @@ jest.mock('./RouterUtils', () => ({
     `/settings/${category}/${option}`,
 }));
 
-jest.mock('./ServiceUtils', () => ({
+jest.mock('./ServicePureUtils', () => ({
   getServiceRouteFromServiceType: (type: string) => `${type}Route`,
 }));
 

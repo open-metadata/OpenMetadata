@@ -11,29 +11,16 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
+import { lazy } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { PropertyValue } from '../../components/common/CustomPropertyTable/PropertyValue';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../components/common/TagButton/TagButton.component';
-import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
 import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';
-import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTable/DashboardChartTable';
-import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
-import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
-import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
 import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
-import MarketplaceDataProductsWidget from '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component';
-import MarketplaceDomainsWidget from '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component';
-import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
-import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import MlModelFeaturesList from '../../components/MlModel/MlModelDetail/MlModelFeaturesList';
-import { PipelineTaskTab } from '../../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
-import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
 import {
   DUMMY_OWNER_LIST,
   DUMMY_TAGS_LIST,
@@ -45,15 +32,145 @@ import {
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, TagSource } from '../../generated/tests/testCase';
-import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
-import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
-import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
-import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
 import tableClassBase from '../TableClassBase';
+
+const APIEndpointSchema = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema')
+  )
+);
+
+const OwnerLabel = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/common/OwnerLabel/OwnerLabel.component').then(
+      (m) => ({ default: m.OwnerLabel })
+    )
+  )
+);
+
+const ContainerChildren = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/Container/ContainerChildren/ContainerChildren')
+  )
+);
+
+const DashboardChartTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Dashboard/DashboardChartTable/DashboardChartTable'
+    ).then((m) => ({ default: m.DashboardChartTable }))
+  )
+);
+
+const ModelTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component'
+      )
+  )
+);
+
+const DatabaseSchemaTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable'
+    ).then((m) => ({ default: m.DatabaseSchemaTable }))
+  )
+);
+
+const SchemaTable = withSuspenseFallback(
+  lazy(
+    () => import('../../components/Database/SchemaTable/SchemaTable.component')
+  )
+);
+
+const MarketplaceDataProductsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component'
+      )
+  )
+);
+
+const MarketplaceDomainsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataMarketplace/MarketplaceDomainsWidget/MarketplaceDomainsWidget.component'
+      )
+  )
+);
+
+const DataProductsContainer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component'
+      )
+  )
+);
+
+const GlossaryTermTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component'
+      )
+  )
+);
+
+const MlModelFeaturesList = withSuspenseFallback(
+  lazy(
+    () => import('../../components/MlModel/MlModelDetail/MlModelFeaturesList')
+  )
+);
+
+const PipelineTaskTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Pipeline/PipelineTaskTab/PipelineTaskTab').then(
+      (m) => ({ default: m.PipelineTaskTab })
+    )
+  )
+);
+
+const TagsViewer = withSuspenseFallback(
+  lazy(() => import('../../components/Tag/TagsViewer/TagsViewer'))
+);
+
+const TopicSchemaFields = withSuspenseFallback(
+  lazy(() => import('../../components/Topic/TopicSchema/TopicSchema'))
+);
+
+const APIEndpointsTab = withSuspenseFallback(
+  lazy(() => import('../../pages/APICollectionPage/APIEndpointsTab'))
+);
+
+const SchemaTablesTab = withSuspenseFallback(
+  lazy(() => import('../../pages/DatabaseSchemaPage/SchemaTablesTab'))
+);
+
+const FrequentlyJoinedTables = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component'
+    ).then((m) => ({ default: m.FrequentlyJoinedTables }))
+  )
+);
+
+const TableConstraints = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
+  )
+);
 
 export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.GLOSSARY_TERMS]: () => (
