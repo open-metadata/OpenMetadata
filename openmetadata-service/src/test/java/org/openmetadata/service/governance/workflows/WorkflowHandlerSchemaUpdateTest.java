@@ -315,6 +315,43 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   @Test
+  void migrationPoolHonoursYamlConnectionTimeout() throws Exception {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    long yamlValue = 45_000L;
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      // Yaml sets DB_CONNECTION_TIMEOUT to 45s — migration pool must inherit that value
+      // rather than the hardcoded fallback, so ops tuning applies uniformly.
+      WorkflowHandler.initialize(buildMockConfig(yamlValue), true);
+
+      StandaloneProcessEngineConfiguration migrationEngineConfig =
+          engineMock.constructed().getLast();
+      ArgumentCaptor<DataSource> dsCaptor = ArgumentCaptor.forClass(DataSource.class);
+      verify(migrationEngineConfig).setDataSource(dsCaptor.capture());
+      Field delegateField = IdempotentDdlDataSource.class.getDeclaredField("delegate");
+      delegateField.setAccessible(true);
+      HikariDataSource pool = (HikariDataSource) delegateField.get(dsCaptor.getValue());
+      assertEquals(yamlValue, pool.getConnectionTimeout());
+    }
+  }
+
+  @Test
   void migrationModeClosesPoolIfBuildProcessEngineFails() {
     try (MockedConstruction<StandaloneProcessEngineConfiguration> ignoredEngine =
             mockConstruction(
@@ -397,6 +434,10 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   private OpenMetadataApplicationConfig buildMockConfig() {
+    return buildMockConfig(null);
+  }
+
+  private OpenMetadataApplicationConfig buildMockConfig(Long connectionTimeoutMs) {
     OpenMetadataApplicationConfig config = mock(OpenMetadataApplicationConfig.class);
     HikariCPDataSourceFactory dsf = mock(HikariCPDataSourceFactory.class);
     lenient().when(config.getDataSourceFactory()).thenReturn(dsf);
@@ -404,6 +445,7 @@ class WorkflowHandlerSchemaUpdateTest {
     lenient().when(dsf.getUser()).thenReturn("openmetadata_user");
     lenient().when(dsf.getPassword()).thenReturn("openmetadata_password");
     lenient().when(dsf.getDriverClass()).thenReturn("org.postgresql.Driver");
+    lenient().when(dsf.getConnectionTimeout()).thenReturn(connectionTimeoutMs);
     lenient().when(config.getPipelineServiceClientConfiguration()).thenReturn(null);
     return config;
   }

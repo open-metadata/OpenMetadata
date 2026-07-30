@@ -70,6 +70,7 @@ import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutio
 import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -86,6 +87,10 @@ public class WorkflowHandler {
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
   private final boolean isMigrationContext;
+  // Sourced from the yaml-bound HikariCPDataSourceFactory so the migration pool honours
+  // DB_CONNECTION_TIMEOUT overrides just like the main runtime pool. Nullable — falls back
+  // to MIGRATION_POOL_CONNECTION_TIMEOUT_MS when yaml leaves it unset.
+  private final Long yamlConnectionTimeoutMs;
 
   private static final String CONNECTION_VALIDATION_QUERY = "SELECT 1";
 
@@ -128,6 +133,7 @@ public class WorkflowHandler {
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
+    this.yamlConnectionTimeoutMs = resolveYamlConnectionTimeout(config.getDataSourceFactory());
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();
     processEngineConfiguration.setJdbcUrl(config.getDataSourceFactory().getUrl());
@@ -172,8 +178,20 @@ public class WorkflowHandler {
       hikariConfig.setDriverClassName(config.getJdbcDriver());
       hikariConfig.setMaximumPoolSize(MIGRATION_POOL_MAX_SIZE);
       hikariConfig.setMinimumIdle(1);
-      hikariConfig.setConnectionTimeout(MIGRATION_POOL_CONNECTION_TIMEOUT_MS);
+      long connectionTimeoutMs =
+          yamlConnectionTimeoutMs != null
+              ? yamlConnectionTimeoutMs
+              : MIGRATION_POOL_CONNECTION_TIMEOUT_MS;
+      hikariConfig.setConnectionTimeout(connectionTimeoutMs);
       hikariConfig.setPoolName(MIGRATION_POOL_NAME);
+      LOG.info(
+          "Creating migration pool '{}' with maxSize={} connectionTimeoutMs={} (source: {})",
+          MIGRATION_POOL_NAME,
+          MIGRATION_POOL_MAX_SIZE,
+          connectionTimeoutMs,
+          yamlConnectionTimeoutMs != null
+              ? "yaml database.connectionTimeout"
+              : "hardcoded default");
       // Defer real DB connect to first getConnection() rather than pool construction: Flowable
       // engine init issues its own SELECTs immediately, so fast-fail on unreachable DB is
       // preserved through the very next call — and this keeps unit tests (which never open a
@@ -181,6 +199,19 @@ public class WorkflowHandler {
       hikariConfig.setInitializationFailTimeout(-1);
       migrationPool = new HikariDataSource(hikariConfig);
       result = migrationPool;
+    }
+    return result;
+  }
+
+  // Mirrors HikariCPDataSourceFactory#buildHikariConfig: yaml can set connectionTimeout either as
+  // a top-level `database.connectionTimeout` field or nested under `database.properties.
+  // connectionTimeout`. The main runtime pool honours both, so the migration pool must too or
+  // ops-side tuning silently doesn't apply.
+  private static Long resolveYamlConnectionTimeout(HikariCPDataSourceFactory factory) {
+    Long result = factory.getConnectionTimeout();
+    Map<String, String> properties = factory.getProperties();
+    if (result == null && properties != null && properties.containsKey("connectionTimeout")) {
+      result = Long.parseLong(properties.get("connectionTimeout"));
     }
     return result;
   }
