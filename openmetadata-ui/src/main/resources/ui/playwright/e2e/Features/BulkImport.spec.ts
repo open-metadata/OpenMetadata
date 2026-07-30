@@ -1353,10 +1353,10 @@ test.describe('Bulk Import Export', () => {
         await page.keyboard.press('Control+Z');
 
         // check if the range is pasted correctly
-        await expect(fourthCellFirstRow).toHaveText('—');
+        await expect(fourthCellFirstRow).toHaveText('');
         await expect(
           page.locator('.rdg-row').nth(0).locator('.rdg-cell').nth(3)
-        ).toHaveText('—');
+        ).toHaveText('');
 
         // redo the action
         await page.keyboard.press('Control+Y');
