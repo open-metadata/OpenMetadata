@@ -36,7 +36,6 @@ import { getPopupContainer } from '../../../utils/formUtils';
 import { getTestSuitePath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AddToBundleSuiteModalProps } from './AddToBundleSuiteModal.interface';
-
 const AddToBundleSuiteModal: React.FC<AddToBundleSuiteModalProps> = ({
   open,
   selectedTestCases,

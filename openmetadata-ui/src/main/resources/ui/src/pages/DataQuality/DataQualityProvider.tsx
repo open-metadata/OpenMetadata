@@ -25,7 +25,7 @@ import {
   fetchTestCaseSummary,
   fetchTotalEntityCount,
 } from '../../rest/dataQualityDashboardAPI';
-import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
+import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityPureUtils';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

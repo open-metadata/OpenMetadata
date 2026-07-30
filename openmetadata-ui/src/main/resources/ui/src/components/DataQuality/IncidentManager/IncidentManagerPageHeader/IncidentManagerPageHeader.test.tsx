@@ -97,8 +97,8 @@ jest.mock('.../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../../utils/CommonUtils'),
+jest.mock('../../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../../utils/FqnUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 
@@ -111,7 +111,7 @@ jest.mock('../../../../utils/EntityPureUtils', () => ({
     .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
 }));
 

@@ -60,12 +60,12 @@ import {
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   createScrollToErrorHandler,
-  generateFormFields,
   getPopupContainer,
-} from '../../../../utils/formUtils';
+} from '../../../../utils/formPureUtils';
+import { generateFormFields } from '../../../../utils/formUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { isValidJSONString } from '../../../../utils/StringUtils';
 import {
@@ -80,7 +80,6 @@ import Loader from '../../../common/Loader/Loader';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { EditTestCaseModalProps } from './EditTestCaseModal.interface';
 import ParameterForm from './ParameterForm';
-
 // =============================================
 // MAIN COMPONENT
 // =============================================

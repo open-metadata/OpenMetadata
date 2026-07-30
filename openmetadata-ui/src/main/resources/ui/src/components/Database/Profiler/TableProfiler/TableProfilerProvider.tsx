@@ -51,7 +51,7 @@ import {
 import {
   aggregateTestResultsByEntity,
   TestCaseCountByStatus,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
