@@ -29,12 +29,21 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await expect(page.getByRole('tab', { name: 'Data Quality' })).toBeVisible();
 };
 
+/**
+ * Acknowledges a failed test case's incident.
+ *
+ * `initialStatus` is the stage the incident is expected to be in before the
+ * acknowledgement. It defaults to `New`, but an incident raised on a table that
+ * already has owners is auto-assigned on creation, so those call sites must pass
+ * `Assigned` instead.
+ */
 export const acknowledgeTask = async (data: {
   testCase: string;
   page: Page;
   table: TableClass;
+  initialStatus?: string;
 }) => {
-  const { testCase, page, table } = data;
+  const { testCase, page, table, initialStatus = 'New' } = data;
   await visitProfilerTab(page, table);
   await page.getByRole('tab', { name: 'Data Quality' }).click();
 
@@ -44,7 +53,7 @@ export const acknowledgeTask = async (data: {
 
   await expect(
     page.locator(`[data-testid="${testCase}-status"]`)
-  ).toContainText('New');
+  ).toContainText(initialStatus);
   await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');

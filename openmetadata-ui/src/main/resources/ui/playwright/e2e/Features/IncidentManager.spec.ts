@@ -878,7 +878,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
      * @description Verifies incident counts for Open and Closed after rerun and re-acknowledgement.
      */
     await test.step('Verify open and closed task', async () => {
+      // The rerun raises a fresh incident, and by now table1 has an owner from
+      // the ownership test above, so this one opens as Assigned rather than New.
       await acknowledgeTask({
+        initialStatus: 'Assigned',
         page,
         testCase: testCaseName,
         table: table1,
