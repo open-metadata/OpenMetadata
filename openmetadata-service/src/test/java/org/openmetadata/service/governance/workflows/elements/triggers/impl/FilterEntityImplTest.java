@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.FieldChange;
@@ -26,6 +30,8 @@ class FilterEntityImplTest {
 
   private FilterEntityImpl filterEntity;
   private Method passesFieldBasedFilter;
+  private Method sanitizeFilterValue;
+  private Method extractFromFilterMap;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -34,6 +40,12 @@ class FilterEntityImplTest {
         FilterEntityImpl.class.getDeclaredMethod(
             "passesFieldBasedFilter", List.class, List.class, List.class);
     passesFieldBasedFilter.setAccessible(true);
+    sanitizeFilterValue =
+        FilterEntityImpl.class.getDeclaredMethod("sanitizeFilterValue", String.class);
+    sanitizeFilterValue.setAccessible(true);
+    extractFromFilterMap =
+        FilterEntityImpl.class.getDeclaredMethod("extractFromFilterMap", Map.class, String.class);
+    extractFromFilterMap.setAccessible(true);
   }
 
   @Test
@@ -202,11 +214,52 @@ class FilterEntityImplTest {
     assertTrue(invokeFilter(List.of(fieldChange("schema")), null, excludeFields));
   }
 
+  @Test
+  void testSanitizeFilterValueTreatsEmptyValuesAsNoFilter() throws Exception {
+    assertNull(invokeSanitize(null));
+    assertNull(invokeSanitize(""));
+    assertNull(invokeSanitize("   "));
+    assertNull(invokeSanitize("\"\""));
+    assertNull(invokeSanitize("  \"\"  "));
+    assertNull(invokeSanitize("{}"));
+    assertNull(invokeSanitize("  {}  "));
+  }
+
+  @Test
+  void testSanitizeFilterValuePreservesRealFilter() throws Exception {
+    String filter = "{\"==\":[{\"var\":\"name\"},\"foo\"]}";
+    assertEquals(filter, invokeSanitize(filter));
+  }
+
+  @Test
+  void testExtractFromFilterMapFallsBackFromPoisonedEntityFilter() throws Exception {
+    Map<String, String> filterMap = new HashMap<>();
+    filterMap.put("default", "{\"==\":[1,1]}");
+    filterMap.put("glossaryTerm", "\"\"");
+    assertEquals("{\"==\":[1,1]}", invokeExtract(filterMap, "glossaryTerm"));
+  }
+
+  @Test
+  void testExtractFromFilterMapReturnsNullWhenAllValuesArePoisoned() throws Exception {
+    Map<String, String> filterMap = new HashMap<>();
+    filterMap.put("default", "\"\"");
+    filterMap.put("glossaryTerm", "{}");
+    assertNull(invokeExtract(filterMap, "glossaryTerm"));
+  }
+
   private boolean invokeFilter(
       List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
       throws Exception {
     return (boolean)
         passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
+  }
+
+  private String invokeSanitize(String filter) throws Exception {
+    return (String) sanitizeFilterValue.invoke(null, filter);
+  }
+
+  private String invokeExtract(Map<String, String> filterMap, String entityType) throws Exception {
+    return (String) extractFromFilterMap.invoke(filterEntity, filterMap, entityType);
   }
 
   private FieldChange fieldChange(String name) {

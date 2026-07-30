@@ -5,6 +5,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
 
 public class FilterEntityImpl implements JavaDelegate {
   private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
+  private static final TypeReference<java.util.Map<String, String>> FILTER_MAP_TYPE =
+      new TypeReference<>() {};
   private Expression excludedFieldsExpr;
   private Expression includeFieldsExpr;
   private Expression filterExpr;
@@ -125,8 +128,7 @@ public class FilterEntityImpl implements JavaDelegate {
       // Check if it's a JSON object string
       if (filterStr.trim().startsWith("{") && filterStr.trim().endsWith("}")) {
         try {
-          java.util.Map<String, String> filterMap =
-              JsonUtils.readValue(filterStr, java.util.Map.class);
+          java.util.Map<String, String> filterMap = JsonUtils.readValue(filterStr, FILTER_MAP_TYPE);
           return extractFromFilterMap(filterMap, entityType);
         } catch (Exception e) {
           log.error(
@@ -139,10 +141,9 @@ public class FilterEntityImpl implements JavaDelegate {
       return null;
     }
 
-    // Handle map format with entity-specific filters
+    // Use Jackson to convert the object variant of the schema's oneOf to a typed map.
     if (filterObj instanceof java.util.Map) {
-      @SuppressWarnings("unchecked")
-      java.util.Map<String, String> filterMap = (java.util.Map<String, String>) filterObj;
+      java.util.Map<String, String> filterMap = JsonUtils.convertValue(filterObj, FILTER_MAP_TYPE);
       return extractFromFilterMap(filterMap, entityType);
     }
 
@@ -155,19 +156,22 @@ public class FilterEntityImpl implements JavaDelegate {
       return null;
     }
 
-    // First check for entity-specific filter
-    String specificFilter = filterMap.get(entityType);
-    if (specificFilter != null && !specificFilter.trim().isEmpty()) {
+    String specificFilter = sanitizeFilterValue(filterMap.get(entityType));
+    if (specificFilter != null) {
       return specificFilter;
     }
+    return sanitizeFilterValue(filterMap.get("default"));
+  }
 
-    // Fall back to default filter if no specific filter found
-    String defaultFilter = filterMap.get("default");
-    if (defaultFilter != null && !defaultFilter.trim().isEmpty()) {
-      return defaultFilter;
+  private static String sanitizeFilterValue(String filter) {
+    String sanitized = null;
+    if (filter != null) {
+      String trimmed = filter.trim();
+      if (!trimmed.isEmpty() && !"\"\"".equals(trimmed) && !"{}".equals(trimmed)) {
+        sanitized = filter;
+      }
     }
-
-    return null;
+    return sanitized;
   }
 
   private boolean isTagFeedbackCreation(WorkflowVariableHandler varHandler) {
