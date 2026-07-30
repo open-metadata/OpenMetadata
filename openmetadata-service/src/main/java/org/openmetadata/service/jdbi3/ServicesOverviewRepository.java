@@ -68,12 +68,13 @@ public class ServicesOverviewRepository {
   public ServicesOverview getOverview(SecurityContext securityContext, ServicesOverviewRequest r) {
     Map<String, Map<String, Integer>> byConnector = countsByConnector(securityContext, r);
     Map<String, Integer> counts = sumInner(byConnector);
+    assertHealthFilterIsSatisfiable(counts, r);
     boolean universeResolvable = isUniverseResolvable(counts, r);
     Map<UUID, ServiceHealth> universeHealth =
         universeHealth(securityContext, r, universeResolvable);
     Map<String, Map<String, Integer>> byHealth =
         countsByHealth(securityContext, r, universeHealth, universeResolvable);
-    List<TypedKey> keys = listKeys(securityContext, r, universeHealth);
+    List<TypedKey> keys = listKeys(securityContext, r);
     List<TypedKey> page = slice(keys, r.offset(), r.limit());
     List<ServiceSummary> data = hydrate(page, pageHealth(r, page, universeHealth), r);
     int listTotal = listTotal(counts, byConnector, byHealth, keys, r);
@@ -160,17 +161,31 @@ public class ServicesOverviewRepository {
    * only the genuinely universe-wide answers step aside.
    */
   private boolean isUniverseResolvable(Map<String, Integer> counts, ServicesOverviewRequest r) {
-    boolean resolvable =
-        counts.values().stream().noneMatch(count -> count > ServicesOverviewRequest.MAX_WINDOW);
-    if (!resolvable && !nullOrEmpty(r.healths())) {
+    return isResolvable(counts, r.entityTypes());
+  }
+
+  /**
+   * The health filter is gated on the listed types alone, not the universe. Gating it on the
+   * universe would refuse a perfectly small list because some other service type is large, and the
+   * only way out would be to shrink the universe too — which changes the very count maps the caller
+   * drives their filter controls from.
+   */
+  private void assertHealthFilterIsSatisfiable(
+      Map<String, Integer> counts, ServicesOverviewRequest r) {
+    if (!nullOrEmpty(r.healths()) && !isResolvable(counts, r.listEntityTypes())) {
       throw new BadRequestException(
           String.format(
-              "Cannot filter by health when a service type has more than %d services, because "
-                  + "health must be resolved for every service before the list can be filtered. "
-                  + "Narrow the request with q, entityType or domain.",
+              "Cannot filter by health when a listed service type has more than %d services, "
+                  + "because health must be resolved for every candidate before the list can be "
+                  + "filtered. Narrow the request with q, listEntityType or domain.",
               ServicesOverviewRequest.MAX_WINDOW));
     }
-    return resolvable;
+  }
+
+  private boolean isResolvable(Map<String, Integer> counts, Set<String> entityTypes) {
+    return entityTypes.stream()
+        .noneMatch(
+            entityType -> counts.getOrDefault(entityType, 0) > ServicesOverviewRequest.MAX_WINDOW);
   }
 
   /** Health for every service in the universe — needed only by the tally and the health filter. */
@@ -219,15 +234,33 @@ public class ServicesOverviewRepository {
 
   // ---------------------------------------------------------------- listing
 
-  private List<TypedKey> listKeys(
-      SecurityContext securityContext, ServicesOverviewRequest r, Map<UUID, ServiceHealth> health) {
+  /**
+   * Keys for the listed types, health-filtered where asked.
+   *
+   * <p>Health for the filter is resolved from the scanned keys themselves rather than from the
+   * universe-wide map: the filter only ever narrows {@code data}, which is scoped to the listed
+   * types, so it has no business depending on how large some unrelated service type happens to be.
+   */
+  private List<TypedKey> listKeys(SecurityContext securityContext, ServicesOverviewRequest r) {
     List<List<TypedKey>> perType = new ArrayList<>();
     for (String entityType : r.listEntityTypes()) {
       ListFilter filter = listFilter(securityContext, r, entityType);
-      List<TypedKey> scanned = scanKeys(entityType, filter, r.keyScanLimit(), r.ascending());
-      perType.add(filterByHealth(scanned, health, r));
+      perType.add(scanKeys(entityType, filter, r.keyScanLimit(), r.ascending()));
     }
-    return merge(perType, r.ascending());
+    Map<UUID, ServiceHealth> health = healthForFilter(r, perType);
+    return merge(
+        perType.stream().map(keys -> filterByHealth(keys, health, r)).toList(), r.ascending());
+  }
+
+  private Map<UUID, ServiceHealth> healthForFilter(
+      ServicesOverviewRequest r, List<List<TypedKey>> perType) {
+    Map<UUID, ServiceHealth> health = Map.of();
+    if (!nullOrEmpty(r.healths())) {
+      health =
+          healthProvider.healthByServiceId(
+              perType.stream().flatMap(List::stream).map(TypedKey::id).toList());
+    }
+    return health;
   }
 
   private List<TypedKey> scanKeys(

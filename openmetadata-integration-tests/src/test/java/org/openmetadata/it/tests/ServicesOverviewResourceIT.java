@@ -433,6 +433,23 @@ public class ServicesOverviewResourceIT {
   }
 
   @Test
+  void healthFilterIsScopedToTheListedTypesNotTheWholeUniverse(TestNamespace ns) throws Exception {
+    postgres(ns, "healthScope_db");
+
+    // The health selector only narrows `data`, which is scoped to listEntityType. Gating it on the
+    // whole universe would refuse a small, perfectly resolvable list because some unrelated service
+    // type is large — and the only escape would be shrinking the universe, which changes the count
+    // maps the caller drives their filter controls from.
+    JsonNode response =
+        overview("limit=1000&q=healthScope_&listEntityType=" + DATABASE_SERVICE + "&health=notRun");
+
+    assertEquals(1, namespacedNames(response, ns).size());
+    assertEquals(1, response.get("paging").get("total").asInt());
+    // The universe still spans every service type, so the caller's badges are unchanged.
+    assertEquals(Entity.getServiceEntityTypes().size(), response.get("counts").size());
+  }
+
+  @Test
   void anUnresolvableDomainIsRejectedRatherThanIgnored(TestNamespace ns) throws Exception {
     postgres(ns, "domainGuard");
 
