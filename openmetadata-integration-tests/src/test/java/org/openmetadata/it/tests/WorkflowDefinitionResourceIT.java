@@ -3035,25 +3035,29 @@ public class WorkflowDefinitionResourceIT {
     Glossary glossary = client.glossaries().create(createGlossary);
     LOG.debug("Created glossary: {}", glossary.getName());
 
-    // Create glossary term that SHOULD trigger workflow (has description)
+    // Trigger filter is an EXCLUSION filter: a matching JsonLogic tells the workflow to
+    // NOT trigger for that entity. A term whose description contains "workflow" therefore
+    // matches the filter and is EXCLUDED; a term without "workflow" in its description does
+    // not match, so the workflow runs and rewrites its displayName.
     CreateGlossaryTerm createTermToMatch =
         new CreateGlossaryTerm()
             .withName("createTermToMatch")
-            .withDisplayName("Complete Term")
-            .withDescription("This term has a description and should trigger workflow")
+            .withDisplayName("Excluded Term")
+            .withDescription("This term description contains workflow so it is excluded")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termToMatch = client.glossaryTerms().create(createTermToMatch);
-    LOG.debug("Created glossary term that should match filter: {}", termToMatch.getName());
+    LOG.debug("Created glossary term that matches filter (excluded): {}", termToMatch.getName());
 
-    // Create glossary term that should NOT trigger workflow (will not match filter)
     CreateGlossaryTerm createTermNotToMatch =
         new CreateGlossaryTerm()
             .withName("createTermNotToMatch")
-            .withDisplayName("Incomplete Term")
+            .withDisplayName("Triggering Term")
             .withDescription("Simple description without the magic word")
             .withGlossary(glossary.getFullyQualifiedName());
     GlossaryTerm termNotToMatch = client.glossaryTerms().create(createTermNotToMatch);
-    LOG.debug("Created glossary term that should NOT match filter: {}", termNotToMatch.getName());
+    LOG.debug(
+        "Created glossary term that does not match filter (triggers): {}",
+        termNotToMatch.getName());
 
     // Ensure WorkflowEventConsumer is active
     ensureWorkflowEventConsumerIsActive(client);
@@ -3084,31 +3088,32 @@ public class WorkflowDefinitionResourceIT {
             .withDatabase(database.getFullyQualifiedName());
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
 
-    // Create table that SHOULD trigger workflow (production table)
+    // Same exclusion semantics for the table entity: names containing "production" match the
+    // table filter and are EXCLUDED; names without "production" do not match, so the workflow
+    // triggers and rewrites the displayName.
     CreateTable createProdTable =
         new CreateTable()
             .withName("production_customer_data")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Production table that should trigger workflow")
+            .withDescription("Production table (matches filter -> excluded)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("data").withDataType(ColumnDataType.STRING)));
     Table prodTable = client.tables().create(createProdTable);
-    LOG.debug("Created production table that should match filter: {}", prodTable.getName());
+    LOG.debug("Created production table that matches filter (excluded): {}", prodTable.getName());
 
-    // Create table that should NOT trigger workflow (dev/test table)
     CreateTable createDevTable =
         new CreateTable()
             .withName("dev_test_table")
             .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Dev table that should NOT trigger workflow")
+            .withDescription("Dev table (does not match filter -> triggers)")
             .withColumns(
                 List.of(
                     new Column().withName("id").withDataType(ColumnDataType.INT),
                     new Column().withName("test_data").withDataType(ColumnDataType.STRING)));
     Table devTable = client.tables().create(createDevTable);
-    LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
+    LOG.debug("Created dev table that does not match filter (triggers): {}", devTable.getName());
 
     // Create workflow with entity-specific filters - using raw JSON like reference test
     String workflowJson =
@@ -3227,8 +3232,9 @@ public class WorkflowDefinitionResourceIT {
     JsonNode devTablePatch = MAPPER.readTree(devTablePatchStr);
     client.tables().patch(devTableId, devTablePatch);
 
-    // Wait for workflow processing using Awaitility
-    LOG.info("Waiting for workflow to process entities...");
+    // Wait for the non-matching entities to be processed by the workflow. Matching entities are
+    // silently excluded by the trigger filter, so we cannot wait on them — they never change.
+    LOG.info("Waiting for workflow to process non-matching entities...");
     await()
         .atMost(Duration.ofSeconds(180))
         .pollDelay(Duration.ofMillis(500))
@@ -3236,19 +3242,18 @@ public class WorkflowDefinitionResourceIT {
         .until(
             () -> {
               try {
-                // Check if entities that match filters got processed
-                GlossaryTerm updatedTermToMatch = client.glossaryTerms().get(termToMatchId);
-                Table updatedProdTable = client.tables().get(prodTableId);
+                GlossaryTerm updatedTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
+                Table updatedDevTable = client.tables().get(devTableId);
 
                 boolean termProcessed =
-                    updatedTermToMatch.getDisplayName() != null
-                        && updatedTermToMatch.getDisplayName().startsWith("[FILTERED]");
+                    updatedTermNotToMatch.getDisplayName() != null
+                        && updatedTermNotToMatch.getDisplayName().startsWith("[FILTERED]");
                 boolean tableProcessed =
-                    updatedProdTable.getDisplayName() != null
-                        && updatedProdTable.getDisplayName().startsWith("[FILTERED]");
+                    updatedDevTable.getDisplayName() != null
+                        && updatedDevTable.getDisplayName().startsWith("[FILTERED]");
 
                 if (termProcessed && tableProcessed) {
-                  LOG.debug("Both matching entities have been processed by workflow");
+                  LOG.debug("Both non-matching entities have been processed by workflow");
                   return true;
                 }
 
@@ -3266,35 +3271,34 @@ public class WorkflowDefinitionResourceIT {
     // Verify results
     LOG.info("Verifying workflow results");
 
-    // Entities that match filter should be processed
-    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
-    assertTrue(
-        finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm with description should have been processed by workflow");
-    LOG.info(
-        "✓ GlossaryTerm with description was correctly processed using glossaryterm-specific filter");
-
-    Table finalProdTable = client.tables().get(prodTableId);
-    assertTrue(
-        finalProdTable.getDisplayName().startsWith("[FILTERED]"),
-        "Production table should have been processed by workflow");
-    LOG.info(
-        "✓ Table with 'production' in name was correctly processed using table-specific filter");
-
-    // Entities that don't match filter should NOT be processed
+    // Entities that do NOT match filter should be processed (exclusion filter fell through).
     GlossaryTerm finalTermNotToMatch = client.glossaryTerms().get(termNotToMatchId);
-    assertFalse(
-        finalTermNotToMatch.getDisplayName() != null
-            && finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
-        "GlossaryTerm without description should NOT have been processed by workflow");
-    LOG.info("✓ GlossaryTerm without description was correctly filtered out");
+    assertTrue(
+        finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm without the excluded keyword should have been processed by workflow");
+    LOG.info(
+        "✓ GlossaryTerm without 'workflow' in description was processed (exclusion filter did not match)");
 
     Table finalDevTable = client.tables().get(devTableId);
+    assertTrue(
+        finalDevTable.getDisplayName().startsWith("[FILTERED]"),
+        "Table without 'production' in name should have been processed by workflow");
+    LOG.info("✓ Table without 'production' in name was processed (exclusion filter did not match)");
+
+    // Entities that MATCH the filter must be excluded — the workflow must not touch them.
+    GlossaryTerm finalTermToMatch = client.glossaryTerms().get(termToMatchId);
     assertFalse(
-        finalDevTable.getDisplayName() != null
-            && finalDevTable.getDisplayName().startsWith("[FILTERED]"),
-        "Dev table should NOT have been processed by workflow");
-    LOG.info("✓ Table without 'production' in name was correctly filtered out");
+        finalTermToMatch.getDisplayName() != null
+            && finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm matching the exclusion filter should NOT have been processed by workflow");
+    LOG.info("✓ GlossaryTerm with 'workflow' in description was correctly excluded");
+
+    Table finalProdTable = client.tables().get(prodTableId);
+    assertFalse(
+        finalProdTable.getDisplayName() != null
+            && finalProdTable.getDisplayName().startsWith("[FILTERED]"),
+        "Production table matching the exclusion filter should NOT have been processed");
+    LOG.info("✓ Table with 'production' in name was correctly excluded");
 
     try {
       WorkflowDefinition wd = client.workflowDefinitions().getByName(workflowName, null);
