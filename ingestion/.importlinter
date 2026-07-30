@@ -4,10 +4,11 @@
 # with `:`) or a lower one; importing a higher layer pulls that layer's whole subtree
 # into every process below it, which is what makes `import metadata` expensive.
 #
-# ignore_imports records the imports that break this today, grouped by why. Fix one by
-# making it function-local, guarding it with `if TYPE_CHECKING:`, or resolving it through
-# metadata.utils.importer — never by adding a line here. Entries that stop matching fail
-# the run, so the list only shrinks.
+# ignore_imports records the imports that break this today, grouped by why. All of them
+# are design debt to remove, whether or not they are function-local: deferring an import
+# hides its cost, not the dependency. Fix one by guarding it with `if TYPE_CHECKING:` or
+# resolving it through metadata.utils.importer — never by adding a line here. Entries that
+# stop matching fail the run, so the list only shrinks.
 #
 # root_packages must list every namespace portion (directory without __init__.py):
 # grimp will not find them under `metadata`, and an omitted one is silently unanalysed.
@@ -45,17 +46,9 @@ layers =
     ingestion.ometa : ingestion.connections : ingestion.diagnostics : core : clients : config : utils : antlr : models : mixins : timer : domain
     generated
 ignore_imports =
-# Not executed on import, so they cost nothing. import-linter cannot see that, so
-# they stay listed; import cost itself is covered by tests/unit/test_import_cost.py.
+# Shared helpers that grew upwards: utils, mixins and config reach into the
+# framework and into connectors, so importing any of them pulls those in.
     metadata.config.settings -> metadata
-    metadata.ingestion.models.custom_basemodel_validation -> metadata.utils.entity_link
-    metadata.ingestion.models.custom_pydantic -> metadata.utils.secrets.secrets_manager_factory
-    metadata.ingestion.models.topology -> metadata.ingestion.source.**
-    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.sql_lineage
-    metadata.sampler.messaging.kafka.sampler -> metadata.ingestion.source.messaging.kafka.connection
-    metadata.sampler.pandas.burstiq.sampler -> metadata.ingestion.source.database.burstiq.client
-# Shared helpers that grew upwards: utils and mixins reach into the framework and
-# into connectors, so importing either pulls those in.
     metadata.mixins.pandas.pandas_mixin -> metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween
     metadata.mixins.pandas.pandas_mixin -> metadata.readers.dataframe.models
     metadata.mixins.sqalchemy.sqa_mixin -> metadata.ingestion.source.connections
@@ -86,11 +79,12 @@ ignore_imports =
     metadata.utils.storage_metadata_config -> metadata.readers.file.config_source_factory
     metadata.utils.tag_utils -> metadata.ingestion.api.models
 # The ometa client carries framework and connector types on its mixins, so every
-# consumer of the client pays for them.
+# consumer of the client depends on them.
     metadata.ingestion.ometa.mixins.es_mixin -> metadata.ingestion.source.models
     metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin -> metadata.ingestion.api.parser
     metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.models
     metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.parser
+    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.sql_lineage
     metadata.ingestion.ometa.mixins.patch_mixin -> metadata.ingestion.api.models
     metadata.ingestion.ometa.mixins.patch_mixin -> metadata.pii.types
     metadata.ingestion.ometa.mixins.patch_mixin -> metadata.sampler.entity_adapters
@@ -104,10 +98,15 @@ ignore_imports =
     metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.dashboard.dashboard_service
     metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.database.database_service
     metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.pipeline.pipeline_service
+    metadata.sampler.messaging.kafka.sampler -> metadata.ingestion.source.messaging.kafka.connection
+    metadata.sampler.pandas.burstiq.sampler -> metadata.ingestion.source.database.burstiq.client
     metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
     metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
     metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection
     metadata.sampler.storage.s3.sampler -> metadata.ingestion.source.storage.s3.connection
 # metadata.ingestion.models spans layers: custom_pydantic sits below the generated
 # models while the rest of the package is framework-level.
+    metadata.ingestion.models.custom_basemodel_validation -> metadata.utils.entity_link
+    metadata.ingestion.models.custom_pydantic -> metadata.utils.secrets.secrets_manager_factory
     metadata.ingestion.models.patch_request -> metadata.ingestion.api.models
+    metadata.ingestion.models.topology -> metadata.ingestion.source.**
