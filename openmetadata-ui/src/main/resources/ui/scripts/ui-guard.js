@@ -21,9 +21,12 @@
  *
  *   node scripts/ui-guard.js <file>
  *
- * Runs the audits in-process rather than shelling out to each script: this
- * executes on every UI file write, and a second node start-up (~150-300ms) is a
- * tax paid all day.
+ * Each audit is spawned as its own node process. That is a real cost on a hook
+ * that fires on every UI file write, but the audits are standalone CLIs whose
+ * module bodies call process.exit(), so they cannot simply be require()d
+ * without restructuring shared scripts this hook does not own. Measured at
+ * ~70ms total for one file, which is under the budget for in-turn feedback; if
+ * that regresses, refactor the audits to export a function and drop the spawn.
  */
 const path = require('path');
 const { execFileSync } = require('child_process');

@@ -56,6 +56,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sonar_gate_result: ${{ steps.sonar_pr_scan.outcome }}
+      # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
+      sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
@@ -214,6 +216,8 @@ jobs:
         run: |
           job="${{ needs.ui-coverage-tests.result }}"
           gate="${{ needs.ui-coverage-tests.outputs.sonar_gate_result }}"
+          install="${{ needs.ui-coverage-tests.outputs.sonar_scanner_install }}"
+          event="${{ github.event_name }}"
 
           # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
           # a required check that never completes blocks the PR forever.
@@ -225,9 +229,24 @@ jobs:
             echo "Upstream coverage job ended with '$job'; the gate could not be evaluated."
             exit 1
           fi
-          # Empty on push / merge_group runs, where the PR scan step never ran.
+          # On a PR the scan MUST have run. If it was skipped here the scanner
+          # install failed, and treating that as "nothing to gate" would let a
+          # transient npm error pass a required gate without ever evaluating New
+          # Code — the same silent pass this job exists to remove.
+          if [[ "$event" == "pull_request_target" ]]; then
+            if [[ "$install" != "success" ]]; then
+              echo "✖ sonar-scanner install ended with '$install', so the quality gate never ran."
+              echo "  Re-run the job. A required gate must not pass without evaluating New Code."
+              exit 1
+            fi
+            if [[ -z "$gate" || "$gate" == "skipped" ]]; then
+              echo "✖ The Sonar PR scan did not run, so New Code was never evaluated."
+              exit 1
+            fi
+          fi
+          # push / merge_group: the PR scan step is correctly inapplicable.
           if [[ -z "$gate" || "$gate" == "skipped" ]]; then
-            echo "Sonar PR scan did not run for this event — nothing to gate."
+            echo "Sonar PR scan does not apply to this event — nothing to gate."
             exit 0
           fi
           if [[ "$gate" != "success" ]]; then

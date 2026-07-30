@@ -21,6 +21,13 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
   Slider, Textarea, Tags, and more. When building layout/color, invoke the `ui-core-components` skill
   before reaching for a raw `<div>` + Tailwind.
+- **Building or restructuring a component? Invoke these first** — they do not fire on their own:
+  `react-best-practices` (waterfalls, re-renders, barrel imports, bundle) and `composition-patterns`
+  (prop proliferation, compound components). When the component is done, invoke
+  `web-design-guidelines` as an a11y/UX audit. All three are vendored under `skills/vendor/`; a skill
+  loads only when invoked, and their own trigger wording aims at *refactoring* and *reviewing*, so
+  they miss "build me a component" unless named. `frontend-performance.md` and `frontend-a11y.md`
+  carry the load-bearing subset and auto-load — these skills are the depth behind them.
 - **Do not hand-roll a component the library already exports.** `yarn reuse-audit` blocks these on
   **added lines only** (existing code is untouched, like `tw-guard`). Same list the script enforces:
 

@@ -115,12 +115,12 @@ const RULES = [
       }[m[1]]),
     why: 'raw native control inside a component',
   },
-  {
-    id: 'keyboard-nav',
-    test: /["'](ArrowDown|ArrowUp)["']/,
-    use: () => 'Select / Dropdown / Tabs',
-    why: 'hand-rolled keyboard navigation',
-  },
+  // A 'keyboard-nav' rule matching ArrowDown/ArrowUp was removed deliberately.
+  // Arrow keys are legitimate in data grids, ReactFlow canvases and sliders,
+  // none of which a Select/Dropdown/Tabs can replace — so its suggested fix
+  // would have been wrong for most of what it caught. The aria-role rule
+  // already covers the case that matters: a hand-rolled listbox or menu.
+  // Precision beats recall in a blocking gate.
   {
     id: 'portal',
     test: /\bcreatePortal\s*\(/,
@@ -194,6 +194,10 @@ function findings(added) {
     if (!file || EXCLUDED.test(file) || /reuse-audit-ignore/.test(text)) {
       continue;
     }
+    // A comment line mentioning `<button>` or role="menu" is prose, not markup.
+    if (/^\s*(\/\/|\/\*|\*)/.test(text)) {
+      continue;
+    }
     for (const rule of RULES) {
       if (rule.where && !rule.where.test(`/${file}`)) {
         continue;
@@ -251,16 +255,24 @@ function main() {
   process.stdout.write(C.green('✔ No new hand-rolled components.\n'));
 }
 
-try {
-  main();
-} catch (e) {
-  // Fail loudly. "Could not inspect the diff" must never render as "clean".
-  process.stderr.write(
-    C.red(`\n✖ reuse-audit could not inspect the diff — refusing to pass.\n`) +
-      `  ${e.message}\n` +
-      C.gray(
-        `  Check the base ref is fetched (CI uses fetch-depth: 0) and that it exists locally.\n`
-      )
-  );
-  process.exit(1);
+// Guarded so reuse-audit.test.js can require the pure helpers without the CLI
+// running (and calling process.exit) on import.
+if (require.main === module) {
+  try {
+    main();
+  } catch (e) {
+    // Fail loudly. "Could not inspect the diff" must never render as "clean".
+    process.stderr.write(
+      C.red(
+        `\n✖ reuse-audit could not inspect the diff — refusing to pass.\n`
+      ) +
+        `  ${e.message}\n` +
+        C.gray(
+          `  Check the base ref is fetched (CI uses fetch-depth: 0) and that it exists locally.\n`
+        )
+    );
+    process.exit(1);
+  }
 }
+
+module.exports = { findings, addedLines, RULES, EXCLUDED };

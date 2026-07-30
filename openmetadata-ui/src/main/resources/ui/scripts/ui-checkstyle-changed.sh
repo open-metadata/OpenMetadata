@@ -93,6 +93,8 @@ fi
 
 node scripts/tw-deprecation-guard.js "$BASE" || GATE_FAILURES+=("tw-guard")
 node scripts/reuse-audit.js "$BASE" || GATE_FAILURES+=("reuse-audit")
+# The guard gates merges, so its own rules are covered by tests that run here.
+node scripts/reuse-audit.test.js || GATE_FAILURES+=("reuse-audit:test")
 
 if [ "${#GATE_FAILURES[@]}" -gt 0 ]; then
   echo ""
