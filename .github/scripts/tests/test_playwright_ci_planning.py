@@ -45,6 +45,10 @@ def test_basic_and_chromium_share_the_bounded_common_lane():
 
 def test_full_common_shard_count_is_capped_at_24():
     planner = load_script("build_playwright_shards")
+    # Enough weight that the calculated shard count exceeds COMMON_MAX_SHARDS
+    # regardless of chromium's 4-worker parallelism setting — 100 × 1M ms
+    # forecasts to ~26 shards on the 19-min shard budget × 0.85 efficiency,
+    # which caps at 24.
     units = [
         planner.Unit(
             "chromium",
@@ -52,7 +56,7 @@ def test_full_common_shard_count_is_capped_at_24():
             str(index),
             weight_ms=1_000_000,
         )
-        for index in range(81)
+        for index in range(100)
     ]
     units.append(
         planner.Unit("chromium", "remainder.spec.ts", "remainder", weight_ms=363_055)
@@ -86,11 +90,15 @@ def test_common_assignment_stays_within_the_execution_ceiling():
         for index in range(13)
     ]
 
+    workers = planner.LANE_WORKERS["chromium"]
     shards = planner.assign_lane_within_budget(units, "chromium", "targeted")
 
-    assert len(shards) == 5
+    # 13 × 940k ms at 4 workers packs into 4 shards under the 20-min TARGET_MS
+    # ceiling; the assertion below is what actually matters — LPT must place
+    # every shard's predicted execution under TARGET_MS regardless of count.
+    assert len(shards) == 4
     assert all(
-        planner.predicted_execution_ms(shard, 3) <= planner.TARGET_MS
+        planner.predicted_execution_ms(shard, workers) <= planner.TARGET_MS
         for shard in shards
     )
 
@@ -515,6 +523,12 @@ def test_import_export_runs_in_its_own_lane_with_two_workers():
     assert planner.LANE_WORKERS["import-export"] == 2
     assert planner.lane_bounds("import-export", "full") == (1, 8)
     assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
+def test_chromium_lane_uses_four_playwright_workers():
+    planner = load_script("build_playwright_shards")
+
+    assert planner.LANE_WORKERS["chromium"] == 4
 
 
 def test_source_glob_matching_is_explicit():

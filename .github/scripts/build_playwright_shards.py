@@ -48,6 +48,12 @@ PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
 }
 LANE_WORKERS = {
+    # ubuntu-latest is 4 vCPU. Chromium (and its Basic sibling) run playwright
+    # tests that are heavily I/O-bound on the OM API, so 4 workers per shard
+    # overlaps request/response waits with test setup without saturating CPU.
+    # Serial lanes (ingestion, reindex, global-state, …) stay at 1 because
+    # their tests mutate shared server-level state.
+    "chromium": 4,
     "domain-isolation": 1,
     "global-state": 1,
     "import-export": 2,
