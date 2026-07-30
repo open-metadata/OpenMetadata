@@ -267,7 +267,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       TestCaseResult testCaseResult, TestCase testCase, String updatedBy) {
     if (TestCaseStatus.Failed.equals(testCaseResult.getTestCaseStatus())) {
       UUID incidentStateId =
-          TestCaseResolutionStatusRepository.getOrCreateIncident(testCase, updatedBy);
+          TestCaseResolutionStatusRepository.getOrCreateIncident(
+              testCase, updatedBy, testCaseResult.getResult());
       testCaseResult.setIncidentId(incidentStateId);
     } else {
       testCaseResult.setIncidentId(null);
