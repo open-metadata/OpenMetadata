@@ -93,21 +93,32 @@ threshold 15 in both places).
 
 ### Quality gate — conditions on New Code ONLY
 
-| Condition (New Code) | Value |
-|---|---|
-| Issues | **0** |
-| Security Hotspots Reviewed | **100%** |
-| Duplicated Lines (%) | **≤ 3%** |
-| Coverage | **disabled at launch** → 60% → 80% |
-| *any condition on Overall Code* | **none** |
+Gate name: **OpenMetadata UI — Clean as You Code**. Set it as the project's default gate.
 
-Two deliberate deviations from the stock "Sonar way" profile:
+| Condition (New Code) | Operator | Value |
+|---|---|---|
+| Coverage | is less than | **90.0%** |
+| Issues | is greater than | **0** |
+| Security Hotspots Reviewed | is less than | **100%** |
+| Duplicated Lines (%) | is greater than | **3.0%** |
+| *any condition on Overall Code* | — | **none** |
 
-- **Never attach a condition to Overall Code.** It would fail on legacy debt from day one and break
-  the entire "new code only" contract.
-- **Coverage starts disabled.** `jest.config.js` sets `collectCoverageFrom` but no
-  `coverageThreshold`, so the UI enforces no coverage floor today. Sonar way's default of 80% on new
-  code would land as a brand-new hard constraint on every UI PR at once. Ratchet it in its own PR.
+**Never attach a condition to Overall Code.** It would fail on legacy debt from day one and break the
+entire "new code only" contract. Every condition above is evaluated solely against the lines a PR
+adds or modifies.
+
+> **90% coverage on new code is the strictest condition here** — above Sonar way's default of 80%,
+> and the UI currently has no coverage floor at all (`jest.config.js` sets `collectCoverageFrom` but
+> no `coverageThreshold`). Expect this to be the condition that fails most PRs at first: any new
+> component, hook or util needs tests landing in the same PR. That is the intent — new code is held
+> to a standard the backlog is not — but it is a real change in what "done" means for a UI PR, and
+> teams should hear it before the gate turns on rather than from a red check.
+>
+> Two mechanical consequences worth knowing:
+> - A PR that only **moves or reformats** code can still register those lines as new and uncovered.
+> - Coverage comes from `sonar.typescript.lcov.reportPaths` (`src/test/unit/coverage/lcov.info`), so
+>   if the Jest run fails or the lcov is missing, new-code coverage reads as 0% and the gate fails.
+>   Fix the test run, not the gate.
 
 ### New Code definition
 
@@ -116,10 +127,24 @@ project settings, not on the gate.
 
 ### Branch protection
 
-Mark **`ui-sonar-gate`** required — **not** SonarCloud's own check. The scan is gated behind
+Mark these three required on `main`:
+
+| Required check | Enforces |
+|---|---|
+| `ui-checkstyle` | lint, prettier, licence, i18n, `tw-audit`, `tw-guard`, `reuse-audit` |
+| `ui-coverage` | Jest run completed |
+| **`ui-sonar-gate`** | the Clean-as-You-Code quality gate, incl. 90% coverage on new code |
+
+Mark **`ui-sonar-gate`**, **not** SonarCloud's own check. The scan is gated behind
 `dorny/paths-filter` and the `safe to test` label, so a PR with no UI changes never produces that
-check and would block forever waiting on it. `ui-sonar-gate` always runs, polls the gate API, and
-passes when the scan was skipped.
+check and would block forever waiting on it. `ui-sonar-gate` always runs and passes when the scan
+was legitimately skipped.
+
+The gate result comes from the scanner itself: the PR scan passes `-Dsonar.qualitygate.wait=true`
+(timeout 600s), so SonarCloud decides and the scanner exits non-zero on failure. `ui-sonar-gate`
+turns that outcome into the check contributors see. This is the supported mechanism — do not
+reintroduce polling of `/api/qualitygates/project_status`, which races the asynchronous report
+processing and silently passes when it times out.
 
 ## Two behaviours to expect
 
