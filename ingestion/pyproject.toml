@@ -206,11 +206,8 @@ ignore = [
     "PLR2044",  # empty-comment            — too pedantic for the value
 
     # ── Lazy imports are a deliberate tool here, not a smell ──
-    "PLC0415",  # import-outside-top-level — module-scope imports of heavy subtrees are
-                # what inflate `import metadata` peak RSS (they OOM-killed 512Mi
-                # automation pods), so function-local imports are encouraged. Layering is
-                # enforced by the import-linter contract in .importlinter and the ceilings
-                # in tests/unit/test_import_cost.py instead.
+    "PLC0415",  # import-outside-top-level — function-local imports keep heavy subtrees out
+                # of import time; see .importlinter and tests/unit/test_import_cost.py
 ]
 
 # Existing violations were grandfathered via `ruff check --add-noqa` during

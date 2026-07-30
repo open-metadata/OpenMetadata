@@ -8,13 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Ceilings on what `import metadata` costs, so import bloat cannot creep back silently.
-
-`import metadata` peak RSS grew from ~261 MB (1.9) to ~435 MB (1.13) unnoticed, which
-OOM-killed 512Mi automation pods. These ceilings are deliberately loose: they catch a
-step change (a new eager dependency subtree, or a revert of the generated-model
-`defer_build`), not run-to-run noise. Tighten them as lazy-import work lands.
-"""
+"""Ceilings on the cost of `import metadata`."""
 
 import json
 import subprocess
@@ -22,6 +16,8 @@ import sys
 
 import pytest
 
+# Loose on purpose: catch a step change, such as a new eagerly imported dependency
+# subtree, rather than run-to-run variation. Lower them as lazy-import work lands.
 MAX_IMPORT_RSS_MB = 480
 MAX_TOTAL_MODULES = 5000
 
@@ -50,17 +46,15 @@ def import_cost() -> dict:
 def test_import_metadata_peak_rss_under_ceiling(import_cost):
     rss_mb = import_cost["rss_mb"]
     assert rss_mb < MAX_IMPORT_RSS_MB, (
-        f"`import metadata` peaked at {rss_mb:.0f} MB, over the {MAX_IMPORT_RSS_MB} MB ceiling. "
-        "Something now imports a heavy dependency at module scope (or the generated-model "
-        "defer_build was disabled). Make the import function-local or route it through a "
-        "registry; see the layering contract in ingestion/.importlinter."
+        f"`import metadata` peaked at {rss_mb:.0f} MB, ceiling {MAX_IMPORT_RSS_MB} MB. "
+        "Make the new import lazy, or check whether defer_build is still enabled on the "
+        "generated-model base class."
     )
 
 
 def test_import_metadata_module_count_under_ceiling(import_cost):
     modules = import_cost["modules"]
     assert modules < MAX_TOTAL_MODULES, (
-        f"`import metadata` loaded {modules} modules, over the {MAX_TOTAL_MODULES} ceiling "
-        f"({import_cost['metadata_modules']} of them metadata.*). A new module-scope import "
-        "pulled in a large subtree; make it lazy."
+        f"`import metadata` loaded {modules} modules ({import_cost['metadata_modules']} "
+        f"of them metadata.*), ceiling {MAX_TOTAL_MODULES}. Make the new import lazy."
     )
