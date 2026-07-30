@@ -58,6 +58,20 @@ class BaseModel(PydanticBaseModel):
         This is needed because dict is defined in the JSON schema for the FilterPattern field,
         but a FilterPattern object is required in the generated code.
         """
+        # Build the schema of a model the first time one is instantiated. With
+        # defer_build a nested model's schema only ever gets inlined into its parent,
+        # so the class itself keeps the MockValSer it inherits from pydantic.BaseModel.
+        # Serialization fallbacks read type(value).__pydantic_serializer__ straight off
+        # the class, which does not go through MockValSer.__getattr__ and so never
+        # triggers its lazy rebuild; pydantic-core then fails to convert the mock with
+        # "'MockValSer' object cannot be converted to 'SchemaSerializer'". Building here
+        # keeps the import-time saving, since importing a module instantiates nothing.
+        # _parent_namespace_depth=0: forward refs must resolve against the model's own
+        # module, not against whichever frame happened to instantiate it.
+        cls = type(self)
+        if not cls.__pydantic_complete__:
+            cls.model_rebuild(_parent_namespace_depth=0)
+
         # pylint: disable=import-outside-toplevel
         try:
             if not self.__class__.__name__.endswith("Connection"):

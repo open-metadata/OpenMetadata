@@ -42,6 +42,42 @@ assert Table.model_config.get("defer_build") is False, "OM_PYDANTIC_DEFER_BUILD=
 print("OK")
 """
 
+_SERIALIZE_PROBE = """
+import warnings
+
+warnings.filterwarnings("ignore")
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import Source
+
+assert SnowflakeConnection.__pydantic_complete__ is False, "connection schema was built eagerly at import"
+
+# Nothing here builds the nested models' own schema: validating Source goes through
+# the members pydantic inlined into the parent. Dumping the parent then falls back to
+# reading the serializer off the nested class, which is where a deferred model that was
+# never built surfaces as a MockValSer.
+source = Source.model_validate(
+    {
+        "type": "snowflake",
+        "serviceName": "test",
+        "serviceConnection": {
+            "config": {
+                "type": "Snowflake",
+                "account": "account",
+                "username": "username",
+                "password": "password",
+                "warehouse": "warehouse",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    }
+)
+dumped = source.model_dump()
+assert dumped["serviceConnection"]["config"]["account"] == "account"
+print("OK")
+"""
+
 
 def _collect_generated_model_classes() -> dict:
     """Return {qualified_name: class} for importable generated BaseModel subclasses."""
@@ -95,6 +131,22 @@ def test_generated_models_defer_build_is_enabled():
         env=env,
     )
     assert result.returncode == 0, f"defer_build probe failed:\n{result.stdout}\n{result.stderr}"
+    assert result.stdout.strip().endswith("OK")
+
+
+def test_deferred_nested_models_are_serializable():
+    """Dumping a parent reaches nested models whose own schema was never built."""
+    # Fresh interpreter with the toggle unset, for the same reasons as the probe above:
+    # completeness flips on first use, and this has to assert the default.
+    env = {key: value for key, value in os.environ.items() if key != "OM_PYDANTIC_DEFER_BUILD"}
+    result = subprocess.run(
+        [sys.executable, "-c", _SERIALIZE_PROBE],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    assert result.returncode == 0, f"serialization probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
 
 
