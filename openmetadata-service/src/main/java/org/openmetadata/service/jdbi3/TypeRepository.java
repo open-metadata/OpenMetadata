@@ -346,11 +346,6 @@ public class TypeRepository extends EntityRepository<Type> {
       compareAndUpdate("customProperties", this::updateCustomProperties);
     }
 
-    @Override
-    protected void resetForRetryAttempt() {
-      membershipChangesApplied = false;
-    }
-
     private void updateCustomProperties() {
       List<CustomProperty> updatedProperties = listOrEmpty(updated.getCustomProperties());
       List<CustomProperty> origProperties = listOrEmpty(original.getCustomProperties());
