@@ -972,7 +972,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       <ErrorPlaceHolder
         className="border-none"
         permissionValue={t('label.view-entity', {
-          entity: t('label.knowledge-page'),
+          entity: t('label.article'),
         })}
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />

@@ -544,6 +544,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_LINEAGE_REPRESENTATIVE_ONLY: ${{ needs.detect-changes.outputs.lineage_representative_only }}
         run: |
@@ -551,6 +552,7 @@ jobs:
             --project=chromium \
             --project=Basic \
             --project=Ingestion \
+            --project=ImportExport \
             --project=DataAssetRulesEnabled \
             --project=DataAssetRulesDisabled \
             --project=SearchRBAC \
@@ -799,6 +801,7 @@ jobs:
         env:
           PLAYWRIGHT_IS_OSS: "true"
           PW_DEDICATED_INGESTION: "true"
+          PW_DEDICATED_IMPORT_EXPORT: "true"
         run: |
           npx playwright test --project=entity-data-setup --reporter=line
           test -s playwright/.auth/admin.json

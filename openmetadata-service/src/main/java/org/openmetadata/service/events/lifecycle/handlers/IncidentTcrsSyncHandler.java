@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -46,7 +47,8 @@ import org.openmetadata.service.tasks.IncidentWorkflowStages;
  * workflow stage (new → ack → assigned → resolved). But many downstream consumers — the
  * profiler data-quality page's "Incidents" badge, search aggregations, dashboards, and
  * external metrics exporters — still read from the TCRS time series. This handler keeps
- * those consumers fed by writing one TCRS record per workflow stage transition.
+ * those consumers fed by appending a TCRS record whenever the mirrored view of the task
+ * changes.
  *
  * <p>Key design choices:
  *
@@ -60,12 +62,13 @@ import org.openmetadata.service.tasks.IncidentWorkflowStages;
  *       a static {@code Map.of(...)} rather than being derived from the workflow
  *       definition. Keeps the dependency simple; costs a code edit if a new workflow stage
  *       is ever added.
- *   <li><b>Fires on stage transition only</b>. Assignee-only PATCHes, comment adds, watcher
- *       changes, etc. don't write TCRS records — only {@code workflowStageId} changes
- *       (plus initial task creation) count.
- *   <li><b>Idempotent</b>. If the latest TCRS record for this {@code stateId} already has
- *       the target status, the handler skips. This protects against duplicate inserts from
- *       repeated updates.
+ *   <li><b>Driven by the mirrored projection, not by the trigger</b>. The mirrored view of a
+ *       task is its status plus, in the {@code assigned} stage, its assignee. Every task
+ *       lifecycle event runs the handler, and a record is appended only when that projection
+ *       differs from the latest one already stored for the {@code stateId}. Comment adds and
+ *       watcher changes therefore write nothing, while a re-assignment does — even though it
+ *       leaves {@code workflowStageId} on {@code assigned}, because the workflow models it as
+ *       a self-loop.
  *   <li><b>Best-effort</b>. A TCRS write failure must never roll back a task update. All
  *       work is wrapped in try/catch and errors are logged at WARN level.
  * </ul>
@@ -88,28 +91,12 @@ public final class IncidentTcrsSyncHandler {
 
   private IncidentTcrsSyncHandler() {}
 
-  /** Invoked from {@code TaskRepository.postCreate} after a task row is first persisted. */
-  public static void handleTaskCreate(Task task) {
+  /** Invoked from {@code TaskRepository.postCreate} and {@code TaskRepository.postUpdate}. */
+  public static void sync(Task task) {
     if (!isIncidentTask(task)) {
       return;
     }
     syncStage(task);
-  }
-
-  /**
-   * Invoked from {@code TaskRepository.postUpdate}. Only fires a TCRS write when the task's
-   * {@code workflowStageId} actually changed between {@code original} and {@code updated}.
-   */
-  public static void handleTaskUpdate(Task original, Task updated) {
-    if (!isIncidentTask(updated)) {
-      return;
-    }
-    String originalStage = original != null ? original.getWorkflowStageId() : null;
-    String updatedStage = updated.getWorkflowStageId();
-    if (Objects.equals(originalStage, updatedStage)) {
-      return;
-    }
-    syncStage(updated);
   }
 
   private static boolean isIncidentTask(Task task) {
@@ -138,12 +125,16 @@ public final class IncidentTcrsSyncHandler {
               Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
 
       UUID stateId = task.getId();
+      Object details = buildDetailsForStage(tcrsType, task);
 
-      // Idempotency: skip if the latest record for this stateId already has the target status
       TestCaseResolutionStatus latest = repo.getLatestRecordForStateId(stateId);
-      if (latest != null && latest.getTestCaseResolutionStatusType() == tcrsType) {
+      if (latest != null
+          && latest.getTestCaseResolutionStatusType() == tcrsType
+          && Objects.equals(
+              mirroredAssigneeId(tcrsType, latest.getTestCaseResolutionStatusDetails()),
+              mirroredAssigneeId(tcrsType, details))) {
         LOG.debug(
-            "[TCRS Sync] Task {} already at status {} for stateId {}; skipping",
+            "[TCRS Sync] Task {} already mirrored at status {} for stateId {}; skipping",
             task.getId(),
             tcrsType,
             stateId);
@@ -166,10 +157,11 @@ public final class IncidentTcrsSyncHandler {
               .withId(UUID.randomUUID())
               .withStateId(stateId)
               .withTestCaseResolutionStatusType(tcrsType)
-              .withTestCaseResolutionStatusDetails(buildDetailsForStage(tcrsType, task))
+              .withTestCaseResolutionStatusDetails(details)
               .withTestCaseReference(task.getAbout())
               .withTimestamp(task.getUpdatedAt())
               .withUpdatedAt(task.getUpdatedAt())
+              .withFailureSummary(extractFailureReason(task))
               .withUpdatedBy(updatedByRef);
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
@@ -189,6 +181,12 @@ public final class IncidentTcrsSyncHandler {
     }
   }
 
+  private static String extractFailureReason(Task task) {
+    TestCaseResolutionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
+    return payload != null ? payload.getFailureReason() : null;
+  }
+
   /**
    * Keep the test case's search document in sync with the ongoing incident: a targeted single-field
    * update of the derived incidentId (state id while active, null once resolved), avoiding a full
@@ -206,6 +204,21 @@ public final class IncidentTcrsSyncHandler {
             task.getAbout().getFullyQualifiedName(),
             TestCaseRepository.INCIDENTS_FIELD,
             stateId != null ? stateId.toString() : null);
+  }
+
+  /**
+   * The assignee carried by a mirrored record, or null for the statuses that don't carry one.
+   * Comparing the id rather than the whole details object avoids false mismatches on the
+   * incidental fields a stored {@link EntityReference} picks up when it is read back.
+   */
+  private static UUID mirroredAssigneeId(TestCaseResolutionStatusTypes type, Object details) {
+    if (type != TestCaseResolutionStatusTypes.Assigned || details == null) {
+      return null;
+    }
+    Assigned assigned = JsonUtils.convertValue(details, Assigned.class);
+    return assigned != null && assigned.getAssignee() != null
+        ? assigned.getAssignee().getId()
+        : null;
   }
 
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {
