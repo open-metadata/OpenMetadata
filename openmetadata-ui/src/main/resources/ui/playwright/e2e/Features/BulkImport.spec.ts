@@ -1253,14 +1253,14 @@ test.describe('Bulk Import Export', () => {
           12
         );
 
-        // Select left up cells
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowUp');
-        await page.keyboard.press('Shift+ArrowLeft');
-        await page.keyboard.press('Shift+ArrowLeft');
+        // Select left up cells. Use delay so CI doesn't drop rapid key presses.
+        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
+        await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
       });
