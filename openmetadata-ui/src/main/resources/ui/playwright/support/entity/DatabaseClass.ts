@@ -267,20 +267,22 @@ export class DatabaseClass extends EntityClass {
       .getByTestId('owner-label')
       .getByTestId('owner-link')
       .getByTestId(owner);
+    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
 
-    await waitForSearchResult(page, searchTerm, ownerLink);
+    await waitForSearchResult(page, searchTerm, ownerLink, tableTab);
     await expect(ownerLink).toBeVisible();
   }
 
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
+    const tableTab = page.getByRole('menuitem', { name: 'Tables' });
 
     for (const domain of domains) {
       const domainLink = entityCard
         .getByTestId('domain-link')
         .filter({ hasText: domain.displayName });
-      await waitForSearchResult(page, searchTerm, domainLink);
+      await waitForSearchResult(page, searchTerm, domainLink, tableTab);
       await verifyDomainLinkInCard(entityCard, domain);
     }
 
