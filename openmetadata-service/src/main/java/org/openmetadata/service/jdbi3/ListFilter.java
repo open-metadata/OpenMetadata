@@ -87,6 +87,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getActiveCondition(tableName));
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getExcludeProviderCondition(tableName));
+    conditions.add(getConnectorTypeCondition(tableName));
     conditions.add(getTaskStatusCondition(tableName));
     conditions.add(getTaskFormTypeCondition(tableName));
     conditions.add(getTaskFormCategoryCondition(tableName));
@@ -414,6 +416,39 @@ public class ListFilter extends Filter<ListFilter> {
             : String.format("%s.json->>'provider' = :provider", tableName);
       }
     }
+  }
+
+  // Negated mirror of getProviderCondition, used to hide platform-managed services (provider
+  // 'system') from user-facing listings. COALESCE is required: user-created entities have no
+  // provider key at all, and in SQL `NULL <> 'system'` is NULL, which would drop every such row.
+  public String getExcludeProviderCondition(String tableName) {
+    String provider = queryParams.get("excludeProvider");
+    String result = "";
+    if (!nullOrEmpty(provider)) {
+      String column = tableName == null ? "json" : tableName + ".json";
+      result =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? String.format(
+                  "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider')), '') <> :excludeProvider",
+                  column)
+              : String.format("COALESCE(%s->>'provider', '') <> :excludeProvider", column);
+    }
+    return result;
+  }
+
+  // Filters service entities by connector type (e.g. 'Snowflake'). Deliberately separate from
+  // getServiceTypeCondition, whose `serviceType` param means "the service a pipeline belongs to"
+  // and which is a no-op for every table except pipeline_entity. Every service table exposes
+  // serviceType as a generated column, so this reads the column rather than the JSON blob.
+  public String getConnectorTypeCondition(String tableName) {
+    String connectorTypes = queryParams.get("connectorType");
+    String result = "";
+    if (!nullOrEmpty(connectorTypes)) {
+      String inCondition = buildIndexedBindParams("connectorType", connectorTypes);
+      String column = tableName == null ? "serviceType" : tableName + ".serviceType";
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
   }
 
   private String getEventSubscriptionAlertType() {

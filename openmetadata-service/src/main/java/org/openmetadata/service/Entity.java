@@ -814,6 +814,16 @@ public final class Entity {
     return entityRepository;
   }
 
+  /**
+   * Entity type names of every service entity, e.g. {@code databaseService}. This is the single
+   * source of truth for "what is a service" — callers that need to iterate all service types must
+   * use it rather than hardcoding a list, which is how entity/utils/servicesCount.json drifted to
+   * covering only 7 of the 13 service types.
+   */
+  public static List<String> getServiceEntityTypes() {
+    return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
+  }
+
   public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
     EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
