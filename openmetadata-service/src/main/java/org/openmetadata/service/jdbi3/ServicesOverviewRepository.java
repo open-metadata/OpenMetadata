@@ -68,7 +68,7 @@ public class ServicesOverviewRepository {
     Map<String, Map<String, Integer>> byConnector = countsByConnector(securityContext, r);
     Map<String, Integer> counts = sumInner(byConnector);
     Map<UUID, ServiceHealth> health = resolveHealth(securityContext, r, counts);
-    Map<String, Map<String, Integer>> byHealth = countsByHealth(securityContext, r, health);
+    Map<String, Map<String, Integer>> byHealth = countsByHealth(securityContext, r, health, counts);
     List<TypedKey> keys = listKeys(securityContext, r, health);
     List<ServiceSummary> data = hydrate(slice(keys, r.offset(), r.limit()), health, r);
     int listTotal = listTotal(counts, byConnector, byHealth, keys, r);
@@ -108,21 +108,50 @@ public class ServicesOverviewRepository {
   }
 
   private Map<String, Map<String, Integer>> countsByHealth(
-      SecurityContext securityContext, ServicesOverviewRequest r, Map<UUID, ServiceHealth> health) {
+      SecurityContext securityContext,
+      ServicesOverviewRequest r,
+      Map<UUID, ServiceHealth> health,
+      Map<String, Integer> counts) {
     Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
     if (r.includeHealth()) {
       for (Map.Entry<String, List<TypedKey>> entry : universeKeys(securityContext, r).entrySet()) {
-        result.put(entry.getKey(), tallyHealth(entry.getValue(), health));
+        String entityType = entry.getKey();
+        result.put(
+            entityType,
+            tallyHealth(entry.getValue(), health, counts.getOrDefault(entityType, 0), entityType));
       }
     }
     return result;
   }
 
-  private Map<String, Integer> tallyHealth(List<TypedKey> keys, Map<UUID, ServiceHealth> health) {
+  /**
+   * Tallies health across a type's services, reconciled against that type's authoritative count.
+   *
+   * <p>The tally walks scanned keys, and that scan is capped at {@link
+   * ServicesOverviewRequest#MAX_WINDOW}, whereas {@code counts} comes from an uncapped {@code GROUP
+   * BY}. On an estate large enough to hit the cap the two would disagree, silently breaking the
+   * documented invariant that health counts sum to the type's count. Rather than let that drift go
+   * unnoticed, any unscanned remainder is attributed to {@code notRun} — the "nothing known" bucket,
+   * which is exactly what an unscanned service is — and the truncation is logged.
+   */
+  private Map<String, Integer> tallyHealth(
+      List<TypedKey> keys, Map<UUID, ServiceHealth> health, int totalForType, String entityType) {
     Map<String, Integer> tally = new LinkedHashMap<>();
     for (TypedKey key : keys) {
       ServiceHealth state = health.getOrDefault(key.id(), ServiceHealth.NOT_RUN);
       tally.merge(state.value(), 1, Integer::sum);
+    }
+    int unscanned = totalForType - keys.size();
+    if (unscanned > 0) {
+      LOG.warn(
+          "services overview: {} has {} services but only {} were scanned for health (cap {}); "
+              + "the remainder is reported as {}",
+          entityType,
+          totalForType,
+          keys.size(),
+          ServicesOverviewRequest.MAX_WINDOW,
+          ServiceHealth.NOT_RUN.value());
+      tally.merge(ServiceHealth.NOT_RUN.value(), unscanned, Integer::sum);
     }
     return tally;
   }

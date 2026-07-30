@@ -13,6 +13,7 @@
 package org.openmetadata.service.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +27,7 @@ import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
@@ -33,7 +35,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,11 +49,12 @@ import org.openmetadata.service.jdbi3.ServiceHealthProvider;
 import org.openmetadata.service.jdbi3.ServicesOverviewRepository;
 import org.openmetadata.service.jdbi3.ServicesOverviewRequest;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.security.AuthRequest;
-import org.openmetadata.service.security.AuthorizationLogic;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Cross-service-type read APIs.
@@ -160,9 +162,54 @@ public class ServicesOverviewResource {
             include,
             domain,
             excludeProvider);
-    authorizer.authorizeRequests(
-        securityContext, authRequests(request.entityTypes()), AuthorizationLogic.ANY);
-    return repository.getOverview(securityContext, request);
+    return repository.getOverview(securityContext, authorizedScope(securityContext, request));
+  }
+
+  /**
+   * Narrows the request to the service types the caller may actually view.
+   *
+   * <p>Authorizing the whole universe with a single ANY check would let a caller who can view one
+   * service type read counts, connector breakdowns, owners and tags for all thirteen. Requiring ALL
+   * would be the opposite mistake: a user restricted to one type would be refused the page
+   * entirely, even though there is data they are entitled to see.
+   *
+   * <p>So permission is evaluated per type and the unauthorized ones are dropped before anything is
+   * counted or listed — an unauthorized type is absent from the response rather than merely absent
+   * from {@code data}. This does make {@code total} caller-dependent, which is correct: it is the
+   * size of the estate *this* caller can see.
+   */
+  private ServicesOverviewRequest authorizedScope(
+      SecurityContext securityContext, ServicesOverviewRequest request) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    ServicesOverviewRequest scoped = request;
+    if (!subjectContext.isAdmin() && !subjectContext.isBot()) {
+      Set<String> allowed = viewableTypes(subjectContext, request.entityTypes());
+      if (allowed.isEmpty()) {
+        throw new AuthorizationException(
+            "User does not have VIEW_BASIC permission on any of the requested service types");
+      }
+      scoped = request.restrictedTo(allowed);
+    }
+    return scoped;
+  }
+
+  private Set<String> viewableTypes(SubjectContext subjectContext, Set<String> requested) {
+    return requested.stream()
+        .filter(entityType -> canView(subjectContext, entityType))
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  private boolean canView(SubjectContext subjectContext, String entityType) {
+    boolean allowed = true;
+    try {
+      PolicyEvaluator.hasPermission(
+          subjectContext,
+          new ResourceContext<>(entityType),
+          new OperationContext(entityType, MetadataOperation.VIEW_BASIC));
+    } catch (AuthorizationException denied) {
+      allowed = false;
+    }
+    return allowed;
   }
 
   private ServicesOverviewRequest toRequest(
@@ -256,23 +303,23 @@ public class ServicesOverviewResource {
     }
   }
 
+  /**
+   * A domain the caller named but that cannot be resolved is rejected rather than dropped. Silently
+   * omitting the predicate would turn "show me this domain" into "show me everything", which is the
+   * worst possible answer for a filter: strictly more data than was asked for, with no signal that
+   * the filter did not apply.
+   */
   private UUID resolveDomainId(String domain) {
     UUID domainId = null;
     if (!nullOrEmpty(domain)) {
       EntityReference reference =
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
-      domainId = reference == null ? null : reference.getId();
+      if (reference == null) {
+        throw new NotFoundException(
+            String.format("Domain %s not found, or not visible to this user", domain));
+      }
+      domainId = reference.getId();
     }
     return domainId;
-  }
-
-  private List<AuthRequest> authRequests(Set<String> entityTypes) {
-    return entityTypes.stream()
-        .map(
-            entityType ->
-                new AuthRequest(
-                    new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
-                    new ResourceContext<>(entityType)))
-        .toList();
   }
 }

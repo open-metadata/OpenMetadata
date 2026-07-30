@@ -96,7 +96,7 @@
       }
     },
     "healthCounts": {
-      "description": "Number of services per health state, nested under each service entity type, e.g. `{\"databaseService\": {\"failed\": 2, \"success\": 5}}`. Same filters as `counts`. Empty unless `includeHealth` is `true`. Sums to `counts` per entity type.",
+      "description": "Number of services per health state, nested under each service entity type, e.g. `{\"databaseService\": {\"failed\": 2, \"success\": 5}}`. Same filters as `counts`. Empty unless `includeHealth` is `true`. Always sums to `counts` for that entity type; note that health is resolved for at most 10000 services per type, and on a larger estate the unresolved remainder is reported as `notRun`.",
       "type": "object",
       "existingJavaType": "java.util.Map<String, java.util.Map<String, Integer>>",
       "additionalProperties": {

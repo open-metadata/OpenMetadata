@@ -16,6 +16,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.services.ServiceHealth;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
@@ -62,5 +63,28 @@ public record ServicesOverviewRequest(
    */
   public int keyScanLimit() {
     return nullOrEmpty(healths) ? Math.min(offset + limit, MAX_WINDOW) : MAX_WINDOW;
+  }
+
+  /**
+   * Narrows both the counted universe and the listed types to {@code allowed}, for callers who may
+   * only view some service types. Intersecting rather than replacing {@code listEntityTypes} keeps
+   * an explicit tab selection honoured while still dropping anything unauthorized.
+   */
+  public ServicesOverviewRequest restrictedTo(Set<String> allowed) {
+    Set<String> listTypes =
+        listEntityTypes.stream().filter(allowed::contains).collect(Collectors.toSet());
+    return new ServicesOverviewRequest(
+        allowed,
+        listTypes,
+        serviceTypes,
+        healths,
+        q,
+        includeHealth,
+        limit,
+        offset,
+        ascending,
+        include,
+        domainId,
+        excludeProvider);
   }
 }

@@ -435,6 +435,16 @@ public class ServicesOverviewResourceIT {
   }
 
   @Test
+  void anUnresolvableDomainIsRejectedRatherThanIgnored(TestNamespace ns) throws Exception {
+    postgres(ns, "domainGuard");
+
+    // The failure mode this guards is not an error code but the opposite of one: dropping an
+    // unmatched domain predicate would answer "show me this domain" with the entire estate.
+    assertThrows(
+        Exception.class, () -> overview("limit=1000&domain=" + ns.prefix("no-such-domain")));
+  }
+
+  @Test
   void invalidParametersAreRejected() {
     assertThrows(Exception.class, () -> overview("offset=10000&limit=500"), "deep paging");
     assertThrows(Exception.class, () -> overview("limit=5000"), "limit above the maximum");
