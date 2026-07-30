@@ -438,6 +438,7 @@ dev = {
     "nox",
     "pre-commit",
     "basedpyright==1.39.3",
+    "import-linter~=2.13",
     # For publishing
     "twine",
     "build",

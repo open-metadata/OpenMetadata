@@ -53,7 +53,7 @@ def test_import_metadata_peak_rss_under_ceiling(import_cost):
         f"`import metadata` peaked at {rss_mb:.0f} MB, over the {MAX_IMPORT_RSS_MB} MB ceiling. "
         "Something now imports a heavy dependency at module scope (or the generated-model "
         "defer_build was disabled). Make the import function-local or route it through a "
-        "registry; see ingestion/scripts/check_import_layers.py."
+        "registry; see the layering contract in ingestion/.importlinter."
     )
 
 

@@ -8,68 +8,68 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Gate the import-layer contract in CI, and cover the checker's own AST semantics."""
+"""Gate the import-linter layering contract, and keep its root_packages exhaustive."""
 
-import ast
-import importlib.util
+import configparser
+import os
+import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-_CHECKER = Path(__file__).resolve().parents[2] / "scripts" / "check_import_layers.py"
+import metadata
+
+_INGESTION_DIR = Path(__file__).resolve().parents[2]
+_CONFIG = _INGESTION_DIR / ".importlinter"
+
+# Namespace portions grimp cannot reach from the `metadata` root, plus dirs with no modules
+# of their own. Anything else missing from root_packages would be silently unanalysed.
+_NOT_ROOT_PACKAGES = frozenset({"examples", "great_expectations", "core", "domain", "profiler", "sdk", "utils"})
 
 
 @pytest.fixture(scope="module")
-def checker():
-    spec = importlib.util.spec_from_file_location("check_import_layers", _CHECKER)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def declared_root_packages() -> set[str]:
+    parser = configparser.ConfigParser()
+    parser.read(_CONFIG)
+    raw = parser["importlinter"]["root_packages"]
+    return {line.strip() for line in raw.splitlines() if line.strip()}
 
 
-def test_no_new_import_layer_violations():
-    result = subprocess.run([sys.executable, str(_CHECKER)], capture_output=True, text=True, check=False)
+def test_layering_contract_holds():
+    """`lint-imports` passes, i.e. no import crosses a layer upward outside the baseline."""
+    if shutil.which("lint-imports") is None:
+        pytest.skip("import-linter not installed")
+    result = subprocess.run(
+        ["lint-imports"],
+        cwd=_INGESTION_DIR,
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "COLUMNS": "400"},
+    )
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_layer_of_assigns_by_longest_prefix(checker):
-    assert checker.layer_of("metadata.generated.schema.entity.data.table") == "leaf"
-    assert checker.layer_of("metadata.ingestion.ometa.ometa_api") == "client"
-    assert checker.layer_of("metadata.ingestion.api.steps") == "framework"
-    assert checker.layer_of("metadata.ingestion.source.database.snowflake.metadata") == "connectors"
-    assert checker.layer_of("metadata.workflow.metadata") == "entrypoints"
+def test_every_metadata_subpackage_is_analysed(declared_root_packages):
+    """Every top-level metadata subpackage is a declared root or a known exclusion.
 
-
-@pytest.mark.parametrize(
-    "source,expected",
-    [
-        ("import metadata.mod", ["metadata.mod"]),
-        ("from metadata.pkg import thing", ["metadata.pkg"]),
-        ("class K:\n    import metadata.mod", ["metadata.mod"]),
-        (
-            "try:\n    import metadata.mod\nexcept ImportError:\n    import metadata.other",
-            ["metadata.mod", "metadata.other"],
-        ),
-        ("if True:\n    import metadata.mod", ["metadata.mod"]),
-        ("def f():\n    import metadata.mod", []),
-        ("async def f():\n    import metadata.mod", []),
-        ("from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import metadata.mod", []),
-        ("import os", []),
-    ],
-    ids=[
-        "module-scope",
-        "from-import",
-        "class-body-runs-on-import",
-        "try-except-runs-on-import",
-        "if-block-runs-on-import",
-        "function-body-is-lazy",
-        "async-function-body-is-lazy",
-        "type-checking-guard-is-free",
-        "non-metadata-ignored",
-    ],
-)
-def test_module_scope_imports_detects_only_import_time_cost(checker, source, expected):
-    found = sorted(module for module, _lineno in checker.module_scope_imports(ast.parse(source)))
-    assert found == sorted(expected)
+    grimp skips PEP 420 namespace directories nested inside a regular package, so a new
+    subpackage that is neither listed nor excluded would be invisible to the contract.
+    """
+    package_root = Path(metadata.__file__).parent
+    subpackages = {
+        entry.name
+        for entry in package_root.iterdir()
+        if entry.is_dir() and not entry.name.startswith("__") and any(entry.rglob("*.py"))
+    }
+    unanalysed = {
+        name
+        for name in subpackages
+        if f"metadata.{name}" not in declared_root_packages and name not in _NOT_ROOT_PACKAGES
+    }
+    assert not unanalysed, (
+        f"these metadata subpackages are not covered by the import-linter contract: {sorted(unanalysed)}. "
+        "Add them to root_packages in ingestion/.importlinter (namespace portions must be named "
+        "explicitly) or to _NOT_ROOT_PACKAGES here if they are reachable from the metadata root."
+    )

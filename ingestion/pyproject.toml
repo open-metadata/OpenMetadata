@@ -209,8 +209,8 @@ ignore = [
     "PLC0415",  # import-outside-top-level — module-scope imports of heavy subtrees are
                 # what inflate `import metadata` peak RSS (they OOM-killed 512Mi
                 # automation pods), so function-local imports are encouraged. Layering is
-                # enforced by scripts/check_import_layers.py and the ceilings in
-                # tests/unit/test_import_cost.py instead.
+                # enforced by the import-linter contract in .importlinter and the ceilings
+                # in tests/unit/test_import_cost.py instead.
 ]
 
 # Existing violations were grandfathered via `ruff check --add-noqa` during
