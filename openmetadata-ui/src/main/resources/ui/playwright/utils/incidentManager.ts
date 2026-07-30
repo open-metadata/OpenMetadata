@@ -242,6 +242,18 @@ export const assignIncident = async (data: {
 // the previous fixed sleep was guessing at, without paying it on every run.
 const PIPELINE_REQUEST_ATTEMPTS = 4;
 
+// Airflow 3.x accepts a trigger (HTTP 200) even when its dag-processor has not
+// serialized the freshly deployed DAG yet. That trigger produces an empty
+// DagRun that finishes instantly and never writes a pipelineStatus back, so the
+// caller would poll forever. We can't detect the empty run positively — only
+// its absence — so after triggering we wait this long for a genuinely new run
+// to appear; if none does, the DAG was unserialized and we trigger again (by
+// then it is parsed). Real runs surface a status within a few seconds, so this
+// window only ever elapses in the race case.
+const NEW_RUN_APPEARANCE_TIMEOUT = 60_000;
+const NEW_RUN_POLL_INTERVAL = 2_000;
+const TRIGGER_ATTEMPTS = 3;
+
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
@@ -358,9 +370,29 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     latestRun.runId !== previousRun?.runId ||
     (latestRun.timestamp ?? 0) > (previousRun?.timestamp ?? 0);
 
-  // The orchestrator rejects the trigger until a freshly deployed workflow is
-  // registered, so retry until it is accepted rather than sleeping for a
-  // guessed settling time.
+  // Wait for a genuinely new run to surface after a trigger. Returns false if
+  // none appears within the window, which means the trigger raced an
+  // unserialized DAG and produced an empty run that wrote no status.
+  const waitForNewRunToAppear = async () => {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < NEW_RUN_APPEARANCE_TIMEOUT) {
+      const { run } = await fetchLatestPipelineStatus();
+
+      if (run && isNewRun(run)) {
+        return true;
+      }
+
+      // eslint-disable-next-line playwright/no-wait-for-timeout -- poll for a newly triggered run to be recorded
+      await page.waitForTimeout(NEW_RUN_POLL_INTERVAL);
+    }
+
+    return false;
+  };
+
+  // First trigger. A rejected trigger still means the DAG is not registered, so
+  // re-deploy then trigger; an accepted trigger may still have raced
+  // serialization, which the appearance check below catches.
   const response = await requestWithRetry(triggerPipeline);
 
   if (!response.ok()) {
@@ -372,6 +404,26 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
     );
 
     await executePipelineRequest('Pipeline trigger', triggerPipeline);
+  }
+
+  // Re-trigger until a run actually materializes. The empty-run race only
+  // happens on the first trigger of a freshly deployed DAG; once the
+  // dag-processor has serialized it, a re-trigger runs for real.
+  let runAppeared = await waitForNewRunToAppear();
+
+  for (
+    let attempt = 2;
+    attempt <= TRIGGER_ATTEMPTS && !runAppeared;
+    attempt++
+  ) {
+    await executePipelineRequest('Pipeline trigger', triggerPipeline);
+    runAppeared = await waitForNewRunToAppear();
+  }
+
+  if (!runAppeared) {
+    throw new Error(
+      `No run materialized for ingestion pipeline ${pipeline?.['id']} (${pipeline?.['fullyQualifiedName']}) after ${TRIGGER_ATTEMPTS} triggers; the deployed DAG never produced a run`
+    );
   }
 
   await expect
