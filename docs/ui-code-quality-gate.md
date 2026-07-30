@@ -44,6 +44,25 @@ The gates are collected rather than short-circuited, so one failure does not hid
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
 | SonarCloud gate | **new code** | complexity, duplication, or new issues on lines this PR added |
 
+## Component reuse — what `reuse-audit` flags
+
+No off-the-shelf linter knows this design system, so this is the one bespoke check. It inspects
+**added lines only**, so existing hand-rolled UI is untouched and migrates over time.
+
+| Instead of hand-rolling | Import from `@openmetadata/ui-core-components` |
+|---|---|
+| `<div role="listbox">`, `role="combobox"` | `Select`, `MultiSelect`, `Combobox`, `Autocomplete` |
+| `<div role="menu">`, `role="menuitem"` | `Dropdown` |
+| `<div role="tablist">`, `role="tab"` | `Tabs` |
+| `<div role="dialog">`, `role="alertdialog"` | `Modal` |
+| `role="switch"` / `radiogroup` / `progressbar` / `tooltip` | `Toggle` / `RadioButtons` / `ProgressIndicator` / `Tooltip` |
+| raw `<button>`, `<input>`, `<select>`, `<textarea>` in `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
+| `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` — keyboard nav is built in |
+| `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
+
+Tests, mocks, stories and Playwright specs are out of scope. If a raw element is genuinely required,
+put `reuse-audit-ignore` in a comment on that line.
+
 ## SonarJS in ESLint — the fast half of Sonar
 
 `eslint-plugin-sonarjs` is the *same engine and the same `Sxxxx` rule ids* as the SonarCloud analysis

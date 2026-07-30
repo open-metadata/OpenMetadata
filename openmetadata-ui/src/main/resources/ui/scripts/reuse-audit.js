@@ -204,7 +204,7 @@ function main() {
     }
     process.stderr.write(
       C.gray(
-        `\nImport from '@openmetadata/ui-core-components'. See .claude/rules/component-library.md.\n` +
+        `\nImport from '@openmetadata/ui-core-components'. See docs/ui-code-quality-gate.md.\n` +
           `If a raw element is genuinely required, add a 'reuse-audit-ignore' comment on that line.\n`
       )
     );
