@@ -315,6 +315,43 @@ class WorkflowHandlerSchemaUpdateTest {
   }
 
   @Test
+  void migrationModeClosesPoolIfBuildProcessEngineFails() {
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignoredEngine =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine())
+                      .thenThrow(new FlowableWrongDbException("7.2.0.2", "7.1.0.0"));
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignored = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class);
+        MockedConstruction<HikariDataSource> hikariMock =
+            mockConstruction(HikariDataSource.class)) {
+
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      // Migration path builds the Hikari pool BEFORE buildProcessEngine(). When the build fails
+      // (Flowable schema-version mismatch here), the pool would otherwise leak Hikari
+      // housekeeping threads + already-opened physical connections for the life of the JVM.
+      assertThrows(
+          IllegalStateException.class, () -> WorkflowHandler.initialize(buildMockConfig(), true));
+
+      assertEquals(
+          1,
+          hikariMock.constructed().size(),
+          "migration path must have constructed exactly one HikariDataSource before failing");
+      HikariDataSource pool = hikariMock.constructed().getLast();
+      verify(pool).close();
+    }
+  }
+
+  @Test
   void runtimeModeDoesNotBuildMigrationPool() {
     try (MockedConstruction<StandaloneProcessEngineConfiguration> engineMock =
             mockConstruction(

@@ -247,8 +247,10 @@ public class WorkflowHandler {
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
 
+    boolean engineBuilt = false;
     try {
       this.processEngine = processEngineConfiguration.buildProcessEngine();
+      engineBuilt = true;
     } catch (FlowableWrongDbException e) {
       String hint =
           isMigrationContext
@@ -261,6 +263,14 @@ public class WorkflowHandler {
                       + "Run `openmetadata-ops.sh migrate` before starting the server.",
                   e.getDbVersion(), e.getLibraryVersion());
       throw new IllegalStateException(hint, e);
+    } finally {
+      // If buildProcessEngine() throws (FlowableWrongDbException or any other runtime failure),
+      // the migration pool created by migrationDataSource() above owns Hikari housekeeping threads
+      // and any physical connections it has already opened. Release them before the exception
+      // propagates so a failed migrate CLI does not linger with open sessions.
+      if (!engineBuilt) {
+        closeMigrationPool();
+      }
     }
 
     // Add SqlMapper
