@@ -48,8 +48,7 @@ API_KEYS_DOC = "https://docs.prefect.io/v3/how-to-guides/cloud/manage-users/api-
 
 IDS_FIX = (
     "Check the Account Id and Workspace Id - both are in the workspace URL: "
-    "app.prefect.cloud/account/<accountId>/workspace/<workspaceId>. Leave both "
-    "empty for a self-hosted Prefect Server."
+    "app.prefect.cloud/account/<accountId>/workspace/<workspaceId>."
 )
 
 NO_FLOWS_CAVEAT = Diagnosis(
@@ -59,10 +58,6 @@ NO_FLOWS_CAVEAT = Diagnosis(
 )
 
 PREFECT_ERRORS = ErrorPack(
-    when(Matchers.contains("Both accountId and workspaceId")).diagnose(
-        "Incomplete Prefect Cloud configuration",
-        fix=IDS_FIX,
-    ),
     when(http_status(401)).diagnose(
         "Authentication failed",
         fix="Prefect rejected the API key. Check it is a valid, unexpired key.",

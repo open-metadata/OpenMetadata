@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import traceback
 from datetime import datetime
+from itertools import product
 from typing import TYPE_CHECKING
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -30,6 +31,9 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
+    PrefectCloudAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.prefectConnection import (
     PrefectConnection,
 )
@@ -46,10 +50,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
-from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
-from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
@@ -130,31 +133,73 @@ class PrefectSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def _build_task_dag(self, task_runs: list[dict]) -> list[Task]:
-        # ponytail: temporary — builds Tasks straight from one flow run's task
-        # runs, no merge with deployment tasks yet, just to check ingestion.
-        # One Task per unique name (see _stable_task_names) — a task called
-        # more than once in this run contributes one Task, not one per call.
+        """
+        Builds Tasks from one flow run's real task runs — a deployment is a
+        trigger/schedule config, not a pipeline step, so it's never
+        represented as a Task. One Task per unique name (see
+        _stable_task_names) — a task called more than once in this run
+        contributes one Task, not one per call.
+        """
         id_to_name = _stable_task_names(task_runs)
         downstream: dict[str, list[str]] = {name: [] for name in id_to_name.values()}
+        tags_by_name: dict[str, set[str]] = {name: set() for name in id_to_name.values()}
         for run in task_runs:
             this_name = id_to_name[run["id"]]
+            tags_by_name[this_name].update(run.get("tags") or [])
             for refs in (run.get("task_inputs") or {}).values():
                 for ref in refs:
                     upstream_name = id_to_name.get(ref.get("id"))
                     if upstream_name and this_name not in downstream[upstream_name]:
                         downstream[upstream_name].append(this_name)
         return [
-            Task(name=name, displayName=name, downstreamTasks=targets or None) for name, targets in downstream.items()
+            Task(
+                name=name,
+                displayName=name,
+                downstreamTasks=targets or None,
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=list(tags_by_name[name]),
+                    classification_name=PREFECT_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                )
+                or None,
+            )
+            for name, targets in downstream.items()
         ]
 
-    def _get_all_tags(self, flow: dict, deployments: list[dict]) -> list[str]:
+    def _schedule_interval(self, deployments: list[dict]) -> str | None:
         """
-        Collect all unique tags from flow and its deployments.
-        In Prefect 3.x, tags can be on flows or deployments.
+        First active schedule of the latest deployment (``get_deployments``
+        sorts newest-created first). Prefect 3.x deployments carry a
+        ``schedules`` list — each entry wraps one of cron/interval/rrule plus
+        an ``active`` flag — there is no singular ``schedule`` field.
+        """
+        result = None
+        if deployments:
+            for entry in deployments[0].get("schedules") or []:
+                if not entry.get("active", True):
+                    continue
+                schedule = entry.get("schedule") or {}
+                if "cron" in schedule:
+                    result = schedule["cron"]
+                elif "interval" in schedule:
+                    result = f"every {schedule['interval']}s"
+                elif "rrule" in schedule:
+                    result = schedule["rrule"]
+                if result:
+                    break
+        return result
+
+    def _get_all_tags(self, flow: dict, deployments: list[dict], task_runs: list[dict] | None = None) -> list[str]:
+        """
+        Collect all unique tags from flow, its deployments, and (optionally) its task runs.
+        In Prefect 3.x, tags can be on flows, deployments, or individual task runs.
         """
         all_tags = set(flow.get("tags") or [])
         for dep in deployments:
             all_tags.update(dep.get("tags") or [])
+        for run in task_runs or []:
+            all_tags.update(run.get("tags") or [])
         return list(all_tags)
 
     def _parse_lineage_from_tags(self, tags: list[str]) -> tuple[list[str], list[str]]:
@@ -202,23 +247,41 @@ class PrefectSource(PipelineServiceSource):
         Resolve a lineage tag's <database>.<schema>.<table> identifier to the
         table's real OpenMetadata FQN by searching the configured lineage
         database services (``sourceConfig.lineageInformation.dbServiceNames``).
+
+        Tries each configured service in turn and only accepts a candidate
+        FQN once ``get_by_name`` confirms it resolves to a real Table —
+        ``fqn.build`` can hand back a guessed FQN for a service that doesn't
+        actually have the table, same reasoning as Dagster's
+        ``_resolve_asset_to_table``. Rolls its own loop instead of the shared
+        ``_get_table_fqn_from_om`` for that reason.
         """
         parts = identifier.split(".")
         if len(parts) != 3:
             logger.warning(f"Lineage tag must be <database>.<schema>.<table>, got: {identifier}")
             return None
         database, schema, table = parts
-        try:
-            return self._get_table_fqn_from_om(TableDetails(name=table, schema=schema, database=database))
-        except FQNNotFoundException as exc:
-            logger.debug(str(exc))
-            return None
+        for db_service in self.get_db_service_names():
+            candidate = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=db_service,
+                database_name=database,
+                schema_name=schema,
+                table_name=table,
+            )
+            if candidate and self.metadata.get_by_name(entity=Table, fqn=candidate):
+                return candidate
+        return None
 
-    def _build_task_status(self, task_runs: list[dict]) -> list[TaskStatus]:
-        # ponytail: temporary, same experiment as _build_task_dag — real task
-        # runs per flow run, not deployment names. Uses the same stable
-        # per-run naming as _build_task_dag so status entries reference names
-        # that actually exist on the pipeline's task list.
+    def _build_task_status(self, task_runs: list[dict], valid_names: set[str]) -> list[TaskStatus]:
+        """
+        A historical run's tasks can differ from the pipeline's current task
+        list (same flow_id persists across code changes and conditional task
+        execution — Prefect looks up flows by name, not by code version).
+        The server rejects any taskStatus name absent from Pipeline.tasks, so
+        entries outside ``valid_names`` are dropped rather than sent — same
+        approach the Airflow connector uses for the identical DAG-drift issue.
+        """
         id_to_name = _stable_task_names(task_runs)
         return [
             TaskStatus(
@@ -228,9 +291,10 @@ class PrefectSource(PipelineServiceSource):
                 endTime=_parse_timestamp(run.get("end_time")),
             )
             for run in task_runs
+            if id_to_name[run["id"]] in valid_names
         ]
 
-    def _build_pipeline_status(self, flow_runs: list[dict]) -> list[PipelineStatus]:
+    def _build_pipeline_status(self, flow_runs: list[dict], valid_names: set[str]) -> list[PipelineStatus]:
         """
         Convert Prefect flow runs to OpenMetadata PipelineStatus, with each
         run's real task runs nested as ``taskStatus``. Always a list, never
@@ -238,6 +302,7 @@ class PrefectSource(PipelineServiceSource):
         a `null` here 500s even though the schema marks the field optional.
         """
         statuses = []
+        task_runs_by_run = self.client.get_task_runs_for_flow_runs([run["id"] for run in flow_runs])
         for run in flow_runs:
             # In Prefect 3.x, use state_type (top-level) or state.type (nested)
             state_type = run.get("state_type") or (run.get("state") or {}).get("type", "UNKNOWN")
@@ -245,12 +310,18 @@ class PrefectSource(PipelineServiceSource):
             om_status = PREFECT_STATE_MAP.get(state_type, StatusType.Pending)
 
             start_time = _parse_timestamp(run.get("start_time") or run.get("expected_start_time"))
+            if start_time is None:
+                # PipelineStatus.timestamp is a required field — a run with
+                # neither start_time nor expected_start_time can't produce
+                # one, so skip it rather than fail the whole status batch.
+                logger.debug(f"Skipping status for run {run.get('id')}: no start_time or expected_start_time")
+                continue
             end_time = _parse_timestamp(run.get("end_time"))
 
-            task_runs = self.client.get_task_runs(run["id"])
+            task_runs = task_runs_by_run.get(run["id"], [])
             pipeline_status = PipelineStatus(
                 executionStatus=om_status,
-                taskStatus=self._build_task_status(task_runs),
+                taskStatus=self._build_task_status(task_runs, valid_names),
                 timestamp=start_time,
                 endTime=end_time,
             )
@@ -258,14 +329,17 @@ class PrefectSource(PipelineServiceSource):
         return statuses
 
     def yield_tag(self, pipeline_details: dict) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Create the classification and tags for this flow's and its deployments' tags."""
-        deployments = self.client.get_deployments(pipeline_details["id"])
-        all_tags = self._get_all_tags(pipeline_details, deployments)
+        """Create the classification and tags for this flow's, its deployments', and its latest run's task tags."""
+        flow_id = pipeline_details["id"]
+        deployments = self.client.get_deployments(flow_id)
+        latest_run = self.client.get_flow_runs(flow_id, limit=1, exclude_scheduled=True)
+        task_runs = self.client.get_task_runs(latest_run[0]["id"]) if latest_run else []
+        all_tags = self._get_all_tags(pipeline_details, deployments, task_runs)
         yield from get_ometa_tag_and_classification(
             tags=all_tags,
             classification_name=PREFECT_TAG_CATEGORY,
             tag_description="Prefect Tag",
-            classification_description="Tags associated with Prefect flows and deployments",
+            classification_description="Tags associated with Prefect flows, deployments, and tasks",
             include_tags=self.source_config.includeTags,
         )
 
@@ -293,40 +367,29 @@ class PrefectSource(PipelineServiceSource):
                 include_tags=self.source_config.includeTags,
             )
 
-            # Build schedule description from first deployment if available
-            description = None
-            if deployments:
-                dep = deployments[0]
-                schedule = dep.get("schedule")
-                if schedule:
-                    description = f"Schedule: {schedule}"
+            schedule_interval = self._schedule_interval(deployments)
 
-            # ponytail: deployment-as-task disabled temporarily to test real
-            # task-run ingestion instead. Restore this (and merge with task
-            # runs, see _build_task_dag) once task-run ingestion is confirmed.
-            # tasks = [
-            #     Task(
-            #         name=dep.get("name", dep["id"]),
-            #         displayName=dep.get("name"),
-            #         description=f"Deployment ID: {dep['id']}",
-            #     )
-            #     for dep in deployments
-            # ]
-            latest_run = self.client.get_flow_runs(flow_id, limit=1)
+            latest_run = self.client.get_flow_runs(flow_id, limit=1, exclude_scheduled=True)
             task_runs = self.client.get_task_runs(latest_run[0]["id"]) if latest_run else []
             tasks = self._build_task_dag(task_runs)
+            # Stashed for yield_pipeline_status to filter historical taskStatus
+            # entries against, same pattern as the Airflow connector — avoids
+            # re-fetching the same latest run's tasks a second time.
+            self.context.get().task_names = {task.name for task in tasks}
 
             # Build sourceUrl dynamically based on mode
-            account_id = self.service_connection.accountId
-            workspace_id = self.service_connection.workspaceId
-            if account_id and workspace_id:
-                # Prefect Cloud mode
+            auth = self.service_connection.authType
+            if isinstance(auth, PrefectCloudAuthentication):
                 source_url = (
-                    f"https://app.prefect.cloud/account/{account_id}/workspace/{workspace_id}/flows/flow/{flow_id}"
+                    f"https://app.prefect.cloud/account/{auth.accountId}"
+                    f"/workspace/{auth.workspaceId}/flows/flow/{flow_id}"
                 )
             else:
-                # Self-hosted Prefect Server mode
-                source_url = f"{self.service_connection.hostPort}/flows/flow/{flow_id}"
+                # Self-hosted Prefect Server mode. hostPort may carry the
+                # /api suffix (the client strips it the same way for API
+                # calls) — the Prefect UI itself is served without it.
+                ui_host = clean_uri(str(auth.hostPort)).removesuffix("/api")
+                source_url = f"{ui_host}/flows/flow/{flow_id}"
 
             # Get the service FQN from context
             service_fqn = self.context.get().pipeline_service
@@ -334,7 +397,7 @@ class PrefectSource(PipelineServiceSource):
             create_request = CreatePipelineRequest(
                 name=flow_name,
                 displayName=flow_name,
-                description=description,
+                scheduleInterval=schedule_interval,
                 sourceUrl=SourceUrl(source_url),
                 tasks=tasks or None,
                 tags=tag_labels if tag_labels else None,
@@ -346,6 +409,9 @@ class PrefectSource(PipelineServiceSource):
             self.register_record(pipeline_request=create_request)
 
         except Exception as exc:
+            # Defensive default: yield_pipeline_status reads context.task_names
+            # back — without this, a flow that fails here leaves it unset.
+            self.context.get().task_names = set()
             yield Either(
                 left=StackTraceError(
                     name=flow.get("name", "Prefect Pipeline"),
@@ -359,13 +425,14 @@ class PrefectSource(PipelineServiceSource):
         try:
             flow_id = pipeline_details["id"]
             flow_runs = self.client.get_flow_runs(flow_id, limit=self.service_connection.numberOfStatus)
+            valid_names = self.context.get().task_names or set()
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
                 service_name=self.context.get().pipeline_service,
                 pipeline_name=self.context.get().pipeline,
             )
-            for status in self._build_pipeline_status(flow_runs):
+            for status in self._build_pipeline_status(flow_runs, valid_names):
                 yield Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))
         except Exception as exc:
             yield Either(
@@ -378,25 +445,32 @@ class PrefectSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(self, pipeline_details: dict) -> Iterable[Either[AddLineageRequest]]:
         """
-        Yield table-to-table lineage edges for tables named in this flow's and
-        its deployments' lineage tags, attributing the edge to this pipeline via
-        ``LineageDetails``. Lineage is detected from tags:
-        'om-source:<database>.<schema>.<table>' and 'om-destination:<database>.<schema>.<table>'
-        (legacy 'source:'/'destination:' prefixes are also accepted). Every
-        detected source is linked to every detected destination, since tags
-        carry no per-pair mapping. Requires ``sourceConfig.lineageInformation
+        Yield table-to-table lineage edges for tables named in this pipeline's
+        lineage tags, attributing the edge to this pipeline via
+        ``LineageDetails``. Reads tags off the already-created Pipeline entity
+        (flow + deployment tags are merged there by ``yield_pipeline``) rather
+        than re-deriving them, so this and ``Pipeline.tags`` never disagree.
+        Lineage is detected from tags: 'om-source:<database>.<schema>.<table>'
+        and 'om-destination:<database>.<schema>.<table>' (legacy
+        'source:'/'destination:' prefixes are also accepted). Every detected
+        source is linked to every detected destination, since tags carry no
+        per-pair mapping. Requires ``sourceConfig.lineageInformation
         .dbServiceNames`` to be configured with the database service(s) the
         tagged tables live in.
         """
         try:
-            # Get deployments to collect all tags
-            flow_id = pipeline_details["id"]
-            deployments = self.client.get_deployments(flow_id)
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tags"])
+            if not pipeline_entity:
+                logger.warning(f"Pipeline entity not found for {pipeline_fqn}")
+                return
 
-            # Collect all tags from flow and deployments
-            all_tags = self._get_all_tags(pipeline_details, deployments)
-
-            # Parse lineage from tags
+            all_tags = [tag.name for tag in pipeline_entity.tags or [] if tag.name]
             sources, destinations = self._parse_lineage_from_tags(all_tags)
 
             if not sources or not destinations:
@@ -404,46 +478,46 @@ class PrefectSource(PipelineServiceSource):
                 logger.debug(f"No source/destination lineage tag pair for flow {pipeline_details['name']}")
                 return
 
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
-            )
-            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
-            if not pipeline_entity:
-                logger.warning(f"Pipeline entity not found for {pipeline_fqn}")
-                return
-
             lineage_details = LineageDetails(
                 pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
                 source=LineageSource.PipelineLineage,
             )
 
+            # Resolve each side once — every source is linked to every
+            # destination (see docstring), so re-resolving a destination
+            # inside the source loop repeats the same lookup once per source.
+            # Same resolve-once-then-product shape as the OpenLineage connector.
+            resolved_sources = []
             for source_identifier in sources:
                 source_table_fqn = self._resolve_table_fqn(source_identifier)
                 source_table = source_table_fqn and self.metadata.get_by_name(entity=Table, fqn=source_table_fqn)
-                if not source_table:
-                    logger.debug(f"Source table not found in OpenMetadata: {source_identifier}")
-                    continue
+                if source_table:
+                    resolved_sources.append((source_identifier, source_table))
+                else:
+                    logger.warning(f"Source table not found in OpenMetadata: {source_identifier}")
 
-                for dest_identifier in destinations:
-                    dest_table_fqn = self._resolve_table_fqn(dest_identifier)
-                    dest_table = dest_table_fqn and self.metadata.get_by_name(entity=Table, fqn=dest_table_fqn)
-                    if not dest_table:
-                        logger.debug(f"Destination table not found in OpenMetadata: {dest_identifier}")
-                        continue
+            resolved_destinations = []
+            for dest_identifier in destinations:
+                dest_table_fqn = self._resolve_table_fqn(dest_identifier)
+                dest_table = dest_table_fqn and self.metadata.get_by_name(entity=Table, fqn=dest_table_fqn)
+                if dest_table:
+                    resolved_destinations.append((dest_identifier, dest_table))
+                else:
+                    logger.warning(f"Destination table not found in OpenMetadata: {dest_identifier}")
 
-                    logger.info(f"Creating lineage: {source_table_fqn} -> {dest_table_fqn}")
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(id=source_table.id, type="table"),
-                                toEntity=EntityReference(id=dest_table.id, type="table"),
-                                lineageDetails=lineage_details,
-                            )
+            for (source_identifier, source_table), (dest_identifier, dest_table) in product(
+                resolved_sources, resolved_destinations
+            ):
+                logger.info(f"Creating lineage: {source_identifier} -> {dest_identifier}")
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(id=source_table.id, type="table"),
+                            toEntity=EntityReference(id=dest_table.id, type="table"),
+                            lineageDetails=lineage_details,
                         )
                     )
+                )
 
         except Exception as exc:
             yield Either(

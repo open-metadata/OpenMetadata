@@ -12,8 +12,13 @@
 Client to interact with the Prefect REST API (Cloud or self-hosted Server)
 """
 
+import base64
 from collections.abc import Iterable
+from functools import lru_cache
 
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
+    PrefectCloudAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.prefectConnection import (
     PrefectConnection,
 )
@@ -38,26 +43,37 @@ class PrefectClient:
     the parent-flow filter is always the top-level ``flows`` key.
     """
 
+    @staticmethod
+    def _auth(auth: PrefectCloudAuthentication | object):
+        """Cloud is always Bearer; self-hosted Server is Basic when authString
+        is set, otherwise no auth header at all."""
+        if isinstance(auth, PrefectCloudAuthentication):
+            return AUTHORIZATION_HEADER, (lambda: (auth.apiKey.get_secret_value(), 0)), "Bearer"
+        if auth.authString:
+            token = base64.b64encode(auth.authString.get_secret_value().encode()).decode()
+            return AUTHORIZATION_HEADER, (lambda: (token, 0)), "Basic"
+        return None, None, None
+
     def __init__(self, config: PrefectConnection):
         self.config = config
-
-        if bool(config.accountId) != bool(config.workspaceId):
-            raise ValueError(
-                "Both accountId and workspaceId must be provided for Prefect Cloud, "
-                "or both must be empty for self-hosted Prefect Server."
-            )
+        auth = config.authType
 
         # hostPort may already carry the /api suffix; api_version adds it back
-        host = clean_uri(str(config.hostPort)).removesuffix("/api")
-        self._path_prefix = f"/accounts/{config.accountId}/workspaces/{config.workspaceId}" if config.accountId else ""
+        host = clean_uri(str(auth.hostPort)).removesuffix("/api")
+        self._path_prefix = (
+            f"/accounts/{auth.accountId}/workspaces/{auth.workspaceId}"
+            if isinstance(auth, PrefectCloudAuthentication)
+            else ""
+        )
 
         verify_ssl = get_verify_ssl_fn(config.verifySSL)
+        auth_header, auth_token, auth_token_mode = self._auth(auth)
         client_config: ClientConfig = ClientConfig(
             base_url=host,
             api_version=API_VERSION,
-            # A self-hosted Prefect Server without auth enabled has no API key
-            auth_header=AUTHORIZATION_HEADER if config.apiKey else None,
-            auth_token=(lambda: (config.apiKey.get_secret_value(), 0)) if config.apiKey else None,
+            auth_header=auth_header,
+            auth_token=auth_token,
+            auth_token_mode=auth_token_mode,
             retry=5,
             retry_wait=30,
             retry_codes=[429, 500, 502, 503],
@@ -80,27 +96,57 @@ class PrefectClient:
                 break
             offset += FLOWS_PAGE_SIZE
 
-    def get_flow_runs(self, flow_id: str, limit: int) -> list[dict]:
-        """Most recent runs of one flow, newest first."""
-        return self._filter(
-            "flow_runs",
-            {
-                "flows": {"id": {"any_": [flow_id]}},
-                "sort": FLOW_RUNS_SORT,
-                "limit": limit,
-                "offset": 0,
-            },
-        )
+    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id, limit, exclude_scheduled)
+    def get_flow_runs(self, flow_id: str, limit: int, exclude_scheduled: bool = False) -> list[dict]:
+        """Most recent runs of one flow, newest first. Cached — yield_tag and
+        yield_pipeline both fetch the same flow's latest run independently.
 
+        ``exclude_scheduled=True`` drops not-yet-started runs (state SCHEDULED) —
+        an active-schedule deployment pre-creates these with future start_times,
+        which would otherwise outrank every real past run under START_TIME_DESC
+        and starve the DAG/task-status build of a run that actually has task runs.
+        """
+        payload = {
+            "flows": {"id": {"any_": [flow_id]}},
+            "sort": FLOW_RUNS_SORT,
+            "limit": limit,
+            "offset": 0,
+        }
+        if exclude_scheduled:
+            payload["flow_runs"] = {"state": {"type": {"not_any_": ["SCHEDULED"]}}}
+        return self._filter("flow_runs", payload)
+
+    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_run_id), lives one ingestion run
     def get_task_runs(self, flow_run_id: str) -> list[dict]:
-        # ponytail: temporary, testing task-run ingestion before the real deployment+task-run merge
-        return self._filter(
-            "task_runs",
-            {"task_runs": {"flow_run_id": {"any_": [flow_run_id]}}, "limit": 200, "offset": 0},
-        )
+        """Task runs of one flow run. Cached — the same flow run's task runs
+        are read from multiple places (pipeline build, tags, status)."""
+        return self.get_task_runs_for_flow_runs([flow_run_id])[flow_run_id]
 
+    def get_task_runs_for_flow_runs(self, flow_run_ids: list[str]) -> dict[str, list[dict]]:
+        """Task runs for many flow runs in one paginated call, grouped by
+        flow_run_id — avoids one request per historical run when building
+        pipeline status for a flow with many runs."""
+        task_runs: list[dict] = []
+        offset = 0
+        while True:
+            page = self._filter(
+                "task_runs",
+                {"task_runs": {"flow_run_id": {"any_": flow_run_ids}}, "limit": 200, "offset": offset},
+            )
+            task_runs.extend(page)
+            if len(page) < 200:
+                break
+            offset += 200
+        grouped: dict[str, list[dict]] = {flow_run_id: [] for flow_run_id in flow_run_ids}
+        for task_run in task_runs:
+            grouped[task_run["flow_run_id"]].append(task_run)
+        return grouped
+
+    @lru_cache(maxsize=256)  # noqa: B019 — bounded, keyed by (self, flow_id), lives one ingestion run
     def get_deployments(self, flow_id: str) -> list[dict]:
-        """Every deployment of one flow."""
+        """Every deployment of one flow, newest-created first. Cached — tags,
+        schedule, and lineage tag parsing all fetch the same flow's
+        deployments independently, so this avoids re-paginating per call."""
         deployments: list[dict] = []
         offset = 0
         while True:
@@ -108,6 +154,7 @@ class PrefectClient:
                 "deployments",
                 {
                     "flows": {"id": {"any_": [flow_id]}},
+                    "sort": "CREATED_DESC",
                     "limit": DEPLOYMENTS_PAGE_SIZE,
                     "offset": offset,
                 },

@@ -191,6 +191,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.SapS4Hana,
   DatabaseServiceType.SapBw4Hana,
   PipelineServiceType.SapBw4HanaPipeline,
+  PipelineServiceType.Prefect,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
