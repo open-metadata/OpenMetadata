@@ -11517,6 +11517,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setOwners(ownersMap.getOrDefault(entity.getId(), entity.getOwners()));
       entity.setDomains(domainsMap.getOrDefault(entity.getId(), entity.getDomains()));
     }
+    // getFields() rejects a field the entity does not declare, so this must stay guarded: most
+    // entity types (team, role, policy, bot, ingestionPipeline, ...) have no tags at all.
+    if (supportsTags) {
+      fetchAndSetTags(entities, getFields(FIELD_TAGS));
+    }
+  }
+
+  /** Policy attributes {@link #enrichEntitiesForAuth(List)} populates, for the entities it supports. */
+  public Set<String> authEnrichedFields() {
+    Set<String> fields = new HashSet<>();
+    if (supportsOwners) {
+      fields.add(FIELD_OWNERS);
+    }
+    if (supportsDomains) {
+      fields.add(FIELD_DOMAINS);
+    }
+    if (supportsTags) {
+      fields.add(FIELD_TAGS);
+    }
+    return fields;
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {

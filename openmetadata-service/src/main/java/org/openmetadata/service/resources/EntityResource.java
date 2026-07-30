@@ -360,9 +360,39 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     return addHref(
         uriInfo,
-        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+        authorized != null
+            ? authorized
+            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * Returns the entity the authorization decision already loaded, reduced to the caller's
+   * projection, or null when policy evaluation never resolved it.
+   *
+   * <p>A GET builds its context from the same field set it serves, so the authorization load is a
+   * superset of the response projection and re-reading it would fetch the same row twice. That
+   * coupling is not enforced by the type system — the terminal overloads are public and a caller
+   * could pass a projection the context never loaded — so it is checked here rather than assumed:
+   * anything not covered falls back to a normal load. Fields the caller did not request are cleared
+   * so the payload is identical to a freshly loaded entity.
+   */
+  @SuppressWarnings("unchecked")
+  private T reuseAuthorizedEntity(
+      UriInfo uriInfo, ResourceContextInterface resourceContext, Fields fields) {
+    EntityInterface resolved = resourceContext == null ? null : resourceContext.getResolvedEntity();
+    boolean coversProjection =
+        resolved != null && resourceContext.getLoadedFields().containsAll(fields.getFieldList());
+    T result = null;
+    if (coversProjection && entityClass.isInstance(resolved)) {
+      result = (T) resolved;
+      repository.clearFieldsInternal(result, fields);
+      // The authorization load runs without a UriInfo, so the entity carries no self link yet.
+      result = repository.withHref(uriInfo, result);
+    }
+    return result;
   }
 
   /**
@@ -482,9 +512,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     return addHref(
         uriInfo,
-        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
+        authorized != null
+            ? authorized
+            : repository.getByName(
+                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -1429,7 +1463,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           OperationContext operationContext = new OperationContext(entityType, operation);
           T existingEntity = existingByFqn.get(entity.getFullyQualifiedName());
           ResourceContext<T> resourceContext =
-              new ResourceContext<>(entityType, existingEntity, repository);
+              new ResourceContext<>(
+                  entityType, existingEntity, repository, repository.authEnrichedFields());
           authorizer.authorize(securityContext, operationContext, resourceContext);
         }
 

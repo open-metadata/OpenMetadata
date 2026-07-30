@@ -3,10 +3,14 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -17,6 +21,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -24,6 +30,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -36,6 +43,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -61,6 +69,7 @@ import org.openmetadata.sdk.models.ListResponse;
 public class QueryVisibilityPolicyIT {
 
   private static final String PII_SENSITIVE_TAG = "PII.Sensitive";
+  private static final String TIER1_TAG = "Tier.Tier1";
 
   @Test
   void test_queryVisibilityWithTableTagPolicy(TestNamespace ns) {
@@ -333,5 +342,256 @@ public class QueryVisibilityPolicyIT {
     } finally {
       adminClient.policies().delete(policy.getId());
     }
+  }
+
+  /**
+   * A tag-based DENY rule must be enforced regardless of the {@code fields} query parameter. The
+   * authorization entity load previously reused the caller-supplied projection, so omitting {@code
+   * fields=tags} left the policy engine with no tags and matchAnyTag evaluated to false, silently
+   * allowing the request.
+   */
+  @Test
+  void test_tagDenyPolicy_enforcedWhenFieldsParamOmitted(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    OpenMetadataClient denied = userDeniedBy("tag", "matchAnyTag('" + PII_SENSITIVE_TAG + "')", ns);
+    String p = ns.shortPrefix();
+
+    Table tagged =
+        tableWith(schema, p + "_tagged", c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG))));
+    Table untagged = tableWith(schema, p + "_untagged", c -> {});
+    Table columnTagged =
+        tableWith(
+            schema,
+            p + "_coltagged",
+            c ->
+                c.setColumns(
+                    List.of(
+                        new Column()
+                            .withName("id")
+                            .withDataType(ColumnDataType.INT)
+                            .withTags(List.of(tagLabel(PII_SENSITIVE_TAG))))));
+
+    String taggedId = tagged.getId().toString();
+    String taggedFqn = tagged.getFullyQualifiedName();
+    String columnTaggedId = columnTagged.getId().toString();
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(taggedId),
+        "GET by id without fields must be denied for a tag matched by a DENY rule");
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().getByName(taggedFqn),
+        "GET by name without fields must be denied for a tag matched by a DENY rule");
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(taggedId, "tags"),
+        "GET with fields=tags must remain denied");
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(taggedId, "owners"),
+        "A projection without tags must not bypass the DENY rule");
+
+    // Column-level enforcement is projection-dependent (column tags hydrate only when columns and
+    // tags are both loaded). The authorization field set must therefore union the caller's
+    // projection rather than replace it, or this case silently regresses.
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(columnTaggedId, "columns,tags"),
+        "A column-level tag must stay enforced when the caller requests columns and tags");
+
+    assertNotNull(
+        denied.tables().get(untagged.getId().toString()),
+        "An untagged table must remain viewable — the rule must not over-block");
+  }
+
+  private final Deque<Runnable> fixtureCleanups = new ArrayDeque<>();
+
+  @AfterEach
+  void removeFieldPolicyFixtures() {
+    while (!fixtureCleanups.isEmpty()) {
+      try {
+        fixtureCleanups.pop().run();
+      } catch (Exception ignored) {
+        // Best-effort teardown: a cleanup failure must not mask the assertion result.
+      }
+    }
+  }
+
+  /**
+   * Creates a principal carrying exactly one conditional DENY rule. Roles are assigned directly on
+   * the user: a role granted only through a team's defaultRoles is not applied to the subject
+   * during policy evaluation, which would leave the principal with no policy and make every
+   * assertion pass vacuously.
+   */
+  private OpenMetadataClient userDeniedBy(String label, String condition, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String p = ns.shortPrefix() + label;
+
+    Rule denyRule =
+        new Rule()
+            .withName(p + "Rule")
+            .withResources(List.of("All"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition(condition);
+
+    CreatePolicy createPolicy = new CreatePolicy();
+    createPolicy.setName(p + "_pol");
+    createPolicy.setRules(List.of(denyRule));
+    Policy policy = admin.policies().create(createPolicy);
+    fixtureCleanups.push(() -> admin.policies().delete(policy.getId()));
+
+    CreateRole createRole = new CreateRole();
+    createRole.setName(p + "_role");
+    createRole.setPolicies(List.of(policy.getFullyQualifiedName()));
+    Role role = admin.roles().create(createRole);
+    fixtureCleanups.push(() -> admin.roles().delete(role.getId()));
+
+    String email = p + "_u@test.openmetadata.org";
+    CreateUser createUser = new CreateUser();
+    createUser.setName(p + "_u");
+    createUser.setEmail(email);
+    createUser.setRoles(List.of(role.getId()));
+    User user = admin.users().create(createUser);
+    fixtureCleanups.push(() -> admin.users().delete(user.getId()));
+
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private DatabaseSchema fieldPolicySchema(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    fixtureCleanups.push(
+        () ->
+            admin
+                .databaseServices()
+                .delete(
+                    service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true")));
+    return DatabaseSchemaTestFactory.createSimple(ns, service);
+  }
+
+  private Table tableWith(
+      DatabaseSchema schema, String name, java.util.function.Consumer<CreateTable> customizer) {
+    CreateTable create = new CreateTable();
+    create.setName(name);
+    create.setDatabaseSchema(schema.getFullyQualifiedName());
+    create.setColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
+    customizer.accept(create);
+    return SdkClients.adminClient().tables().create(create);
+  }
+
+  private static TagLabel tagLabel(String fqn) {
+    TagLabel label = new TagLabel();
+    label.setTagFQN(fqn);
+    label.setSource(TagLabel.TagSource.CLASSIFICATION);
+    label.setLabelType(TagLabel.LabelType.MANUAL);
+    label.setState(TagLabel.State.CONFIRMED);
+    return label;
+  }
+
+  /** isOwner() reads owners; unloaded owners made this Deny fail open. */
+  @Test
+  void test_isOwnerDenyPolicy_enforcedWhenFieldsParamOmitted(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    OpenMetadataClient denied = userDeniedBy("own", "isOwner()", ns);
+    User self = SdkClients.adminClient().users().getByName(ns.shortPrefix() + "own_u");
+
+    Table owned =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_owned",
+            c -> c.setOwners(List.of(new EntityReference().withId(self.getId()).withType("user"))));
+    Table unowned = tableWith(schema, ns.shortPrefix() + "_unowned", c -> {});
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(owned.getId().toString()),
+        "isOwner DENY must fire without fields=owners");
+    assertNotNull(
+        denied.tables().get(unowned.getId().toString()),
+        "isOwner DENY must not block a table the user does not own");
+  }
+
+  /** noOwner() reads owners; unloaded owners made this Deny over-block owned entities. */
+  @Test
+  void test_noOwnerDenyPolicy_doesNotOverBlockOwnedEntities(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    OpenMetadataClient denied = userDeniedBy("noown", "noOwner()", ns);
+    User self = SdkClients.adminClient().users().getByName(ns.shortPrefix() + "noown_u");
+
+    Table owned =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_hasowner",
+            c -> c.setOwners(List.of(new EntityReference().withId(self.getId()).withType("user"))));
+    Table unowned = tableWith(schema, ns.shortPrefix() + "_noowner", c -> {});
+
+    assertNotNull(
+        denied.tables().get(owned.getId().toString()),
+        "noOwner DENY must not fire on an entity that has an owner");
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(unowned.getId().toString()),
+        "noOwner DENY must fire on an entity with no owner");
+  }
+
+  /** noDomain() reads domains; unloaded domains made this Deny over-block entities in a domain. */
+  @Test
+  void test_noDomainDenyPolicy_doesNotOverBlockEntitiesInADomain(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseSchema schema = fieldPolicySchema(ns);
+
+    CreateDomain createDomain = new CreateDomain();
+    createDomain.setName(ns.shortPrefix() + "_dom");
+    createDomain.setDescription("field policy coverage");
+    createDomain.setDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain domain = admin.domains().create(createDomain);
+    fixtureCleanups.push(() -> admin.domains().delete(domain.getId()));
+
+    OpenMetadataClient denied = userDeniedBy("nodom", "noDomain()", ns);
+    Table inDomain =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_indomain",
+            c -> c.setDomains(List.of(domain.getFullyQualifiedName())));
+    Table noDomain = tableWith(schema, ns.shortPrefix() + "_nodomain", c -> {});
+
+    assertNotNull(
+        denied.tables().get(inDomain.getId().toString()),
+        "noDomain DENY must not fire on an entity that has a domain");
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(noDomain.getId().toString()),
+        "noDomain DENY must fire on an entity with no domain");
+  }
+
+  /** matchAllTags() reads tags; it must fire only when every listed tag is present. */
+  @Test
+  void test_matchAllTagsDenyPolicy_enforcedWhenFieldsParamOmitted(TestNamespace ns)
+      throws Exception {
+    DatabaseSchema schema = fieldPolicySchema(ns);
+    OpenMetadataClient denied =
+        userDeniedBy("allt", "matchAllTags('" + PII_SENSITIVE_TAG + "', '" + TIER1_TAG + "')", ns);
+
+    Table bothTags =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_bothtags",
+            c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG), tagLabel(TIER1_TAG))));
+    Table oneTag =
+        tableWith(
+            schema,
+            ns.shortPrefix() + "_onetag",
+            c -> c.setTags(List.of(tagLabel(PII_SENSITIVE_TAG))));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tables().get(bothTags.getId().toString()),
+        "matchAllTags DENY must fire when all listed tags are present");
+    assertNotNull(
+        denied.tables().get(oneTag.getId().toString()),
+        "matchAllTags DENY must not fire when only some listed tags are present");
   }
 }

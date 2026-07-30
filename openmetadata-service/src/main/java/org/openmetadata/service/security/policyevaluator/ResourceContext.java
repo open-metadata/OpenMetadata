@@ -4,9 +4,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -40,6 +42,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
   private Include include;
   private Fields requestedFields;
+  private final Set<String> loadedFieldNames = new HashSet<>();
   private RelationIncludes relationIncludes;
 
   public ResourceContext(@NonNull String resource) {
@@ -103,11 +106,25 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
+    this(resource, entity, repository, Collections.emptySet());
+  }
+
+  /**
+   * Accepts an entity the caller already loaded, together with the policy attributes it is known to
+   * carry. Anything not listed is fetched on demand, so omitting this is safe — a caller that
+   * understates what it hydrated causes an extra read, never a decision made on missing data.
+   */
+  public ResourceContext(
+      @NonNull String resource,
+      T entity,
+      EntityRepository<T> repository,
+      Collection<String> preloadedFields) {
     this.resource = resource;
     this.id = null;
     this.name = null;
     this.entity = entity;
     this.entityRepository = repository;
+    this.loadedFieldNames.addAll(preloadedFields);
   }
 
   @Override
@@ -167,7 +184,35 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   @Override
   public List<TagLabel> getTags() {
     resolveEntity();
-    return entity == null ? Collections.emptyList() : Entity.getEntityTags(getResource(), entity);
+    if (entity == null) {
+      return Collections.emptyList();
+    }
+    ensureTagsLoaded();
+    return Entity.getEntityTags(getResource(), entity);
+  }
+
+  /**
+   * Populates tags on the already-resolved entity. Tags are the one policy attribute with unbounded
+   * cardinality — a heavily tagged table can carry tens of thousands — so they are excluded from the
+   * authorization load and fetched only when a condition actually reads them. A deployment whose
+   * policies use no tag conditions therefore never pays for them. The fields are applied to the
+   * existing instance, so this adds no entity reload.
+   */
+  private void ensureTagsLoaded() {
+    if (!loadedFieldNames.contains(Entity.FIELD_TAGS) && entityRepository.isSupportsTags()) {
+      entityRepository.setFieldsInternal(entity, entityRepository.getFields(Entity.FIELD_TAGS));
+      loadedFieldNames.add(Entity.FIELD_TAGS);
+    }
+  }
+
+  @Override
+  public EntityInterface getResolvedEntity() {
+    return entity;
+  }
+
+  @Override
+  public Set<String> getLoadedFields() {
+    return Collections.unmodifiableSet(loadedFieldNames);
   }
 
   @Override
@@ -189,30 +234,16 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private EntityInterface resolveEntity() {
     if (entity == null) {
       Fields fieldList;
-      String fields = "";
       RelationIncludes relationIncludesToUse = relationIncludes;
       if (operation == ResourceContextInterface.Operation.PATCH) {
         fieldList = entityRepository.getPatchFields();
       } else if (operation == ResourceContextInterface.Operation.PUT) {
         fieldList = entityRepository.getPutFields();
-      } else if (requestedFields != null) {
-        fieldList = requestedFields;
       } else {
-        if (entityRepository.isSupportsOwners()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
-        }
-        if (entityRepository.isSupportsTags()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
-        }
-        if (entityRepository.isSupportsDomains()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
-        }
-        if (entityRepository.isSupportsReviewers()) {
-          fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-        }
-        fieldList = entityRepository.getFields(fields);
+        fieldList = authorizationFields();
       }
 
+      loadedFieldNames.addAll(fieldList.getFieldList());
       Include includeToUse = resolveInclude();
       boolean fromCache = useRepositoryCache();
       if (relationIncludesToUse == null) {
@@ -231,6 +262,42 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       }
     }
     return entity;
+  }
+
+  /**
+   * Bounded policy attributes the entity must carry for evaluation. These are always loaded so a
+   * condition can never read an attribute as absent merely because the caller did not request it —
+   * an unloaded attribute makes a conditional rule misfire in both directions (isOwner reads false
+   * and a Deny fails open; noOwner reads true and a Deny over-blocks). Tags are deliberately absent
+   * here and fetched on demand by {@link #ensureTagsLoaded()} because their cardinality is
+   * unbounded. Caller-requested fields are unioned on top rather than replaced, so the decision
+   * never sees less than it did before.
+   */
+  private Fields authorizationFields() {
+    String fields = "";
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
+    }
+    if (entityRepository.isSupportsReviewers()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+    }
+    // Requested explicitly rather than riding along with tags: setFields populates certification
+    // when either tags or certification is present, so excluding tags from this set would leave
+    // matchAnyCertification reading null and its Deny rule failing open.
+    if (entityRepository.isSupportsCertification()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_CERTIFICATION);
+    }
+    Fields securityFields = entityRepository.getFields(fields);
+    Fields result = securityFields;
+    if (requestedFields != null) {
+      Set<String> merged = new HashSet<>(securityFields.getFieldList());
+      merged.addAll(requestedFields.getFieldList());
+      result = new Fields(merged);
+    }
+    return result;
   }
 
   private Include resolveInclude() {
