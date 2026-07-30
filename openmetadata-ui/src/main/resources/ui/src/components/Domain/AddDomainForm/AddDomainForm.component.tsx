@@ -771,10 +771,6 @@ const AddDomainForm = ({
     return message ? { required: message } : undefined;
   }, [intakeFormRequiredMessage]);
 
-  const isDataProduct = type === DomainFormType.DATA_PRODUCT;
-  const isDomain =
-    type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN;
-
   const handleSubmit = useCallback(
     (data: DomainFormValues) => {
       const { extensionDefinitions, extensionFormValues, ...submittedData } =
