@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +48,8 @@ import org.openmetadata.service.resources.query.QueryResource;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   // Query has special name handling (null names allowed, uses checksum)
   // Query doesn't support dataProducts field
@@ -433,16 +437,26 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
 
   private void assertQueryListedForTable(
       OpenMetadataClient client, Table table, UUID queryId, boolean expected) {
-    ListParams listParams = new ListParams();
-    listParams.addQueryParam("entityId", table.getId().toString());
-    listParams.addQueryParam("entityType", "table");
-    listParams.setFields("*");
-    listParams.setLimit(100);
-
-    ListResponse<Query> queriesForTable = client.queries().list(listParams);
-    boolean queryListed =
-        queriesForTable.getData().stream().anyMatch(query -> query.getId().equals(queryId));
-    assertEquals(expected, queryListed, "Query usage search result should match the relationship");
+    String response =
+        client.search().query("id:" + queryId).index("query_search_index").size(1).execute();
+    boolean tableListed = false;
+    try {
+      JsonNode hits = OBJECT_MAPPER.readTree(response).path("hits").path("hits");
+      for (JsonNode hit : hits) {
+        JsonNode source = hit.path("_source");
+        if (queryId.toString().equals(source.path("id").asText())) {
+          for (JsonNode queryUsedIn : source.path("queryUsedIn")) {
+            if (table.getId().toString().equals(queryUsedIn.path("id").asText())) {
+              tableListed = true;
+            }
+          }
+        }
+      }
+    } catch (Exception exception) {
+      throw new AssertionError("Unable to parse query search response", exception);
+    }
+    assertEquals(
+        expected, tableListed, "Query usage search document should match the relationship");
   }
 
   @Test
