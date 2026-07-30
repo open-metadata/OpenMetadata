@@ -32,12 +32,17 @@ import static org.mockito.Mockito.when;
 
 import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.Field;
+import java.util.List;
 import javax.sql.DataSource;
 import org.flowable.common.engine.api.FlowableWrongDbException;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.ProcessEngines;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.job.api.Job;
+import org.flowable.job.api.TimerJobQuery;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -421,6 +426,52 @@ class WorkflowHandlerSchemaUpdateTest {
       // Wrapper's getJdbcUrl returns Mockito's default null; only assert the setter was invoked
       // via the raw-JDBC branch (not that the string is non-null).
       verify(runtimeEngineConfig).setJdbcUrl(any());
+    }
+  }
+
+  @Test
+  void deployCancelsEntitySpecificPeriodicTimerJobs() {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    RepositoryService repositoryService = mock(RepositoryService.class, RETURNS_DEEP_STUBS);
+    ManagementService managementService = mock(ManagementService.class);
+    TimerJobQuery exactTriggerQuery = mock(TimerJobQuery.class);
+    TimerJobQuery allTimerJobsQuery = mock(TimerJobQuery.class);
+    Job entitySpecificTimer = mock(Job.class);
+    Workflow workflow = mock(Workflow.class, RETURNS_DEEP_STUBS);
+
+    when(mockEngine.getRepositoryService()).thenReturn(repositoryService);
+    when(mockEngine.getManagementService()).thenReturn(managementService);
+    when(managementService.createTimerJobQuery())
+        .thenReturn(exactTriggerQuery)
+        .thenReturn(allTimerJobsQuery);
+    when(exactTriggerQuery.processDefinitionKey("approvalTrigger")).thenReturn(exactTriggerQuery);
+    when(exactTriggerQuery.list()).thenReturn(List.of());
+    when(allTimerJobsQuery.list()).thenReturn(List.of(entitySpecificTimer));
+    when(entitySpecificTimer.getProcessDefinitionId()).thenReturn("approvalTrigger-table:1:abc");
+    when(workflow.getWorkflowDefinition().getName()).thenReturn("approval");
+    when(workflow.getWorkflowDefinition().getTrigger().getType()).thenReturn("periodicBatchEntity");
+    when(workflow.getTriggerWorkflow().getWorkflowName()).thenReturn("approvalTrigger");
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignored =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignoredEngines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), true);
+      WorkflowHandler.getInstance().deploy(workflow);
+
+      verify(managementService).deleteJob(entitySpecificTimer.getId());
     }
   }
 

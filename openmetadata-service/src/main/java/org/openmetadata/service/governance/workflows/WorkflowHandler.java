@@ -49,6 +49,7 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
@@ -103,6 +104,13 @@ public class WorkflowHandler {
   private static final int MIGRATION_POOL_MAX_SIZE = 10;
   private static final long MIGRATION_POOL_CONNECTION_TIMEOUT_MS = 30_000L;
   private static final String MIGRATION_POOL_NAME = "flowable-migration-pool";
+
+  // Page size for draining stale ACT_RE_PROCDEF versions during runtime redeploy. Each
+  // save-workflow
+  // touches at most two keys (trigger + main), and each key can have thousands of accumulated
+  // versions on long-lived deployments. Fetching them one page at a time keeps memory bounded and
+  // lets the loop stop cleanly the moment the backlog for THIS key is fully drained.
+  private static final int CLEANUP_BATCH_SIZE = 100;
 
   /**
    * Message name used by the Collate Policy Agent node's await event. The batch coordinator delivers
@@ -418,72 +426,20 @@ public class WorkflowHandler {
       }
     }
 
-    // Clean up old deployments for ALL workflow types (not just periodicBatchEntity)
-    // cascade=false preserves act_hi_* history tables which can have millions of rows.
-    // Only delete deployments that have no running instances to avoid orphaning active workflows.
-    try {
-      List<ProcessDefinition> oldTriggerDefinitions =
-          repositoryService
-              .createProcessDefinitionQuery()
-              .processDefinitionKeyLike(triggerWorkflowKey + "%")
-              .list();
-
-      List<ProcessDefinition> oldMainDefinitions =
-          repositoryService
-              .createProcessDefinitionQuery()
-              .processDefinitionKey(workflowName)
-              .list();
-
-      RuntimeService runtimeService = processEngine.getRuntimeService();
-
-      // First: Clean up runtime jobs for process definitions with no running instances
-      Set<String> deploymentsToDelete = new HashSet<>();
-      for (ProcessDefinition pd : oldTriggerDefinitions) {
-        List<ProcessInstance> runningInstances =
-            runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
-        if (runningInstances.isEmpty()) {
-          deleteRuntimeJobsForProcessDefinition(
-              managementService, pd.getId(), "Cleanup before redeployment");
-          deploymentsToDelete.add(pd.getDeploymentId());
-        } else {
-          LOG.info(
-              "Preserving deployment {} (key: {}) - has {} running instances",
-              pd.getDeploymentId(),
-              pd.getKey(),
-              runningInstances.size());
-        }
+    // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
+    // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
+    // backlog (customers with long-running approval instances accumulate tens of thousands of
+    // versions), running the drain per iteration turns migrate into a multi-hour job. Runtime
+    // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
+    // just deferred out of the migration critical path.
+    if (!isMigrationContext) {
+      try {
+        drainOldDeploymentsForKey(repositoryService, managementService, triggerWorkflowKey, true);
+        drainOldDeploymentsForKey(repositoryService, managementService, workflowName, false);
+      } catch (Exception e) {
+        LOG.warn(
+            "Error draining old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
-      for (ProcessDefinition pd : oldMainDefinitions) {
-        List<ProcessInstance> runningInstances =
-            runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
-        if (runningInstances.isEmpty()) {
-          deleteRuntimeJobsForProcessDefinition(
-              managementService, pd.getId(), "Cleanup before redeployment");
-          deploymentsToDelete.add(pd.getDeploymentId());
-        } else {
-          LOG.info(
-              "Preserving deployment {} (key: {}) - has {} running instances",
-              pd.getDeploymentId(),
-              pd.getKey(),
-              runningInstances.size());
-        }
-      }
-
-      // Second: Delete deployments (with individual error handling)
-      for (String deploymentId : deploymentsToDelete) {
-        try {
-          LOG.info("Removing old deployment: {}", deploymentId);
-          repositoryService.deleteDeployment(deploymentId, false);
-        } catch (Exception e) {
-          LOG.warn(
-              "Error deleting deployment {} for workflow {}: {}",
-              deploymentId,
-              workflowName,
-              e.getMessage());
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Error removing old deployments for workflow {}: {}", workflowName, e.getMessage());
     }
 
     // Deploy Main Workflow
@@ -618,6 +574,74 @@ public class WorkflowHandler {
           "Deleting process instance {} for procDef {}", instance.getId(), processDefinitionId);
       runtimeService.deleteProcessInstance(instance.getId(), deletionReason);
     }
+  }
+
+  /**
+   * Drain accumulated ACT_RE_* rows for a given workflow key in bounded pages so a large backlog
+   * does not turn a single deploy into a multi-minute stall. Pages of {@link #CLEANUP_BATCH_SIZE}
+   * are pulled oldest-first; each candidate is deleted only when it has zero running instances,
+   * preserving in-flight work. When a page yields no deletions the offset advances past the
+   * protected rows; otherwise the offset is held so the freshly-shrunk backlog surfaces next
+   * candidates on the following fetch. Loop terminates when a page returns empty.
+   */
+  private void drainOldDeploymentsForKey(
+      RepositoryService repositoryService,
+      ManagementService managementService,
+      String key,
+      boolean useKeyLike) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    int offset = 0;
+    while (true) {
+      List<ProcessDefinition> batch =
+          buildProcessDefinitionQuery(repositoryService, key, useKeyLike)
+              .orderByProcessDefinitionVersion()
+              .asc()
+              .listPage(offset, CLEANUP_BATCH_SIZE);
+      if (batch.isEmpty()) {
+        break;
+      }
+      int deletedInBatch = drainBatch(batch, repositoryService, runtimeService, managementService);
+      if (deletedInBatch == 0) {
+        offset += batch.size();
+      }
+    }
+  }
+
+  private ProcessDefinitionQuery buildProcessDefinitionQuery(
+      RepositoryService repositoryService, String key, boolean useKeyLike) {
+    ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
+    return useKeyLike ? query.processDefinitionKeyLike(key + "%") : query.processDefinitionKey(key);
+  }
+
+  private int drainBatch(
+      List<ProcessDefinition> batch,
+      RepositoryService repositoryService,
+      RuntimeService runtimeService,
+      ManagementService managementService) {
+    int deleted = 0;
+    for (ProcessDefinition pd : batch) {
+      // Use .list().isEmpty() rather than .count() to match the semantics the pre-existing
+      // cleanup (line 442) established as safe. Flowable's count() can diverge from list() in
+      // edge cases (unregistered process definitions in the deployment cache); mirroring list()
+      // guarantees a procdef with any active execution is preserved.
+      List<ProcessInstance> running =
+          runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
+      if (running.isEmpty()) {
+        try {
+          deleteRuntimeJobsForProcessDefinition(
+              managementService, pd.getId(), "Cleanup before redeployment");
+          repositoryService.deleteDeployment(pd.getDeploymentId(), false);
+          deleted++;
+        } catch (Exception e) {
+          LOG.warn(
+              "Error deleting deployment {} (key: {}): {}",
+              pd.getDeploymentId(),
+              pd.getKey(),
+              e.getMessage());
+        }
+      }
+    }
+    return deleted;
   }
 
   public ProcessInstance triggerByKey(
