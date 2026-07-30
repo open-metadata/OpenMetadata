@@ -638,7 +638,7 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
 
     ans = {}
 
-    for _, v in foreign_key_map.items():  # noqa: PERF102
+    for v in foreign_key_map.values():
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
         ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})
