@@ -74,10 +74,6 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );
 
-const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
-);
-
 function ParameterTooltipText({
   className,
   title,

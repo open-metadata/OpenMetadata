@@ -70,10 +70,6 @@ const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
 );
 
-const CodeEditor = withSuspenseFallback(
-  lazy(() => import('../../../Database/SchemaEditor/CodeEditor'))
-);
-
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
 
