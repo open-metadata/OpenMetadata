@@ -46,8 +46,11 @@ def declared_root_packages(config) -> set[str]:
 
 @pytest.fixture(scope="module")
 def layered_modules(config) -> set[str]:
-    raw = config["importlinter:contract:layers"]["layers"]
-    return {module.strip() for line in raw.splitlines() for module in line.split(":") if module.strip()}
+    """Fully qualified module names appearing in the layers contract."""
+    contract = config["importlinter:contract:layers"]
+    containers = [line.strip() for line in contract["containers"].splitlines() if line.strip()]
+    tails = {module.strip() for line in contract["layers"].splitlines() for module in line.split(":") if module.strip()}
+    return {f"{container}.{tail}" for container in containers for tail in tails}
 
 
 def test_layering_contract_holds():

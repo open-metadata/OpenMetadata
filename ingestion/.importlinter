@@ -1,14 +1,16 @@
-# Import layering for the ingestion package. Run with `make check_import_layers`.
+# Import layering for the ingestion package — `make check_import_layers`.
 #
-# Layers are listed highest first; a module may import its own layer or a lower one.
-# An upward import pulls the higher layer's subtree into every process that imports the
-# lower one, which is what makes `import metadata` expensive.
+# Layers run highest to lowest. A module may import its own layer (siblings are joined
+# with `:`) or a lower one; importing a higher layer pulls that layer's whole subtree
+# into every process below it, which is what makes `import metadata` expensive.
 #
-# root_packages must list every namespace portion (a directory without __init__.py)
-# explicitly. `metadata` is a regular package and grimp does not descend into namespace
-# directories inside one, so an omitted portion is silently unanalysed;
-# tests/unit/test_import_layers.py fails if one is missing. Siblings joined with `:` may
-# import each other.
+# ignore_imports records the imports that break this today, grouped by why. Fix one by
+# making it function-local, guarding it with `if TYPE_CHECKING:`, or resolving it through
+# metadata.utils.importer — never by adding a line here. Entries that stop matching fail
+# the run, so the list only shrinks.
+#
+# root_packages must list every namespace portion (directory without __init__.py):
+# grimp will not find them under `metadata`, and an omitted one is silently unanalysed.
 
 [importlinter]
 root_packages =
@@ -34,51 +36,30 @@ root_packages =
 [importlinter:contract:layers]
 name = Ingestion layers
 type = layers
+containers =
+    metadata
 layers =
-    metadata.workflow : metadata.cli : metadata.automations : metadata.applications : metadata.sdk
-    metadata.ingestion.source
-    metadata.profiler : metadata.data_quality : metadata.sampler : metadata.pii : metadata.readers : metadata.parsers : metadata.great_expectations : metadata.ingestion.api : metadata.ingestion.lineage : metadata.ingestion.sink : metadata.ingestion.stage : metadata.ingestion.bulksink : metadata.ingestion.processor : metadata.ingestion.progress
-    metadata.ingestion.ometa : metadata.ingestion.connections : metadata.ingestion.diagnostics : metadata.core : metadata.clients : metadata.config : metadata.utils : metadata.antlr : metadata.models : metadata.mixins : metadata.timer : metadata.domain
-    metadata.generated
+    workflow : cli : automations : applications : sdk
+    ingestion.source
+    profiler : data_quality : sampler : pii : readers : parsers : great_expectations : ingestion.api : ingestion.lineage : ingestion.sink : ingestion.stage : ingestion.bulksink : ingestion.processor : ingestion.progress
+    ingestion.ometa : ingestion.connections : ingestion.diagnostics : core : clients : config : utils : antlr : models : mixins : timer : domain
+    generated
 ignore_imports =
-# Already function-local or otherwise not executed on import, so they cost nothing.
-# import-linter cannot tell the difference, so they stay listed. Import cost itself is
-# covered by tests/unit/test_import_cost.py.
+# Not executed on import, so they cost nothing. import-linter cannot see that, so
+# they stay listed; import cost itself is covered by tests/unit/test_import_cost.py.
     metadata.config.settings -> metadata
     metadata.ingestion.models.custom_basemodel_validation -> metadata.utils.entity_link
     metadata.ingestion.models.custom_pydantic -> metadata.utils.secrets.secrets_manager_factory
+    metadata.ingestion.models.topology -> metadata.ingestion.source.**
     metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.sql_lineage
     metadata.sampler.messaging.kafka.sampler -> metadata.ingestion.source.messaging.kafka.connection
     metadata.sampler.pandas.burstiq.sampler -> metadata.ingestion.source.database.burstiq.client
-    metadata.ingestion.models.topology -> metadata.ingestion.source.**
-# Module-scope imports to remove. Do not extend this list to make a new violation pass:
-# make the import function-local, guard it with `if TYPE_CHECKING:`, or resolve it through
-# metadata.utils.importer.import_from_module. An entry that no longer matches any import
-# fails the run, so the list cannot go stale.
-    metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface -> metadata.ingestion.source.database.databricks.connection
-    metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter -> metadata.ingestion.source.connections
-    metadata.ingestion.connections.test_connections -> metadata.ingestion.source.connections_utils
-    metadata.ingestion.models.patch_request -> metadata.ingestion.api.models
-    metadata.ingestion.ometa.mixins.es_mixin -> metadata.ingestion.source.models
-    metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin -> metadata.ingestion.api.parser
-    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.models
-    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.parser
-    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.ingestion.api.models
-    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.pii.types
-    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.sampler.entity_adapters
-    metadata.ingestion.ometa.mixins.query_mixin -> metadata.ingestion.lineage.masker
-    metadata.ingestion.ometa.mixins.user_mixin -> metadata.ingestion.api.common
-    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.dashboard.dashboard_service
-    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.database.database_service
-    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.pipeline.pipeline_service
+# Shared helpers that grew upwards: utils and mixins reach into the framework and
+# into connectors, so importing either pulls those in.
     metadata.mixins.pandas.pandas_mixin -> metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween
     metadata.mixins.pandas.pandas_mixin -> metadata.readers.dataframe.models
     metadata.mixins.sqalchemy.sqa_mixin -> metadata.ingestion.source.connections
     metadata.mixins.sqalchemy.sqa_mixin -> metadata.ingestion.source.database.snowflake.queries
-    metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
-    metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
-    metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection
-    metadata.sampler.storage.s3.sampler -> metadata.ingestion.source.storage.s3.connection
     metadata.utils.datalake.datalake_utils -> metadata.ingestion.source.database.column_helpers
     metadata.utils.datalake.datalake_utils -> metadata.parsers.json_schema_parser
     metadata.utils.datalake.datalake_utils -> metadata.readers.dataframe.models
@@ -104,3 +85,29 @@ ignore_imports =
     metadata.utils.ssl_manager -> metadata.ingestion.source.connections
     metadata.utils.storage_metadata_config -> metadata.readers.file.config_source_factory
     metadata.utils.tag_utils -> metadata.ingestion.api.models
+# The ometa client carries framework and connector types on its mixins, so every
+# consumer of the client pays for them.
+    metadata.ingestion.ometa.mixins.es_mixin -> metadata.ingestion.source.models
+    metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin -> metadata.ingestion.api.parser
+    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.models
+    metadata.ingestion.ometa.mixins.lineage_mixin -> metadata.ingestion.lineage.parser
+    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.ingestion.api.models
+    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.pii.types
+    metadata.ingestion.ometa.mixins.patch_mixin -> metadata.sampler.entity_adapters
+    metadata.ingestion.ometa.mixins.query_mixin -> metadata.ingestion.lineage.masker
+    metadata.ingestion.ometa.mixins.user_mixin -> metadata.ingestion.api.common
+# Feature packages bind directly to individual connectors instead of resolving them
+# through the registry.
+    metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface -> metadata.ingestion.source.database.databricks.connection
+    metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter -> metadata.ingestion.source.connections
+    metadata.ingestion.connections.test_connections -> metadata.ingestion.source.connections_utils
+    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.dashboard.dashboard_service
+    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.database.database_service
+    metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.pipeline.pipeline_service
+    metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
+    metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
+    metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection
+    metadata.sampler.storage.s3.sampler -> metadata.ingestion.source.storage.s3.connection
+# metadata.ingestion.models spans layers: custom_pydantic sits below the generated
+# models while the rest of the package is framework-level.
+    metadata.ingestion.models.patch_request -> metadata.ingestion.api.models
