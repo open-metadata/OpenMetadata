@@ -448,18 +448,17 @@ test('Total Data Assets Widget', async ({ page }) => {
 
   await test.step('Test widget header and navigation', async () => {
     await waitForAllLoadersToDisappear(page);
+    // The tab-less /data-insights is not a landable route — it only renders via
+    // an in-page redirect. Assert the resolved tab plus the rendered container,
+    // so a widget pointing at the bare route (or a page stuck on its loader)
+    // fails here instead of passing a substring check.
     await verifyWidgetHeaderNavigation(
       page,
       widgetKey,
       'Total Data Assets',
-      '/data-insights/data-assets'
+      '/data-insights/data-assets',
+      'data-insight-container'
     );
-
-    // The tab-less /data-insights is not a landable route — it only renders via
-    // an in-page redirect. Assert the tab is in the URL and that the page
-    // actually painted, so a widget pointing at the bare route (or a page stuck
-    // on its loader) fails here instead of passing a substring check.
-    await expect(page.getByTestId('data-insight-container')).toBeVisible();
   });
 
   await test.step('Test widget filters', async () => {
