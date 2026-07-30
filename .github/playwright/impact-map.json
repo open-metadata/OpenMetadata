@@ -161,7 +161,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinitionRepository.java",
         "openmetadata-spec/src/main/resources/json/schema/tests/**"
       ],
-      "projects": ["chromium", "Basic", "Ingestion", "Reindex"],
+      "projects": ["chromium", "Basic", "Ingestion", "Reindex", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
