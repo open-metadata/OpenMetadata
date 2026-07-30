@@ -118,8 +118,14 @@ function main() {
     const icon = f.sev === 2 ? '🔴' : '🟡';
     // Collapse newlines and escape pipes: either would break the table row,
     // and some rules (exhaustive-deps) emit multi-line messages.
+    //
+    // Backslashes MUST be escaped before pipes. Escaping only `|` leaves an
+    // input `\|` rendered as `\\|` — an escaped backslash followed by a live
+    // pipe, which still breaks out of the cell. The message text comes from
+    // PR-authored source, so treat it as untrusted.
     const msg = f.msg
       .replace(/\s*\n\s*/g, ' ')
+      .replace(/\\/g, '\\\\')
       .replace(/\|/g, '\\|')
       .slice(0, 160);
     body.push(
