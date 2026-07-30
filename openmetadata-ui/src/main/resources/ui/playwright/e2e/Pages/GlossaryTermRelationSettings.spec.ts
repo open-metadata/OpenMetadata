@@ -132,13 +132,19 @@ const deleteRelationInUi = async (page: Page, name: string) => {
 // page navigation before we decide whether to advance. isVisible() is
 // instantaneous and would read the stale DOM from the previous page,
 // causing the loop to skip the target and eventually throw.
-const findRowAcrossPages = async (page: Page, testId: string): Promise<void> => {
+const findRowAcrossPages = async (
+  page: Page,
+  testId: string
+): Promise<void> => {
   const target = page.getByTestId(testId);
 
   while (true) {
     const found = await target
       .waitFor({ state: 'visible', timeout: 3_000 })
-      .then(() => true, () => false);
+      .then(
+        () => true,
+        () => false
+      );
 
     if (found) return;
 
@@ -150,7 +156,9 @@ const findRowAcrossPages = async (page: Page, testId: string): Promise<void> => 
 
     const nextPageResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/glossaryTermRelationSettings/relationTypes') &&
+        response
+          .url()
+          .includes('/glossaryTermRelationSettings/relationTypes') &&
         response.request().method() === 'GET'
     );
     await nextBtn.click();
