@@ -1,3 +1,6 @@
+# Fast-mode compose overlay used by CI's Playwright shards. Bind-mounts a
+# pre-seeded postgres + opensearch data directory so shards can skip DB
+# migration + sample-data ingestion. See start_playwright_fast_environment.sh.
 services:
   postgresql:
     image: ${PW_POSTGRES_IMAGE:-postgres:15}
