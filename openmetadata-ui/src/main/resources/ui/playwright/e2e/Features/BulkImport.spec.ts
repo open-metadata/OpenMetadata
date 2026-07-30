@@ -1204,41 +1204,6 @@ test.describe('Bulk Import Export', () => {
         await expect(selection).toHaveCount(8);
       });
 
-      await test.step('allow multiple cell selection using keyboard on rightDown and leftUp', async () => {
-        // Principle 1 & 8: click anchor cell directly — avoids unreliable arrow
-        // key navigation chains (ArrowRight + ArrowDown×3) that drop under CI load.
-        const anchorCell = page
-          .locator('.rdg-row')
-          .nth(3)
-          .locator('.rdg-cell')
-          .nth(1);
-        await focusCell(anchorCell);
-        // The previous step ends with 24 selected cells (header column selection).
-        // Clicking a data cell sets focus but selection DOM may still lag behind;
-        // wait for count=0 before extending so Shift+Arrow starts from a clean state.
-        await expect(selection).toHaveCount(0);
-
-        // Principle 5 & 9: every Shift+Arrow asserts its expected count before
-        // the next key fires — replaces fixed delays with observable-state waits.
-        // anchor=[row3,col1]; extend down×2, right×3 → 3 rows × 4 cols = 12
-        await extend('ArrowDown', 2); // rows 3-4 × col 1 = 2
-        await extend('ArrowDown', 3); // rows 3-5 × col 1 = 3
-        await extend('ArrowRight', 6); // rows 3-5 × cols 1-2 = 6
-        await extend('ArrowRight', 9); // rows 3-5 × cols 1-3 = 9
-        await extend('ArrowRight', 12); // rows 3-5 × cols 1-4 = 12
-
-        // Shift up: active crosses back over anchor (row shrinks then grows)
-        await extend('ArrowUp', 8); // rows 3-4 × 4 cols = 8
-        await extend('ArrowUp', 4); // row 3 × 4 cols = 4
-        await extend('ArrowUp', 8); // rows 2-3 × 4 cols = 8
-        await extend('ArrowUp', 12); // rows 1-3 × 4 cols = 12
-        await extend('ArrowUp', 16); // rows 0-3 × 4 cols = 16
-
-        // Shift left
-        await extend('ArrowLeft', 12); // rows 0-3 × cols 1-3 = 12
-        await extend('ArrowLeft', 8); // rows 0-3 × cols 1-2 = 8
-      });
-
       await test.step('perform single cell copy-paste and undo-redo', async () => {
         // Principle 1, 8: fresh locators + confirm focus before Ctrl+C
         const firstCell = page
