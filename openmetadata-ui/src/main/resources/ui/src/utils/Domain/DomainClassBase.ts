@@ -14,7 +14,6 @@
 import { createElement } from 'react';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -34,6 +33,7 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
+import { LazyDataQualityDashboard } from './LazyDomainComponents';
 
 export interface DomainDetailPageTabProps {
   domain: Domain;
@@ -104,7 +104,7 @@ class DomainClassBase {
         name: i18n.t('label.data-observability'),
       }),
       key: EntityTabs.DATA_OBSERVABILITY,
-      children: createElement(DataQualityDashboard, {
+      children: createElement(LazyDataQualityDashboard, {
         isGovernanceView: true,
         className: 'data-quality-governance-tab-wrapper',
         initialFilters: domainDetailsPageProps.domain.fullyQualifiedName

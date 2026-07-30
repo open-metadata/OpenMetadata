@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, ReactElement } from 'react';
+import { ElementType, lazy } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
@@ -19,10 +19,9 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { FieldProp } from '../../../interface/FormUtils.interface';
-import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';
-
 const DimensionalityTab = withSuspenseFallback(
   lazy(
     () =>
@@ -59,7 +58,7 @@ const TestCaseResultTab = withSuspenseFallback(
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
+  Tab: ElementType;
   key: TestCasePageTabs;
   isBeta?: boolean;
 }

@@ -14,6 +14,7 @@
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import React from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
@@ -75,7 +76,7 @@ import { getServiceIcon } from './ServiceIconUtils';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
-} from './ServiceUtils';
+} from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
 

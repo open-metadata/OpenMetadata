@@ -88,10 +88,14 @@ jest.mock('react-router-dom', () => ({
 }));
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
   return {
-    createTestCaseParameters: jest.fn().mockImplementation(() => []),
     getServiceTypeForTestDefinition: jest
       .fn()
       .mockImplementation(() => 'BigQuery'),
+  };
+});
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => {
+  return {
+    createTestCaseParameters: jest.fn().mockImplementation(() => []),
   };
 });
 jest.mock('../../../../rest/testAPI', () => ({

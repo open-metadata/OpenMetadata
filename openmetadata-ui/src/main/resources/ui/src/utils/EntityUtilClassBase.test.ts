@@ -49,7 +49,7 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteDetailsPath: jest.fn(),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TableDropdownOptions', () => ({
   ExtraTableDropdownOptions: jest.fn(),
 }));
 

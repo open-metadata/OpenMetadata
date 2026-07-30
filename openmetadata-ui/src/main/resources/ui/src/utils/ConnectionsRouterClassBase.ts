@@ -23,7 +23,7 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServiceUtils';
+import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
 class ConnectionsRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
