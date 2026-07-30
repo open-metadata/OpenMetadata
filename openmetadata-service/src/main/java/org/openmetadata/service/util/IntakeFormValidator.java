@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.governance.IntakeForm;
-import org.openmetadata.schema.entity.governance.IntakeFormField;
+import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 import org.slf4j.Logger;
@@ -71,8 +72,7 @@ public final class IntakeFormValidator {
   private static List<String> checkIntakeFormRequiredFields(
       EntityInterface entity, IntakeForm form) {
     List<String> missing = new ArrayList<>();
-    for (IntakeFormField field : IntakeFormUtil.getEffectiveFormFields(form)) {
-      if (!Boolean.TRUE.equals(field.getRequired())) continue;
+    for (IntakeFormRequiredField field : listOrEmpty(form.getRequiredFields())) {
       if (field.getFieldPath() == null || field.getFieldPath().isBlank()) continue;
       if (!isFieldSet(entity, field)) {
         missing.add(
@@ -84,9 +84,9 @@ public final class IntakeFormValidator {
     return missing;
   }
 
-  private static boolean isFieldSet(EntityInterface entity, IntakeFormField field) {
+  private static boolean isFieldSet(EntityInterface entity, IntakeFormRequiredField field) {
     boolean isCustomProperty =
-        IntakeFormField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
+        IntakeFormRequiredField.FieldKind.CUSTOM_PROPERTY.equals(field.getFieldKind())
             || field.getFieldPath().startsWith(EXTENSION_PREFIX);
     if (isCustomProperty) {
       return isExtensionFieldSet(entity, field.getFieldPath());

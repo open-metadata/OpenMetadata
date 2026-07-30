@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 /**
- * An IntakeForm declares the fields shown when creating or updating a governance entity
- * (Data Product, Domain, Glossary Term) and which of those fields are required. Required
- * fields are enforced identically at the API and UI layers so both contracts match.
+ * An IntakeForm declares additional required fields that must be populated when creating or
+ * updating a governance entity (Data Product, Domain, Glossary Term). These are
+ * org-configurable and layer on top of the schema's own required fields. Enforced
+ * identically at the API and UI layers so both contracts match.
  */
 export interface IntakeForm {
     /**
@@ -42,11 +43,6 @@ export interface IntakeForm {
      */
     entityType: TargetEntityType;
     /**
-     * Fields included in this IntakeForm. Fields with required=true are enforced on top of the
-     * schema-required fields.
-     */
-    formFields?: IntakeFormField[];
-    /**
      * Fully qualified name of the IntakeForm.
      */
     fullyQualifiedName?: string;
@@ -71,7 +67,8 @@ export interface IntakeForm {
      */
     owners?: EntityReference[];
     /**
-     * Deprecated compatibility view of the required entries in formFields.
+     * Additional required fields enforced by this IntakeForm on top of the schema-required
+     * fields.
      */
     requiredFields?: RequiredField[];
     /**
@@ -169,46 +166,6 @@ export enum TargetEntityType {
 }
 
 /**
- * A field included in this IntakeForm.
- */
-export interface IntakeFormField {
-    /**
-     * Optional override for the validation error message when a required field is missing.
-     */
-    errorMessage?: string;
-    /**
-     * Whether a form field refers to a native entity attribute or a custom property defined via
-     * the Type system.
-     */
-    fieldKind: FieldKind;
-    /**
-     * Human-friendly label used on the intake form UI and in validation error messages.
-     */
-    fieldLabel: string;
-    /**
-     * Path to the field on the entity. Native paths are simple attribute names (e.g.,
-     * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
-     */
-    fieldPath: string;
-    /**
-     * Whether this field must have a value before the entity can be created or updated.
-     */
-    required?: boolean;
-}
-
-/**
- * Whether a form field refers to a native entity attribute or a custom property defined via
- * the Type system.
- *
- * Whether a required field refers to a native entity attribute or a custom property defined
- * via the Type system.
- */
-export enum FieldKind {
-    CustomProperty = "customProperty",
-    Native = "native",
-}
-
-/**
  * Owners of this IntakeForm configuration.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
@@ -282,4 +239,13 @@ export interface RequiredField {
      * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
      */
     fieldPath: string;
+}
+
+/**
+ * Whether a required field refers to a native entity attribute or a custom property defined
+ * via the Type system.
+ */
+export enum FieldKind {
+    CustomProperty = "customProperty",
+    Native = "native",
 }
