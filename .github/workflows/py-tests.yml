@@ -145,7 +145,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: py-unit-test-results-${{ matrix.py-version }}
           path: |
@@ -160,7 +160,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: ingestion/.coverage
@@ -268,7 +268,7 @@ jobs:
       - name: Upload coverage artifact
         if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
@@ -277,7 +277,7 @@ jobs:
       - name: Upload test results
         if: ${{ always() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: py-integration-test-results-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: |
@@ -317,7 +317,7 @@ jobs:
       - name: Upload runner and service diagnostics
         if: ${{ failure() || cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: py-integration-diagnostics-${{ matrix.shard.name }}-${{ matrix.py-version }}
           path: ${{ runner.temp }}/python-ci-diagnostics/
