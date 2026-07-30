@@ -50,6 +50,8 @@
     "organize-imports": "yarn organize-imports:cli tsconfig[.*].json",
     "organize-imports:playwright": "yarn organize-imports:cli './playwright/tsconfig[.*].json'",
     "playwright:run": "playwright test",
+    "playwright:visual": "playwright test --project=visual-regression",
+    "playwright:visual:update": "playwright test --project=visual-regression --update-snapshots",
     "playwright:open": "playwright test --ui",
     "playwright:codegen": "playwright codegen",
     "generate:app-docs": "node generateApplicationDocs.js",
