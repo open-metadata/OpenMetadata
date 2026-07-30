@@ -837,9 +837,12 @@ export default function EntitySummaryPanel({
     const type = (get(entityDetails, 'details.entityType') ??
       EntityType.TABLE) as EntityType;
     const entity = entityData || entityDetails.details;
+    const SummaryPanelComponent =
+      searchClassBase.getEntitySummaryPanelComponents()[type] ??
+      DataAssetSummaryPanelV1;
 
     return (
-      <DataAssetSummaryPanelV1
+      <SummaryPanelComponent
         componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
         dataAsset={
           entity as SearchedDataProps['data'][number]['_source'] & {
@@ -849,6 +852,7 @@ export default function EntitySummaryPanel({
         entityType={type}
         highlights={highlights}
         panelPath={panelPath}
+        summaryEntityType={searchClassBase.getEntitySummaryPanelType(type)}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
