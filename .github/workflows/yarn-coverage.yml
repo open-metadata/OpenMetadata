@@ -186,3 +186,51 @@ jobs:
             echo "Coverage check failed with status: $result"
             exit 1
           fi
+
+  # Sonar "Clean as You Code" gate, reported through a job that ALWAYS runs.
+  #
+  # Do not make SonarCloud's own check required instead: the scan is gated
+  # behind dorny/paths-filter and the "safe to test" label, so a PR with no UI
+  # changes never produces that check and would block forever waiting on it —
+  # the exact failure mode the ui-coverage shim above exists to avoid.
+  #
+  # The gate itself is configured in SonarCloud (conditions on New Code only),
+  # so legacy debt can never fail a PR. See docs/ui-code-quality-gate.md.
+  ui-sonar-gate:
+    if: always()
+    needs: [ui-coverage-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Sonar quality gate
+        if: ${{ needs.ui-coverage-tests.result == 'success' && github.event_name == 'pull_request_target' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "No Sonar token available — skipping gate."
+            exit 0
+          fi
+          API="https://sonarcloud.io/api/qualitygates/project_status?projectKey=open-metadata-ui&pullRequest=${PR_NUMBER}"
+          # The scan is asynchronous: SonarCloud queues the report after the
+          # scanner exits, so poll rather than reading the status once.
+          for i in $(seq 1 20); do
+            BODY=$(curl -sS -u "${SONAR_TOKEN}:" "$API" || true)
+            STATUS=$(echo "$BODY" | jq -r '.projectStatus.status // "UNKNOWN"')
+            echo "attempt $i: $STATUS"
+            case "$STATUS" in
+              OK|NONE)
+                echo "Sonar quality gate passed ($STATUS)."
+                exit 0 ;;
+              ERROR)
+                echo "$BODY" | jq -r '.projectStatus.conditions[] | select(.status=="ERROR") | "  ✖ \(.metricKey): \(.actualValue) (threshold \(.errorThreshold))"'
+                echo "Sonar quality gate FAILED on new code. Legacy debt is never in scope — fix what this PR added."
+                exit 1 ;;
+            esac
+            sleep 15
+          done
+          echo "Sonar quality gate did not report in time — not blocking the PR."
+
+      - name: Not applicable
+        if: ${{ needs.ui-coverage-tests.result != 'success' || github.event_name != 'pull_request_target' }}
+        run: echo "Sonar gate not evaluated (no UI changes, or not a pull request)."
