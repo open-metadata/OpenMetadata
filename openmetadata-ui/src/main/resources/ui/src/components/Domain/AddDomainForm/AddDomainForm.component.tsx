@@ -13,6 +13,7 @@
 import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { omit } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import {
@@ -41,7 +42,7 @@ import {
 import {
   FieldKind,
   IntakeForm,
-  RequiredField,
+  IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
 import {
@@ -51,6 +52,20 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { searchQuery } from '../../../rest/searchAPI';
+import { formatTeamsResponse } from '../../../utils/APIUtils';
+import { getRandomColor } from '../../../utils/ColorUtils';
+import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
+import domainClassBase from '../../../utils/Domain/DomainClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
+import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
+import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import tagClassBase from '../../../utils/TagClassBase';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import GlossaryTermTreeSelect from '../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import {
   domainTypeTooltipDataRender,
   iconTooltipDataRender,
@@ -64,7 +79,204 @@ import {
 } from '../../common/IconPicker';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
-import { AddDomainFormProps } from './AddDomainForm.interface';
+import {
+  AddDomainFormProps,
+  DomainFormSelectItem,
+  DomainFormValues,
+} from './AddDomainForm.interface';
+import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
+import { getExtensionPropertyNameFromFormKey } from './AddDomainFormExtensionFields.utils';
+
+export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
+  name: '',
+  displayName: '',
+  description: '',
+  color: '',
+  iconURL: '',
+  coverImage: null,
+  tags: [],
+  glossaryTerms: [],
+  owners: [],
+  experts: [],
+  reviewers: [],
+  domainType: null,
+  domains: undefined,
+  dataProductType: null,
+  visibility: null,
+  portfolioPriority: null,
+  extension: {},
+  extensionDefinitions: {},
+  extensionFormValues: {},
+};
+
+const isFormSelectItem = (value: unknown): value is DomainFormSelectItem =>
+  typeof value === 'object' &&
+  value !== null &&
+  'id' in value &&
+  'value' in value;
+
+const unwrapSelectItemValue = (raw: unknown): unknown => {
+  if (Array.isArray(raw)) {
+    return raw.map((item) => (isFormSelectItem(item) ? item.value : item));
+  }
+  if (isFormSelectItem(raw)) {
+    return raw.value;
+  }
+
+  return raw;
+};
+
+const normalizeExtensionForApi = (
+  extension: Record<string, unknown> | undefined,
+  definitions?: Record<string, CustomProperty>,
+  extensionFormValues?: Record<string, unknown>
+): Record<string, unknown> | undefined => {
+  if (!extension && !extensionFormValues) {
+    return extension;
+  }
+  const rawValues = { ...extension };
+  Object.entries(extensionFormValues ?? {}).forEach(([formKey, raw]) => {
+    rawValues[getExtensionPropertyNameFromFormKey(formKey)] = raw;
+  });
+  const normalized: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(rawValues)) {
+    const value = definitions?.[key]
+      ? serializeExtensionValue(definitions[key], raw)
+      : unwrapSelectItemValue(raw);
+    if (value !== undefined) {
+      normalized[key] = value;
+    }
+  }
+
+  return normalized;
+};
+
+export const transformDomainFormData = (
+  formData: DomainFormValues,
+  type: DomainFormType,
+  parentDomain?: Domain
+): CreateDomain | CreateDataProduct => {
+  const tags = formData.tags.map((item) => item.value as TagLabel);
+  const expertsList = formData.experts.map(
+    (item) => item.value as EntityReference
+  );
+  const ownersList = formData.owners.map(
+    (item) => item.value as EntityReference
+  );
+  const reviewersList = formData.reviewers.map(
+    (item) => item.value as EntityReference
+  );
+
+  const updatedData = omit(
+    formData,
+    'color',
+    'iconURL',
+    'glossaryTerms',
+    'tags',
+    'owners',
+    'experts',
+    'reviewers',
+    'domains',
+    'domainType',
+    'dataProductType',
+    'visibility',
+    'portfolioPriority',
+    'extensionDefinitions',
+    'extensionFormValues'
+  );
+  const style: { color?: string; iconURL?: string } = {};
+  if (formData.color) {
+    style.color = formData.color;
+  }
+  if (formData.iconURL) {
+    style.iconURL = formData.iconURL;
+  }
+
+  const data: CreateDomain | CreateDataProduct = {
+    ...updatedData,
+    domainType: (formData.domainType?.value as DomainType) ?? undefined,
+    experts: expertsList.map((item) => item.name ?? ''),
+    extension: normalizeExtensionForApi(
+      formData.extension,
+      formData.extensionDefinitions,
+      formData.extensionFormValues
+    ),
+    owners: ownersList,
+    style,
+    tags: [...tags, ...formData.glossaryTerms],
+  } as CreateDomain | CreateDataProduct;
+
+  if (type === DomainFormType.DATA_PRODUCT) {
+    const dataProduct = data as CreateDataProduct;
+    const domainRef = formData.domains?.value as EntityReference | undefined;
+    if (domainRef?.fullyQualifiedName) {
+      dataProduct.domains = [domainRef.fullyQualifiedName];
+    } else if (parentDomain?.fullyQualifiedName) {
+      dataProduct.domains = [parentDomain.fullyQualifiedName];
+    }
+    if (formData.dataProductType?.value) {
+      dataProduct.dataProductType = formData.dataProductType
+        .value as DataProductType;
+    }
+    if (formData.visibility?.value) {
+      dataProduct.visibility = formData.visibility.value as Visibility;
+    }
+    if (formData.portfolioPriority?.value) {
+      dataProduct.portfolioPriority = formData.portfolioPriority
+        .value as PortfolioPriority;
+    }
+    dataProduct.reviewers = reviewersList;
+  } else {
+    delete (data as CreateDomain & { domains?: unknown }).domains;
+  }
+
+  return data;
+};
+
+const createTagLabel = ({
+  description,
+  displayName,
+  name,
+  source,
+  style,
+  tagFQN,
+}: {
+  description?: string;
+  displayName?: string;
+  name?: string;
+  source: TagSource;
+  style?: TagLabel['style'];
+  tagFQN: string;
+}): TagLabel => ({
+  description,
+  displayName,
+  labelType: LabelType.Manual,
+  name,
+  source,
+  state: State.Confirmed,
+  style,
+  tagFQN,
+});
+
+const mapTagLabelToOption = (tagLabel: TagLabel): DomainFormSelectItem => ({
+  id: tagLabel.tagFQN,
+  label:
+    getTagDisplay(tagLabel.displayName || tagLabel.name) || tagLabel.tagFQN,
+  supportingText: tagLabel.displayName || tagLabel.name,
+  icon: tagLabel.style?.color ? (
+    <Dot size="sm" style={{ color: tagLabel.style.color }} />
+  ) : undefined,
+  value: tagLabel,
+});
+
+const mapEntityReferenceToOption = (
+  reference: EntityReference
+): DomainFormSelectItem => ({
+  id: reference.id,
+  label: getEntityName(reference),
+  supportingText: reference.fullyQualifiedName || reference.type,
+  value: reference,
+});
 
 const AddDomainForm = ({
   isFormInDialog,
@@ -82,6 +294,7 @@ const AddDomainForm = ({
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
   );
+  const [customPropertiesLoaded, setCustomPropertiesLoaded] = useState(false);
 
   const isDataProduct = type === DomainFormType.DATA_PRODUCT;
   const isDomain =
@@ -127,18 +340,30 @@ const AddDomainForm = ({
     let cancelled = false;
     if (!targetEntityType) {
       setCustomProperties([]);
+      setCustomPropertiesLoaded(true);
 
       return;
     }
-    getCustomPropertiesByEntityType(targetEntityType)
+    setCustomPropertiesLoaded(false);
+    const entityTypeApiName =
+      targetEntityType === TargetEntityType.DataProduct
+        ? 'dataProduct'
+        : targetEntityType === TargetEntityType.Domain
+        ? 'domain'
+        : 'glossaryTerm';
+    getCustomPropertiesByEntityType(entityTypeApiName)
       .then((props) => {
         if (!cancelled) {
           setCustomProperties(props ?? []);
+          setCustomPropertiesLoaded(true);
         }
       })
       .catch((err) => {
         if (!cancelled) {
           setCustomProperties([]);
+          setCustomPropertiesLoaded(true);
+          // Silently empty custom properties would let the designer render
+          // without required extension fields — surface the failure instead.
           showErrorToast(err);
         }
       });
@@ -148,50 +373,57 @@ const AddDomainForm = ({
     };
   }, [targetEntityType]);
 
-  const isCustomRequiredField = (field: RequiredField) =>
-    field.fieldKind === FieldKind.CustomProperty ||
-    field.fieldPath.startsWith('extension.');
+  useEffect(() => {
+    form.setValue(
+      'extensionDefinitions',
+      Object.fromEntries(
+        customProperties.map((definition) => [definition.name, definition])
+      ),
+      {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: false,
+      }
+    );
+  }, [customProperties, form]);
 
+  // Map of native fieldPath → IntakeFormField so applyIntakeFormRequired can
+  // consult the admin-configured errorMessage / fieldLabel when injecting
+  // the required rule below. A Set of paths isn't enough because the rule
+  // message needs the per-field metadata from the intake form.
   const nativeRequiredFieldsByPath = useMemo(() => {
-    const map = new Map<string, RequiredField>();
-    (intakeForm?.requiredFields ?? []).forEach((rf: RequiredField) => {
-      if (!isCustomRequiredField(rf)) {
-        map.set(rf.fieldPath, rf);
+    const map = new Map<string, IntakeFormField>();
+    getIntakeFormFields(intakeForm).forEach((field) => {
+      const isCustom =
+        field.fieldKind === FieldKind.CustomProperty ||
+        field.fieldPath.startsWith('extension.');
+      if (field.required && !isCustom) {
+        map.set(field.fieldPath, field);
       }
     });
 
     return map;
   }, [intakeForm]);
 
-  const extensionRequiredFields = useMemo<RequiredField[]>(
-    () =>
-      (intakeForm?.requiredFields ?? []).filter((rf) =>
-        isCustomRequiredField(rf)
-      ),
-    [intakeForm]
-  );
+  const extensionFormFields = useMemo<IntakeFormField[]>(() => {
+    return getIntakeFormFields(intakeForm).filter(
+      (field) =>
+        field.fieldKind === FieldKind.CustomProperty ||
+        field.fieldPath.startsWith('extension.')
+    );
+  }, [intakeForm]);
 
-  const applyIntakeFormRequired = useCallback(
-    (field: FieldProp): FieldProp => {
-      const rf = nativeRequiredFieldsByPath.get(field.name as string);
-      let result = field;
-      if (rf) {
-        const message =
-          rf.errorMessage ||
-          t('label.field-required', { field: rf.fieldLabel });
-        result = {
-          ...field,
-          required: true,
-          rules: [...(field.rules ?? []), { required: true, message }],
-        };
-      }
+  const domainTypeOptions = Object.keys(DomainType).map((key) => {
+    const domainTypeValue = DomainType[key as keyof typeof DomainType];
 
-      return result;
-    },
-    [nativeRequiredFieldsByPath, t]
-  );
+    return {
+      label: domainTypeValue,
+      id: domainTypeValue,
+      value: domainTypeValue,
+    };
+  });
 
-  const dataProductTypeOptions = useMemo(
+  const dataProductTypeOptions = useMemo<DomainFormSelectItem[]>(
     () =>
       Object.values(DataProductType).map((value) => ({
         label: t(DATA_PRODUCT_TYPE_LABEL_KEYS[value]),
@@ -524,81 +756,36 @@ const AddDomainForm = ({
     }),
   };
 
-  const extensionFields: FieldProp[] = useMemo(
-    () =>
-      extensionRequiredFields.map((rf): FieldProp => {
-        const propertyName = rf.fieldPath.startsWith('extension.')
-          ? rf.fieldPath.substring('extension.'.length)
-          : rf.fieldPath;
-        const definition = customProperties.find(
-          (cp) => cp.name === propertyName
-        );
-        const propertyTypeName = definition?.propertyType?.name ?? 'string';
-        const config = definition?.customPropertyConfig?.config;
-        const requiredMessage =
-          rf.errorMessage ||
-          t('label.field-required', { field: rf.fieldLabel });
-        const baseField: FieldProp = {
-          name: ['extension', propertyName],
-          id: `root/extension/${propertyName}`,
-          label: rf.fieldLabel,
-          required: true,
-          placeholder: rf.fieldLabel,
-          rules: [{ required: true, message: requiredMessage }],
-          props: { 'data-testid': `extension-${propertyName}` },
-          type: FieldTypes.TEXT_MUI,
-        };
+  const descriptionRequiredRule = useMemo(
+    () => ({
+      required:
+        intakeFormRequiredMessage('description') ??
+        t('label.field-required', { field: t('label.description') }),
+    }),
+    [intakeFormRequiredMessage, t]
+  );
 
-        let result = baseField;
-        if (propertyTypeName === 'enum') {
-          const enumConfig = config as
-            | { values?: string[]; multiSelect?: boolean }
-            | undefined;
-          result = {
-            ...baseField,
-            type: FieldTypes.SELECT_MUI,
-            props: {
-              'data-testid': `extension-${propertyName}`,
-              options: (enumConfig?.values ?? []).map((value) => ({
-                label: value,
-                value,
-              })),
-              multiple: enumConfig?.multiSelect,
-            },
-          };
-        } else if (
-          propertyTypeName === 'integer' ||
-          propertyTypeName === 'number'
-        ) {
-          result = { ...baseField, type: FieldTypes.NUMBER };
-        } else if (
-          propertyTypeName === 'entityReference' ||
-          propertyTypeName === 'entityReferenceList'
-        ) {
-          const allowedTypes = Array.isArray(config)
-            ? (config as string[])
-            : [];
-          const isUserOnly =
-            allowedTypes.length === 1 && allowedTypes[0] === 'user';
-          result = {
-            ...baseField,
-            type: FieldTypes.USER_TEAM_SELECT_MUI,
-            props: {
-              'data-testid': `extension-${propertyName}`,
-              userOnly: isUserOnly,
-              multipleUser: propertyTypeName === 'entityReferenceList',
-              label: rf.fieldLabel,
-            },
-            formItemProps: {
-              valuePropName: 'value',
-              trigger: 'onChange',
-            },
-          };
-        }
+  const glossaryTermsRequiredRule = useMemo(() => {
+    const message = intakeFormRequiredMessage('glossaryTerms');
 
-        return result;
-      }),
-    [extensionRequiredFields, customProperties, t]
+    return message ? { required: message } : undefined;
+  }, [intakeFormRequiredMessage]);
+
+  const handleSubmit = useCallback(
+    (data: DomainFormValues) => {
+      const { extensionDefinitions, extensionFormValues, ...submittedData } =
+        data;
+
+      return onSubmit({
+        ...submittedData,
+        extension: normalizeExtensionForApi(
+          data.extension,
+          extensionDefinitions,
+          extensionFormValues
+        ),
+      });
+    },
+    [onSubmit]
   );
 
   const createPermission = useMemo(
@@ -730,22 +917,18 @@ const AddDomainForm = ({
           </div>
         </>
       )}
-      <div className="m-t-xss">
-        {getField(applyIntakeFormRequired(ownerField))}
-      </div>
-      <div className="m-t-xss">
-        {getField(applyIntakeFormRequired(expertsField))}
-      </div>
-      {isDataProduct && (
-        <div className="m-t-xss">
-          {getField(applyIntakeFormRequired(reviewersField))}
-        </div>
+
+      <div>{getField(ownersField)}</div>
+      <div>{getField(expertsField)}</div>
+      {isDataProduct && <div>{getField(reviewersField)}</div>}
+
+      {customPropertiesLoaded && (
+        <AddDomainFormExtensionFields
+          control={form.control}
+          customProperties={customProperties}
+          formFields={extensionFormFields}
+        />
       )}
-      {extensionFields.map((field) => (
-        <div className="m-t-xss" key={field.id}>
-          {getField(field)}
-        </div>
-      ))}
 
       {!isFormInDialog && (
         <Space
