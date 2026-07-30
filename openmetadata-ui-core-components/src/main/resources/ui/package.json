@@ -74,7 +74,7 @@
     "ui-checkstyle:changed": "bash scripts/ui-checkstyle-changed.sh",
     "i18n": "sync-i18n --files 'src/locale/languages/*.json' --primary en-us --space 2 --fn",
     "check-i18n": "yarn i18n --check",
-    "check-i18n-keys": "node scripts/i18n-extract-check.js",
+    "check-i18n-keys": "node scripts/i18n-extract-check.cjs",
     "check-locale-parity": "node scripts/check-locale-parity.js",
     "check-i18n-all": "yarn check-i18n && yarn check-i18n-keys && yarn check-locale-parity"
   },
