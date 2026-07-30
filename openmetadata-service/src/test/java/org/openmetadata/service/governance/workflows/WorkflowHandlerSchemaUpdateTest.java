@@ -32,6 +32,8 @@ import static org.mockito.Mockito.when;
 
 import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import javax.sql.DataSource;
 import org.flowable.common.engine.api.FlowableWrongDbException;
@@ -40,7 +42,11 @@ import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
+import org.flowable.engine.RuntimeService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.repository.ProcessDefinition;
+import org.flowable.engine.repository.ProcessDefinitionQuery;
+import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.job.api.Job;
 import org.flowable.job.api.TimerJobQuery;
 import org.junit.jupiter.api.AfterEach;
@@ -472,6 +478,85 @@ class WorkflowHandlerSchemaUpdateTest {
       WorkflowHandler.getInstance().deploy(workflow);
 
       verify(managementService).deleteJob(entitySpecificTimer.getId());
+    }
+  }
+
+  @Test
+  void deploymentCleanupSkipsPreservedDefinitionsBetweenPages() throws Exception {
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    RepositoryService repositoryService = mock(RepositoryService.class);
+    ManagementService managementService = mock(ManagementService.class, RETURNS_DEEP_STUBS);
+    RuntimeService runtimeService = mock(RuntimeService.class);
+    ProcessDefinitionQuery processDefinitionQuery = mock(ProcessDefinitionQuery.class);
+    ProcessDefinition preservedDefinition = mock(ProcessDefinition.class);
+    ProcessDefinition deletableDefinition = mock(ProcessDefinition.class);
+    ProcessInstanceQuery preservedInstanceQuery = mock(ProcessInstanceQuery.class);
+    ProcessInstanceQuery deletableInstanceQuery = mock(ProcessInstanceQuery.class);
+    ProcessInstanceQuery postCleanupInstanceQuery = mock(ProcessInstanceQuery.class);
+    List<Integer> requestedOffsets = new ArrayList<>();
+
+    when(mockEngine.getRepositoryService()).thenReturn(repositoryService);
+    when(mockEngine.getManagementService()).thenReturn(managementService);
+    when(mockEngine.getRuntimeService()).thenReturn(runtimeService);
+    when(repositoryService.createProcessDefinitionQuery()).thenReturn(processDefinitionQuery);
+    when(processDefinitionQuery.processDefinitionKey("approval"))
+        .thenReturn(processDefinitionQuery);
+    when(processDefinitionQuery.orderByProcessDefinitionVersion())
+        .thenReturn(processDefinitionQuery);
+    when(processDefinitionQuery.asc()).thenReturn(processDefinitionQuery);
+    when(processDefinitionQuery.listPage(any(Integer.class), any(Integer.class)))
+        .thenAnswer(
+            invocation -> {
+              requestedOffsets.add(invocation.getArgument(0));
+              return requestedOffsets.size() == 1
+                  ? List.of(preservedDefinition, deletableDefinition)
+                  : List.of();
+            });
+    when(preservedDefinition.getId()).thenReturn("preserved");
+    when(deletableDefinition.getId()).thenReturn("deletable");
+    when(deletableDefinition.getDeploymentId()).thenReturn("deployment");
+    when(runtimeService.createProcessInstanceQuery())
+        .thenReturn(preservedInstanceQuery, deletableInstanceQuery, postCleanupInstanceQuery);
+    when(preservedInstanceQuery.processDefinitionId("preserved"))
+        .thenReturn(preservedInstanceQuery);
+    when(preservedInstanceQuery.list())
+        .thenReturn(List.of(mock(org.flowable.engine.runtime.ProcessInstance.class)));
+    when(deletableInstanceQuery.processDefinitionId("deletable"))
+        .thenReturn(deletableInstanceQuery);
+    when(deletableInstanceQuery.list()).thenReturn(List.of());
+    when(postCleanupInstanceQuery.processDefinitionId("deletable"))
+        .thenReturn(postCleanupInstanceQuery);
+    when(postCleanupInstanceQuery.list()).thenReturn(List.of());
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignored =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignoredEngines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), true);
+      Method cleanupMethod =
+          WorkflowHandler.class.getDeclaredMethod(
+              "drainOldDeploymentsForKey",
+              RepositoryService.class,
+              ManagementService.class,
+              String.class,
+              boolean.class);
+      cleanupMethod.setAccessible(true);
+      cleanupMethod.invoke(
+          WorkflowHandler.getInstance(), repositoryService, managementService, "approval", false);
+
+      assertEquals(List.of(0, 1), requestedOffsets);
     }
   }
 

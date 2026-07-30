@@ -576,14 +576,7 @@ public class WorkflowHandler {
     }
   }
 
-  /**
-   * Drain accumulated ACT_RE_* rows for a given workflow key in bounded pages so a large backlog
-   * does not turn a single deploy into a multi-minute stall. Pages of {@link #CLEANUP_BATCH_SIZE}
-   * are pulled oldest-first; each candidate is deleted only when it has zero running instances,
-   * preserving in-flight work. When a page yields no deletions the offset advances past the
-   * protected rows; otherwise the offset is held so the freshly-shrunk backlog surfaces next
-   * candidates on the following fetch. Loop terminates when a page returns empty.
-   */
+  /** Drains inactive Flowable deployments for a workflow key in bounded pages. */
   private void drainOldDeploymentsForKey(
       RepositoryService repositoryService,
       ManagementService managementService,
@@ -600,9 +593,12 @@ public class WorkflowHandler {
       if (batch.isEmpty()) {
         break;
       }
-      int deletedInBatch = drainBatch(batch, repositoryService, runtimeService, managementService);
-      if (deletedInBatch == 0) {
+      DeploymentCleanupResult cleanupResult =
+          drainBatch(batch, repositoryService, runtimeService, managementService);
+      if (cleanupResult.deleted() == 0) {
         offset += batch.size();
+      } else {
+        offset += cleanupResult.preserved();
       }
     }
   }
@@ -613,17 +609,14 @@ public class WorkflowHandler {
     return useKeyLike ? query.processDefinitionKeyLike(key + "%") : query.processDefinitionKey(key);
   }
 
-  private int drainBatch(
+  private DeploymentCleanupResult drainBatch(
       List<ProcessDefinition> batch,
       RepositoryService repositoryService,
       RuntimeService runtimeService,
       ManagementService managementService) {
     int deleted = 0;
+    int preserved = 0;
     for (ProcessDefinition pd : batch) {
-      // Use .list().isEmpty() rather than .count() to match the semantics the pre-existing
-      // cleanup (line 442) established as safe. Flowable's count() can diverge from list() in
-      // edge cases (unregistered process definitions in the deployment cache); mirroring list()
-      // guarantees a procdef with any active execution is preserved.
       List<ProcessInstance> running =
           runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
       if (running.isEmpty()) {
@@ -639,10 +632,14 @@ public class WorkflowHandler {
               pd.getKey(),
               e.getMessage());
         }
+      } else {
+        preserved++;
       }
     }
-    return deleted;
+    return new DeploymentCleanupResult(deleted, preserved);
   }
+
+  private record DeploymentCleanupResult(int deleted, int preserved) {}
 
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
