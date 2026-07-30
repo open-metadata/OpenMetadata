@@ -9,6 +9,13 @@
     "records-aria-label": "Records",
     "records-label": "Records"
   },
+  "table": {
+    "action": {
+      "copy-link": "Copy link",
+      "delete": "Delete",
+      "edit": "Edit"
+    }
+  },
   "tree": {
     "loading": "Loading…"
   }
