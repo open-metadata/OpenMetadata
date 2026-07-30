@@ -262,11 +262,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 * 1000
             )
             statuses: List[PipelineStatus] = []
+            seen_start_times = set()
 
             for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
                 run = DBRun(**run)
                 if run.start_time and run.start_time < cutoff_ts:
                     break
+                # OpenMetadata keys a pipeline status by its timestamp, so it can
+                # store only one status per start_time. Databricks' inclusive
+                # `start_time_to` pagination returns boundary runs more than once;
+                # skip already-seen start_times so the bulk upsert does not receive
+                # duplicate-timestamp rows (which the Postgres ON CONFLICT rejects).
+                if run.start_time in seen_start_times:
+                    continue
+                seen_start_times.add(run.start_time)
                 task_status = [
                     TaskStatus(
                         name=str(task.name),
