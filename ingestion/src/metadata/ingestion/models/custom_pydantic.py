@@ -37,8 +37,12 @@ SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
 
 # model_rebuild() deletes __pydantic_core_schema__/__pydantic_validator__/__pydantic_serializer__
-# before regenerating them, so concurrent first uses of the same class can observe the inherited
-# MockValSer or lose the delete race outright ("AttributeError: __pydantic_core_schema__").
+# before regenerating them, and says so itself: "as model_rebuild() isn't thread-safe, concurrent
+# model instantiations can lead to the parent validator being used". Two ways that bites us. A
+# first build only deletes the core schema, since the validator and serializer mocks are skipped
+# by pydantic's isinstance(..., MockValSer) guard, so a racing thread loses the delete outright
+# ("AttributeError: __pydantic_core_schema__"). A force rebuild of an already built class deletes
+# the real objects, so a racing thread falls through the MRO onto PydanticBaseModel's own mocks.
 # Reentrant because building one schema can rebuild the nested models it references.
 _MODEL_REBUILD_LOCK = threading.RLock()
 
@@ -78,11 +82,12 @@ class BaseModel(PydanticBaseModel):
         but a FilterPattern object is required in the generated code.
         """
         # Build the schema of a model the first time one is instantiated. With
-        # defer_build a nested model's schema only ever gets inlined into its parent,
-        # so the class itself keeps the MockValSer it inherits from pydantic.BaseModel.
-        # Serialization fallbacks read type(value).__pydantic_serializer__ straight off
-        # the class, which does not go through MockValSer.__getattr__ and so never
-        # triggers its lazy rebuild; pydantic-core then fails to convert the mock with
+        # defer_build a nested model's schema only ever gets inlined into its parent, so
+        # the class keeps the MockValSer that pydantic put on it in place of a real
+        # serializer (see _mock_val_ser.set_model_mocks). Serialization fallbacks read
+        # type(value).__pydantic_serializer__ straight off the class, which does not go
+        # through MockValSer.__getattr__ and so never triggers its lazy rebuild;
+        # pydantic-core then fails to convert the mock with
         # "'MockValSer' object cannot be converted to 'SchemaSerializer'". Building here
         # keeps the import-time saving, since importing a module instantiates nothing.
         # _parent_namespace_depth=0: forward refs must resolve against the model's own
