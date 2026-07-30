@@ -346,7 +346,8 @@ test.describe('Explore Assets Discovery', () => {
     await page.keyboard.press('Escape');
     await page
       .getByTestId('drop-down-menu')
-      .getByTestId(ownerSearchText).waitFor({ state: 'detached' })
+      .getByTestId(ownerSearchText)
+      .waitFor({ state: 'detached' });
 
     // The domain should be visible in the domains filter when the deleted switch is on
     const domainSearchText = domain.responseData.displayName.toLowerCase();
@@ -386,7 +387,8 @@ test.describe('Explore Assets Discovery', () => {
 
     await page
       .getByTestId('drop-down-menu')
-      .getByTestId(domainSearchText).waitFor({ state: 'detached' })
+      .getByTestId(domainSearchText)
+      .waitFor({ state: 'detached' });
 
     // Only the table option should be visible for the data assets filter when the deleted switch is on
     // with the owner and domain filter applied
