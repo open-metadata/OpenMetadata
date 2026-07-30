@@ -1,0 +1,11 @@
+# Compose override used ONLY by CI's prepare-playwright-fixture job when a
+# previously-built ingestion image has been restored from the actions cache
+# and `docker load`ed. Mapping the ingestion service to that pre-loaded image
+# tag lets `docker compose up -d --no-build` start the container directly,
+# skipping the ~5-minute image compile. When OM_INGESTION_IMAGE_TAG is unset
+# (fresh cold-cache runs, local dev), this file is not layered in at all —
+# the base compose file's `build:` continues to work unchanged.
+services:
+  ingestion:
+    image: ${OM_INGESTION_IMAGE_TAG}
+    pull_policy: never

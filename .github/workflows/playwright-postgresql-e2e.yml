@@ -761,6 +761,48 @@ jobs:
           : > "$RUNNER_TEMP/fixture-timings/run_local_docker_phases.tsv"
           echo "OM_TIMING_LOG=$RUNNER_TEMP/fixture-timings/run_local_docker_phases.tsv" >> "$GITHUB_ENV"
 
+      # Try to short-circuit `docker compose build` by restoring the ingestion
+      # image tar built by a previous successful run with the same ingestion
+      # fingerprint. When we hit here, `run_local_docker.sh` skips the ~5-min
+      # image compile and just `docker compose up -d --no-build`s the container.
+      # Miss is fine — the cold path builds and populates the cache below.
+      - name: Restore built ingestion image
+        id: restore-fixture-ingestion
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.INGESTION_CACHE_DIR }}
+          key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
+
+      - name: Load restored ingestion image
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' && steps.restore-fixture-ingestion.outputs.cache-hit == 'true' }}
+        env:
+          EXPECTED_FINGERPRINT: ${{ needs.cache-keys.outputs.ingestion }}
+        run: |
+          image_tar="$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst"
+          if [[ ! -s "$image_tar" ]]; then
+            echo "Restored ingestion cache dir has no image tar — cold build will run"
+            exit 0
+          fi
+          if ! .github/scripts/validate_playwright_ingestion_image.sh "$image_tar" "$EXPECTED_FINGERPRINT"; then
+            echo "Restored ingestion image failed validation — cold build will run"
+            rm -rf "$INGESTION_CACHE_DIR"
+            exit 0
+          fi
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          zstd -dc "$image_tar" | docker image load
+          tag=$(jq -r .image "${image_tar%.tar.zst}.manifest.json")
+          if [[ -z "$tag" || "$tag" == "null" ]] || ! docker image inspect "$tag" >/dev/null 2>&1; then
+            echo "Loaded ingestion image tag missing — cold build will run"
+            exit 0
+          fi
+          echo "OM_INGESTION_IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "OM_SKIP_INGESTION_BUILD=true" >> "$GITHUB_ENV"
+          echo "Loaded pre-built ingestion image: $tag"
+
       - name: Prepare seeded environment
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -870,7 +912,12 @@ jobs:
       - name: Snapshot PostgreSQL and OpenSearch
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
         env:
-          CREATE_INGESTION_IMAGE: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
+          # Save the ingestion image tar whenever we rebuilt the fixture, not
+          # just when the current run needs airflow. That way the NEXT run
+          # (with the same ingestion fingerprint) can restore + docker load
+          # it in "Load restored ingestion image" above and skip the ~5-min
+          # docker build, even if this run happened not to require airflow.
+          CREATE_INGESTION_IMAGE: ${{ needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         run: |
           if ! command -v zstd >/dev/null 2>&1; then
             sudo apt-get update
@@ -891,7 +938,7 @@ jobs:
             "${{ needs.cache-keys.outputs.fixture }}"
 
       - name: Validate generated ingestion image
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         run: |
           .github/scripts/validate_playwright_ingestion_image.sh \
             "$INGESTION_CACHE_DIR/playwright-ingestion-image.tar.zst" \
@@ -906,7 +953,7 @@ jobs:
           key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Save ingestion image cache
-        if: ${{ needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@v5
         with:

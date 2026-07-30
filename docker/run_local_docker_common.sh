@@ -467,20 +467,48 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    om_phase_start "docker_build"
-    echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
-    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}"
-    build_rc=$?
-    om_phase_end
-    if [ $build_rc -ne 0 ]; then
-      echo "Failed to build Docker images!"
-      exit 1
-    fi
+    # Fast path: CI's prepare-playwright-fixture restored a previously-built
+    # ingestion image from the actions cache and `docker load`ed it. Layer
+    # in the fixture-cache compose override (which maps the ingestion service
+    # to that pre-loaded tag) and build only the non-ingestion services —
+    # postgres, execute-migrate-all, openmetadata-server — so compose's own
+    # "image exists → skip build" logic uses the pre-loaded ingestion tag.
+    if [[ "${OM_SKIP_INGESTION_BUILD:-false}" == "true" ]] \
+       && [[ -n "${OM_INGESTION_IMAGE_TAG:-}" ]] \
+       && docker image inspect "$OM_INGESTION_IMAGE_TAG" >/dev/null 2>&1; then
+      echo "Using pre-loaded ingestion image: $OM_INGESTION_IMAGE_TAG (skipping ingestion image build)"
+      COMPOSE_ARGS+=(-f "docker/development/docker-compose-fixture-cache.yml")
+      export OM_INGESTION_IMAGE_TAG
 
-    om_phase_start "docker_up"
-    docker compose "${COMPOSE_ARGS[@]}" up -d
-    up_rc=$?
-    om_phase_end
+      om_phase_start "docker_build"
+      docker compose "${COMPOSE_ARGS[@]}" build "$DB_SERVICE" execute-migrate-all openmetadata-server
+      build_rc=$?
+      om_phase_end
+      if [ $build_rc -ne 0 ]; then
+        echo "Failed to build Docker images!"
+        exit 1
+      fi
+
+      om_phase_start "docker_up"
+      docker compose "${COMPOSE_ARGS[@]}" up -d
+      up_rc=$?
+      om_phase_end
+    else
+      om_phase_start "docker_build"
+      echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
+      docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}"
+      build_rc=$?
+      om_phase_end
+      if [ $build_rc -ne 0 ]; then
+        echo "Failed to build Docker images!"
+        exit 1
+      fi
+
+      om_phase_start "docker_up"
+      docker compose "${COMPOSE_ARGS[@]}" up -d
+      up_rc=$?
+      om_phase_end
+    fi
   else
     om_phase_start "docker_build"
     echo "Building services without ingestion"
