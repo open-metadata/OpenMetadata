@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1748 endpoints** across 73 resource packages · 1738 carry a summary.
+**1750 endpoints** across 73 resource packages · 1740 carry a summary.
 
 ## (root)
 
@@ -748,6 +748,8 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/dataQuality/testCases/search/list` | List test cases using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | List the test case failure statuses |
 | `POST` | `/v1/dataQuality/testCases/testCaseIncidentStatus` | Create a new test case failure status |
+| `PUT` | `/v1/dataQuality/testCases/testCaseIncidentStatus/bulk` | Bulk create test case failure statuses |
+| `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/incidentGroups` | List open incident counts grouped by a dimension |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/search/list` | List test case resolution status using search service |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/{stateId}` | Get test case failure statuses for a sequence id |
 | `GET` | `/v1/dataQuality/testCases/testCaseIncidentStatus/{id}` | Get test case failure status by id |
