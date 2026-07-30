@@ -15,8 +15,8 @@ import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { isArray, isEmpty, pick } from 'lodash';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import {
+  ConfigType,
   CreateIngestionPipeline,
-  FluffyType as ConfigType,
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';

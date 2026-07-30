@@ -27,7 +27,7 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
 import {
   CreateIngestionPipeline,
-  FluffyType as ConfigType,
+  ConfigType,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
