@@ -19,9 +19,9 @@ constraints on (fk_name, table_name) so columns from different tables are not
 merged into one constraint attached to the wrong table.
 """
 
-from unittest import TestCase
 from unittest.mock import Mock
 
+import pytest
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
 
 from metadata.ingestion.source.database.snowflake.utils import (
@@ -53,70 +53,91 @@ def _fk_row(
     return row
 
 
-class SnowflakeForeignKeyCollisionTest(TestCase):
-    def setUp(self):
-        self.dialect = SnowflakeDialect()
-        self.dialect.normalize_name = lambda x: x
-        self.dialect.denormalize_name = lambda x: x
-        self.dialect.default_schema_name = "PUBLIC"
-        self.dialect._current_database_schema = lambda *args, **kwargs: ("DRP", "PUBLIC")
-        self.mock_connection = Mock()
+@pytest.fixture
+def reflect_foreign_keys():
+    """Return a callable reflecting the given `SHOW IMPORTED KEYS` rows into a per-table constraint map."""
+    dialect = SnowflakeDialect()
+    dialect.normalize_name = lambda x: x
+    dialect.denormalize_name = lambda x: x
+    dialect.default_schema_name = "PUBLIC"
+    dialect._current_database_schema = lambda *args, **kwargs: ("DRP", "PUBLIC")
+    connection = Mock()
 
-    def _run(self, rows):
-        self.mock_connection.execute = Mock(return_value=rows)
+    def _reflect(rows):
+        connection.execute = Mock(return_value=rows)
 
-        return get_schema_foreign_keys(self.dialect, self.mock_connection, "SAMPLE_DATA")
+        return get_schema_foreign_keys(dialect, connection, "SAMPLE_DATA")
 
-    def test_same_constraint_name_on_cloned_tables_does_not_merge(self):
-        """A shared fk_name across two tables must yield two separate constraints."""
-        rows = [
-            _fk_row("SYS_FK", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
-            _fk_row("SYS_FK", "SUPPLIER", "S_NATIONKEY", "NATION", "N_NATIONKEY"),
-        ]
+    return _reflect
 
-        result = self._run(rows)
 
-        assert set(result.keys()) == {"CUSTOMER", "SUPPLIER"}
-        assert result["CUSTOMER"][0]["constrained_columns"] == ["C_NATIONKEY"]
-        assert result["SUPPLIER"][0]["constrained_columns"] == ["S_NATIONKEY"]
+def test_same_constraint_name_on_cloned_tables_does_not_merge(reflect_foreign_keys):
+    """A shared fk_name across two tables must yield two separate constraints."""
+    rows = [
+        _fk_row("SYS_FK", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
+        _fk_row("SYS_FK", "SUPPLIER", "S_NATIONKEY", "NATION", "N_NATIONKEY"),
+    ]
 
-    def test_supplier_column_never_leaks_into_customer(self):
-        """Regression: CUSTOMER must not acquire SUPPLIER's S_NATIONKEY column."""
-        rows = [
-            _fk_row("SYS_FK", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
-            _fk_row("SYS_FK", "SUPPLIER", "S_NATIONKEY", "NATION", "N_NATIONKEY"),
-        ]
+    result = reflect_foreign_keys(rows)
 
-        result = self._run(rows)
+    assert set(result.keys()) == {"CUSTOMER", "SUPPLIER"}
+    assert result["CUSTOMER"][0]["constrained_columns"] == ["C_NATIONKEY"]
+    assert result["SUPPLIER"][0]["constrained_columns"] == ["S_NATIONKEY"]
 
-        assert "S_NATIONKEY" not in result["CUSTOMER"][0]["constrained_columns"]
 
-    def test_multi_column_foreign_key_on_single_table_still_groups(self):
-        """A genuine composite FK on one table keeps grouping its columns together."""
-        rows = [
-            _fk_row("PARTSUPP_FK", "PARTSUPP", "PS_PARTKEY", "PART", "P_PARTKEY"),
-            _fk_row("PARTSUPP_FK", "PARTSUPP", "PS_SUPPKEY", "SUPPLIER", "S_SUPPKEY"),
-        ]
+def test_supplier_column_never_leaks_into_customer(reflect_foreign_keys):
+    """Regression: CUSTOMER must not acquire SUPPLIER's S_NATIONKEY column."""
+    rows = [
+        _fk_row("SYS_FK", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
+        _fk_row("SYS_FK", "SUPPLIER", "S_NATIONKEY", "NATION", "N_NATIONKEY"),
+    ]
 
-        result = self._run(rows)
+    result = reflect_foreign_keys(rows)
 
-        assert list(result.keys()) == ["PARTSUPP"]
-        constraint = result["PARTSUPP"][0]
-        assert constraint["constrained_columns"] == ["PS_PARTKEY", "PS_SUPPKEY"]
-        assert constraint["referred_columns"] == ["P_PARTKEY", "S_SUPPKEY"]
+    assert "S_NATIONKEY" not in result["CUSTOMER"][0]["constrained_columns"]
 
-    def test_distinct_constraints_on_same_table_are_kept_separate(self):
-        """Different fk_names on the same table remain two constraints."""
-        rows = [
-            _fk_row("FK_NATION", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
-            _fk_row("FK_REGION", "CUSTOMER", "C_REGIONKEY", "REGION", "R_REGIONKEY"),
-        ]
 
-        result = self._run(rows)
+def test_collision_split_is_independent_of_row_order(reflect_foreign_keys):
+    """Which colliding row arrives first must not change either table's columns."""
+    rows = [
+        _fk_row("SYS_FK", "SUPPLIER", "S_NATIONKEY", "NATION", "N_NATIONKEY"),
+        _fk_row("SYS_FK", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
+    ]
 
-        assert list(result.keys()) == ["CUSTOMER"]
-        constrained = {c["name"]: c["constrained_columns"] for c in result["CUSTOMER"]}
-        assert constrained == {
-            "FK_NATION": ["C_NATIONKEY"],
-            "FK_REGION": ["C_REGIONKEY"],
-        }
+    result = reflect_foreign_keys(rows)
+
+    assert result["CUSTOMER"][0]["constrained_columns"] == ["C_NATIONKEY"]
+    assert result["SUPPLIER"][0]["constrained_columns"] == ["S_NATIONKEY"]
+
+
+def test_multi_column_foreign_key_on_single_table_still_groups(reflect_foreign_keys):
+    """A genuine composite FK on one table keeps grouping its columns together."""
+    rows = [
+        _fk_row("LINEITEM_FK_PARTSUPP", "LINEITEM", "L_PARTKEY", "PARTSUPP", "PS_PARTKEY"),
+        _fk_row("LINEITEM_FK_PARTSUPP", "LINEITEM", "L_SUPPKEY", "PARTSUPP", "PS_SUPPKEY"),
+    ]
+
+    result = reflect_foreign_keys(rows)
+
+    assert list(result.keys()) == ["LINEITEM"]
+    constraint = result["LINEITEM"][0]
+    assert constraint["constrained_columns"] == ["L_PARTKEY", "L_SUPPKEY"]
+    assert constraint["referred_columns"] == ["PS_PARTKEY", "PS_SUPPKEY"]
+    assert constraint["referred_table"] == "PARTSUPP"
+
+
+def test_distinct_constraints_on_same_table_are_kept_separate(reflect_foreign_keys):
+    """Different fk_names on the same table remain two constraints."""
+    rows = [
+        _fk_row("FK_NATION", "CUSTOMER", "C_NATIONKEY", "NATION", "N_NATIONKEY"),
+        _fk_row("FK_REGION", "CUSTOMER", "C_REGIONKEY", "REGION", "R_REGIONKEY"),
+    ]
+
+    result = reflect_foreign_keys(rows)
+
+    assert list(result.keys()) == ["CUSTOMER"]
+    constrained = {c["name"]: c["constrained_columns"] for c in result["CUSTOMER"]}
+    assert constrained == {
+        "FK_NATION": ["C_NATIONKEY"],
+        "FK_REGION": ["C_REGIONKEY"],
+    }
