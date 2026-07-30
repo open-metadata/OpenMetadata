@@ -163,6 +163,27 @@ function determineField(fieldName) {
   return fieldName;
 }
 
+/**
+ * Strips parameters the user has not filled in yet. `JSON.stringify` drops `undefined` values, so
+ * a clause built from them collapses to `{"term":{}}` — which Elasticsearch and OpenSearch both
+ * reject outright, failing the whole search rather than the one incomplete row.
+ *
+ * @param {object} parameters - The DSL parameters built for a single rule
+ * @returns {object|undefined} - The entered parameters, or undefined when the rule is incomplete
+ * @private
+ */
+function definedParameters(parameters) {
+  if (!parameters) {
+    return undefined;
+  }
+
+  const entered = Object.entries(parameters).filter(
+    ([, parameter]) => parameter !== undefined
+  );
+
+  return entered.length ? Object.fromEntries(entered) : undefined;
+}
+
 function buildParameters(
   queryType,
   value,
@@ -774,6 +795,19 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     return undefined;
   } // rule is not fully entered
 
+  // A row the user has half-filled (field and operator picked, nothing typed) carries a value
+  // list of undefined. Building from it yields a bodiless clause such as `{"term":{}}` once
+  // JSON.stringify drops the undefined, and both Elasticsearch and OpenSearch reject that
+  // outright — failing the whole search instead of ignoring the one incomplete row. Operators
+  // with no value at all (is_null and friends) carry an empty list and stay valid.
+  if (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((entry) => entry === undefined)
+  ) {
+    return undefined;
+  }
+
   if (
     (operator === 'between' || operator === 'not_between') &&
     (!Array.isArray(value) ||
@@ -900,19 +934,24 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     parameters = buildParameters(queryType, value, op, actualFieldName, config);
   }
 
+  const enteredParameters = definedParameters(parameters);
+  if (!enteredParameters) {
+    return undefined;
+  } // rule is not fully entered
+
   // Build the main query
   let mainQuery;
   if (not) {
     mainQuery = {
       bool: {
         must_not: {
-          [queryType]: { ...parameters },
+          [queryType]: { ...enteredParameters },
         },
       },
     };
   } else {
     mainQuery = {
-      [queryType]: { ...parameters },
+      [queryType]: { ...enteredParameters },
     };
   }
 
@@ -1002,16 +1041,20 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
 
         return {
           bool: {
-            [useAndLogic ? 'must' : 'should']: value[0].map((val) =>
-              buildEsRule(
-                field,
-                [val],
-                operator,
-                extendedConfig,
-                valueSrc,
-                syntax
+            // An option the user has not picked yet yields no rule; keeping the hole would
+            // serialize to a null clause, which the search engines reject.
+            [useAndLogic ? 'must' : 'should']: value[0]
+              .map((val) =>
+                buildEsRule(
+                  field,
+                  [val],
+                  operator,
+                  extendedConfig,
+                  valueSrc,
+                  syntax
+                )
               )
-            ),
+              .filter((rule) => rule !== undefined),
           },
         };
       } else {

@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -99,6 +100,58 @@ class PersonaContextBuilderTest {
     assertEquals(1, empty.at("/query/bool/filter").size());
     assertThrows(
         IllegalArgumentException.class, () -> PersonaContextBuilder.activeEntityFilter("[]"));
+  }
+
+  @Test
+  void activeEntityFilterDropsHalfBuiltQueryBuilderClauses() {
+    var pruned =
+        JsonUtils.readTree(
+            PersonaContextBuilder.activeEntityFilter(
+                "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{}}]}}]}}}"));
+
+    assertEquals(false, pruned.at("/query/bool/filter/0/term/deleted").asBoolean());
+    assertEquals(0, pruned.at("/query/bool/filter/1/bool/must/0/bool/should").size());
+  }
+
+  @Test
+  void activeEntityFilterDropsARuleWhoseOnlyClauseIsHalfBuilt() {
+    var pruned =
+        JsonUtils.readTree(PersonaContextBuilder.activeEntityFilter("{\"query\":{\"range\":{}}}"));
+
+    assertEquals(1, pruned.at("/query/bool/filter").size());
+  }
+
+  @Test
+  void activeEntityFilterKeepsClausesThatAreValidWithoutABody() {
+    var pruned =
+        JsonUtils.readTree(
+            PersonaContextBuilder.activeEntityFilter(
+                "{\"query\":{\"bool\":{\"must_not\":[{\"match_all\":{}}]}}}"));
+
+    assertTrue(pruned.at("/query/bool/filter/1/bool/must_not/0").has("match_all"));
+  }
+
+  @Test
+  void searchSurfacesTheUnderlyingSearchFailureWithItsCause() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    PersonaContextBuilder builder = new PersonaContextBuilder(persona(), repository);
+    ContextRule rule = new ContextRule().withName("Knowledge Articles").withEntityType(Entity.PAGE);
+    IOException failure = new IOException("Failed to parse query filter: boom");
+    when(repository.listWithDeepPagination(
+            anyString(),
+            nullable(String.class),
+            anyString(),
+            any(String[].class),
+            any(SearchSortFilter.class),
+            anyInt(),
+            nullable(Object[].class)))
+        .thenThrow(failure);
+
+    ServiceUnavailableException thrown =
+        assertThrows(ServiceUnavailableException.class, () -> builder.search(rule));
+
+    assertSame(failure, thrown.getCause());
+    assertTrue(thrown.getMessage().contains("Knowledge Articles"));
   }
 
   @Test

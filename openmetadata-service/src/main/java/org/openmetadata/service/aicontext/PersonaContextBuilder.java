@@ -16,7 +16,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -115,6 +119,11 @@ public class PersonaContextBuilder {
           ContextSection.ARTICLES,
           ContextSection.METRICS);
   private static final Set<String> KEYWORD_SORT_ENTITY_TYPES = Set.of("testCase", "user", "team");
+
+  /** Query clauses the search engines accept with an empty body; every other one is unparseable. */
+  private static final Set<String> BODILESS_QUERY_CLAUSES =
+      Set.of("bool", "match_all", "match_none");
+
   private static final String[] SEARCH_FIELDS = {
     "id",
     "name",
@@ -263,14 +272,15 @@ public class PersonaContextBuilder {
         }
       }
     } catch (IOException | RuntimeException exception) {
-      ServiceUnavailableException unavailable =
-          new ServiceUnavailableException(
-              "Failed to evaluate persona context rule '"
-                  + rule.getName()
-                  + "': "
-                  + exception.getMessage());
-      unavailable.initCause(exception);
-      throw unavailable;
+      // ServiceUnavailableException(String) already fixes the cause to null, so initCause() on it
+      // always throws IllegalStateException and swallows the real failure.
+      throw new ServiceUnavailableException(
+          "Failed to evaluate persona context rule '"
+              + rule.getName()
+              + "': "
+              + exception.getMessage(),
+          Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
+          exception);
     }
     return new RuleSearchResult(matched, documents);
   }
@@ -282,7 +292,8 @@ public class PersonaContextBuilder {
       if (parsedFilter == null || !parsedFilter.isObject()) {
         throw new IllegalArgumentException("Persona context queryFilter must be a JSON object");
       }
-      requestedFilter = parsedFilter.has("query") ? parsedFilter.get("query") : parsedFilter;
+      requestedFilter =
+          prunedFilter(parsedFilter.has("query") ? parsedFilter.get("query") : parsedFilter);
     }
     List<Object> filters = new ArrayList<>();
     filters.add(Map.of("term", Map.of("deleted", false)));
@@ -290,6 +301,50 @@ public class PersonaContextBuilder {
       filters.add(requestedFilter);
     }
     return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("filter", filters))));
+  }
+
+  /**
+   * Drops the bodiless clauses the Explore query builder emits for a half-filled rule — a row with
+   * a field and an operator but no value serializes to {@code {"term":{}}}, which both search
+   * engines reject outright and which would otherwise fail every rule evaluation. Treating such a
+   * clause as "no constraint" mirrors how the query builder itself renders an incomplete row.
+   */
+  static JsonNode prunedFilter(JsonNode filter) {
+    JsonNode pruned = filter;
+    if (filter != null && filter.isArray()) {
+      pruned = prunedClauseList(filter);
+    } else if (filter != null && filter.isObject()) {
+      pruned = prunedClause(filter);
+    }
+    return pruned;
+  }
+
+  private static JsonNode prunedClauseList(JsonNode clauses) {
+    ArrayNode kept = JsonNodeFactory.instance.arrayNode();
+    for (JsonNode clause : clauses) {
+      JsonNode pruned = prunedFilter(clause);
+      if (!pruned.isObject() || !pruned.isEmpty()) {
+        kept.add(pruned);
+      }
+    }
+    return kept;
+  }
+
+  private static JsonNode prunedClause(JsonNode clause) {
+    ObjectNode kept = JsonNodeFactory.instance.objectNode();
+    for (Map.Entry<String, JsonNode> property : clause.properties()) {
+      JsonNode pruned = prunedFilter(property.getValue());
+      if (carriesConstraint(property.getKey(), pruned)) {
+        kept.set(property.getKey(), pruned);
+      }
+    }
+    return kept;
+  }
+
+  private static boolean carriesConstraint(String clauseName, JsonNode clauseBody) {
+    return !clauseBody.isObject()
+        || !clauseBody.isEmpty()
+        || BODILESS_QUERY_CLAUSES.contains(clauseName);
   }
 
   public static RulePreview preview(ContextRule rule) {

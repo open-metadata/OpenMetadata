@@ -150,3 +150,47 @@ describe('elasticSearchFormat – extension dateTime field range operators (Issu
     expect(result).toContain('"lte":"2024-12-31"');
   });
 });
+
+describe('elasticSearchFormat – rules that are not fully entered', () => {
+  // A row with a field and an operator but no value used to serialize to `{"term":{}}`, which
+  // both Elasticsearch and OpenSearch reject outright ("Unexpected JSON event 'END_OBJECT'
+  // instead of 'KEY_NAME'"), failing every search that carried the filter.
+  it('should drop a rule whose value has not been entered yet', () => {
+    const result = elasticSearchFormat(
+      makeTree('equal', [undefined]),
+      configWithNumberType
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should not emit a bodiless clause for a half-entered rule inside a group', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('select_equals', [undefined]), {
+        ...configWithNumberType,
+      }) ?? null
+    );
+
+    expect(result).not.toMatch(/:\{\}/);
+  });
+
+  it('should drop unentered options from a multiselect rule instead of emitting nulls', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      ) ?? null
+    );
+
+    expect(result).not.toContain('null');
+  });
+
+  it('should still build a rule once the value is entered', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(makeTree('equal', [7]), configWithNumberType)
+    );
+
+    expect(result).toContain('7');
+    expect(result).not.toMatch(/:\{\}/);
+  });
+});
