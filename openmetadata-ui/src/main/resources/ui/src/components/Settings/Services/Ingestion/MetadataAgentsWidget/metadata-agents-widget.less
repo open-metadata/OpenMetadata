@@ -17,13 +17,13 @@
   background-color: var(--tw-color-bg-primary);
   border-color: @grey-15;
   border-radius: @border-rad-sm;
-  padding: 0px;
+  padding: 0;
 
   & > .ant-card-body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 0px;
+    padding: 0;
 
     &::before,
     &::after {
@@ -35,24 +35,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
+    padding: var(--om-space-10);
     border: 1px solid @grey-15;
-    border-radius: 18px;
+    border-radius: var(--om-radius-18);
     height: fit-content;
   }
 
   .metadata-agents-widget-table {
-    margin-bottom: 0px;
+    margin-bottom: 0;
     .table-container {
       border: none;
-      border-radius: 0px 0px @border-rad-sm @border-rad-sm;
+      border-radius: var(--om-radius-none) var(--om-radius-none) @border-rad-sm @border-rad-sm;
     }
     .ant-table {
       table > tbody > tr:last-child > td {
         border-bottom: none;
       }
       tr > td:first-child.name-column {
-        padding-left: 16px;
+        padding-left: var(--om-space-16);
       }
     }
   }

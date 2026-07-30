@@ -20,7 +20,7 @@
 }
 .pagination-header-text {
   color: @grey-700 !important;
-  font-weight: 500 !important;
+  font-weight: var(--om-font-weight-medium) !important;
 }
 .column-detail-panel-vertical-nav {
   width: 70px;
@@ -29,19 +29,19 @@
 .column-panel-alert-wrapper {
   .ant-alert {
     min-height: 48px;
-    padding: 8px 12px;
-    border-radius: 6px;
+    padding: var(--om-space-8) var(--om-space-12);
+    border-radius: var(--om-radius-md);
 
     .ant-alert-icon {
       display: flex;
       align-items: center;
-      margin-right: 8px;
+      margin-right: var(--om-space-8);
     }
 
     #alert-icon {
-      padding: 4px;
+      padding: var(--om-space-4);
       border-width: 2px;
-      font-size: 16px;
+      font-size: var(--om-font-size-md);
     }
 
     .ant-alert-description {
@@ -58,7 +58,7 @@
     position: relative;
   }
   .ant-drawer-header {
-    padding: 8px;
+    padding: var(--om-space-8);
     padding-bottom: 0;
 
     .ant-drawer-header-title {
@@ -87,10 +87,10 @@
     .data-type-chip {
       width: fit-content;
       border: 1px solid @blue-30;
-      border-radius: 16px;
+      border-radius: var(--om-radius-2xl);
       color: @grey-700;
-      padding: 4px 8px;
-      font-size: 10px;
+      padding: var(--om-space-4) var(--om-space-8);
+      font-size: var(--om-font-size-10);
       background-color: @blue-29;
       height: 20px;
     }
@@ -98,16 +98,16 @@
       display: flex;
       flex-direction: column;
       height: auto;
-      padding: 16px 12px;
-      padding-top: 8px;
-      border-radius: 6px;
+      padding: var(--om-space-16) var(--om-space-12);
+      padding-top: var(--om-space-8);
+      border-radius: var(--om-radius-md);
       overflow: hidden;
 
       background-color: @grey-9;
 
       .entity-title-link {
-        font-size: 16px;
-        font-weight: 600;
+        font-size: var(--om-font-size-md);
+        font-weight: var(--om-font-weight-semibold);
         color: @grey-900;
         text-decoration: none;
         min-width: 0;
@@ -154,7 +154,7 @@
       background: @grey-50;
       overflow: hidden;
       border-radius: 0;
-      margin-left: 8px;
+      margin-left: var(--om-space-8);
       .ant-card-body {
         padding: 0;
         height: 100%;

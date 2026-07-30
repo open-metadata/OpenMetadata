@@ -6804,4 +6804,63 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         result.getContractExecutionStatus(),
         "Empty rule should be treated as a failed semantics check");
   }
+
+  /**
+   * Regression guard for the 1.13.0 defect where {@code dataContract} was added to
+   * FIELDS_STORED_AS_RELATIONSHIPS on TestSuite but the reverse edge {@code
+   * testSuite CONTAINS dataContract} was never persisted on create. Symptom: contract validations
+   * with quality expectations stayed at Running forever because
+   * TestSuiteRepository.onTestSuiteExecutionComplete guards on testSuite.getDataContract() != null.
+   * Fix: DataContractRepository.postCreateOrUpdate now writes the reverse relationship.
+   *
+   * <p>Assertion: after creating a contract with qualityExpectations, fetching the logical
+   * TestSuite with {@code fields=dataContract} must return the DataContract EntityReference.
+   */
+  @Test
+  void testDataContractCreatesReverseTestSuiteRelationship(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    org.openmetadata.schema.tests.TestCase testCase =
+        SdkClients.adminClient()
+            .testCases()
+            .create(
+                new org.openmetadata.schema.api.tests.CreateTestCase()
+                    .withName(ns.prefix("qe_tc"))
+                    .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+                    .withTestDefinition("tableRowCountToBeBetween")
+                    .withParameterValues(
+                        List.of(
+                            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                                .withName("minValue")
+                                .withValue("0"),
+                            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                                .withName("maxValue")
+                                .withValue("100"))));
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_reverse_rel"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(testCase.getEntityReference()))
+            .withDescription("Guard: reverse testSuite -> dataContract relationship is stored");
+
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+
+    org.openmetadata.schema.tests.TestSuite testSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .get(contract.getTestSuite().getId().toString(), "dataContract");
+
+    assertNotNull(
+        testSuite.getDataContract(),
+        "TestSuite.dataContract must be populated so onTestSuiteExecutionComplete can flip the "
+            + "contract status when the pipeline finishes");
+    assertEquals(
+        contract.getId(),
+        testSuite.getDataContract().getId(),
+        "TestSuite.dataContract must point back at the owning contract");
+  }
 }
