@@ -109,6 +109,29 @@ class TestGetSqlStatementCustomTable:
 
         assert "CONVERT(argument USING utf8mb4) `query_text`" in sql
 
+    def test_general_log_converts_argument_in_exclusion_filters(self):
+        """`argument` is a MEDIUMBLOB on MySQL 5.7+, so the OpenMetadata/dbt
+        exclusion predicates must compare against the converted column too.
+        See issue #28029."""
+        stub = _make_stub(
+            use_slow_logs=False,
+            query_history_table="audit_db.query_log_view",
+        )
+        sql = MysqlQueryParserSource.get_sql_statement(stub, START_TIME, END_TIME)
+
+        assert sql.count("CONVERT(argument USING utf8mb4) NOT LIKE") == 2
+
+    def test_general_log_never_reads_raw_argument_column(self):
+        """Guards every read of `argument`: stripping the converted form must
+        leave no bare reference behind. See issue #28029."""
+        stub = _make_stub(
+            use_slow_logs=False,
+            query_history_table="audit_db.query_log_view",
+        )
+        sql = MysqlQueryParserSource.get_sql_statement(stub, START_TIME, END_TIME)
+
+        assert "argument" not in sql.replace("CONVERT(argument USING utf8mb4)", "")
+
     def test_slow_log_uses_sql_text_column(self):
         stub = _make_stub(
             use_slow_logs=True,
