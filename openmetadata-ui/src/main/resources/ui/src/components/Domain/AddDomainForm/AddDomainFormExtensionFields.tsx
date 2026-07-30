@@ -1064,15 +1064,6 @@ const AddDomainFormExtensionFields = ({
 
   return (
     <Box data-testid="custom-properties-section" direction="col" gap={6}>
-      <Box className="tw:pt-2" direction="col" gap={3}>
-        <Typography
-          as="span"
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="semibold">
-          {t('label.custom-property-plural')}
-        </Typography>
-      </Box>
       {formFields.map((formField) => {
         const propertyName = getExtensionPropertyName(formField.fieldPath);
 
