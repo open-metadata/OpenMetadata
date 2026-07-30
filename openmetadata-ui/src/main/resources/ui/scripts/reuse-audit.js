@@ -29,7 +29,8 @@
  *
  * Escape hatch: append `reuse-audit-ignore` in a comment on the offending line.
  */
-const { execSync } = require('child_process');
+const fs = require('fs');
+const { execFileSync } = require('child_process');
 
 const C = {
   red: (s) => `\x1b[31m${s}\x1b[0m`,
@@ -37,11 +38,24 @@ const C = {
   gray: (s) => `\x1b[90m${s}\x1b[0m`,
 };
 
-function sh(cmd) {
+/**
+ * Arguments are passed as an array with no shell, so a path containing quotes
+ * or shell metacharacters is inert rather than interpolated into a command.
+ *
+ * A failure THROWS rather than degrading to an empty string. Swallowing it
+ * would make an unfetched base ref, a shallow clone or a bad BASE_SHA look
+ * like "no findings" — a gate reporting success when it never inspected the
+ * diff is worse than no gate.
+ */
+function git(args) {
   try {
-    return execSync(cmd, { encoding: 'utf8' });
+    return execFileSync('git', args, {
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+    });
   } catch (e) {
-    return e.stdout || '';
+    const detail = (e.stderr || e.message || '').trim().split('\n')[0];
+    throw new Error(`git ${args.join(' ')} failed: ${detail}`);
   }
 }
 
@@ -50,6 +64,11 @@ function sh(cmd) {
  * doubles) and query ARIA roles as selectors (`[role="tablist"]`). Auditing them
  * produced only false positives, so they are out of scope.
  */
+// Repo-root-relative, and passed with `:(top)` so the same pathspec resolves
+// identically whether git runs from the repo root (CI) or the UI app (local
+// script, agent hook). Without this the two call sites audit different trees.
+const UI_PATHSPEC = ':(top)openmetadata-ui/src/main/resources/ui/src';
+
 const EXCLUDED =
   /(\/playwright\/|\/__mocks__\/|\/src\/test\/|\.test\.tsx?$|\.spec\.tsx?$|\.mock\.|\.stories\.tsx?$)/;
 
@@ -61,9 +80,11 @@ const EXCLUDED =
 const RULES = [
   {
     id: 'aria-role',
-    // Negative lookbehind on '[' so CSS/testing selectors like `[role="menu"]`
-    // are not mistaken for a JSX attribute declaring a widget.
-    test: /(?<!\[)\brole=["'](listbox|combobox|menu|menuitem|tablist|tab|dialog|alertdialog|switch|radiogroup|progressbar|tooltip)["']/,
+    // Require whitespace or '<' immediately before `role`, so this matches a
+    // real JSX attribute and not `data-role="menu"` / `user-role="tab"` (a
+    // plain \b boundary matches after '-', since '-' is a non-word char) nor a
+    // CSS/testing selector like `[role="menu"]`.
+    test: /(?:^|[\s<])role=["'](listbox|combobox|menu|menuitem|tablist|tab|dialog|alertdialog|switch|radiogroup|progressbar|tooltip)["']/,
     use: (m) =>
       ({
         listbox: 'Select / MultiSelect',
@@ -78,7 +99,7 @@ const RULES = [
         radiogroup: 'RadioButtons',
         progressbar: 'ProgressIndicator',
         tooltip: 'Tooltip',
-      })[m[1]],
+      }[m[1]]),
     why: 'hand-rolled ARIA widget',
   },
   {
@@ -91,7 +112,7 @@ const RULES = [
         input: 'Input',
         select: 'Select',
         textarea: 'Textarea',
-      })[m[1]],
+      }[m[1]]),
     why: 'raw native control inside a component',
   },
   {
@@ -114,7 +135,19 @@ const RULES = [
  * a fresh component). Treat every line of an untracked file as added.
  */
 function untrackedAsAdded(pathspec) {
-  const out = sh(`git ls-files --others --exclude-standard -- ${pathspec}`);
+  // --full-name forces repo-root-relative paths regardless of cwd, matching the
+  // `+++ b/<path>` form from git diff. Without it the paths are cwd-relative and
+  // both the file read and the EXCLUDED/where matching are wrong when this runs
+  // from the UI app rather than the repo root.
+  const out = git([
+    'ls-files',
+    '--others',
+    '--exclude-standard',
+    '--full-name',
+    '--',
+    ...pathspec,
+  ]);
+  const root = git(['rev-parse', '--show-toplevel']).trim();
   const added = [];
   for (const file of out
     .split('\n')
@@ -123,7 +156,7 @@ function untrackedAsAdded(pathspec) {
     if (!/\.(ts|tsx)$/.test(file)) {
       continue;
     }
-    const body = sh(`cat '${file}'`);
+    const body = fs.readFileSync(`${root}/${file}`, 'utf8');
     body
       .split('\n')
       .forEach((text, i) => added.push({ file, lineNo: i + 1, text }));
@@ -132,7 +165,7 @@ function untrackedAsAdded(pathspec) {
 }
 
 function addedLines(diffArgs, pathspec) {
-  const out = sh(`git diff ${diffArgs} -U0 -- ${pathspec}`);
+  const out = git(['diff', ...diffArgs, '-U0', '--', ...pathspec]);
   const added = [];
   let file = null;
   let lineNo = 0;
@@ -181,8 +214,13 @@ function main() {
   const single = fileIdx !== -1 ? args[fileIdx + 1] : null;
   // A file the agent just wrote is unstaged, so compare against HEAD to catch
   // both staged and working-tree edits.
-  const diffArgs = single ? 'HEAD' : args[0] || '--cached';
-  const pathspec = single ? `'${single}'` : `'*.tsx' '*.ts'`;
+  const diffArgs = single ? ['HEAD'] : [args[0] || '--cached'];
+  // Scoped to the UI app rather than '*.tsx' repo-wide: the CI step and the
+  // local script run from different working directories, and a bare glob would
+  // make CI audit the whole repository while local audits only the UI.
+  const pathspec = single
+    ? [single]
+    : [`${UI_PATHSPEC}/**/*.tsx`, `${UI_PATHSPEC}/**/*.ts`];
 
   const hits = findings([
     ...addedLines(diffArgs, pathspec),
@@ -213,4 +251,16 @@ function main() {
   process.stdout.write(C.green('✔ No new hand-rolled components.\n'));
 }
 
-main();
+try {
+  main();
+} catch (e) {
+  // Fail loudly. "Could not inspect the diff" must never render as "clean".
+  process.stderr.write(
+    C.red(`\n✖ reuse-audit could not inspect the diff — refusing to pass.\n`) +
+      `  ${e.message}\n` +
+      C.gray(
+        `  Check the base ref is fetched (CI uses fetch-depth: 0) and that it exists locally.\n`
+      )
+  );
+  process.exit(1);
+}
