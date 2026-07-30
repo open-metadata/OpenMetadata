@@ -240,9 +240,24 @@ class RedshiftIamCredentialManager:
         return needs_refresh
 
     def _refresh(self) -> None:
-        credential = _get_redshift_iam_credentials(self._connection)
+        try:
+            credential = _get_redshift_iam_credentials(self._connection)
+        except Exception as exc:
+            # A proactive refresh (fired within the threshold) that fails must not fail
+            # a connection while the current credential is still valid; keep serving it
+            # and retry on the next connection.
+            if self._credential is not None and not self._is_expired():
+                logger.warning(f"Redshift IAM credential refresh failed ({exc}); reusing cached credential")
+                return
+            raise
+        expiration = credential.expiration
+        if expiration is not None and expiration.tzinfo is None:
+            expiration = expiration.replace(tzinfo=timezone.utc)
         self._credential = credential
-        self._expires_at = credential.expiration or (datetime.now(timezone.utc) + REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL)
+        self._expires_at = expiration or (datetime.now(timezone.utc) + REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL)
+
+    def _is_expired(self) -> bool:
+        return self._expires_at is None or self._expires_at <= datetime.now(timezone.utc)
 
 
 def _build_iam_engine(connection: RedshiftConnectionConfig) -> Engine:

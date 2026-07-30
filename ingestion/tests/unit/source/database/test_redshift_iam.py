@@ -24,6 +24,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import metadata.ingestion.source.database.redshift.connection as connection_module
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
@@ -34,6 +36,7 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
 from metadata.generated.schema.security.credentials.awsCredentials import (
     AWSCredentials,
 )
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.redshift.connection import (
     RedshiftIamCredentialManager,
     _build_iam_engine,
@@ -256,7 +259,60 @@ class TestRedshiftIamCredentialManager:
                 return manager.get_credentials()
 
             with ThreadPoolExecutor(max_workers=10) as executor:
-                results = [f.result() for f in [executor.submit(call) for _ in range(10)]]
+                futures = [executor.submit(call) for _ in range(10)]
+                results = [future.result() for future in futures]
 
             assert client.get_cluster_credentials.call_count == 1
             assert all(credential.password == "temp-pw" for credential in results)
+
+    def test_refresh_failure_reuses_still_valid_credential(self):
+        with patch.object(connection_module, "AWSClient") as mock_aws:
+            client = MagicMock()
+            client.get_cluster_credentials.side_effect = [
+                {"DbUser": "IAM:admin", "DbPassword": "pw-1", "Expiration": _future()},
+                Exception("transient AWS error"),
+            ]
+            mock_aws.return_value.get_redshift_client.return_value = client
+            manager = RedshiftIamCredentialManager(_iam_connection())
+
+            first = manager.get_credentials()
+            # Within the refresh window but not yet expired: the proactive refresh fires
+            # and fails, and the still-valid cached credential must be reused.
+            manager._expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=2)
+            second = manager.get_credentials()
+
+            assert client.get_cluster_credentials.call_count == 2
+            assert second is first
+
+    def test_refresh_failure_raises_when_credential_expired(self):
+        with patch.object(connection_module, "AWSClient") as mock_aws:
+            client = MagicMock()
+            client.get_cluster_credentials.side_effect = [
+                {"DbUser": "IAM:admin", "DbPassword": "pw-1", "Expiration": _future()},
+                Exception("transient AWS error"),
+            ]
+            mock_aws.return_value.get_redshift_client.return_value = client
+            manager = RedshiftIamCredentialManager(_iam_connection())
+
+            manager.get_credentials()
+            manager._expires_at = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=1)
+            with pytest.raises(SourceConnectionException):
+                manager.get_credentials()
+
+    def test_naive_expiration_is_normalized_to_utc(self):
+        with patch.object(connection_module, "AWSClient") as mock_aws:
+            client = MagicMock()
+            client.get_cluster_credentials.return_value = {
+                "DbUser": "IAM:admin",
+                "DbPassword": "temp-pw",
+                # tz-naive on purpose: the manager must normalize it to UTC
+                "Expiration": datetime.datetime.now() + datetime.timedelta(minutes=14),
+            }
+            mock_aws.return_value.get_redshift_client.return_value = client
+            manager = RedshiftIamCredentialManager(_iam_connection())
+
+            manager.get_credentials()
+
+            assert manager._expires_at.tzinfo is not None
+            # _needs_refresh subtracts a tz-aware "now"; this must not raise on a naive input.
+            assert manager._needs_refresh() is False
