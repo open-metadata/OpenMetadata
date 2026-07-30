@@ -1437,6 +1437,16 @@ test.describe(
       await expect(multiEnumInput).toBeVisible();
       await multiEnumInput.click();
       await page.getByRole('option', { name: 'blue', exact: true }).click();
+      // Wait for the 'blue' chip to confirm the selection processed, then
+      // press Escape to cleanly close any open dropdown before re-opening.
+      await expect(
+        page
+          .locator(
+            `[data-testid="extension-${dataProductProperties.multiEnum}"]`
+          )
+          .getByText('blue', { exact: true })
+      ).toBeVisible();
+      await page.keyboard.press('Escape');
       await multiEnumInput.click();
       await page.getByRole('option', { name: 'red', exact: true }).click();
       await page.keyboard.press('Escape');
