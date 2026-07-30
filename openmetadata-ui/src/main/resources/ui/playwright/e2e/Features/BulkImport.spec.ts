@@ -1150,14 +1150,21 @@ test.describe('Bulk Import Export', () => {
       });
 
       await test.step('allow multiple column selection using keyboard', async () => {
-        // click first cell of first row
+        const headerRow = page.locator('.rdg-header-row').first();
+        const firstHeaderCell = headerRow.locator('.rdg-cell').first();
         const firstRow = page.locator('.rdg-row').first();
         const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
 
-        // Press arrow up to go to header row
+        await firstCell.click();
+        // Wait for data cell focus before navigating — avoids ArrowUp firing
+        // into an unfocused grid and landing in the wrong row.
+        await expect(firstCell).toBeFocused();
+
         await page.keyboard.press('ArrowUp');
-        // press arrow right 3 times
+        // Wait for header focus before Shift+Right; without this, Shift+Right
+        // fires while still in the data row and selects only 1 row instead of all.
+        await expect(firstHeaderCell).toBeFocused();
+
         await page.keyboard.press('Shift+ArrowRight');
         await page.keyboard.press('Shift+ArrowRight');
 
@@ -1232,16 +1239,12 @@ test.describe('Bulk Import Export', () => {
       });
 
       await test.step('allow multiple cell selection using keyboard on rightDown and leftUp', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
-
-        // navigate to 4th row, second cell
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('ArrowDown');
+        const fourthRow = page.locator('.rdg-row').nth(3);
+        // Click the anchor cell directly instead of navigating via arrow keys —
+        // arrow chains (ArrowRight + ArrowDown×3) are unreliable under CI load.
+        const anchorCell = fourthRow.locator('.rdg-cell').nth(1);
+        await anchorCell.click();
+        await expect(anchorCell).toBeFocused();
 
         await page.keyboard.press('Shift+ArrowDown');
         await page.keyboard.press('Shift+ArrowDown');
@@ -1253,12 +1256,17 @@ test.describe('Bulk Import Export', () => {
           12
         );
 
-        // Select left up cells. Use delay so CI doesn't drop rapid key presses.
+        // Select up then left. Use delay so CI doesn't drop rapid key presses.
         await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
         await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
         await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
         await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
         await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
+
+        // Assert the count after Shift+Up chain before pressing Shift+Left — acts
+        // as a synchronization barrier so leftward presses start from a known state.
+        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(16);
+
         await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
         await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
 
