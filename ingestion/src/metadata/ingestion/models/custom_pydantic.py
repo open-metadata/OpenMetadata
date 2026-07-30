@@ -19,6 +19,7 @@ be self-sufficient with only pydantic at import time.
 import json
 import logging
 import os
+import threading
 from typing import Any, Callable, Dict, Literal, Optional, Union  # noqa: UP035
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -34,6 +35,12 @@ logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
 JSON_ENCODERS = "json_encoders"
+
+# model_rebuild() deletes __pydantic_core_schema__/__pydantic_validator__/__pydantic_serializer__
+# before regenerating them, so concurrent first uses of the same class can observe the inherited
+# MockValSer or lose the delete race outright ("AttributeError: __pydantic_core_schema__").
+# Reentrant because building one schema can rebuild the nested models it references.
+_MODEL_REBUILD_LOCK = threading.RLock()
 
 
 class BaseModel(PydanticBaseModel):
@@ -52,6 +59,18 @@ class BaseModel(PydanticBaseModel):
         defer_build=os.environ.get("OM_PYDANTIC_DEFER_BUILD", "true").lower() not in ("0", "false", "no", "off")
     )
 
+    @classmethod
+    def model_rebuild(cls, *, _parent_namespace_depth: int = 2, **kwargs: Any) -> Optional[bool]:  # noqa: UP045
+        """Rebuild the pydantic-core schema, serialising concurrent builds of the same class."""
+        # Every rebuild funnels through here, including pydantic's own lazy repair from
+        # MockValSer.__getattr__ (see _mock_val_ser.set_model_mocks), which is otherwise unguarded
+        # and races the same way whenever threads first validate a deferred model directly.
+        if _parent_namespace_depth > 0:
+            # This override adds a frame between the caller and pydantic's own parent-frame walk.
+            _parent_namespace_depth += 1
+        with _MODEL_REBUILD_LOCK:
+            return super().model_rebuild(_parent_namespace_depth=_parent_namespace_depth, **kwargs)
+
     def model_post_init(self, context: Any, /):
         """
         This function is used to parse the FilterPattern fields for the Connection classes.
@@ -68,6 +87,7 @@ class BaseModel(PydanticBaseModel):
         # keeps the import-time saving, since importing a module instantiates nothing.
         # _parent_namespace_depth=0: forward refs must resolve against the model's own
         # module, not against whichever frame happened to instantiate it.
+        # Checked before calling so the steady-state path never touches the rebuild lock.
         cls = type(self)
         if not cls.__pydantic_complete__:
             cls.model_rebuild(_parent_namespace_depth=0)

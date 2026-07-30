@@ -15,6 +15,9 @@ import os
 import pkgutil
 import subprocess
 import sys
+import threading
+
+from pydantic import ConfigDict
 
 import metadata.generated.schema as generated_schema
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -148,6 +151,56 @@ def test_deferred_nested_models_are_serializable():
     )
     assert result.returncode == 0, f"serialization probe failed:\n{result.stdout}\n{result.stderr}"
     assert result.stdout.strip().endswith("OK")
+
+
+def _make_deferred_family():
+    """Return (Parent, Nested) deferred models; Nested is only ever built via Parent's schema."""
+
+    class Nested(BaseModel):
+        model_config = ConfigDict(defer_build=True)
+
+        account: str | None = None
+
+    class Parent(BaseModel):
+        model_config = ConfigDict(defer_build=True)
+
+        nested: Nested | None = None
+
+    return Parent, Nested
+
+
+def test_concurrent_first_instantiation_is_safe():
+    """Threads racing a deferred model's first build never observe a half-rebuilt class."""
+    # Covers both rebuild routes at once: the parent is validated directly, so pydantic repairs it
+    # through MockValSer.attempt_rebuild, while the nested class is only ever reached via
+    # model_post_init. The delete-then-rebuild window is a handful of bytecodes, so force frequent
+    # switches instead of relying on the default 5ms interval.
+    original_interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    failures = []
+    try:
+        for _ in range(200):
+            parent_model, nested_model = _make_deferred_family()
+            assert parent_model.__pydantic_complete__ is False
+            assert nested_model.__pydantic_complete__ is False
+            barrier = threading.Barrier(8)
+
+            def work(parent: type = parent_model, gate: threading.Barrier = barrier):
+                try:
+                    gate.wait()
+                    parent.model_validate({"nested": {"account": "acct"}}).model_dump()
+                except Exception as exc:
+                    failures.append(repr(exc))
+
+            threads = [threading.Thread(target=work) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+    finally:
+        sys.setswitchinterval(original_interval)
+
+    assert not failures, f"concurrent first instantiation failed {len(failures)}x: {failures[:3]}"
 
 
 def test_defer_build_env_var_disables_it():
