@@ -26,6 +26,15 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
 
+  /**
+   * Restricts a ContextMemory listing to a single {@code shareConfig.visibility} value. Set ONLY by
+   * {@link org.openmetadata.service.jdbi3.ContextMemoryRepository#getReindexFilter()} so the search
+   * reindex indexes org-wide ({@code Entity}) memories only. Do NOT set this on the REST {@code
+   * /contextCenter/memories} listing — owners and shared principals must still read their own
+   * PRIVATE/SHARED memories there.
+   */
+  public static final String MEMORY_SEARCH_VISIBILITY_PARAM = "memorySearchVisibility";
+
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
@@ -93,6 +102,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
+    conditions.add(getMemorySearchVisibilityCondition());
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getPrimaryEntityCondition());
@@ -392,6 +402,25 @@ public class ListFilter extends Filter<ListFilter> {
         return String.format("json->>'agentType' IN (%s)", inCondition);
       }
     }
+  }
+
+  /**
+   * Restricts ContextMemory listings to a single {@code shareConfig.visibility}. Used only by the
+   * search-reindex reader/counter to index org-wide (ENTITY) memories and skip PRIVATE/SHARED ones,
+   * so the privacy boundary is enforced at index time. NOT applied to the REST {@code
+   * /contextCenter/memories} listing — owners must still read their own restricted memories there.
+   */
+  private String getMemorySearchVisibilityCondition() {
+    String visibility = queryParams.get(MEMORY_SEARCH_VISIBILITY_PARAM);
+    String condition = "";
+    if (!nullOrEmpty(visibility)) {
+      String bindPlaceholder = ":" + MEMORY_SEARCH_VISIBILITY_PARAM;
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder
+              : "json->'shareConfig'->>'visibility' = " + bindPlaceholder;
+    }
+    return condition;
   }
 
   public String getProviderCondition(String tableName) {

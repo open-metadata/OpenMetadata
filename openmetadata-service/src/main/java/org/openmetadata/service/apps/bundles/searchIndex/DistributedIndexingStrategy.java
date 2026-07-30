@@ -24,6 +24,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobSta
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.SearchIndexJob;
 import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.DefaultRecreateHandler;
@@ -160,13 +161,19 @@ public class DistributedIndexingStrategy {
 
     currentStats.set(stats);
 
-    boolean success =
+    boolean allPromoted =
         finalizeAllEntityReindex(
             stagedIndexHandler,
             stagedIndexContext,
             !stopped.get() && !hasIncompleteProcessing(stats));
 
     ExecutionResult.Status resultStatus = determineStatus(stats);
+    if (!allPromoted && resultStatus == ExecutionResult.Status.COMPLETED) {
+      LOG.error(
+          "Reindex finished but one or more staged indexes could not be promoted; reporting "
+              + "COMPLETED_WITH_ERRORS so the stale indexes are not treated as a clean rebuild");
+      resultStatus = ExecutionResult.Status.COMPLETED_WITH_ERRORS;
+    }
 
     StatsReconciler.reconcile(stats);
 
@@ -466,9 +473,8 @@ public class DistributedIndexingStrategy {
       String correctedType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
       if (!SearchIndexEntityTypes.isTimeSeriesEntity(correctedType)) {
-        return Entity.getEntityRepository(correctedType)
-            .getDao()
-            .listCount(new ListFilter(Include.ALL));
+        EntityRepository<?> repository = Entity.getEntityRepository(correctedType);
+        return repository.getDao().listCount(repository.getReindexFilter());
       } else {
         // Include.ALL to match PartitionCalculator.getTimeSeriesEntityCount — the two counts
         // must use identical filters or the job total and the partition plan drift apart.
