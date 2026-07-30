@@ -31,10 +31,12 @@ export interface ServicesOverview {
     data: ServiceSummary[];
     /**
      * Number of services per health state, nested under each service entity type, e.g.
-     * `{"databaseService": {"failed": 2, "success": 5}}`. Same filters as `counts`. Empty
-     * unless `includeHealth` is `true`. Always sums to `counts` for that entity type; note that
-     * health is resolved for at most 10000 services per type, and on a larger estate the
-     * unresolved remainder is reported as `notRun`.
+     * `{"databaseService": {"failed": 2, "success": 5}}`. Same filters as `counts`, and always
+     * sums to `counts` for that entity type. Empty unless `includeHealth` is `true`, and also
+     * empty when any requested service type holds more than 10000 services — the tally is
+     * omitted rather than approximated, while `data[*].health` remains exact at any size.
+     * Filtering by `health` is rejected in that case, since the list cannot be filtered without
+     * resolving every service.
      */
     healthCounts?: { [key: string]: { [key: string]: number } };
     /**

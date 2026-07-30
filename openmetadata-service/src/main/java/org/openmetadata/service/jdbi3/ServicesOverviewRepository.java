@@ -68,10 +68,14 @@ public class ServicesOverviewRepository {
   public ServicesOverview getOverview(SecurityContext securityContext, ServicesOverviewRequest r) {
     Map<String, Map<String, Integer>> byConnector = countsByConnector(securityContext, r);
     Map<String, Integer> counts = sumInner(byConnector);
-    Map<UUID, ServiceHealth> health = resolveHealth(securityContext, r, counts);
-    Map<String, Map<String, Integer>> byHealth = countsByHealth(securityContext, r, health, counts);
-    List<TypedKey> keys = listKeys(securityContext, r, health);
-    List<ServiceSummary> data = hydrate(slice(keys, r.offset(), r.limit()), health, r);
+    boolean universeResolvable = isUniverseResolvable(counts, r);
+    Map<UUID, ServiceHealth> universeHealth =
+        universeHealth(securityContext, r, universeResolvable);
+    Map<String, Map<String, Integer>> byHealth =
+        countsByHealth(securityContext, r, universeHealth, universeResolvable);
+    List<TypedKey> keys = listKeys(securityContext, r, universeHealth);
+    List<TypedKey> page = slice(keys, r.offset(), r.limit());
+    List<ServiceSummary> data = hydrate(page, pageHealth(r, page, universeHealth), r);
     int listTotal = listTotal(counts, byConnector, byHealth, keys, r);
     logOverview(r, counts, keys.size(), data.size());
     return new ServicesOverview()
@@ -108,13 +112,18 @@ public class ServicesOverviewRepository {
     return counts;
   }
 
+  /**
+   * Per-health-state counts, omitted entirely when the universe is too large to resolve. Omitting
+   * is deliberate: an approximate tally is indistinguishable from an exact one to the caller, and
+   * these numbers drive filter controls where a silently wrong count is worse than an absent one.
+   */
   private Map<String, Map<String, Integer>> countsByHealth(
       SecurityContext securityContext,
       ServicesOverviewRequest r,
       Map<UUID, ServiceHealth> health,
-      Map<String, Integer> counts) {
+      boolean universeResolvable) {
     Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
-    if (r.includeHealth()) {
+    if (r.includeHealth() && universeResolvable) {
       for (Map.Entry<String, List<TypedKey>> entry : universeKeys(securityContext, r).entrySet()) {
         result.put(entry.getKey(), tallyHealth(entry.getValue(), health));
       }
@@ -126,10 +135,10 @@ public class ServicesOverviewRepository {
    * Tallies health across a type's services.
    *
    * <p>The tally walks scanned keys, and that scan is bounded, whereas {@code counts} comes from an
-   * uncapped {@code GROUP BY}. Rather than let the two disagree, {@link #assertHealthIsResolvable}
-   * refuses the request before we get here — a service beyond the scan window has a real health
-   * state, and reporting it as anything else (including "not run") would be a wrong answer dressed
-   * up as a complete one.
+   * uncapped {@code GROUP BY}. Rather than let the two disagree, {@link #countsByHealth} omits the
+   * tally entirely when the universe is not resolvable — a service beyond the scan window has a
+   * real health state, and reporting it as anything else (including "not run") would be a wrong
+   * answer dressed up as a complete one.
    */
   private Map<String, Integer> tallyHealth(List<TypedKey> keys, Map<UUID, ServiceHealth> health) {
     Map<String, Integer> tally = new LinkedHashMap<>();
@@ -140,39 +149,55 @@ public class ServicesOverviewRepository {
     return tally;
   }
 
-  /**
-   * Health is derived by resolving every service in the counted universe, so it cannot be computed
-   * for a universe larger than the scan window. That is refused rather than approximated: an
-   * approximate health count is indistinguishable from an exact one to the caller, and this feeds
-   * filter controls and dashboards where a silently wrong number is worse than an error.
-   */
-  private void assertHealthIsResolvable(Map<String, Integer> counts) {
-    counts.forEach(
-        (entityType, count) -> {
-          if (count > ServicesOverviewRequest.MAX_WINDOW) {
-            throw new BadRequestException(
-                String.format(
-                    "Cannot compute health for %d %s services; at most %d per service type are "
-                        + "resolvable. Narrow the request with q, entityType or domain, or omit "
-                        + "includeHealth.",
-                    count, entityType, ServicesOverviewRequest.MAX_WINDOW));
-          }
-        });
-  }
-
   // ---------------------------------------------------------------- health
 
-  private Map<UUID, ServiceHealth> resolveHealth(
-      SecurityContext securityContext, ServicesOverviewRequest r, Map<String, Integer> counts) {
+  /**
+   * Whether health can be resolved for the whole counted universe.
+   *
+   * <p>Health is derived per service, so an aggregate over the universe costs one resolution per
+   * service and is therefore bounded. A single *page* is not — see {@link #pageHealth}. Splitting
+   * the two is what lets a large estate still get per-service health and a usable first page while
+   * only the genuinely universe-wide answers step aside.
+   */
+  private boolean isUniverseResolvable(Map<String, Integer> counts, ServicesOverviewRequest r) {
+    boolean resolvable =
+        counts.values().stream().noneMatch(count -> count > ServicesOverviewRequest.MAX_WINDOW);
+    if (!resolvable && !nullOrEmpty(r.healths())) {
+      throw new BadRequestException(
+          String.format(
+              "Cannot filter by health when a service type has more than %d services, because "
+                  + "health must be resolved for every service before the list can be filtered. "
+                  + "Narrow the request with q, entityType or domain.",
+              ServicesOverviewRequest.MAX_WINDOW));
+    }
+    return resolvable;
+  }
+
+  /** Health for every service in the universe — needed only by the tally and the health filter. */
+  private Map<UUID, ServiceHealth> universeHealth(
+      SecurityContext securityContext, ServicesOverviewRequest r, boolean universeResolvable) {
     Map<UUID, ServiceHealth> health = Map.of();
-    if (r.includeHealth()) {
-      assertHealthIsResolvable(counts);
+    if (r.includeHealth() && universeResolvable) {
       List<UUID> ids =
           universeKeys(securityContext, r).values().stream()
               .flatMap(List::stream)
               .map(TypedKey::id)
               .toList();
       health = healthProvider.healthByServiceId(ids);
+    }
+    return health;
+  }
+
+  /**
+   * Health for the returned page. Costs the same three batched queries whatever the estate size,
+   * because it resolves at most {@code limit} services — so {@code data[*].health} stays available
+   * and exact even when the universe-wide tally cannot be computed.
+   */
+  private Map<UUID, ServiceHealth> pageHealth(
+      ServicesOverviewRequest r, List<TypedKey> page, Map<UUID, ServiceHealth> universeHealth) {
+    Map<UUID, ServiceHealth> health = universeHealth;
+    if (r.includeHealth() && universeHealth.isEmpty() && !page.isEmpty()) {
+      health = healthProvider.healthByServiceId(page.stream().map(TypedKey::id).toList());
     }
     return health;
   }
