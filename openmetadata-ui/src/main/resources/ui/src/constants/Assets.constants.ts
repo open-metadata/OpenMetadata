@@ -29,10 +29,12 @@ import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.sv
 import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as AIFrameworkControl } from '../assets/svg/entity/ai-framework-control.svg';
+import { ReactComponent as AIGovernanceFramework } from '../assets/svg/entity/ai-governance-framework.svg';
 import { ReactComponent as AIGovernancePolicy } from '../assets/svg/entity/ai-governance-policy.svg';
 import { ReactComponent as APICollection } from '../assets/svg/entity/api-collection.svg';
 import { ReactComponent as APIEndpoint } from '../assets/svg/entity/api-endpoint.svg';
 import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
+import { ReactComponent as AuditReport } from '../assets/svg/entity/audit-report.svg';
 import { ReactComponent as Chart } from '../assets/svg/entity/chart.svg';
 import { ReactComponent as Classification } from '../assets/svg/entity/classification.svg';
 import { ReactComponent as Column } from '../assets/svg/entity/column.svg';
@@ -51,6 +53,7 @@ import { ReactComponent as DriveService } from '../assets/svg/entity/drive-servi
 import { ReactComponent as DynamicAgent } from '../assets/svg/entity/dynamic-agent.svg';
 import { ReactComponent as GlossaryTerm } from '../assets/svg/entity/glossary-term.svg';
 import { ReactComponent as Glossary } from '../assets/svg/entity/glossary.svg';
+import { ReactComponent as IngestionPipeline } from '../assets/svg/entity/ingestion-pipeline.svg';
 import { ReactComponent as LLMService } from '../assets/svg/entity/llm-service.svg';
 import { ReactComponent as Marketplace } from '../assets/svg/entity/marketplace.svg';
 import { ReactComponent as MCPService } from '../assets/svg/entity/mcp-service.svg';
@@ -262,6 +265,13 @@ export const NON_SERVICE_TYPE_ASSETS = [
   'dataObservability',
   'report',
   'testDefinition',
+  'aiGovernanceFramework',
+  'aiGovernancePolicy',
+  'aiFrameworkControl',
+  EntityType.MCP_SERVICE,
+  EntityType.LLM_SERVICE,
+  EntityType.AUDIT_REPORT,
+  EntityType.INGESTION_PIPELINE,
   EntityType.AI_APPLICATION,
   EntityType.LLM_MODEL,
   EntityType.MCP_SERVER,
@@ -299,6 +309,12 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-utility-success-50',
     borderClass: 'tw:border-utility-success-200',
     icon: Pipeline,
+  },
+  [EntityType.INGESTION_PIPELINE]: {
+    iconClass: 'tw:text-utility-success-600',
+    bgClass: 'tw:bg-utility-success-50',
+    borderClass: 'tw:border-utility-success-200',
+    icon: IngestionPipeline,
   },
   [EntityType.DATA_PRODUCT]: {
     iconClass: 'tw:text-utility-indigo-600',
@@ -594,6 +610,12 @@ export const ENTITY_ICON_MAPPER: Record<
     borderClass: 'tw:border-utility-blue-200',
     icon: AIGovernancePolicy,
   },
+  aiGovernanceFramework: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: AIGovernanceFramework,
+  },
   [EntityType.LLM_MODEL]: {
     iconClass: 'tw:text-utility-purple-700',
     bgClass: 'tw:bg-utility-purple-50',
@@ -635,6 +657,12 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-utility-orange-50',
     borderClass: 'tw:border-utility-orange-200',
     icon: Report,
+  },
+  [EntityType.AUDIT_REPORT]: {
+    iconClass: 'tw:text-utility-orange-600',
+    bgClass: 'tw:bg-utility-orange-50',
+    borderClass: 'tw:border-utility-orange-200',
+    icon: AuditReport,
   },
   testDefinition: {
     iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
