@@ -424,7 +424,9 @@ class PrefectSource(PipelineServiceSource):
         """Yield run history for each flow as pipeline status, each with that run's real task statuses nested."""
         try:
             flow_id = pipeline_details["id"]
-            flow_runs = self.client.get_flow_runs(flow_id, limit=self.service_connection.numberOfStatus)
+            flow_runs = self.client.get_flow_runs(
+                flow_id, limit=self.service_connection.numberOfStatus, exclude_scheduled=True
+            )
             valid_names = self.context.get().task_names or set()
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,

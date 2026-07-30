@@ -126,6 +126,8 @@ class PrefectClient:
         """Task runs for many flow runs in one paginated call, grouped by
         flow_run_id — avoids one request per historical run when building
         pipeline status for a flow with many runs."""
+        if not flow_run_ids:
+            return {}
         task_runs: list[dict] = []
         offset = 0
         while True:
