@@ -127,8 +127,8 @@ class TestRedshiftIamEngine:
     @patch.object(connection_module, "create_generic_db_connection")
     def test_listener_injects_fresh_credentials_per_connection(self, mock_create, mock_listen, mock_manager):
         mock_manager.return_value.get_credentials.side_effect = [
-            RedshiftIamCredential("IAM:admin", "pw-1", _future()),
-            RedshiftIamCredential("IAM:admin", "pw-2", _future()),
+            RedshiftIamCredential(user="IAM:admin", password="pw-1", expiration=_future()),
+            RedshiftIamCredential(user="IAM:admin", password="pw-2", expiration=_future()),
         ]
 
         _build_iam_engine(_iam_connection(database="mydb"))

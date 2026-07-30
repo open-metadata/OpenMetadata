@@ -13,7 +13,6 @@ Redshift models
 """
 
 import re
-from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Dict, FrozenSet, List, Optional, Tuple  # noqa: UP035
@@ -31,8 +30,7 @@ class RedshiftInstanceType(Enum):
     SERVERLESS = "SERVERLESS"
 
 
-@dataclass(frozen=True)
-class RedshiftIamCredential:
+class RedshiftIamCredential(BaseModel):
     """A temporary Redshift IAM credential and the time it expires.
 
     Returned by GetClusterCredentials (provisioned) and GetCredentials
