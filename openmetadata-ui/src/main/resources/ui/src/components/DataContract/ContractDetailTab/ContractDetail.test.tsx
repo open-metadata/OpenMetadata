@@ -887,7 +887,7 @@ describe('ContractDetail', () => {
   });
 
   describe('Contract Security', () => {
-    it('should display security section when contract has security data', () => {
+    it('should display security section when contract has security data', async () => {
       const contractWithSecurity: DataContract = {
         ...mockContract,
         security: {
@@ -913,11 +913,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      // Check that the security card is rendered
+      // security-card is non-lazy; contract-security-card is inside lazy ContractSecurityCard
       expect(screen.getByTestId('security-card')).toBeInTheDocument();
-      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
-
-      // Check the content
+      expect(
+        await screen.findByTestId('contract-security-card')
+      ).toBeInTheDocument();
       expect(
         screen.getByText('ContractSecurityCard - PII,Sensitive')
       ).toBeInTheDocument();

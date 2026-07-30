@@ -42,6 +42,7 @@ import {
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -60,6 +61,7 @@ import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TaskType } from '../../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -68,6 +70,7 @@ import {
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../generated/tests/testCase';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
@@ -82,7 +85,6 @@ import {
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import DescriptionTaskNew from '../../../../pages/TasksPage/shared/DescriptionTaskNew';
-import FeedbackApprovalTask from '../../../../pages/TasksPage/shared/FeedbackApprovalTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
 import {
   Option,
@@ -91,11 +93,20 @@ import {
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { getUsers } from '../../../../rest/userAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import {
+  getClassificationTagPath,
+  getDomainDetailsPath,
+  getGlossaryTermDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   fetchOptions,
@@ -112,19 +123,8 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import CommentCard from '../../../ActivityFeed/ActivityFeedCardNew/CommentCard.component';
 import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
-
-import { EntityType } from '../../../../enums/entity.enum';
-import { EntityReference } from '../../../../generated/tests/testCase';
-import { getUsers } from '../../../../rest/userAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import {
-  getClassificationTagPath,
-  getDomainDetailsPath,
-  getGlossaryTermDetailsPath,
-  getUserPath,
-} from '../../../../utils/RouterUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -135,6 +135,10 @@ import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
 
 type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
+
+const FeedbackApprovalTask = withSuspenseFallback(
+  lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
+);
 
 const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   tags: (fqn) => getClassificationTagPath(fqn),

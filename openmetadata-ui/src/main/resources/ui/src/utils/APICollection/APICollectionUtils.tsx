@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
+import { lazy } from 'react';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../../components/DataContract/ContractTab/ContractTab';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
@@ -25,6 +29,24 @@ import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
 import { APICollectionDetailPageTabProps } from './APICollectionClassBase';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/DataContract/ContractTab/ContractTab').then(
+      (m) => ({ default: m.ContractTab })
+    )
+  )
+);
 
 export const getApiCollectionDetailsPageTabs = ({
   activeTab,

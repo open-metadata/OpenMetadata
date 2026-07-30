@@ -31,7 +31,6 @@ import { Paging } from '../../../generated/type/paging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { getAllFeeds } from '../../../rest/feedsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';

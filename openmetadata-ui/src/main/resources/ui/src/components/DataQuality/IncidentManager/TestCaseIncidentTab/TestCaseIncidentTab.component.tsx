@@ -13,7 +13,14 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';
@@ -30,9 +37,17 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import ActivityFeedListV1New from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
-import { TaskTabNew } from '../../../Entity/Task/TaskTab/TaskTabNew.component';
 import './test-case-incident-tab.style.less';
+
+const TaskTabNew = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Entity/Task/TaskTab/TaskTabNew.component').then((m) => ({
+      default: m.TaskTabNew,
+    }))
+  )
+);
 
 const TestCaseIncidentTab = () => {
   const { t } = useTranslation();

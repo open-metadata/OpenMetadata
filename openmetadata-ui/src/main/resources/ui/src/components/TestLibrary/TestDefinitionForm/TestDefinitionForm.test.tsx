@@ -133,7 +133,9 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(await screen.findByTestId('code-editor')).toBeInTheDocument();
+
+      await screen.findByTestId('code-editor');
+
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.test-platform-plural')

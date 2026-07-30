@@ -15,7 +15,7 @@ import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
@@ -48,6 +48,7 @@ import {
 } from '../../../utils/TableColumn.util';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
@@ -55,8 +56,24 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+// TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
+// with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
+// into the entry chunk because PipelineTaskTab is reachable from
+// PipelineDetailsUtils + GenericWidgetUtils (both eager). Lazy-loading here
+// breaks that chain — Vite drops reactflow + the lineage helpers out of the
+// entry preload list; the DAG view chunk loads when the user actually opens
+// the Tasks tab. Suspense fallback is `null` because the surrounding Card
+// already has its own title/skeleton; a spinner here would flash once.
+const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
 
 export const PipelineTaskTab = () => {
   const {

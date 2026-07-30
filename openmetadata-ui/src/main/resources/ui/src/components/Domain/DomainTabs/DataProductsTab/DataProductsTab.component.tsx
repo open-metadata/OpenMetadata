@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import {
   forwardRef,
+  lazy,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -34,13 +35,20 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import { getQueryFilterForDataProducts } from '../../../../utils/DomainUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const DataProductsTab = forwardRef(
   ({ permissions, onAddDataProduct, domainFqn }: DataProductsTabProps, ref) => {

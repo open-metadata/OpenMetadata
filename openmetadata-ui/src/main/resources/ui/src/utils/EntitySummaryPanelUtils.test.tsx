@@ -213,7 +213,7 @@ describe('EntitySummaryPanelUtils tests', () => {
     };
 
     describe('STORED_PROCEDURE cases', () => {
-      it('should render stored procedure with code correctly', () => {
+      it('should render stored procedure with code correctly', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithCode
@@ -221,14 +221,16 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent(
           'CREATE PROCEDURE test_stored_procedure() BEGIN SELECT * FROM users; END'
         );
       });
 
-      it('should render stored procedure without code correctly (null storedProcedureCode)', () => {
+      it('should render stored procedure without code correctly (null storedProcedureCode)', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithoutCode
@@ -236,14 +238,14 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
-      it('should render stored procedure with empty code correctly', () => {
+      it('should render stored procedure with empty code correctly', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithEmptyCode
@@ -251,14 +253,14 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
-      it('should render stored procedure with undefined code field correctly', () => {
+      it('should render stored procedure with undefined code field correctly', async () => {
         const mockStoredProcedureWithUndefinedCode = {
           ...mockStoredProcedureWithCode,
           storedProcedureCode: {
@@ -274,11 +276,11 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
       it('should render stored procedure heading and testId correctly', () => {

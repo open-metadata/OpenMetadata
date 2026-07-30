@@ -14,14 +14,18 @@
 import { Tabs } from 'antd';
 import { Change } from 'diff';
 import { isEqual } from 'lodash';
-import { useCallback, useRef, useState } from 'react';
+import { lazy, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import DiffView from './DiffView/DiffView';
+
+const RichTextEditor = withSuspenseFallback(
+  lazy(() => import('../../../components/common/RichTextEditor/RichTextEditor'))
+);
 
 interface Props {
   value: string;

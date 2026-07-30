@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../../generated/entity/data/storedProcedure';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import SchemaEditor from '../SchemaEditor/SchemaEditor';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../SchemaEditor/SchemaEditor'))
+);
 
 export const StoredProcedureCodeCard = () => {
   const { data } = useGenericContext<StoredProcedure>();

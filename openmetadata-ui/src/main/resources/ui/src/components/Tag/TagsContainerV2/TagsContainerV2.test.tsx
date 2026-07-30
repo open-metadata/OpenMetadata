@@ -113,9 +113,10 @@ const renderTagsContainer = (props: {
   );
 };
 
-const enterEditMode = () => {
+const enterEditMode = async () => {
   const editButton = screen.getByTestId('edit-button');
   fireEvent.click(editButton);
+  await screen.findByTestId('mock-tag-select-form');
 };
 
 describe('TagsContainerV2 handleSave', () => {
@@ -131,7 +132,7 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    enterEditMode();
+    await enterEditMode();
 
     expect(capturedOnSubmit).toBeDefined();
 
@@ -173,7 +174,7 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    enterEditMode();
+    await enterEditMode();
 
     expect(capturedOnSubmit).toBeDefined();
 
@@ -220,7 +221,7 @@ describe('TagsContainerV2 handleSave', () => {
       onSelectionChange,
     });
 
-    enterEditMode();
+    await enterEditMode();
 
     expect(capturedOnSubmit).toBeDefined();
 
