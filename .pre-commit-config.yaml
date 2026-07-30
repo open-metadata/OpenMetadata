@@ -78,6 +78,14 @@ repos:
         language: system
         files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts|jsx|js)$
         require_serial: true
+      - id: reuse-audit
+        name: Component reuse guard (no new hand-rolled components)
+        description: Fails if a change ADDS UI hand-rolled from raw elements that @openmetadata/ui-core-components already exports (e.g. <div role="listbox"> instead of Select). Existing code is fine; put 'reuse-audit-ignore' in a comment on a line that genuinely needs a raw element.
+        entry: node openmetadata-ui/src/main/resources/ui/scripts/reuse-audit.js
+        language: system
+        files: ^openmetadata-ui/src/main/resources/ui/src/.*\.(tsx|ts)$
+        pass_filenames: false
+        require_serial: true
       - id: tw-deprecation-guard
         name: Antd + Less deprecation guard (no new debt)
         description: Fails if a change adds a new .less file or a new `import ... from 'antd'`. Existing usage is fine; use UntitledUI + Tailwind for new work.
