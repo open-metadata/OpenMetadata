@@ -119,7 +119,12 @@ export interface ServiceSummary {
  * `partialSuccess` > `success`. A service with no pipelines, or whose pipelines have only
  * non-terminal states (queued/running/stopped), is `notRun`.
  */
-export type ServiceHealth = "failed" | "partialSuccess" | "success" | "notRun";
+export enum ServiceHealth {
+    Failed = "failed",
+    NotRun = "notRun",
+    PartialSuccess = "partialSuccess",
+    Success = "success",
+}
 
 /**
  * Owners of this service.
@@ -242,7 +247,13 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export type LabelType = "Manual" | "Propagated" | "Automated" | "Derived" | "Generated";
+export enum LabelType {
+    Automated = "Automated",
+    Derived = "Derived",
+    Generated = "Generated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
 
 /**
  * Additional metadata associated with this tag label, such as recognizer information for
@@ -312,18 +323,27 @@ export interface PatternMatch {
 /**
  * What the recognizer analyzed to apply this tag
  */
-export type Target = "content" | "column_name";
+export enum Target {
+    ColumnName = "column_name",
+    Content = "content",
+}
 
 /**
  * Label is from Tags or Glossary.
  */
-export type TagSource = "Classification" | "Glossary";
+export enum TagSource {
+    Classification = "Classification",
+    Glossary = "Glossary",
+}
 
 /**
  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
  * entity must confirm the suggested labels before it is marked as 'Confirmed'.
  */
-export type State = "Suggested" | "Confirmed";
+export enum State {
+    Confirmed = "Confirmed",
+    Suggested = "Suggested",
+}
 
 /**
  * UI Style is used to associate a color code and/or icon to entity to customize the look of
