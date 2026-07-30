@@ -21,6 +21,13 @@ already chose the wrong pattern. Every rule therefore exists twice.
 **One script, three call sites.** Each audit is a single implementation invoked by the agent hook,
 `make ui-checkstyle-changed`, and the `ui-checkstyle` CI job. There is no second copy to drift.
 
+Depth behind the rules lives in `skills/vendor/` — `react-best-practices`, `web-design-guidelines`
+and `composition-patterns`, vendored verbatim from
+[vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) (MIT) so they need no install
+step. Skills load only when invoked, which is why the load-bearing subset is distilled into
+`.claude/rules/frontend-performance.md` and `.claude/rules/frontend-a11y.md`, which auto-load on
+matching files.
+
 **Checkstyle is the enforcement point — not pre-commit.** New gates are deliberately kept out of
 `.pre-commit-config.yaml`: every hook there is paid on every single commit, and these audits shell
 out to `git diff` and `node`. Committing must stay fast. `ui-checkstyle` is the one place a gate has

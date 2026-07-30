@@ -21,6 +21,22 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle,
   Slider, Textarea, Tags, and more. When building layout/color, invoke the `ui-core-components` skill
   before reaching for a raw `<div>` + Tailwind.
+- **Do not hand-roll a component the library already exports.** `yarn reuse-audit` blocks these on
+  **added lines only** (existing code is untouched, like `tw-guard`). Same list the script enforces:
+
+  | Instead of hand-rolling | Import |
+  |---|---|
+  | `<div role="listbox">`, `role="combobox"` | `Select`, `MultiSelect`, `Combobox`, `Autocomplete` |
+  | `<div role="menu">`, `role="menuitem"` | `Dropdown` |
+  | `<div role="tablist">`, `role="tab"` | `Tabs` |
+  | `<div role="dialog">`, `role="alertdialog"` | `Modal` |
+  | `role="switch"` / `role="radiogroup"` / `role="progressbar"` / `role="tooltip"` | `Toggle` / `RadioButtons` / `ProgressIndicator` / `Tooltip` |
+  | raw `<button>`, `<input>`, `<select>`, `<textarea>` inside `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
+  | `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` (keyboard nav is built in) |
+  | `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
+
+  Tests, mocks, stories and Playwright specs are out of scope. If a raw element is genuinely
+  required, put `reuse-audit-ignore` in a comment on that line.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).
