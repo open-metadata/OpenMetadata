@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "O contexto aínda non se xerou",
     "persona-context-restore-confirmation": "Restaurar o contexto de IA á v{{version}}? Isto crea unha nova versión coas regras e axustes desa versión.",
     "persona-context-rule-deleted": "Regra de contexto de IA eliminada.",
+    "persona-context-rule-filter-incomplete": "Complete ou elimine a condición incompleta antes de gardar. Unha condición incompleta ignórase, o que ampliaría esta regra para coincidir con todo.",
     "persona-context-rule-saved": "Regra de contexto de IA gardada.",
     "persona-context-rule-subtitle": "Seleccione os metadatos que esta regra engade ao documento de contexto.",
     "persona-context-rules-count": "Regras ({{count}})",

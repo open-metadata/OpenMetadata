@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "Context is nog niet gegenereerd",
     "persona-context-restore-confirmation": "AI-context herstellen naar v{{version}}? Hiermee wordt een nieuwe versie gemaakt met de regels en instellingen van die versie.",
     "persona-context-rule-deleted": "AI-contextregel verwijderd.",
+    "persona-context-rule-filter-incomplete": "Maak de onvolledige voorwaarde af of verwijder deze voordat u opslaat. Een onvolledige voorwaarde wordt genegeerd, waardoor deze regel op alles zou passen.",
     "persona-context-rule-saved": "AI-contextregel opgeslagen.",
     "persona-context-rule-subtitle": "Selecteer de metadata die deze regel toevoegt aan het contextdocument.",
     "persona-context-rules-count": "Regels ({{count}})",

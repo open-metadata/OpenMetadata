@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "لم يتم إنشاء السياق بعد",
     "persona-context-restore-confirmation": "استعادة سياق الذكاء الاصطناعي إلى الإصدار v{{version}}؟ سيؤدي هذا إلى إنشاء إصدار جديد بقواعد وإعدادات ذلك الإصدار.",
     "persona-context-rule-deleted": "تم حذف قاعدة سياق الذكاء الاصطناعي.",
+    "persona-context-rule-filter-incomplete": "أكمل الشرط غير المكتمل أو احذفه قبل الحفظ. يتم تجاهل الشرط غير المكتمل، مما يوسّع هذه القاعدة لتطابق كل شيء.",
     "persona-context-rule-saved": "تم حفظ قاعدة سياق الذكاء الاصطناعي.",
     "persona-context-rule-subtitle": "حدد البيانات الوصفية التي تضيفها هذه القاعدة إلى مستند السياق.",
     "persona-context-rules-count": "القواعد ({{count}})",

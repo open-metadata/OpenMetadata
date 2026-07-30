@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "컨텍스트가 아직 생성되지 않았습니다",
     "persona-context-restore-confirmation": "AI 컨텍스트를 v{{version}}(으)로 복원하시겠습니까? 해당 버전의 규칙과 설정으로 새 버전이 생성됩니다.",
     "persona-context-rule-deleted": "AI 컨텍스트 규칙이 삭제되었습니다.",
+    "persona-context-rule-filter-incomplete": "저장하기 전에 미완성 조건을 완성하거나 제거하세요. 미완성 조건은 무시되므로 이 규칙이 모든 항목과 일치하도록 확대됩니다.",
     "persona-context-rule-saved": "AI 컨텍스트 규칙이 저장되었습니다.",
     "persona-context-rule-subtitle": "이 규칙이 컨텍스트 문서에 추가할 메타데이터를 선택하세요.",
     "persona-context-rules-count": "규칙({{count}})",

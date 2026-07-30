@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "Контекст ещё не создан",
     "persona-context-restore-confirmation": "Восстановить контекст ИИ до v{{version}}? Будет создана новая версия с правилами и настройками этой версии.",
     "persona-context-rule-deleted": "Правило контекста ИИ удалено.",
+    "persona-context-rule-filter-incomplete": "Завершите или удалите незаконченное условие перед сохранением. Незаконченное условие игнорируется, из-за чего это правило будет соответствовать всему.",
     "persona-context-rule-saved": "Правило контекста ИИ сохранено.",
     "persona-context-rule-subtitle": "Выберите метаданные, которые это правило добавляет в документ контекста.",
     "persona-context-rules-count": "Правила ({{count}})",

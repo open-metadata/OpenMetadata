@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "Le contexte n’a pas encore été généré",
     "persona-context-restore-confirmation": "Restaurer le contexte IA à la v{{version}} ? Cela crée une nouvelle version avec les règles et paramètres de cette version.",
     "persona-context-rule-deleted": "Règle de contexte IA supprimée.",
+    "persona-context-rule-filter-incomplete": "Terminez ou supprimez la condition incomplète avant d'enregistrer. Une condition incomplète est ignorée, ce qui élargirait cette règle à tous les éléments.",
     "persona-context-rule-saved": "Règle de contexte IA enregistrée.",
     "persona-context-rule-subtitle": "Sélectionnez les métadonnées que cette règle ajoute au document de contexte.",
     "persona-context-rules-count": "Règles ({{count}})",

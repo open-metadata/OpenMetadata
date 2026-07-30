@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "ยังไม่ได้สร้างบริบท",
     "persona-context-restore-confirmation": "กู้คืนบริบท AI เป็น v{{version}} หรือไม่ การดำเนินการนี้จะสร้างเวอร์ชันใหม่ด้วยกฎและการตั้งค่าของเวอร์ชันนั้น",
     "persona-context-rule-deleted": "ลบกฎบริบท AI แล้ว",
+    "persona-context-rule-filter-incomplete": "กรุณาทำให้เงื่อนไขที่ยังไม่สมบูรณ์ครบถ้วนหรือลบออกก่อนบันทึก เงื่อนไขที่ไม่สมบูรณ์จะถูกละเว้น ซึ่งจะทำให้กฎนี้ตรงกับทุกรายการ",
     "persona-context-rule-saved": "บันทึกกฎบริบท AI แล้ว",
     "persona-context-rule-subtitle": "เลือกเมทาดาทาที่กฎนี้เพิ่มลงในเอกสารบริบท",
     "persona-context-rules-count": "กฎ ({{count}})",

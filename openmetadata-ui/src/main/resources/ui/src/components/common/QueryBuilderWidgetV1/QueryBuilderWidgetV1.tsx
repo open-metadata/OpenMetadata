@@ -75,6 +75,7 @@ const QueryBuilderWidgetV1: FC<{
   label?: string;
   showCountPreview?: boolean;
   tree?: JsonTree;
+  onValidityChange?: (isValid: boolean) => void;
 }> = ({
   onChange,
   entityType = EntityType.ALL,
@@ -215,6 +216,10 @@ const QueryBuilderWidgetV1: FC<{
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
+    // nConfig is the config react-awesome-query-builder has already extended, which isValidTree
+    // needs. A condition the user started but has not finished reads as invalid, letting the caller
+    // block the save instead of silently dropping the condition from the emitted filter.
+    props.onValidityChange?.(QbUtils.isValidTree(nTree, nConfig));
 
     if (outputType === SearchOutputType.ElasticSearch) {
       const data = elasticSearchFormat(nTree, config) ?? '';

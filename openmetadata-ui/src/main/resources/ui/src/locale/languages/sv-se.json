@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "Kontexten har inte genererats ännu",
     "persona-context-restore-confirmation": "Återställa AI-kontexten till v{{version}}? Detta skapar en ny version med den versionens regler och inställningar.",
     "persona-context-rule-deleted": "AI-kontextregeln har tagits bort.",
+    "persona-context-rule-filter-incomplete": "Slutför eller ta bort det ofullständiga villkoret innan du sparar. Ett ofullständigt villkor ignoreras, vilket skulle utöka regeln till att matcha allt.",
     "persona-context-rule-saved": "AI-kontextregeln har sparats.",
     "persona-context-rule-subtitle": "Välj vilka metadata den här regeln lägger till i kontextdokumentet.",
     "persona-context-rules-count": "Regler ({{count}})",

@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "尚未生成上下文",
     "persona-context-restore-confirmation": "将 AI 上下文恢复到 v{{version}}？这将使用该版本的规则和设置创建一个新版本。",
     "persona-context-rule-deleted": "已删除 AI 上下文规则。",
+    "persona-context-rule-filter-incomplete": "保存前请完成或删除未完成的条件。未完成的条件会被忽略，这将使该规则匹配所有内容。",
     "persona-context-rule-saved": "已保存 AI 上下文规则。",
     "persona-context-rule-subtitle": "选择此规则添加到上下文文档中的元数据。",
     "persona-context-rules-count": "规则（{{count}}）",
