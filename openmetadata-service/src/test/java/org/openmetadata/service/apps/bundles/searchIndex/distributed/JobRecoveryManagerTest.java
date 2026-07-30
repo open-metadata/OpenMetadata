@@ -179,6 +179,61 @@ class JobRecoveryManagerTest {
   }
 
   @Test
+  void testStartupRecovery_FinalizesCompletedJobInsteadOfFailing() {
+    UUID jobId = UUID.randomUUID();
+
+    // A RUNNING job whose partitions all COMPLETED but which was never flipped out of RUNNING (the
+    // coordinator exited between the last completion and the completion check). It must be
+    // finalized
+    // to COMPLETED, not failed as "abandoned due to server crash or shutdown".
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.RUNNING);
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString())).thenReturn(null); // no live lock -> orphaned
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true); // finalizer takes the lock
+
+    SearchIndexPartitionRecord completed =
+        createPartitionRecord(jobId, UUID.randomUUID(), PartitionStatus.COMPLETED);
+    when(partitionDAO.findByJobId(jobId.toString())).thenReturn(List.of(completed));
+    when(partitionDAO.getAggregatedStats(jobId.toString()))
+        .thenReturn(new AggregatedStatsRecord(226306, 226306, 226306, 0, 1, 1, 0, 0, 0));
+
+    JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
+
+    assertEquals(1, result.orphanedJobsFound());
+    assertEquals(0, result.jobsMarkedFailed());
+    assertEquals(1, result.jobsRecovered());
+
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.COMPLETED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any());
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.FAILED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any());
+  }
+
+  @Test
   void testStartupRecovery_FailInitializingJob() {
     UUID jobId = UUID.randomUUID();
 

@@ -293,18 +293,69 @@ public class JobRecoveryManager {
     long now = System.currentTimeMillis();
     long jobAge = now - (job.getStartedAt() != null ? job.getStartedAt() : job.getCreatedAt());
 
-    // Decide whether to recover or fail based on job state and age
-    boolean shouldRecover = shouldRecoverJob(job, jobAge);
-
-    if (shouldRecover) {
+    if (shouldRecoverJob(job, jobAge)) {
       if (recoverJob(job)) {
         resultBuilder.incrementRecovered();
         LOG.info("Job {} has been marked for recovery (will resume processing)", job.getId());
       }
+    } else if (isFinishedButNotFinalized(job)) {
+      finalizeCompletedJob(job, resultBuilder);
     } else {
       failJob(job, "Job abandoned due to server crash or shutdown");
       resultBuilder.incrementFailed();
       LOG.info("Job {} has been marked as FAILED", job.getId());
+    }
+  }
+
+  /**
+   * True when an orphaned job already processed every partition to a terminal state but was never
+   * flipped out of RUNNING — e.g. the coordinator exited between the last partition completing and
+   * the completion check landing. Such a job finished its work; it must be finalized to its real
+   * terminal status, not failed as an abandoned crash. Requires at least one partition so a RUNNING
+   * job that never created any is not mistaken for finished.
+   */
+  private boolean isFinishedButNotFinalized(SearchIndexJob job) {
+    boolean finished = false;
+    if (job.getStatus() == IndexJobStatus.RUNNING) {
+      List<SearchIndexPartition> partitions = coordinator.getPartitions(job.getId(), null);
+      finished =
+          !partitions.isEmpty() && partitions.stream().noneMatch(this::isPartitionOutstanding);
+    }
+    return finished;
+  }
+
+  private boolean isPartitionOutstanding(SearchIndexPartition partition) {
+    PartitionStatus status = partition.getStatus();
+    return status == PartitionStatus.PENDING || status == PartitionStatus.PROCESSING;
+  }
+
+  /**
+   * Finalize a job that finished all partitions but was left RUNNING: take the reindex lock and let
+   * the coordinator's completion check flip it to its real terminal status (COMPLETED, or
+   * COMPLETED_WITH_ERRORS when some partitions failed) — the same transition the coordinator makes
+   * on the happy path — then release the lock. A fully-processed job is never marked FAILED.
+   *
+   * <p>This flips status only; it does not re-run index promotion. On the happy path the coordinator
+   * promotes each entity before the job can be orphaned. If a genuine crash lands between the last
+   * completion and promotion, the recovery point is to rebuild the context from {@code
+   * job.getStagedIndexMapping()} and run the finalizer before completing.
+   */
+  private void finalizeCompletedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
+    if (coordinator.tryAcquireReindexLock(job.getId())) {
+      try {
+        coordinator.checkAndUpdateJobCompletion(job.getId());
+        resultBuilder.incrementRecovered();
+        LOG.info(
+            "Job {} finished all partitions but was left RUNNING; finalized to its terminal status "
+                + "instead of failing it as abandoned",
+            job.getId());
+      } finally {
+        coordinator.releaseReindexLock(job.getId());
+      }
+    } else {
+      LOG.warn(
+          "Could not acquire lock to finalize completed job {}; another server may hold it",
+          job.getId());
     }
   }
 
