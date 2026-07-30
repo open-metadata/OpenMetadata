@@ -26,8 +26,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -40,6 +42,14 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+/**
+ * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
+ * privacy is enforced at query time by {@link
+ * org.openmetadata.service.search.security.ContextMemorySearchVisibility}. Indexing only org-wide
+ * memories would hide a user's own PRIVATE memories and the SHARED ones they are a principal of
+ * from {@code GET /contextCenter/memories}, which serves the ContextCenter listing from search
+ * whenever it is given a query, filter, sort or offset.
+ */
 @Slf4j
 @Repository(name = "ContextMemoryRepository")
 public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
@@ -64,6 +74,23 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  /**
+   * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are embedded. The vector query path
+   * has no per-document visibility filter to apply — chunk documents carry neither {@code
+   * visibility} nor {@code sharedWithIds} — so a restricted memory reachable through semantic
+   * search could be returned to any caller. Keyword search does not need this restriction because
+   * {@link org.openmetadata.service.search.security.ContextMemorySearchVisibility} filters it per
+   * subject.
+   */
+  @Override
+  public boolean isVectorEmbeddable(EntityInterface entity) {
+    boolean embeddable = false;
+    if (entity instanceof ContextMemory memory && memory.getShareConfig() != null) {
+      embeddable = memory.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
+    }
+    return embeddable;
   }
 
   @Override

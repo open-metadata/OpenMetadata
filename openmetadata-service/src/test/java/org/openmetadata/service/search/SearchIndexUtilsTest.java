@@ -220,6 +220,34 @@ class SearchIndexUtilsTest {
   }
 
   @Test
+  void testAiBotAppliedTagsCountAsGenerated() {
+    TagLabel botTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("collateaiapplicationbot");
+    TagLabel botTier =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("aiautomationapplicationbot");
+    TagLabel humanTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("analyst");
+    Table table = new Table().withTags(List.of(botTag, botTier, humanTag));
+
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(table);
+
+    assertEquals(1, tagAndTierSources.getTagSources().get(TagLabel.LabelType.GENERATED.value()));
+    assertEquals(1, tagAndTierSources.getTierSources().get(TagLabel.LabelType.GENERATED.value()));
+    assertEquals(1, tagAndTierSources.getTagSources().get(TagLabel.LabelType.MANUAL.value()));
+    assertNull(tagAndTierSources.getTierSources().get(TagLabel.LabelType.MANUAL.value()));
+  }
+
+  @Test
   void testSearchAggregationBuilderHelpers() {
     SearchAggregationNode termNode = SearchAggregation.terms("team", "owner.name", 25);
     SearchAggregationNode topHitsNode = SearchAggregation.topHits("latest", 1, "timestamp", "desc");

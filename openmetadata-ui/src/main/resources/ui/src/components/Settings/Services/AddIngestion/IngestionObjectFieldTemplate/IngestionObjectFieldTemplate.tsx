@@ -366,7 +366,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           </Typography>
           <Button
             aria-label={t('label.add-entity', { entity: t('label.property') })}
-            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
+            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
             color="primary"
             size="sm"
             type="button"

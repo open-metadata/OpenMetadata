@@ -386,6 +386,57 @@
       }
     },
     {
+      "name": "get_user_context",
+      "title": "Get User Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
+      "description": "Get context about the CURRENT authenticated user: identity (id, name, displayName, email, isAdmin, isBot), team memberships, roles (direct and team-inherited), domains, active persona, and lightweight summaries of owned and followed entities. Use this to answer identity questions such as 'what is my role?', 'which teams am I on?', 'what do I own?', or 'what do I follow?' before asking the user for their email. The user is resolved from the authenticated request; there is no user parameter and the tool cannot read another user's context.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "includeOwnedSummary": {
+            "type": "boolean",
+            "description": "Include a summary of entities owned by the user and their teams. Defaults to true.",
+            "default": true
+          },
+          "includeFollowedSummary": {
+            "type": "boolean",
+            "description": "Include a summary of entities the user follows. Defaults to true.",
+            "default": true
+          },
+          "ownedLimit": {
+            "type": "integer",
+            "description": "Max owned entities to return in the recent list (1-100). Defaults to 20.",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "followedLimit": {
+            "type": "integer",
+            "description": "Max followed entities to return (1-100). Defaults to 20.",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "ownedFilter": {
+            "type": "string",
+            "description": "Narrow owned entities to ones worth surfacing: NONE (default, all owned), MISSING_DESCRIPTION (description not complete), MISSING_TIER (no tier assigned), ANY_GAP (missing description or tier). Gap filters apply to data-asset entity types only. Results are sorted by updatedAt descending.",
+            "enum": [
+              "NONE",
+              "MISSING_DESCRIPTION",
+              "MISSING_TIER",
+              "ANY_GAP"
+            ],
+            "default": "NONE"
+          }
+        },
+        "required": []
+      }
+    },
+    {
       "name": "find_context",
       "title": "Find Context",
       "annotations": {

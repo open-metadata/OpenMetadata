@@ -15,10 +15,10 @@
 
 .add-semantic-button {
   span {
-    font-weight: 600;
+    font-weight: var(--om-font-weight-semibold);
   }
   .anticon {
-    font-size: 14px;
+    font-size: var(--om-font-size-sm);
     rotate: 45deg;
   }
 }
@@ -32,7 +32,7 @@
   }
 
   .ant-card.new-header-border-card.expandable-card {
-    margin-top: 16px;
+    margin-top: var(--om-space-16);
     border: 1px solid @border-color-7;
     box-shadow: 0 1px 2px 0 @grey-27;
 
@@ -45,13 +45,13 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        gap: 12px;
+        gap: var(--om-space-12);
 
         .enable-form-item {
           margin-bottom: 0;
 
           .ant-switch {
-            margin-left: 2px;
+            margin-left: var(--om-space-2);
             width: 44px;
             height: 24px;
 
@@ -62,7 +62,7 @@
               left: 4px;
 
               &::before {
-                border-radius: 20px;
+                border-radius: var(--om-radius-20);
               }
             }
           }
@@ -81,23 +81,23 @@
         }
 
         .semantic-form-item-title {
-          font-size: 16px;
-          font-weight: 600;
+          font-size: var(--om-font-size-md);
+          font-weight: var(--om-font-weight-semibold);
           line-height: 32px;
         }
 
         .semantic-form-item-description {
-          font-size: 14px;
-          font-weight: 400;
+          font-size: var(--om-font-size-sm);
+          font-weight: var(--om-font-weight-regular);
           color: @grey-600;
         }
 
         .ant-btn.edit-expand-button {
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           border: 1px solid @border-light;
 
           svg {
-            font-size: 20px;
+            font-size: var(--om-font-size-xl);
             color: @grey-600;
           }
         }
@@ -109,7 +109,7 @@
           align-items: center;
           justify-content: center;
           padding: 0;
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           background: transparent;
           border-color: @error-color;
 
@@ -124,11 +124,11 @@
         .ant-btn.expand-collapse-icon {
           width: 30px;
           height: 30px;
-          border-radius: 6px;
+          border-radius: var(--om-radius-md);
           border: 1px solid @border-light;
 
           svg {
-            font-size: 20px;
+            font-size: var(--om-font-size-xl);
             color: @grey-600;
           }
         }
@@ -145,10 +145,10 @@
       padding: 0;
 
       .semantic-form-item-content {
-        padding: 20px;
+        padding: var(--om-space-20);
 
         .ant-switch {
-          margin-left: 2px;
+          margin-left: var(--om-space-2);
           width: 36px;
           height: 20px;
 
@@ -159,7 +159,7 @@
             left: 3px;
 
             &::before {
-              border-radius: 20px;
+              border-radius: var(--om-radius-20);
             }
           }
         }
@@ -176,7 +176,7 @@
   .semantic-form-item-actions {
     display: flex;
     justify-content: space-between;
-    padding: 16px 24px;
+    padding: var(--om-space-16) var(--om-space-24);
     border-top: 1px solid @grey-200;
   }
 
@@ -203,7 +203,7 @@
       }
 
       .query-filter-label {
-        margin-bottom: 8px;
+        margin-bottom: var(--om-space-8);
         display: inline-block;
         line-height: 40px;
       }

@@ -77,18 +77,18 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
           # Disabling shallow clone is recommended for improving relevancy of reporting.
           # Use partial clone (blob:none) to avoid downloading every blob in history —
           # commits/trees still available for Sonar blame; blobs fetched lazily as needed.
           fetch-depth: 0
           filter: blob:none
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
@@ -97,7 +97,7 @@ jobs:
         run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
 
       - name: Caching NPM dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -111,7 +111,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Caching NPM dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: npm-cache
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -130,7 +130,7 @@ jobs:
         run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest coverage comment
-        uses: MishaKav/jest-coverage-comment@v1.0.22
+        uses: MishaKav/jest-coverage-comment@v1.0.34
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage
