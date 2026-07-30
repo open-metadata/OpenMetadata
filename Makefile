@@ -74,6 +74,15 @@ ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 #   3. Pinned, checksum-verified download (macOS, non-Debian images, or a distro
 #      carrying a different ANTLR such as jammy's 4.7.2).
 #
+# The checksum is what makes step 3 trustworthy; the archive check next to it is a
+# second opinion, so it reads the archive with whichever tool the host has rather
+# than insisting on one. Requiring a JDK tool to install a CLI that only needs a
+# JRE to run breaks slim runtime images (e.g. ingestion-base ships
+# default-jre-headless, which has java but no jar) on a download that already
+# verified clean. A tool that is present and rejects the archive still fails the
+# build; only the case where no reader exists falls through to the checksum alone,
+# and such a host has no java either, so it could not run the CLI regardless.
+#
 # The version match in step 2 is exact. A distro shipping a different ANTLR falls
 # through to the download rather than silently generating parsers that the pinned
 # runtimes will reject.
@@ -140,7 +149,11 @@ install_antlr_cli:  ## Install antlr CLI locally
 				--connect-timeout 15 --max-time 60 \
 				--output "$$jar_file" "$$url" \
 				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | $$sha_check \
-				&& jar tf "$$jar_file" > /dev/null; then \
+				&& { if command -v jar > /dev/null 2>&1; then \
+					jar tf "$$jar_file" > /dev/null; \
+				elif command -v unzip > /dev/null 2>&1; then \
+					unzip -tqq "$$jar_file" > /dev/null; \
+				else :; fi; }; then \
 				break 2; \
 			fi; \
 			echo "ANTLR $(ANTLR_VERSION) download failed from $$url (attempt $$attempt)" >&2; \
