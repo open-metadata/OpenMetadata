@@ -183,8 +183,31 @@ adds or modifies.
 
 ### New Code definition
 
-*Reference branch = `main`* for branches; *Previous version* (or 30 days) for `main` itself. Set in
-project settings, not on the gate.
+Set in the repo: `sonar.newCode.referenceBranch=main` in `sonar-project.properties`. For `main`
+itself, use *Previous version* (or 30 days) in project settings.
+
+### What can and cannot live in `sonar-project.properties`
+
+A recurring question. The split is *analysis config in the repo, gate policy on the server*:
+
+| In `sonar-project.properties` | Only in SonarCloud |
+|---|---|
+| `sonar.qualitygate.wait` / `.timeout` | the gate's **conditions**, incl. Coverage ≥ 90% |
+| `sonar.newCode.referenceBranch` | which gate is assigned to the project |
+| `sonar.sources`, `.exclusions`, `.coverage.exclusions` | the quality **profile** (active rules) |
+| `sonar.typescript.lcov.reportPaths` | |
+
+There is **no `sonar.qualitygate.coverage` property** — thresholds cannot be version-controlled in
+Sonar. If you want a coverage number that lives in the repo and fails locally, that is
+`coverageThreshold` in `jest.config.js`, which the UI does not set today. It measures overall or
+per-glob coverage rather than new-code coverage, so it complements the Sonar gate rather than
+replacing it.
+
+**`sonar.coverage.exclusions` is the lever that decides whether 90% is reachable.** It is unset
+today, so everything analysed counts in the denominator — including ~440 `*.interface.ts`, ~97 files
+under `src/constants/`, and ~30 barrel `index.ts`, none of which carry meaningful executable
+behaviour. Excluding them makes the 90% measure real code; leaving them in makes the target harder
+for reasons unrelated to test quality. Decide deliberately — it is a policy choice, not a default.
 
 ### Branch protection
 
