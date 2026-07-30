@@ -52,6 +52,45 @@ test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await Promise.all(createPromises);
 
+    // The subdomain tab label reads its count from an ES aggregation filtered
+    // by `parent.fullyQualifiedName.keyword`. If ES hasn't finished indexing
+    // the 60 POSTs above by the time the UI queries, the tab renders a stale
+    // count (as low as 1) and the `toContainText('60')` assertion times out.
+    // Poll the same query the UI uses until ES catches up.
+    const parentFqn =
+      domain.responseData?.fullyQualifiedName ?? domain.data.name;
+    const queryFilter = JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            { term: { 'parent.fullyQualifiedName.keyword': parentFqn } },
+          ],
+        },
+      },
+    });
+    const deadline = Date.now() + 60_000;
+    let indexedCount = 0;
+    while (Date.now() < deadline) {
+      const response = await apiContext.get(
+        `/api/v1/search/query?q=&index=domain&from=0&size=0&track_total_hits=true&query_filter=${encodeURIComponent(
+          queryFilter
+        )}`
+      );
+      if (response.ok()) {
+        const data = await response.json();
+        indexedCount = data?.hits?.total?.value ?? data?.hits?.total ?? 0;
+        if (indexedCount >= SUBDOMAIN_COUNT) {
+          break;
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+    if (indexedCount < SUBDOMAIN_COUNT) {
+      throw new Error(
+        `Only ${indexedCount}/${SUBDOMAIN_COUNT} subdomains indexed in ES after 60s`
+      );
+    }
+
     await afterAction();
   });
 
