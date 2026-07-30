@@ -444,6 +444,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           <AsyncSelectList
             autoFocus={false}
             fetchOptions={tagClassBase.getTags}
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={classificationTagOptions}
             key={`tags-${drawerKey}`}
             mode="multiple"
@@ -500,6 +501,7 @@ const ColumnEditForm = forwardRef<ColumnEditFormHandle, ColumnEditFormProps>(
           </Typography>
           <TreeAsyncSelectList
             hasNoActionButtons
+            getPopupContainer={(triggerNode) => triggerNode.parentElement}
             initialOptions={glossaryTermOptions}
             key={`glossaryTerms-${drawerKey}`}
             open={false}
@@ -2541,7 +2543,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       </div>
 
       {/* Table Container - Same structure as DomainListPage */}
-      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:outline-secondary">
+      <div className="tw:mb-5 tw:overflow-hidden tw:rounded-xl tw:bg-primary tw:outline-1 tw:-outline-offset-1 tw:outline-secondary">
         {!showEmptyOnboarding && (
           <div className="tw:flex tw:flex-col tw:gap-4 tw:px-6 tw:py-4 tw:border-b tw:border-border-secondary">
             <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">

@@ -277,7 +277,7 @@ describe('AppInstall component', () => {
     });
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(
-      'message.no-application-schema-found'
+      'server.no-application-schema-found'
     );
     expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
   });

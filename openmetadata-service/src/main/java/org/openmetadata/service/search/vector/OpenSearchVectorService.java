@@ -1669,6 +1669,30 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   @Override
+  public void clearEntityEmbedding(String entityIndexName, String entityId) {
+    // A doc merge cannot delete keys, so removal has to go through a script.
+    try {
+      String fieldsJson = MAPPER.writeValueAsString(EMBEDDING_SOURCE_FIELDS);
+      String updateBody =
+          "{\"script\":{\"source\":\"for (field in params.fields) { ctx._source.remove(field) }\","
+              + "\"params\":{\"fields\":"
+              + fieldsJson
+              + "}}}";
+      executeGenericRequest(
+          "POST",
+          "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
+          updateBody);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to clear embedding for entity {} in {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage(),
+          e);
+    }
+  }
+
+  @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
     try {
       OpenSearchGenericClient genericClient = client.generic();

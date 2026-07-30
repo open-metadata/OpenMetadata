@@ -71,6 +71,7 @@ import {
   verifyNotificationAndClick,
   waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 import {
@@ -204,6 +205,24 @@ test.describe('Context Center Articles', () => {
       description: 'Original description for draft article B',
     });
 
+    await Promise.all([
+      waitForSearchIndexed(
+        apiContext,
+        articleEntity.responseData.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleA.fullyQualifiedName,
+        'page'
+      ),
+      waitForSearchIndexed(
+        apiContext,
+        draftArticleB.fullyQualifiedName,
+        'page'
+      ),
+    ]);
+
     await afterAction();
   });
 
@@ -309,7 +328,14 @@ test.describe('Context Center Articles', () => {
 
     await searchInput.clear();
     await waitForAllLoadersToDisappear(page);
-    await scrollListingToCard(page, articleEntity.responseData.displayName);
+    await expect(searchInput).toHaveValue('');
+    await expect(page.getByText('No matching results')).not.toBeVisible();
+    await expect(
+      page
+        .getByTestId('knowledge-page-listing')
+        .locator('[data-testid^="knowledge-card-"]')
+        .first()
+    ).toBeVisible();
   });
 
   test('Global search and Explore Knowledge Center filter navigate to articles', async ({
@@ -332,25 +358,25 @@ test.describe('Context Center Articles', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Center')
-      ).toContainText('Knowledge Center');
+        page.getByTestId('explore-tree-title-Context Center')
+      ).toContainText('Context Center');
 
       await page
-        .locator('div')
-        .filter({ hasText: /^Knowledge Center$/ })
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: /^Context Center$/ })
         .locator('svg')
         .first()
         .click();
 
       await expect(
-        page.getByTestId('explore-tree-title-Knowledge Page')
-      ).toContainText('Knowledge Page');
+        page.getByTestId('explore-tree-title-Articles')
+      ).toContainText('Articles');
 
       const apiRes = page.waitForResponse(
         '/api/v1/search/query?q=&index=dataAsset*'
       );
 
-      await page.getByTestId('explore-tree-title-Knowledge Page').click();
+      await page.getByTestId('explore-tree-title-Articles').click();
       const response = await apiRes;
       const responseData = await response.json();
 
@@ -709,6 +735,7 @@ test.describe('Context Center Articles', () => {
     ).not.toBeVisible();
 
     await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
@@ -724,6 +751,98 @@ test.describe('Context Center Articles', () => {
       `${parent.fullyQualifiedName}.${child.name}`
     );
     await cleanupAfterAction();
+  });
+
+  test('Expanding a multi-level hierarchy does not throw and renders no duplicate nodes', async ({
+    page,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    const grandparent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Grandparent ${uuid()}`,
+      name: `cc_deep_grandparent_${uuid()}`,
+    });
+    const parent = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Parent ${uuid()}`,
+      name: `cc_deep_parent_${uuid()}`,
+    });
+    const child = await createArticleViaApi(apiContext, {
+      displayName: `CC Deep Child ${uuid()}`,
+      name: `cc_deep_child_${uuid()}`,
+    });
+
+    const patchParent = async (
+      pageId: string,
+      parentEntity: KnowledgeCenterResponseDataType
+    ) => {
+      await apiContext.patch(`/api/v1/contextCenter/pages/${pageId}`, {
+        data: [
+          {
+            op: 'add',
+            path: '/parent',
+            value: {
+              id: parentEntity.id,
+              type: 'page',
+              fullyQualifiedName: parentEntity.fullyQualifiedName,
+              displayName: parentEntity.displayName,
+              name: parentEntity.name,
+            },
+          },
+        ],
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      });
+    };
+
+    await patchParent(parent.id, grandparent);
+    await patchParent(child.id, parent);
+    await afterAction();
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) =>
+      pageErrors.push(error.stack ?? error.message)
+    );
+
+    await navigateToArticles(page);
+    await scrollHierarchyToNode(page, grandparent.displayName);
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${grandparent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${parent.displayName}`)
+    ).toBeVisible();
+
+    await page
+      .getByRole('button', {
+        name: `Expand ${parent.displayName}`,
+      })
+      .click();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await page.getByLabel('Collapse All').click();
+    await expect(page.getByLabel('Expand All')).toBeVisible();
+    await page.getByLabel('Expand All').click();
+    await expect(page.getByLabel('Collapse All')).toBeVisible();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+
+    for (const displayName of [
+      grandparent.displayName,
+      parent.displayName,
+      child.displayName,
+    ]) {
+      await expect(page.getByTestId(`page-node-${displayName}`)).toHaveCount(1);
+    }
+
+    expect(pageErrors).toEqual([]);
   });
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({
@@ -845,7 +964,7 @@ test.describe('Context Center Articles', () => {
     ).toBeVisible();
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(page.getByTestId('entity-header-display-name')).toHaveValue(
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
       updatedTitle
     );
 

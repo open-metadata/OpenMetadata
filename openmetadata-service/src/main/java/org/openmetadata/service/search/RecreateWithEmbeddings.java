@@ -94,28 +94,31 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   @Override
-  public void promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
+  public boolean promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
     // Distributed full recreates promote entity indexes through this per-entity path instead of
     // finalizeReindex — without this hook the staged chunk generation would never reach its
     // completion gate on distributed runs. markEntityTypeReindexed is idempotent, so runs that
     // invoke both callbacks for a type are harmless. The mark lives in a finally so a throwing
     // promotion still reports the type (as failed) — otherwise the staged chunk run would wait
     // forever instead of reaching a safe terminal state.
+    boolean promoted = false;
     RuntimeException superFailure = null;
     try {
-      super.promoteEntityIndex(context, reindexSuccess);
+      promoted = super.promoteEntityIndex(context, reindexSuccess);
     } catch (RuntimeException e) {
       superFailure = e;
     }
     markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
+    return promoted;
   }
 
   @Override
-  public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
+  public boolean finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     // Same shape as promoteEntityIndex: a throwing finalize must still report the type.
+    boolean promoted = false;
     RuntimeException superFailure = null;
     try {
-      super.finalizeReindex(context, reindexSuccess);
+      promoted = super.finalizeReindex(context, reindexSuccess);
     } catch (RuntimeException e) {
       superFailure = e;
     }
@@ -126,6 +129,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
           "Reindex finalized for entity type '{}' with vector embeddings enabled",
           context.getEntityType());
     }
+    return promoted;
   }
 
   /**

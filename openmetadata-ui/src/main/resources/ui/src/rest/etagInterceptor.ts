@@ -64,6 +64,20 @@ const MAX_ENTRIES = 200;
 // Map preserves insertion order — re-set on hit to keep recently-used entries at the back.
 const etagCache = new Map<string, CachedEntry>();
 
+function conditionalReadsDisabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return (
+      window.localStorage.getItem(DISABLE_ETAG_CONDITIONAL_READS_KEY) === 'true'
+    );
+  } catch {
+    return false;
+  }
+}
+
 function buildKey(config: InternalAxiosRequestConfig): string {
   const method = (config.method ?? 'get').toUpperCase();
   const url = config.url ?? '';
@@ -154,6 +168,9 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
     if (method !== 'get') {
       return config;
     }
+    if (conditionalReadsDisabled()) {
+      return config;
+    }
 
     const entry = etagCache.get(buildKey(config));
     if (!entry) {
@@ -194,6 +211,9 @@ export function attachEtagInterceptor(client: AxiosInstance): void {
     if (method !== 'get') {
       etagCache.clear();
 
+      return response;
+    }
+    if (conditionalReadsDisabled()) {
       return response;
     }
 

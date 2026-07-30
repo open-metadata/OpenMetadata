@@ -48,6 +48,7 @@ const HeaderShell = ({
   meta,
   hasStats = false,
   actions,
+  actionsClassName,
   footer,
   variant = 'flat',
   padding = 'default',
@@ -77,7 +78,7 @@ const HeaderShell = ({
         // Dark mode drops the gradient and restores the neutral border on the
         // semantic bg-primary surface.
         variant === 'gradient' &&
-          'tw:border-[#EFF8FF]! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
+          'tw:border-brand-50! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
         className
       )}
       data-testid={dataTestId}
@@ -102,7 +103,7 @@ const HeaderShell = ({
           {actions && (
             <Box
               align="center"
-              className="tw:ml-auto tw:shrink-0"
+              className={classNames('tw:ml-auto tw:shrink-0', actionsClassName)}
               direction="row"
               gap={4}>
               {actions}

@@ -619,6 +619,17 @@ export const AuthProvider = ({
                   config: error.config,
                 });
 
+                // Reject every queued 401'd request with the given error and
+                // clear the queue. Called on any path where the refresh does
+                // not yield a new token (null-return or thrown error) so the
+                // callers don't hang waiting for a retry that will never come.
+                const rejectPending = (rejectionError: unknown) => {
+                  pendingRequests.forEach(({ reject }) =>
+                    reject(rejectionError)
+                  );
+                  pendingRequests = [];
+                };
+
                 // Refresh the token and retry the requests in the queue
                 tokenService.current
                   .refreshToken()
@@ -633,13 +644,13 @@ export const AuthProvider = ({
                       // Clear the queue after retrying
                       pendingRequests = [];
                     } else {
+                      rejectPending(error);
                       resetUserDetails(true);
                     }
                   })
-                  .catch((error) => {
+                  .catch((refreshError) => {
+                    rejectPending(refreshError);
                     resetUserDetails(true);
-
-                    return Promise.reject(error);
                   });
               });
             }

@@ -719,13 +719,13 @@ public class LineageRepository {
     if (details == null) {
       return null;
     }
-    List<ColumnLineage> columnsLineage = details.getColumnsLineage();
-    Set<String> fromColumns = getChildrenNames(from);
-    Set<String> toColumns = getChildrenNames(to);
+    final List<ColumnLineage> columnsLineage = details.getColumnsLineage();
 
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
-      List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
-      for (ColumnLineage columnLineage : columnsLineage) {
+      final Set<String> fromColumns = getChildrenNames(from);
+      final Set<String> toColumns = getChildrenNames(to);
+      final List<ColumnLineage> filteredColumnLineage = new ArrayList<>();
+      for (final ColumnLineage columnLineage : columnsLineage) {
         if (!toColumns.contains(
             columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
           LOG.debug("Invalid toColumn: {}", columnLineage.getToColumn());

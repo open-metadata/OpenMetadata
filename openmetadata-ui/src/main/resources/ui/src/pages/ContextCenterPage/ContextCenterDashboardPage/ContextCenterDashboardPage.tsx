@@ -588,7 +588,9 @@ const ContextCenterDashboardPage: FC = () => {
                         className="tw:min-w-0 tw:flex-1"
                         gap={4}
                         justify="between">
-                        <div className="tw:min-w-0">
+                        <div
+                          className="tw:min-w-0"
+                          data-testid="most-cited-memory">
                           <Typography
                             ellipsis
                             className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -597,7 +599,7 @@ const ContextCenterDashboardPage: FC = () => {
                             {item.title}
                           </Typography>
                         </div>
-                        <div>
+                        <div data-testid="most-cited-count">
                           <Typography
                             ellipsis
                             className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"

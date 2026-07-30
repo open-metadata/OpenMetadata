@@ -365,6 +365,88 @@ public class OpenLineageLineageResolutionIT {
   }
 
   // ====================================================================================
+  // §8 Catalog-platform identifier forms (Glue, Databricks, Hive warehouse paths)
+  // ====================================================================================
+
+  @Test
+  @Order(12)
+  void glueSymlinkForm_resolvesAndCreatesEdge(TestNamespace ns) throws Exception {
+    String inputName = "ol_glue_input_" + uniqueSuffix();
+    String outputName = "ol_glue_output_" + uniqueSuffix();
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> glueInput =
+        Map.of(
+            "namespace",
+            "s3://it-test-bucket",
+            "name",
+            "warehouse/zone/shopify.db/" + inputName,
+            "facets",
+            Map.of(
+                "symlinks",
+                Map.of(
+                    "identifiers",
+                    List.of(
+                        Map.of(
+                            "namespace", "arn:aws:glue:us-west-2:123456789012",
+                            "name", "table/shopify/" + inputName,
+                            "type", "TABLE")))));
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("glue_symlink_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(glueInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+    assertTrue(
+        json.get("lineageEdgesCreated").asInt() >= 1,
+        "Glue-form symlink (table/db/table) should resolve and create an edge, got: " + response);
+
+    Map<?, ?> details = fetchOpenLineageEdgeDetails(inputName, outputName);
+    assertNotNull(details, "Edge resolved via Glue symlink should exist between the test tables");
+  }
+
+  @Test
+  @Order(13)
+  void hiveWarehousePathName_resolvesAndCreatesEdge(TestNamespace ns) throws Exception {
+    String inputName = "ol_hivepath_input_" + uniqueSuffix();
+    String outputName = "ol_hivepath_output_" + uniqueSuffix();
+    Tables.create().name(inputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    Map<String, Object> pathInput =
+        Map.of(
+            "namespace", "s3://it-test-bucket", "name", "warehouse/zone/shopify.db/" + inputName);
+
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("hive_path_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(pathInput)
+            .addOutput("ecommerce_db.shopify." + outputName, serviceName)
+            .send();
+
+    JsonNode json = MAPPER.readTree(response);
+    assertEquals("success", json.get("status").asText());
+    assertTrue(
+        json.get("lineageEdgesCreated").asInt() >= 1,
+        "Hive warehouse path (.../<db>.db/<table>) should resolve without symlinks, got: "
+            + response);
+
+    Map<?, ?> details = fetchOpenLineageEdgeDetails(inputName, outputName);
+    assertNotNull(details, "Edge resolved via Hive warehouse path should exist");
+  }
+
+  // ====================================================================================
   // Helpers
   // ====================================================================================
 
