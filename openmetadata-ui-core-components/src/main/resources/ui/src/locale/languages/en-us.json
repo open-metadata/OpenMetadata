@@ -1,4 +1,11 @@
 {
+  "calendar": {
+    "today": "Today"
+  },
+  "date-range-picker": {
+    "aria-label": "Date range picker",
+    "placeholder": "Select dates"
+  },
   "pagination": {
     "aria-label": "Pagination",
     "current-page": "Current page",
