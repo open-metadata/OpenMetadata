@@ -18,7 +18,7 @@ import { test } from '../fixtures/pages';
 
 test('Verify Platform Lineage View', async ({ page }) => {
   // Need to add more time for AUT and not for PR checks
-  test.slow(!process.env.PLAYWRIGHT_IS_OSS);
+  test.slow();
 
   // Limit MAX_NODES to get PNG export in time
   const MAX_NODES = 200;
