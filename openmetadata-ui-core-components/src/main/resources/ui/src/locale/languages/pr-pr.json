@@ -1,10 +1,30 @@
 {
+  "breadcrumbs": {
+    "hidden": "Hidden breadcrumbs",
+    "show-hidden": "Show hidden breadcrumbs"
+  },
   "calendar": {
     "today": "Today"
+  },
+  "common": {
+    "close": "Close"
   },
   "date-range-picker": {
     "aria-label": "Date range picker",
     "placeholder": "Select dates"
+  },
+  "dropdown": {
+    "open-menu": "Open menu"
+  },
+  "filter-bar": {
+    "remove": "Remove filter"
+  },
+  "form": {
+    "field-documentation": "Field documentation"
+  },
+  "navigation": {
+    "close-menu": "Close navigation menu",
+    "expand-menu": "Expand navigation menu"
   },
   "pagination": {
     "aria-label": "Pagination",
