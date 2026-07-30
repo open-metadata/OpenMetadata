@@ -127,20 +127,13 @@ class ListFilterTest {
   }
 
   @Test
-  void test_getMemorySearchVisibilityCondition() {
-    ListFilter filter = new ListFilter();
-    String condition = filter.getCondition("context_memory");
+  void getCondition_neverFiltersMemoriesByShareConfigVisibility() {
+    // The search reindex reads memories through this filter, and a user's own PRIVATE/SHARED
+    // memories have to reach the index to stay findable in the ContextCenter listing.
+    String condition = new ListFilter().getCondition("context_memory");
+
     assertFalse(condition.contains("shareConfig.visibility"));
     assertFalse(condition.contains("shareConfig'->>'visibility"));
-
-    filter = new ListFilter();
-    filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
-    condition = filter.getCondition("context_memory");
-    String bindPlaceholder = ":" + ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM;
-    assertTrue(
-        condition.contains(
-                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = " + bindPlaceholder)
-            || condition.contains("json->'shareConfig'->>'visibility' = " + bindPlaceholder));
   }
 
   @Test
