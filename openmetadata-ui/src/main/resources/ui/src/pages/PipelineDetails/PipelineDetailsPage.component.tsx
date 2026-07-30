@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
@@ -44,7 +44,7 @@ import {
   pipelineQueryFn,
   pipelineQueryKey,
 } from '../../rest/queries/pipelineQuery';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -419,7 +419,7 @@ const PipelineDetailsPage = () => {
   }, [decodedPipelineFQN]);
 
   if (permissionsLoading || pipelineLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (isError) {
@@ -443,7 +443,7 @@ const PipelineDetailsPage = () => {
   }
 
   if (!pipelineDetails) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

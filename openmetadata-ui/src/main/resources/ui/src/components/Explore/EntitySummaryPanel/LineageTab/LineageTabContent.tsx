@@ -28,7 +28,7 @@ import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineage
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
-import { getTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
+import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
@@ -230,11 +230,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       )}
                     </div>
                     <div className="item-path-container">
-                      {item.path &&
-                        getTruncatedPath(
-                          item.path,
-                          'condensed-breadcrumb-container'
-                        )}
+                      {item.path && renderTruncatedPath(item.path)}
                     </div>
                   </div>
                   <div className="lineage-item-direction">

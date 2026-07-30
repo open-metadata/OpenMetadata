@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
+import { MemorySortBy } from '../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
@@ -54,6 +55,15 @@ export const formatBytes = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+interface KnowledgePageArticleItem {
+  description: string;
+  href?: string;
+  id: string;
+  lastEditedAt: number;
+  tags: { label: string }[];
+  title: string;
+}
+
 export const knowledgePageToArticleItem = (
   data: {
     id: string;
@@ -66,7 +76,7 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): any => ({
+): KnowledgePageArticleItem => ({
   description: data.description ?? '',
   href:
     data.pageType === PageType.QUICK_LINK
@@ -122,25 +132,44 @@ export const createArticleKnowledgePage = async (
   }
 };
 
-export const handleAssetDownload = async (file: ContextFile) => {
-  let url: string | undefined;
-  let element: HTMLAnchorElement | undefined;
+const DOWNLOAD_URL_REVOKE_DELAY_MS = 1000;
+
+export const downloadBlob = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob);
+  const element = document.createElement('a');
 
   try {
-    const blob = await downloadDriveFile(file.id);
-    url = URL.createObjectURL(blob);
-    element = document.createElement('a');
     element.href = url;
-    element.download = file.displayName ?? file.name;
+    element.download = fileName;
     document.body.appendChild(element);
     element.click();
+  } finally {
+    element.remove();
+    setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
+  }
+};
+
+export const handleAssetDownload = async (file: ContextFile) => {
+  try {
+    const blob = await downloadDriveFile(file.id);
+    downloadBlob(blob, file.displayName ?? file.name);
   } catch (err) {
     showErrorToast(err as AxiosError);
-  } finally {
-    element?.remove();
-
-    if (url) {
-      URL.revokeObjectURL(url);
-    }
   }
+};
+
+export const getSortConfig = (
+  sortBy: MemorySortBy
+): {
+  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortOrder: 'asc' | 'desc';
+} => {
+  if (sortBy === 'usage') {
+    return { sortBy: 'usageCount', sortOrder: 'desc' };
+  }
+  if (sortBy === 'updatedBy') {
+    return { sortBy: 'updatedBy', sortOrder: 'asc' };
+  }
+
+  return { sortBy: 'updatedAt', sortOrder: 'desc' };
 };

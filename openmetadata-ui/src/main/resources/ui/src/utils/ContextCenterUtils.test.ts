@@ -16,6 +16,7 @@ import type { ContextFile } from '../generated/entity/data/contextFile';
 import { PageType } from '../interface/knowledge-center.interface';
 import { downloadDriveFile } from '../rest/assetAPI';
 import {
+  downloadBlob,
   formatBytes,
   handleAssetDownload,
   knowledgePageToArticleItem,
@@ -109,9 +110,45 @@ describe('handleAssetDownload', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
 
     global.URL.createObjectURL = jest.fn(() => 'blob:url');
     global.URL.revokeObjectURL = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('should create a download link for a blob', () => {
+    const clickMock = jest.fn();
+    const removeMock = jest.fn();
+    const anchorElement = {
+      click: clickMock,
+      remove: removeMock,
+    } as unknown as HTMLAnchorElement;
+
+    const appendChildSpy = jest
+      .spyOn(document.body, 'appendChild')
+      .mockImplementation(() => ({} as unknown as Node));
+
+    jest.spyOn(document, 'createElement').mockReturnValue(anchorElement);
+
+    downloadBlob(mockBlob, 'download-name.pdf');
+
+    expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+    expect(anchorElement.href).toBe('blob:url');
+    expect(anchorElement.download).toBe('download-name.pdf');
+    expect(appendChildSpy).toHaveBeenCalledWith(anchorElement);
+    expect(clickMock).toHaveBeenCalled();
+    expect(removeMock).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    jest.runOnlyPendingTimers();
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:url');
   });
 
   it('should download asset successfully', async () => {
@@ -119,15 +156,16 @@ describe('handleAssetDownload', () => {
 
     const clickMock = jest.fn();
     const removeMock = jest.fn();
+    const anchorElement = {
+      click: clickMock,
+      remove: removeMock,
+    } as unknown as HTMLAnchorElement;
 
     const appendChildSpy = jest
       .spyOn(document.body, 'appendChild')
       .mockImplementation(() => ({} as unknown as Node));
 
-    jest.spyOn(document, 'createElement').mockReturnValue({
-      click: clickMock,
-      remove: removeMock,
-    } as unknown as HTMLAnchorElement);
+    jest.spyOn(document, 'createElement').mockReturnValue(anchorElement);
 
     await handleAssetDownload(mockFile as unknown as ContextFile);
 
@@ -135,11 +173,17 @@ describe('handleAssetDownload', () => {
 
     expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
 
-    expect(appendChildSpy).toHaveBeenCalled();
+    expect(anchorElement.download).toBe('sample.pdf');
+
+    expect(appendChildSpy).toHaveBeenCalledWith(anchorElement);
 
     expect(clickMock).toHaveBeenCalled();
 
     expect(removeMock).toHaveBeenCalled();
+
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    jest.runOnlyPendingTimers();
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:url');
   });

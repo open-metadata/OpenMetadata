@@ -1,0 +1,159 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernanceDashboardResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIGovernanceDashboardResponse",
+  "description": "Rollup of AI governance dashboard state.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.AIGovernanceDashboardResponse",
+  "definitions": {
+    "aiGovernanceEstateStats": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceEstateStats",
+      "description": "Aggregate counts for the AI estate.",
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "registered": { "type": "integer", "minimum": 0 },
+        "approved": { "type": "integer", "minimum": 0 },
+        "shadow": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 },
+        "highRisk": { "type": "integer", "minimum": 0 },
+        "unacceptable": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["total", "registered", "approved", "shadow", "pending", "highRisk", "unacceptable"],
+      "additionalProperties": false
+    },
+    "aiGovernanceFrameworkReadiness": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceFrameworkReadiness",
+      "description": "Readiness rollup for one governance framework.",
+      "type": "object",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "description": "Framework name."
+        },
+        "compliant": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of compliant in-scope assets."
+        },
+        "inScope": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of assets in scope for the framework."
+        },
+        "readiness": {
+          "type": "number",
+          "description": "Fraction of in-scope assets currently compliant."
+        },
+        "focus": {
+          "type": "boolean",
+          "description": "Whether this framework is the current dashboard focus."
+        }
+      },
+      "required": ["framework", "compliant", "inScope", "readiness", "focus"],
+      "additionalProperties": false
+    },
+    "aiGovernanceTopEntity": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceTopEntity",
+      "description": "Compact AI asset reference.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "displayName": { "type": "string" },
+        "fullyQualifiedName": { "type": "string" },
+        "entityType": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "aiGovernanceRiskMatrixCell": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceRiskMatrixCell",
+      "description": "Risk and impact matrix cell.",
+      "type": "object",
+      "properties": {
+        "risk": {
+          "type": "string",
+          "description": "EU AI Act risk tier."
+        },
+        "impactBucket": {
+          "type": "string",
+          "description": "Affected-user impact bucket."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of AI assets in this cell."
+        },
+        "topEntity": {
+          "$ref": "#/definitions/aiGovernanceTopEntity"
+        }
+      },
+      "required": ["risk", "impactBucket", "count"],
+      "additionalProperties": false
+    },
+    "aiGovernanceAssetSummary": {
+      "javaType": "org.openmetadata.schema.api.ai.AIGovernanceAssetSummary",
+      "description": "AI asset summary used by governance dashboard top lists.",
+      "type": "object",
+      "properties": {
+        "entityType": { "type": "string" },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "displayName": { "type": "string" },
+        "fullyQualifiedName": { "type": "string" },
+        "registrationStatus": { "type": "string" },
+        "euRisk": { "type": "string" },
+        "affectedUsers": { "type": "integer", "minimum": 0 },
+        "registeredAt": { "$ref": "../../type/basic.json#/definitions/timestamp" },
+        "detectedVia": { "type": "string" },
+        "detectedAt": { "$ref": "../../type/basic.json#/definitions/timestamp" },
+        "submittedBy": { "type": "string" },
+        "submittedAt": { "$ref": "../../type/basic.json#/definitions/timestamp" },
+        "team": { "type": "string" }
+      },
+      "required": ["entityType", "id", "name", "registrationStatus", "affectedUsers"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "estateStats": {
+      "$ref": "#/definitions/aiGovernanceEstateStats"
+    },
+    "frameworkReadiness": {
+      "description": "Per-framework readiness rollups.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceFrameworkReadiness"
+      },
+      "default": []
+    },
+    "riskMatrix": {
+      "description": "Risk and impact matrix cells.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceRiskMatrixCell"
+      },
+      "default": []
+    },
+    "topShadow": {
+      "description": "Highest-priority shadow AI detections.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceAssetSummary"
+      },
+      "default": []
+    },
+    "topApprovals": {
+      "description": "Highest-priority pending approvals.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiGovernanceAssetSummary"
+      },
+      "default": []
+    },
+    "generatedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["estateStats", "frameworkReadiness", "riskMatrix", "topShadow", "topApprovals", "generatedAt"],
+  "additionalProperties": false
+}

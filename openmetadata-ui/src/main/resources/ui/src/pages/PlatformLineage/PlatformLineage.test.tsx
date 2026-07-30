@@ -244,10 +244,6 @@ jest.mock('antd', () => {
   };
 });
 
-jest.mock('../../components/LineageTable/LineageTable.styled', () => ({
-  StyledIconButton: jest.fn(({ children }) => <button>{children}</button>),
-}));
-
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
 }));

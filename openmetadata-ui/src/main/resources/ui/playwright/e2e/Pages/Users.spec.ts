@@ -26,6 +26,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -736,18 +737,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.locator('input[type="radio"]')
+    ).not.toBeChecked();
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -1157,14 +1157,20 @@ test.describe('User Profile Persona Interactions', () => {
         .locator('[data-testid="persona-select-list"] .ant-select-clear')
         .click();
 
+      const updateUserPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          response.request().method() === 'PATCH'
+      );
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
-
+      const updateUserResponse = await updateUserPromise;
+      expect(updateUserResponse.status()).toBe(200);
       await expect(
         adminPage
           .getByTestId('persona-details-card')
@@ -1303,6 +1309,10 @@ base.describe(
     const role5 = new RolesClass();
 
     const user = new UserClass();
+    const chart = new ChartClass();
+    const userPerformanceEntities = entities.map((entity) =>
+      entity === EntityDataClass.chart1 ? chart : entity
+    );
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1353,8 +1363,16 @@ base.describe(
         team3.create(apiContext),
         team4.create(apiContext),
         team5.create(apiContext),
+        chart.create(apiContext),
       ]);
 
+      await afterAction();
+    });
+
+    base.afterAll('Cleanup user performance chart', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await chart.delete(apiContext);
       await afterAction();
     });
 
@@ -1363,7 +1381,7 @@ base.describe(
       async ({ browser }) => {
         const { page, afterAction } = await performUserLogin(browser, user);
 
-        for (const entity of entities) {
+        for (const entity of userPerformanceEntities) {
           await entity.visitEntityPage(page);
           await waitForAllLoadersToDisappear(page);
 

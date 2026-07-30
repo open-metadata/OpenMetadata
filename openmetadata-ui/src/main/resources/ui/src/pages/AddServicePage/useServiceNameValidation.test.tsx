@@ -16,9 +16,11 @@ import { ServiceCategory } from '../../enums/service.enum';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { useServiceNameValidation } from './useServiceNameValidation';
 
+const mockTranslate = (key: string) => key;
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: mockTranslate,
   }),
 }));
 
@@ -63,6 +65,19 @@ describe('useServiceNameValidation', () => {
     expect(getServiceByFQN).not.toHaveBeenCalled();
     expect(result.current.isServiceNameChecking).toBe(false);
     expect(result.current.nameError).toBe('');
+  });
+
+  it('marks service-name validation as pending during the debounce', () => {
+    const { result } = renderHook(() =>
+      useServiceNameValidation({
+        enabled: true,
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        serviceName: 'new-service',
+      })
+    );
+
+    expect(result.current.isServiceNameChecking).toBe(true);
+    expect(getServiceByFQN).not.toHaveBeenCalled();
   });
 
   it('clears duplicate-name state when validation is reset', async () => {

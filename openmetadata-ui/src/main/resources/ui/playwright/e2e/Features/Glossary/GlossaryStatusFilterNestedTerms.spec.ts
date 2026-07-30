@@ -13,7 +13,10 @@
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../../utils/common';
+import {
+  createNewPage,
+  disableEtagConditionalReads,
+} from '../../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -80,21 +83,17 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   const applyStatusFilter = async (page: Page, statuses: string[]) => {
     const statusDropdown = page.getByTestId('glossary-status-dropdown');
     await statusDropdown.click();
-    await page.locator('.status-selection-dropdown').waitFor();
+    await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Click "All" twice to ensure we start from a clean state (nothing selected)
     // First click toggles the current state, second click ensures "All" is unchecked
-    const allCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'All',
-    });
+    const allCheckbox = page.getByTestId('glossary-status-option-all');
     await allCheckbox.click();
     await allCheckbox.click();
 
     // Select specific statuses
     for (const status of statuses) {
-      const checkbox = page.locator('.glossary-dropdown-label', {
-        hasText: status,
-      });
+      const checkbox = page.getByTestId(`glossary-status-option-${status}`);
       await checkbox.click();
     }
 
@@ -105,12 +104,14 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
           response.url().includes('/api/v1/glossaryTerms') &&
           response.status() === 200
       ),
-      page.locator('.ant-btn-primary', { hasText: 'Save' }).click(),
+      page.getByTestId('glossary-status-save-btn').click(),
     ]);
 
     // Wait for table loader to disappear
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
   };
@@ -119,13 +120,11 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   const resetStatusFilter = async (page: Page) => {
     const statusDropdown = page.getByTestId('glossary-status-dropdown');
     await statusDropdown.click();
-    await page.locator('.status-selection-dropdown').waitFor();
+    await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Click "All" twice to clear, then once more to select all
     // This ensures "All" ends up checked regardless of initial state
-    const allCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'All',
-    });
+    const allCheckbox = page.getByTestId('glossary-status-option-all');
     await allCheckbox.click();
     await allCheckbox.click();
     await allCheckbox.click();
@@ -136,11 +135,13 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
           response.url().includes('/api/v1/glossaryTerms') &&
           response.status() === 200
       ),
-      page.locator('.ant-btn-primary', { hasText: 'Save' }).click(),
+      page.getByTestId('glossary-status-save-btn').click(),
     ]);
 
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
   };
@@ -150,17 +151,20 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
     await expect(termRow).toBeVisible();
 
-    const expandTrigger = termRow.locator('.vertical-baseline').first();
+    const expandTrigger = termRow
+      .locator('[data-testid="expand-icon"]')
+      .first();
     await expandTrigger.click();
-    await page.locator('.ant-table-row').first().waitFor({ state: 'visible' });
+    await page
+      .locator('tr[data-row-key]')
+      .first()
+      .waitFor({ state: 'visible' });
   };
 
   // Helper to collapse a specific term in the table
   const collapseTerm = async (page: Page, termName: string) => {
     const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
-    const collapseIcon = termRow.locator(
-      '.ant-table-row-expand-icon.ant-table-row-expand-icon-expanded'
-    );
+    const collapseIcon = termRow.locator('[data-testid="expand-icon"]');
 
     if (await collapseIcon.isVisible()) {
       await collapseIcon.click();
@@ -186,11 +190,13 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await searchInput.fill(query);
 
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
     await page
-      .locator('tbody.ant-table-tbody > tr:not([aria-hidden="true"])')
+      .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
       .waitFor({ state: 'visible' })
       .catch(() => {});
@@ -202,11 +208,13 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     await searchInput.clear();
 
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
     await page
-      .locator('tbody.ant-table-tbody > tr:not([aria-hidden="true"])')
+      .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
       .waitFor({ state: 'visible' })
       .catch(() => {});
@@ -214,9 +222,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   // Helper to get row count
   const getRowCount = async (page: Page) => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+    const rows = page.locator('tbody > tr:not([aria-hidden="true"])');
 
     return rows.count();
   };
@@ -304,10 +310,13 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached', timeout: 30000 });
   });
 

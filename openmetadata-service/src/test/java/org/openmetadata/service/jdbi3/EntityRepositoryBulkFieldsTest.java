@@ -15,22 +15,30 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -140,5 +148,75 @@ class EntityRepositoryBulkFieldsTest {
     assertNotNull(entity.getDomains());
     assertEquals(1, entity.getDomains().size());
     assertEquals(domainId, entity.getDomains().get(0).getId());
+  }
+
+  @Test
+  void folderChildrenCount_isBatchedIntoOneQueryPerPage() {
+    Folder f0 = folder("drive.f0");
+    Folder f1 = folder("drive.f1");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipCount.builder().id(f0.getId()).count(3).build()));
+
+    newFolderRepository()
+        .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0, f1)));
+
+    verify(relationshipDAO, times(1))
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFiles(any(UUID.class), anyString(), anyInt(), anyString());
+    assertEquals(3, f0.getChildrenCount());
+    assertEquals(0, f1.getChildrenCount());
+  }
+
+  @Test
+  void folderChildrenCount_queriesContainsRelationBetweenFolderAndContextFile() {
+    Folder f0 = folder("drive.f0");
+    when(relationshipDAO.countNonDeletedChildFilesBatch(
+            anyList(), anyString(), anyInt(), anyString()))
+        .thenReturn(List.of());
+
+    newFolderRepository()
+        .setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>(List.of(f0)));
+
+    verify(relationshipDAO)
+        .countNonDeletedChildFilesBatch(
+            anyList(),
+            eq(FolderRepository.FOLDER_ENTITY),
+            eq(Relationship.CONTAINS.ordinal()),
+            eq(ContextFileRepository.CONTEXT_FILE_ENTITY));
+  }
+
+  @Test
+  void folderChildrenCount_forEmptyPage_issuesNoQuery() {
+    newFolderRepository().setFieldsInBulk(new Fields(Set.of("childrenCount")), new ArrayList<>());
+
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+  }
+
+  @Test
+  void folderChildrenCount_notRequested_issuesNoQueryAndClearsField() {
+    Folder f0 = folder("drive.f0");
+
+    newFolderRepository().setFieldsInBulk(new Fields(Set.of()), new ArrayList<>(List.of(f0)));
+
+    verify(relationshipDAO, never())
+        .countNonDeletedChildFilesBatch(anyList(), anyString(), anyInt(), anyString());
+    assertNull(f0.getChildrenCount());
+  }
+
+  private FolderRepository newFolderRepository() {
+    when(daoCollection.folderDAO()).thenReturn(mock(CollectionDAO.FolderDAO.class));
+    Jdbi jdbi = mock(Jdbi.class);
+    when(jdbi.onDemand(CollectionDAO.class)).thenReturn(daoCollection);
+    return new FolderRepository(jdbi);
+  }
+
+  private Folder folder(String fqn) {
+    String name = fqn.substring(fqn.lastIndexOf('.') + 1);
+    return new Folder().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(fqn);
   }
 }

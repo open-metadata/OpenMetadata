@@ -29,7 +29,7 @@ import {
   getEpochMillisForPastDays,
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 
@@ -38,7 +38,7 @@ jest.mock('../../../../Customization/GenericProvider/GenericContext');
 jest.mock('../../../../../rest/workflowAPI');
 jest.mock('../../../../../utils/ToastUtils');
 jest.mock('../../../../../utils/date-time/DateTimeUtils');
-jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermUtil');
+jest.mock('../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils');
 
 // Mock SVG components
 jest.mock('../../../../../assets/svg/ic-check-circle-new.svg', () => ({

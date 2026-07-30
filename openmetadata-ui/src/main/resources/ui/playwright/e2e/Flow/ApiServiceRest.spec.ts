@@ -123,6 +123,14 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.getByTestId('Rest').click();
     await page.locator('#service-name').waitFor();
 
+    const serviceNameValidation = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/services/apiServices/name/${encodeURIComponent(
+            apiServiceConfig.name
+          )}`
+    );
     await page.locator('#service-name').fill(apiServiceConfig.name);
     await page.getByTestId('add-description-button').click();
     await page.locator(descriptionBox).fill(apiServiceConfig.description);
@@ -133,6 +141,7 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
 
+    await serviceNameValidation;
     await testConnection(page);
 
     await page.getByTestId('next-button').click();
@@ -166,13 +175,9 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
 
-    await page.locator('[role="dialog"].ant-modal').waitFor();
+    await page.getByTestId('delete-modal').waitFor();
 
-    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-    await page.click('[data-testid="hard-delete-option"]');
-    await page.check('[data-testid="hard-delete"]');
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+    await page.click('[data-testid="hard-delete"]');
 
     const deleteResponse = page.waitForResponse(
       '/api/v1/services/apiServices/async/*?hardDelete=true&recursive=true'

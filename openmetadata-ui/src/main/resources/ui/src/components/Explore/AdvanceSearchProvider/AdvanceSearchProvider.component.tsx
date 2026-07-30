@@ -18,10 +18,13 @@ import {
   OldJsonTree,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
+import '@react-awesome-query-builder/antd/css/styles.css';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -38,17 +41,27 @@ import {
   getTreeConfig,
   processEntityTypeFields,
 } from '../../../utils/AdvancedSearchUtils';
+import {
+  getExploreClearQueryFilterSearchParams,
+  getExploreResetFiltersSearchParams,
+} from '../../../utils/ExplorePureUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
-import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
+
+const AdvancedSearchModal = lazy(() =>
+  import('../AdvanceSearchModal.component').then((m) => ({
+    default: m.AdvancedSearchModal,
+  }))
+);
+
 const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
@@ -182,11 +195,7 @@ export const AdvanceSearchProvider = ({
     (tree?: ImmutableTree) => {
       navigate({
         pathname: location.pathname,
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: tree ? JSON.stringify(tree) : undefined,
-          page: 1,
-        }),
+        search: getExploreClearQueryFilterSearchParams(parsedSearch, tree),
       });
     },
     [navigate, parsedSearch, location.pathname]
@@ -205,19 +214,20 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, [config]);
 
+  const handleResetQueryFilter = useCallback(() => {
+    handleReset();
+    handleTreeUpdate();
+  }, [handleReset, handleTreeUpdate]);
+
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
     navigate({
       pathname: location.pathname,
-      search: Qs.stringify({
-        quickFilter: undefined,
-        queryFilter: undefined,
-        page: 1,
-      }),
+      search: getExploreResetFiltersSearchParams(parsedSearch),
     });
-  }, [navigate, location.pathname]);
+  }, [navigate, parsedSearch, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, FieldOrGroup> = {};
@@ -337,6 +347,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       onReset: handleReset,
+      onResetQueryFilter: handleResetQueryFilter,
       onResetAllFilters: handleResetAllFilters,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
@@ -352,6 +363,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       handleReset,
+      handleResetQueryFilter,
       handleResetAllFilters,
       changeSearchIndex,
       handleSubmit,
@@ -362,11 +374,15 @@ export const AdvanceSearchProvider = ({
   return (
     <AdvancedSearchContext.Provider value={contextValues}>
       {loading ? <Loader /> : children}
-      <AdvancedSearchModal
-        visible={showModal}
-        onCancel={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-      />
+      {showModal && (
+        <Suspense fallback={null}>
+          <AdvancedSearchModal
+            visible={showModal}
+            onCancel={() => setShowModal(false)}
+            onSubmit={handleSubmit}
+          />
+        </Suspense>
+      )}
     </AdvancedSearchContext.Provider>
   );
 };

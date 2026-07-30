@@ -21,6 +21,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   enabled = false,
   onConfirm,
   onCancel,
+  leaveTo,
   renderModal,
 }) => {
   const navigate = useNavigate();
@@ -53,17 +54,33 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     // still alive and can show the modal.
     originalPushState(null, '', globalThis.location.href);
 
+    // Whether the new URL points at a different pathname than the one we're
+    // currently on. Compare pathnames only — a same-path change that only
+    // adds/updates a query string or hash (e.g. widgets syncing filter state
+    // like `?showDeletedTables=false`) is not a real navigation and must not
+    // trip the blocker. Accept absolute, root-relative, and query/hash-only
+    // strings; fall back to raw compare if URL parsing fails.
+    const isPathChanging = (url: string | URL): boolean => {
+      const raw = url.toString();
+      if (raw.startsWith('?') || raw.startsWith('#')) {
+        return false;
+      }
+      try {
+        const parsed = new URL(raw, globalThis.location.origin);
+
+        return parsed.pathname !== globalThis.location.pathname;
+      } catch {
+        return raw !== globalThis.location.pathname;
+      }
+    };
+
     // Intercept programmatic React Router navigate(path) calls.
     globalThis.history.pushState = function (
       state: unknown,
       title: string,
       url?: string | URL | null
     ) {
-      if (
-        !isNavigatingRef.current &&
-        url &&
-        url !== globalThis.location.pathname
-      ) {
+      if (!isNavigatingRef.current && url && isPathChanging(url)) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
@@ -78,11 +95,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       title: string,
       url?: string | URL | null
     ) {
-      if (
-        !isNavigatingRef.current &&
-        url &&
-        url !== globalThis.location.pathname
-      ) {
+      if (!isNavigatingRef.current && url && isPathChanging(url)) {
         setIsModalVisible(true);
         pendingNavigationRef.current = url.toString();
 
@@ -171,16 +184,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     };
   }, [isBlocking]);
 
-  const handleLeave = useCallback(async () => {
-    setIsModalVisible(false);
-    isNavigatingRef.current = true;
-    setIsBlocking(false);
-
-    const pendingUrl = pendingNavigationRef.current;
-    pendingNavigationRef.current = null;
-
-    setTimeout(() => {
-      if (pendingUrl === 'back') {
+  const performPendingNavigation = useCallback(
+    (pendingUrl: string | null) => {
+      if (pendingUrl === 'back' && leaveTo) {
+        navigate(leaveTo);
+      } else if (pendingUrl === 'back') {
         // go(-2): past the re-pushed guard entry AND past the original page entry.
         globalThis.history.go(-2);
       } else if (pendingUrl === 'reload') {
@@ -199,8 +207,20 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       } else if (pendingUrl) {
         navigate(pendingUrl);
       }
-    }, 50);
-  }, [navigate]);
+    },
+    [navigate, leaveTo]
+  );
+
+  const handleLeave = useCallback(async () => {
+    setIsModalVisible(false);
+    isNavigatingRef.current = true;
+    setIsBlocking(false);
+
+    const pendingUrl = pendingNavigationRef.current;
+    pendingNavigationRef.current = null;
+
+    setTimeout(() => performPendingNavigation(pendingUrl), 50);
+  }, [performPendingNavigation]);
 
   const handleSaveAndLeave = useCallback(async () => {
     setLoading(true);
@@ -214,30 +234,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       const pendingUrl = pendingNavigationRef.current;
       pendingNavigationRef.current = null;
 
-      setTimeout(() => {
-        if (pendingUrl === 'back') {
-          globalThis.history.go(-2);
-        } else if (pendingUrl === 'reload') {
-          globalThis.location.reload();
-        } else if (pendingUrl?.startsWith('http')) {
-          try {
-            const parsed = new URL(pendingUrl);
-            if (parsed.origin === globalThis.location.origin) {
-              navigate(parsed.pathname + parsed.search + parsed.hash);
-            } else {
-              globalThis.location.href = pendingUrl;
-            }
-          } catch {
-            globalThis.location.href = pendingUrl;
-          }
-        } else if (pendingUrl) {
-          navigate(pendingUrl);
-        }
-      }, 50);
+      setTimeout(() => performPendingNavigation(pendingUrl), 50);
     } catch {
       setLoading(false);
     }
-  }, [navigate, onConfirm]);
+  }, [onConfirm, performPendingNavigation]);
 
   const handleModalClose = useCallback(() => {
     setIsModalVisible(false);

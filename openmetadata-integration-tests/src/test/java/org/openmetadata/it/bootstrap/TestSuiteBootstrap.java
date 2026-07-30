@@ -28,10 +28,13 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -46,9 +49,6 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
-import org.openmetadata.schema.configuration.LLMConfiguration;
-import org.openmetadata.schema.configuration.LLMOpenAIConfig;
-import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
@@ -153,7 +153,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
   private static Jdbi jdbi;
-  private static LlmStubServer LLM_STUB_SERVER;
 
   private static String searchHost;
   private static int searchPort;
@@ -189,6 +188,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     System.setProperty("OM_TEST_SUPPORT_SEARCH_ENABLED", "true");
 
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
+    System.setProperty("user.timezone", "UTC");
+    TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    LOG.info("Test JVM timezone set to {}", TimeZone.getDefault().getID());
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
     LOG.info("RDF enabled: {}", rdfEnabled);
@@ -209,7 +211,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       if (k8sEnabled) {
         startK3s();
       }
-      startLlmStub();
       startApplication();
 
       long duration = System.currentTimeMillis() - startTime;
@@ -550,10 +551,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
 
-  private void startLlmStub() {
-    LLM_STUB_SERVER = LlmStubServer.start();
-  }
-
   private void startApplication() throws Exception {
     LOG.info("Starting OpenMetadata application...");
     OpenMetadataApplicationConfig config = buildRuntimeApplicationConfig();
@@ -614,11 +611,16 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void registerMcpServerIfAvailable() {
     try {
-      // Pick up entities (bots, settings) created during seed data loading.
+      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
+      // Reinitialize to pick up apps created by seed data loading.
       ApplicationContext.reinitialize();
 
-      // registerMCPServer self-gates on mcpConfiguration.enabled (seeded enabled by default).
-      // It is protected, so we use reflection from the test bootstrap
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
+        LOG.info("McpApplication not found, skipping MCP server registration");
+        return;
+      }
+
+      // registerMCPServer is protected, so we use reflection from the test bootstrap
       OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
       java.lang.reflect.Method method =
           OpenMetadataApplication.class.getDeclaredMethod(
@@ -778,33 +780,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("RDF configuration complete");
   }
 
-  /**
-   * Points the embedded server at the in-JVM {@link LlmStubServer} via an OpenAI-compatible
-   * provider, so the Company Context pill-extraction pipeline runs deterministically end to end.
-   */
-  private static void configureLlm(OpenMetadataApplicationConfig config) {
-    LLMConfiguration llm =
-        new LLMConfiguration()
-            .withEmbeddings(
-                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
-                    .withProvider(
-                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
-                    .withDjl(
-                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
-                            .withEmbeddingModel(
-                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
-    if (LLM_STUB_SERVER != null) {
-      LLMOpenAIConfig openai =
-          new LLMOpenAIConfig()
-              .withApiKey("integration-test")
-              .withModelId("stub-model")
-              .withEndpoint(LLM_STUB_SERVER.baseUrl());
-      llm.withEnabled(true).withProvider(LLMProvider.OPENAI).withOpenai(openai);
-      LOG.info("LLM completion configured against stub endpoint {}", LLM_STUB_SERVER.baseUrl());
-    }
-    config.setLlmConfiguration(llm);
-  }
-
   private void cleanup() {
     try {
       if (SharedEntities.isInitialized()) {
@@ -812,11 +787,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
-    }
-
-    if (LLM_STUB_SERVER != null) {
-      LLM_STUB_SERVER.stop();
-      LLM_STUB_SERVER = null;
     }
 
     try {
@@ -1237,14 +1207,15 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureCache(config);
     configureRdf(config);
-    configureLlm(config);
     return config;
   }
 
   private static String getProjectRoot() {
     String projectRoot = System.getProperty("user.dir");
-    if (projectRoot.endsWith("openmetadata-integration-tests")) {
-      projectRoot = projectRoot.substring(0, projectRoot.lastIndexOf("/"));
+    Path projectRootPath = Paths.get(projectRoot);
+    if (projectRootPath.endsWith("openmetadata-integration-tests")
+        && projectRootPath.getParent() != null) {
+      projectRoot = projectRootPath.getParent().toString();
     }
     return projectRoot;
   }
@@ -1273,11 +1244,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static boolean isFusekiEnabled() {
     return fusekiEndpoint != null;
-  }
-
-  /** True when the embedded suite booted the in-JVM LLM stub (deterministic pill extraction). */
-  public static boolean isLlmStubEnabled() {
-    return LLM_STUB_SERVER != null;
   }
 
   /**

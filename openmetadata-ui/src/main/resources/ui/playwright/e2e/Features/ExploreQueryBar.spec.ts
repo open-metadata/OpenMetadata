@@ -83,6 +83,7 @@ test('filter survives a tree click and both stack as removable chips', async ({
       page.getByTestId('query-chip-entityType.keyword-table')
     ).toBeVisible();
 
+    await expect(page.getByTestId('clear-filters')).toHaveCount(0);
     expect(page.url()).toContain('browsePath');
     expect(page.url()).toContain('quickFilter');
   });
@@ -100,10 +101,15 @@ test('filter survives a tree click and both stack as removable chips', async ({
     ).toBeVisible();
   });
 
-  await test.step('Clear All empties the whole query', async () => {
+  await test.step('Query-panel Clear empties the whole query', async () => {
     await page.getByTestId('clear-all-chips').click();
     await waitForAllLoadersToDisappear(page);
 
+    const url = new URL(page.url());
+    expect(url.searchParams.get('browsePath')).toBeNull();
+    expect(url.searchParams.get('quickFilter')).toBeNull();
+
+    await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
     await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
     await expect(
       page.getByTestId('query-chip-entityType.keyword-table')

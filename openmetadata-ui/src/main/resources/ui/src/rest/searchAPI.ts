@@ -171,6 +171,7 @@ export const rawSearchQuery = <
     postFilter,
     fetchSource,
     filters,
+    explain,
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
@@ -202,6 +203,7 @@ export const rawSearchQuery = <
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,
+      explain,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
       exclude_source_fields: req.excludeSourceFields,
@@ -375,6 +377,32 @@ export const getSearchStats = async (): Promise<SearchStatsResponse> => {
 export const cleanOrphanIndexes = async (): Promise<OrphanCleanupResponse> => {
   const response: AxiosResponse<OrphanCleanupResponse> = await APIClient.delete(
     '/search/stats/orphan'
+  );
+
+  return response.data;
+};
+
+export interface SearchExportAsyncResponse {
+  jobId: string;
+  message: string;
+}
+
+// Queues the export as a background job; the CSV is downloaded from
+// /csvAsyncJobs/{jobId}/result via the Background jobs tray when it completes.
+export const exportSearchResultsAsync = async (params: {
+  q?: string;
+  index?: string;
+  deleted?: boolean;
+  query_filter?: string;
+  post_filter?: string;
+  sort_field?: string;
+  sort_order?: string;
+  size?: number;
+  from?: number;
+}): Promise<SearchExportAsyncResponse> => {
+  const response = await APIClient.get<SearchExportAsyncResponse>(
+    '/search/export/async',
+    { params }
   );
 
   return response.data;

@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { upperFirst } from 'lodash';
+import { isEmpty, upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatsData } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { CACHE_WARMUP_APPLICATION_NAME } from '../constants/constants';
 import {
+  AppRunRecord,
+  Stats,
   Status,
   StepStats,
 } from '../generated/entity/applications/appRunRecord';
+import { formatJsonString } from './StringUtils';
 
 export const isCacheWarmupApplication = (appName?: string) =>
   appName === CACHE_WARMUP_APPLICATION_NAME;
@@ -195,4 +198,36 @@ export const formatThroughput = (
   }
 
   return `${prefix}${rps.toFixed(1)} r/s`;
+};
+
+const APP_RUN_STAT_KEYS: (keyof Stats)[] = [
+  'jobStats',
+  'readerStats',
+  'processStats',
+  'sinkStats',
+  'vectorStats',
+  'entityStats',
+];
+
+// The failure log text rendered by AppLogsViewer / the log modal for an app run.
+// It comes from the record itself (no API fetch).
+export const getAppRunFailureLogs = (record: AppRunRecord): string =>
+  formatJsonString(
+    JSON.stringify(
+      record.failureContext?.stackTrace ?? record.failureContext?.failure ?? {}
+    )
+  );
+
+// Whether an app run has any stats content to render inline (stats cards/tables
+// or server stats). When false, the only thing AppLogsViewer would show is the
+// "View Logs" button — so callers can open the log modal directly instead.
+export const hasAppRunStats = (record: AppRunRecord): boolean => {
+  const successStats = record.successContext?.stats;
+  const failureStats = record.failureContext?.stats as Stats | undefined;
+  const hasStatBlocks = APP_RUN_STAT_KEYS.some(
+    (key) => successStats?.[key] || failureStats?.[key]
+  );
+  const hasServerStats = !isEmpty(record.successContext?.serverStats);
+
+  return hasStatBlocks || hasServerStats;
 };

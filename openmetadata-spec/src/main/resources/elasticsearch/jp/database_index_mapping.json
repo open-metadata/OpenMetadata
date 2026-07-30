@@ -257,7 +257,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "entityType": {
         "type": "keyword",

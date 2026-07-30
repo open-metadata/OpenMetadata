@@ -98,9 +98,15 @@ jest.mock(
       )
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -126,7 +132,7 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
 }));
 

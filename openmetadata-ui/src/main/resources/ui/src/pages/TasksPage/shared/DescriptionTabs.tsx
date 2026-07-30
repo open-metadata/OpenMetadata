@@ -20,7 +20,7 @@ import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFall
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import { getDescriptionDiff } from '../../../utils/TasksUtils';
+import { getDescriptionDiff } from '../../../utils/TaskPayloadUtils';
 import DiffView from './DiffView/DiffView';
 const RichTextEditor = withSuspenseFallback(
   lazy(() => import('../../../components/common/RichTextEditor/RichTextEditor'))

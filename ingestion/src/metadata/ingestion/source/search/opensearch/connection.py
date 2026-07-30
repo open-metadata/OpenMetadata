@@ -13,6 +13,7 @@
 Source connection handler for OpenSearch
 """
 
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -42,7 +43,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
-from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -100,79 +100,81 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_connection(connection: OpenSearchConnectionConfig) -> OpenSearch:
-    """
-    Create OpenSearch connection supporting Basic and AWS IAM authentication.
-    """
-    basic_auth = None
-    aws_auth = None
-    verify_ssl = False
-    ssl_show_warn = False
-    ca_cert = False
-    client_cert = None
-    private_key = None
-
-    if connection.verifySSL == VerifySSL.validate:
-        verify_ssl = True
-    elif connection.verifySSL == VerifySSL.ignore:
-        ssl_show_warn = True
-
-    if connection.sslConfig and connection.sslConfig.certificates:
-        if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
-        elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
-
-    # Check for Basic Authentication
-    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
-        basic_auth = (
-            connection.authType.username,
-            (connection.authType.password.get_secret_value() if connection.authType.password else None),
-        )
-
-    # Check for AWS IAM Authentication
-    if isinstance(connection.authType, AWSCredentials):
-        aws_access_key = connection.authType.awsAccessKeyId
-        aws_secret_key = (
-            connection.authType.awsSecretAccessKey.get_secret_value()
-            if connection.authType.awsSecretAccessKey
-            else None
-        )
-        aws_region = connection.authType.awsRegion  # Region as a plain string
-        # awsSessionToken is a plain str in the schema (no "format": "password"),
-        # so we use it directly without calling .get_secret_value()
-        aws_session_token = connection.authType.awsSessionToken or None
-        aws_auth = AWS4Auth(
-            aws_access_key,
-            aws_secret_key,
-            aws_region,
-            "es",
-            session_token=aws_session_token,
-        )
-
-    if not connection.connectionArguments:
-        connection.connectionArguments = init_empty_connection_arguments()
-
-    # Determine the http_auth based on the available authentication method.
-    # AWS IAM takes precedence, followed by Basic Authentication.
-    http_auth = aws_auth if aws_auth else basic_auth
-
-    return OpenSearch(
-        clean_uri(str(connection.hostPort)),
-        http_auth=http_auth,
-        verify_certs=verify_ssl,
-        ssl_show_warn=ssl_show_warn,
-        ca_certs=ca_cert,
-        client_cert=client_cert,
-        client_key=private_key,
-        connection_class=RequestsHttpConnection,  # Use RequestsHttpConnection for AWS auth support.
-        **connection.connectionArguments.root,
-    )
+def _cleanup_staging_dir(staging_dir: str | None) -> None:
+    """Remove the staging dir holding the cert/key files written by value."""
+    if staging_dir and Path(staging_dir).exists():
+        shutil.rmtree(staging_dir, ignore_errors=True)
 
 
 class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch]):
     def _get_client(self) -> OpenSearch:
-        return get_connection(self.service_connection)
+        """
+        Create OpenSearch connection supporting Basic and AWS IAM authentication.
+        """
+        connection = self.service_connection
+        basic_auth = None
+        aws_auth = None
+        verify_ssl = False
+        ssl_show_warn = False
+        ca_cert = False
+        client_cert = None
+        private_key = None
+
+        if connection.verifySSL == VerifySSL.validate:
+            verify_ssl = True
+        elif connection.verifySSL == VerifySSL.ignore:
+            ssl_show_warn = True
+
+        if connection.sslConfig and connection.sslConfig.certificates:
+            if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
+                staging_dir = connection.sslConfig.certificates.stagingDir
+                self._on_close(lambda: _cleanup_staging_dir(staging_dir))
+                ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
+            elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
+                ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
+
+        # Check for Basic Authentication
+        if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
+            basic_auth = (
+                connection.authType.username,
+                (connection.authType.password.get_secret_value() if connection.authType.password else None),
+            )
+
+        # Check for AWS IAM Authentication
+        if isinstance(connection.authType, AWSCredentials):
+            aws_access_key = connection.authType.awsAccessKeyId
+            aws_secret_key = (
+                connection.authType.awsSecretAccessKey.get_secret_value()
+                if connection.authType.awsSecretAccessKey
+                else None
+            )
+            aws_region = connection.authType.awsRegion  # Region as a plain string
+            # awsSessionToken is a plain str in the schema (no "format": "password"),
+            # so we use it directly without calling .get_secret_value()
+            aws_session_token = connection.authType.awsSessionToken or None
+            aws_auth = AWS4Auth(
+                aws_access_key,
+                aws_secret_key,
+                aws_region,
+                "es",
+                session_token=aws_session_token,
+            )
+
+        # Determine the http_auth based on the available authentication method.
+        # AWS IAM takes precedence, followed by Basic Authentication.
+        http_auth = aws_auth if aws_auth else basic_auth
+
+        return OpenSearch(
+            clean_uri(str(connection.hostPort)),
+            http_auth=http_auth,
+            verify_certs=verify_ssl,
+            ssl_show_warn=ssl_show_warn,
+            ca_certs=ca_cert,
+            client_cert=client_cert,
+            client_key=private_key,
+            connection_class=RequestsHttpConnection,  # Use RequestsHttpConnection for AWS auth support.
+            **((connection.connectionArguments and connection.connectionArguments.root) or {}),
+        )
 
     def test_connection(
         self,

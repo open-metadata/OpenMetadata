@@ -10,8 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, Page, request } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  request,
+} from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
@@ -22,6 +31,10 @@ import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
 export const fullUuid = () => randomUUID();
+
+const adminStorageStateFile = 'playwright/.auth/admin.json';
+const adminApiTokenFile = 'playwright/.auth/admin-api-token.json';
+let workerAdminAPIContext: Promise<APIRequestContext> | undefined;
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -47,21 +60,57 @@ export const getToken = async (page: Page) => {
 };
 
 export const getAuthContext = async (token: string) => {
+  const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+
   return await request.newContext({
+    baseURL:
+      process.env.PLAYWRIGHT_TEST_BASE_URL ??
+      (isH2Mode ? 'https://localhost:8585' : 'http://localhost:8585'),
     // Default timeout is 30s making it to 1m for AUTs
     timeout: 90000,
+    ignoreHTTPSErrors: isH2Mode,
     extraHTTPHeaders: {
-      Connection: 'keep-alive',
+      ...(isH2Mode ? {} : { Connection: 'keep-alive' }),
       Authorization: `Bearer ${token}`,
     },
   });
+};
+
+const DISABLE_ETAG_CONDITIONAL_READS_KEY = 'OM_DISABLE_ETAG_CONDITIONAL_READS';
+const etagOptOutInstalled = new WeakSet<Page>();
+
+/**
+ * Disable client-side conditional reads without installing a Playwright route.
+ *
+ * The UI attaches an ETag conditional-GET interceptor; the server ETag only
+ * covers version/updatedAt, so a refetch racing a relationship-only or child
+ * mutation (followers, votes, customMetrics, testSuite) is answered 304 and the
+ * UI renders a stale body. A Playwright route would disable Chromium's HTTP
+ * cache for the page and can shadow suite-specific API mocks, so E2E sessions
+ * use the application's localStorage opt-out instead.
+ */
+export const disableEtagConditionalReads = async (page: Page) => {
+  if (etagOptOutInstalled.has(page)) {
+    return;
+  }
+  etagOptOutInstalled.add(page);
+  await page.addInitScript((key) => {
+    localStorage.setItem(key, 'true');
+  }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+
+  if (/^https?:/.test(page.url())) {
+    await page.evaluate((key) => {
+      localStorage.setItem(key, 'true');
+    }, DISABLE_ETAG_CONDITIONAL_READS_KEY);
+  }
 };
 
 export const redirectToHomePage = async (
   page: Page,
   _waitForLoaders = true
 ) => {
-  await page.goto('/', {
+  await disableEtagConditionalReads(page);
+  await page.goto('/my-data', {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForURL('**/my-data', {
@@ -102,26 +151,129 @@ export const removeLandingBanner = async (page: Page) => {
   }
 };
 
-export const createNewPage = async (browser: Browser) => {
-  // create a new page
-  const page = await browser.newPage();
-  await redirectToHomePage(page);
-
-  // get the token
-  const token = await getToken(page);
-
-  // create a new context with the token
-  const apiContext = await getAuthContext(token);
-
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
+type CreateNewPageResult = {
+  afterAction: () => Promise<void>;
+  apiContext: APIRequestContext;
 };
 
+type NavigatedPageResult = CreateNewPageResult & { page: Page };
+type APIOnlyPageResult = CreateNewPageResult & { page?: never };
+
+export const getSavedAdminToken = async () => {
+  const tokenFile = JSON.parse(await readFile(adminApiTokenFile, 'utf8')) as {
+    token: string;
+  };
+
+  return tokenFile.token;
+};
+
+const createValidatedWorkerAdminAPIContext = async () => {
+  const apiContext = await getAuthContext(await getSavedAdminToken());
+
+  try {
+    const response = await apiContext.get('/api/v1/users/loggedInUser');
+
+    try {
+      if (!response.ok()) {
+        throw new Error(
+          `Saved admin token validation failed (${response.status()})`
+        );
+      }
+    } finally {
+      await response.dispose();
+    }
+
+    return apiContext;
+  } catch (error) {
+    await apiContext.dispose();
+    throw error;
+  }
+};
+
+export const getWorkerAdminAPIContext = () => {
+  workerAdminAPIContext ??= createValidatedWorkerAdminAPIContext().catch(
+    (error) => {
+      workerAdminAPIContext = undefined;
+      throw error;
+    }
+  );
+
+  return workerAdminAPIContext;
+};
+
+export const disposeWorkerAdminAPIContext = async () => {
+  const apiContext = workerAdminAPIContext;
+  workerAdminAPIContext = undefined;
+  if (apiContext) {
+    await (await apiContext).dispose();
+  }
+};
+
+export function createNewPage(
+  browser: Browser,
+  options: { navigate: true }
+): Promise<NavigatedPageResult>;
+export function createNewPage(
+  browser: Browser,
+  options?: { navigate?: false }
+): Promise<APIOnlyPageResult>;
+export async function createNewPage(
+  browser: Browser,
+  { navigate = false }: { navigate?: boolean } = {}
+): Promise<NavigatedPageResult | APIOnlyPageResult> {
+  let page: Page | undefined;
+  let ownsApiContext = false;
+  if (navigate) {
+    page = await browser.newPage({
+      storageState: existsSync(adminStorageStateFile)
+        ? adminStorageStateFile
+        : undefined,
+    });
+    await redirectToHomePage(page);
+  }
+
+  let apiContext: APIRequestContext;
+  try {
+    apiContext = await getWorkerAdminAPIContext();
+  } catch {
+    if (!page) {
+      page = await browser.newPage({
+        storageState: existsSync(adminStorageStateFile)
+          ? adminStorageStateFile
+          : undefined,
+      });
+      await redirectToHomePage(page);
+    }
+    apiContext = await getAuthContext(await getToken(page));
+    ownsApiContext = true;
+  }
+
+  const afterAction = async () => {
+    if (ownsApiContext) {
+      await apiContext.dispose();
+    }
+    await page?.close();
+  };
+
+  if (navigate) {
+    if (!page) {
+      throw new Error('Expected a navigated page');
+    }
+
+    return { page, apiContext, afterAction };
+  }
+
+  return { apiContext, afterAction };
+}
+
 export const getDefaultAdminAPIContext = async (browser: Browser) => {
+  if (existsSync(adminApiTokenFile)) {
+    const apiContext = await getWorkerAdminAPIContext();
+    const afterAction = async () => undefined;
+
+    return { apiContext, afterAction };
+  }
+
   const context = await browser.newContext({
     storageState: 'playwright/.auth/admin.json',
   });
@@ -181,12 +333,14 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').getByText(message).waitFor({
-    state: 'visible',
-    timeout,
-  });
+  const toast = page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first();
 
-  await expect(page.getByTestId('alert-icon')).toBeVisible();
+  await toast.waitFor({ state: 'visible', timeout });
+
+  await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -693,23 +847,101 @@ export const verifyDomainLinkInCard = async (
   await expect(domainLink).toBeEnabled();
 };
 
+export const waitForSearchResult = async (
+  page: Page,
+  searchTerm: string,
+  result: Locator
+) => {
+  let hasSubmittedSearch = false;
+
+  await expect
+    .poll(
+      async () => {
+        const searchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.request().method() === 'GET',
+          { timeout: 15_000 }
+        );
+
+        if (hasSubmittedSearch) {
+          await Promise.all([searchResponse, page.reload()]);
+        } else {
+          await page.getByTestId('searchBox').fill(searchTerm);
+          await Promise.all([
+            searchResponse,
+            page.getByTestId('searchBox').press('Enter'),
+          ]);
+          hasSubmittedSearch = true;
+        }
+        await waitForAllLoadersToDisappear(page);
+
+        return result.isVisible();
+      },
+      { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }
+    )
+    .toBe(true);
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
-  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
-  await page.getByTestId('searchBox').press('Enter');
-  await page.locator('[data-testid*="table-data-card"]').first().waitFor();
+  // Domain propagation from the parent service to its children — and the
+  // subsequent search reindex — is eventually consistent. Gate on the search
+  // API actually reflecting the propagated domain before touching the UI, so
+  // the test converges on real backend state instead of racing a fixed UI-poll
+  // window under CI load.
+  const { apiContext, afterAction } = await getApiContext(page);
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/search/query?q=${encodeURIComponent(
+            childFqnSearchTerm
+          )}&index=all&from=0&size=10`
+        );
+
+        const hits: {
+          _source?: {
+            name?: string;
+            fullyQualifiedName?: string;
+            domains?: { name?: string; fullyQualifiedName?: string }[];
+          };
+        }[] = response.ok() ? (await response.json())?.hits?.hits ?? [] : [];
+        const source = hits.find(
+          (hit) =>
+            hit._source?.fullyQualifiedName === childFqnSearchTerm ||
+            hit._source?.name === childFqnSearchTerm
+        )?._source;
+
+        return Boolean(
+          source?.domains?.some(
+            (entityDomain) =>
+              entityDomain.fullyQualifiedName === domain.fullyQualifiedName ||
+              entityDomain.name === domain.name
+          )
+        );
+      },
+      { timeout: 90_000, intervals: [2_000, 5_000, 10_000] }
+    )
+    .toBe(true);
+  await afterAction();
+
+  // The propagated domain is now indexed. Run a single explore search and
+  // web-first wait for the entity card, then assert it carries the domain by
+  // display name. (The old poll reloaded the page between attempts, dropping
+  // the search term so it could never re-find the card; and the explore card
+  // renders domains via DomainLabel, which exposes no `domain-link` testid.)
+  const searchBox = page.getByTestId('searchBox');
+  await searchBox.fill(childFqnSearchTerm);
+  await searchBox.press('Enter');
+  await waitForAllLoadersToDisappear(page);
 
   const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
-
-  await expect(entityCard).toBeVisible();
-
-  const domainLink = entityCard.getByTestId('domain-link').first();
-
-  await expect(domainLink).toBeVisible();
-  await expect(domainLink).toContainText(domain.displayName);
+  await expect(entityCard).toBeVisible({ timeout: 30_000 });
+  await expect(entityCard).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -966,6 +1198,157 @@ export const testPaginationNavigation = async (
       expect(newRowCount).not.toBe(initialRowCount);
     }
   }
+};
+
+type ResponseWithRequest = {
+  request: () => { method: () => string };
+  url: () => string;
+};
+
+type MetricSearchHit = {
+  _source?: {
+    displayName?: string;
+    name?: string;
+  };
+};
+
+type MetricSearchResponse = {
+  hits?: {
+    hits?: MetricSearchHit[];
+  };
+};
+
+type CsvAsyncJob = {
+  jobId: string;
+  status: string;
+};
+
+export const fetchCompletedCsvAsyncJobResult = async (
+  apiContext: APIRequestContext,
+  jobId: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
+
+        if (!response.ok()) {
+          return undefined;
+        }
+
+        const jobs = (await response.json()) as CsvAsyncJob[];
+
+        return jobs.find((job) => job.jobId === jobId)?.status;
+      },
+      { timeout: 90_000 }
+    )
+    .toBe('COMPLETED');
+
+  const resultResponse = await apiContext.get(
+    `/api/v1/csvAsyncJobs/${jobId}/result`,
+    {
+      headers: { Accept: 'text/csv' },
+    }
+  );
+
+  expect(resultResponse.ok()).toBeTruthy();
+
+  return resultResponse.text();
+};
+
+export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname.endsWith('/api/v1/search/query') &&
+    url.searchParams.get('index') === 'metric'
+  );
+};
+
+export const waitForMetricsSearchResponse = (page: Page) =>
+  page.waitForResponse(isMetricsSearchResponse);
+
+export const testMetricsPaginationNavigation = async (page: Page) => {
+  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+
+  await page.goto('/metrics?pageSize=15');
+
+  const page1Response = await page1ResponsePromise;
+  expect(page1Response.status()).toBe(200);
+
+  await page.locator('table').waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+
+  const page1Data: MetricSearchResponse = await page1Response.json();
+  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
+  const page1FirstItemName =
+    page1FirstItem?.displayName ?? page1FirstItem?.name;
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+
+  const [page2Response] = await Promise.all([
+    waitForMetricsSearchResponse(page),
+    nextButton.click(),
+  ]);
+  expect(page2Response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
+
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+  await expect(paginationText).toBeVisible();
+  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
+
+  if (page1FirstItemName) {
+    await expect(page.locator('tbody tr').first()).not.toContainText(
+      page1FirstItemName
+    );
+  }
+
+  const reloadResponsePromise = waitForMetricsSearchResponse(page);
+
+  await page.reload();
+
+  const reloadResponse = await reloadResponsePromise;
+  expect(reloadResponse.status()).toBe(200);
+
+  await page.locator('table').waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
+  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
+
+  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+  await expect(pageSizeDropdown).toHaveText('15 / Page');
+
+  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+  await pageSizeDropdown.hover();
+  const isMenuVisibleAfterHover = await menuItem.isVisible();
+  if (!isMenuVisibleAfterHover) {
+    await pageSizeDropdown.click();
+  }
+  await menuItem.waitFor({ state: 'visible' });
+
+  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
+  await menuItem.click();
+
+  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
+  expect(pageSizeChangeResponse.status()).toBe(200);
+  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
+    '25'
+  );
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(pageSizeDropdown).toHaveText('25 / Page');
+
+  const newRowCount = await page
+    .locator('tbody > tr[data-row-key]:visible')
+    .count();
+  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (

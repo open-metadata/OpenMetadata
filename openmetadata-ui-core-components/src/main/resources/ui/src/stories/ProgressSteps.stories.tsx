@@ -28,6 +28,12 @@ const steps: ProgressStepItem[] = [
   },
 ];
 
+const attachedSteps: ProgressStepItem[] = [
+  { title: 'Template' },
+  { title: 'Configure' },
+  { title: 'Schedule' },
+];
+
 const stepsWithIcons: ProgressStepItem[] = [
   { ...steps[0], icon: File02 },
   { ...steps[1], icon: Cube01 },
@@ -57,6 +63,16 @@ export const IconCentered: Story = {
 
 export const NumberCentered: Story = {
   args: { type: 'number', orientation: 'horizontal' },
+};
+
+export const NumberAttached: Story = {
+  args: {
+    type: 'number',
+    orientation: 'horizontal',
+    labelPlacement: 'attach',
+    steps: attachedSteps,
+    currentStep: 0,
+  },
 };
 
 export const FeaturedIconCentered: Story = {

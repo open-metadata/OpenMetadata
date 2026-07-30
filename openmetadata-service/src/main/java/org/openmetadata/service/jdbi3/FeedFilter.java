@@ -25,6 +25,8 @@ public class FeedFilter {
   @Getter private String after;
   @Getter private boolean applyDomainFilter;
   @Getter private List<UUID> domains;
+  @Getter private Long startTs;
+  @Getter private Long endTs;
   @Getter @Builder.Default private final Map<String, String> queryParams = new HashMap<>();
 
   public String getCondition() {
@@ -54,11 +56,28 @@ public class FeedFilter {
       condition1 = addCondition(condition1, paginationCondition);
     }
 
+    condition1 = addCondition(condition1, buildTimeRangeCondition());
+
     // Only Domain Listing based thread can be fetched
     condition1 =
         addCondition(condition1, buildDomainCondition("domains", domains, applyDomainFilter));
 
     return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
+  }
+
+  // Restricts threads to a [startTs, endTs] window on createdAt (the $.threadTs
+  // generated column), matching the list ordering and the timestamp the UI shows.
+  // Inlines the validated Long values (like the pagination clause above) so the
+  // bigint comparison works on both MySQL and PostgreSQL.
+  private String buildTimeRangeCondition() {
+    String condition = "";
+    if (startTs != null) {
+      condition = addCondition(condition, String.format("createdAt >= %s", startTs));
+    }
+    if (endTs != null) {
+      condition = addCondition(condition, String.format("createdAt <= %s", endTs));
+    }
+    return condition;
   }
 
   /**

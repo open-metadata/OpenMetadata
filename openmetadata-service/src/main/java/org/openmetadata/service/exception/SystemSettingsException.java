@@ -9,4 +9,8 @@ public class SystemSettingsException extends WebServiceException {
   public SystemSettingsException(String message) {
     super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
+
+  public SystemSettingsException(Response.Status status, String message) {
+    super(status, ERROR_TYPE, message);
+  }
 }

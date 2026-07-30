@@ -19,16 +19,14 @@ import {
   Fragment,
   HTMLAttributes,
   ReactNode,
-  useEffect,
   useMemo,
-  useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { useAlertStore } from '../../hooks/useAlertStore';
-import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
+
+export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
@@ -40,6 +38,7 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   rightPanelWidth?: number;
   leftPanelWidth?: number;
   fullHeight?: boolean;
+  variant?: PageLayoutVariant;
 }
 
 export const pageContainerStyles: CSSProperties = {
@@ -104,10 +103,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
   fullHeight = false,
+  variant = 'default',
 }: PageLayoutProp) => {
-  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
-  const [prevPath, setPrevPath] = useState<string | undefined>();
+
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'p-x-box';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -133,32 +133,19 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     return pageContainerStyle;
   }, [fullHeight, pageContainerStyle]);
 
-  useEffect(() => {
-    if (prevPath !== location.pathname) {
-      if (isErrorTimeOut) {
-        resetAlert();
-      }
-    }
-  }, [location.pathname, resetAlert, isErrorTimeOut]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setPrevPath(location.pathname);
-    }, 3000);
-  }, [location.pathname]);
-
   const content = (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('p-x-box', className)}
+        className={classNames(paddingClassName, className)}
         data-testid="page-layout-v1"
+        data-variant={variant}
         style={{ ...pageContainerStyles, ...finalPageContainerStyle }}
         wrap={false}>
         {leftPanel && (
@@ -182,11 +169,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           <Row>
-            {alert && (
-              <Col id="page-alert" span={24}>
-                <AlertBar message={alert.message} type={alert.type} />
-              </Col>
-            )}
             <Col span={24}>{children}</Col>
           </Row>
         </Col>

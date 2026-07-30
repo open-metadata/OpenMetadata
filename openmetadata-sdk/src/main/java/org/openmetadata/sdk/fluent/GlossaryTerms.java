@@ -232,6 +232,10 @@ public final class GlossaryTerms {
       return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
           client.glossaryTerms(), identifier);
     }
+
+    public GlossaryTermRelator relateTo(String toTermIdentifier) {
+      return new GlossaryTermRelator(client, identifier, isFqn, toTermIdentifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -262,6 +266,62 @@ public final class GlossaryTerms {
       if (recursive) params.put("recursive", "true");
       if (hardDelete) params.put("hardDelete", "true");
       client.glossaryTerms().delete(id, params);
+    }
+  }
+
+  // ==================== Relator ====================
+
+  /**
+   * Fluent builder for adding a typed relation from one glossary term to another. Both endpoints
+   * accept either a UUID or a fully-qualified name.
+   *
+   * <pre>
+   * GlossaryTerms.find(hcpId).relateTo(drugFqn).as("prescribes").apply();
+   * </pre>
+   */
+  public static class GlossaryTermRelator {
+    private static final String DEFAULT_RELATION_TYPE = "relatedTo";
+
+    private final OpenMetadataClient client;
+    private final String fromIdentifier;
+    private final boolean fromIsFqn;
+    private final String toIdentifier;
+    private String relationType = DEFAULT_RELATION_TYPE;
+
+    GlossaryTermRelator(
+        OpenMetadataClient client, String fromIdentifier, boolean fromIsFqn, String toIdentifier) {
+      this.client = client;
+      this.fromIdentifier = fromIdentifier;
+      this.fromIsFqn = fromIsFqn;
+      this.toIdentifier = toIdentifier;
+    }
+
+    public GlossaryTermRelator as(String relationType) {
+      this.relationType = relationType;
+      return this;
+    }
+
+    public GlossaryTerm apply() {
+      UUID fromId = resolve(fromIdentifier, fromIsFqn);
+      UUID toId = resolve(toIdentifier, !isUuid(toIdentifier));
+      return client.glossaryTerms().addRelation(fromId, toId, relationType);
+    }
+
+    private UUID resolve(String identifier, boolean isFqn) {
+      return isFqn
+          ? client.glossaryTerms().getByName(identifier).getId()
+          : UUID.fromString(identifier);
+    }
+
+    private boolean isUuid(String value) {
+      boolean result;
+      try {
+        UUID.fromString(value);
+        result = true;
+      } catch (IllegalArgumentException notAUuid) {
+        result = false;
+      }
+      return result;
     }
   }
 
@@ -353,5 +413,15 @@ public final class GlossaryTerms {
     public GlossaryTermDeleter delete() {
       return new GlossaryTermDeleter(client, glossaryTerm.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().glossaryTerms().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().glossaryTerms().getContextByName(fqn);
   }
 }

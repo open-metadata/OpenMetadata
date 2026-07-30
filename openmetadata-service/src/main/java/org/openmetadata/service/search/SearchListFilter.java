@@ -34,6 +34,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_FOLLOWERS_KEYWORD = "followers.keyword";
   private static final String FIELD_TEST_STATUS = "testCaseStatus";
   private static final String FIELD_BASIC = "basic";
+  private static final String FIELD_PINNED = "pinned";
+  private static final String FIELD_PRIMARY_ENTITY_ID = "primaryEntity.id";
+  private static final String FIELD_RELATED_ENTITIES_ID = "relatedEntities.id";
 
   @Override
   public String getCondition(String entityType) {
@@ -63,6 +66,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     conditions.add(getCreatedByCondition());
 
     if (entityType != null) {
+      conditions.add(entityType.equals(Entity.CONTEXT_MEMORY) ? getContextMemoryCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_CASE) ? getTestCaseCondition() : null);
       conditions.add(entityType.equals(Entity.TEST_SUITE) ? getTestSuiteCondition() : null);
       conditions.add(
@@ -168,6 +172,32 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           "{\"term\": {\"%s\": \"%s\"}}", FIELD_CREATED_BY, escapeDoubleQuotes(createdBy));
     }
     return "";
+  }
+
+  private String getContextMemoryCondition() {
+    ArrayList<String> conditions = new ArrayList<>();
+    String pinned = getQueryParam("pinned");
+    if (!nullOrEmpty(pinned)) {
+      conditions.add(String.format("{\"term\": {\"%s\": %s}}", FIELD_PINNED, pinned));
+    }
+
+    String assets = getQueryParam("assets");
+    if (!nullOrEmpty(assets)) {
+      String assetIds =
+          Arrays.stream(assets.split(","))
+              .map(String::trim)
+              .filter(id -> !id.isEmpty())
+              .map(this::escapeDoubleQuotes)
+              .collect(Collectors.joining("\", \"", "\"", "\""));
+      if (!assetIds.isEmpty()) {
+        conditions.add(
+            String.format(
+                "{\"bool\":{\"should\":[{\"terms\":{\"%s\":[%s]}},{\"nested\":{\"path\":\"relatedEntities\",\"query\":{\"terms\":{\"%s\":[%s]}},\"ignore_unmapped\":true}}]}}",
+                FIELD_PRIMARY_ENTITY_ID, assetIds, FIELD_RELATED_ENTITIES_ID, assetIds));
+      }
+    }
+
+    return addCondition(conditions);
   }
 
   private String buildQueryFilter(String conditionFilter, String sourceFilter) {

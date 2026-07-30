@@ -77,11 +77,13 @@
         "Pending",
         "Approved",
         "Granted",
+        "ManualRevoke",
         "Rejected",
         "Completed",
         "Cancelled",
         "Failed",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Open"},
@@ -89,11 +91,13 @@
         {"name": "Pending"},
         {"name": "Approved"},
         {"name": "Granted"},
+        {"name": "ManualRevoke"},
         {"name": "Rejected"},
         {"name": "Completed"},
         {"name": "Cancelled"},
         {"name": "Failed"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ],
       "default": "Open"
     },
@@ -122,7 +126,8 @@
         "TimedOut",
         "AutoApproved",
         "AutoRejected",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Approved"},
@@ -132,7 +137,8 @@
         {"name": "TimedOut"},
         {"name": "AutoApproved"},
         {"name": "AutoRejected"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ]
     },
     "taskResolution": {

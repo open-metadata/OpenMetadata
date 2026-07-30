@@ -24,7 +24,10 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
+  getFieldSchemaForId,
   getFilteredSchema,
+  getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   loadConnectionSchema,
@@ -44,6 +47,7 @@ type MockFormData = typeof formData & { ingestionRunner?: string };
 
 type MockFormBuilderProps = {
   children?: ReactNode;
+  formContext?: { handleFocus?: (id: string) => void };
   isSubmitDisabled?: boolean;
   noValidate?: boolean;
   onCancel: () => void;
@@ -131,6 +135,8 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getConnectionFieldSection: jest.fn(),
+  getFieldSchemaForId: jest.fn().mockReturnValue({}),
   getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
   getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
@@ -154,6 +160,7 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
   return React.forwardRef(function MockFormBuilderV1(
     {
       children,
+      formContext,
       isSubmitDisabled,
       noValidate,
       onCancel,
@@ -171,6 +178,11 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () => {
         data-no-validate={String(Boolean(noValidate))}
         data-testid="form-builder-v1">
         {children}
+        <button
+          data-testid="focus-via-form-context"
+          onClick={() => formContext?.handleFocus?.('root/taxonomyProjectID')}>
+          Focus via formContext
+        </button>
         <button
           data-testid="change-valid-form"
           onClick={() => onChange({ formData })}>
@@ -267,6 +279,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       isAirflowAvailable: true,
       platform: 'Argo',
     });
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -279,6 +292,24 @@ describe('EmbeddedConnectionConfigForm', () => {
       await screen.findByTestId('airflowMessageBanner')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('form-builder-v1')).toBeInTheDocument();
+  });
+
+  it('enriches focus events emitted through formContext.handleFocus', async () => {
+    (getFieldSchemaForId as jest.Mock).mockReturnValueOnce({
+      title: 'Taxonomy Project IDs',
+    });
+    (getConnectionFieldSection as jest.Mock).mockReturnValueOnce('scope');
+
+    await act(async () => {
+      render(<EmbeddedConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-form-context'));
+
+    expect(mockOnFocus).toHaveBeenCalledWith('root/taxonomyProjectID', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
   });
 
   it('does not show no-config message when schema has content', async () => {
@@ -505,6 +536,62 @@ describe('EmbeddedConnectionConfigForm', () => {
     );
   });
 
+  it('adds additionalMissingFieldsCount to the count passed to TestConnection', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          additionalMissingFieldsCount={1}
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
+  });
+
+  it('calls onValidateAdditionalRequiredFields when validating for test connection', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+    testConnectionProps.onValidateFormRequiredFields();
+
+    expect(onValidateAdditionalRequiredFields).toHaveBeenCalled();
+  });
+
+  it('returns false from form validation when onValidateAdditionalRequiredFields returns false', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
   it('tracks ingestion runner changes from the form data', async () => {
     await act(async () => {
       render(<EmbeddedConnectionConfigForm {...mockProps} />);
@@ -535,11 +622,6 @@ describe('EmbeddedConnectionConfigForm', () => {
         <EmbeddedConnectionConfigForm {...mockProps} requireTestConnection />
       );
     });
-
-    expect(screen.getByTestId('form-builder-v1')).toHaveAttribute(
-      'data-no-validate',
-      'true'
-    );
 
     fireEvent.click(screen.getByTestId('change-valid-form'));
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));

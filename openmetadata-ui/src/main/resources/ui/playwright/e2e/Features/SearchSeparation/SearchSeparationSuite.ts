@@ -417,7 +417,7 @@ async function checkExploreFilterWithServiceBase(
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
   await entity.visitEntityPage(page);
 }
 async function checkExploreFilterWithTagBase(
@@ -460,7 +460,7 @@ async function checkExploreFilterWithTagBase(
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
   await entity.visitEntityPage(page);
 }
 

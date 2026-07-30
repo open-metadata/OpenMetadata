@@ -32,6 +32,7 @@ import {
   buildParamsFromFilters,
   getAuditLogCategoryLabel,
 } from '../../utils/AuditLogUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../utils/SearchPureUtils';
@@ -167,7 +168,7 @@ const AuditLogFilters: FC<AuditLogFiltersProps> = ({
     (dateRange: DateRangeObject) => {
       let label = dateRange.title ?? '';
       if (
-        dateRange.key === 'customRange' &&
+        dateRange.key === CUSTOM_DATE_RANGE_KEY &&
         dateRange.startTs &&
         dateRange.endTs
       ) {

@@ -29,7 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -83,7 +83,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
@@ -650,7 +650,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   if (permissionsLoading || databaseLoading || loading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (isError) {
@@ -674,7 +674,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!database) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

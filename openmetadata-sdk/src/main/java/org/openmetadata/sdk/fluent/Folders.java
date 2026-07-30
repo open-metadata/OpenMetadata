@@ -186,4 +186,14 @@ public final class Folders {
           : client.folders().get(identifier, fields);
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().folders().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().folders().getContextByName(fqn);
+  }
 }

@@ -110,6 +110,18 @@
 
   --drop-shadow-iphone-mockup: 20px 12px 18px rgba(16, 24, 40, 0.2);
 
+  --shadow-empty-placeholder-icon: 0px 2px 10px 0px rgba(223, 227, 245, 0.6);
+
+  /* GRADIENTS */
+  --gradient-empty-placeholder-features: linear-gradient(
+    180deg,
+    rgba(230, 241, 249, 0.5) 0%,
+    #fff 25%,
+    #fff 49.52%,
+    #fff 75%,
+    #e6f1f9 100%
+  );
+
   /* ANIMATIONS */
   --animate-marquee: marquee 60s linear infinite;
   --animate-caret-blink: caret-blink 1s infinite;

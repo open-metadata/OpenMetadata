@@ -24,6 +24,7 @@ interface ServiceNameCardProps {
   nameError?: string;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onBlur?: () => void;
   onFocus?: (fieldName: string) => void;
 }
 
@@ -34,6 +35,7 @@ const ServiceNameCard = ({
   nameError,
   onNameChange,
   onDescriptionChange,
+  onBlur,
   onFocus,
 }: ServiceNameCardProps) => {
   const { t } = useTranslation();
@@ -55,6 +57,7 @@ const ServiceNameCard = ({
       <div className="tw:my-3 tw:h-px tw:bg-[var(--tw-color-border-secondary)]" />
 
       <Input
+        autoFocus
         isRequired
         hint={nameError ?? t('message.service-name-rule')}
         id="service-name"
@@ -63,6 +66,7 @@ const ServiceNameCard = ({
         label={t('label.service-name')}
         placeholder={t('label.service-name')}
         value={name}
+        onBlur={onBlur}
         onChange={onNameChange}
         onFocus={() => onFocus?.('serviceName')}
       />

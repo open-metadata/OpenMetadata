@@ -1461,6 +1461,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       await waitFor(() => {
         expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
       });
+
       expect(getContainerByFQN).not.toHaveBeenCalled();
     });
 

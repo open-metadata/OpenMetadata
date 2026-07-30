@@ -26,17 +26,58 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
-import ActivityDescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed';
-import DescriptionFeedNew from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew';
-import ActivityOwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed';
-import OwnersFeed from '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed';
-import ActivityTagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed';
-import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
+
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
+);
+
+const ActivityDescriptionFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/ActivityDescriptionFeed'
+      )
+  )
+);
+
+const DescriptionFeedNew = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeedNew'
+      )
+  )
+);
+
+const ActivityOwnersFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/ActivityOwnersFeed'
+      )
+  )
+);
+
+const OwnersFeed = withSuspenseFallback(
+  lazy(
+    () => import('../../ActivityFeedCardV2/FeedCardBody/OwnerFeed/OwnersFeed')
+  )
+);
+
+const TagsFeed = withSuspenseFallback(
+  lazy(() => import('../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed'))
+);
+
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
+const ActivityTagsFeed = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../ActivityFeedCardV2/FeedCardBody/TagsFeed/ActivityTagsFeed')
+  )
 );
 
 const FeedCardBodyNew = ({

@@ -21,6 +21,10 @@ export type Mode = {
 
 export interface SchemaEditorProps {
   value?: string;
+  autoFormat?: boolean;
+  // Render an uncontrolled CodeMirror so it owns the caret (fixes cursor jumps
+  // after autoCloseBrackets). The value prop is used only as initial content.
+  uncontrolled?: boolean;
   refreshEditor?: boolean;
   className?: string;
   mode?: Mode;

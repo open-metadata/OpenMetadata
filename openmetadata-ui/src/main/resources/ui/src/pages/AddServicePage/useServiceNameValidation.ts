@@ -131,6 +131,8 @@ export const useServiceNameValidation = ({
       return;
     }
 
+    setIsServiceNameChecking(true);
+
     const timer = window.setTimeout(() => {
       validateServiceName(trimmedName, requestId);
     }, SERVICE_NAME_VALIDATION_DEBOUNCE_MS);

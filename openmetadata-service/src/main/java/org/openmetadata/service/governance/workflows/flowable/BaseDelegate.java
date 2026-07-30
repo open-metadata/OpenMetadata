@@ -12,6 +12,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 
 @Slf4j
 public abstract class BaseDelegate implements JavaDelegate {
@@ -19,7 +20,7 @@ public abstract class BaseDelegate implements JavaDelegate {
   private Expression configMapExpr;
 
   protected WorkflowVariableHandler varHandler;
-  protected Map<String, String> inputNamespaceMap;
+  protected InputNamespaces inputNamespaces;
   protected Map<String, Object> configMap;
 
   protected abstract void innerExecute(DelegateExecution execution);
@@ -33,8 +34,7 @@ public abstract class BaseDelegate implements JavaDelegate {
 
     varHandler = new WorkflowVariableHandler(execution);
     try {
-      inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       configMap = JsonUtils.readOrConvertValue(configMapExpr.getValue(execution), Map.class);
 
       LOG.debug(

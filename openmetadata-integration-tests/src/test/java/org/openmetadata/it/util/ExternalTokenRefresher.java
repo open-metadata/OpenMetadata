@@ -29,7 +29,10 @@ import org.slf4j.LoggerFactory;
 public final class ExternalTokenRefresher implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExternalTokenRefresher.class);
-  private static final Duration EXPIRY_BUFFER = Duration.ofMinutes(2);
+  // Bounds BOTH the connect and the read phase of each login. Without a read timeout a slow or
+  // half-open gateway would block http.send() forever on the single-thread scheduler, and the
+  // token would never renew for the rest of the run.
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
   private static final long FALLBACK_REFRESH_SECONDS = Duration.ofMinutes(30).toSeconds();
 
   private final ScheduledExecutorService scheduler =
@@ -39,7 +42,7 @@ public final class ExternalTokenRefresher implements AutoCloseable {
             t.setDaemon(true);
             return t;
           });
-  private final HttpClient http = HttpClient.newBuilder().connectTimeout(EXPIRY_BUFFER).build();
+  private final HttpClient http = HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build();
   private final ObjectMapper mapper = new ObjectMapper();
   private final String loginUrl;
   private final String email;
@@ -99,6 +102,7 @@ public final class ExternalTokenRefresher implements AutoCloseable {
           http.send(
               HttpRequest.newBuilder(URI.create(loginUrl))
                   .header("Content-Type", "application/json")
+                  .timeout(REQUEST_TIMEOUT)
                   .POST(HttpRequest.BodyPublishers.ofString(body))
                   .build(),
               HttpResponse.BodyHandlers.ofString());
@@ -118,12 +122,18 @@ public final class ExternalTokenRefresher implements AutoCloseable {
     }
   }
 
+  // Renew at half the token's remaining lifetime (~30m on the external cluster's ~1h token) rather
+  // than a fixed buffer before expiry. That leaves ~half the TTL as retry runway if the login
+  // endpoint is unreachable at renewal time: a ~10m login-endpoint outage that lands on the renewal
+  // window (observed 2026-07-17) burned through a fixed 10m buffer and let the token expire
+  // mid-seed; half-life gives the 60s retries far more room to catch the endpoint before the token
+  // actually dies.
   private long refreshDelaySeconds(final String token) {
     long delaySeconds = FALLBACK_REFRESH_SECONDS;
     final Long exp = expiryEpochSeconds(token);
     if (exp != null) {
       final long now = System.currentTimeMillis() / 1000;
-      delaySeconds = Math.max(60, exp - now - EXPIRY_BUFFER.toSeconds());
+      delaySeconds = Math.max(60, (exp - now) / 2);
     }
     return delaySeconds;
   }

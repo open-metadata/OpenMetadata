@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { capitalize, toString } from 'lodash';
-import { Bucket } from 'Models';
+import { toString } from 'lodash';
+import type { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
-import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
+import {
+  DataAssetServiceLogo,
+  getDataAssetExploreTab,
+  getFormattedDataAssetServiceType,
+} from '../../../../../utils/DataAssetServiceUtils';
 import { getServiceTypeExploreQueryFilter } from '../../../../../utils/FilterQueryUtils';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
-import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';
 import '../data-assets-widget.less';
 
@@ -31,7 +33,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
   const redirectLink = useMemo(
     () =>
       getExplorePath({
-        tab: serviceUtilClassBase.getDataAssetsService(key),
+        tab: getDataAssetExploreTab(key),
         extraParameters: {
           page: '1',
           quickFilter: getServiceTypeExploreQueryFilter(key),
@@ -41,7 +43,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
     [key]
   );
   const formattedServiceType = useMemo(
-    () => entityUtilClassBase.getFormattedServiceType(key),
+    () => getFormattedDataAssetServiceType(key),
     [key]
   );
 
@@ -54,7 +56,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         <div
           className="d-flex justify-center items-center"
           data-testid="service-icon">
-          {getServiceLogo(capitalize(key) ?? '', 'h-8')}
+          <DataAssetServiceLogo className="h-8" serviceType={key} />
         </div>
 
         <Typography.Text

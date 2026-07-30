@@ -91,6 +91,7 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   getShortRelativeTime: (ts?: number) => (ts === undefined ? '' : `rel-${ts}`),
 }));
 

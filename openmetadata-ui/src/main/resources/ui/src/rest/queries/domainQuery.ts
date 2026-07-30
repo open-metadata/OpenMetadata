@@ -50,3 +50,13 @@ export type DomainQueryData = Domain | undefined;
 
 export const prefetchDomain = (queryClient: QueryClient, fqn: string) =>
   prefetchDomainByFqn(queryClient, fqn, DOMAIN_DEFAULT_FIELDS);
+
+// The domains landing-page widget fires on every mount (including the post-login MyData page).
+// Cache its list + asset-count reads for a few minutes so navigating back within a session
+// serves from cache instead of re-hitting the (DB-backed) asset-count endpoint each time.
+export const DOMAIN_WIDGET_STALE_TIME = 5 * 60 * 1000;
+
+export const domainAssetsCountQueryKey = ['domain', 'assets-count'] as const;
+
+export const domainWidgetSearchQueryKey = (sortBy: string) =>
+  ['domain', 'widget-search', sortBy] as const;

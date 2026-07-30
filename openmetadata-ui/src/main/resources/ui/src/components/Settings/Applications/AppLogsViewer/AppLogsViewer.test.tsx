@@ -303,9 +303,7 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();
     expect(screen.getByText('formatDateTimeWithTimezone')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.jump-to-end' }));
-
-    expect(screen.getByText('CopyToClipboardButton')).toBeInTheDocument();
+    expect(screen.getByTestId('view-logs-button')).toBeInTheDocument();
   });
 
   it('should render necessary element based on mockProps2', () => {
@@ -380,7 +378,11 @@ describe('AppLogsViewer component', () => {
       screen.queryByTestId('app-entity-stats-history-table')
     ).not.toBeInTheDocument();
 
-    expect(await screen.findByTestId('lazy-log')).toBeInTheDocument();
+    await act(async () => {
+      userEvent.click(screen.getByTestId('view-logs-button'));
+    });
+
+    expect(await screen.findByTestId('lazy-log-mock')).toBeInTheDocument();
   });
 
   it('should render process stats when processStats is present', () => {

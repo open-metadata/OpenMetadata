@@ -16,8 +16,25 @@ import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
+import {
+  BaseEdge,
+  Edge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  Position,
+  ReactFlowState,
+  useStore,
+} from 'reactflow';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
+
+const PARALLEL_LABEL_GAP = 44;
+
+const getSameDirectionEdges = (
+  edges: Edge[],
+  source: string,
+  target: string
+): Edge[] =>
+  edges.filter((edge) => edge.source === source && edge.target === target);
 
 const getCleanStraightPath = (
   sourceX: number,
@@ -71,6 +88,8 @@ const formatEdgeLabel = (label: string): string =>
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -93,6 +112,17 @@ export const StraightEdge = (props: EdgeProps) => {
   const showDeleteButton =
     isHovered && allowStructuralGraphEdits && !!onEdgeDelete;
 
+  const parallelCount = useStore(
+    (state: ReactFlowState) =>
+      getSameDirectionEdges(state.edges, source, target).length
+  );
+  const parallelIndex = useStore((state: ReactFlowState) => {
+    const siblings = getSameDirectionEdges(state.edges, source, target);
+    const index = siblings.findIndex((edge) => edge.id === id);
+
+    return index === -1 ? 0 : index;
+  });
+
   const isHorizontalEdge = Math.abs(sourceY - targetY) < 10;
 
   const [path, labelX, labelY] = getCleanStraightPath(
@@ -103,6 +133,13 @@ export const StraightEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   );
+
+  const labelOffsetY =
+    parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_LABEL_GAP
+      : 0;
+  const stackedLabelY = labelY + labelOffsetY;
+
   const displayLabel =
     typeof label === 'string' && label.length > 0
       ? formatEdgeLabel(label)
@@ -139,7 +176,7 @@ export const StraightEdge = (props: EdgeProps) => {
             className={labelClassName}
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${stackedLabelY}px)`,
               pointerEvents: 'all',
               ...labelStyleOverrides,
             }}
@@ -156,7 +193,9 @@ export const StraightEdge = (props: EdgeProps) => {
             style={{
               transform: `translate(-50%, -50%) translate(${
                 label && isHorizontalEdge ? labelX + 48 : labelX
-              }px, ${label && !isHorizontalEdge ? labelY - 36 : labelY}px)`,
+              }px, ${
+                label && !isHorizontalEdge ? stackedLabelY - 36 : stackedLabelY
+              }px)`,
             }}>
             <Button
               className="tw:rounded-full tw:bg-primary tw:shadow-sm"

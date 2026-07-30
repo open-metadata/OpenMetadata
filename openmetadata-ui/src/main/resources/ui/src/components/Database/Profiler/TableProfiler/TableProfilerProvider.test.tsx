@@ -95,6 +95,10 @@ jest.mock('../../../../constants/DataInsight.constants', () => ({
 jest.mock('./ProfilerSettingsModal/ProfilerSettingsModal', () =>
   jest.fn().mockReturnValue(<div>ProfilerSettingsModal.component</div>)
 );
+jest.mock(
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
+  () => jest.fn().mockReturnValue(null)
+);
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
   ROUTES: {
@@ -171,7 +175,7 @@ describe('TableProfilerProvider', () => {
       expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
       expect(mockGetListTestCase).toHaveBeenCalledWith({
         entityLink: 'entityLink',
-        fields: ['testCaseResult', 'incidentId'],
+        fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
         limit: 10,
         include: 'non-deleted',
@@ -196,7 +200,7 @@ describe('TableProfilerProvider', () => {
       expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
       expect(mockGetListTestCase).toHaveBeenCalledWith({
         entityLink: 'entityLink',
-        fields: ['testCaseResult', 'incidentId'],
+        fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
         limit: 10,
         include: 'deleted',

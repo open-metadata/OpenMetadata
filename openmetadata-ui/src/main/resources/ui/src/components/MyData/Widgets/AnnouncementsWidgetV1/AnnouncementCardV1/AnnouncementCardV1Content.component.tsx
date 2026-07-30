@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import { ReactNode, useMemo } from 'react';
+import { lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { FieldOperation } from '../../../../../generated/entity/feed/thread';
@@ -20,10 +20,16 @@ import { getFieldOperationText } from '../../../../../utils/AnnouncementsUtils';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
 const PRIMARY_COLOR = 'var(--ant-primary-color)';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(
+    () => import('../../../../common/RichTextEditor/RichTextEditorPreviewerV1')
+  )
+);
 
 interface AnnouncementCardV1ContentProps {
   backgroundColor?: string;
@@ -53,8 +59,8 @@ const VARIANT_CONFIG = {
     description: 'tw:text-sm tw:mt-2',
   },
   compact: {
-    header: 'tw:h-[30px] tw:flex-none tw:text-xs tw:rounded-[4px]',
-    titleSection: 'tw:px-[10px] tw:py-[6px] tw:pl-1',
+    header: 'tw:h-[30px] tw:flex-none tw:text-xs tw:rounded-sm',
+    titleSection: 'tw:px-2.5 tw:py-1.5 tw:pl-1',
     entityName: 'tw:!text-[11px] tw:!font-normal',
     iconSize: 'tw:size-[9px]',
     title: 'tw:text-xs tw:font-medium tw:!mb-0',

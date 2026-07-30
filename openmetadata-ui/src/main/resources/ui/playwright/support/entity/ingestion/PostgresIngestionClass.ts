@@ -30,6 +30,7 @@ import {
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  getAgentCard,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -90,11 +91,19 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await this.openIngestionFilterSection(page);
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/schemaFilterPattern\\/includes')
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.filterPattern);
-
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async runAdditionalTests(
@@ -158,11 +167,9 @@ class PostgresIngestionClass extends ServiceBaseClass {
 
         // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
         await page.waitForTimeout(3000);
-        await page.click(
-          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-        );
-
-        await page.getByTestId('run-button').click();
+        await getAgentCard(page, response.data[0].name)
+          .getByTestId('run-agent-button')
+          .click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);
 

@@ -28,6 +28,9 @@
               "$ref": "messagingServiceMetadataPipeline.json"
             },
             {
+              "$ref": "messagingServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "databaseServiceProfilerPipeline.json"
             },
             {

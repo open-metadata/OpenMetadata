@@ -411,12 +411,14 @@ describe('FormBuilderV1 widgets', () => {
 
     fireEvent.focus(textInput);
     fireEvent.change(textInput, { target: { value: 'next' } });
+    fireEvent.change(textInput, { target: { value: '' } });
     fireEvent.blur(textInput);
 
     expect(screen.getByText('Widget label')).toBeInTheDocument();
     expect(screen.getByText('Invalid')).toBeInTheDocument();
     expect(onFocus).toHaveBeenCalledWith('widget-id', 'abc');
     expect(onChange).toHaveBeenCalledWith('next');
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
     expect(onBlur).toHaveBeenCalledWith('widget-id', 'abc');
 
     rerender(
@@ -560,12 +562,14 @@ describe('FormBuilderV1 widgets', () => {
 
     fireEvent.focus(textArea);
     fireEvent.change(textArea, { target: { value: 'updated text' } });
+    fireEvent.change(textArea, { target: { value: '' } });
     fireEvent.blur(textArea);
 
     expect(textArea).toHaveAttribute('rows', '7');
     expect(screen.getByText('Too short')).toBeInTheDocument();
     expect(onFocus).toHaveBeenCalledWith('widget-id', 'hello');
     expect(onChange).toHaveBeenCalledWith('updated text');
+    expect(onChange).toHaveBeenLastCalledWith(undefined);
     expect(onBlur).toHaveBeenCalledWith('widget-id', 'hello');
   });
 

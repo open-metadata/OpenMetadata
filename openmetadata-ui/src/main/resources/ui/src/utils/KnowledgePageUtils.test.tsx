@@ -13,12 +13,15 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import {
   Article,
   KnowledgePage,
   PageHierarchy,
   PageType,
   QuickLink,
+  RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 import {
   extractKnowledgePageParentFQN,
@@ -28,7 +31,10 @@ import {
   getUpdatePageHierarchy,
   integrateNodesIntoHierarchy,
 } from './KnowledgePagePureUtils';
-import { getLink } from './KnowledgePageUtils';
+import {
+  addToKnowledgeCenterRecentViewed,
+  getLink,
+} from './KnowledgePageUtils';
 
 describe('getKnowledgePageName', () => {
   it('returns displayName when present', () => {
@@ -593,6 +599,100 @@ describe('KnowledgePageUtils', () => {
       // Second root should remain unchanged
       expect(result[1].fullyQualifiedName).toBe('Article_X');
       expect(result[1].children).toBeUndefined();
+    });
+  });
+
+  describe('addToKnowledgeCenterRecentViewed', () => {
+    const userName = 'test-user';
+
+    const buildPage = (
+      overrides: Partial<RecentViewedKnowledgePage>
+    ): RecentViewedKnowledgePage =>
+      ({
+        id: '1',
+        fullyQualifiedName: 'Article_A',
+        displayName: 'Article A',
+        pageType: PageType.ARTICLE,
+        name: 'Article_A',
+        timestamp: 0,
+        ...overrides,
+      } as RecentViewedKnowledgePage);
+
+    beforeEach(() => {
+      jest.spyOn(useApplicationStore, 'getState').mockReturnValue({
+        currentUser: { name: userName },
+      } as unknown as ReturnType<typeof useApplicationStore.getState>);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('replaces the existing entry for the same id even when its fullyQualifiedName has changed', () => {
+      const existingEntry = buildPage({
+        id: 'page-1',
+        fullyQualifiedName: 'Article_Old_FQN',
+      });
+      const setUserPreference = jest.fn();
+
+      jest.spyOn(usePersistentStorage, 'getState').mockReturnValue({
+        preferences: {
+          [userName]: { recentlyViewedQuickLinks: [existingEntry] },
+        },
+        setUserPreference,
+      } as unknown as ReturnType<typeof usePersistentStorage.getState>);
+
+      const renamedEntry = buildPage({
+        id: 'page-1',
+        fullyQualifiedName: 'Article_New_FQN',
+      });
+
+      addToKnowledgeCenterRecentViewed(renamedEntry);
+
+      expect(setUserPreference).toHaveBeenCalledTimes(1);
+
+      const [, updatedPreferences] = setUserPreference.mock.calls[0];
+      const recentlyViewedQuickLinks =
+        updatedPreferences.recentlyViewedQuickLinks;
+
+      expect(recentlyViewedQuickLinks).toHaveLength(1);
+      expect(recentlyViewedQuickLinks[0].id).toBe('page-1');
+      expect(recentlyViewedQuickLinks[0].fullyQualifiedName).toBe(
+        'Article_New_FQN'
+      );
+    });
+
+    it('keeps entries for different ids even when they share a fullyQualifiedName', () => {
+      const existingEntry = buildPage({
+        id: 'page-1',
+        fullyQualifiedName: 'Article_A',
+      });
+      const setUserPreference = jest.fn();
+
+      jest.spyOn(usePersistentStorage, 'getState').mockReturnValue({
+        preferences: {
+          [userName]: { recentlyViewedQuickLinks: [existingEntry] },
+        },
+        setUserPreference,
+      } as unknown as ReturnType<typeof usePersistentStorage.getState>);
+
+      const otherEntry = buildPage({
+        id: 'page-2',
+        fullyQualifiedName: 'Article_A',
+      });
+
+      addToKnowledgeCenterRecentViewed(otherEntry);
+
+      const [, updatedPreferences] = setUserPreference.mock.calls[0];
+      const recentlyViewedQuickLinks =
+        updatedPreferences.recentlyViewedQuickLinks;
+
+      expect(recentlyViewedQuickLinks).toHaveLength(2);
+      expect(
+        recentlyViewedQuickLinks.map(
+          (item: RecentViewedKnowledgePage) => item.id
+        )
+      ).toEqual(expect.arrayContaining(['page-1', 'page-2']));
     });
   });
 });

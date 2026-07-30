@@ -13,18 +13,27 @@
 Source connection handler
 """
 
-from typing import Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+    list_schemas,
+    list_tables,
+    list_views,
+    ping,
+    run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
+from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -32,8 +41,6 @@ from metadata.ingestion.connections.builders import (
     get_connection_url_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_db_common
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.azuresql.connection import (
     get_connection_url as get_pyodbc_connection_url,
 )
@@ -41,8 +48,77 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
+    MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE,
 )
-from metadata.utils.constants import THREE_MIN
+from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
+    from metadata.core.connections.test_connection.records import Evidence
+
+
+def _mssql_number(error: BaseException) -> int | None:
+    """The SQL Server error number, wherever the driver puts it.
+
+    ``Matchers.errno`` misses it: no supported driver leaves an ``int`` at
+    ``args[0]``. pytds uses ``.number``/``.msg_no``, pymssql a ``(number, message)``
+    tuple at ``args[0]``, pyodbc none at all.
+    """
+    for current in exception_chain(error):
+        for attribute in ("number", "msg_no"):
+            value = getattr(current, attribute, None)
+            if isinstance(value, int):
+                return value
+        args = getattr(current, "args", ())
+        if args and isinstance(args[0], tuple) and args[0] and isinstance(args[0][0], int):
+            return args[0][0]
+    return None
+
+
+def _sqlserver_errno(*codes: int) -> Matcher:
+    """Match a SQL Server error by number, across the cause chain."""
+    wanted = frozenset(codes)
+    return lambda error: _mssql_number(error) in wanted
+
+
+# pytds folds a multi-message failure unevenly (tds_session.raise_db_exception):
+# the text joins every message, but the number is the LAST message's only. So a
+# number is keyable only when it arrives last (observed live, pinned by tests):
+#   missing database [4060,18456]->18456 ; no VIEW SERVER STATE [300,297]->297 ;
+#   bad password [18456] ; denied SELECT [229]. Hence no 4060/300 rule.
+# Numbers: https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors
+SQLSERVER_ERRORS = ErrorPack(
+    # Precedes the login rules: 4060's joined text ends "Login failed", and its
+    # number (18456) also points at auth - so on a non-English server this reads
+    # as an auth failure, the only signal available.
+    when(Matchers.contains("Cannot open database")).diagnose(
+        "Database not found or not accessible",
+        fix="Verify the configured database exists and the login is allowed to open it.",
+    ),
+    when(
+        Matchers.any_of(
+            _sqlserver_errno(18456),
+            Matchers.contains("Login failed"),
+        )
+    ).diagnose(
+        "Authentication failed",
+        fix="Check the username and password, and that the login is allowed to connect.",
+    ),
+    # 297's text lacks "permission was denied", so its number is the only signal.
+    when(
+        Matchers.any_of(
+            _sqlserver_errno(229, 297),
+            Matchers.contains("permission was denied"),
+        )
+    ).diagnose(
+        "Insufficient privileges",
+        fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
+    ),
+)
+
+MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
 
 
 def get_connection_url(connection: MssqlConnectionConfig) -> str:
@@ -51,35 +127,86 @@ def get_connection_url(connection: MssqlConnectionConfig) -> str:
     return get_connection_url_common(connection)
 
 
+class MssqlChecks:
+    """Test-connection checks for SQL Server (MSSQL)."""
+
+    errors = MSSQL_ERRORS
+
+    # SQL Server system / fixed-role schemas - skipped when auto-selecting a schema
+    # to probe, so table/view checks land on a real user schema.
+    SYSTEM_SCHEMAS = frozenset(
+        {
+            "sys",
+            "information_schema",
+            "guest",
+            "db_owner",
+            "db_accessadmin",
+            "db_securityadmin",
+            "db_ddladmin",
+            "db_backupoperator",
+            "db_datareader",
+            "db_datawriter",
+            "db_denydatareader",
+            "db_denydatawriter",
+        }
+    )
+
+    def __init__(self, db: Borrowed[Engine], get_databases_statement: str) -> None:
+        self._db = db
+        self.get_databases_statement = get_databases_statement
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        return ping(self._db.client)
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        return run_sql(
+            self._db.client,
+            self.get_databases_statement,
+            lambda rows: enumerated(len(rows), "database", DEFAULT_SAMPLE_ROWS),
+        )
+
+    @check(DatabaseStep.GetSchemas)
+    def get_schemas(self) -> Evidence:
+        return list_schemas(self._db.client)
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
+
+    @check(DatabaseStep.GetViews)
+    def get_views(self) -> Evidence:
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
+
+    @check(DatabaseStep.GetQueries)
+    def get_queries(self) -> Evidence:
+        if is_query_store_enabled(self._db.client):
+            query = MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
+            summary = "query history accessible via Query Store"
+        else:
+            query = MSSQL_TEST_GET_QUERIES
+            summary = "query history accessible via plan-cache DMVs"
+        return run_sql(self._db.client, query, lambda _: summary)
+
+
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        service_connection = self.service_connection
-        queries = {
-            "GetQueries": MSSQL_TEST_GET_QUERIES,
-            "GetDatabases": MSSQL_GET_DATABASE if service_connection.ingestAllDatabases else MSSQL_GET_CURRENT_DATABASE,
-        }
+    def _get_databases_statement(self) -> str:
+        if self.service_connection.ingestAllDatabases:
+            return MSSQL_GET_DATABASE
+        return MSSQL_GET_CURRENT_DATABASE
 
-        return test_connection_db_common(
-            metadata=metadata,
-            engine=self.client,
-            service_connection=service_connection,
-            automation_workflow=automation_workflow,
-            queries=queries,
-            timeout_seconds=timeout_seconds,
+    def checks(self) -> ChecksProvider:
+        return MssqlChecks(
+            db=self.borrow(),
+            get_databases_statement=self._get_databases_statement(),
         )

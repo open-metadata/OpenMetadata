@@ -53,12 +53,11 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getErrorText } from '../../../utils/StringUtils';
+import { isDescriptionTask, isTagsTask } from '../../../utils/TaskActionUtils';
 import {
   getTaskDetailPath,
-  isDescriptionTask,
-  isTagsTask,
   isTaskPendingFurtherApproval,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';

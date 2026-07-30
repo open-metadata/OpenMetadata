@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import base, { expect, Page } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { UserClass } from '../../support/user/UserClass';
@@ -47,7 +48,7 @@ const test = base.extend<{
 
 test.describe(
   'Data Marketplace - Permissions',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);

@@ -95,6 +95,9 @@ public class DistributedSearchIndexExecutor {
   /** Interval for updating partition heartbeats */
   private static final long PARTITION_HEARTBEAT_INTERVAL_MS = 30000;
 
+  /** Default cadence the orchestrator re-checks job state while waiting for workers to finish */
+  private static final long DEFAULT_LATCH_POLL_INTERVAL_SECONDS = 15;
+
   private final CollectionDAO collectionDAO;
   private final DistributedSearchIndexCoordinator coordinator;
   private final JobRecoveryManager recoveryManager;
@@ -110,6 +113,9 @@ public class DistributedSearchIndexExecutor {
   private volatile Thread lockRefreshThread;
   private volatile Thread partitionHeartbeatThread;
   private Thread staleReclaimerThread;
+
+  /** Re-check cadence for {@link #awaitWorkers}; overridable in tests to keep them fast. */
+  private long latchPollIntervalSeconds = DEFAULT_LATCH_POLL_INTERVAL_SECONDS;
 
   // App context for WebSocket broadcasts
   private UUID appId;
@@ -476,9 +482,14 @@ public class DistributedSearchIndexExecutor {
             .start(() -> runStaleReclaimerLoop(jobId));
 
     try {
-      // Wait for all workers to complete
-      workerLatch.await();
-      LOG.info("All workers completed for job {}", jobId);
+      boolean drained = awaitWorkers(workerLatch, jobId);
+      if (drained) {
+        LOG.info("All workers completed for job {}", jobId);
+      } else {
+        LOG.warn(
+            "Workers did not all drain for job {}; orchestrator unwinding on terminal state",
+            jobId);
+      }
 
       // Ensure job completion is checked after all workers finish.
       // This handles the case where 0 partitions were created (e.g., all selected
@@ -929,6 +940,58 @@ public class DistributedSearchIndexExecutor {
   }
 
   /**
+   * Wait for all workers to finish, re-checking job state on each poll so the orchestrator
+   * thread cannot hang indefinitely on {@code workerLatch.await()}.
+   *
+   * <p>A healthy reindex can legitimately run for hours, so there is no wall-clock cap: while the
+   * job keeps progressing it is never terminal and this simply keeps waiting. But once the job
+   * reaches a terminal/STOPPING state (lock lost, stop requested, or recovered/failed by another
+   * pod), a worker wedged inside a single partition on an unresponsive search backend would
+   * otherwise never count down the latch — leaving the Quartz execution thread stuck and blocking
+   * every retrigger with "Job is already running". On terminal state we force {@link #stop()}
+   * (which interrupts wedged workers via {@code shutdownNow}) and return; the caller's {@code
+   * finally} performs the bounded drain ({@code awaitTermination} + sink flush).
+   *
+   * @return {@code true} if all workers drained normally, {@code false} if the orchestrator
+   *     force-unwound because the job reached a terminal/STOPPING state first
+   */
+  private boolean awaitWorkers(CountDownLatch workerLatch, UUID jobId) throws InterruptedException {
+    boolean drained = false;
+    boolean done = false;
+    while (!done) {
+      drained = workerLatch.await(latchPollIntervalSeconds, TimeUnit.SECONDS);
+      if (drained) {
+        done = true;
+      } else if (isJobTerminalOrStopping(jobId)) {
+        LOG.warn(
+            "Job {} is terminal/stopping but workers have not drained; forcing executor "
+                + "shutdown so the orchestrator can unwind",
+            jobId);
+        stop();
+        done = true;
+      }
+    }
+    return drained;
+  }
+
+  /**
+   * Whether the job has reached a terminal/STOPPING state. A read failure is treated as
+   * non-terminal so a transient DB blip during polling keeps the orchestrator waiting rather than
+   * tearing down an otherwise-healthy multi-hour reindex; the wedge unwinds on the next clean poll.
+   */
+  private boolean isJobTerminalOrStopping(UUID jobId) {
+    boolean terminal;
+    try {
+      SearchIndexJob job = coordinator.getJob(jobId).orElse(null);
+      terminal = job == null || job.isTerminal() || job.getStatus() == IndexJobStatus.STOPPING;
+    } catch (Exception e) {
+      LOG.warn("Could not read job {} state while awaiting workers; will keep waiting", jobId, e);
+      terminal = false;
+    }
+    return terminal;
+  }
+
+  /**
    * Mark a job as failed because we lost the distributed lock.
    *
    * @param jobId The job ID
@@ -1115,21 +1178,22 @@ public class DistributedSearchIndexExecutor {
   /**
    * Promote a single entity's index when all its partitions complete.
    */
-  private void promoteEntityIndex(String entityType, boolean success) {
+  private boolean promoteEntityIndex(String entityType, boolean success) {
     if (indexPromotionHandler == null || stagedIndexContext == null) {
       LOG.warn(
           "Cannot promote index for entity '{}' - no index promotion handler or staged context",
           entityType);
-      return;
+      return false;
     }
 
     EntityReindexContext entityContext =
         EntityReindexContextMapper.fromStagedContext(stagedIndexContext, entityType);
     if (entityContext.getStagedIndex() == null) {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
-      return;
+      return true;
     }
 
+    boolean promoted = false;
     try {
       LOG.debug(
           "Promoting entity '{}': success={}, canonicalIndex={}, stagedIndex={}",
@@ -1140,13 +1204,14 @@ public class DistributedSearchIndexExecutor {
 
       if (indexPromotionHandler instanceof DefaultRecreateHandler defaultHandler) {
         LOG.info("Promoting index for entity '{}' (success={})", entityType, success);
-        defaultHandler.promoteEntityIndex(entityContext, success);
+        promoted = defaultHandler.promoteEntityIndex(entityContext, success);
       } else {
-        indexPromotionHandler.finalizeReindex(entityContext, success);
+        promoted = indexPromotionHandler.finalizeReindex(entityContext, success);
       }
     } catch (Exception e) {
       LOG.error("Failed to promote index for entity '{}'", entityType, e);
     }
+    return promoted;
   }
 
   /**

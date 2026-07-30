@@ -13,7 +13,8 @@
         "RUNNING",
         "FINISHED",
         "FAILURE",
-        "EXCEPTION"
+        "EXCEPTION",
+        "SUPERSEDED"
       ]
     }
   },

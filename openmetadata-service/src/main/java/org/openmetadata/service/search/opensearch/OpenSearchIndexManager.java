@@ -133,6 +133,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {

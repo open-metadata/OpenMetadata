@@ -44,6 +44,7 @@ interface SchemaProperty {
   anyOf?: unknown[];
   oneOf?: unknown[];
   type?: string | string[];
+  uiFieldType?: string;
 }
 
 interface IngestionSectionConfig {
@@ -71,6 +72,9 @@ const isWide = (
   const prop = schemaProperties[name];
   if (!prop) {
     return false;
+  }
+  if (prop.uiFieldType === 'code') {
+    return true;
   }
   if (prop.type === 'object' || prop.type === 'array') {
     return true;
@@ -362,7 +366,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           </Typography>
           <Button
             aria-label={t('label.add-entity', { entity: t('label.property') })}
-            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
+            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
             color="primary"
             size="sm"
             type="button"

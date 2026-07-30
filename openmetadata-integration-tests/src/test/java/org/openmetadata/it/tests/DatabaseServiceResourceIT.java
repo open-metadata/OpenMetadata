@@ -517,6 +517,50 @@ public class DatabaseServiceResourceIT
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
   }
 
+  /**
+   * Builds service → database → schema → table so the shared recursive-hard-delete regression
+   * ({@link BaseServiceIT#recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean}) can
+   * verify the bulk-delete optimization for the database hierarchy (Table / DatabaseSchema /
+   * Database carry {@code descendantsCoveredByAncestorCascade=true}).
+   */
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("del_subtree_svc")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("s1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("t1"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    // The column_search_index cleanup on recursive hard delete is covered by the unit test
+    // SearchRepositoryBehaviorTest and the scale IT ServiceDeleteSearchCleanupScaleIT. It is not
+    // asserted here: under the full concurrent IT suite the per-delete column delete-by-query
+    // contends on the shared column_search_index, delaying visibility of a freshly indexed column
+    // doc past the precondition timeout and flaking this otherwise-unrelated regression.
+    return new DeletableSubtree(
+        service.getId().toString(),
+        List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
+  }
+
   @Test
   void test_importExportRecursive_withColumnTagsAndGlossaryTerms(TestNamespace ns)
       throws IOException, InterruptedException {

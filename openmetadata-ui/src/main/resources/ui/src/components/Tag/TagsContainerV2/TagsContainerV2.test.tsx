@@ -68,6 +68,14 @@ jest.mock('../../Suggestions/SuggestionsAlert/SuggestionsAlert', () =>
   jest.fn().mockImplementation(() => <div data-testid="suggestions-alert" />)
 );
 
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(({ children, dataTestId }) => (
+      <div data-testid={dataTestId}>{children}</div>
+    ))
+);
+
 const PERSONAL_DATA_FQN = 'PersonalData.Personal';
 const PII_SENSITIVE_FQN = 'PII.Sensitive';
 const TIER_GOLD_FQN = 'Tier.Tier1';
@@ -110,6 +118,35 @@ const renderTagsContainer = (props: {
         tagType={TagSource.Classification}
         onSelectionChange={props.onSelectionChange}
       />
+    </MemoryRouter>
+  );
+};
+
+const renderTagsContainerInsideClickableParent = (props: {
+  selectedTags: EntityTags[];
+  onSelectionChange: jest.Mock;
+  onParentClick: jest.Mock;
+  isGlossaryType?: boolean;
+  newLook?: boolean;
+}) => {
+  capturedOnSubmit = undefined;
+
+  return render(
+    <MemoryRouter>
+      <div data-testid="clickable-parent" onClick={props.onParentClick}>
+        <TagsContainerV2
+          permission
+          showInlineEditButton
+          entityFqn="sample.db.schema.table"
+          entityType="table"
+          newLook={props.newLook ?? false}
+          selectedTags={props.selectedTags}
+          tagType={
+            props.isGlossaryType ? TagSource.Glossary : TagSource.Classification
+          }
+          onSelectionChange={props.onSelectionChange}
+        />
+      </div>
     </MemoryRouter>
   );
 };
@@ -262,5 +299,110 @@ describe('TagsContainerV2 handleSave', () => {
     );
     expect(added?.appliedBy).toBeUndefined();
     expect(added?.appliedAt).toBeUndefined();
+  });
+});
+
+describe('TagsContainerV2 click propagation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    capturedOnSubmit = undefined;
+  });
+
+  it('does not bubble container clicks to a clickable ancestor', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    fireEvent.click(screen.getByTestId('tags-container'));
+
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('does not bubble glossary container clicks to a clickable ancestor', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      selectedTags: [],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+      isGlossaryType: true,
+    });
+
+    fireEvent.click(screen.getByTestId('glossary-container'));
+
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps inner controls working while blocking propagation to the ancestor', async () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    await enterEditMode();
+
+    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('still reaches the ancestor when the click originates outside the container', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    fireEvent.click(screen.getByTestId('clickable-parent'));
+
+    expect(onParentClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not bubble newLook widget content clicks to a clickable ancestor', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      newLook: true,
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    fireEvent.click(screen.getByTestId('entity-tags'));
+
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('does not bubble newLook glossary widget content clicks to a clickable ancestor', () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      newLook: true,
+      isGlossaryType: true,
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    fireEvent.click(screen.getByTestId('entity-tags'));
+
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
+  it('keeps newLook inner controls working while blocking propagation to the ancestor', async () => {
+    const onParentClick = jest.fn();
+    renderTagsContainerInsideClickableParent({
+      newLook: true,
+      selectedTags: [personalDataTag],
+      onSelectionChange: jest.fn().mockResolvedValue(undefined),
+      onParentClick,
+    });
+
+    await enterEditMode();
+
+    expect(screen.getByTestId('mock-tag-select-form')).toBeInTheDocument();
+    expect(onParentClick).not.toHaveBeenCalled();
   });
 });

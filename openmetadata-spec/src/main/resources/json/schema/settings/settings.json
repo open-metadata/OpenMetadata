@@ -41,8 +41,7 @@
         "entityRulesSettings",
         "openLineageSettings",
         "mcpConfiguration",
-        "glossaryTermRelationSettings",
-        "aiSettings"
+        "glossaryTermRelationSettings"
       ]
     }
   },
@@ -118,9 +117,6 @@
         },
         {
           "$ref": "../configuration/glossaryTermRelationSettings.json"
-        },
-        {
-          "$ref": "../configuration/aiSettings.json"
         }
       ]
     }

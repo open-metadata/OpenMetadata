@@ -22,13 +22,30 @@ def test_databrickspipeline_connection_is_base_connection():
     assert issubclass(DatabricksPipelineConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+def test_get_client_builds_client():
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine,
+        patch(f"{CONNECTION_MODULE}.DatabricksClient") as mock_client,
+        patch(f"{CONNECTION_MODULE}.get_auth_config", return_value={}),
+    ):
         conn = DatabricksPipelineConnection(MagicMock())
         client = conn.client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is mock_client.return_value
+    mock_client.assert_called_once_with(conn.service_connection, mock_engine.return_value)
+
+
+def test_close_disposes_the_engine():
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine,
+        patch(f"{CONNECTION_MODULE}.DatabricksClient"),
+        patch(f"{CONNECTION_MODULE}.get_auth_config", return_value={}),
+    ):
+        conn = DatabricksPipelineConnection(MagicMock())
+        _ = conn.client
+        conn.close()
+
+    mock_engine.return_value.dispose.assert_called_once()
 
 
 def test_test_connection_runs_steps():

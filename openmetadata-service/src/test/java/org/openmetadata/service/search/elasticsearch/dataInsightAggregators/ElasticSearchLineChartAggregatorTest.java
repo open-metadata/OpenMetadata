@@ -3,6 +3,7 @@ package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -83,6 +84,13 @@ class ElasticSearchLineChartAggregatorTest {
     assertEquals(SERVICE_NAME, serviceAgg.path("terms").path("include").asText());
   }
 
+  @Test
+  void nullFunctionAndFormulaMetricThrows() {
+    DataInsightCustomChart chart = incompleteMetricChart();
+
+    assertThrows(IllegalArgumentException.class, () -> prepare(chart));
+  }
+
   private SearchRequest prepare(DataInsightCustomChart chart) {
     return aggregator.prepareSearchRequest(
         chart, 0L, END_TIME, new ArrayList<>(), new HashMap<>(), true);
@@ -137,6 +145,16 @@ class ElasticSearchLineChartAggregatorTest {
             .withIncludeXAxisFiled(includeService);
     return new DataInsightCustomChart()
         .withName("total_data_assets_live")
+        .withChartDetails(lineChart);
+  }
+
+  private static DataInsightCustomChart incompleteMetricChart() {
+    LineChart lineChart =
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withField("id.keyword")))
+            .withxAxisField(X_AXIS_FIELD);
+    return new DataInsightCustomChart()
+        .withName("incomplete_metric_chart")
         .withChartDetails(lineChart);
   }
 

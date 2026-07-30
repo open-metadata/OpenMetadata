@@ -29,7 +29,7 @@ const outlineBorders: Record<FeaturedIconColor, string> = {
 
 const styles = sortCx({
   light: {
-    base: 'tw:rounded-full',
+    base: 'tw:rounded-full tw:dark:text-fg-white',
     sizes: {
       sm: 'tw:size-8',
       md: 'tw:size-10',
@@ -37,11 +37,15 @@ const styles = sortCx({
       xl: 'tw:size-14',
     },
     colors: {
-      brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
-      error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
-      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
+      brand:
+        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-brand-solid',
+      error:
+        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-error-solid',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-secondary-solid',
+      success:
+        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-success-solid',
+      warning:
+        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-warning-solid',
     },
   },
 
@@ -84,7 +88,7 @@ const styles = sortCx({
   },
 
   modern: {
-    base: 'tw:bg-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-inset',
+    base: 'tw:bg-primary tw:shadow-xs-skeuomorphic tw:outline-1 tw:-outline-offset-1',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md',
       md: 'tw:size-10 tw:rounded-lg',
@@ -93,7 +97,7 @@ const styles = sortCx({
     },
     colors: {
       brand: '',
-      gray: 'tw:text-fg-secondary tw:ring-primary',
+      gray: 'tw:text-fg-secondary tw:outline-primary',
       error: '',
       warning: '',
       success: '',
@@ -101,9 +105,9 @@ const styles = sortCx({
   },
   'modern-neue': {
     base: [
-      'tw:bg-primary_alt tw:ring-1 tw:ring-inset tw:before:absolute tw:before:inset-1',
+      'tw:bg-primary_alt tw:outline-1 tw:-outline-offset-1 tw:before:absolute tw:before:inset-1',
       // Shadow
-      'tw:before:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_3px_3px_0px_rgba(0,0,0,0.09),1px_8px_5px_0px_rgba(0,0,0,0.05),2px_21px_6px_0px_rgba(0,0,0,0),0px_0px_0px_1px_rgba(0,0,0,0.08),1px_13px_5px_0px_rgba(0,0,0,0.01),0px_-2px_2px_0px_rgba(0,0,0,0.13)_inset] tw:before:ring-1 tw:before:ring-secondary_alt',
+      'tw:before:shadow-[0px_1px_2px_0px_rgba(0,0,0,0.1),0px_3px_3px_0px_rgba(0,0,0,0.09),1px_8px_5px_0px_rgba(0,0,0,0.05),2px_21px_6px_0px_rgba(0,0,0,0),0px_0px_0px_1px_rgba(0,0,0,0.08),1px_13px_5px_0px_rgba(0,0,0,0.01),0px_-2px_2px_0px_rgba(0,0,0,0.13)_inset] tw:before:outline-1 tw:before:outline-secondary_alt',
     ].join(' '),
     sizes: {
       sm: 'tw:size-8 tw:rounded-[8px] tw:before:rounded-[4px]',
@@ -113,7 +117,7 @@ const styles = sortCx({
     },
     colors: {
       brand: '',
-      gray: 'tw:text-fg-secondary tw:ring-primary',
+      gray: 'tw:text-fg-secondary tw:outline-primary',
       error: '',
       warning: '',
       success: '',

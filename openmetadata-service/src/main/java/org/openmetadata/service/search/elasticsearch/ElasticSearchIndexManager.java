@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
@@ -35,6 +37,7 @@ import org.openmetadata.service.search.IndexManagementClient;
  */
 @Slf4j
 public class ElasticSearchIndexManager implements IndexManagementClient {
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private final ElasticsearchClient client;
   private final String clusterAlias;
   private final boolean isClientAvailable;
@@ -73,6 +76,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       String indexName = indexMapping.getIndexName(clusterAlias);
       createIndexInternal(indexName, indexMappingContent);
       createAliases(indexMapping);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as the String overload and updateIndex.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to create index {} due to", indexMapping.getIndexName(clusterAlias), e);
     }
@@ -87,12 +95,17 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
+      String transformedContent =
+          (indexMappingContent != null && !indexMappingContent.isEmpty())
+              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              : indexMappingContent;
+      String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =
           PutMappingRequest.of(
               builder -> {
                 builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
+                if (mappingsJson != null) {
+                  builder.withJson(new StringReader(mappingsJson));
                 }
                 return builder;
               });
@@ -100,6 +113,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       client.indices().putMapping(request);
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as createIndex.
+      throw e;
     } catch (Exception e) {
       LOG.error(
           "Failed to update Elasticsearch index {} due to",
@@ -118,6 +136,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   public void createAliases(IndexMapping indexMapping) {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
+      aliases.addAll(indexMapping.getDataInsightAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       addIndexAlias(indexMapping, aliases.toArray(new String[0]));
     } catch (Exception e) {
@@ -140,19 +159,45 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       createIndexInternal(indexName, indexMappingContent);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to create index {} due to", indexName, e);
     }
   }
 
+  private String extractMappingsJson(String indexMappingContent) {
+    if (indexMappingContent == null) {
+      return null;
+    }
+    try {
+      JsonNode root = MAPPER.readTree(indexMappingContent);
+      JsonNode mappings = root.get("mappings");
+      if (mappings != null) {
+        return MAPPER.writeValueAsString(mappings);
+      }
+      return indexMappingContent;
+    } catch (IOException e) {
+      LOG.warn(
+          "Failed to extract mappings from index content, using full content: {}", e.getMessage());
+      return indexMappingContent;
+    }
+  }
+
   private void createIndexInternal(String indexName, String indexMappingContent)
       throws IOException {
+    String enrichedContent =
+        (indexMappingContent != null && !indexMappingContent.isEmpty())
+            ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+            : indexMappingContent;
     CreateIndexRequest request =
         CreateIndexRequest.of(
             builder -> {
               builder.index(indexName);
-              if (indexMappingContent != null) {
-                builder.withJson(new StringReader(indexMappingContent));
+              if (enrichedContent != null) {
+                builder.withJson(new StringReader(enrichedContent));
               }
               return builder;
             });

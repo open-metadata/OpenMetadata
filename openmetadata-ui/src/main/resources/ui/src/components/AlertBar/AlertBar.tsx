@@ -14,7 +14,6 @@ import { Alert, AlertProps } from 'antd';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { getIconAndClassName } from '../../utils/ToastUtils';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
@@ -25,7 +24,6 @@ const AlertBar = ({
   defaultExpand,
   className: alertClassName,
 }: AlertBarProps): JSX.Element => {
-  const { resetAlert, animationClass } = useAlertStore();
   const [expanded, setExpanded] = useState(defaultExpand);
 
   const {
@@ -40,13 +38,7 @@ const AlertBar = ({
     <Alert
       closable
       showIcon
-      afterClose={resetAlert}
-      className={classNames(
-        'alert-container',
-        className,
-        animationClass,
-        alertClassName
-      )}
+      className={classNames('alert-container', className, alertClassName)}
       closeIcon={
         <CrossIcon
           className="alert-close-icon"

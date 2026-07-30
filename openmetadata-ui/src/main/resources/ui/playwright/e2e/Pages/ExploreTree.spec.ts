@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -31,6 +32,7 @@ import {
   validateBucketsForIndex,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -46,7 +48,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   let table1: TableClass;
   let table2: TableClass;
 
@@ -304,7 +306,9 @@ test.describe('Explore Tree scenarios', () => {
       await table1.visitEntityPage(page);
 
       const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-      await page.getByRole('link', { name: schemaName }).click();
+      // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+      // narrow viewports, so navigate through the overflow-aware helper.
+      await clickBreadcrumbAncestor(page, schemaName);
       // Rename Schema Page
       await schemaRes;
       await waitForAllLoadersToDisappear(page);

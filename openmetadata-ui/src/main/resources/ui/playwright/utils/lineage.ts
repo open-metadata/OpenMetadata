@@ -91,7 +91,7 @@ export type LineageEdge = {
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .locator('[data-testid="lineage-layer-column-btn"]:not([data-selected])')
     .waitFor();
   await clickOutside(page); // close Layer popover
 };
@@ -101,7 +101,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
-    .evaluate((el) => el.classList.contains('Mui-selected'));
+    .evaluate((el) => el.hasAttribute('data-selected'));
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
@@ -189,8 +189,10 @@ export const deleteEdge = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 };
 
@@ -199,13 +201,20 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization before drag operation
+  // eslint-disable-next-line playwright/no-wait-for-timeout -- asynchronous ELK redraw has no browser-visible completion signal
   await page.waitForTimeout(1000);
+  const originElement = page.locator(originSelector);
   const destinationElement = page.locator(destinationSelector);
-  await destinationElement.waitFor();
-  await page.hover(originSelector);
+  await Promise.all([originElement.waitFor(), destinationElement.waitFor()]);
+  await destinationElement.scrollIntoViewIfNeeded();
+  await originElement.hover();
   await page.mouse.down();
-  const box = (await destinationElement.boundingBox()) as DOMRect;
+  const box = await destinationElement.boundingBox();
+  if (!box) {
+    throw new Error(
+      `Unable to locate lineage destination ${destinationSelector}`
+    );
+  }
   const x = box.x + 250;
   const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
@@ -237,6 +246,11 @@ export const dragConnection = async (
 export const rearrangeNodes = async (page: Page) => {
   await page.getByTestId('fit-screen').click();
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
+};
+
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 };
 
 export const connectEdgeBetweenNodes = async (
@@ -611,8 +625,10 @@ export const removeColumnLineage = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 
   await editLineageClick(page);
@@ -734,7 +750,7 @@ export const fillLineageConfigForm = async (
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .locator('[data-testid="lineage-layer-column-btn"][data-selected]')
     .waitFor();
   await clickOutside(page); // Close Layer popover
 };
@@ -751,7 +767,9 @@ export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
@@ -759,7 +777,7 @@ export const getLineageCSVData = async (page: Page) => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -836,26 +854,26 @@ export const verifyExportLineagePNG = async (
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
+    await page.getByRole('option', { name: 'PNG' }).click();
   }
 
-  await expect(
-    page.getByTestId('export-type-select').getByText('PNGBeta')
-  ).toBeVisible();
+  await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
   const [download] = await Promise.all([
     // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
     // render enough headroom before the download event fires.
     page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -1023,10 +1041,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page.getByTestId(`node-suggestion-${fromFqn}`).click();
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- canvas stabilization after node selection
-  await page.waitForTimeout(500);
-
   const fromNode = page.getByTestId(`lineage-node-${fromFqn}`);
+  await expect(fromNode).toBeVisible();
 
   // ensure node will be visible in the viewport
   await performZoomOut(page);

@@ -29,6 +29,7 @@ import {
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
+import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
 import {
   getSortField,
   getSortOrder,
@@ -52,11 +53,11 @@ import {
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
 } from '../../../../utils/CuratedAssetsPureUtils';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { EntityIconSize } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
 import {
@@ -77,7 +78,7 @@ const CuratedAssetsModal = withSuspenseFallback(
   lazy(() => import('./CuratedAssetsModal/CuratedAssetsModal'))
 );
 
-const CuratedAssetsWidget = ({
+const CuratedAssetsWidgetContent = ({
   isEditView,
   handleRemoveWidget,
   widgetKey,
@@ -236,7 +237,7 @@ const CuratedAssetsWidget = ({
       : [
           ...(currentLayout || []),
           {
-            ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+            ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
             i: widgetKey,
             config: value,
           },
@@ -275,11 +276,10 @@ const CuratedAssetsWidget = ({
           : [
               ...(currentLayout || []),
               {
-                ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+                ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
                 i: widgetKey,
                 config: {
-                  ...customizeMyDataPageClassBase
-                    .curatedAssetsWidgetDefaultValues.config,
+                  ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
                   sortBy: e.key,
                 },
               },
@@ -356,20 +356,14 @@ const CuratedAssetsWidget = ({
       return (
         <Link
           className="curated-assets-list-item-link"
-          to={entityUtilClassBase.getEntityLink(
-            item.type || '',
-            item.fullyQualifiedName as string
+          to={getEntityLinkFromType(
+            item.fullyQualifiedName as string,
+            item.type as EntityType
           )}>
           <div
-            className="curated-assets-list-item flex items-center w-full"
+            className="curated-assets-list-item flex items-center w-full gap-2"
             data-testid={`Curated Assets-${title}`}>
-            <img
-              alt={get(item, 'service.displayName', '')}
-              className="entity-icon"
-              src={serviceUtilClassBase.getServiceTypeLogo(
-                item as unknown as SearchSourceAlias
-              )}
-            />
+            {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
                 <Typography.Text
@@ -495,23 +489,27 @@ const CuratedAssetsWidget = ({
   );
 
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <>
-        <WidgetWrapper
-          dataTestId="KnowledgePanel.CuratedAssets"
-          header={widgetHeader}
-          loading={isLoading}>
-          {widgetContent}
-        </WidgetWrapper>
-        <CuratedAssetsModal
-          curatedAssetsConfig={curatedAssetsConfig}
-          isOpen={createCuratedAssetsModalOpen}
-          onCancel={handleModalClose}
-          onSave={handleSave}
-        />
-      </>
-    </AdvanceSearchProvider>
+    <>
+      <WidgetWrapper
+        dataTestId="KnowledgePanel.CuratedAssets"
+        header={widgetHeader}
+        loading={isLoading}>
+        {widgetContent}
+      </WidgetWrapper>
+      <CuratedAssetsModal
+        curatedAssetsConfig={curatedAssetsConfig}
+        isOpen={createCuratedAssetsModalOpen}
+        onCancel={handleModalClose}
+        onSave={handleSave}
+      />
+    </>
   );
 };
+
+const CuratedAssetsWidget = (props: WidgetCommonProps) => (
+  <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+    <CuratedAssetsWidgetContent {...props} />
+  </AdvanceSearchProvider>
+);
 
 export default CuratedAssetsWidget;

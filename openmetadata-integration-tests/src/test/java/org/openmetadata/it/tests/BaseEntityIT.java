@@ -460,6 +460,33 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: The per-entity AI Context endpoint (inherited from EntityResource) returns an OKF-style
+   * markdown document for this entity type, exercised through the SDK's getContext/getContextByName
+   * (which manage their own connection pool). Runs for every entity type whose IT wires the SDK
+   * service via getEntityService().
+   */
+  @Test
+  void get_entityAiContext_200_OK(TestNamespace ns) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(
+        service != null, getEntityType() + " has no SDK service wired via getEntityService()");
+    T created = createEntity(createMinimalRequest(ns));
+
+    String byId = service.getContext(created.getId().toString());
+    assertTrue(
+        byId.startsWith("---"),
+        "AI context by id must be an OKF markdown document (YAML frontmatter) for "
+            + getEntityType());
+    assertTrue(
+        byId.contains("type:"), "AI context frontmatter must carry a type for " + getEntityType());
+
+    String byName = service.getContextByName(created.getFullyQualifiedName());
+    assertTrue(
+        byName.startsWith("---"),
+        "AI context by name must be an OKF markdown document for " + getEntityType());
+  }
+
+  /**
    * Test: Get non-existent entity should fail
    * Equivalent to: get_entityNotFound_404 in EntityResourceTest
    */
@@ -3750,6 +3777,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    awaitAsyncBulkEntitiesPersisted(result);
   }
 
   /**

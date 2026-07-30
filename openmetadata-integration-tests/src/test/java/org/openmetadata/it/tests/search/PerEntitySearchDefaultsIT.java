@@ -28,9 +28,10 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 /**
  * "All entities" breadth gate for the default search configuration: seeds a small cohort spanning
  * every entity kind {@link EntityLoader} produces, reindexes, and asserts each kind's per-type
- * search index gained at least the seeded documents — i.e. the default Settings &gt; Search config
- * actually indexes and makes every entity type searchable. Any per-type drift is reported in one
- * table rather than aborting on the first kind.
+ * search index gained at least one seeded document — i.e. the default Settings &gt; Search config
+ * actually indexes and makes every entity type searchable. This is a breadth gate; exact per-type
+ * DB↔ES parity is covered by {@link DbToEsCountReconciliationIT}. Any per-type drift is reported in
+ * one table rather than aborting on the first kind.
  *
  * <p>Counts are compared as a before/after <b>delta</b> on each per-type index (no fragile
  * name-prefix matching — some kinds, e.g. Query, are named by checksum). The relevancy
@@ -42,6 +43,13 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 class PerEntitySearchDefaultsIT {
 
   private static final int PER_KIND = 2;
+  // Breadth gate: require that AT LEAST ONE seeded doc of each kind lands in its index, not the
+  // full PER_KIND. A full reindex reconciles each index to the DB, so a pre-existing orphaned doc
+  // (indexed but DB-deleted — common on the shared external cluster after a cancelled run or
+  // async-delete lag) is pruned in the same pass, dragging an exact seeded-count delta below
+  // PER_KIND even when indexing is correct. Exact per-type DB/ES parity is covered by
+  // DbToEsCountReconciliationIT; here we only gate that every kind is indexed at all.
+  private static final int MIN_INDEXED_PER_KIND = 1;
   private static final int INGEST_WORKERS = 8;
   private static final int COLUMNS_PER_TABLE = 2;
   private static final Duration SETTLE_TIMEOUT = Duration.ofSeconds(60);
@@ -140,12 +148,13 @@ class PerEntitySearchDefaultsIT {
           .ignoreExceptions()
           .untilAsserted(
               () ->
-                  assertThat(search.count(index) - before).isGreaterThanOrEqualTo((long) PER_KIND));
+                  assertThat(search.count(index) - before)
+                      .isGreaterThanOrEqualTo((long) MIN_INDEXED_PER_KIND));
     } catch (final ConditionTimeoutException timeout) {
       failure =
           String.format(
               "  %-22s indexed delta=%d (expected >= %d)",
-              meta.type(), safeCount(meta.type()) - before, PER_KIND);
+              meta.type(), safeCount(meta.type()) - before, MIN_INDEXED_PER_KIND);
     }
     return failure;
   }

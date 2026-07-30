@@ -58,7 +58,7 @@ jest.mock('./FeedUtils', () => ({
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
 }));
 
-jest.mock('./EntityDisplayUtils', () => ({
+jest.mock('./EntityDisplayPureUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 

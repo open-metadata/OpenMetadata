@@ -1,0 +1,119 @@
+{
+  "summary": "Metric CSV file is used for importing and exporting OpenMetadata metrics.",
+  "headers": [
+    {
+      "name": "name",
+      "required": true,
+      "description": "Name that identifies the metric.",
+      "examples": ["net_sales"]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name of the metric.",
+      "examples": ["Net Sales"]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Metric description in Markdown format.",
+      "examples": ["Net sales after discounts and returns."]
+    },
+    {
+      "name": "metricType",
+      "required": false,
+      "description": "Metric aggregation or business type.",
+      "examples": ["SUM", "RATIO"]
+    },
+    {
+      "name": "unitOfMeasurement",
+      "required": false,
+      "description": "Metric unit of measurement.",
+      "examples": ["DOLLARS", "PERCENTAGE"]
+    },
+    {
+      "name": "customUnitOfMeasurement",
+      "required": false,
+      "description": "Custom unit when unitOfMeasurement is OTHER.",
+      "examples": ["Pairs"]
+    },
+    {
+      "name": "granularity",
+      "required": false,
+      "description": "Metric time granularity.",
+      "examples": ["DAY", "MONTH"]
+    },
+    {
+      "name": "expressionLanguage",
+      "required": false,
+      "description": "Language used by the canonical metric expression.",
+      "examples": ["SQL", "Python"]
+    },
+    {
+      "name": "expressionCode",
+      "required": false,
+      "description": "Canonical expression used to compute the metric.",
+      "examples": ["SUM(fact_sales[net_sales])"]
+    },
+    {
+      "name": "relatedMetrics",
+      "required": false,
+      "description": "Related metric fully qualified names separated by ';'.",
+      "examples": ["gross_sales;net_sales"]
+    },
+    {
+      "name": "tags",
+      "required": false,
+      "description": "Classification tag FQNs separated by ';'.",
+      "examples": ["Business.Critical"]
+    },
+    {
+      "name": "glossaryTerms",
+      "required": false,
+      "description": "Glossary term FQNs separated by ';'.",
+      "examples": ["KPI.NetSales"]
+    },
+    {
+      "name": "tiers",
+      "required": false,
+      "description": "Tier tag FQNs separated by ';'.",
+      "examples": ["Tier.Tier1"]
+    },
+    {
+      "name": "owners",
+      "required": false,
+      "description": "Owners in entityType:entityName format separated by ';'.",
+      "examples": ["user:data.owner"]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers in entityType:entityName format separated by ';'.",
+      "examples": ["team:Finance"]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Domain FQNs separated by ';'.",
+      "examples": ["Marketing"]
+    },
+    {
+      "name": "dataProducts",
+      "required": false,
+      "description": "Data product FQNs separated by ';'.",
+      "examples": ["Customer360"]
+    },
+    {
+      "name": "entityStatus",
+      "required": false,
+      "description": "Metric approval status.",
+      "examples": ["Draft", "Approved"]
+    },
+    {
+      "name": "extension",
+      "required": false,
+      "description": "Custom property values in key:value format separated by ';'.",
+      "examples": ["externalId:12345"]
+    }
+  ]
+}
