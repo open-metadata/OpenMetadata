@@ -97,6 +97,8 @@ class DistributedSearchIndexExecutorTest {
     executor = new DistributedSearchIndexExecutor(collectionDAO);
     setField("coordinator", coordinator);
     setField("recoveryManager", recoveryManager);
+    // Unit tests exercise the force-cancel logic, not the participant-drain grace timing.
+    setField("participantDrainTimeoutMs", 0L);
   }
 
   @AfterEach
@@ -968,6 +970,61 @@ class DistributedSearchIndexExecutorTest {
       verify(coordinator).forceCompleteProcessingPartitions(jobId);
       verify(metrics).recordJobStopped(timerSample);
     }
+  }
+
+  @Test
+  void driveJobToTerminalStateWaitsForParticipantsInsteadOfForceCancelling() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    // A non-STOPPING job whose workers drained, but a participant's partition is still PROCESSING
+    // and the job has not reached a terminal state yet.
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING))
+        .thenReturn(List.of(partition(jobId, "table", PartitionStatus.PROCESSING)));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // We wait for the participant to finish so the entity is promoted with a fully-built index; the
+    // in-flight partition must NOT be force-cancelled (that would promote a partial index). The
+    // completion check still runs so the job terminalizes once the partition actually finishes.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateForceCancelsProcessingPartitionsWhenStopping() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // A user-requested stop force-cancels in-flight partitions so the job can reach STOPPED.
+    verify(coordinator).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
+  }
+
+  @Test
+  void driveJobToTerminalStateDoesNotForceCancelWhenNoProcessingPartitionsRemain()
+      throws Exception {
+    UUID jobId = UUID.randomUUID();
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    when(coordinator.getPartitions(jobId, PartitionStatus.PROCESSING)).thenReturn(List.of());
+
+    invokePrivate(
+        "driveJobToTerminalState", new Class<?>[] {UUID.class, boolean.class}, jobId, true);
+
+    // Nothing is still processing, so there is nothing to force-cancel; the completion check alone
+    // takes the job terminal.
+    verify(coordinator, never()).forceCompleteProcessingPartitions(jobId);
+    verify(coordinator).checkAndUpdateJobCompletion(jobId);
   }
 
   @Test
