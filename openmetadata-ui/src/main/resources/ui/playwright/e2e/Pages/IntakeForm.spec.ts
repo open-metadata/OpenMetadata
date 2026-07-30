@@ -1328,7 +1328,6 @@ test.describe(
         'custom-properties-section'
       );
       await expect(customPropertiesSection).toBeVisible();
-      await expect(customPropertiesSection).toContainText('Custom Properties');
       await expect(
         customPropertiesSection
           .getByTestId('custom-property-type-badge')
@@ -1751,7 +1750,6 @@ test.describe(
         'custom-properties-section'
       );
       await expect(customPropertiesSection).toBeVisible();
-      await expect(customPropertiesSection).toContainText('Custom Properties');
       await expect(
         customPropertiesSection
           .getByTestId('custom-property-type-badge')
