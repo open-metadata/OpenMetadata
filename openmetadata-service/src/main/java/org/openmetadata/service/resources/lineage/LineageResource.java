@@ -119,11 +119,32 @@ public class LineageResource {
 
   private void authorizeLineageReference(
       SecurityContext securityContext, EntityReference entityReference) {
+    authorizeLineageReference(securityContext, entityReference, MetadataOperation.EDIT_LINEAGE);
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext,
+      EntityReference entityReference,
+      MetadataOperation operation) {
     authorizer.authorize(
         securityContext,
-        new OperationContext(entityReference.getType(), MetadataOperation.EDIT_LINEAGE),
+        new OperationContext(entityReference.getType(), operation),
         new ResourceContext<>(
             entityReference.getType(), entityReference.getId(), entityReference.getName()));
+  }
+
+  private void authorizeLineageSceneFocus(
+      SecurityContext securityContext, String focusFqn, String entityType, boolean includeDeleted) {
+    boolean hasFocus = !nullOrEmpty(focusFqn);
+    boolean hasEntityType = !nullOrEmpty(entityType);
+    if (hasFocus != hasEntityType) {
+      throw new IllegalArgumentException("focusFqn and entityType must be provided together");
+    }
+    if (hasFocus) {
+      Include include = includeDeleted ? Include.DELETED : Include.NON_DELETED;
+      EntityReference focus = getLineageReferenceByName(entityType, focusFqn, include);
+      authorizeLineageReference(securityContext, focus, MetadataOperation.VIEW_BASIC);
+    }
   }
 
   private void authorizeLineageReference(
@@ -302,6 +323,7 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean includeDeleted)
       throws IOException {
+    authorizeLineageSceneFocus(securityContext, focusFqn, entityType, includeDeleted);
     return sceneResolver.getScene(
         focusFqn,
         entityType,

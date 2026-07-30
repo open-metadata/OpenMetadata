@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,6 +91,7 @@ import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -1181,6 +1183,15 @@ public class LineageResourceIT {
             restrictedDatabaseScene,
             allowedSchema.getFullyQualifiedName(),
             LineageLevelKind.TABLE));
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            getLineageScene(
+                restrictedClient,
+                blockedSource.getFullyQualifiedName(),
+                Entity.TABLE,
+                LineageBand.ASSET,
+                995));
 
     admin.users().delete(restrictedUser.getId().toString());
     deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
