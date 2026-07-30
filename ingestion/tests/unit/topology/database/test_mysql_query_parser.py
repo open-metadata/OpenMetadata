@@ -107,7 +107,7 @@ class TestGetSqlStatementCustomTable:
         )
         sql = MysqlQueryParserSource.get_sql_statement(stub, START_TIME, END_TIME)
 
-        assert "argument `query_text`" in sql
+        assert "CONVERT(argument USING utf8mb4) `query_text`" in sql
 
     def test_slow_log_uses_sql_text_column(self):
         stub = _make_stub(
@@ -142,7 +142,7 @@ class TestTestConnectionProbeTemplates:
     def test_general_log_probe_accepts_custom_table(self):
         rendered = MYSQL_TEST_GET_QUERIES.format(query_history_table="custom.tbl")
         assert "from custom.tbl" in rendered
-        assert "`argument`" in rendered
+        assert "CONVERT(`argument` USING utf8mb4)" in rendered
 
     def test_slow_log_probe_accepts_custom_table(self):
         rendered = MYSQL_TEST_GET_QUERIES_SLOW_LOGS.format(query_history_table="custom.tbl")

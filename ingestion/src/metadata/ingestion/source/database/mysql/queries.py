@@ -16,9 +16,9 @@ import textwrap
 
 MYSQL_SQL_STATEMENT = textwrap.dedent(
     """
-SELECT 
+SELECT
 	NULL `database_name`,
-	argument `query_text`,
+	CONVERT(argument USING utf8mb4) `query_text`,
 	event_time `start_time`,
     NULL `end_time`,
 	NULL `duration`,
@@ -29,8 +29,8 @@ SELECT
 FROM {query_history_table}
 WHERE command_type = 'Query'
     AND event_time between '{start_time}' and '{end_time}'
-    AND argument NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-    AND argument NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND CONVERT(argument USING utf8mb4) NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND CONVERT(argument USING utf8mb4) NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     {filters}
 ORDER BY event_time desc
 LIMIT {result_limit};
@@ -62,7 +62,7 @@ LIMIT {result_limit};
 
 MYSQL_TEST_GET_QUERIES = textwrap.dedent(
     """
-SELECT `argument` from {query_history_table} limit 1;
+SELECT CONVERT(`argument` USING utf8mb4) from {query_history_table} limit 1;
 """
 )
 
