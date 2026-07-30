@@ -41,7 +41,7 @@ import {
 import {
   FieldKind,
   IntakeForm,
-  RequiredField,
+  IntakeFormField,
   TargetEntityType,
 } from '../../../generated/governance/intakeForm';
 import {
@@ -51,6 +51,8 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { getIntakeFormByEntityType } from '../../../rest/intakeFormsAPI';
 import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import { serializeExtensionValue } from '../../../utils/CustomProperty.utils';
+import { getIntakeFormFields } from '../../../utils/IntakeFormUtils';
 import {
   domainTypeTooltipDataRender,
   iconTooltipDataRender,
@@ -65,6 +67,7 @@ import {
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
+import AddDomainFormExtensionFields from './AddDomainFormExtensionFields';
 
 const AddDomainForm = ({
   isFormInDialog,
@@ -148,14 +151,14 @@ const AddDomainForm = ({
     };
   }, [targetEntityType]);
 
-  const isCustomRequiredField = (field: RequiredField) =>
+  const isCustomIntakeField = (field: IntakeFormField) =>
     field.fieldKind === FieldKind.CustomProperty ||
     field.fieldPath.startsWith('extension.');
 
   const nativeRequiredFieldsByPath = useMemo(() => {
-    const map = new Map<string, RequiredField>();
-    (intakeForm?.requiredFields ?? []).forEach((rf: RequiredField) => {
-      if (!isCustomRequiredField(rf)) {
+    const map = new Map<string, IntakeFormField>();
+    getIntakeFormFields(intakeForm).forEach((rf: IntakeFormField) => {
+      if (!isCustomIntakeField(rf)) {
         map.set(rf.fieldPath, rf);
       }
     });
@@ -163,10 +166,10 @@ const AddDomainForm = ({
     return map;
   }, [intakeForm]);
 
-  const extensionRequiredFields = useMemo<RequiredField[]>(
+  const extensionRequiredFields = useMemo<IntakeFormField[]>(
     () =>
-      (intakeForm?.requiredFields ?? []).filter((rf) =>
-        isCustomRequiredField(rf)
+      getIntakeFormFields(intakeForm).filter((rf) =>
+        isCustomIntakeField(rf)
       ),
     [intakeForm]
   );
@@ -175,7 +178,7 @@ const AddDomainForm = ({
     (field: FieldProp): FieldProp => {
       const rf = nativeRequiredFieldsByPath.get(field.name as string);
       let result = field;
-      if (rf) {
+      if (rf && rf.required !== false) {
         const message =
           rf.errorMessage ||
           t('label.field-required', { field: rf.fieldLabel });
@@ -524,83 +527,6 @@ const AddDomainForm = ({
     }),
   };
 
-  const extensionFields: FieldProp[] = useMemo(
-    () =>
-      extensionRequiredFields.map((rf): FieldProp => {
-        const propertyName = rf.fieldPath.startsWith('extension.')
-          ? rf.fieldPath.substring('extension.'.length)
-          : rf.fieldPath;
-        const definition = customProperties.find(
-          (cp) => cp.name === propertyName
-        );
-        const propertyTypeName = definition?.propertyType?.name ?? 'string';
-        const config = definition?.customPropertyConfig?.config;
-        const requiredMessage =
-          rf.errorMessage ||
-          t('label.field-required', { field: rf.fieldLabel });
-        const baseField: FieldProp = {
-          name: ['extension', propertyName],
-          id: `root/extension/${propertyName}`,
-          label: rf.fieldLabel,
-          required: true,
-          placeholder: rf.fieldLabel,
-          rules: [{ required: true, message: requiredMessage }],
-          props: { 'data-testid': `extension-${propertyName}` },
-          type: FieldTypes.TEXT_MUI,
-        };
-
-        let result = baseField;
-        if (propertyTypeName === 'enum') {
-          const enumConfig = config as
-            | { values?: string[]; multiSelect?: boolean }
-            | undefined;
-          result = {
-            ...baseField,
-            type: FieldTypes.SELECT_MUI,
-            props: {
-              'data-testid': `extension-${propertyName}`,
-              options: (enumConfig?.values ?? []).map((value) => ({
-                label: value,
-                value,
-              })),
-              multiple: enumConfig?.multiSelect,
-            },
-          };
-        } else if (
-          propertyTypeName === 'integer' ||
-          propertyTypeName === 'number'
-        ) {
-          result = { ...baseField, type: FieldTypes.NUMBER };
-        } else if (
-          propertyTypeName === 'entityReference' ||
-          propertyTypeName === 'entityReferenceList'
-        ) {
-          const allowedTypes = Array.isArray(config)
-            ? (config as string[])
-            : [];
-          const isUserOnly =
-            allowedTypes.length === 1 && allowedTypes[0] === 'user';
-          result = {
-            ...baseField,
-            type: FieldTypes.USER_TEAM_SELECT_MUI,
-            props: {
-              'data-testid': `extension-${propertyName}`,
-              userOnly: isUserOnly,
-              multipleUser: propertyTypeName === 'entityReferenceList',
-              label: rf.fieldLabel,
-            },
-            formItemProps: {
-              valuePropName: 'value',
-              trigger: 'onChange',
-            },
-          };
-        }
-
-        return result;
-      }),
-    [extensionRequiredFields, customProperties, t]
-  );
-
   const createPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.GLOSSARY, permissions),
@@ -619,22 +545,24 @@ const AddDomainForm = ({
   const reviewersList =
     Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
 
-  // The user/team picker stores a single-select value as a one-element array,
-  // but a single `entityReference` custom property expects a bare object. Unwrap
-  // it so the API receives the shape it validates against; list and scalar
-  // custom properties pass through untouched.
-  const normalizeExtension = (extension?: Record<string, unknown>) => {
+  const buildExtension = (extension?: Record<string, unknown>) => {
     if (!extension) {
       return extension;
     }
-    const normalized: Record<string, unknown> = {};
+    const result: Record<string, unknown> = {};
     Object.entries(extension).forEach(([key, value]) => {
       const definition = customProperties.find((cp) => cp.name === key);
-      const isSingleRef = definition?.propertyType?.name === 'entityReference';
-      normalized[key] = isSingleRef && Array.isArray(value) ? value[0] : value;
+      if (definition) {
+        const serialized = serializeExtensionValue(definition, value);
+        if (serialized !== undefined) {
+          result[key] = serialized;
+        }
+      } else {
+        result[key] = value;
+      }
     });
 
-    return normalized;
+    return result;
   };
 
   const handleFormSubmit: FormProps['onFinish'] = (formData) => {
@@ -660,7 +588,7 @@ const AddDomainForm = ({
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
-      extension: normalizeExtension(formData.extension),
+      extension: buildExtension(formData.extension),
     } as CreateDomain | CreateDataProduct;
 
     // Handle domains field based on form type
@@ -741,11 +669,10 @@ const AddDomainForm = ({
           {getField(applyIntakeFormRequired(reviewersField))}
         </div>
       )}
-      {extensionFields.map((field) => (
-        <div className="m-t-xss" key={field.id}>
-          {getField(field)}
-        </div>
-      ))}
+      <AddDomainFormExtensionFields
+        customProperties={customProperties}
+        formFields={extensionRequiredFields}
+      />
 
       {!isFormInDialog && (
         <Space

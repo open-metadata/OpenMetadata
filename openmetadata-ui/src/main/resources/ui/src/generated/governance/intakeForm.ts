@@ -67,8 +67,15 @@ export interface IntakeForm {
      */
     owners?: EntityReference[];
     /**
+     * Ordered list of fields (native or custom properties) surfaced on the intake form, with
+     * per-field required flags.
+     */
+    formFields?: IntakeFormField[];
+    /**
      * Additional required fields enforced by this IntakeForm on top of the schema-required
      * fields.
+     *
+     * @deprecated Use formFields and set required=true on fields that must be populated.
      */
     requiredFields?: RequiredField[];
     /**
@@ -248,4 +255,33 @@ export interface RequiredField {
 export enum FieldKind {
     CustomProperty = "customProperty",
     Native = "native",
+}
+
+/**
+ * A single field surfaced on the intake form. Extends RequiredField with a per-field
+ * required flag so optional helper fields can live alongside mandatory ones.
+ */
+export interface IntakeFormField {
+    /**
+     * Optional override for the validation error message when a required field is missing.
+     */
+    errorMessage?: string;
+    /**
+     * Whether a form field refers to a native entity attribute or a custom property defined via
+     * the Type system.
+     */
+    fieldKind: FieldKind;
+    /**
+     * Human-friendly label used on the intake form UI and in validation error messages.
+     */
+    fieldLabel: string;
+    /**
+     * Path to the field on the entity. Native paths are simple attribute names (e.g.,
+     * 'dataProductType'). Custom property paths look like 'extension.<propertyName>'.
+     */
+    fieldPath: string;
+    /**
+     * Whether this field must have a value before the entity can be created or updated.
+     */
+    required?: boolean;
 }

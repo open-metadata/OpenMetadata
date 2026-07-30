@@ -12,13 +12,17 @@
  */
 
 import { FormInstance } from 'antd';
+import React from 'react';
 import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
+import { CustomProperty } from '../../../generated/entity/type';
+import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import { GlossaryTermIntakeFieldsHandle } from './GlossaryTermIntakeFields.component';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
@@ -26,6 +30,11 @@ export interface AddGlossaryTermFormProps {
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
   formRef: FormInstance<CreateGlossaryTerm>;
+  intakeFieldsRef?: React.RefObject<GlossaryTermIntakeFieldsHandle>;
+  /** Custom properties for the glossary term entity type, used for intake form extension fields. */
+  intakeCustomProperties?: CustomProperty[];
+  /** Intake form extension fields to render alongside the main form. */
+  intakeFormFields?: IntakeFormField[];
 }
 
 export interface GlossaryTermForm {

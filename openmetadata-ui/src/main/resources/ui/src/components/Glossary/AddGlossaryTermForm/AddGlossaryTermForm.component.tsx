@@ -35,12 +35,16 @@ import { referenceURLValidator } from '../../../utils/GlossaryUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
+import GlossaryTermIntakeFields from './GlossaryTermIntakeFields.component';
 
 const AddGlossaryTermForm = ({
   editMode,
   onSave,
   glossaryTerm,
   formRef: form,
+  intakeFieldsRef,
+  intakeCustomProperties = [],
+  intakeFormFields = [],
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
   const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
@@ -481,6 +485,14 @@ const AddGlossaryTermForm = ({
           )}
         </div>
       </Form>
+
+      {intakeFormFields.length > 0 && (
+        <GlossaryTermIntakeFields
+          ref={intakeFieldsRef}
+          customProperties={intakeCustomProperties}
+          formFields={intakeFormFields}
+        />
+      )}
     </>
   );
 };

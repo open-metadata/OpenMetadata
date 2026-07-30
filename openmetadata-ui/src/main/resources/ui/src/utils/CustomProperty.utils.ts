@@ -15,11 +15,90 @@ import {
   DEFAULT_DATE_FORMAT,
   DEFAULT_DATE_TIME_FORMAT,
   DEFAULT_TIME_FORMAT,
+  HYPERLINK_TYPE_CUSTOM_PROPERTY,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
   SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING,
+  TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
-import { CustomPropertyConfig } from '../generated/entity/type';
+import { CustomProperty, CustomPropertyConfig } from '../generated/entity/type';
+
+type SerializedEntityReference = Record<string, unknown> & { type: string };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isEmptyExtensionValue = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0) ||
+  (isRecord(value) && Object.keys(value).length === 0);
+
+const unwrapPickerValue = (value: unknown): unknown =>
+  isRecord(value) && 'value' in value ? value.value : value;
+
+const isEntityReference = (
+  value: unknown
+): value is SerializedEntityReference =>
+  isRecord(value) &&
+  typeof value.type === 'string' &&
+  (typeof value.id === 'string' ||
+    typeof value.fullyQualifiedName === 'string');
+
+const unwrapEntityReference = (
+  value: unknown
+): SerializedEntityReference | undefined => {
+  if (isEntityReference(value)) {
+    return value;
+  }
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  if (isEntityReference(value.reference)) {
+    return value.reference as SerializedEntityReference;
+  }
+
+  return isEntityReference(value.value) ? (value.value as SerializedEntityReference) : undefined;
+};
+
+const toFiniteNumber = (raw: unknown): number | undefined => {
+  const numericValue = Number(raw);
+
+  return Number.isFinite(numericValue) ? numericValue : undefined;
+};
+
+const serializeTimeInterval = (
+  raw: unknown
+): Record<string, number> | undefined => {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+
+  const interval = Object.fromEntries(
+    ['start', 'end']
+      .filter((key) => !isEmptyExtensionValue(raw[key]))
+      .map((key) => [key, toFiniteNumber(raw[key])])
+      .filter(([, value]) => value !== undefined)
+  );
+
+  return isEmptyExtensionValue(interval) ? undefined : interval;
+};
+
+const serializeHyperlink = (
+  raw: unknown
+): Record<string, string> | undefined => {
+  if (!isRecord(raw) || typeof raw.url !== 'string' || !raw.url) {
+    return undefined;
+  }
+
+  return {
+    url: raw.url,
+    ...(typeof raw.displayText === 'string' && raw.displayText
+      ? { displayText: raw.displayText }
+      : {}),
+  };
+};
 
 export const getCustomPropertyEntityPathname = (entityType: string) => {
   const entityPathEntries = Object.entries(ENTITY_PATH);
@@ -154,6 +233,122 @@ export const getCustomPropertyPageHeaderFromEntity = (
 
     default:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
+  }
+};
+
+export const hasPopulatedTableRows = (value: unknown): boolean => {
+  if (!Array.isArray(value)) {
+    return false;
+  }
+
+  return value.some(
+    (row) =>
+      isRecord(row) && Object.values(row).some((v) => !isEmptyExtensionValue(v))
+  );
+};
+
+export const serializeExtensionValue = (
+  definition: CustomProperty,
+  raw: unknown
+): unknown => {
+  if (isEmptyExtensionValue(raw)) {
+    return undefined;
+  }
+
+  const propertyType = definition.propertyType.name;
+  let serializedValue: unknown;
+
+  switch (propertyType) {
+    case 'integer':
+    case 'number':
+    case 'timestamp':
+      serializedValue = toFiniteNumber(raw);
+
+      break;
+    case 'timeInterval':
+      serializedValue = serializeTimeInterval(raw);
+
+      break;
+    case TABLE_TYPE_CUSTOM_PROPERTY:
+      serializedValue = hasPopulatedTableRows(raw) ? raw : undefined;
+
+      break;
+    case 'enum': {
+      const values = Array.isArray(raw) ? raw : [raw];
+      serializedValue = values
+        .map(unwrapPickerValue)
+        .filter((value) => !isEmptyExtensionValue(value));
+
+      break;
+    }
+    case 'entityReference':
+      serializedValue = unwrapEntityReference(raw);
+
+      break;
+    case 'entityReferenceList': {
+      const references = (Array.isArray(raw) ? raw : [raw])
+        .map(unwrapEntityReference)
+        .filter(
+          (reference): reference is SerializedEntityReference =>
+            reference !== undefined
+        );
+      serializedValue = references;
+
+      break;
+    }
+    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
+      serializedValue = serializeHyperlink(raw);
+
+      break;
+    default:
+      serializedValue = raw;
+  }
+
+  return isEmptyExtensionValue(serializedValue) ? undefined : serializedValue;
+};
+
+export const getCustomPropertyTypeDisplayName = (
+  typeName: string | undefined
+): string | undefined => {
+  switch (typeName) {
+    case 'string':
+      return 'Text';
+    case 'email':
+      return 'Email';
+    case 'integer':
+      return 'Integer';
+    case 'number':
+      return 'Number';
+    case 'timestamp':
+      return 'Timestamp';
+    case 'date-cp':
+      return 'Date';
+    case 'dateTime-cp':
+      return 'Date Time';
+    case 'time-cp':
+      return 'Time';
+    case 'enum':
+      return 'Enum';
+    case 'enumMultiSelect':
+      return 'Enum Multi Select';
+    case 'hyperlink':
+      return 'Hyperlink';
+    case 'markdown':
+      return 'Markdown';
+    case 'sqlQuery':
+      return 'SQL Query';
+    case 'entityReference':
+      return 'Entity Reference';
+    case 'entityReferenceList':
+      return 'Entity Reference List';
+    case 'timeInterval':
+      return 'Time Interval';
+    case 'table':
+      return 'Table';
+    case 'duration':
+      return 'Duration';
+    default:
+      return undefined;
   }
 };
 
