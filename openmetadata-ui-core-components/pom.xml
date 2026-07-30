@@ -15,9 +15,27 @@
   <properties>
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
+    <!-- Overridden by the skip-ui-build profile below when dist/ already exists
+         (e.g. restored from actions/cache in CI). Frontend-maven-plugin honors
+         <skip> to short-circuit its executions. -->
+    <skip.ui.build>false</skip.ui.build>
   </properties>
 
   <profiles>
+    <!-- Auto-activates when the compiled library dist already exists on disk.
+         Enables the CI cache workflow (.github/actions/cache-ui-dist) to reuse
+         a prior build across workflows without a workflow_run dependency. -->
+    <profile>
+      <id>skip-ui-build</id>
+      <activation>
+        <file>
+          <exists>${project.basedir}/src/main/resources/ui/dist/index.es.js</exists>
+        </file>
+      </activation>
+      <properties>
+        <skip.ui.build>true</skip.ui.build>
+      </properties>
+    </profile>
     <profile>
       <id>release</id>
       <build>
@@ -91,10 +109,15 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.12.1</version>
 
-        <!-- optional -->
+        <!-- Share a single node/yarn install between openmetadata-ui-core-components
+             and openmetadata-ui (see openmetadata-ui/pom.xml). The reactor builds
+             this module first, downloads node+yarn here, and the ui module reuses
+             the same install (frontend-maven-plugin skips re-download when the
+             version matches). Path is outside target/ so `mvn clean` at either
+             module does not wipe the shared install. -->
         <configuration>
           <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
+          <installDirectory>${maven.multiModuleProjectDirectory}/target/frontend</installDirectory>
         </configuration>
 
         <executions>
@@ -106,6 +129,7 @@
             <configuration>
               <nodeVersion>v22.17.0</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -117,6 +141,7 @@
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <arguments>install --frozen-lockfile</arguments>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -132,6 +157,7 @@
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
         </executions>

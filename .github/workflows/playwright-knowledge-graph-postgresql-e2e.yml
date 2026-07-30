@@ -228,6 +228,9 @@ jobs:
       - name: Install antlr cli
         run: sudo make install_antlr_cli
 
+      - name: Restore openmetadata-ui dist cache
+        uses: ./.github/actions/cache-ui-dist
+
       - name: Build with Maven
         run: mvn -DskipTests clean package
 

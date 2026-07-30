@@ -1,0 +1,68 @@
+name: Cache openmetadata-ui dist
+description: >
+  Restore (and later save) the built openmetadata-ui and
+  openmetadata-ui-core-components dist output across workflow runs. When a
+  cache hit is scored, the openmetadata-ui and openmetadata-ui-core-components
+  poms auto-detect the pre-populated dist/ (via the skip-ui-build profile)
+  and skip the ~5 min frontend-maven-plugin phase entirely, so the reactor
+  only pays for the Java compile.
+
+  The cache is scoped to the repository (GitHub Actions cache always is), so
+  the first workflow of the day that builds a given UI source tree populates
+  the cache; every other workflow triggered by the same push, and every
+  future workflow whose UI sources haven't changed, hits the cache.
+
+  Usage — add this step BEFORE the mvn build in any workflow whose maven
+  goal transitively builds openmetadata-ui:
+
+    - uses: ./.github/actions/cache-ui-dist
+
+  If the workflow builds a non-default vite variant (e.g. sets PW_E2E_BUILD
+  or PW_E2E_BUNDLE to alter chunking), pass a distinct variant so the cache
+  does not mix incompatible dist outputs:
+
+    - uses: ./.github/actions/cache-ui-dist
+      with:
+        variant: pw-e2e-bundle
+
+inputs:
+  variant:
+    description: >
+      Optional cache-key discriminator for builds that produce a different
+      vite output (Playwright e2e bundle mode, custom modes). Default is a
+      standard production build.
+    required: false
+    default: default
+
+runs:
+  using: composite
+  steps:
+    - name: Restore openmetadata-ui dist cache
+      uses: actions/cache@v5
+      with:
+        # Both modules' dist dirs; the poms activate skip-ui-build when
+        # either index.html (app) or index.es.js (library) is present.
+        path: |
+          openmetadata-ui/src/main/resources/ui/dist
+          openmetadata-ui-core-components/src/main/resources/ui/dist
+        # Key is a content hash of every input that can affect the vite
+        # output plus the variant. Any change here is a genuine UI change
+        # and requires a rebuild — anything else is a cache hit.
+        key: ui-dist-v1-${{ runner.os }}-${{ inputs.variant }}-${{ hashFiles(
+              'openmetadata-ui/src/main/resources/ui/src/**',
+              'openmetadata-ui/src/main/resources/ui/public/**',
+              'openmetadata-ui/src/main/resources/ui/package.json',
+              'openmetadata-ui/src/main/resources/ui/yarn.lock',
+              'openmetadata-ui/src/main/resources/ui/vite.config.ts',
+              'openmetadata-ui/src/main/resources/ui/tsconfig.json',
+              'openmetadata-ui/src/main/resources/ui/postcss.config.js',
+              'openmetadata-ui/src/main/resources/ui/index.html',
+              'openmetadata-ui/src/main/resources/ui/parseSchemas.js',
+              'openmetadata-ui/src/main/resources/json/data/**',
+              'openmetadata-ui/pom.xml',
+              'openmetadata-ui-core-components/src/main/resources/ui/src/**',
+              'openmetadata-ui-core-components/src/main/resources/ui/package.json',
+              'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock',
+              'openmetadata-ui-core-components/pom.xml',
+              'openmetadata-spec/src/main/resources/json/schema/**',
+              'openmetadata-spec/src/main/antlr4/**') }}

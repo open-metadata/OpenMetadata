@@ -369,6 +369,15 @@ jobs:
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         run: sudo make install_antlr_cli
 
+      - name: Restore openmetadata-ui dist cache
+        if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
+        uses: ./.github/actions/cache-ui-dist
+        with:
+          # PW_E2E_BUILD alters vite chunking; PW_E2E_BUNDLE alters it further.
+          # Keep those variants in separate cache buckets so a non-e2e build
+          # never returns an e2e-shaped dist (or vice versa).
+          variant: pw-e2e-${{ needs.cache-keys.outputs.bundle_mode == 'coarse' && 'bundle' || 'build' }}
+
       - name: Build with Maven
         if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         env:

@@ -18,9 +18,28 @@
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
     <node.heap.size>6144</node.heap.size>
+    <!-- Overridden by the skip-ui-build profile below when the vite app dist
+         already exists (e.g. restored from actions/cache in CI). The five
+         frontend-maven-plugin executions honor <skip> to short-circuit. -->
+    <skip.ui.build>false</skip.ui.build>
   </properties>
 
   <profiles>
+    <!-- Auto-activates when the vite build output already exists on disk, so a
+         CI workflow that restored openmetadata-ui/src/main/resources/ui/dist
+         from actions/cache before running mvn skips the ~5 min frontend build
+         entirely. See .github/actions/cache-ui-dist. -->
+    <profile>
+      <id>skip-ui-build</id>
+      <activation>
+        <file>
+          <exists>${project.basedir}/src/main/resources/ui/dist/index.html</exists>
+        </file>
+      </activation>
+      <properties>
+        <skip.ui.build>true</skip.ui.build>
+      </properties>
+    </profile>
     <profile>
       <id>release</id>
       <build>
@@ -97,10 +116,11 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.12.1</version>
 
-        <!-- optional -->
+        <!-- Shared with openmetadata-ui-core-components so the reactor downloads
+             node+yarn once. See openmetadata-ui-core-components/pom.xml. -->
         <configuration>
           <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
+          <installDirectory>${maven.multiModuleProjectDirectory}/target/frontend</installDirectory>
         </configuration>
 
         <executions>
@@ -112,6 +132,7 @@
             <configuration>
               <nodeVersion>v22.17.0</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -122,7 +143,26 @@
             <phase>prepare-package</phase>
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <arguments>install --frozen-lockfile</arguments>
+              <!-- ignore-scripts skips the package.json preinstall hook (which
+                   would otherwise re-install and re-build openmetadata-ui-core-components
+                   that the reactor already built). It also suppresses postinstall, so
+                   the `yarn run build-check` execution below re-runs its work (js-antlr
+                   parser generation + schema parsing) explicitly, since those outputs
+                   are gitignored and required by the vite build. -->
+              <arguments>install --frozen-lockfile --ignore-scripts</arguments>
+              <skip>${skip.ui.build}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>yarn run build-check</id>
+            <goals>
+              <goal>yarn</goal>
+            </goals>
+            <phase>prepare-package</phase>
+            <configuration>
+              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
+              <arguments>run build-check</arguments>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -150,6 +190,7 @@
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
+              <skip>${skip.ui.build}</skip>
               <environmentVariables>
                 <NODE_OPTIONS>--max-old-space-size=${node.heap.size}</NODE_OPTIONS>
                 <APP_VERSION>${project.version}</APP_VERSION>
