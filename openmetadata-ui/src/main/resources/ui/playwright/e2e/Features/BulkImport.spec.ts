@@ -1213,6 +1213,10 @@ test.describe('Bulk Import Export', () => {
           .locator('.rdg-cell')
           .nth(1);
         await focusCell(anchorCell);
+        // The previous step ends with 24 selected cells (header column selection).
+        // Clicking a data cell sets focus but selection DOM may still lag behind;
+        // wait for count=0 before extending so Shift+Arrow starts from a clean state.
+        await expect(selection).toHaveCount(0);
 
         // Principle 5 & 9: every Shift+Arrow asserts its expected count before
         // the next key fires — replaces fixed delays with observable-state waits.
