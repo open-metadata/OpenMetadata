@@ -13,7 +13,6 @@
 package org.openmetadata.service.resources.services;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -52,9 +51,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Cross-service-type read APIs.
@@ -177,35 +174,35 @@ public class ServicesOverviewResource {
    * counted or listed — an unauthorized type is absent from the response rather than merely absent
    * from {@code data}. This does make {@code total} caller-dependent, which is correct: it is the
    * size of the estate *this* caller can see.
+   *
+   * <p>Each check goes through the injected {@link Authorizer} rather than evaluating policies
+   * directly, so the endpoint follows whatever authorization the deployment configured. Calling the
+   * policy evaluator straight would make this the one endpoint that still enforces RBAC under a
+   * no-op authorizer, silently hiding service types the rest of the API serves.
    */
   private ServicesOverviewRequest authorizedScope(
       SecurityContext securityContext, ServicesOverviewRequest request) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    ServicesOverviewRequest scoped = request;
-    if (!subjectContext.isAdmin() && !subjectContext.isBot()) {
-      Set<String> allowed = viewableTypes(subjectContext, request.entityTypes());
-      if (allowed.isEmpty()) {
-        throw new AuthorizationException(
-            "User does not have VIEW_BASIC permission on any of the requested service types");
-      }
-      scoped = request.restrictedTo(allowed);
+    Set<String> allowed = viewableTypes(securityContext, request.entityTypes());
+    if (allowed.isEmpty()) {
+      throw new AuthorizationException(
+          "User does not have VIEW_BASIC permission on any of the requested service types");
     }
-    return scoped;
+    return request.restrictedTo(allowed);
   }
 
-  private Set<String> viewableTypes(SubjectContext subjectContext, Set<String> requested) {
+  private Set<String> viewableTypes(SecurityContext securityContext, Set<String> requested) {
     return requested.stream()
-        .filter(entityType -> canView(subjectContext, entityType))
+        .filter(entityType -> canView(securityContext, entityType))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  private boolean canView(SubjectContext subjectContext, String entityType) {
+  private boolean canView(SecurityContext securityContext, String entityType) {
     boolean allowed = true;
     try {
-      PolicyEvaluator.hasPermission(
-          subjectContext,
-          new ResourceContext<>(entityType),
-          new OperationContext(entityType, MetadataOperation.VIEW_BASIC));
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(entityType));
     } catch (AuthorizationException denied) {
       allowed = false;
     }

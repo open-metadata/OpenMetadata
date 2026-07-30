@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -115,45 +116,48 @@ public class ServicesOverviewRepository {
     Map<String, Map<String, Integer>> result = new LinkedHashMap<>();
     if (r.includeHealth()) {
       for (Map.Entry<String, List<TypedKey>> entry : universeKeys(securityContext, r).entrySet()) {
-        String entityType = entry.getKey();
-        result.put(
-            entityType,
-            tallyHealth(entry.getValue(), health, counts.getOrDefault(entityType, 0), entityType));
+        result.put(entry.getKey(), tallyHealth(entry.getValue(), health));
       }
     }
     return result;
   }
 
   /**
-   * Tallies health across a type's services, reconciled against that type's authoritative count.
+   * Tallies health across a type's services.
    *
-   * <p>The tally walks scanned keys, and that scan is capped at {@link
-   * ServicesOverviewRequest#MAX_WINDOW}, whereas {@code counts} comes from an uncapped {@code GROUP
-   * BY}. On an estate large enough to hit the cap the two would disagree, silently breaking the
-   * documented invariant that health counts sum to the type's count. Rather than let that drift go
-   * unnoticed, any unscanned remainder is attributed to {@code notRun} — the "nothing known" bucket,
-   * which is exactly what an unscanned service is — and the truncation is logged.
+   * <p>The tally walks scanned keys, and that scan is bounded, whereas {@code counts} comes from an
+   * uncapped {@code GROUP BY}. Rather than let the two disagree, {@link #assertHealthIsResolvable}
+   * refuses the request before we get here — a service beyond the scan window has a real health
+   * state, and reporting it as anything else (including "not run") would be a wrong answer dressed
+   * up as a complete one.
    */
-  private Map<String, Integer> tallyHealth(
-      List<TypedKey> keys, Map<UUID, ServiceHealth> health, int totalForType, String entityType) {
+  private Map<String, Integer> tallyHealth(List<TypedKey> keys, Map<UUID, ServiceHealth> health) {
     Map<String, Integer> tally = new LinkedHashMap<>();
     for (TypedKey key : keys) {
       ServiceHealth state = health.getOrDefault(key.id(), ServiceHealth.NOT_RUN);
       tally.merge(state.value(), 1, Integer::sum);
     }
-    int unscanned = totalForType - keys.size();
-    if (unscanned > 0) {
-      LOG.warn(
-          "services overview: {} has {} services but only {} were scanned for health (cap {}); "
-              + "the remainder is reported as {}",
-          entityType,
-          totalForType,
-          keys.size(),
-          ServicesOverviewRequest.MAX_WINDOW,
-          ServiceHealth.NOT_RUN.value());
-      tally.merge(ServiceHealth.NOT_RUN.value(), unscanned, Integer::sum);
-    }
     return tally;
+  }
+
+  /**
+   * Health is derived by resolving every service in the counted universe, so it cannot be computed
+   * for a universe larger than the scan window. That is refused rather than approximated: an
+   * approximate health count is indistinguishable from an exact one to the caller, and this feeds
+   * filter controls and dashboards where a silently wrong number is worse than an error.
+   */
+  private void assertHealthIsResolvable(Map<String, Integer> counts) {
+    counts.forEach(
+        (entityType, count) -> {
+          if (count > ServicesOverviewRequest.MAX_WINDOW) {
+            throw new BadRequestException(
+                String.format(
+                    "Cannot compute health for %d %s services; at most %d per service type are "
+                        + "resolvable. Narrow the request with q, entityType or domain, or omit "
+                        + "includeHealth.",
+                    count, entityType, ServicesOverviewRequest.MAX_WINDOW));
+          }
+        });
   }
 
   // ---------------------------------------------------------------- health
@@ -162,6 +166,7 @@ public class ServicesOverviewRepository {
       SecurityContext securityContext, ServicesOverviewRequest r, Map<String, Integer> counts) {
     Map<UUID, ServiceHealth> health = Map.of();
     if (r.includeHealth()) {
+      assertHealthIsResolvable(counts);
       List<UUID> ids =
           universeKeys(securityContext, r).values().stream()
               .flatMap(List::stream)

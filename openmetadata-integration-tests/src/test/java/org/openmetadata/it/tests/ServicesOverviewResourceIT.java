@@ -195,8 +195,7 @@ public class ServicesOverviewResourceIT {
     metabase(ns, "aaa_desc");
 
     List<String> ascending = namespacedNames(overview("limit=1000&q=_desc"), ns);
-    List<String> descending =
-        namespacedNames(overview("limit=1000&q=_desc&sortOrder=desc"), ns);
+    List<String> descending = namespacedNames(overview("limit=1000&q=_desc&sortOrder=desc"), ns);
 
     assertEquals(2, ascending.size());
     assertEquals(ascending.reversed(), descending);
@@ -396,8 +395,7 @@ public class ServicesOverviewResourceIT {
     postgres(ns, "combined_pg");
     snowflake(ns, "combined_sf");
 
-    JsonNode response =
-        overview("limit=1000&q=combined_&serviceType=Postgres&health=notRun");
+    JsonNode response = overview("limit=1000&q=combined_&serviceType=Postgres&health=notRun");
 
     assertEquals(1, response.get("paging").get("total").asInt());
     assertEquals(1, namespacedNames(response, ns).size());
