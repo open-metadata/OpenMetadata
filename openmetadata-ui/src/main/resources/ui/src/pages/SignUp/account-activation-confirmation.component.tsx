@@ -60,7 +60,7 @@ const AccountActivationConfirmation = () => {
           <Space align="center" direction="vertical">
             <Alert
               showIcon
-              message={t('label.user-verified-successfully')}
+              message={t('message.user-verified-successfully')}
               type="success"
             />
             <div className="mt-12" onClick={handleBackToLogin}>

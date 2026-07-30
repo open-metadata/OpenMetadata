@@ -2371,6 +2371,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return dao.findEntityByNames(entityFQNs, include);
   }
 
+  /**
+   * Whether a single entity instance should be written to the search index on the live
+   * create/update path. Defaults to true; override to keep specific instances out of the index.
+   * The bulk reindex applies the same rule at the DB-query level via {@link #getReindexFilter()}.
+   */
+  public boolean isSearchIndexable(EntityInterface entity) {
+    return true;
+  }
+
+  /**
+   * Whether a single entity instance should be embedded into the vector/semantic index. Defaults to
+   * {@link #isSearchIndexable}; override when an instance may be keyword-searchable but must not be
+   * reachable through the vector path (e.g. {@link ContextMemoryRepository} keeps non-org-wide
+   * memories out because vector chunks carry no visibility fields to filter on).
+   */
+  public boolean isVectorEmbeddable(EntityInterface entity) {
+    return isSearchIndexable(entity);
+  }
+
+  /**
+   * Filter the search reindex uses to both list and count this entity's rows. Defaults to all rows;
+   * override to keep specific instances out of the search index. The reader and every entity-count
+   * site share this filter so the job total matches what actually gets indexed.
+   */
+  public ListFilter getReindexFilter() {
+    return new ListFilter(Include.ALL);
+  }
+
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
@@ -4900,23 +4928,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
               // Delete all the relationships to other entities
               daoCollection.relationshipDAO().deleteAll(id, entityType);
 
-              // Delete all the field relationships to other entities
-              daoCollection
-                  .fieldRelationshipDAO()
-                  .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .fieldRelationshipDAO()
+                    .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+              }
 
               // Delete all the extensions of entity
               daoCollection.entityExtensionDAO().deleteAll(id);
 
-              // Delete all the tag labels
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-
-              // when the glossary and tag is deleted, delete its usage
-              daoCollection
-                  .tagUsageDAO()
-                  .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              if (shouldCleanupFqnDependents()) {
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+                daoCollection
+                    .tagUsageDAO()
+                    .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+              }
               // Delete all the usage data
               daoCollection.usageDAO().delete(id);
 
@@ -4959,6 +4987,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  protected boolean shouldCleanupFqnDependents() {
+    return true;
+  }
 
   /**
    * Variant of {@link #entitySpecificCleanup(EntityInterface)} that receives the user performing
@@ -6936,7 +6968,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
     // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
     // keep the per-entity path.
-    if (!descendantsCoveredByAncestorCascade) {
+    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();

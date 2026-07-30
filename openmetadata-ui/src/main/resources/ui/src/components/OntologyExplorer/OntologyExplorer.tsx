@@ -110,7 +110,7 @@ function OntologyOnboardingEmptyState() {
 
   return (
     <div
-      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
       data-testid="ontology-graph-onboarding">
       <EmptyPlaceholder
         description={t('message.ontology-empty-description')}

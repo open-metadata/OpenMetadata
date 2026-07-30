@@ -129,12 +129,13 @@ export const getErrorPlaceHolder = (
   ingestionDataLength: number,
   isPlatFormDisabled: boolean,
   theme: UIThemePreference['customTheme'],
-  pipelineType?: PipelineType
+  pipelineType?: PipelineType,
+  className?: string
 ) => {
   if (ingestionDataLength === 0) {
     return (
       <EmptyPlaceholder
-        className="tw:bg-primary tw:border tw:border-secondary tw:rounded-xl"
+        className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
           theme,

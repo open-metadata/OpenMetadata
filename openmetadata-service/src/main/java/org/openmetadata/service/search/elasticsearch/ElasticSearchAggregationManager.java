@@ -41,12 +41,17 @@ import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
+
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final ObjectMapper mapper;
@@ -64,6 +69,36 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
     this.isClientAvailable = client != null;
     this.rbacConditionEvaluator = rbacConditionEvaluator;
     mapper = new ObjectMapper();
+  }
+
+  /**
+   * Resolves ContextMemory visibility for {@code subjectContext} so the counts match what that
+   * caller sees in the listing. Leaving the request unresolved (no identifiable subject) lets
+   * {@code ElasticSearchRequestBuilder#build} apply its org-wide-only default instead.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
+    }
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
+    }
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into an aggregation query run without an
+   * identifiable subject. Such a query cannot tell whose restricted memory a document is and must
+   * fail closed: only memories everyone may read are aggregated. Non-memory documents are
+   * unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((ElasticQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
   }
 
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
@@ -139,9 +174,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      if (query != null) {
-        searchRequestBuilder.query(query);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(query));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
@@ -256,7 +289,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
       searchRequestBuilder.index(indexName);
 
-      Query parsedQuery;
+      Query parsedQuery = null;
       if (query != null) {
         // Check if query string contains outer "query" wrapper and extract inner query
         if (query.trim().startsWith("{")) {
@@ -265,8 +298,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         } else {
           parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
-        searchRequestBuilder.query(parsedQuery);
       }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -367,9 +400,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
-      if (parsedQuery != null) {
-        searchRequestBuilder.query(parsedQuery);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -474,11 +505,11 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
         }
       }
 
+      // combineQueries subsumes main's inline bool building and additionally applies the
+      // subject's visibility filter; both it and restrictToOrgWideMemories tolerate a null query.
       final Query combinedQuery =
           combineQueries(parsedQuery, filterQuery, buildVisibilityQuery(subjectContext));
-      if (combinedQuery != null) {
-        searchRequestBuilder.query(combinedQuery);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(combinedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -602,6 +633,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
   @Override
   public Response getEntityTypeCounts(
       org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    return getEntityTypeCounts(request, index, null);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot perform get entity type counts");
       throw new IOException("ElasticSearch client is not available");
@@ -670,6 +710,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       // Resolve the index alias properly
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

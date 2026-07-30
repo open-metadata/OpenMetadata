@@ -14,7 +14,7 @@ Module to define overridden dialect methods
 """
 
 import operator  # noqa: I001
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from functools import reduce
 from typing import Dict, Optional  # noqa: UP035
 
@@ -605,9 +605,15 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
     foreign_key_map = {}
     for row in result:
         name = self.normalize_name(row._mapping["fk_name"])
-        if name not in foreign_key_map:
+        table_name = self.normalize_name(row._mapping["fk_table_name"])
+        # Snowflake constraint names are unique per table, not per schema. Cloned
+        # tables (CREATE TABLE ... CLONE / LIKE) copy the constraint name, so the
+        # same fk_name can appear for different tables. Key on (fk_name, table_name)
+        # to avoid merging distinct tables' columns into a single constraint.
+        key = (name, table_name)
+        if key not in foreign_key_map:
             referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
-            foreign_key_map[name] = {
+            foreign_key_map[key] = {
                 "constrained_columns": [self.normalize_name(row._mapping["fk_column_name"])],
                 # referred schema should be None in context where it doesn't need to be specified
                 # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
@@ -618,21 +624,21 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
                 "referred_columns": [self.normalize_name(row._mapping["pk_column_name"])],
                 "referred_database": self.normalize_name(row._mapping["pk_database_name"]),
                 "name": name,
-                "table_name": self.normalize_name(row._mapping["fk_table_name"]),
+                "table_name": table_name,
             }
             options = {}
             if self.normalize_name(row._mapping["delete_rule"]) != "NO ACTION":
                 options["ondelete"] = self.normalize_name(row._mapping["delete_rule"])
             if self.normalize_name(row._mapping["update_rule"]) != "NO ACTION":
                 options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
-            foreign_key_map[name]["options"] = options
+            foreign_key_map[key]["options"] = options
         else:
-            foreign_key_map[name]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
-            foreign_key_map[name]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
+            foreign_key_map[key]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
+            foreign_key_map[key]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
 
     ans = {}
 
-    for _, v in foreign_key_map.items():  # noqa: PERF102
+    for v in foreign_key_map.values():
         if v["table_name"] not in ans:
             ans[v["table_name"]] = []
         ans[v["table_name"]].append({k2: v2 for k2, v2 in v.items() if k2 != "table_name"})
@@ -649,6 +655,35 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     return self._get_schema_unique_constraints(connection, self.denormalize_name(full_schema_name), **kw).get(
         table_name, []
     )
+
+
+@reflection.cache
+def _get_schema_unique_constraints(self, connection, schema, **kw):
+    result = connection.execute(
+        text(f"SHOW /* sqlalchemy:_get_schema_unique_constraints */ UNIQUE KEYS IN SCHEMA {schema}")
+    )
+    unique_constraints = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["constraint_name"])
+        table_name = self.normalize_name(row._mapping["table_name"])
+
+        constraint_key = (name, table_name)
+
+        if constraint_key not in unique_constraints:
+            unique_constraints[constraint_key] = {
+                "column_names": [self.normalize_name(row._mapping["column_name"])],
+                "name": name,
+                "table_name": table_name,
+            }
+        else:
+            unique_constraints[constraint_key]["column_names"].append(self.normalize_name(row._mapping["column_name"]))
+
+    ans = defaultdict(list)
+    for constraint in unique_constraints.values():
+        t_name = constraint.pop("table_name")
+        ans[t_name].append(constraint)
+
+    return ans
 
 
 @reflection.cache
