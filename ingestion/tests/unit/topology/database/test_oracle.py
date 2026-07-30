@@ -509,3 +509,123 @@ class TestOraclePreserveIdentifierCase:
         assert result[0]["name"] == "IDX_DEPARTMENT"
         assert result[0]["column_names"] == ["DeptName"]
         assert result[0]["unique"] is False
+
+
+class TestOracleViewDefinitionFallback:
+    """Issue #30319: in Oracle thick mode (OCI), a view whose LONG definition
+    (DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY) exceeds OCI's bounded fetch buffer raises
+    ORA-01406 / DPI-1037 during the bulk array fetch. That aborts the whole bulk
+    query, so every view's definition ends up empty. The bulk fetch must fall
+    back to per-view retrieval so one oversized/failing view cannot blank the
+    rest.
+    """
+
+    @staticmethod
+    def _bulk_query_lowercase():
+        # Mirrors ORACLE_VIEW_DEFINITIONS: the LOWER() calls mean the cache keys
+        # are lowercased.
+        return (
+            'SELECT LOWER(v.view_name) AS "view_name", LOWER(v.owner) AS "schema", text AS "view_def" FROM DBA_VIEWS v'
+        )
+
+    def _make_connection(self, names_rows, failing_ddl_names=()):
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.exc import DatabaseError
+
+        def execute(clause, params=None):
+            sql = str(clause)
+            if "GET_DDL" in sql:  # per-view fallback fetch
+                name = params["name"]
+                if name in failing_ddl_names:
+                    raise DatabaseError("get_ddl", None, Exception("ORA-31603"))
+                res = MagicMock()
+                res.scalar.return_value = f"CREATE VIEW {name} AS SELECT 1 FROM dual"
+                return res
+            if "object_type" in sql:  # names-only fallback listing
+                res = MagicMock()
+                res.fetchall.return_value = names_rows
+                return res
+            # the bulk view-definition query with the LONG column -> truncates
+            raise DatabaseError(
+                "bulk",
+                None,
+                Exception("DPI-1037: column at array position 13 fetched with error 1406"),
+            )
+
+        conn = MagicMock()
+        conn.execute.side_effect = execute
+        conn.engine.url.database = "test_db"
+        return conn
+
+    def test_bulk_truncation_falls_back_to_per_view_ddl(self):
+        """A truncating bulk fetch must recover every other view via per-view GET_DDL."""
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        dialect = OracleDialect()
+        dialect.table_prefix = "DBA"
+        names_rows = [
+            ("SAM", "GOOD_VIEW", "VIEW"),
+            ("SAM", "BIG_VIEW", "VIEW"),
+            ("SAM", "MV1", "MATERIALIZED_VIEW"),
+        ]
+        conn = self._make_connection(names_rows, failing_ddl_names=("BIG_VIEW",))
+
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+        defs = dialect.all_view_definitions
+        # The whole run must NOT be blanked by the one truncating/failing view.
+        assert defs[("good_view", "sam")] == "CREATE VIEW GOOD_VIEW AS SELECT 1 FROM dual"
+        assert defs[("mv1", "sam")] == "CREATE VIEW MV1 AS SELECT 1 FROM dual"
+        # The view whose per-view GET_DDL also failed is skipped, not fatal.
+        assert ("big_view", "sam") not in defs
+
+    def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
+        """The preserve-identifier-case query has no LOWER(), so fallback keys stay verbatim."""
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        dialect = OracleDialect()
+        dialect.table_prefix = "DBA"
+        conn = self._make_connection([("Sam", "MyView", "VIEW")])
+        preserve_case_query = (
+            'SELECT v.view_name AS "view_name", v.owner AS "schema", text AS "view_def" FROM DBA_VIEWS v'
+        )
+
+        get_all_view_definitions(dialect, conn, preserve_case_query)
+
+        assert dialect.all_view_definitions[("MyView", "Sam")] == "CREATE VIEW MyView AS SELECT 1 FROM dual"
+
+    def test_successful_bulk_fetch_does_not_trigger_fallback(self):
+        """When the bulk fetch succeeds, definitions come from it and no fallback query runs."""
+        from unittest.mock import MagicMock
+
+        from sqlalchemy.dialects.oracle.base import OracleDialect
+
+        from metadata.ingestion.source.database.oracle.utils import (
+            get_all_view_definitions,
+        )
+
+        class Row:
+            view_name = "v1"
+            schema = "sam"
+            view_def = "SELECT 1 FROM dual"
+            view_ddl = None
+
+        conn = MagicMock()
+        conn.execute.return_value = [Row()]
+        conn.engine.url.database = "db"
+        dialect = OracleDialect()
+
+        get_all_view_definitions(dialect, conn, self._bulk_query_lowercase())
+
+        assert dialect.all_view_definitions[("v1", "sam")] == "CREATE OR REPLACE VIEW v1 AS SELECT 1 FROM dual"
+        # Only the bulk query executed: no names listing, no per-view GET_DDL.
+        assert conn.execute.call_count == 1

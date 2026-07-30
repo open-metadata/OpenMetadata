@@ -14,6 +14,7 @@ Utils module to define overrided sqlalchamy methods
 
 # pylint: disable=protected-access,unused-argument
 import re
+import traceback
 
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
@@ -24,18 +25,23 @@ from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     GET_VIEW_NAMES,
     ORACLE_CONSTRAINTS,
+    ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_VIEW_DEFINITION_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
     ORACLE_VIEW_DEFINITIONS,
     ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE,
 )
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
     get_view_definition_wrapper,
 )
+
+logger = ingestion_logger()
 
 
 def get_table_prefix_from_connection(service_connection) -> str:
@@ -87,27 +93,76 @@ def get_view_definition(
 @reflection.cache
 def get_all_view_definitions(self, connection, query):
     """
-    Method to fetch view definition of all available views
+    Method to fetch view definition of all available views.
+
+    The bulk query reads the view text from the LONG columns DBA_VIEWS.TEXT /
+    DBA_MVIEWS.QUERY. In Oracle thick mode a view whose definition is larger than
+    OCI's LONG fetch buffer raises ORA-01406 while the row is being fetched,
+    which aborts the whole array fetch and leaves every view without a
+    definition. If the bulk fetch fails, fall back to reading each definition on
+    its own so one oversized or failing view cannot blank out the rest.
+    See https://github.com/open-metadata/OpenMetadata/issues/30319
     """
     self.all_view_definitions = {}
     self.current_db: str = connection.engine.url.database  # type: ignore
-    result = connection.execute(text(query))
-    for view in result:
-        if hasattr(view, "view_def") and hasattr(view, "schema"):
-            view_definition = view.view_def
-            if not view_definition and hasattr(view, "view_ddl"):
-                view_definition = view.view_ddl
-            else:
-                view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
-            self.all_view_definitions[(view.view_name, view.schema)] = view_definition
+    try:
+        for view in connection.execute(text(query)):
+            _store_bulk_view_definition(self, view)
+    except Exception as exc:
+        logger.warning(
+            f"Bulk Oracle view-definition fetch failed ({exc}). Falling back to "
+            "per-view retrieval via DBMS_METADATA.GET_DDL."
+        )
+        logger.debug(traceback.format_exc())
+        _get_view_definitions_individually(self, connection, query)
 
-        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-            view_definition = view.VIEW_DEF
-            if not view_definition and hasattr(view, "VIEW_DDL"):
-                view_definition = view.VIEW_DDL
-            else:
-                view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
-            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
+
+def _store_bulk_view_definition(self, view) -> None:
+    """Store one row of the bulk ORACLE_VIEW_DEFINITIONS result. Thin mode
+    returns lowercase attribute names and thick mode uppercase, so both cases
+    are handled.
+    """
+    if hasattr(view, "view_def") and hasattr(view, "schema"):
+        view_definition = view.view_def
+        if not view_definition and hasattr(view, "view_ddl"):
+            view_definition = view.view_ddl
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.view_name} AS {view_definition}"
+        self.all_view_definitions[(view.view_name, view.schema)] = view_definition
+
+    elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+        view_definition = view.VIEW_DEF
+        if not view_definition and hasattr(view, "VIEW_DDL"):
+            view_definition = view.VIEW_DDL
+        else:
+            view_definition = f"CREATE OR REPLACE VIEW {view.VIEW_NAME} AS {view_definition}"
+        self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view_definition
+
+
+def _get_view_definitions_individually(self, connection, query) -> None:
+    """Populate self.all_view_definitions one view at a time. Each fetch is
+    isolated so a view that truncates or errors is skipped instead of aborting
+    the whole run. Used only as the fallback after the bulk fetch fails.
+    """
+    # Match the cache-key casing of the bulk query: the default query LOWER()s
+    # the names, the preserve-identifier-case variant keeps them verbatim.
+    normalize = str.lower if "LOWER(" in query.upper() else (lambda value: value)
+    view_names = connection.execute(
+        text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=_get_table_prefix(self)))
+    ).fetchall()
+    for owner, name, object_type in view_names:
+        try:
+            definition = connection.execute(
+                text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
+                {"object_type": object_type, "name": name, "owner": owner},
+            ).scalar()
+            if definition is not None and hasattr(definition, "read"):
+                definition = definition.read()
+            if definition is not None:
+                self.all_view_definitions[(normalize(name), normalize(owner))] = definition
+        except Exception as exc:
+            logger.warning(f"Could not fetch view definition for {owner}.{name}: {exc}")
+            logger.debug(traceback.format_exc())
 
 
 def _get_col_type(self, coltype, precision, scale, length, colname):  # pylint: disable=too-many-branches

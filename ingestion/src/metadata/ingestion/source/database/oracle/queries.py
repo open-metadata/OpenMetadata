@@ -98,6 +98,32 @@ WHERE u.oracle_maintained = 'N'
 )
 
 
+# Fallback for the bulk view-definition fetch. DBA_VIEWS.TEXT / DBA_MVIEWS.QUERY
+# are LONG columns, and in Oracle thick mode a value larger than OCI's fetch
+# buffer aborts the whole array fetch (ORA-01406), leaving every view definition
+# empty. This lists view and materialized-view names only, with no LONG column,
+# so it always succeeds. Each definition is then read one at a time below.
+# https://github.com/open-metadata/OpenMetadata/issues/30319
+ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES = textwrap.dedent(
+    """
+SELECT v.owner AS "owner", v.view_name AS "name", 'VIEW' AS "object_type"
+FROM {prefix}_VIEWS v
+JOIN {prefix}_USERS u
+    ON v.owner = u.username
+WHERE u.oracle_maintained = 'N'
+UNION ALL
+SELECT m.owner AS "owner", m.mview_name AS "name", 'MATERIALIZED_VIEW' AS "object_type"
+FROM {prefix}_MVIEWS m
+JOIN {prefix}_USERS u
+    ON m.owner = u.username
+WHERE u.oracle_maintained = 'N'
+"""
+)
+
+# GET_DDL returns a CLOB, read through a locator rather than an inline LONG
+# buffer, so it is immune to the ORA-01406 truncation the fallback works around.
+ORACLE_GET_VIEW_DEFINITION_BY_NAME = "SELECT DBMS_METADATA.GET_DDL(:object_type, :name, :owner) AS view_ddl FROM dual"
+
 GET_VIEW_NAMES = textwrap.dedent(
     """
 SELECT view_name FROM {prefix}_VIEWS WHERE owner = :owner
