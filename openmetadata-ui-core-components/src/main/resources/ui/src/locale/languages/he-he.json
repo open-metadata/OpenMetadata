@@ -8,5 +8,8 @@
     "previous-page": "Go to previous page",
     "records-aria-label": "Records",
     "records-label": "Records"
+  },
+  "tree": {
+    "loading": "Loading…"
   }
 }
