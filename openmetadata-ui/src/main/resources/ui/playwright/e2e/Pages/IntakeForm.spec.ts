@@ -1437,33 +1437,27 @@ test.describe(
 
       // A multi-select enum renders as an Autocomplete (combobox input), not
       // the Select button used by the single-select enum above.
-      const multiEnumInput = page
-        .locator(
-          `[data-testid="extension-${dataProductProperties.multiEnum}"] input[role="combobox"]`
-        )
+      const multiEnumContainer = page.locator(
+        `[data-testid="extension-${dataProductProperties.multiEnum}"]`
+      );
+      const multiEnumInput = multiEnumContainer
+        .locator('input[role="combobox"]')
         .first();
-      await expect(multiEnumInput).toBeVisible();
-      await multiEnumInput.click();
-      await page.getByRole('option', { name: 'blue', exact: true }).click();
-      // Wait for the 'blue' chip — confirms the selection has been processed.
-      await expect(
-        page
-          .locator(
-            `[data-testid="extension-${dataProductProperties.multiEnum}"]`
-          )
-          .getByText('blue', { exact: true })
-      ).toBeVisible();
-      await page.keyboard.press('Escape');
-      // Escape returns focus to the combobox input; with menuTrigger="focus" the
-      // Autocomplete immediately re-opens the dropdown, which causes another
-      // re-render cycle and detaches the input before our next click lands.
-      // Click a neutral field (the name input) to move focus away, stopping the
-      // reopen cycle, then wait for the listbox to fully disappear.
-      await page.getByTestId('name').locator('input').click();
-      await expect(page.getByRole('listbox')).toBeHidden();
-      await multiEnumInput.click();
-      await page.getByRole('option', { name: 'red', exact: true }).click();
-      await page.keyboard.press('Escape');
+
+      const selectMultiEnumValue = async (value: string) => {
+        await expect(multiEnumInput).toBeVisible();
+        await multiEnumInput.click();
+        await page.getByRole('option', { name: value, exact: true }).click();
+        // The chip confirms the selection was committed before we dismiss.
+        await expect(
+          multiEnumContainer.getByText(value, { exact: true })
+        ).toBeVisible();
+        await multiEnumInput.blur();
+        await expect(page.getByRole('listbox')).toBeHidden();
+      };
+
+      await selectMultiEnumValue('blue');
+      await selectMultiEnumValue('red');
 
       let createRequestCount = 0;
       const trackCreateRequest = (request: Request) => {
