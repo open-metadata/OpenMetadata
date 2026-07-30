@@ -72,11 +72,6 @@ class SeedDataPresenceIT {
     rows.put(SeedTable.AI_GOVERNANCE_POLICY, List.of("drift_threshold"));
     rows.put(SeedTable.AI_GOVERNANCE_FRAMEWORK, List.of("canada_aida"));
     rows.put(SeedTable.AI_FRAMEWORK_CONTROL, List.of("canada_aida.aida-1"));
-    rows.put(SeedTable.AI_APPLICATION, List.of("claims-triage-copilot"));
-    rows.put(SeedTable.LLM_SERVICE, List.of("ai_governance_llm"));
-    rows.put(SeedTable.LLM_MODEL, List.of("ai_governance_llm.gpt_4o_claims_prod"));
-    rows.put(SeedTable.MCP_SERVICE, List.of("ai_governance_mcp"));
-    rows.put(SeedTable.MCP_SERVER, List.of("ai_governance_mcp.code_repo_assistant"));
     return new RequiredSeedRows(rows, List.of(), List.of());
   }
 
@@ -110,11 +105,6 @@ class SeedDataPresenceIT {
         rows.bindableIdentities(SeedTable.GLOSSARY_TERM),
         rows.bindableIdentities(SeedTable.AI_GOVERNANCE_POLICY),
         rows.bindableIdentities(SeedTable.AI_GOVERNANCE_FRAMEWORK),
-        rows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL),
-        rows.bindableIdentities(SeedTable.AI_APPLICATION),
-        rows.bindableIdentities(SeedTable.LLM_SERVICE),
-        rows.bindableIdentities(SeedTable.LLM_MODEL),
-        rows.bindableIdentities(SeedTable.MCP_SERVICE),
-        rows.bindableIdentities(SeedTable.MCP_SERVER));
+        rows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL));
   }
 }

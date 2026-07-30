@@ -10973,12 +10973,7 @@ public interface CollectionDAO {
             + "(SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash IN (<glossaryTermHashes>)) + "
             + "(SELECT COUNT(*) FROM ai_governance_policy_entity WHERE fqnHash IN (<aiGovernancePolicyHashes>)) + "
             + "(SELECT COUNT(*) FROM ai_governance_framework_entity WHERE fqnHash IN (<aiGovernanceFrameworkHashes>)) + "
-            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>)) + "
-            + "(SELECT COUNT(*) FROM ai_application_entity WHERE fqnHash IN (<aiApplicationHashes>)) + "
-            + "(SELECT COUNT(*) FROM llm_service_entity WHERE nameHash IN (<llmServiceHashes>)) + "
-            + "(SELECT COUNT(*) FROM llm_model_entity WHERE fqnHash IN (<llmModelHashes>)) + "
-            + "(SELECT COUNT(*) FROM mcp_service_entity WHERE nameHash IN (<mcpServiceHashes>)) + "
-            + "(SELECT COUNT(*) FROM mcp_server_entity WHERE fqnHash IN (<mcpServerHashes>))")
+            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>))")
     long countRequiredSeedData(
         @BindListFQN("typeHashes") List<String> typeNames,
         @BindListFQN("policyHashes") List<String> policyNames,
@@ -11001,12 +10996,7 @@ public interface CollectionDAO {
         @BindListFQN("glossaryTermHashes") List<String> glossaryTermNames,
         @BindListFQN("aiGovernancePolicyHashes") List<String> aiGovernancePolicyNames,
         @BindListFQN("aiGovernanceFrameworkHashes") List<String> aiGovernanceFrameworkNames,
-        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames,
-        @BindListFQN("aiApplicationHashes") List<String> aiApplicationNames,
-        @BindListFQN("llmServiceHashes") List<String> llmServiceNames,
-        @BindListFQN("llmModelHashes") List<String> llmModelNames,
-        @BindListFQN("mcpServiceHashes") List<String> mcpServiceNames,
-        @BindListFQN("mcpServerHashes") List<String> mcpServerNames);
+        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames);
 
     @ConnectionAwareSqlQuery(
         value =

@@ -102,15 +102,6 @@ class SeedDataGateTest {
     assertTrue(seedRows.identities(SeedTable.AI_GOVERNANCE_POLICY).contains("drift_threshold"));
     assertTrue(seedRows.identities(SeedTable.AI_GOVERNANCE_FRAMEWORK).contains("canada_aida"));
     assertTrue(seedRows.identities(SeedTable.AI_FRAMEWORK_CONTROL).contains("canada_aida.aida-1"));
-    assertTrue(seedRows.identities(SeedTable.AI_APPLICATION).contains("claims-triage-copilot"));
-    assertTrue(seedRows.identities(SeedTable.LLM_SERVICE).contains("ai_governance_llm"));
-    assertTrue(
-        seedRows.identities(SeedTable.LLM_MODEL).contains("ai_governance_llm.gpt_4o_claims_prod"));
-    assertTrue(seedRows.identities(SeedTable.MCP_SERVICE).contains("ai_governance_mcp"));
-    assertTrue(
-        seedRows
-            .identities(SeedTable.MCP_SERVER)
-            .contains("ai_governance_mcp.code_repo_assistant"));
   }
 
   @Test

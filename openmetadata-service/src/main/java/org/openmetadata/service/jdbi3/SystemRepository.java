@@ -230,12 +230,7 @@ public class SystemRepository {
             requiredSeedRows.bindableIdentities(SeedTable.GLOSSARY_TERM),
             requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_POLICY),
             requiredSeedRows.bindableIdentities(SeedTable.AI_GOVERNANCE_FRAMEWORK),
-            requiredSeedRows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL),
-            requiredSeedRows.bindableIdentities(SeedTable.AI_APPLICATION),
-            requiredSeedRows.bindableIdentities(SeedTable.LLM_SERVICE),
-            requiredSeedRows.bindableIdentities(SeedTable.LLM_MODEL),
-            requiredSeedRows.bindableIdentities(SeedTable.MCP_SERVICE),
-            requiredSeedRows.bindableIdentities(SeedTable.MCP_SERVER));
+            requiredSeedRows.bindableIdentities(SeedTable.AI_FRAMEWORK_CONTROL));
     return actualCount == requiredSeedRows.expectedCount();
   }
 

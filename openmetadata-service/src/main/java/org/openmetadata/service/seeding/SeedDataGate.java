@@ -73,12 +73,6 @@ public final class SeedDataGate {
       Pattern.compile(".*json/data/glossary/.*Glossary\\.json$");
   private static final String AI_POLICY_PATH = "json/data/aiGovernance/policies/";
   private static final String AI_FRAMEWORK_PATH = "json/data/aiGovernance/frameworks/";
-  private static final String AI_APPLICATION_PATH = "json/data/aiGovernance/applications/";
-  private static final String AI_SHADOW_APPLICATION_PATH = "json/data/aiGovernance/shadow/";
-  private static final String LLM_SERVICE_PATH = "json/data/aiGovernance/services/llm/";
-  private static final String LLM_MODEL_PATH = "json/data/aiGovernance/llmModels/";
-  private static final String MCP_SERVICE_PATH = "json/data/aiGovernance/services/mcp/";
-  private static final String MCP_SERVER_PATH = "json/data/aiGovernance/mcpServers/";
   private static final String OPENMETADATA_EMAIL_TEMPLATE_PROVIDER = "openmetadata";
   private static final String COLLATE_EMAIL_TEMPLATE_PROVIDER = "collate";
   private static final Set<SeedTable> REQUIRED_SEED_TABLES =
@@ -359,8 +353,6 @@ public final class SeedDataGate {
     private final EnumMap<SeedTable, Set<String>> rows = new EnumMap<>(SeedTable.class);
     private final Set<String> openMetadataEmailDocuments = new TreeSet<>();
     private final Set<String> collateEmailDocuments = new TreeSet<>();
-    private final Set<String> llmModelNames = new TreeSet<>();
-    private final Set<String> mcpServerNames = new TreeSet<>();
     private final Pattern notificationTemplatePattern;
 
     private SeedManifestAccumulator() {
@@ -411,10 +403,6 @@ public final class SeedDataGate {
         collectGlossary(resource, readSeed(resource, content));
       } else if (resource.contains(AI_FRAMEWORK_PATH) && !resource.endsWith("/_index.json")) {
         collectAiFramework(resource, readSeed(resource, content));
-      } else if (resource.contains(LLM_MODEL_PATH)) {
-        llmModelNames.add(requiredText(resource, readSeed(resource, content), "name"));
-      } else if (resource.contains(MCP_SERVER_PATH)) {
-        mcpServerNames.add(requiredText(resource, readSeed(resource, content), "name"));
       }
     }
 
@@ -460,18 +448,6 @@ public final class SeedDataGate {
       }
       if (resource.contains(AI_POLICY_PATH)) {
         return SeedTable.AI_GOVERNANCE_POLICY;
-      }
-      if (resource.contains(AI_APPLICATION_PATH)
-          || (resource.contains(AI_SHADOW_APPLICATION_PATH)
-              && !resource.endsWith("/_service.json")
-              && !resource.endsWith("/_model.json"))) {
-        return SeedTable.AI_APPLICATION;
-      }
-      if (resource.contains(LLM_SERVICE_PATH)) {
-        return SeedTable.LLM_SERVICE;
-      }
-      if (resource.contains(MCP_SERVICE_PATH)) {
-        return SeedTable.MCP_SERVICE;
       }
       return null;
     }
@@ -552,8 +528,6 @@ public final class SeedDataGate {
     }
 
     private RequiredSeedRows build() throws IOException {
-      qualifyChildren(SeedTable.LLM_SERVICE, SeedTable.LLM_MODEL, llmModelNames);
-      qualifyChildren(SeedTable.MCP_SERVICE, SeedTable.MCP_SERVER, mcpServerNames);
       for (SeedTable requiredTable : REQUIRED_SEED_TABLES) {
         if (rows.get(requiredTable).isEmpty()) {
           throw new IOException("Required seed resources are missing for " + requiredTable);
@@ -563,20 +537,6 @@ public final class SeedDataGate {
       rows.forEach((table, identities) -> sortedRows.put(table, List.copyOf(identities)));
       return new RequiredSeedRows(
           sortedRows, List.copyOf(openMetadataEmailDocuments), List.copyOf(collateEmailDocuments));
-    }
-
-    private void qualifyChildren(
-        SeedTable serviceTable, SeedTable childTable, Set<String> childNames) throws IOException {
-      if (childNames.isEmpty()) {
-        return;
-      }
-      Set<String> services = rows.get(serviceTable);
-      if (services.size() != 1) {
-        throw new IOException("Expected one seed service for " + childTable);
-      }
-      String service = services.iterator().next();
-      childNames.forEach(
-          childName -> rows.get(childTable).add(FullyQualifiedName.add(service, childName)));
     }
 
     private static JsonNode readSeed(String resource, byte[] content) throws IOException {
