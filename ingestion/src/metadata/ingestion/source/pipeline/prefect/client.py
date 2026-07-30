@@ -19,9 +19,13 @@ from functools import lru_cache
 from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
     PrefectCloudAuthentication,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.prefect.serverAuth import (
+    PrefectServerAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.pipeline.prefectConnection import (
     PrefectConnection,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.utils.constants import AUTHORIZATION_HEADER
@@ -44,7 +48,7 @@ class PrefectClient:
     """
 
     @staticmethod
-    def _auth(auth: PrefectCloudAuthentication | object):
+    def _auth(auth: PrefectCloudAuthentication | PrefectServerAuthentication):
         """Cloud is always Bearer; self-hosted Server is Basic when authString
         is set, otherwise no auth header at all."""
         if isinstance(auth, PrefectCloudAuthentication):
@@ -66,7 +70,7 @@ class PrefectClient:
             else ""
         )
 
-        verify_ssl = get_verify_ssl_fn(config.verifySSL)
+        verify_ssl = get_verify_ssl_fn(config.verifySSL or VerifySSL.no_ssl)
         auth_header, auth_token, auth_token_mode = self._auth(auth)
         client_config: ClientConfig = ClientConfig(
             base_url=host,

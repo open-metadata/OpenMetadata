@@ -343,13 +343,13 @@ class PrefectSource(PipelineServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def yield_pipeline(self, flow: dict) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: dict) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a Prefect flow into an OpenMetadata CreatePipelineRequest.
         """
         try:
-            flow_id = flow["id"]
-            flow_name = flow["name"]
+            flow_id = pipeline_details["id"]
+            flow_name = pipeline_details["name"]
             logger.info(f"Processing flow: {flow_name}")
 
             # Get deployments to collect all tags
@@ -357,7 +357,7 @@ class PrefectSource(PipelineServiceSource):
             logger.debug(f"Found {len(deployments)} deployments for {flow_name}")
 
             # Collect tags from both flow and deployments
-            all_tags = self._get_all_tags(flow, deployments)
+            all_tags = self._get_all_tags(pipeline_details, deployments)
             logger.debug(f"Tags for {flow_name}: {all_tags}")
 
             tag_labels = get_tag_labels(
@@ -414,8 +414,8 @@ class PrefectSource(PipelineServiceSource):
             self.context.get().task_names = set()
             yield Either(
                 left=StackTraceError(
-                    name=flow.get("name", "Prefect Pipeline"),
-                    error=f"Failed to yield pipeline for flow {flow.get('name')}: {exc}",
+                    name=pipeline_details.get("name", "Prefect Pipeline"),
+                    error=f"Failed to yield pipeline for flow {pipeline_details.get('name')}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
