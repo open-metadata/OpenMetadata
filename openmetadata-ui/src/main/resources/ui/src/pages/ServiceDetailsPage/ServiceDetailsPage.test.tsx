@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  RenderResult,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
 
@@ -422,11 +428,13 @@ jest.mock('../../components/ServiceInsights/ServiceInsightsTab', () =>
 );
 
 jest.mock('./ServiceMainTabContent', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="service-main-tab-content">ServiceMainTabContent</div>
-    ))
+  jest.fn().mockImplementation(({ isServiceLoading }) => (
+    <div
+      data-service-loading={String(isServiceLoading)}
+      data-testid="service-main-tab-content">
+      ServiceMainTabContent
+    </div>
+  ))
 );
 
 jest.mock(
@@ -1125,6 +1133,88 @@ describe('ServiceDetailsPage', () => {
 
       // Verify the deleted call was made
       expect(getDataModels).toHaveBeenCalled();
+    });
+
+  });
+
+  // The data model count fetch owns `isServiceLoading` for dashboard services and
+  // re-runs on every tab change, so failing to clear it leaves the previously
+  // visited (still mounted) entity tab spinning forever.
+  describe('Data Model Tab Count loading state', () => {
+    beforeEach(() => {
+      (getServiceByFQN as jest.Mock).mockResolvedValue(mockServiceDetails);
+      (useTableFilters as jest.Mock).mockReturnValue({
+        filters: {},
+        setFilters: mockSetFilters,
+      });
+      // `getCountLabel` is mocked to 'Databases', so this is the tab key that
+      // renders ServiceMainTabContent.
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+        tab: 'databases',
+      });
+    });
+
+    const expectEntityTabNotLoading = async () => {
+      await waitFor(() => {
+        expect(screen.getByTestId('service-main-tab-content')).toHaveAttribute(
+          'data-service-loading',
+          'false'
+        );
+      });
+    };
+
+    const switchToAgentsTab = async (view: RenderResult) => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+        tab: EntityTabs.AGENTS,
+      });
+
+      await act(async () => {
+        view.rerender(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    it('should clear the loading state after moving off the entity tab', async () => {
+      (getDataModels as jest.Mock).mockResolvedValue({ paging: { total: 3 } });
+
+      let view!: RenderResult;
+      await act(async () => {
+        view = render(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+
+      await expectEntityTabNotLoading();
+
+      await switchToAgentsTab(view);
+
+      await expectEntityTabNotLoading();
+    });
+
+    it('should clear the loading state when the data model count fails', async () => {
+      (getDataModels as jest.Mock).mockRejectedValue(
+        new Error('Data model fetch failed')
+      );
+
+      let view!: RenderResult;
+      await act(async () => {
+        view = render(
+          <MemoryRouter>
+            <ServiceDetailsPage />
+          </MemoryRouter>
+        );
+      });
+
+      await switchToAgentsTab(view);
+
+      await expectEntityTabNotLoading();
     });
   });
 

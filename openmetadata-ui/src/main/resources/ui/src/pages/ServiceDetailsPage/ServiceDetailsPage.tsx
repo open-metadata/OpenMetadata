@@ -767,6 +767,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       } catch (error) {
         showErrorToast(error as AxiosError);
         handlePagingChange(pagingObject);
+      } finally {
+        setIsServiceLoading(false);
       }
     },
     [decodedServiceFQN, include]

@@ -154,6 +154,9 @@ export interface IngestionWorkflowFormProps {
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  // Fired once the lazily loaded RJSF templates have resolved and the form is
+  // mounted, i.e. the imperative `submit()` handle is safe to call.
+  onReady?: () => void;
   serviceData?: ServicesUpdateRequest;
 }
 

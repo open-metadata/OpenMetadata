@@ -69,6 +69,7 @@ const AddIngestionPage = () => {
   const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
+  const [isStepReady, setIsStepReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [ingestionProgress, setIngestionProgress] = useState(0);
@@ -284,6 +285,7 @@ const AddIngestionPage = () => {
             onAddIngestionSave={onAddIngestionSave}
             onFocus={handleFieldFocus}
             onIngestionDeploy={onIngestionDeploy}
+            onStepReadyChange={setIsStepReady}
           />
         </div>
       </div>
@@ -300,6 +302,7 @@ const AddIngestionPage = () => {
           <Button
             color="primary"
             data-testid="next-button"
+            isDisabled={!isStepReady}
             size="sm"
             type="button"
             onPress={handleFooterNext}>

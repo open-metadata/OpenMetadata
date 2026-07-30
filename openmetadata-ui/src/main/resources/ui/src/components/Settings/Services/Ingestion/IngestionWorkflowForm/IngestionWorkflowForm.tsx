@@ -20,6 +20,7 @@ import {
   forwardRef,
   lazy,
   Suspense,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -121,6 +122,20 @@ const ProfileSampleConfigField = lazy(
   () => import('./ProfileSampleConfigField')
 );
 
+/**
+ * Rendered as a sibling of the RJSF form inside the Suspense boundary, so its
+ * effect can only run once every lazy template above has resolved and the form
+ * ref is attached. Consumers use this to gate an external submit button that
+ * would otherwise silently no-op against a null form ref.
+ */
+const FormReadyNotifier = ({ onReady }: Readonly<{ onReady?: () => void }>) => {
+  useEffect(() => {
+    onReady?.();
+  }, [onReady]);
+
+  return null;
+};
+
 const IngestionWorkflowForm = forwardRef<
   IngestionWorkflowFormHandle,
   IngestionWorkflowFormProps
@@ -138,6 +153,7 @@ const IngestionWorkflowForm = forwardRef<
     onFocus,
     onSubmit,
     onChange,
+    onReady,
     serviceData,
   }: Readonly<IngestionWorkflowFormProps>,
   ref
@@ -191,8 +207,17 @@ const IngestionWorkflowForm = forwardRef<
       };
     }
 
+    // RJSF falls back to its own submit button whenever the form has no
+    // children, which would leave a stray "Submit" next to the wizard footer.
+    if (hideFooter) {
+      commonSchema = {
+        ...commonSchema,
+        'ui:submitButtonOptions': { norender: true },
+      };
+    }
+
     return commonSchema;
-  }, [pipeLineType, operationType]);
+  }, [pipeLineType, operationType, hideFooter]);
 
   const handleOnChange = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
@@ -308,7 +333,13 @@ const IngestionWorkflowForm = forwardRef<
   };
 
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense
+      fallback={
+        <div data-testid="ingestion-workflow-form-loader">
+          <Loader />
+        </div>
+      }>
+      <FormReadyNotifier onReady={onReady} />
       <Form
         focusOnFirstError
         noHtml5Validate

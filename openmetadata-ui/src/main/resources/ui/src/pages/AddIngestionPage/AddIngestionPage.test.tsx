@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  fireEvent,
   render,
   screen,
   waitForElementToBeRemoved,
@@ -72,7 +73,17 @@ jest.mock(
 
 jest.mock(
   '../../components/Settings/Services/AddIngestion/AddIngestion.component',
-  () => jest.fn().mockImplementation(() => <div>AddIngestion</div>)
+  () =>
+    jest.fn().mockImplementation(({ onStepReadyChange }) => (
+      <div>
+        AddIngestion
+        <button
+          data-testid="mock-step-ready"
+          onClick={() => onStepReadyChange?.(true)}>
+          ready
+        </button>
+      </div>
+    ))
 );
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -146,5 +157,27 @@ describe('Test AddIngestionPage component', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('AddIngestion')).toBeInTheDocument();
     expect(screen.getByText('ServiceDocPanel')).toBeInTheDocument();
+  });
+
+  it('should keep the next button disabled until the active step reports ready', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/addIngestion/databaseServices/testIngestionType']}>
+        <Routes>
+          <Route
+            element={<AddIngestionPage {...mockProps} />}
+            path="/addIngestion/:serviceCategory/:ingestionType"
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(screen.getByTestId('next-button')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('mock-step-ready'));
+
+    expect(screen.getByTestId('next-button')).toBeEnabled();
   });
 });
