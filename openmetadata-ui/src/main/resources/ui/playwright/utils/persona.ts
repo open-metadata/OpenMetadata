@@ -85,12 +85,17 @@ export const setPersonaAsDefault = async (page: Page) => {
   await setAsDefaultButton.waitFor({ state: 'visible' });
   await setAsDefaultButton.click();
 
-  // Wait for the confirmation modal to be actually rendered so the subsequent
-  // click on "Yes" cannot race the modal open animation.
+  // The `default-persona-confirmation-modal` testid is on the antd
+  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
+  // hidden. Wait for the actual "Yes" button inside the modal instead — its
+  // visibility is the real signal that the modal is rendered and interactive.
   const setAsDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
-  await expect(setAsDefaultConfirmationModal).toBeVisible();
+  const yesButton = setAsDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
   // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
   // /api/v1/personas/* that happens to be in flight.
@@ -100,9 +105,7 @@ export const setPersonaAsDefault = async (page: Page) => {
       response.request().method() === 'PATCH'
   );
 
-  await setAsDefaultConfirmationModal
-    .getByRole('button', { name: 'Yes' })
-    .click();
+  await yesButton.click();
   await setAsDefaultResponse;
 };
 
@@ -164,12 +167,17 @@ export const removePersonaDefault = async (
   await removeDefaultButton.waitFor({ state: 'visible' });
   await removeDefaultButton.click();
 
-  // Wait for the confirmation modal to be actually rendered so the subsequent
-  // click on "Yes" cannot race the modal open animation.
+  // The `default-persona-confirmation-modal` testid is on the antd
+  // `.ant-modal-root` wrapper (0x0), so `toBeVisible` on it always reports
+  // hidden. Wait for the actual "Yes" button inside the modal instead — its
+  // visibility is the real signal that the modal is rendered and interactive.
   const removeDefaultConfirmationModal = page.getByTestId(
     'default-persona-confirmation-modal'
   );
-  await expect(removeDefaultConfirmationModal).toBeVisible();
+  const yesButton = removeDefaultConfirmationModal.getByRole('button', {
+    name: 'Yes',
+  });
+  await expect(yesButton).toBeVisible();
 
   // Filter by PATCH so the wait cannot be satisfied by an unrelated GET on
   // /api/v1/personas/* that happens to be in flight.
@@ -179,8 +187,6 @@ export const removePersonaDefault = async (
       response.request().method() === 'PATCH'
   );
 
-  await removeDefaultConfirmationModal
-    .getByRole('button', { name: 'Yes' })
-    .click();
+  await yesButton.click();
   await removeDefaultResponse;
 };
