@@ -110,7 +110,7 @@ class OMetaMlModelMixin(OMetaLineageMixin):
         """
         try:
             # pylint: disable=import-outside-toplevel
-            from sklearn.base import BaseEstimator  # noqa: PLC0415
+            from sklearn.base import BaseEstimator
 
             # pylint: enable=import-outside-toplevel
         except ModuleNotFoundError as err:

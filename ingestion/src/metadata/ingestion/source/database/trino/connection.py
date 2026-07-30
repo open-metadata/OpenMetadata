@@ -75,7 +75,7 @@ class TrinoConnection(BaseConnection[TrinoConnectionConfig, Engine]):
         # here we are creating a copy of connection, because we need to dynamically
         # add auth params to connectionArguments, which we do no intend to store
         # in original connection object and in OpenMetadata database
-        from trino.sqlalchemy.dialect import TrinoDialect  # noqa: PLC0415
+        from trino.sqlalchemy.dialect import TrinoDialect
 
         TrinoDialect.is_disconnect = _is_disconnect  # type: ignore
 

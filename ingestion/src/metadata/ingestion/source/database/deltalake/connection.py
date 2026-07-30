@@ -59,7 +59,7 @@ def get_deltalake_client(connection, config):
 
 @get_deltalake_client.register
 def _(connection: MetastoreConfig, config: DeltaLakeConnectionConfig):
-    from metadata.ingestion.source.database.deltalake.clients.pyspark import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
         DeltalakePySparkClient,
     )
 
@@ -68,7 +68,7 @@ def _(connection: MetastoreConfig, config: DeltaLakeConnectionConfig):
 
 @get_deltalake_client.register  # noqa: RET503
 def _(connection: StorageConfig, config: DeltaLakeConnectionConfig):
-    from metadata.ingestion.source.database.deltalake.clients.s3 import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (
         DeltalakeS3Client,
     )
 

@@ -921,7 +921,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                 f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
             )
         except Exception as exc:
-            import traceback  # noqa: PLC0415
+            import traceback
 
             logger.warning(f"Drive sample data not found: {exc}")
             logger.debug(f"Traceback: {traceback.format_exc()}")
@@ -1635,7 +1635,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
             # Patch certification if present in the sample data
             if table.get("certification"):
                 try:
-                    from metadata.generated.schema.type.assetCertification import (  # noqa: PLC0415
+                    from metadata.generated.schema.type.assetCertification import (
                         AssetCertification,
                     )
 

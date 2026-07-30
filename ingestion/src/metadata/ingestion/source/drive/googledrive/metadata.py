@@ -958,9 +958,9 @@ class GoogleDriveSource(DriveServiceSource):
         """
         try:
             # Try pandas-based inference across a capped set of rows to reuse datalake logic.
-            import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            import pandas as pd  # pylint: disable=import-outside-toplevel
 
-            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            from metadata.utils.datalake.datalake_utils import (  # pylint: disable=import-outside-toplevel
                 DataFrameColumnParser,
             )
 

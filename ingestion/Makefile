@@ -64,6 +64,14 @@ py_format_check:  ## Check if Python sources are correctly formatted
 generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
 	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
 
+.PHONY: check_import_layers
+check_import_layers:  ## Fail if a module imports a higher layer at module scope (import-cost guard)
+	python $(INGESTION_DIR)/scripts/check_import_layers.py
+
+.PHONY: update_import_layers_baseline
+update_import_layers_baseline:  ## Re-record the import-layer baseline after fixing violations
+	python $(INGESTION_DIR)/scripts/check_import_layers.py --update-baseline
+
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
 	pytest -c $(INGESTION_DIR)/pyproject.toml --cov=metadata --cov-branch --cov-config=$(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml -n auto $(INGESTION_DIR)/tests/unit

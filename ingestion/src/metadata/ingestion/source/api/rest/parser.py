@@ -206,7 +206,7 @@ def parse_openapi_schema_from_s3(
     Download and parse an OpenAPI schema file from S3.
     Supports both JSON and YAML formats.
     """
-    from metadata.clients.aws_client import AWSClient  # noqa: PLC0415
+    from metadata.clients.aws_client import AWSClient
 
     bucket, key = _parse_s3_url(s3_url)
 

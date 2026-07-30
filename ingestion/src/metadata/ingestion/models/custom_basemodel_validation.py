@@ -58,21 +58,21 @@ TRANSFORMABLE_ENTITIES: Dict[Any, Dict[str, Any]] = {}  # noqa: UP006
 def _initialize_transformable_entities():
     """Initialize the transformable entities dictionary lazily to avoid circular imports"""
     # Import all model classes here to avoid circular dependency at module load time
-    from metadata.generated.schema.api.data.createDashboardDataModel import (  # noqa: PLC0415
+    from metadata.generated.schema.api.data.createDashboardDataModel import (
         CreateDashboardDataModelRequest,
     )
-    from metadata.generated.schema.api.data.createTable import CreateTableRequest  # noqa: PLC0415
-    from metadata.generated.schema.entity.data.dashboardDataModel import (  # noqa: PLC0415
+    from metadata.generated.schema.api.data.createTable import CreateTableRequest
+    from metadata.generated.schema.entity.data.dashboardDataModel import (
         DashboardDataModel,
     )
-    from metadata.generated.schema.entity.data.table import (  # noqa: PLC0415
+    from metadata.generated.schema.entity.data.table import (
         ColumnName,
         ColumnProfile,
         Table,
         TableData,
     )
-    from metadata.profiler.api.models import ProfilerResponse  # noqa: PLC0415
-    from metadata.utils.entity_link import CustomColumnName  # noqa: PLC0415
+    from metadata.profiler.api.models import ProfilerResponse
+    from metadata.utils.entity_link import CustomColumnName
 
     # Now populate the dictionary with the imported classes
     TRANSFORMABLE_ENTITIES.update(

@@ -185,14 +185,14 @@ def _get_engine_from_env_vars() -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: MysqlConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.mysql.connection import MySQLConnection  # noqa: PLC0415
+    from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
     return MySQLConnection(airflow_connection)._get_client()
 
 
 @_get_connection.register
 def _(airflow_connection: PostgresConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.postgres.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.postgres.connection import (
         PostgresConnection,
     )
 
@@ -201,7 +201,7 @@ def _(airflow_connection: PostgresConnectionConfig) -> Engine:
 
 @_get_connection.register
 def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
-    from metadata.ingestion.source.database.sqlite.connection import (  # noqa: PLC0415
+    from metadata.ingestion.source.database.sqlite.connection import (
         SQLiteConnection,
     )
 
@@ -256,7 +256,7 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
     Uses the strict accessor, not get_version: the latter tolerates a reply it
     cannot parse, which would pass the gate against any web server.
     """
-    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
+    from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (
         diagnose,
     )
 
@@ -443,7 +443,7 @@ class AirflowChecks:
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel
             AirflowRestApiConnection,
         )
 

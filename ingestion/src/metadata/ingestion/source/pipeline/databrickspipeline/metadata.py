@@ -347,7 +347,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
             return self._databricks_services
 
         try:
-            from metadata.generated.schema.entity.services.databaseService import (  # noqa: PLC0415
+            from metadata.generated.schema.entity.services.databaseService import (
                 DatabaseService,
             )
 
@@ -513,7 +513,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             # Use ES search with wildcard pattern to find topic regardless of service
             # Pattern: *.topic_name or *."topic.with.dots"
-            from metadata.utils.elasticsearch import ES_INDEX_MAP  # noqa: PLC0415
+            from metadata.utils.elasticsearch import ES_INDEX_MAP
 
             # Quote the topic name if it contains dots
             search_topic_name = f'"{topic_name}"' if "." in topic_name else topic_name

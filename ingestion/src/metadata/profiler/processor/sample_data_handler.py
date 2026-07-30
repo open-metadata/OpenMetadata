@@ -77,7 +77,7 @@ def upload_sample_data(
     """
     Upload Sample data to storage config
     """
-    import pandas as pd  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+    import pandas as pd  # pylint: disable=import-outside-toplevel
 
     try:
         if not sample_storage_config:

@@ -133,8 +133,8 @@ class Max(StaticMetric):
         Maintains a single maximum value (not a list). Compares chunk's max
         with current maximum and returns the larger value.
         """
-        import pandas as pd  # noqa: PLC0415
-        from pandas import Timestamp  # noqa: PLC0415
+        import pandas as pd
+        from pandas import Timestamp
 
         chunk_max: float | None = None
 

@@ -275,7 +275,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Prepare the DBT objects
         """
         # pylint: disable=import-outside-toplevel
-        from collate_dbt_artifacts_parser.parser import (  # noqa: PLC0415
+        from collate_dbt_artifacts_parser.parser import (
             parse_catalog,
             parse_manifest,
             parse_run_results,

@@ -995,7 +995,7 @@ def _build_temp_table_lineage(
     Returns:
         List of TempLineageTable objects with fromEntity and toEntity fields.
     """
-    from metadata.generated.schema.type.entityLineage import TempLineageTable  # noqa: PLC0415
+    from metadata.generated.schema.type.entityLineage import TempLineageTable
 
     if len(table_chain) < 2:
         return [TempLineageTable(fromEntity=from_fqn, toEntity=to_fqn)]

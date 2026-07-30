@@ -67,7 +67,7 @@ class BaseModel(PydanticBaseModel):
                 return
             for field in self.__pydantic_fields__:
                 if field.endswith("FilterPattern"):
-                    from metadata.generated.schema.type.filterPattern import (  # noqa: PLC0415
+                    from metadata.generated.schema.type.filterPattern import (
                         FilterPattern,
                     )
 
@@ -192,7 +192,7 @@ class _CustomSecretStr(SecretStr):
         expect a string (e.g. URL building with ``quote_plus``) do not crash.
         """
         # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import  # noqa: PLC0415
+        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,
         )
 

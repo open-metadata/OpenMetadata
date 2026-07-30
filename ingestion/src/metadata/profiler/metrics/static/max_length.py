@@ -91,8 +91,8 @@ class MaxLength(StaticMetric):
     @staticmethod
     def update_accumulator(current_max: Optional[int], df: "pd.DataFrame", column) -> Optional[int]:  # noqa: UP045
         """Computes one DataFrame chunk and updates the running maximum"""
-        import pandas as pd  # noqa: PLC0415
-        from numpy import vectorize  # noqa: PLC0415
+        import pandas as pd
+        from numpy import vectorize
 
         length_vectorize_func = vectorize(len)
         chunk_max = None

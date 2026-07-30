@@ -191,7 +191,7 @@ class SSLManager:
 
     @setup_ssl.register(SalesforceConnection)
     def _(self, connection):
-        import requests  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import requests  # pylint: disable=import-outside-toplevel
 
         connection: SalesforceConnection = cast(SalesforceConnection, connection)  # noqa: TC006
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()

@@ -41,7 +41,7 @@ class CustomHiveConnection(BaseConnection):
             port = port or 1000
             ssl_context = None
             if scheme == "https":
-                from ssl import create_default_context  # noqa: PLC0415
+                from ssl import create_default_context
 
                 ssl_context = create_default_context()
                 ssl_context.check_hostname = check_hostname == "true"
@@ -90,7 +90,7 @@ class CustomHiveConnection(BaseConnection):
                 self._transport = thrift_transport
             else:
                 # Create puretransport with SSL
-                import puretransport  # noqa: PLC0415
+                import puretransport
 
                 # Prepare socket_kwargs for SSL
                 socket_kwargs = {}
@@ -126,7 +126,7 @@ class CustomHiveConnection(BaseConnection):
                 self._transport = thrift.transport.TTransport.TBufferedTransport(socket)
             elif auth in ("LDAP", "KERBEROS", "NONE", "CUSTOM"):
                 # Defer import so package dependency is optional
-                import thrift_sasl  # noqa: PLC0415
+                import thrift_sasl
 
                 if auth == "KERBEROS":
                     # KERBEROS mode in hive.server2.authentication is GSSAPI in sasl library

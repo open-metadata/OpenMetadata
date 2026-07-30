@@ -204,6 +204,13 @@ ignore = [
     "PLR2004",  # magic-value comparison   — fires on every HTTP status, port number, retry count
     "PLR1711",  # useless-return None      — explicit-is-better-than-implicit defense
     "PLR2044",  # empty-comment            — too pedantic for the value
+
+    # ── Lazy imports are a deliberate tool here, not a smell ──
+    "PLC0415",  # import-outside-top-level — module-scope imports of heavy subtrees are
+                # what inflate `import metadata` peak RSS (they OOM-killed 512Mi
+                # automation pods), so function-local imports are encouraged. Layering is
+                # enforced by scripts/check_import_layers.py and the ceilings in
+                # tests/unit/test_import_cost.py instead.
 ]
 
 # Existing violations were grandfathered via `ruff check --add-noqa` during

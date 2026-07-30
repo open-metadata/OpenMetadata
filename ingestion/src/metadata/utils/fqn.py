@@ -153,7 +153,7 @@ def build(metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs) -> O
     """
     # Transform table_name and column_name if they exist and contain special characters
     if kwargs.get("table_name") or kwargs.get("column_name"):
-        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel
             replace_separators,
         )
 

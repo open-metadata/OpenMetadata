@@ -238,7 +238,7 @@ def _(config: AzureConfig):
 def _(config: GCSConfig):
     try:
         bucket_name, prefix = get_prefix_config(config)
-        from google.cloud import storage  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcp_credentials=config.securityConfig)
 

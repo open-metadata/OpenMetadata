@@ -168,7 +168,7 @@ class BurstIQClient:
         Returns:
             JSON response or None
         """
-        import time  # noqa: PLC0415
+        import time
 
         url = f"{self.api_base_url}/{endpoint.lstrip('/')}"
         headers = self._get_auth_header()

@@ -204,7 +204,7 @@ class AirflowSource(PipelineServiceSource):
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # noqa: PLC0415
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
             AirflowRestApiConnection,
         )
 
@@ -213,7 +213,7 @@ class AirflowSource(PipelineServiceSource):
         if not isinstance(connection, AirflowConnection):
             raise InvalidSourceException(f"Expected AirflowConnection, but got {connection}")
         if isinstance(connection.connection, AirflowRestApiConnection):
-            from metadata.ingestion.source.pipeline.airflow.api.source import (  # noqa: PLC0415
+            from metadata.ingestion.source.pipeline.airflow.api.source import (
                 AirflowApiSource,
             )
 

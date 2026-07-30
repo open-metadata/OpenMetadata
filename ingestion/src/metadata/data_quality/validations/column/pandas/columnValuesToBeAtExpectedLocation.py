@@ -32,7 +32,7 @@ class ColumnValuesToBeAtExpectedLocationValidator(
     """Validator for column value to be at expected location test case"""
 
     def _fetch_data(self, columns: List[str]):  # noqa: UP006
-        from pandas import DataFrame  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from pandas import DataFrame  # pylint: disable=import-outside-toplevel
 
         self.runner = cast(List[DataFrame], self.runner)  # noqa: TC006, UP006
         for df in self.runner:

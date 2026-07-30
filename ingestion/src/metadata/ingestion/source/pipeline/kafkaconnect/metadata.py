@@ -627,7 +627,7 @@ class KafkaconnectSource(PipelineServiceSource):
             List of column names, or empty list if parsing fails
         """
         try:
-            import json  # noqa: PLC0415
+            import json
 
             schema_dict = json.loads(schema_text)
 
@@ -680,7 +680,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # Fallback: Check schemaText for CDC structure if schemaFields doesn't indicate CDC
             if not is_debezium_cdc and entity.messageSchema.schemaText:
                 try:
-                    import json  # noqa: PLC0415
+                    import json
 
                     schema_dict = json.loads(entity.messageSchema.schemaText)
                     schema_props = schema_dict.get("properties", {})
@@ -984,7 +984,7 @@ class KafkaconnectSource(PipelineServiceSource):
         Search for topics matching a regex pattern.
         Used for S3 sink connectors with topics.regex config.
         """
-        import re  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        import re  # pylint: disable=import-outside-toplevel
 
         topics_found = []
 

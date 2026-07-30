@@ -100,7 +100,7 @@ class DataFrameReader(ABC):
                 return (props.size or 0) / (1024 * 1024)
 
             elif isinstance(self.config_source, LocalConfig):
-                import os  # noqa: PLC0415
+                import os
 
                 return os.path.getsize(key) / (1024 * 1024)  # noqa: PTH202
 

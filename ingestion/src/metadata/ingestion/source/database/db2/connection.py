@@ -142,7 +142,7 @@ class Db2Connection(BaseConnection[Db2ConnectionConfig, Engine]):
         if connection.license and connection.licenseFileName:
             # pylint: disable=import-outside-toplevel
             # clidriver is installed at runtime by install_clidriver above
-            import clidriver  # noqa: PLC0415 # pyright: ignore[reportMissingImports]
+            import clidriver  # pyright: ignore[reportMissingImports]
 
             if clidriver_version:
                 importlib.reload(clidriver)

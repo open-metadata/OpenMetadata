@@ -1032,7 +1032,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 and table.external_data_configuration.hive_partitioning
             ):
                 # Ingesting External Hive Partitioned Tables
-                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
                     HivePartitioningOptions,  # noqa: TC002
                 )
 

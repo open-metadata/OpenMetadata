@@ -127,7 +127,7 @@ def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:  # noqa: UP006
     JWT tokens have three parts: header.payload.signature
     We only decode the payload part to get user information.
     """
-    from metadata.utils.logger import ometa_logger  # noqa: PLC0415
+    from metadata.utils.logger import ometa_logger
 
     logger = ometa_logger()
     try:

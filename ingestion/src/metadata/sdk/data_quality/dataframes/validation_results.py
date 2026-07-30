@@ -134,7 +134,7 @@ class ValidationResult(BaseModel):
         if not results:
             raise ValueError("At least one ValidationResult must be provided to merge")
 
-        from collections import defaultdict  # noqa: PLC0415
+        from collections import defaultdict
 
         aggregated_results: dict[str, List[Tuple[TestCase, TestCaseResult]]] = defaultdict(list)  # noqa: UP006
         total_execution_time = 0.0

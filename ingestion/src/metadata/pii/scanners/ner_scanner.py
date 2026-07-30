@@ -59,8 +59,8 @@ class NERScanner(BaseScanner):
     """Based on https://microsoft.github.io/presidio/"""
 
     def __init__(self):
-        from presidio_analyzer import AnalyzerEngine  # noqa: PLC0415
-        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine  # noqa: PLC0415
+        from presidio_analyzer import AnalyzerEngine
+        from presidio_analyzer.nlp_engine.spacy_nlp_engine import SpacyNlpEngine
 
         _load_spacy_model(SPACY_EN_MODEL)
 
