@@ -16,6 +16,7 @@ import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import jestFormatting from 'eslint-plugin-jest-formatting';
 import jsoncPlugin from 'eslint-plugin-jsonc';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import playwright from 'eslint-plugin-playwright';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
@@ -100,6 +101,7 @@ export default [
       'jest-formatting': jestFormatting,
       i18next,
       sonarjs,
+      'jsx-a11y': jsxA11y,
     },
 
     rules: {
@@ -245,6 +247,73 @@ export default [
       'sonarjs/prefer-while': 'error',
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
+
+      // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
+      // had never been registered, so none of it ran.
+      //
+      // Severity is chosen by MEASURED backlog, not by taste. ESLint reports per
+      // file, not per added line, so a rule with existing violations set to
+      // `error` would fail PRs for code they merely touched. Zero-backlog rules
+      // are therefore `error` (blocking), and everything else is `warn` — kept
+      // on so it shows in the editor and in CI output, and so the backlog is
+      // visible rather than invisible.
+      //
+      // Promotion path: clear a rule's backlog, re-measure, move it to `error`.
+      //
+      // Safety note: `ui-checkstyle` runs `eslint --fix` and fails on the
+      // resulting git diff, so a `warn` rule that AUTO-FIXES would silently
+      // rewrite files and hard-fail the gate. Every rule listed at `warn` below
+      // was checked: all report `fixable: none` or suggestions-only, and
+      // react-hooks/exhaustive-deps — which declares `fixable: 'code'` — was
+      // verified empirically not to rewrite a dependency array under `--fix`.
+      // Re-check that before adding any new `warn` rule here.
+      'jsx-a11y/aria-props': 'error',
+      'jsx-a11y/aria-proptypes': 'error',
+      'jsx-a11y/aria-role': 'error',
+      'jsx-a11y/aria-unsupported-elements': 'error',
+      'jsx-a11y/aria-activedescendant-has-tabindex': 'error',
+      'jsx-a11y/role-has-required-aria-props': 'error',
+      'jsx-a11y/role-supports-aria-props': 'error',
+      'jsx-a11y/no-interactive-element-to-noninteractive-role': 'error',
+      'jsx-a11y/no-noninteractive-tabindex': 'error',
+      'jsx-a11y/tabindex-no-positive': 'error',
+      'jsx-a11y/label-has-associated-control': 'error',
+      'jsx-a11y/autocomplete-valid': 'error',
+      'jsx-a11y/heading-has-content': 'error',
+      'jsx-a11y/html-has-lang': 'error',
+      'jsx-a11y/iframe-has-title': 'error',
+      'jsx-a11y/img-redundant-alt': 'error',
+      'jsx-a11y/no-access-key': 'error',
+      'jsx-a11y/no-distracting-elements': 'error',
+      'jsx-a11y/scope': 'error',
+
+      // --- warn tier: on, visible, not yet blocking. Counts are the measured
+      // backlog at the time of writing; they only go down.
+      'react-hooks/exhaustive-deps': 'warn', // 1694 across 595 files
+      'jsx-a11y/control-has-associated-label': 'warn', // 146
+      'jsx-a11y/click-events-have-key-events': 'warn', // 89
+      'jsx-a11y/no-static-element-interactions': 'warn', // 87
+      'jsx-a11y/label-has-for': 'warn', // 61
+      'jsx-a11y/no-autofocus': 'warn', // 45
+      'jsx-a11y/anchor-has-content': 'warn', // 12
+      'jsx-a11y/no-noninteractive-element-interactions': 'warn', // 8
+      'jsx-a11y/interactive-supports-focus': 'warn', // 7
+      'jsx-a11y/anchor-is-valid': 'warn', // 5
+      'jsx-a11y/alt-text': 'warn', // 3
+      'jsx-a11y/no-redundant-roles': 'warn', // 2
+      'jsx-a11y/mouse-events-have-key-events': 'warn', // 2
+      'jsx-a11y/media-has-caption': 'warn', // 2
+      'jsx-a11y/no-noninteractive-element-to-interactive-role': 'warn', // 2
+      'jsx-a11y/anchor-ambiguous-text': 'warn', // 1
+      'sonarjs/no-duplicate-string': 'warn', // 640
+      'sonarjs/cognitive-complexity': ['warn', 15], // 85
+      'sonarjs/no-collapsible-if': 'warn', // 21
+      'sonarjs/no-extra-arguments': 'warn', // 20
+      'sonarjs/no-redundant-jump': 'warn', // 14
+      'sonarjs/no-duplicated-branches': 'warn', // 9
+      'sonarjs/no-identical-functions': 'warn', // 6
+      'sonarjs/prefer-object-literal': 'warn', // 1
+      'sonarjs/no-redundant-boolean': 'warn', // 1
     },
   },
 

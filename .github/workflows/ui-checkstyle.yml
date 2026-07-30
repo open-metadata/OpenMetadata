@@ -108,8 +108,6 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
-      reuse_audit_result: ${{ steps.reuse_audit.outcome }}
-      reuse_audit_changed_files: ${{ steps.reuse_audit.outputs.changed_files }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -341,27 +339,6 @@ jobs:
             exit 1
           fi
 
-      - name: Component Reuse Guard (no new hand-rolled components)
-        id: reuse_audit
-        if: steps.changed-src-files.outputs.any_changed == 'true'
-        continue-on-error: true
-        env:
-          BASE_SHA: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
-        run: |
-          if ! node ${{ env.UI_WORKING_DIRECTORY }}/scripts/reuse-audit.test.js > /tmp/reuse-audit.out 2>&1; then
-            cat /tmp/reuse-audit.out
-            echo "changed_files=  The guard's own tests failed — fix scripts/reuse-audit.js before relying on this gate." >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-          if ! node ${{ env.UI_WORKING_DIRECTORY }}/scripts/reuse-audit.js "$BASE_SHA" > /tmp/reuse-audit.out 2>&1; then
-            cat /tmp/reuse-audit.out
-            OUT=$(sed 's/\x1b\[[0-9;]*m//g' /tmp/reuse-audit.out | grep -E '^    ' | head -30)
-            echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-            echo "$OUT" >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-
   ui-checkstyle:
     needs: [authorize, checkstyle]
     if: always()
@@ -434,12 +411,6 @@ jobs:
                 result:  '${{ needs.checkstyle.outputs.tw_guard_result }}',
                 files:   ${{ toJSON(needs.checkstyle.outputs.tw_guard_changed_files) }} || '',
               },
-              {
-                name:    'Component Reuse Guard',
-                reason:  'New UI was hand-rolled from raw elements that `@openmetadata/ui-core-components` already exports (e.g. `<div role="listbox">` instead of `Select`). See `.claude/rules/component-library.md`.',
-                result:  '${{ needs.checkstyle.outputs.reuse_audit_result }}',
-                files:   ${{ toJSON(needs.checkstyle.outputs.reuse_audit_changed_files) }} || '',
-              },
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
@@ -507,8 +478,7 @@ jobs:
              [ "${{ needs.checkstyle.outputs.lint_playwright_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.lint_core_components_result }}" = 'failure' ] || \
              [ "${{ needs.checkstyle.outputs.tw_audit_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ] || \
-             [ "${{ needs.checkstyle.outputs.reuse_audit_result }}" = 'failure' ]; then
+             [ "${{ needs.checkstyle.outputs.tw_guard_result }}" = 'failure' ]; then
             echo "One or more checks failed."
             exit 1
           fi

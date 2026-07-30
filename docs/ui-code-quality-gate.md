@@ -18,8 +18,12 @@ already chose the wrong pattern. Every rule therefore exists twice.
 | **Enforcement** | `.claude/settings.json` hooks | `ui-checkstyle` job |
 | **Self-serve** | `make ui-checkstyle-changed` | required status check |
 
-**One script, three call sites.** Each audit is a single implementation invoked by the agent hook,
-`make ui-checkstyle-changed`, and the `ui-checkstyle` CI job. There is no second copy to drift.
+**One toolchain, three call sites.** The same ESLint config runs in the agent hook, in
+`make ui-checkstyle-changed`, and in the `ui-checkstyle` CI job. Prefer an off-the-shelf ESLint plugin
+over a bespoke script: a plugin matches the AST rather than diff text, gives live editor feedback,
+and composes with `--fix` and `eslint-disable`. Reach for a script only when a rule genuinely cannot
+be expressed in ESLint — `tw-guard` qualifies, because its antd/`.less` backlog (864 and 449 files)
+makes added-lines-only scoping unavoidable.
 
 Depth behind the rules lives in `skills/vendor/` — `react-best-practices`, `web-design-guidelines`
 and `composition-patterns`, vendored verbatim from
@@ -29,8 +33,8 @@ step. Skills load only when invoked, which is why the load-bearing subset is dis
 matching files.
 
 **Checkstyle is the enforcement point — not pre-commit.** New gates are deliberately kept out of
-`.pre-commit-config.yaml`: every hook there is paid on every single commit, and these audits shell
-out to `git diff` and `node`. Committing must stay fast. `ui-checkstyle` is the one place a gate has
+`.pre-commit-config.yaml`: every hook there is paid on every single commit. Committing must stay
+fast. `ui-checkstyle` is the one place a gate has
 to hold, and `make ui-checkstyle-changed` is how you get that answer locally before pushing.
 
 ## Run it locally
@@ -40,7 +44,7 @@ make ui-checkstyle-changed     # exactly what CI runs, on just your changed file
 ```
 
 This is the command to trust — it runs the fixing steps (organize-imports, eslint, prettier, license
-headers, i18n sync, app-docs) **and** the three audit gates (`tw-audit`, `tw-guard`, `reuse-audit`).
+headers, i18n sync, app-docs) **and** the audit gates (`tw-audit`, `tw-guard`).
 The gates are collected rather than short-circuited, so one failure does not hide the others.
 
 ## What each gate enforces
@@ -52,48 +56,59 @@ The gates are collected rather than short-circuited, so one failure does not hid
 | i18n key-sync | all locales | locale files out of sync with `en-us.json` |
 | `tw-audit` | changed files | hardcoded Tailwind value that maps to a design token |
 | `tw-guard` | **added lines** | new `antd` import or new `.less` file |
-| `reuse-audit` | **added lines** | UI hand-rolled from raw elements the component library already exports |
+| `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
 | SonarCloud gate | **new code** | complexity, duplication, or new issues on lines this PR added |
 
-## Component reuse — what `reuse-audit` flags
+## Component reuse — guidance, not a gate
 
-No off-the-shelf linter knows this design system, so this is the one bespoke check. It inspects
-**added lines only**, so existing hand-rolled UI is untouched and migrates over time.
+`.claude/rules/component-library.md` carries the table of what to import instead of hand-rolling
+(`Select` rather than `<div role="listbox">`, and so on). **No linter knows this design system**, so
+that table is guidance and review, not an automated check.
 
-| Instead of hand-rolling | Import from `@openmetadata/ui-core-components` |
-|---|---|
-| `<div role="listbox">`, `role="combobox"` | `Select`, `MultiSelect`, `Combobox`, `Autocomplete` |
-| `<div role="menu">`, `role="menuitem"` | `Dropdown` |
-| `<div role="tablist">`, `role="tab"` | `Tabs` |
-| `<div role="dialog">`, `role="alertdialog"` | `Modal` |
-| `role="switch"` / `radiogroup` / `progressbar` / `tooltip` | `Toggle` / `RadioButtons` / `ProgressIndicator` / `Tooltip` |
-| raw `<button>`, `<input>`, `<select>`, `<textarea>` in `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
-| `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` — keyboard nav is built in |
-| `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
+A bespoke `reuse-audit` script was built for this and then removed. It reimplemented, badly, what
+ESLint already does well: matching regexes against raw diff lines produced false positives on
+`data-role=`, on `[role="menu"]` selectors and inside comments, and its hand-rolled git handling
+could report "clean" when the diff had failed to load. Its one real advantage — inspecting only
+added lines — existed to tolerate a backlog of **16** instances, small enough not to justify ~430
+lines of bespoke code and its own test suite.
 
-Tests, mocks, stories and Playwright specs are out of scope. If a raw element is genuinely required,
-put `reuse-audit-ignore` in a comment on that line.
+What CI enforces instead is that a hand-rolled widget must at least be *accessible*: `jsx-a11y`
+rejects an invalid `role`, a role missing its required `aria-*` props, and an unusable tab order.
+Using the library component is the easy way to satisfy that.
+
+## Two severity tiers, chosen by measurement
+
+Every rule is on. Severity is decided by the rule's **measured backlog**, never by taste, because
+ESLint reports per *file* rather than per added line — an `error` rule with existing violations
+would fail PRs for code they merely touched.
+
+| Tier | Meaning | Today |
+|---|---|---|
+| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y |
+| `warn` | has a backlog — visible in the editor and CI output, not blocking | 9 SonarJS + 15 jsx-a11y + `react-hooks/exhaustive-deps` |
+
+Repo-wide today: **0 errors, 5435 warnings** across 3846 files (plus 281 in `playwright/`). The
+warnings *are* the backlog, made visible instead of hidden.
+
+**Promotion path:** clear a rule's backlog, re-measure, move it to `error`. The counts live in
+`eslint.config.mjs` next to each rule so the next person can see what it costs.
+
+> **Before adding any rule to the `warn` tier, check whether it auto-fixes.** `ui-checkstyle` runs
+> `eslint --fix` and fails on the resulting git diff, so an auto-fixing rule at `warn` would silently
+> rewrite files and hard-fail the gate. Every current `warn` rule reports `fixable: none` or
+> suggestions-only. `react-hooks/exhaustive-deps` declares `fixable: 'code'` but was verified
+> empirically not to rewrite a dependency array under `--fix` — which matters twice over, since
+> auto-adding an effect dependency changes runtime behaviour.
 
 ## SonarJS in ESLint — the fast half of Sonar
 
 `eslint-plugin-sonarjs` is the *same engine and the same `Sxxxx` rule ids* as the SonarCloud analysis
 that already runs on every UI PR. A finding in your editor is the finding Sonar will report.
 
-Only **16 rules with a measured zero backlog** are enabled, at `error`. ESLint reports per file, not
-per added line, so any rule with existing violations would fail PRs for code they merely touched.
-
-Deliberately **not** in ESLint, with their measured backlogs:
-
-```
-no-duplicate-string 640   cognitive-complexity 85   no-collapsible-if 21
-no-extra-arguments   20   no-redundant-jump    14   no-duplicated-branches 9
-no-identical-functions 6  prefer-object-literal 1   no-redundant-boolean 1
-```
-
-These belong to SonarCloud, whose Clean-as-You-Code model scopes them to **new lines** — something
-ESLint fundamentally cannot express. Promote a rule into `eslint.config.mjs` once its backlog is
-cleared.
+The high-backlog SonarJS rules are also enforced *blockingly* by SonarCloud, whose Clean-as-You-Code
+model scopes them to **new lines** — something ESLint fundamentally cannot express. So
+`cognitive-complexity` and `no-duplicate-string` warn locally and block on new code in the PR gate.
 
 `eslint-plugin-sonarjs` is pinned **exactly** (`4.2.0`). SonarCloud upgrades its analyzer server-side
 on its own schedule and that drift is silent.
@@ -162,7 +177,7 @@ Mark these three required on `main`:
 
 | Required check | Enforces |
 |---|---|
-| `ui-checkstyle` | lint, prettier, licence, i18n, `tw-audit`, `tw-guard`, `reuse-audit` |
+| `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
 | `ui-coverage` | Jest run completed |
 | **`ui-sonar-gate`** | the Clean-as-You-Code quality gate, incl. 90% coverage on new code |
 

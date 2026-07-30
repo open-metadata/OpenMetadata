@@ -28,8 +28,7 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   loads only when invoked, and their own trigger wording aims at *refactoring* and *reviewing*, so
   they miss "build me a component" unless named. `frontend-performance.md` and `frontend-a11y.md`
   carry the load-bearing subset and auto-load — these skills are the depth behind them.
-- **Do not hand-roll a component the library already exports.** `yarn reuse-audit` blocks these on
-  **added lines only** (existing code is untouched, like `tw-guard`). Same list the script enforces:
+- **Do not hand-roll a component the library already exports.** Reach for these first:
 
   | Instead of hand-rolling | Import |
   |---|---|
@@ -38,12 +37,14 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   | `<div role="tablist">`, `role="tab"` | `Tabs` |
   | `<div role="dialog">`, `role="alertdialog"` | `Modal` |
   | `role="switch"` / `role="radiogroup"` / `role="progressbar"` / `role="tooltip"` | `Toggle` / `RadioButtons` / `ProgressIndicator` / `Tooltip` |
-  | raw `<button>`, `<input>`, `<select>`, `<textarea>` inside `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
+  | raw `<button>`, `<input>`, `<select>`, `<textarea>` in `src/components/**` | `Button`, `Input`, `Select`, `Textarea` |
   | `onKeyDown` handling `ArrowDown`/`ArrowUp` | `Select` / `Dropdown` / `Tabs` (keyboard nav is built in) |
   | `createPortal` overlays | `Modal`, `Popover`, `SlideoutMenu` |
 
-  Tests, mocks, stories and Playwright specs are out of scope. If a raw element is genuinely
-  required, put `reuse-audit-ignore` in a comment on that line.
+  This table is guidance, not a gate — no linter knows the design system. What CI *does* enforce is
+  that a hand-rolled widget must at least be accessible: `jsx-a11y` blocks an invalid `role`, missing
+  required ARIA props, and unusable tab order. Using the library component is how you satisfy that
+  without writing the ARIA yourself.
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).

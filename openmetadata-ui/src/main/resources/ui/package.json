@@ -41,8 +41,6 @@
     "tw-audit": "node scripts/tw-audit.js",
     "tw-audit:report": "node scripts/tw-audit.js --report",
     "tw-guard": "node scripts/tw-deprecation-guard.js",
-    "reuse-audit": "node scripts/reuse-audit.js",
-    "reuse-audit:test": "node scripts/reuse-audit.test.js",
     "lint:playwright": "yarn lint:base './playwright/**/*.{ts,tsx,js,jsx}'",
     "pretty:base": "prettier --config './.prettierrc.yaml' --ignore-path './.prettierignore'",
     "pretty": "yarn pretty:base . --write",

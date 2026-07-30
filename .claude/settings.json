@@ -31,7 +31,7 @@
           },
           {
             "type": "command",
-            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)\\.github/workflows/'; then if [ \"${CLAUDE_ALLOW_WORKFLOW_EDITS:-}\" = \"1\" ]; then exit 0; fi; echo '{\"decision\": \"block\", \"reason\": \"Editing .github/workflows/** is not permitted without explicit user authorization — CI workflows are a supply-chain / prompt-injection surface, so the agent must not change them on its own. Ask the user to confirm. To authorize, the user sets CLAUDE_ALLOW_WORKFLOW_EDITS=1 in the environment (the agent cannot set this for the hook), or applies the change themselves.\"}'; exit 2; fi",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '(^|/)\\.github/workflows/'; then if [ \"${CLAUDE_ALLOW_WORKFLOW_EDITS:-}\" = \"1\" ]; then exit 0; fi; echo '{\"decision\": \"block\", \"reason\": \"Editing .github/workflows/** is not permitted without explicit user authorization \u2014 CI workflows are a supply-chain / prompt-injection surface, so the agent must not change them on its own. Ask the user to confirm. To authorize, the user sets CLAUDE_ALLOW_WORKFLOW_EDITS=1 in the environment (the agent cannot set this for the hook), or applies the change themselves.\"}'; exit 2; fi",
             "description": "Block agent edits to .github/workflows/** unless the user set CLAUDE_ALLOW_WORKFLOW_EDITS=1"
           }
         ]
@@ -43,8 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r \".file_path // empty\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE \"openmetadata-ui/src/main/resources/ui/src/.*[.](ts|tsx)$\"; then node openmetadata-ui/src/main/resources/ui/scripts/ui-guard.js \"$FILE\"; fi",
-            "description": "Audit a just-written UI file for component reuse and hardcoded Tailwind values so the agent sees the same failure CI would report, in the same turn"
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); UI=openmetadata-ui/src/main/resources/ui; case \"$FILE\" in *\"$UI\"/src/*.ts|*\"$UI\"/src/*.tsx) REL=\"${FILE#*$UI/}\"; cd \"$UI\" || exit 0; yarn --silent lint:base \"$REL\" || exit 2;; esac",
+            "description": "Lint a just-written UI file so the agent sees the same eslint errors CI would report, in the same turn"
           }
         ]
       }
