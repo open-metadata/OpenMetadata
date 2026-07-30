@@ -12,14 +12,20 @@
  */
 
 import { SlideoutMenu } from '@openmetadata/ui-core-components';
-import { ReactNode, useEffect, useLayoutEffect, useState } from 'react';
+import { lazy, ReactNode, useEffect, useLayoutEffect, useState } from 'react';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import { EntityData } from '../../pages/TasksPage/TasksPage.interface';
 import { getGlossaryTermByFQN } from '../../rest/glossaryAPI';
 import AlertBar from '../AlertBar/AlertBar';
-import EntitySummaryPanel from '../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { EntityDetailsObjectInterface } from '../Explore/ExplorePage.interface';
 import { isValidUUID } from './utils/graphBuilders';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () => import('../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 
 const PANEL_WIDTH = 576;
 

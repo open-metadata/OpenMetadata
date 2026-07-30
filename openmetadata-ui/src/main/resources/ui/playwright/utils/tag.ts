@@ -67,11 +67,12 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  await page
-    .getByTestId('tags-container')
-    .locator('.table-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
 
   const classificationEntry = page
     .getByTestId('side-panel-classification')
@@ -86,11 +87,12 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
-  await page
-    .getByTestId('tags-container')
-    .locator('.table-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
