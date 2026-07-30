@@ -507,6 +507,16 @@ def test_search_rbac_uses_an_isolated_single_worker_lane():
     assert planner.lane_bounds("search-rbac", "full") == (1, 8)
 
 
+def test_import_export_runs_in_its_own_lane_with_two_workers():
+    planner = load_script("build_playwright_shards")
+
+    assert "ImportExport" in planner.FULL_PROJECTS
+    assert planner.PROJECT_LANES["ImportExport"] == "import-export"
+    assert planner.LANE_WORKERS["import-export"] == 2
+    assert planner.lane_bounds("import-export", "full") == (1, 8)
+    assert planner.lane_bounds("import-export", "targeted") == (1, 2)
+
+
 def test_source_glob_matching_is_explicit():
     selector = load_script("select_playwright_tests")
 
@@ -1433,6 +1443,67 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
         "playwright/e2e/Features/OntologyImportRdf.spec.ts"
         in impact_map["delegatedSpecs"]
     )
+
+
+def test_visual_regression_specs_are_not_selected_by_the_main_workflow():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+
+    assert "playwright/e2e/VisualRegression/**" in impact_map["delegatedSpecs"]
+
+
+def test_changed_visual_regression_spec_is_delegated_not_selected(tmp_path, monkeypatch):
+    selector = load_script("select_playwright_tests")
+    spec_dir = tmp_path / selector.UI_ROOT / "playwright/e2e/VisualRegression"
+    spec_dir.mkdir(parents=True)
+    spec_path = spec_dir / "entityDetails.spec.ts"
+    spec_path.write_text("test('visual', () => undefined);\n")
+    impact_map = tmp_path / "impact-map.json"
+    impact_map.write_text(
+        json.dumps(
+            {
+                "smoke": [],
+                "canary": [],
+                "delegatedSpecs": ["playwright/e2e/VisualRegression/**"],
+                "sharedInfrastructure": [],
+                "mappings": [],
+            }
+        )
+    )
+    changed = tmp_path / "changed.txt"
+    changed.write_text(
+        f"{selector.UI_ROOT}playwright/e2e/VisualRegression/entityDetails.spec.ts\n"
+    )
+    output = tmp_path / "selection.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(impact_map),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    assert selection["selectors"] == []
+    assert selection["directChangedSpecs"] == []
+    assert (
+        "playwright/e2e/VisualRegression/entityDetails.spec.ts"
+        in selection["delegatedChangedSpecs"]
+    )
+    assert selection["unmappedFiles"] == []
 
 
 def test_summary_reconciles_results_and_evaluates_performance_independently():

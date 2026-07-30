@@ -13,6 +13,7 @@
 import { Button } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  Check,
   CheckCircle,
   Download01,
   Minus,
@@ -93,10 +94,14 @@ export const CsvJobsTray = () => {
   const [open, setOpen] = useState(false);
   const [cancellingJobId, setCancellingJobId] = useState<string>();
   const [downloadingJobId, setDownloadingJobId] = useState<string>();
+  const [downloadedJobIds, setDownloadedJobIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(
     () => new Set()
   );
   const hasLoadedInitialJobs = useRef(false);
+  const autoOpenedJobIds = useRef<Set<string>>(new Set());
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -142,6 +147,19 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
+  useEffect(() => {
+    const newlyFinished = visibleJobs.filter(
+      (job) =>
+        TERMINAL_STATUSES.includes(job.status) &&
+        !autoOpenedJobIds.current.has(job.jobId)
+    );
+
+    if (!isEmpty(newlyFinished)) {
+      newlyFinished.forEach((job) => autoOpenedJobIds.current.add(job.jobId));
+      setOpen(true);
+    }
+  }, [visibleJobs]);
+
   const handleCancel = useCallback(async (jobId: string) => {
     try {
       setCancellingJobId(jobId);
@@ -171,6 +189,12 @@ export const CsvJobsTray = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      setDownloadedJobIds((current) => {
+        const next = new Set(current);
+        next.add(job.jobId);
+
+        return next;
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -327,7 +351,7 @@ export const CsvJobsTray = () => {
   return (
     <div className="csv-jobs-tray">
       {open && (
-        <div className="csv-jobs-tray-popover">
+        <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">
             <div className="csv-jobs-tray-title-wrap">
               <h3>{t('label.background-job-plural')}</h3>
@@ -348,7 +372,7 @@ export const CsvJobsTray = () => {
               </Button>
             )}
             <Button
-              className="csv-jobs-tray-close"
+              className="csv-jobs-tray-close tw:-mr-1.5"
               color="link-gray"
               iconLeading={Minus}
               onPress={() => setOpen(false)}
@@ -368,26 +392,30 @@ export const CsvJobsTray = () => {
                     <span className="csv-jobs-tray-kind-icon">
                       {variant === 'running' ? (
                         renderStatusIcon(job)
+                      ) : downloadedJobIds.has(job.jobId) ? (
+                        <Check size={16} />
                       ) : (
                         <KindIcon size={16} />
                       )}
                     </span>
                     <div className="csv-jobs-tray-body">
-                      <span className="csv-jobs-tray-title">
-                        {renderJobTitle(job)}
+                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
+                        <span className="csv-jobs-tray-title tw:min-w-0">
+                          {renderJobTitle(job)}
+                        </span>
+                        {variant !== 'running' && (
+                          <span
+                            aria-hidden="true"
+                            className={`csv-jobs-tray-state csv-jobs-tray-state-${variant} tw:shrink-0`}>
+                            {renderStatusIcon(job)}
+                          </span>
+                        )}
                       </span>
                       <span className="csv-jobs-tray-sub">
                         {renderJobSubLine(job)}
                       </span>
                     </div>
                     <div className="csv-jobs-tray-actions">
-                      {variant !== 'running' && (
-                        <span
-                          aria-hidden="true"
-                          className={`csv-jobs-tray-state csv-jobs-tray-state-${variant}`}>
-                          {renderStatusIcon(job)}
-                        </span>
-                      )}
                       {renderJobRowActions(job)}
                     </div>
                   </div>
@@ -405,20 +433,38 @@ export const CsvJobsTray = () => {
           </div>
         </div>
       )}
-      {!open && (
+      {!open && !isEmpty(visibleJobs) && (
         <div className="csv-jobs-tray-launcher-wrap">
           <button
             className="csv-jobs-tray-launcher"
             type="button"
             onClick={handleOpen}>
-            <span className="csv-jobs-tray-launcher-count">
-              {activeJobs.length || visibleJobs.length}
-            </span>
-            <span className="csv-jobs-tray-launcher-label">
-              {activeJobs.length > 0
-                ? t('label.count-jobs-running', { count: activeJobs.length })
-                : t('label.background-job-plural')}
-            </span>
+            {activeJobs.length > 0 ? (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {activeJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.count-jobs-running', { count: activeJobs.length })}
+                  <span
+                    aria-hidden
+                    className="tw:ml-1 tw:inline-flex tw:items-end tw:gap-0.5 tw:align-text-bottom">
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:150ms]" />
+                    <span className="tw:size-1 tw:animate-bounce tw:rounded-full tw:bg-current tw:[animation-delay:300ms]" />
+                  </span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="csv-jobs-tray-launcher-count">
+                  {visibleJobs.length}
+                </span>
+                <span className="csv-jobs-tray-launcher-label">
+                  {t('label.background-job-plural')}
+                </span>
+              </>
+            )}
           </button>
         </div>
       )}
