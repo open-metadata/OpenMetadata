@@ -8,7 +8,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
@@ -251,123 +251,136 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const Button = ({
-  size = 'sm',
-  color = 'primary',
-  children,
-  className,
-  noTextPadding,
-  ellipsis,
-  iconLeading: IconLeading,
-  iconTrailing: IconTrailing,
-  isDisabled: disabled,
-  isLoading: loading,
-  showTextWhileLoading,
-  ...otherProps
-}: Props) => {
-  const href = 'href' in otherProps ? otherProps.href : undefined;
-  const Component = href ? AriaLink : AriaButton;
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
+  function Button(
+    {
+      size = 'sm',
+      color = 'primary',
+      children,
+      className,
+      noTextPadding,
+      ellipsis,
+      iconLeading: IconLeading,
+      iconTrailing: IconTrailing,
+      isDisabled: disabled,
+      isLoading: loading,
+      showTextWhileLoading,
+      ...otherProps
+    }: Props,
+    ref
+  ) {
+    const href = 'href' in otherProps ? otherProps.href : undefined;
+    const Component = href ? AriaLink : AriaButton;
 
-  const isIcon = (IconLeading || IconTrailing) && !children;
-  const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-    color
-  );
-  noTextPadding = isLinkType || noTextPadding;
+    const isIcon = (IconLeading || IconTrailing) && !children;
+    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
+      color
+    );
+    noTextPadding = isLinkType || noTextPadding;
 
-  let props = {};
+    let props = {};
 
-  if (href) {
-    props = {
-      ...otherProps,
+    if (href) {
+      props = {
+        ...otherProps,
 
-      href: disabled ? undefined : href,
-    };
-  } else {
-    props = {
-      ...otherProps,
+        href: disabled ? undefined : href,
+      };
+    } else {
+      props = {
+        ...otherProps,
 
-      type: otherProps.type || 'button',
-      isPending: loading,
-    };
+        type: otherProps.type || 'button',
+        isPending: loading,
+      };
+    }
+
+    return (
+      <Component
+        data-icon-only={isIcon ? true : undefined}
+        data-loading={loading ? true : undefined}
+        // `Component` is `typeof AriaButton | typeof AriaLink`, chosen at runtime by
+        // `href`. TS can't narrow which branch applies here, so it wants a ref that
+        // satisfies both `RefObject<HTMLButtonElement>` and `RefObject<HTMLAnchorElement>`
+        // simultaneously (an intersection), which `ref`'s real type — a union — can never
+        // satisfy. The cast is safe: at runtime the ref always lands on whichever concrete
+        // DOM node `Component` actually renders.
+        ref={ref as never}
+        {...props}
+        className={cx(
+          styles.common.root,
+          styles.sizes[size].root,
+          styles.colors[color].root,
+          isLinkType && styles.sizes[size].linkRoot,
+          ellipsis && 'tw:min-w-0',
+          (loading || (href && (disabled || loading))) &&
+            'tw:pointer-events-none',
+          // If in `loading` state, hide everything except the loading icon
+          // (and text if `showTextWhileLoading` is true).
+          loading &&
+            (showTextWhileLoading
+              ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
+              : 'tw:[&>*:not([data-icon=loading])]:invisible'),
+          className
+        )}
+        isDisabled={disabled}>
+        {/* Leading icon */}
+        {isValidElement(IconLeading) && IconLeading}
+        {isReactComponent(IconLeading) && (
+          <IconLeading className={styles.common.icon} data-icon="leading" />
+        )}
+
+        {loading && (
+          <svg
+            className={cx(
+              styles.common.icon,
+              !showTextWhileLoading &&
+                'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
+            )}
+            data-icon="loading"
+            fill="none"
+            viewBox="0 0 20 20">
+            {/* Background circle */}
+            <circle
+              className="tw:stroke-current tw:opacity-30"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeWidth="2"
+            />
+            {/* Spinning circle */}
+            <circle
+              className="tw:origin-center tw:animate-spin tw:stroke-current"
+              cx="10"
+              cy="10"
+              fill="none"
+              r="8"
+              strokeDasharray="12.5 50"
+              strokeLinecap="round"
+              strokeWidth="2"
+            />
+          </svg>
+        )}
+
+        {children && (
+          <span
+            data-text
+            className={cx(
+              'tw:transition-inherit-all',
+              !noTextPadding && 'tw:px-0.5',
+              ellipsis && 'tw:truncate tw:min-w-0'
+            )}>
+            {children}
+          </span>
+        )}
+
+        {/* Trailing icon */}
+        {isValidElement(IconTrailing) && IconTrailing}
+        {isReactComponent(IconTrailing) && (
+          <IconTrailing className={styles.common.icon} data-icon="trailing" />
+        )}
+      </Component>
+    );
   }
-
-  return (
-    <Component
-      data-icon-only={isIcon ? true : undefined}
-      data-loading={loading ? true : undefined}
-      {...props}
-      className={cx(
-        styles.common.root,
-        styles.sizes[size].root,
-        styles.colors[color].root,
-        isLinkType && styles.sizes[size].linkRoot,
-        ellipsis && 'tw:min-w-0',
-        (loading || (href && (disabled || loading))) &&
-          'tw:pointer-events-none',
-        // If in `loading` state, hide everything except the loading icon (and text if `showTextWhileLoading` is true).
-        loading &&
-          (showTextWhileLoading
-            ? 'tw:[&>*:not([data-icon=loading]):not([data-text])]:hidden'
-            : 'tw:[&>*:not([data-icon=loading])]:invisible'),
-        className
-      )}
-      isDisabled={disabled}>
-      {/* Leading icon */}
-      {isValidElement(IconLeading) && IconLeading}
-      {isReactComponent(IconLeading) && (
-        <IconLeading className={styles.common.icon} data-icon="leading" />
-      )}
-
-      {loading && (
-        <svg
-          className={cx(
-            styles.common.icon,
-            !showTextWhileLoading &&
-              'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
-          )}
-          data-icon="loading"
-          fill="none"
-          viewBox="0 0 20 20">
-          {/* Background circle */}
-          <circle
-            className="tw:stroke-current tw:opacity-30"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeWidth="2"
-          />
-          {/* Spinning circle */}
-          <circle
-            className="tw:origin-center tw:animate-spin tw:stroke-current"
-            cx="10"
-            cy="10"
-            fill="none"
-            r="8"
-            strokeDasharray="12.5 50"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-        </svg>
-      )}
-
-      {children && (
-        <span
-          data-text
-          className={cx(
-            'tw:transition-inherit-all',
-            !noTextPadding && 'tw:px-0.5',
-            ellipsis && 'tw:truncate tw:min-w-0'
-          )}>
-          {children}
-        </span>
-      )}
-
-      {/* Trailing icon */}
-      {isValidElement(IconTrailing) && IconTrailing}
-      {isReactComponent(IconTrailing) && (
-        <IconTrailing className={styles.common.icon} data-icon="trailing" />
-      )}
-    </Component>
-  );
-};
+);
