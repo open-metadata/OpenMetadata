@@ -1,0 +1,109 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+export interface PrefectConnectionClass {
+    /**
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
+     */
+    authType: Authentication;
+    /**
+     * Number of past flow run statuses to ingest per flow.
+     */
+    numberOfStatus?: number;
+    /**
+     * SSL Configuration for Prefect API connection.
+     */
+    sslConfig?:                  Config;
+    supportsMetadataExtraction?: boolean;
+    /**
+     * Service Type
+     */
+    type?: PrefectType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     */
+    verifySSL?: VerifySSL;
+}
+
+/**
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ */
+export interface Authentication {
+    /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     */
+    apiKey?: string;
+    /**
+     * Prefect Cloud API base URL.
+     *
+     * Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.
+     */
+    hostPort: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
+}
+
+/**
+ * SSL Configuration for Prefect API connection.
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum PrefectType {
+    Prefect = "Prefect",
+}
+
+/**
+ * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+ */
+export enum VerifySSL {
+    Ignore = "ignore",
+    NoSSL = "no-ssl",
+    Validate = "validate",
+}

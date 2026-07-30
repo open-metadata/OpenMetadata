@@ -49,7 +49,7 @@ export interface ServiceConnection {
  * MCP Service Connection.
  */
 export interface ServiceConnectionClass {
-    config?: ConfigObject;
+    config?: any[] | boolean | number | null | Connection | string;
 }
 
 /**
@@ -329,7 +329,7 @@ export interface ServiceConnectionClass {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -362,6 +362,8 @@ export interface ConfigObject {
      * certificate. Paste the PEM content directly or upload the certificate file.
      *
      * SSL Configuration for OpenMetadata Server
+     *
+     * SSL Configuration for Prefect API connection.
      */
     sslConfig?: SSLConfigObject;
     /**
@@ -405,7 +407,7 @@ export interface ConfigObject {
      *
      * Custom search service type
      */
-    type?: ConfigType;
+    type?: AirflowConnectionType;
     /**
      * Client SSL verification. Make sure to configure the SSLConfig if enabled.
      *
@@ -917,7 +919,7 @@ export interface ConfigObject {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConfigConnection;
+    connection?: AirflowConnectionConnection;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -949,6 +951,8 @@ export interface ConfigObject {
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
      *
      * Types of methods used to authenticate to the alation instance
+     *
+     * Choose between Prefect Cloud or a self-hosted Prefect Server.
      *
      * Authentication type to connect to Apache Ranger.
      *
@@ -1160,7 +1164,7 @@ export interface ConfigObject {
      *
      * Couchbase driver scheme options.
      */
-    scheme?: ConfigScheme;
+    scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
@@ -2056,6 +2060,8 @@ export interface ConfigObject {
     glossaryFilterPattern?: FilterPattern;
     /**
      * Pipeline Service Number Of Status
+     *
+     * Number of past flow run statuses to ingest per flow.
      */
     numberOfStatus?: number;
     /**
@@ -2579,6 +2585,13 @@ export enum AuthProvider {
  *
  * API Access Token Auth Credentials
  *
+ * Choose between Prefect Cloud or a self-hosted Prefect Server.
+ *
+ * Authentication configuration for Prefect Cloud.
+ *
+ * Authentication configuration for a self-hosted Prefect Server. Leave Basic Auth String
+ * empty if the server has no auth enabled.
+ *
  * Basic Auth Configuration for ElasticSearch
  *
  * API Key Authentication for ElasticSearch
@@ -2718,6 +2731,10 @@ export interface AuthenticationType {
     /**
      * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
      * http://localhost:9047 or https://dremio.example.com:9047).
+     *
+     * Prefect Cloud API base URL.
+     *
+     * Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.
      */
     hostPort?: string;
     /**
@@ -2725,9 +2742,24 @@ export interface AuthenticationType {
      */
     accessToken?: string;
     /**
+     * Prefect Cloud Account ID. Found in the URL: app.prefect.cloud/account/{accountId}.
+     */
+    accountId?: string;
+    /**
+     * Prefect Cloud API key for authentication.
+     *
      * Elastic Search API Key for API Authentication
      */
     apiKey?: string;
+    /**
+     * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
+     */
+    workspaceId?: string;
+    /**
+     * Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format
+     * 'user:password'. Leave empty if the server has no auth enabled.
+     */
+    authString?: string;
     /**
      * Elastic Search API Key ID for API Authentication
      */
@@ -3280,6 +3312,8 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration for OpenMetadata Server
  *
+ * SSL Configuration for Prefect API connection.
+ *
  * OpenMetadata Client configured to validate SSL certificates.
  */
 export interface ConsumerConfigSSLClass {
@@ -3361,7 +3395,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: Connection;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -3404,7 +3438,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface Connection {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3590,7 +3624,7 @@ export interface SecurityConfigClass {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface ConfigConnection {
+export interface AirflowConnectionConnection {
     /**
      * Password for Superset.
      *
@@ -4035,6 +4069,8 @@ export enum ConnectionScheme {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  */
 export interface ConnectionSSLConfig {
     /**
@@ -4715,7 +4751,7 @@ export enum RunMode {
  *
  * Couchbase driver scheme options.
  */
-export enum ConfigScheme {
+export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
@@ -4883,6 +4919,8 @@ export enum SpaceType {
  * connection.
  *
  * SSL Configuration for OpenMetadata Server
+ *
+ * SSL Configuration for Prefect API connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  *
@@ -5071,7 +5109,7 @@ export enum TokenType {
  *
  * Service type
  */
-export enum ConfigType {
+export enum AirflowConnectionType {
     Adls = "ADLS",
     Airbyte = "Airbyte",
     Airflow = "Airflow",
@@ -5158,6 +5196,7 @@ export enum ConfigType {
     Postgres = "Postgres",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
+    Prefect = "Prefect",
     Presto = "Presto",
     PubSub = "PubSub",
     QlikCloud = "QlikCloud",
