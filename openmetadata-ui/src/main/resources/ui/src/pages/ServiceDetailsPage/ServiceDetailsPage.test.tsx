@@ -1134,7 +1134,6 @@ describe('ServiceDetailsPage', () => {
       // Verify the deleted call was made
       expect(getDataModels).toHaveBeenCalled();
     });
-
   });
 
   // The data model count fetch owns `isServiceLoading` for dashboard services and
