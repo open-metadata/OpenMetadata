@@ -141,6 +141,7 @@ const DataProductsTab = forwardRef(
             <>
               {dataProducts.data.map((dataProduct) => (
                 <ExploreSearchCard
+                  hideBreadcrumbs
                   className={classNames(
                     'm-b-sm cursor-pointer',
                     selectedCard?.id === dataProduct.id ? 'highlight-card' : ''

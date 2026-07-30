@@ -4,10 +4,12 @@
     "playwright/e2e/Auth/**",
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
-    "playwright/e2e/Pages/DataInsight*.spec.ts",
+    "playwright/e2e/Pages/DataInsight.spec.ts",
+    "playwright/e2e/Pages/DataInsightSettings.spec.ts",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
     "playwright/e2e/Features/OntologyExplorerRdf.spec.ts",
-    "playwright/e2e/Features/OntologyImportRdf.spec.ts"
+    "playwright/e2e/Features/OntologyImportRdf.spec.ts",
+    "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
     {
