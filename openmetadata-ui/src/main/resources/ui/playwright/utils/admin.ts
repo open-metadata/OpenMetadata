@@ -10,10 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Browser, request } from '@playwright/test';
+import { APIRequestContext, Browser, Page, request } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
 import { DEFAULT_ADMIN_USER } from '../constant/user';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
+
+export const authenticateAdminPage = async (page: Page) => {
+  await page.goto('/');
+  await page.waitForURL((url) => {
+    return (
+      url.pathname.includes('/my-data') || url.pathname.includes('/signin')
+    );
+  });
+
+  if (page.url().includes('/signin')) {
+    const admin = new AdminClass();
+    await admin.login(page);
+  }
+
+  await redirectToHomePage(page);
+};
 
 export const performAdminLogin = async (browser: Browser) => {
   const admin = new AdminClass();
@@ -50,7 +66,7 @@ export const createAdminApiContext = async (): Promise<{
 
     if (!loginResponse.ok()) {
       throw new Error(
-        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`
+        `Admin authentication failed (${loginResponse.status()}): ${await loginResponse.text()}`,
       );
     }
 

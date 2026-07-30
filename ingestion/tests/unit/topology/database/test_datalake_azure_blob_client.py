@@ -270,26 +270,19 @@ class TestDatalakeAzureBlobClientSchemaMethods(unittest.TestCase):
         self.mock_blob_service_client = MagicMock()
         self.client = DatalakeAzureBlobClient(client=self.mock_blob_service_client)
 
-    def test_get_database_schema_names_with_bucket_prefix(self):
+    def test_get_database_schema_names_with_bucket_yields_only_that_bucket(self):
         """
         GIVEN: A bucket_name is specified
         WHEN: get_database_schema_names() is called
-        THEN: It should filter containers by that prefix
+        THEN: It should yield exactly that bucket and NOT call list_containers
+              (avoids requiring account-level list permission).
         """
-        # Arrange
-        self.mock_blob_service_client.list_containers.return_value = [
-            {"name": "decube"},
-            {"name": "decube-backup"},
-        ]
-
         # Act
         result = list(self.client.get_database_schema_names(bucket_name="decube"))
 
         # Assert
-        self.mock_blob_service_client.list_containers.assert_called_once_with(
-            name_starts_with="decube"
-        )
-        self.assertEqual(result, ["decube", "decube-backup"])
+        self.assertEqual(result, ["decube"])
+        self.mock_blob_service_client.list_containers.assert_not_called()
 
     def test_get_database_schema_names_without_bucket_lists_all(self):
         """

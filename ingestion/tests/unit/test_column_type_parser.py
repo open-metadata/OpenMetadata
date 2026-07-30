@@ -16,6 +16,8 @@ import logging
 import os
 from unittest import TestCase
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMixin
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -146,3 +148,51 @@ def test_superset_parse_array_data_type():
     col_parse = {"dataType": "STRING", "arrayDataType": None}
     result = SupersetSourceMixin.parse_array_data_type(None, col_parse)
     assert result == None
+
+
+def test_struct_field_name_with_colons():
+    """Delta column-mapped struct field names contain ':' -- issue #29996.
+
+    The last top-level ':' separates name from type; the rest belongs to the name.
+    """
+    parsed = ColumnTypeParser._parse_datatype_string(
+        "struct<baselineproportions:1:behavioral_segment_search_for_dm:bigint>"
+    )
+    children = parsed["children"]
+
+    assert parsed["dataType"] == "STRUCT"
+    assert len(children) == 1
+    assert (
+        children[0]["name"] == "baselineproportions:1:behavioral_segment_search_for_dm"
+    )
+    assert children[0]["dataType"] == "BIGINT"
+
+
+def test_struct_field_name_with_colons_backtick_quoted():
+    """Databricks may render a colon-path field name backtick-quoted."""
+    parsed = ColumnTypeParser._parse_datatype_string("struct<`a:b:c`:bigint>")
+    children = parsed["children"]
+
+    assert len(children) == 1
+    assert children[0]["name"] == "a:b:c"
+    assert children[0]["dataType"] == "BIGINT"
+
+
+def test_struct_field_name_with_colons_mixed_and_nested():
+    """A colon-name field alongside a normal field and a nested struct field."""
+    parsed = ColumnTypeParser._parse_datatype_string(
+        "struct<a:b:string,plain:int,nested:c:struct<inner:int>>"
+    )
+    children = parsed["children"]
+
+    assert [child["name"] for child in children] == ["a:b", "plain", "nested:c"]
+    assert children[0]["dataType"] == "STRING"
+    assert children[1]["dataType"] == "INT"
+    assert children[2]["dataType"] == "STRUCT"
+    assert children[2]["children"][0]["name"] == "inner"
+
+
+def test_struct_field_without_colon_still_raises():
+    """A field with no ':' at all is still an invalid struct field format."""
+    with pytest.raises(ValueError, match="field_name:field_type"):
+        ColumnTypeParser._parse_datatype_string("struct<justaname>")

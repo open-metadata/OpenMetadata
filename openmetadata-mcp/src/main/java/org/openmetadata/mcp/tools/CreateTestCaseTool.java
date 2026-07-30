@@ -116,6 +116,8 @@ public class CreateTestCaseTool implements McpTool {
         testDefinitionName,
         fqn);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    // createOrUpdate silently overwrites an existing test case with this name — tools.json
+    // marks this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<TestCase> response =
         repository.createOrUpdate(null, testCase, updatedBy, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(

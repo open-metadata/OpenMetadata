@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, ReactElement } from 'react';
+import { ElementType, lazy } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
@@ -58,7 +58,7 @@ const TestCaseResultTab = withSuspenseFallback(
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
+  Tab: ElementType;
   key: TestCasePageTabs;
   isBeta?: boolean;
 }

@@ -117,7 +117,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    */
   async verifyPropertyValue(
     propertyName: string,
-    expectedValue: any
+    expectedValue: unknown
   ): Promise<void> {
     const propertyCard = this.page.getByTestId(propertyName);
     await propertyCard.waitFor({ state: 'visible' });

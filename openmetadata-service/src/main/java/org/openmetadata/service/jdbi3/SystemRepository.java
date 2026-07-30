@@ -14,13 +14,13 @@ import com.unboundid.ldap.sdk.LDAPConnectionOptions;
 import com.unboundid.ldap.sdk.SearchResult;
 import com.unboundid.ldap.sdk.SearchScope;
 import com.unboundid.util.ssl.SSLUtil;
+import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,8 +43,8 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -77,6 +77,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -86,10 +87,7 @@ import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
-import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexMappingsSeeder;
-import org.openmetadata.service.search.SearchIndexSettings;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -109,6 +107,7 @@ import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -119,6 +118,8 @@ import org.openmetadata.service.util.ValidationErrorBuilder.FieldPaths;
 @Repository
 public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings {}";
+  private static final String GLOSSARY_TERM_RELATION_SETTINGS_CHANGED =
+      "Glossary term relation settings changed while the JSON Patch was being applied";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private static final String VECTOR_EMBEDDING_INDEX_KEY = "vectorEmbedding";
   private static final String REINDEX_STATUS_VALIDATION_KEY = "Search Reindex Status";
@@ -337,85 +338,10 @@ public class SystemRepository {
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
   }
 
-  public SearchIndexMappings getSearchIndexMappings() {
-    SearchIndexMappings result = null;
-    Settings stored = getConfigWithKey(SettingsType.SEARCH_INDEX_MAPPINGS.toString());
-    if (stored != null) {
-      result = JsonUtils.convertValue(stored.getConfigValue(), SearchIndexMappings.class);
-    }
-    return result;
-  }
-
-  /**
-   * The stored mapping for a (language, entityType); when {@code fallbackToDefault} and no stored
-   * slice exists, the hardened resource default is returned instead.
-   */
-  public Map<String, Object> getSearchIndexMapping(
-      String language, String entityType, boolean fallbackToDefault) {
-    Map<String, Object> result = storedSearchIndexMapping(language, entityType);
-    if (result == null && fallbackToDefault) {
-      result = SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
-    }
-    return result;
-  }
-
-  public Settings upsertSearchIndexMapping(
-      String language, String entityType, Map<String, Object> mapping) {
-    return spliceSearchIndexMapping(language, entityType, hardenMapping(mapping));
-  }
-
-  public Settings resetSearchIndexMapping(String language, String entityType) {
-    Settings result = null;
-    Map<String, Object> defaultMapping =
-        SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
-    if (defaultMapping != null) {
-      result = spliceSearchIndexMapping(language, entityType, defaultMapping);
-    }
-    return result;
-  }
-
-  private Settings spliceSearchIndexMapping(
-      String language, String entityType, Map<String, Object> mapping) {
-    SearchIndexMappings blob = getOrBuildSearchIndexMappings();
-    blob.getLanguages()
-        .computeIfAbsent(language, key -> new LinkedHashMap<>())
-        .put(entityType, mapping);
-    Settings setting =
-        new Settings().withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS).withConfigValue(blob);
-    createOrUpdate(setting);
-    return setting;
-  }
-
-  private SearchIndexMappings getOrBuildSearchIndexMappings() {
-    SearchIndexMappings blob = getSearchIndexMappings();
-    if (blob == null) {
-      blob = new SearchIndexMappings();
-    }
-    if (blob.getLanguages() == null) {
-      blob.setLanguages(new LinkedHashMap<>());
-    }
-    return blob;
-  }
-
-  private Map<String, Object> storedSearchIndexMapping(String language, String entityType) {
-    Map<String, Object> result = null;
-    SearchIndexMappings blob = getSearchIndexMappings();
-    if (blob != null && blob.getLanguages() != null) {
-      Map<String, Object> byEntity = blob.getLanguages().get(language);
-      if (byEntity != null && byEntity.get(entityType) != null) {
-        result = JsonUtils.getMap(byEntity.get(entityType));
-      }
-    }
-    return result;
-  }
-
-  private Map<String, Object> hardenMapping(Map<String, Object> mapping) {
-    String hardened =
-        SearchIndexSettings.harden(JsonUtils.pojoToJson(mapping), SearchFieldLimits.active());
-    return JsonUtils.getMapFromJson(hardened);
-  }
-
   public Response patchSetting(String settingName, JsonPatch patch) {
+    if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
+      return patchGlossaryTermRelationSettings(patch);
+    }
     Settings original = getConfigWithKey(settingName);
     // Apply JSON patch to the original entity to get the updated entity
     JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
@@ -431,6 +357,39 @@ public class SystemRepository {
       return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
     }
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
+    String expectedJson = dao.getGlossaryTermRelationSettingsJson();
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    }
+
+    GlossaryTermRelationSettings current =
+        JsonUtils.readValue(expectedJson, GlossaryTermRelationSettings.class);
+    JsonValue patched;
+    try {
+      patched = JsonUtils.applyPatch(current, patch);
+    } catch (JsonException exception) {
+      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED, exception);
+    }
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(current, updated);
+    GlossaryTermRelationSettingsUtil.normalize(updated);
+    GlossaryTermRelationSettingsUtil.validateUniqueNames(updated);
+    String updatedJson = JsonUtils.pojoToJson(updated);
+    int updatedRows = dao.updateGlossaryTermRelationSettingsIfCurrent(expectedJson, updatedJson);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(GLOSSARY_TERM_RELATION_SETTINGS_CHANGED);
+    }
+
+    SettingsCache.invalidateSettings(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    Settings response =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, response, ENTITY_UPDATED)).toResponse();
   }
 
   private void postUpdate(SettingsType settingsType) {

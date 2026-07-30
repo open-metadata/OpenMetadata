@@ -244,11 +244,7 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
-
-  if (showWelcomeScreen) {
+  if (!isLoading && showWelcomeScreen) {
     return (
       <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
@@ -278,7 +274,7 @@ const MyDataPage = () => {
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
           {isLoading ? (
-            <MyDataPageSkeleton />
+            <Loader />
           ) : (
             <ReactGridLayout
               className="grid-container p-x-box"

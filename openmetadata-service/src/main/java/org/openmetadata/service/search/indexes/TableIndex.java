@@ -58,6 +58,17 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     // requested). Lineage nodes read (node as Table).testSuite to render the data-observability
     // summary, so without it getDataQualityLineage loses its test information after a reindex.
     fields.add("testSuite");
+    // "tableConstraints" is fields-gated as well (TableRepository.clearFields nulls it when not
+    // requested). buildSearchIndexDocInternal builds the "upstreamEntityRelationship" doc field —
+    // the only source the ER diagram's entity-relationship graph aggregates on — from
+    // table.getTableConstraints(). Without this, reindex-built docs carry an empty relationship
+    // list and foreign-key edges disappear from the ER diagram after a reindex.
+    fields.add("tableConstraints");
+    // "schemaDefinition" is fields-gated too (TableRepository.clearFields nulls it when not
+    // requested) and buildSearchIndexDocInternal indexes it (doc.put("schemaDefinition", ...)).
+    // Without this, reindex-built docs drop the view/DDL text and full-text search can no longer
+    // match tables by their schema definition.
+    fields.add("schemaDefinition");
     return java.util.Collections.unmodifiableSet(fields);
   }
 
