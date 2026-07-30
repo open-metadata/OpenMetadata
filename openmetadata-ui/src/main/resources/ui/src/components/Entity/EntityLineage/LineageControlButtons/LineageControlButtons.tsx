@@ -72,9 +72,7 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
-    const currentZoom = reactFlowInstance?.getZoom() ?? 1;
-    reactFlowInstance?.fitView({ padding: 0.2 });
-    reactFlowInstance?.zoomTo(currentZoom);
+    reactFlowInstance?.fitView({ padding: 0.2, maxZoom: 1 });
 
     setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);

@@ -55,6 +55,39 @@ const TestCaseResultTab = withSuspenseFallback(
   )
 );
 
+const DimensionalityTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/DimensionalityTab/DimensionalityTab'
+      )
+  )
+);
+const SqlQueryTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/SqlQueryTab/SqlQueryTab.component'
+      )
+  )
+);
+const TestCaseIncidentTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component'
+      )
+  )
+);
+const TestCaseResultTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component'
+      )
+  )
+);
+
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;

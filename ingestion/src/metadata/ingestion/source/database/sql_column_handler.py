@@ -16,6 +16,7 @@ import traceback
 from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import NoSuchTableError
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -138,7 +139,13 @@ class SqlColumnHandlerMixin:
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        try:
+            pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        except (NotImplementedError, KeyError, NoSuchTableError):
+            logger.debug(
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            pk_constraints = {}
         try:
             unique_constraints = inspector.get_unique_constraints(
                 table_name, schema_name
@@ -193,7 +200,7 @@ class SqlColumnHandlerMixin:
 
         pk_columns = [
             clean_up_starting_ending_double_quotes_in_string(pk_column)
-            for pk_column in pk_columns
+            for pk_column in pk_columns  # pyright: ignore[reportOptionalIterable]
         ]
 
         return pk_columns, unique_columns, foreign_columns

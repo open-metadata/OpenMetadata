@@ -46,6 +46,14 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
   )
 );
 
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
+
 class CSVUtilsClassBase {
   public hideImportsColumnList() {
     return ['glossaryStatus', 'inspectionQuery'];

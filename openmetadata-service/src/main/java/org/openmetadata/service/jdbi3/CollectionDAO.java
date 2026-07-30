@@ -82,7 +82,6 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -7783,7 +7782,14 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
       }
       return listBefore(
-          getTableName(), mySqlCondition, postgresCondition, limit, beforeName, beforeId, groupBy);
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          beforeName,
+          beforeId,
+          groupBy);
     }
 
     @Override
@@ -7808,7 +7814,14 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
       }
       return listAfter(
-          getTableName(), mySqlCondition, postgresCondition, limit, afterName, afterId, groupBy);
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          afterName,
+          afterId,
+          groupBy);
     }
 
     @SqlQuery(
@@ -9339,6 +9352,14 @@ public interface CollectionDAO {
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
 
+    @SqlQuery("SELECT json FROM openmetadata_settings WHERE configType = :configType")
+    String getConfigJsonWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM openmetadata_settings "
+            + "WHERE configType = 'glossaryTermRelationSettings'")
+    String getGlossaryTermRelationSettingsJson() throws StatementException;
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT into openmetadata_settings (configType, json)"
@@ -9350,6 +9371,39 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateSettingsIfCurrent(
+        @Bind("configType") String configType,
+        @Bind("expectedJson") String expectedJson,
+        @Bind("updatedJson") String updatedJson);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateGlossaryTermRelationSettingsIfCurrent(
+        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
@@ -9414,7 +9468,6 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
-            case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

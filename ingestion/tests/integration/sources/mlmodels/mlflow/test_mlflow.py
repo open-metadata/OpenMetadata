@@ -12,6 +12,7 @@
 import logging
 import os
 import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import mlflow
@@ -96,8 +97,8 @@ def create_data(mlflow_environment):
 
     np.random.seed(40)
 
-    csv_url = "https://raw.githubusercontent.com/open-metadata/openmetadata-demo/main/resources/winequality-red.csv"
-    data = pd.read_csv(csv_url, sep=";")
+    csv_path = Path(__file__).parent / "data" / "winequality-red.csv"
+    data = pd.read_csv(csv_path, sep=";")
 
     train, test = train_test_split(data)
 
@@ -139,10 +140,10 @@ def create_data(mlflow_environment):
                 else:
                     mlflow.sklearn.log_model(lr, "model")
                 break
-            except Exception:
+            except Exception as exc:
                 if attempt < 4:
                     logging.getLogger(__name__).warning(
-                        "Retry %d/5: S3 upload failed, retrying...", attempt + 1
+                        "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
                     )
                     time.sleep(5 * (attempt + 1))
                 else:
