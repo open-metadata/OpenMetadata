@@ -108,6 +108,9 @@ jobs:
       tw_audit_changed_files: ${{ steps.tw_audit.outputs.changed_files }}
       tw_guard_result: ${{ steps.tw_guard.outcome }}
       tw_guard_changed_files: ${{ steps.tw_guard.outputs.changed_files }}
+      eslint_has_findings: ${{ steps.eslint_report.outputs.has_findings }}
+      eslint_summary: ${{ steps.eslint_report.outputs.summary }}
+      eslint_details: ${{ steps.eslint_report.outputs.details }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -168,6 +171,28 @@ jobs:
             git clean -fd
             exit 1
           fi
+
+      # Reports, never gates — lint_src above already fails the build on ESLint
+      # errors. This exists so `warn`-tier rules, which by definition do not
+      # fail anything, are still visible on the PR instead of silently piling up.
+      - name: ESLint findings on changed files
+        id: eslint_report
+        if: steps.changed-src-files.outputs.any_changed == 'true'
+        continue-on-error: true
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        env:
+          CHANGED_FILES: ${{ steps.changed-src-files.outputs.all_changed_files }}
+        run: |
+          TS_FILES=$(echo "$CHANGED_FILES" | tr ' ' '\n' | awk '/\.(ts|tsx|js|jsx)$/ { printf "%s ", $0 }')
+          if [ -z "${TS_FILES// }" ]; then
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # No --fix: lint_src already applied and reverted fixes, and this must
+          # not mutate the tree. `|| true` because a non-zero exit just means
+          # findings exist, which is exactly what we are reporting.
+          yarn lint:base -f json $TS_FILES > /tmp/eslint.json 2>/dev/null || true
+          node scripts/eslint-pr-report.js /tmp/eslint.json >> "$GITHUB_OUTPUT"
 
       - name: Get all changed UI files
         id: changed-ui-files
@@ -416,7 +441,13 @@ jobs:
             const failures = checks.filter(c => c.result === 'failure');
             const commentId = '${{ steps.fc.outputs.comment-id }}';
 
-            if (failures.length === 0) {
+            const eslintFindings = '${{ needs.checkstyle.outputs.eslint_has_findings }}' === 'true';
+            const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
+            const eslintDetails  = ${{ toJSON(needs.checkstyle.outputs.eslint_details) }} || '';
+
+            // Warnings do not fail the build, so a comment posted only on
+            // failure would hide them entirely — which defeats the warn tier.
+            if (failures.length === 0 && !eslintFindings) {
               if (commentId) {
                 await github.rest.issues.deleteComment({
                   owner: context.repo.owner,
@@ -435,11 +466,28 @@ jobs:
               return lines.join('\n');
             });
 
+            const title = failures.length
+              ? '### ❌ UI Checkstyle Failed'
+              : '### ⚠️ UI Checkstyle passed — lint findings in changed files';
+
+            const eslintSection = eslintFindings
+              ? [
+                  `#### 🔍 ESLint findings in this PR's files — ${eslintSummary}`,
+                  '',
+                  'Errors block the build. Warnings do not yet — they are rules whose backlog is still',
+                  'being worked down, listed so this PR does not add to it. See `docs/ui-code-quality-gate.md`.',
+                  '',
+                  eslintDetails,
+                  '',
+                ]
+              : [];
+
             const body = [
               '<!-- check:ui-checkstyle-summary -->',
-              '### ❌ UI Checkstyle Failed',
+              title,
               '',
               ...sections.flatMap(s => [s, '']),
+              ...eslintSection,
               '---',
               '**Fix locally (fast - only checks files changed in this branch):**',
               '```bash',
