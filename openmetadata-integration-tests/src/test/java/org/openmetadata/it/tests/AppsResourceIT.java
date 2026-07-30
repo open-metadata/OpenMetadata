@@ -613,6 +613,21 @@ public class AppsResourceIT {
           foundApp1 && foundApp2,
           "Both Metadata apps should be found when filtering by Metadata agent type");
 
+      // Exclusion coverage: a non-matching agent type must not return the Metadata apps,
+      // so a no-op filter that returns everything fails here.
+      String excludedJson =
+          httpClient.executeForString(
+              HttpMethod.GET, "/v1/apps?agentType=NonMatchingType", null, null);
+      ResultList<App> excluded =
+          JsonUtils.readValue(excludedJson, new TypeReference<ResultList<App>>() {});
+      boolean app1Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName1));
+      boolean app2Excluded =
+          excluded.getData().stream().noneMatch(app -> app.getName().equals(appName2));
+      assertTrue(
+          app1Excluded && app2Excluded,
+          "Metadata apps must be excluded when filtering by a non-matching agent type");
+
     } finally {
       try {
         Apps.uninstall(appName1, true);
