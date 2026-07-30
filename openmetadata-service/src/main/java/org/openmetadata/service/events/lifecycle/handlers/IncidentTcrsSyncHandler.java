@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TestCaseResolutionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -160,6 +161,7 @@ public final class IncidentTcrsSyncHandler {
               .withTestCaseReference(task.getAbout())
               .withTimestamp(task.getUpdatedAt())
               .withUpdatedAt(task.getUpdatedAt())
+              .withFailureSummary(extractFailureReason(task))
               .withUpdatedBy(updatedByRef);
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
@@ -177,6 +179,12 @@ public final class IncidentTcrsSyncHandler {
           e.getMessage(),
           e);
     }
+  }
+
+  private static String extractFailureReason(Task task) {
+    TestCaseResolutionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), TestCaseResolutionPayload.class);
+    return payload != null ? payload.getFailureReason() : null;
   }
 
   /**
