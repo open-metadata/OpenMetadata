@@ -18,9 +18,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.tasks.CreateTask;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -381,5 +385,109 @@ public class DataAccessRequestValidationIT {
     assertTrue(
         rejection.getMessage().contains("Invalid task payload"),
         () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  /**
+   * DataAccessRequestTaskWorkflow declares the {@code reject} transition with {@code
+   * requiresComment: true}. {@code TaskResource.validateTransitionComment} enforces that at the API
+   * boundary; without it the resolution was stored with no reason and the requester never learned
+   * why they were denied.
+   */
+  @Test
+  void testDarResolve_rejectWithoutComment_returns400(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    ResolveTask rejectWithoutComment = new ResolveTask().withTransitionId("reject");
+
+    InvalidRequestException rejection =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .resolve(dar.getId().toString(), rejectWithoutComment));
+    assertTrue(
+        rejection.getMessage().contains("requires a non-empty comment"),
+        () -> "Unexpected rejection message: " + rejection.getMessage());
+  }
+
+  @Test
+  void testDarResolve_rejectWithComment_succeeds(TestNamespace ns) {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    Task dar =
+        createDataAccessRequest(
+            SdkClients.user1Client(),
+            ns,
+            "table",
+            table.getFullyQualifiedName(),
+            dataAccessPayload("FullAccess"));
+
+    ResolveTask rejectWithComment =
+        new ResolveTask()
+            .withTransitionId("reject")
+            .withComment("Access denied for compliance reasons.");
+
+    Task resolved =
+        SdkClients.adminClient().tasks().resolve(dar.getId().toString(), rejectWithComment);
+    assertNotNull(resolved);
+  }
+
+  /**
+   * Regression test for the DAR self-approval leak: the workflow's {@code taskUpdatedBy} carries
+   * the requester's username. {@code SetApprovalAssigneesImpl} must remove that user from the
+   * assignees list even when it landed there via {@code taskReviewers}. Before the fix, filing a
+   * DAR while listed as reviewer left the requester on the assignees list and they could approve
+   * their own request.
+   */
+  @Test
+  void testDarCreation_requesterAsReviewer_notInAssignees(TestNamespace ns) throws Exception {
+    Table table = createTableOnSnowflakeService(ns, baseSnowflakeConnection());
+    String requesterFqn = "shared_user1@test.openmetadata.org";
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("dar_selfapproval_" + UUID.randomUUID()))
+            .withCategory(TaskCategory.DataAccess)
+            .withType(TaskEntityType.DataAccessRequest)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withReviewers(List.of(requesterFqn))
+            .withPayload(dataAccessPayload("FullAccess"));
+    Task dar = SdkClients.user1Client().tasks().create(request);
+
+    Awaitility.await("DAR workflow to populate assignees for " + dar.getId())
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              Task fresh =
+                  SdkClients.adminClient()
+                      .tasks()
+                      .get(dar.getId().toString(), "assignees,createdBy");
+              List<String> assigneeNames =
+                  (fresh.getAssignees() == null ? List.<String>of() : fresh.getAssignees())
+                      .stream()
+                          .map(ref -> ref.getName() == null ? "" : ref.getName())
+                          .collect(Collectors.toList());
+              return !assigneeNames.isEmpty() || fresh.getStatus() != null;
+            });
+
+    Task refreshed =
+        SdkClients.adminClient().tasks().get(dar.getId().toString(), "assignees,createdBy");
+    List<String> assigneeNames =
+        (refreshed.getAssignees() == null ? List.<String>of() : refreshed.getAssignees())
+            .stream()
+                .map(ref -> ref.getName() == null ? "" : ref.getName())
+                .collect(Collectors.toList());
+    assertTrue(
+        assigneeNames.stream().noneMatch(name -> name.equalsIgnoreCase(requesterFqn)),
+        () -> "Requester leaked into assignees: " + assigneeNames);
   }
 }

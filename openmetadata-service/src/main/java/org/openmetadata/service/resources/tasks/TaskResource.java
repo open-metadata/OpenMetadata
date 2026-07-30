@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -1111,6 +1112,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String newValue = resolveTask.getNewValue();
     Object resolvedPayload = resolveTask.getPayload();
     String comment = resolveTask.getComment();
+    validateTransitionComment(task, transitionId, comment);
 
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
@@ -1382,10 +1384,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
     validateTaskCanBeResolved(task);
 
+    String suggestionApproveTransitionId =
+        TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+    validateTransitionComment(task, suggestionApproveTransitionId, null);
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
             task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved),
+            suggestionApproveTransitionId,
             TaskResolutionType.Approved,
             null,
             null,
@@ -1488,26 +1493,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       case Approve -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
         validateTaskCanBeResolved(task);
+        String approveTransitionId =
+            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
+        validateTransitionComment(task, approveTransitionId, comment);
         repository.resolveTaskWithWorkflow(
-            task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved),
-            TaskResolutionType.Approved,
-            null,
-            null,
-            comment,
-            userName);
+            task, approveTransitionId, TaskResolutionType.Approved, null, null, comment, userName);
       }
       case Reject -> {
         repository.checkPermissionsForResolveTask(authorizer, task, false, securityContext);
         validateTaskCanBeResolved(task);
+        String rejectTransitionId =
+            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected);
+        validateTransitionComment(task, rejectTransitionId, comment);
         repository.resolveTaskWithWorkflow(
-            task,
-            TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Rejected),
-            TaskResolutionType.Rejected,
-            null,
-            null,
-            comment,
-            userName);
+            task, rejectTransitionId, TaskResolutionType.Rejected, null, null, comment, userName);
       }
       case Assign -> {
         if (params == null || params.getAssignees() == null || params.getAssignees().isEmpty()) {
@@ -1568,6 +1567,27 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
    */
   private void validateCsvAgainstAccessType(String csv) {
     validateCsvAgainstEnum("accessType", csv, DataAccessType.class);
+  }
+
+  /**
+   * Enforces the workflow's {@code requiresComment=true} contract at the API boundary. Workflow
+   * definitions (e.g. DataAccessRequestTaskWorkflow) mark reject / revoke transitions as
+   * comment-required so the requester learns why their access was declined; before this check the
+   * backend accepted resolve requests with an empty comment and silently stored the resolution
+   * without a reason.
+   */
+  private void validateTransitionComment(
+      final Task task, final String transitionId, final String comment) {
+    final TaskAvailableTransition transition =
+        TaskWorkflowLifecycleResolver.findTransition(task, transitionId);
+    if (transition != null
+        && Boolean.TRUE.equals(transition.getRequiresComment())
+        && (comment == null || comment.isBlank())) {
+      throw BadRequestException.of(
+          String.format(
+              "Transition '%s' on task '%s' requires a non-empty comment.",
+              transitionId, task.getId()));
+    }
   }
 
   private void validateTaskCanBeResolved(Task task) {
