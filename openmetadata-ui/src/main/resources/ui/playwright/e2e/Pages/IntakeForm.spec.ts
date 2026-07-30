@@ -1393,6 +1393,12 @@ test.describe(
       await dateField.getByRole('button').click();
       await page.getByRole('button', { name: 'Today', exact: true }).click();
       await page.getByRole('button', { name: 'Apply', exact: true }).click();
+      // Wait for the date picker popup to close before opening the dateTime
+      // picker — if Apply doesn't immediately close it, two "Today" buttons
+      // appear and the strict-mode locator fails with "resolved to 2 elements".
+      await expect(
+        page.getByRole('button', { name: 'Today', exact: true })
+      ).toBeHidden();
 
       const dateTimeField = page.getByTestId(
         `extension-${dataProductProperties.dateTime}`
@@ -1401,6 +1407,9 @@ test.describe(
       await dateTimeField.getByRole('button').first().click();
       await page.getByRole('button', { name: 'Today', exact: true }).click();
       await page.getByRole('button', { name: 'Apply', exact: true }).click();
+      await expect(
+        page.getByRole('button', { name: 'Apply', exact: true })
+      ).toBeHidden();
       await dateTimeField.getByRole('spinbutton').first().click();
       await page.keyboard.type('0930AM');
 
@@ -1436,8 +1445,7 @@ test.describe(
       await expect(multiEnumInput).toBeVisible();
       await multiEnumInput.click();
       await page.getByRole('option', { name: 'blue', exact: true }).click();
-      // Wait for the 'blue' chip to confirm the selection processed, then
-      // press Escape to cleanly close any open dropdown before re-opening.
+      // Wait for the 'blue' chip — confirms the selection has been processed.
       await expect(
         page
           .locator(
@@ -1446,6 +1454,13 @@ test.describe(
           .getByText('blue', { exact: true })
       ).toBeVisible();
       await page.keyboard.press('Escape');
+      // Escape returns focus to the combobox input; with menuTrigger="focus" the
+      // Autocomplete immediately re-opens the dropdown, which causes another
+      // re-render cycle and detaches the input before our next click lands.
+      // Click a neutral field (the name input) to move focus away, stopping the
+      // reopen cycle, then wait for the listbox to fully disappear.
+      await page.getByTestId('name').locator('input').click();
+      await expect(page.getByRole('listbox')).toBeHidden();
       await multiEnumInput.click();
       await page.getByRole('option', { name: 'red', exact: true }).click();
       await page.keyboard.press('Escape');
