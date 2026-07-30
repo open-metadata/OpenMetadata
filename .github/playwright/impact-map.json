@@ -179,7 +179,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
-      "projects": ["chromium", "Basic"],
+      "projects": ["chromium", "Basic", "ImportExport"],
       "specs": [
         "playwright/e2e/Features/Glossary/**/*.spec.ts",
         "playwright/e2e/Pages/*Glossary*.spec.ts",
