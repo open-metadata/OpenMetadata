@@ -36,6 +36,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.services.ServiceHealth;
 import org.openmetadata.schema.api.services.ServicesOverview;
 import org.openmetadata.schema.type.EntityReference;
@@ -178,13 +179,13 @@ public class ServicesOverviewResource {
       String domain,
       ProviderType excludeProvider) {
     validateWindow(offset, limit);
-    Set<String> universe = resolveUniverse(entityTypes);
-    Set<String> listTypes = resolveListTypes(listEntityTypes, universe);
-    Set<ServiceHealth> healthFilter = nullOrEmpty(healths) ? Set.of() : Set.copyOf(healths);
+    Set<String> universe = resolveUniverse(present(entityTypes));
+    Set<String> listTypes = resolveListTypes(present(listEntityTypes), universe);
+    Set<ServiceHealth> healthFilter = present(healths);
     return new ServicesOverviewRequest(
         universe,
         listTypes,
-        nullOrEmpty(serviceTypes) ? Set.of() : Set.copyOf(serviceTypes),
+        present(serviceTypes),
         healthFilter,
         q,
         includeHealth || !healthFilter.isEmpty(),
@@ -197,6 +198,25 @@ public class ServicesOverviewResource {
   }
 
   private static final String DESCENDING = "desc";
+
+  /**
+   * Normalizes a repeatable selector to the values actually selected.
+   *
+   * <p>A bare {@code ?health=} or {@code ?serviceType=} means "nothing selected", which for a filter
+   * has to mean "no filter" rather than "match nothing" — an empty control must not blank the list.
+   * JAX-RS renders that as a one-element set holding {@code null} for an enum param, or the empty
+   * string for a string param, so both are dropped here rather than being pushed into a predicate.
+   */
+  private <T> Set<T> present(Set<T> values) {
+    Set<T> result = Set.of();
+    if (values != null) {
+      result =
+          values.stream()
+              .filter(value -> value != null && !String.valueOf(value).isBlank())
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+    return result;
+  }
 
   private void validateWindow(int offset, int limit) {
     if ((long) offset + limit > ServicesOverviewRequest.MAX_WINDOW) {
