@@ -16,10 +16,15 @@ already chose the wrong pattern. Every rule therefore exists twice.
 |---|---|---|
 | **Knowledge** | `.claude/rules/*.md`, auto-loaded by `paths:` glob | — |
 | **Enforcement** | `.claude/settings.json` hooks | `ui-checkstyle` job |
-| **Backstop** | `.pre-commit-config.yaml` (git-level, works for any agent or none) | required status check |
+| **Self-serve** | `make ui-checkstyle-changed` | required status check |
 
-**One script, four call sites.** Each audit is a single implementation invoked by the agent hook,
-pre-commit, CI, and `make ui-checkstyle-changed`. There is no second copy to drift.
+**One script, three call sites.** Each audit is a single implementation invoked by the agent hook,
+`make ui-checkstyle-changed`, and the `ui-checkstyle` CI job. There is no second copy to drift.
+
+**Checkstyle is the enforcement point — not pre-commit.** New gates are deliberately kept out of
+`.pre-commit-config.yaml`: every hook there is paid on every single commit, and these audits shell
+out to `git diff` and `node`. Committing must stay fast. `ui-checkstyle` is the one place a gate has
+to hold, and `make ui-checkstyle-changed` is how you get that answer locally before pushing.
 
 ## Run it locally
 
