@@ -1066,6 +1066,11 @@ test.describe('Bulk Import Export', () => {
       const visibleColCount = totalCellCount / (rowCount + 1); // +1 for the header row
 
       await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
+        // Click the first data cell to ensure the grid has keyboard focus before
+        // Ctrl+A. The CSV jobs tray can appear after the export job completes and
+        // steal keyboard focus; CSS pointer-events:none prevents click interception
+        // but not focus theft, so we must re-grab focus explicitly.
+        await page.locator('.rdg-row').first().locator('.rdg-cell').first().click();
         await page.keyboard.press('Control+A');
 
         await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
