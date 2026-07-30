@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { expect, Locator, Page, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -1055,43 +1055,62 @@ test.describe('Bulk Import Export', () => {
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
       await startCsvPreviewAndWaitForGrid(page);
 
-      // Adding some assertion to make sure that CSV loaded correctly
-      await expect(page.locator('.rdg-header-row')).toBeVisible();
-
-      // Context: virtual grid — 8 data rows (1 schema + 1 table + 6 columns from DatabaseClass).
-      // visibleColCount is computed from the DOM since react-data-grid column-virtualizes.
+      // Principle 7: wait for the grid to be fully idle before interacting.
+      // DatabaseClass exports 1 schema + 1 table + 6 columns = 8 rows, 6 columns.
       const rowCount = 8;
+      const colCount = 6; // Name, Display Name, Description, Owner, Tags, Glossary Terms
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.locator('.rdg-row')).toHaveCount(rowCount);
-      const totalCellCount = await page.locator('.rdg-cell').count();
-      const visibleColCount = totalCellCount / (rowCount + 1); // +1 for the header row
+      // Principle 3: wait for all headers to render before any interaction
+      await expect(
+        page.locator('.rdg-header-row').first().locator('.rdg-cell')
+      ).toHaveCount(colCount);
+      // Confirm data has loaded (not just skeleton rows)
+      await expect(
+        page.locator('.rdg-row').first().locator('.rdg-cell').first()
+      ).not.toBeEmpty();
+
+      // Principle 6 & 10: shared helpers — every action waits for observable
+      // UI state before returning so callers never fire into a transitional state.
+      const selection = page.locator('.rdg-cell-range-selections');
+
+      const focusCell = async (cell: Locator) => {
+        await cell.click();
+        await expect(cell).toBeFocused();
+      };
+
+      // Principle 1: press a bare Arrow key and wait for destination focus.
+      const move = async (key: string, destination: Locator) => {
+        await page.keyboard.press(key);
+        await expect(destination).toBeFocused();
+      };
+
+      // Principle 5 & 9: press Shift+Arrow and assert the expected selection
+      // count before returning — replaces fixed delays with observable-state waits.
+      const extend = async (key: string, expectedCount: number) => {
+        await page.keyboard.press(`Shift+${key}`);
+        await expect(selection).toHaveCount(expectedCount);
+      };
 
       await test.step('Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row', async () => {
-        // Click the first data cell to ensure the grid has keyboard focus before
-        // Ctrl+A. The CSV jobs tray can appear after the export job completes and
-        // steal keyboard focus; CSS pointer-events:none prevents click interception
-        // but not focus theft, so we must re-grab focus explicitly.
-        await page
+        // Principle 1 & 8: fresh locator + confirm focus before Ctrl+A.
+        // The CSV jobs tray can steal keyboard focus when it appears; an explicit
+        // click + toBeFocused() guarantees the grid owns the keyboard.
+        await focusCell(
+          page.locator('.rdg-row').first().locator('.rdg-cell').first()
+        );
+        await page.keyboard.press('Control+A');
+        await expect(selection).toHaveCount(rowCount * colCount);
+
+        // Deselect by clicking the second cell (fresh locator, principle 8)
+        const secondCell = page
           .locator('.rdg-row')
           .first()
           .locator('.rdg-cell')
-          .first()
-          .click();
-        await page.keyboard.press('Control+A');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * visibleColCount
-        );
-
-        // Deselect all the cells by clicking on second cell of .rdg-row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').nth(0);
-        const secondCell = firstRow.locator('.rdg-cell').nth(1);
+          .nth(1);
         await secondCell.click();
-
-        await expect(firstCell).not.toBeFocused();
         await expect(secondCell).toBeFocused();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(0);
+        await expect(selection).toHaveCount(0);
       });
 
       await test.step('should select all the cells in the column by clicking on column header', async () => {
@@ -1100,232 +1119,182 @@ test.describe('Bulk Import Export', () => {
           .first()
           .locator('.rdg-cell')
           .first();
-
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').nth(1);
-
         await firstHeaderCell.click();
-
-        await expect(firstCell).not.toBeFocused();
-
         await expect(firstHeaderCell).toBeFocused();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount
-        );
+        await expect(selection).toHaveCount(rowCount);
       });
 
       await test.step('allow multiple column selection', async () => {
-        const headerRow = page.locator('.rdg-header-row');
-        // Mouse down on first header cell then move to 3rd header cell then mouse up
+        // Principle 4: hover() instead of boundingBox() — locators auto-retry
+        // until visible, unaffected by scroll, DPI, or layout shifts.
+        const headerRow = page.locator('.rdg-header-row').first();
         const startHeaderCell = headerRow.locator('.rdg-cell').nth(1);
         const endHeaderCell = headerRow.locator('.rdg-cell').nth(3);
 
-        const startBox = await startHeaderCell.boundingBox();
-        const endBox = await endHeaderCell.boundingBox();
-
-        if (!startBox || !endBox) {
-          throw new Error('Failed to get bounding boxes');
-        }
-
-        const startX = startBox.x + startBox.width / 2;
-        const startY = startBox.y + startBox.height / 2;
-        const endX = endBox.x + endBox.width / 2;
-        const endY = endBox.y + endBox.height / 2;
-
-        const mouse = page.mouse;
-
-        // Simulate drag from col 2 to col 4
-        await mouse.move(startX, startY);
-        await mouse.down();
-
+        await startHeaderCell.hover();
+        await page.mouse.down();
         await expect(startHeaderCell).toBeFocused();
+        await endHeaderCell.hover();
+        await page.mouse.up();
 
-        await mouse.move(endX, endY, { steps: 10 }); // Smooth drag
-        await mouse.up();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * 3
-        );
+        await expect(selection).toHaveCount(rowCount * 3);
       });
 
       await test.step('allow multiple column selection using keyboard', async () => {
-        const headerRow = page.locator('.rdg-header-row').first();
-        const firstHeaderCell = headerRow.locator('.rdg-cell').first();
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
+        const firstHeaderCell = page
+          .locator('.rdg-header-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
+        const firstDataCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
 
-        await firstCell.click();
-        // Wait for data cell focus before navigating — avoids ArrowUp firing
-        // into an unfocused grid and landing in the wrong row.
-        await expect(firstCell).toBeFocused();
+        // Principle 1: confirm data cell focus before navigating up
+        await focusCell(firstDataCell);
+        // Confirm header focus before Shift+Right — without this wait, Shift+Right
+        // fires in the data row and selects 1×2 cells instead of 8×2.
+        await move('ArrowUp', firstHeaderCell);
 
-        await page.keyboard.press('ArrowUp');
-        // Wait for header focus before Shift+Right; without this, Shift+Right
-        // fires while still in the data row and selects only 1 row instead of all.
-        await expect(firstHeaderCell).toBeFocused();
-
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          rowCount * 3
-        );
+        // Principle 5: assert after each extend — every press is a sync point
+        await extend('ArrowRight', rowCount * 2);
+        await extend('ArrowRight', rowCount * 3);
       });
 
       await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const fourthRow = page.locator('.rdg-row').nth(3);
-        const sixthRow = page.locator('.rdg-row').nth(5);
+        // Principle 4 & 8: fresh locators + hover-drag instead of boundingBox()
+        const firstCellFirstRow = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
+        const secondCellFourthRow = page
+          .locator('.rdg-row')
+          .nth(3)
+          .locator('.rdg-cell')
+          .nth(1);
+        const fifthCellSixthRow = page
+          .locator('.rdg-row')
+          .nth(5)
+          .locator('.rdg-cell')
+          .nth(4);
 
-        const firstCellFirstRow = firstRow.locator('.rdg-cell').first();
-        const secondCellFourthRow = fourthRow.locator('.rdg-cell').nth(1);
-        const fifthCellSixthRow = sixthRow.locator('.rdg-cell').nth(4);
+        await focusCell(secondCellFourthRow);
 
-        await secondCellFourthRow.click();
+        // Drag right-bottom then continue to left-top within the same mouse-down
+        await secondCellFourthRow.hover();
+        await page.mouse.down();
+        await fifthCellSixthRow.hover();
+        await expect(selection).toHaveCount(12);
+        await firstCellFirstRow.hover();
+        await page.mouse.up();
+        await expect(selection).toHaveCount(8);
 
-        await expect(secondCellFourthRow).toBeFocused();
-
-        const startBox = await secondCellFourthRow.boundingBox();
-        const endBoxRightBottom = await fifthCellSixthRow.boundingBox();
-        const endBoxLeftUp = await firstCellFirstRow.boundingBox();
-
-        if (!startBox || !endBoxRightBottom || !endBoxLeftUp) {
-          throw new Error('Failed to get bounding boxes');
-        }
-
-        const startX = startBox.x + startBox.width / 2;
-        const startY = startBox.y + startBox.height / 2;
-        const endXRightBottom =
-          endBoxRightBottom.x + endBoxRightBottom.width / 2;
-        const endYRightBottom =
-          endBoxRightBottom.y + endBoxRightBottom.height / 2;
-        const endXLeftUp = endBoxLeftUp.x + endBoxLeftUp.width / 2;
-        const endYLeftUp = endBoxLeftUp.y + endBoxLeftUp.height / 2;
-
-        const mouse = page.mouse;
-
-        // Simulate drag from col 2 to col 4
-        await mouse.move(startX, startY);
-        await mouse.down();
-
-        await mouse.move(endXRightBottom, endYRightBottom, { steps: 10 }); // Smooth drag
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
-
-        await mouse.move(endXLeftUp, endYLeftUp, { steps: 10 }); // Smooth drag
-        await mouse.up();
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
-
-        // Hold shift and click on fifthCellSixthRow
+        // Extend via Shift+click
         await page.keyboard.down('Shift');
         await fifthCellSixthRow.click();
         await page.keyboard.up('Shift');
+        await expect(selection).toHaveCount(12);
 
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
-
-        // Hold shift and click on firstCellFirstRow
         await page.keyboard.down('Shift');
         await firstCellFirstRow.click();
         await page.keyboard.up('Shift');
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+        await expect(selection).toHaveCount(8);
       });
 
       await test.step('allow multiple cell selection using keyboard on rightDown and leftUp', async () => {
-        const fourthRow = page.locator('.rdg-row').nth(3);
-        // Click the anchor cell directly instead of navigating via arrow keys —
-        // arrow chains (ArrowRight + ArrowDown×3) are unreliable under CI load.
-        const anchorCell = fourthRow.locator('.rdg-cell').nth(1);
-        await anchorCell.click();
-        await expect(anchorCell).toBeFocused();
+        // Principle 1 & 8: click anchor cell directly — avoids unreliable arrow
+        // key navigation chains (ArrowRight + ArrowDown×3) that drop under CI load.
+        const anchorCell = page
+          .locator('.rdg-row')
+          .nth(3)
+          .locator('.rdg-cell')
+          .nth(1);
+        await focusCell(anchorCell);
 
-        await page.keyboard.press('Shift+ArrowDown');
-        await page.keyboard.press('Shift+ArrowDown');
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
-        await page.keyboard.press('Shift+ArrowRight');
+        // Principle 5 & 9: every Shift+Arrow asserts its expected count before
+        // the next key fires — replaces fixed delays with observable-state waits.
+        // anchor=[row3,col1]; extend down×2, right×3 → 3 rows × 4 cols = 12
+        await extend('ArrowDown', 2); // rows 3-4 × col 1 = 2
+        await extend('ArrowDown', 3); // rows 3-5 × col 1 = 3
+        await extend('ArrowRight', 6); // rows 3-5 × cols 1-2 = 6
+        await extend('ArrowRight', 9); // rows 3-5 × cols 1-3 = 9
+        await extend('ArrowRight', 12); // rows 3-5 × cols 1-4 = 12
 
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(
-          12
-        );
+        // Shift up: active crosses back over anchor (row shrinks then grows)
+        await extend('ArrowUp', 8); // rows 3-4 × 4 cols = 8
+        await extend('ArrowUp', 4); // row 3 × 4 cols = 4
+        await extend('ArrowUp', 8); // rows 2-3 × 4 cols = 8
+        await extend('ArrowUp', 12); // rows 1-3 × 4 cols = 12
+        await extend('ArrowUp', 16); // rows 0-3 × 4 cols = 16
 
-        // Select up then left. Use delay so CI doesn't drop rapid key presses.
-        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
-        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
-        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
-        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
-        await page.keyboard.press('Shift+ArrowUp', { delay: 50 });
-
-        // Assert the count after Shift+Up chain before pressing Shift+Left — acts
-        // as a synchronization barrier so leftward presses start from a known state.
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(16);
-
-        await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
-        await page.keyboard.press('Shift+ArrowLeft', { delay: 50 });
-
-        await expect(page.locator('.rdg-cell-range-selections')).toHaveCount(8);
+        // Shift left
+        await extend('ArrowLeft', 12); // rows 0-3 × cols 1-3 = 12
+        await extend('ArrowLeft', 8); // rows 0-3 × cols 1-2 = 8
       });
 
       await test.step('perform single cell copy-paste and undo-redo', async () => {
-        // click first cell of first row
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        const secondCell = firstRow.locator('.rdg-cell').nth(1);
-        await firstCell.click();
+        // Principle 1, 8: fresh locators + confirm focus before Ctrl+C
+        const firstCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
+        const secondCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .nth(1);
 
-        // copy the cell
+        await focusCell(firstCell);
         await page.keyboard.press('Control+C');
-
-        // move to next right cell
-        await page.keyboard.press('ArrowRight');
-
-        // paste the cell
+        // Confirm focus moved to secondCell before paste
+        await move('ArrowRight', secondCell);
         await page.keyboard.press('Control+V');
-
-        // second cell should have text equal to first cell text
         await expect(secondCell).toHaveText(
           (await firstCell.textContent()) || ''
         );
 
-        // undo the action
         await page.keyboard.press('Control+Z');
-
         await expect(secondCell).toHaveText('');
 
-        // redo the action
         await page.keyboard.press('Control+Y');
-
-        // second cell should have text equal to first cell text
         await expect(secondCell).toHaveText(
           (await firstCell.textContent()) || ''
         );
       });
 
       await test.step('Select range, copy-paste and undo-redo', async () => {
-        // click on first cell to focus
-        const firstRow = page.locator('.rdg-row').first();
-        const firstCell = firstRow.locator('.rdg-cell').first();
-        await firstCell.click();
+        const firstHeaderCell = page
+          .locator('.rdg-header-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
+        const firstCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .first();
 
-        // navigate to header row
-        await page.keyboard.press('ArrowUp');
-        await page.keyboard.down('Shift');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.press('ArrowRight');
-        await page.keyboard.up('Shift');
+        // Confirm data cell focus then confirm header focus before Shift+Right
+        await focusCell(firstCell);
+        await move('ArrowUp', firstHeaderCell);
+
+        // Select 3 columns via Shift+Right (each press is a sync point)
+        await extend('ArrowRight', rowCount * 2);
+        await extend('ArrowRight', rowCount * 3);
 
         // copy the range
         await page.keyboard.press('Control+C');
 
-        // click on fourth cell of first row
-        const fourthCellFirstRow = firstRow.locator('.rdg-cell').nth(3);
+        // click on fourth cell of first row (principle 8: fresh locator)
+        const fourthCellFirstRow = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell')
+          .nth(3);
         await fourthCellFirstRow.click();
 
         // paste the range
