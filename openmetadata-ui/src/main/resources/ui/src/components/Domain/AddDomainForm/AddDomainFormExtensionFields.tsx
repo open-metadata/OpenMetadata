@@ -26,7 +26,6 @@ import {
   Input,
   TimePicker,
   TimePickerValue,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -1049,7 +1048,6 @@ const AddDomainFormExtensionFields = ({
   customProperties,
   formFields,
 }: AddDomainFormExtensionFieldsProps) => {
-  const { t } = useTranslation();
   const definitionsByName = useMemo(
     () =>
       new Map(
