@@ -191,9 +191,12 @@ export default [
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
 
-      // i18next rules - temporarily disabled due to ESLint 9 compatibility issues
-      // TODO: Re-enable when eslint-plugin-i18next fully supports ESLint 9 flat config
-      'i18next/no-literal-string': 'off',
+      // Re-enabled: the ESLint 9 flat-config incompatibility this was disabled
+      // for no longer reproduces — verified running against this config, where
+      // it reports ~367 findings in a 400-file sample. `warn` because of that
+      // backlog; the repo convention is no user-facing string literals, so this
+      // should reach `error` once the backlog is worked down.
+      'i18next/no-literal-string': 'warn',
 
       // Ban Tailwind `ring-*` for drawing edges. Rings compile to box-shadow, and WebKit
       // does not pixel-snap box-shadows, so a ring used as a border thins out and can
@@ -314,6 +317,33 @@ export default [
       'sonarjs/no-identical-functions': 'warn', // 6
       'sonarjs/prefer-object-literal': 'warn', // 1
       'sonarjs/no-redundant-boolean': 'warn', // 1
+
+      // Complexity and structure. SonarCloud gates these on new code; these
+      // surface the same findings locally and in the editor.
+      'sonarjs/cyclomatic-complexity': 'warn', // 54 in a 400-file sample
+      'sonarjs/expression-complexity': 'warn', // 15
+      'sonarjs/no-nested-conditional': 'warn', // 16
+      'sonarjs/no-nested-functions': 'warn', // 18
+
+      // Security. Near-zero today — promote to error once confirmed at zero
+      // across the whole tree, not just a sample.
+      'sonarjs/no-clear-text-protocols': 'warn', // 18
+      'sonarjs/no-hardcoded-passwords': 'warn', // 0 in sample
+      'sonarjs/no-hardcoded-ip': 'warn', // 0 in sample
+      'sonarjs/no-invariant-returns': 'warn', // 0 in sample
+
+      // React correctness and re-render cost — the enforceable slice of
+      // frontend-performance.md.
+      'react/no-array-index-key': 'warn', // 23
+      'react/jsx-no-constructed-context-values': 'warn', // 1
+      'react/no-unstable-nested-components': 'warn', // 1
+      'react/no-danger': 'warn', // 0 in sample
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+
+      // NOT enabled: react/jsx-no-useless-fragment. It auto-fixes, so at any
+      // severity `eslint --fix` would rewrite files and hard-fail the
+      // git-diff check in ui-checkstyle. Land a one-time repo-wide autofix
+      // commit first, then add it here at error.
     },
   },
 

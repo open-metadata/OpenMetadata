@@ -86,10 +86,25 @@ would fail PRs for code they merely touched.
 | Tier | Meaning | Today |
 |---|---|---|
 | `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y |
-| `warn` | has a backlog — visible in the editor and CI output, not blocking | 9 SonarJS + 15 jsx-a11y + `react-hooks/exhaustive-deps` |
+| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, `react-hooks/exhaustive-deps`, `i18next/no-literal-string`, `@typescript-eslint/no-non-null-assertion` |
 
-Repo-wide today: **0 errors, 5435 warnings** across 3846 files (plus 281 in `playwright/`). The
-warnings *are* the backlog, made visible instead of hidden.
+Repo-wide today: **0 errors, 8935 warnings** across 3846 files. The warnings *are* the backlog, made
+visible instead of hidden — the target is zero, reached rule by rule.
+
+`i18next/no-literal-string` was disabled with a `TODO: re-enable when the plugin supports ESLint 9`.
+That incompatibility no longer reproduces; it runs fine and reports a large backlog, so it is back on
+at `warn`. The repo convention is no user-facing string literals, so it should reach `error`.
+
+**Rules deliberately still off**, and why:
+
+- `react/jsx-no-useless-fragment` — auto-fixes, so at any severity `eslint --fix` rewrites files and
+  hard-fails the git-diff check. Land a one-time repo-wide autofix commit, then add it at `error`.
+- `sonarjs/file-header`, `arrow-function-convention`, `shorthand-property-grouping`,
+  `elseif-without-else` and similar — stylistic, and they conflict with Prettier and the repo's
+  existing conventions. Turning them on would add thousands of warnings nobody intends to fix, which
+  devalues every other warning.
+- `sonarjs/no-reference-error`, `no-implicit-dependencies` — need resolver/global configuration this
+  config does not supply; without it they are almost entirely false positives.
 
 **Promotion path:** clear a rule's backlog, re-measure, move it to `error`. The counts live in
 `eslint.config.mjs` next to each rule so the next person can see what it costs.
