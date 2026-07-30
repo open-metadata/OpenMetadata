@@ -483,6 +483,7 @@ const ColumnProfileTable = () => {
                   <Table.Head
                     allowsSorting={col.allowsSorting}
                     id={col.id}
+                    isRowHeader={col.id === 'name'}
                     key={col.id}
                     label={col.name}
                   />
