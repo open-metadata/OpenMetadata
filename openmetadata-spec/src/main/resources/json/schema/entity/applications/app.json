@@ -96,21 +96,9 @@
       "description": "This schema defines the type of application.",
       "type": "string",
       "enum": [
-        "CollateAI",
-        "CollateAITierAgent",
-        "CollateAIQualityAgent",
         "Metadata"
       ],
       "javaEnums": [
-        {
-          "name": "CollateAI"
-        },
-        {
-          "name": "CollateAITierAgent"
-        },
-        {
-          "name": "CollateAIQualityAgent"
-        },
         {
           "name": "Metadata"
         }
