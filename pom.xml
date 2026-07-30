@@ -232,12 +232,15 @@
         <artifactId>angus-mail</artifactId>
         <version>${angus-mail.version}</version>
       </dependency>
-      <!-- CVE-2026-43869: pin to 0.23.0. No Jena release ships the fix yet (6.0.0 still uses 0.22.0).
-           Excluding libthrift breaks RDF tests — Jena's ModelFactory statically references TException. -->
+      <!-- CVE-2026-43869 + CVE-2026-45112 (unbounded read) + CVE-2026-48586 (zlib data
+           amplification): pin to 0.24.0, the first release carrying all three fixes. No Jena
+           release ships a fixed libthrift yet (6.1.0 still pulls 0.22.0), so this pin cannot be
+           retired by upgrading Jena. Excluding libthrift breaks RDF tests — Jena's ModelFactory
+           statically references TException. -->
       <dependency>
         <groupId>org.apache.thrift</groupId>
         <artifactId>libthrift</artifactId>
-        <version>0.23.0</version>
+        <version>0.24.0</version>
       </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
