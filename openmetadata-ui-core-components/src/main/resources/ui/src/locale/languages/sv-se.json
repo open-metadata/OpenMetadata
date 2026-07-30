@@ -1,3 +1,12 @@
 {
-  "_placeholder": "remove once first component is migrated"
+  "pagination": {
+    "aria-label": "Pagination",
+    "current-page": "Current page",
+    "navigation-aria-label": "Pagination Navigation",
+    "next-page": "Go to next page",
+    "page-label": "Page",
+    "previous-page": "Go to previous page",
+    "records-aria-label": "Records",
+    "records-label": "Records"
+  }
 }
