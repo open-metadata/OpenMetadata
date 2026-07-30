@@ -156,7 +156,10 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     getSearchResults(searchValue);
   }, []);
 
-  const entityIcon = useMemo(() => getEntityIcon(entityType, 'tw:h-4 tw:w-4'), [entityType])
+  const entityIcon = useMemo(
+    () => getEntityIcon(entityType, 'tw:h-4 tw:w-4'),
+    [entityType]
+  );
 
   return (
     <Row
@@ -164,9 +167,7 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
       data-testid="suggestion-node"
       gutter={8}
       wrap={false}>
-      <Col>
-      {entityIcon}
-      </Col>
+      <Col>{entityIcon}</Col>
       <Col flex="1">
         <Select
           autoFocus
