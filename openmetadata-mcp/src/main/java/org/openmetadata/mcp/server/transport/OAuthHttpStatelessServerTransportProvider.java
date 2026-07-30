@@ -143,7 +143,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     List<String> supportedScopes = getSupportedScopesForProvider();
     String issuer = baseUrl + mcpEndpoint;
-    authProvider.setIssuer(issuer);
     OAuthMetadata metadata = new OAuthMetadata();
     metadata.setIssuer(URI.create(issuer));
     metadata.setAuthorizationEndpoint(URI.create(baseUrl + mcpEndpoint + "/authorize"));
@@ -170,6 +169,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.oauthMetadata = metadata;
     this.protectedResourceMetadata = protectedResourceMetadata;
+    // Same ordering as rebuildMetadata: the metadata is in place before the issuer is published.
+    authProvider.setIssuer(issuer);
     this.authorizationHandler = new AuthorizationHandler(authProvider);
     this.registrationHandler = new RegistrationHandler(new OAuthClientRepository());
     this.revocationHandler = new RevocationHandler(new OAuthTokenRepository());
@@ -217,7 +218,6 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
     List<String> supportedScopes = getSupportedScopesForProvider();
     String issuer = baseUrl + mcpEndpoint;
-    authProvider.setIssuer(issuer);
 
     OAuthMetadata newMetadata = new OAuthMetadata();
     newMetadata.setIssuer(URI.create(issuer));
@@ -244,6 +244,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
     this.resourceMetadataUrl =
         URI.create(baseUrl + mcpEndpoint + "/.well-known/oauth-protected-resource");
+
+    // Publish the response issuer last, once the new metadata is already being served. Setting it
+    // first would leave a gap where responses carry the new issuer while discovery still returns
+    // the old one, and a client comparing the two would reject a valid authorization response.
+    // Note this only closes the gap inside this method. A base URL change while a login is already
+    // in progress still moves the issuer under that client, which no ordering here can prevent.
+    authProvider.setIssuer(issuer);
 
     LOG.info("OAuth metadata rebuilt with base URL: {}", baseUrl);
   }
