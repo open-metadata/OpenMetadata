@@ -34,6 +34,7 @@ import org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.governance.IntakeForm;
+import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKind;
 import org.openmetadata.service.Entity;
@@ -264,6 +265,34 @@ class IntakeFormValidatorTest {
     when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
 
     DataProduct dp = validDataProduct();
+
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
+  }
+
+  @Test
+  void validate_doesNotEnforceIncludedOptionalField() {
+    IntakeFormField optionalField =
+        new IntakeFormField()
+            .withFieldPath("extension.riskAssessment")
+            .withFieldLabel("Risk Assessment")
+            .withFieldKind(IntakeFormField.FieldKind.CUSTOM_PROPERTY)
+            .withRequired(false);
+    IntakeFormField requiredField =
+        new IntakeFormField()
+            .withFieldPath("dataProductType")
+            .withFieldLabel("Data Product Type")
+            .withFieldKind(IntakeFormField.FieldKind.NATIVE)
+            .withRequired(true);
+    IntakeForm form =
+        new IntakeForm()
+            .withId(UUID.randomUUID())
+            .withName("dataProduct-intake")
+            .withEntityType(TargetEntityType.DATA_PRODUCT)
+            .withEnabled(Boolean.TRUE)
+            .withFormFields(List.of(optionalField, requiredField));
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    DataProduct dp = validDataProduct().withDataProductType(DataProductType.DATASET);
 
     assertDoesNotThrow(() -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
   }
