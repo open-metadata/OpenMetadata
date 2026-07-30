@@ -310,46 +310,15 @@ export const serializeExtensionValue = (
 export const getCustomPropertyTypeDisplayName = (
   typeName: string | undefined
 ): string | undefined => {
-  switch (typeName) {
-    case 'string':
-      return 'Text';
-    case 'email':
-      return 'Email';
-    case 'integer':
-      return 'Integer';
-    case 'number':
-      return 'Number';
-    case 'timestamp':
-      return 'Timestamp';
-    case 'date-cp':
-      return 'Date';
-    case 'dateTime-cp':
-      return 'Date Time';
-    case 'time-cp':
-      return 'Time';
-    case 'enum':
-      return 'Enum';
-    case 'enumMultiSelect':
-      return 'Enum Multi Select';
-    case 'hyperlink':
-      return 'Hyperlink';
-    case 'markdown':
-      return 'Markdown';
-    case 'sqlQuery':
-      return 'SQL Query';
-    case 'entityReference':
-      return 'Entity Reference';
-    case 'entityReferenceList':
-      return 'Entity Reference List';
-    case 'timeInterval':
-      return 'Time Interval';
-    case 'table':
-      return 'Table';
-    case 'duration':
-      return 'Duration';
-    default:
-      return undefined;
+  if (!typeName) {
+    return undefined;
   }
+  const CP_SUFFIX = '-cp';
+  const base = typeName.endsWith(CP_SUFFIX)
+    ? typeName.slice(0, -CP_SUFFIX.length)
+    : typeName;
+
+  return base.toUpperCase();
 };
 
 export const formatTableCellValue = (value: unknown): string => {

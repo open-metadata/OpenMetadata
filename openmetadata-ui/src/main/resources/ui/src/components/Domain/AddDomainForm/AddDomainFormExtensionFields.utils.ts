@@ -110,6 +110,7 @@ export const getExtensionFieldKind = (
     case 'enumMultiSelect':
       return 'enumMultiSelect';
     case 'map':
+    case 'hyperlink-cp':
     case 'hyperlink':
       return 'hyperlink';
     case 'markdown':

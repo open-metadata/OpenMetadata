@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { DatePicker, Form, Input, InputNumber, TimePicker } from 'antd';
-import React from 'react';
+import { DatePicker, Form, Input, InputNumber, Select, TimePicker } from 'antd';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { searchQuery } from '../../../rest/searchAPI';
+import { getCustomPropertyTypeDisplayName } from '../../../utils/CustomProperty.utils';
 import { getField } from '../../../utils/formUtils';
+import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
 import {
   getExtensionFieldKind,
 } from './AddDomainFormExtensionFields.utils';
@@ -26,6 +29,137 @@ interface AddDomainFormExtensionFieldsProps {
   customProperties: CustomProperty[];
   formFields: IntakeFormField[];
 }
+
+interface EntityRefOption {
+  label: string;
+  value: string;
+  ref: Record<string, unknown>;
+}
+
+interface ExtensionEntityRefSelectProps {
+  allowedTypes: string[];
+  label: string;
+  multiple?: boolean;
+  'data-testid': string;
+  value?: Record<string, unknown> | Record<string, unknown>[];
+  onChange?: (
+    val: Record<string, unknown> | Record<string, unknown>[] | undefined
+  ) => void;
+}
+
+/**
+ * A standalone combobox for picking an entity reference via the search API.
+ * Lives in its own component so we can use `useState` without violating the
+ * rules-of-hooks (parent maps over `formFields`).
+ */
+const ExtensionEntityRefSelect: React.FC<ExtensionEntityRefSelectProps> = ({
+  allowedTypes,
+  label,
+  multiple = false,
+  'data-testid': testId,
+  value,
+  onChange,
+}) => {
+  const [options, setOptions] = useState<EntityRefOption[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchIndex = (allowedTypes[0] ?? 'glossaryTerm') as string;
+
+  const handleSearch = useCallback(
+    async (query: string) => {
+      if (!query) {
+        return;
+      }
+      setSearching(true);
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const result = await (searchQuery as any)({
+          query: `*${query}*`,
+          pageNumber: 1,
+          pageSize: 15,
+          queryFilter: {},
+          searchIndex,
+        });
+        const hits = (result?.hits?.hits ?? []) as Array<{
+          _id: string;
+          _source?: {
+            name?: string;
+            displayName?: string;
+            fullyQualifiedName?: string;
+            entityType?: string;
+          };
+        }>;
+        setOptions(
+          hits.map((hit) => ({
+            label:
+              hit._source?.displayName ||
+              hit._source?.name ||
+              String(hit._id),
+            value: String(hit._id),
+            ref: {
+              id: hit._id,
+              type: hit._source?.entityType || searchIndex,
+              name: hit._source?.name,
+              displayName: hit._source?.displayName,
+              fullyQualifiedName: hit._source?.fullyQualifiedName,
+            },
+          }))
+        );
+      } catch {
+        setOptions([]);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [searchIndex]
+  );
+
+  const toId = (ref: Record<string, unknown>) =>
+    'id' in ref ? String(ref.id) : undefined;
+
+  const currentValue = multiple
+    ? (Array.isArray(value) ? value : value ? [value] : [])
+        .map((v) => toId(v))
+        .filter((id): id is string => id !== undefined)
+    : Array.isArray(value)
+    ? undefined
+    : value && 'id' in value
+    ? toId(value)
+    : undefined;
+
+  return (
+    <div data-testid={testId}>
+      <Select
+        allowClear
+        aria-label={label}
+        filterOption={false}
+        loading={searching}
+        mode={multiple ? 'multiple' : undefined}
+        placeholder={label}
+        showSearch
+        style={{ width: '100%' }}
+        value={currentValue}
+        onChange={(val) => {
+          if (multiple) {
+            const ids = Array.isArray(val) ? val : val ? [val] : [];
+            const refs = ids
+              .map((id: string) => options.find((o) => o.value === id)?.ref)
+              .filter((ref): ref is Record<string, unknown> => ref !== undefined);
+            onChange?.(refs);
+          } else {
+            const found = options.find((o) => o.value === String(val));
+            onChange?.(found ? found.ref : undefined);
+          }
+        }}
+        onSearch={handleSearch}>
+        {options.map((opt) => (
+          <Select.Option key={opt.value} value={opt.value}>
+            {opt.label}
+          </Select.Option>
+        ))}
+      </Select>
+    </div>
+  );
+};
 
 const AddDomainFormExtensionFields = ({
   customProperties,
@@ -38,9 +172,8 @@ const AddDomainFormExtensionFields = ({
   }
 
   return (
-    <>
+    <div data-testid="custom-properties-section">
       {formFields.map((formField) => {
-        // fieldPath for custom props is like "extension.propName"
         const propertyName = formField.fieldPath.startsWith('extension.')
           ? formField.fieldPath.slice('extension.'.length)
           : formField.fieldPath;
@@ -49,7 +182,8 @@ const AddDomainFormExtensionFields = ({
           (cp) => cp.name === propertyName
         );
 
-        const kind = getExtensionFieldKind(definition?.propertyType?.name);
+        const propertyTypeName = definition?.propertyType?.name;
+        const kind = getExtensionFieldKind(propertyTypeName);
         const label = formField.fieldLabel;
         const isRequired = formField.required ?? false;
         const requiredMessage =
@@ -63,11 +197,20 @@ const AddDomainFormExtensionFields = ({
         const namePath = ['extension', propertyName];
         const dataTestId = `extension-${propertyName}`;
 
-        // Simple text types: use FieldProp/getField pattern
+        const typeBadge = (
+          <CustomPropertyTypeBadge propertyTypeName={propertyTypeName} />
+        );
+
+        const labelWithBadge = (
+          <>
+            {label} {typeBadge}
+          </>
+        );
+
         if (kind === 'text' || kind === 'duration' || kind === 'unknown') {
           const fieldProp: FieldProp = {
             id: `root/extension/${propertyName}`,
-            label,
+            label: labelWithBadge,
             name: namePath as string[],
             required: isRequired,
             rules: baseRules,
@@ -81,12 +224,15 @@ const AddDomainFormExtensionFields = ({
         if (kind === 'email') {
           const fieldProp: FieldProp = {
             id: `root/extension/${propertyName}`,
-            label,
+            label: labelWithBadge,
             name: namePath as string[],
             required: isRequired,
             rules: [
               ...baseRules,
-              { type: 'email' as const, message: t('message.email-is-invalid') },
+              {
+                type: 'email' as const,
+                message: t('message.email-is-invalid'),
+              },
             ],
             type: FieldTypes.TEXT,
             props: { 'data-testid': dataTestId, type: 'email' },
@@ -106,7 +252,7 @@ const AddDomainFormExtensionFields = ({
           const isMulti = kind === 'enumMultiSelect' || config?.multiSelect;
           const fieldProp: FieldProp = {
             id: `root/extension/${propertyName}`,
-            label,
+            label: labelWithBadge,
             name: namePath as string[],
             required: isRequired,
             rules: baseRules,
@@ -125,7 +271,11 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={label}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }
               name={namePath}
               rules={baseRules}>
               <InputNumber
@@ -141,7 +291,11 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={label}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }
               name={namePath}
               rules={baseRules}>
               <DatePicker
@@ -157,7 +311,11 @@ const AddDomainFormExtensionFields = ({
           return (
             <Form.Item
               key={formField.fieldPath}
-              label={label}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }
               name={namePath}
               rules={baseRules}>
               <TimePicker className="w-full" data-testid={dataTestId} />
@@ -167,43 +325,47 @@ const AddDomainFormExtensionFields = ({
 
         if (kind === 'hyperlink') {
           return (
-            <Form.Item key={formField.fieldPath} label={label}>
+            <Form.Item
+              key={formField.fieldPath}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }>
               <Form.Item
-                name={[...namePath, 'name']}
+                name={[...namePath, 'url']}
                 noStyle
-                rules={
-                  isRequired
+                rules={[
+                  ...(isRequired
                     ? [{ required: true, message: requiredMessage }]
-                    : []
-                }>
+                    : []),
+                  {
+                    validator: (_: unknown, val: string) => {
+                      if (!val) {
+                        return Promise.resolve();
+                      }
+                      if (/^https?:\/\//i.test(val)) {
+                        return Promise.resolve();
+                      }
+
+                      return Promise.reject(
+                        new Error(t('message.url-must-use-http-or-https'))
+                      );
+                    },
+                  },
+                ]}>
                 <Input
-                  data-testid={`${dataTestId}-name`}
-                  placeholder={t('label.name')}
+                  data-testid={`${dataTestId}-url`}
+                  placeholder={t('label.url-lowercase')}
                 />
               </Form.Item>
               <Form.Item
-                name={[...namePath, 'href']}
-                noStyle
-                rules={
-                  isRequired
-                    ? [
-                        { required: true, message: requiredMessage },
-                        {
-                          type: 'url' as const,
-                          message: t('label.invalid-url'),
-                        },
-                      ]
-                    : [
-                        {
-                          type: 'url' as const,
-                          message: t('label.invalid-url'),
-                        },
-                      ]
-                }>
+                name={[...namePath, 'displayText']}
+                noStyle>
                 <Input
                   className="m-t-xs"
-                  data-testid={`${dataTestId}-href`}
-                  placeholder={t('label.url-lowercase')}
+                  data-testid={`${dataTestId}-displayText`}
+                  placeholder={t('label.display-name')}
                 />
               </Form.Item>
             </Form.Item>
@@ -230,7 +392,13 @@ const AddDomainFormExtensionFields = ({
 
         if (kind === 'timeInterval') {
           return (
-            <Form.Item key={formField.fieldPath} label={label}>
+            <Form.Item
+              key={formField.fieldPath}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }>
               <Form.Item
                 name={[...namePath, 'start']}
                 noStyle
@@ -263,7 +431,61 @@ const AddDomainFormExtensionFields = ({
           );
         }
 
-        // sqlQuery, reference, referenceList, table: fall back to text input
+        if (kind === 'reference' || kind === 'referenceList') {
+          const config = definition?.customPropertyConfig?.config;
+          const allowedTypes = Array.isArray(config)
+            ? (config as string[])
+            : typeof config === 'string'
+            ? [config]
+            : ['glossaryTerm'];
+
+          const isUserOrTeam = allowedTypes.every(
+            (t) => t === 'user' || t === 'team'
+          );
+
+          if (isUserOrTeam) {
+            const fieldProp: FieldProp = {
+              id: `root/extension/${propertyName}`,
+              label,
+              name: namePath as string[],
+              required: isRequired,
+              rules: baseRules,
+              type: FieldTypes.USER_TEAM_SELECT_MUI,
+              props: {
+                'data-testid': dataTestId,
+                label,
+                multipleUser: kind === 'referenceList',
+                userOnly: !allowedTypes.includes('team'),
+              },
+              formItemProps: {
+                valuePropName: 'value',
+                trigger: 'onChange',
+              },
+            };
+
+            return <div key={formField.fieldPath}>{getField(fieldProp)}</div>;
+          }
+
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={
+                <>
+                  {label} {typeBadge}
+                </>
+              }
+              name={namePath}
+              rules={baseRules}>
+              <ExtensionEntityRefSelect
+                allowedTypes={allowedTypes}
+                data-testid={dataTestId}
+                label={label}
+                multiple={kind === 'referenceList'}
+              />
+            </Form.Item>
+          );
+        }
+
         const fallbackFieldProp: FieldProp = {
           id: `root/extension/${propertyName}`,
           label,
@@ -278,7 +500,7 @@ const AddDomainFormExtensionFields = ({
           <div key={formField.fieldPath}>{getField(fallbackFieldProp)}</div>
         );
       })}
-    </>
+    </div>
   );
 };
 
