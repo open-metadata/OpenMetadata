@@ -136,7 +136,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/TestSuite/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/tests/**"
       ],
-      "projects": ["chromium", "Basic", "Ingestion", "Reindex"],
+      "projects": ["chromium", "Basic", "ImportExport", "Ingestion", "Reindex"],
       "specs": [
         "playwright/e2e/Features/DataQuality/**/*.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"

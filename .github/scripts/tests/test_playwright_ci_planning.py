@@ -1417,6 +1417,21 @@ def test_ingestion_impact_mapping_only_selects_ingestion_data_quality_specs():
         assert "PLAYWRIGHT_INGESTION_TAG_OBJ" in source or "tag: '@ingestion'" in source
 
 
+def test_data_quality_impact_mapping_includes_import_export_project():
+    impact_map = json.loads(
+        (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
+    )
+    mapping = next(
+        entry
+        for entry in impact_map["mappings"]
+        if "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/**"
+        in entry["sources"]
+    )
+
+    assert "ImportExport" in mapping["projects"]
+    assert "playwright/e2e/Features/DataQuality/**/*.spec.ts" in mapping["specs"]
+
+
 def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     impact_map = json.loads(
         (SCRIPTS.parents[0] / "playwright/impact-map.json").read_text()
