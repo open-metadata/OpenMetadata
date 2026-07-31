@@ -1020,10 +1020,11 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('stops polling and marks export as failed after the 5-minute max duration', async () => {
+  it('stops polling and hands off to CsvJobsTray after the 5-minute max duration', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
 
     try {
       (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
@@ -1050,18 +1051,24 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
+      // Advance Date.now past the 5-minute cap; trigger the next poll wait.
       nowMs = 5 * 60 * 1_000 + 1_000;
 
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
 
-      expect(onError).toHaveBeenCalledTimes(1);
-      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
-        'server.unexpected-error'
+      // Backend is still running — no error reported to the caller.
+      expect(onError).not.toHaveBeenCalled();
+      expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
+
+      // CsvJobsTray refresh event dispatched so the user can track the job there.
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'csv-jobs-refresh' })
       );
     } finally {
       dateSpy.mockRestore();
+      dispatchSpy.mockRestore();
       (getCsvAsyncJob as jest.Mock).mockReset();
       jest.useRealTimers();
     }

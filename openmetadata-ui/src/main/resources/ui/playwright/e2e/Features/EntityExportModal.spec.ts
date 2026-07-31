@@ -102,8 +102,8 @@ test.describe(
         page.locator('[data-testid="export-entity-modal"]')
       ).not.toBeVisible();
 
-      // Wait 1.5× the max poll interval to confirm no further polls fire.
-      await page.waitForTimeout(15_000);
+      // Wait just over one retry interval (1 s) to confirm no further polls fire.
+      await page.waitForTimeout(3_000);
 
       expect(statusCallCount).toBe(countBeforeCancel);
     });

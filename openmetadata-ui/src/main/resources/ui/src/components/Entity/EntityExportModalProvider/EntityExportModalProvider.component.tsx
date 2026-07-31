@@ -427,6 +427,7 @@ export const EntityExportModalProvider = ({
 
       void (async () => {
         let consecutiveFailures = 0;
+        let timedOut = false;
 
         for (let attempt = 0; ; attempt++) {
           if (attempt > 0) {
@@ -449,6 +450,7 @@ export const EntityExportModalProvider = ({
             Date.now() - pollingStartTime >=
             CSV_EXPORT_MAX_POLL_DURATION_MS
           ) {
+            timedOut = true;
             break;
           }
 
@@ -482,9 +484,23 @@ export const EntityExportModalProvider = ({
         }
 
         if (
-          csvExportPollingRef.current === pollingState &&
-          csvExportJobRef.current?.jobId === jobId
+          csvExportPollingRef.current !== pollingState ||
+          csvExportJobRef.current?.jobId !== jobId
         ) {
+          return;
+        }
+
+        if (timedOut) {
+          // Backend job is still running — stop tracking in the modal and hand
+          // it off to CsvJobsTray so the user can follow progress there.
+          csvExportPollingRef.current = undefined;
+          csvExportJobRef.current = undefined;
+          pendingCSVExportResponsesRef.current.clear();
+          setCSVExportJob(undefined);
+          setDownloading(false);
+          setExportData(null);
+          window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+        } else {
           applyCSVExportJobUpdate({
             error: null,
             jobId,
