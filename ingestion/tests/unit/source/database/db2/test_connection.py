@@ -11,6 +11,7 @@
 """Unit tests for DB2 connection handling."""
 
 import sys
+import types
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -152,6 +153,17 @@ def test_compat_select_passes_the_modern_form_through():
     assert "SELECT t.a, t.b" in str(_ibmi_compat_select(_TABLE.c.a, _TABLE.c.b))
 
 
+def test_compat_select_carries_over_the_legacy_order_by_keyword():
+    """get_foreign_keys/get_indexes group composite constraints in column order."""
+    statement = str(_ibmi_compat_select([_TABLE.c.a], _TABLE.c.b == "x", order_by=[_TABLE.c.b]))
+    assert "ORDER BY t.b" in statement
+
+
+def test_compat_select_rejects_unsupported_legacy_keywords():
+    with pytest.raises(TypeError, match="Unsupported legacy select"):
+        _ibmi_compat_select([_TABLE.c.a], distinct=True)
+
+
 @pytest.fixture
 def ibmi_dialect():
     """The patched dialect plus a bare instance to invoke unbound methods on."""
@@ -193,9 +205,39 @@ def test_reflection_queries_compile_under_sqlalchemy_2(ibmi_dialect):
     assert names == ["myschema"]
 
 
+def test_index_reflection_preserves_composite_column_order(ibmi_dialect):
+    """get_indexes passes order_by= as a legacy keyword; dropping it would return
+    composite index columns in nondeterministic order."""
+    base, dialect = ibmi_dialect
+    dialect.denormalize_name = lambda name: name
+    connection = MagicMock()
+    connection.execute.return_value = [("IDX", "D", "COL_A"), ("IDX", "D", "COL_B")]
+
+    indexes = base.IBMiDb2Dialect.get_indexes.__wrapped__(dialect, connection, "mytable", schema="myschema")
+
+    assert indexes[0]["column_names"] == ["col_a", "col_b"]
+    assert "ORDER BY" in str(connection.execute.call_args[0][0])
+
+
 def test_patching_the_dialect_twice_is_idempotent(ibmi_dialect):
     assert patch_ibmi_dialect() is True
     assert patch_ibmi_dialect() is True
+
+
+def test_patching_is_skipped_when_the_dialect_module_is_partially_initialised():
+    """An interrupted import leaves a module that imports but has no dialect."""
+    half_loaded = types.ModuleType("sqlalchemy_ibmi.base")
+    with (
+        patch.dict(
+            sys.modules,
+            {
+                "sqlalchemy_ibmi": types.ModuleType("sqlalchemy_ibmi"),
+                "sqlalchemy_ibmi.base": half_loaded,
+            },
+        ),
+        patch(f"{UTILS_MODULE}._IBMI_PATCHED", False),
+    ):
+        assert patch_ibmi_dialect() is False
 
 
 def test_patching_is_skipped_when_sqlalchemy_ibmi_is_absent():

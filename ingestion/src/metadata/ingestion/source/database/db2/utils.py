@@ -243,13 +243,20 @@ _IBMI_PATCHED = False
 
 
 def _ibmi_compat_select(*args, **kwargs):
-    """Translate the SA-1.x ``select([cols], whereclause)`` form to the modern
-    signature. sqlalchemy-ibmi 0.9.3 uses the legacy form, removed in SA 2.0."""
+    """Translate the SA-1.x ``select([cols], whereclause, order_by=...)`` form to
+    the modern signature. sqlalchemy-ibmi 0.9.3 uses the legacy form, removed in
+    SA 2.0. ``order_by`` must be carried over: get_foreign_keys and get_indexes
+    rely on it to group multi-column constraints in column order."""
     if args and isinstance(args[0], (list, tuple)):
         statement = select(*args[0])
         for whereclause in args[1:]:
             if whereclause is not None:
                 statement = statement.where(whereclause)
+        order_by = kwargs.pop("order_by", None)
+        if order_by is not None:
+            statement = statement.order_by(*order_by)
+        if kwargs:
+            raise TypeError(f"Unsupported legacy select() keywords: {sorted(kwargs)}")
         return statement
     return select(*args, **kwargs)
 
@@ -281,8 +288,15 @@ def patch_ibmi_dialect() -> bool:
         logger.debug("sqlalchemy-ibmi not installed - ibmi scheme unavailable")
         return False
 
+    # A partially-initialised module (interrupted import) satisfies the import
+    # above but lacks the dialect, so assigning onto it would raise instead.
+    dialect = getattr(ibmi_base, "IBMiDb2Dialect", None)
+    if dialect is None:
+        logger.debug("sqlalchemy-ibmi is not usable - ibmi scheme unavailable")
+        return False
+
     ibmi_base.select = _ibmi_compat_select
-    ibmi_base.IBMiDb2Dialect._get_default_schema_name = get_default_schema_name_ibmi
-    ibmi_base.IBMiDb2Dialect._check_text_server = check_text_server_ibmi
+    dialect._get_default_schema_name = get_default_schema_name_ibmi
+    dialect._check_text_server = check_text_server_ibmi
     _IBMI_PATCHED = True
     return True
