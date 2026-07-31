@@ -219,10 +219,11 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 }) => {
   const [searchItems, setSearchItems] = useState<SelectItemType[]>([]);
   const optionMapRef = useRef<Map<string, Record<string, unknown>>>(new Map());
-  // Use the broad 'all' index when multiple types are allowed so that every
-  // configured type appears in results, not just the first one.
+  // Join all configured types with a comma so the API performs a targeted
+  // multi-index search (e.g. "user,team,glossaryTerm") rather than the
+  // catch-all "all" index. Mirrors main's getCustomPropertyReferenceSearchIndex.
   const searchIndex =
-    allowedTypes.length > 1 ? 'all' : (allowedTypes[0] ?? 'glossaryTerm');
+    allowedTypes.length > 0 ? allowedTypes.join(',') : 'all';
 
   const handleSearch = useCallback(
     async (query: string) => {
