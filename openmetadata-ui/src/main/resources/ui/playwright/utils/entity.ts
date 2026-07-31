@@ -2680,6 +2680,28 @@ export const validateCopiedLinkFormat = ({
 };
 
 /**
+ * Replaces navigator.clipboard with an in-memory implementation before any
+ * page script runs. Required for grid components (e.g. BulkImport) that call
+ * navigator.clipboard.writeText/readText directly, since the real OS clipboard
+ * API is unreliable in AUT/headless CI even with clipboard permissions granted.
+ */
+export const mockClipboardApi = async (page: Page): Promise<void> => {
+  await page.addInitScript(() => {
+    let clipboardData = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        readText: async () => clipboardData,
+        writeText: async (text: string) => {
+          clipboardData = text;
+        },
+      },
+      writable: true,
+    });
+  });
+};
+
+/**
  * Types the DELETE confirmation only when the delete modal renders a
  * confirmation text input. The current DeleteEntityModal and DeleteModal are
  * both input-less, so this guard is a safety net for any legacy flow that

@@ -28,7 +28,10 @@ import {
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  mockClipboardApi,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   addGridRowAndSelectFirstCell,
   createColumnRowDetails,
@@ -1033,6 +1036,10 @@ test.describe('Bulk Import Export', () => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
     test.setTimeout(300_000);
 
+    // Grid copy/paste calls navigator.clipboard directly; the real OS clipboard
+    // API is unreliable in AUT/headless CI even with permissions granted.
+    await mockClipboardApi(page);
+
     const dbEntity = new DatabaseClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -1155,13 +1162,23 @@ test.describe('Bulk Import Export', () => {
 
           // Principle 1: confirm data cell focus before navigating up
           await focusCell(firstDataCell);
-          // Confirm header focus before Shift+Right — without this wait, Shift+Right
-          // fires in the data row and selects 1×2 cells instead of 8×2.
+          // Confirm header focus before extending — without this wait, the
+          // Shift action fires in the data row and selects only 1 row.
           await move('ArrowUp', firstHeaderCell);
 
-          // Principle 5: assert after each extend — every press is a sync point
-          await extend('ArrowRight', rowCount * 2);
-          await extend('ArrowRight', rowCount * 3);
+          // Shift+click the 3rd header cell to select cols 0-2 deterministically.
+          // Repeated Shift+ArrowRight races RDG's own internal keyboard handler
+          // (both react to the same bubbling keydown event), causing flaky counts.
+          const targetHeaderCell = page
+            .locator('.rdg-header-row')
+            .first()
+            .locator('.rdg-cell')
+            .nth(2);
+          await page.keyboard.down('Shift');
+          await targetHeaderCell.click();
+          await page.keyboard.up('Shift');
+
+          await expect(selection).toHaveCount(rowCount * 3);
         });
 
         await test.step('allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click', async () => {
