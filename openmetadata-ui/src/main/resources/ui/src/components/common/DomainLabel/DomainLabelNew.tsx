@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Tooltip, Typography } from 'antd';
+import { Divider, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -141,25 +142,25 @@ export const DomainLabelNew = ({
             })}
           </div>
           {remainingCount > 0 && (
-            <Typography.Text
-              className="text-primary text-xs cursor-pointer"
+            <Typography
               data-testid="show-all-domains"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowAll(!showAll);
-              }}>
+              }}
+              className="text-primary text-xs cursor-pointer">
               {showAll ? t('label.show-less') : `+${remainingCount} more`}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       );
     } else {
       return (
-        <Typography.Text
-          className={classNames('text-sm no-data-chip-placeholder')}
-          data-testid="no-domain-text">
+        <Typography
+          data-testid="no-domain-text"
+          className={classNames('text-sm no-data-chip-placeholder')}>
           {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [
@@ -201,9 +202,9 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
           {selectableList}
         </div>
       </div>

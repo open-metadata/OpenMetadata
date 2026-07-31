@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { Alert, Typography } from 'antd';
+import { Alert } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,8 +29,6 @@ const SchemaEditor = withSuspenseFallback(
 // shape so the editor lights up the same way as everywhere else in the
 // UI (SqlQuery, SchemaViewer, etc.).
 const JSON_EDITOR_MODE = { name: CSMode.JAVASCRIPT, json: true };
-
-const { Text } = Typography;
 
 export const SAMPLE_MANIFEST_JSON = `{
   "entries": [
@@ -551,11 +550,11 @@ const ManifestJsonWidget = ({
           showIcon
           className="m-t-xs"
           message={
-            <Text>
+            <Typography>
               {t('label.valid-manifest-entry-count', {
                 count: validation.entryCount,
               })}
-            </Text>
+            </Typography>
           }
           type="success"
         />

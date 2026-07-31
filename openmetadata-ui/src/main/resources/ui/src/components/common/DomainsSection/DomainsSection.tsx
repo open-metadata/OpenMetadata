@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
@@ -263,9 +263,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography.Text className="domains-title">
+          <Typography className="domains-title">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <div className="domains-content">{loadingState}</div>
       </div>
@@ -276,9 +276,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography.Text className="domains-title">
+          <Typography className="domains-title">
             {t('label.domain-plural')}
-          </Typography.Text>
+          </Typography>
           {selectableList}
         </div>
         <div className="domains-content">
@@ -295,9 +295,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   return (
     <div className="domains-section">
       <div className="domains-header">
-        <Typography.Text className="domains-title">
+        <Typography className="domains-title">
           {t('label.domain-plural')}
-        </Typography.Text>
+        </Typography>
         {selectableList}
       </div>
       <div className="domains-content">{domainsDisplay}</div>

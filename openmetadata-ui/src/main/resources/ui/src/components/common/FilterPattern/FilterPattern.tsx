@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
+import { Checkbox, Col, Divider, Row, Select, Space } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
 
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';
@@ -70,11 +72,11 @@ const FilterPattern = ({
             />
 
             {includePatternExtraInfo && (
-              <Typography.Text
-                className="text-grey-muted m-t-xss m-b-xss"
-                data-testid="filter-pattern-include-info">
+              <Typography
+                data-testid="filter-pattern-include-info"
+                className="text-grey-muted m-t-xss m-b-xss">
                 {includePatternExtraInfo}
-              </Typography.Text>
+              </Typography>
             )}
           </Col>
           <Col span={24}>

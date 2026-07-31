@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +54,7 @@ const AppBadge = ({
           {icon}
         </span>
       )}
-      <Typography.Text>{label}</Typography.Text>
+      <Typography>{label}</Typography>
     </span>
   );
 };

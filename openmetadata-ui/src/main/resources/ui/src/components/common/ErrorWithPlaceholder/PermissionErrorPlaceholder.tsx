@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
 import { SIZE } from '../../../enums/common.enum';
@@ -39,7 +40,7 @@ const PermissionErrorPlaceholder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph className="w-68" style={{ marginBottom: '0' }}>
+          <Typography as='p' style={{ marginBottom: '0' }} className="w-68">
             <Transi18next
               i18nKey="message.no-access-placeholder"
               renderElement={<b />}
@@ -47,7 +48,7 @@ const PermissionErrorPlaceholder = ({
                 entity: permissionValue,
               }}
             />
-          </Typography.Paragraph>
+          </Typography>
         </div>
       </Space>
     </div>

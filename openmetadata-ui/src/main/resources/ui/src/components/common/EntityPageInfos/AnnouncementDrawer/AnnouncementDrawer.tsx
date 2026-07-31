@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Button, Drawer, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { FC, useCallback, useState } from 'react';
@@ -52,9 +53,9 @@ const AnnouncementDrawer: FC<Props> = ({
       className="justify-between"
       data-testid="title"
       style={{ width: '100%' }}>
-      <Typography.Text className="font-medium break-all">
+      <Typography className="font-medium break-all">
         {t('label.announcement-plural')}
-      </Typography.Text>
+      </Typography>
       <CloseOutlined data-testid="announcement-close" onClick={onClose} />
     </Space>
   );

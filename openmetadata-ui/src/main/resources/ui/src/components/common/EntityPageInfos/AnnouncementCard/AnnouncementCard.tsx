@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Card, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { AnnouncementEntity } from '../../../../rest/announcementsAPI';
@@ -43,12 +44,13 @@ const AnnouncementCard: FC<Props> = ({ onClick, announcement }) => {
           height={20}
           width={20}
         />
-        <Typography.Paragraph
+        <Typography
+          as='p'
           ellipsis
-          className="announcement-title"
-          data-testid="announcement-title">
+          data-testid="announcement-title"
+          className="announcement-title">
           {title}
-        </Typography.Paragraph>
+        </Typography>
       </Space>
       {message && (
         <RichTextEditorPreviewerV1

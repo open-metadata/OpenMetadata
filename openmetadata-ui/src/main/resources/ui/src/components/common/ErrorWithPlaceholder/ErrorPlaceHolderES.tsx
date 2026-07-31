@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,7 +132,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
           className="border-none"
           size={size}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          <Typography as='p' style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
               renderElement={<b />}
@@ -139,8 +140,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 entity: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          </Typography>
+          <Typography as='p' style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.add-data-asset-domain"
               renderElement={<b />}
@@ -148,8 +149,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 domain: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph>
+          </Typography>
+          <Typography as='p'>
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={
@@ -164,7 +165,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 doc: t('label.doc-plural-lowercase'),
               }}
             />
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolder>
       </div>
     );

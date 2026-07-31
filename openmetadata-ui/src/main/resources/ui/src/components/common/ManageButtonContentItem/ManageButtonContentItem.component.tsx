@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { MangeButtonItemLabelProps } from './ManageButtonItemLabel.interface';
@@ -42,16 +43,15 @@ export const ManageButtonItemLabel = ({
         className="text-left"
         data-testid={`${id}-details-container`}
         span={21}>
-        <Typography.Paragraph
-          className="font-medium m-b-0"
-          data-testid={`${id}-title`}>
+        <Typography as='p' data-testid={`${id}-title`} className="font-medium m-b-0">
           {name}
-        </Typography.Paragraph>
-        <Typography.Paragraph
-          className="text-grey-muted text-xs m-b-0 break-word"
-          data-testid={`${id}-description`}>
+        </Typography>
+        <Typography
+          as='p'
+          data-testid={`${id}-description`}
+          className="text-grey-muted text-xs m-b-0 break-word">
           {description}
-        </Typography.Paragraph>
+        </Typography>
       </Col>
     </Row>
   );

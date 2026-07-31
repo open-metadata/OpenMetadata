@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Empty,
-  Form,
-  Select,
-  SelectProps,
-  Space,
-  TagProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Empty, Form, Select, SelectProps, Space, TagProps, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
@@ -136,12 +127,12 @@ const AsyncSelectList: FC<
         label: tag.label,
         displayName: (
           <Space className="w-full" direction="vertical" size={0}>
-            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
+            <Typography as='p' ellipsis className="text-grey-muted m-0 p-0">
               {parts.join(FQN_SEPARATOR_CHAR)}
-            </Typography.Paragraph>
-            <Typography.Text ellipsis style={{ color: tag.data?.style?.color }}>
+            </Typography>
+            <Typography ellipsis style={{ color: tag.data?.style?.color }}>
               {lastPartOfTag}
-            </Typography.Text>
+            </Typography>
           </Space>
         ),
         value: tag.value,

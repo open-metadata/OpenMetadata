@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
+import { Col, Row, Segmented, Space, Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +87,7 @@ export const ListView = <T extends object = any>({
                 data-testid="show-deleted-switch"
                 onChange={handleDeletedSwitchChange}
               />
-              <Typography.Text>{t('label.deleted')}</Typography.Text>
+              <Typography>{t('label.deleted')}</Typography>
             </span>
           )}
 

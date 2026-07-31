@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Dropdown, Typography } from 'antd';
+import { Button, Dropdown } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
@@ -34,9 +35,9 @@ const CollapseHeader = ({
 
   return (
     <div className="d-flex items-center justify-between">
-      <Typography.Text className="text-md font-semibold">
+      <Typography className="text-md font-semibold">
         {title}
-      </Typography.Text>
+      </Typography>
       {menuItems ? (
         <Dropdown
           getPopupContainer={(triggerNode) => triggerNode.parentElement!}

@@ -21,16 +21,8 @@ import {
 } from '@react-awesome-query-builder/antd';
 import '@react-awesome-query-builder/antd/css/styles.css';
 import { WidgetProps } from '@rjsf/utils';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Divider,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Divider, Row, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -245,9 +237,9 @@ const QueryBuilderWidget: FC<
             span={24}>
             {outputType === SearchOutputType.JSONLogic && (
               <>
-                <Typography.Text className="query-filter-label text-grey-muted">
+                <Typography className="query-filter-label text-grey-muted">
                   {props.label}
-                </Typography.Text>
+                </Typography>
                 <Divider className="m-y-sm" />
               </>
             )}
@@ -302,15 +294,15 @@ const QueryBuilderWidget: FC<
                     icon={<InfoCircleOutlined height={16} />}
                     message={
                       <div className="d-flex flex-wrap items-center gap-1">
-                        <Typography.Text>
+                        <Typography>
                           {t('message.search-entity-count', {
                             count: searchResults,
                           })}
-                        </Typography.Text>
+                        </Typography>
 
-                        <Typography.Text className="text-xs text-grey-muted">
+                        <Typography className="text-xs text-grey-muted">
                           {t('message.click-here-to-view-assets-on-explore')}
-                        </Typography.Text>
+                        </Typography>
                       </div>
                     }
                     type="info"

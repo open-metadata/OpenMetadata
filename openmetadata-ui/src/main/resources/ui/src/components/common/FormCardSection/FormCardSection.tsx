@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
+import { Card, Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import './form-card-section.less';
 import { FormCardSectionProps } from './FormCardSection.interface';
@@ -29,12 +30,12 @@ function FormCardSection({
       data-testid={`${heading}-container`}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
+          <Typography className="font-medium">{heading}</Typography>
         </Col>
         <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
+          <Typography className="text-xs text-grey-muted">
             {subHeading}
-          </Typography.Text>
+          </Typography>
         </Col>
         <Col
           className={classNames('p-t-sm', childrenContainerClassName)}

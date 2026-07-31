@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
@@ -75,11 +76,11 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
     return (
       <>
         {renderNameWithOptionalLink(name)}
-        <Typography.Text
-          className="d-block break-word"
-          data-testid="column-display-name">
+        <Typography
+          data-testid="column-display-name"
+          className="d-block break-word">
           {renderNameWithOptionalLink(displayName)}
-        </Typography.Text>
+        </Typography>
       </>
     );
   }, [displayName, name, renderNameWithOptionalLink]);
@@ -89,11 +90,11 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
       className="d-inline-flex flex-column hover-icon-group vertical-align-inherit"
       style={{ maxWidth: '80%' }}>
       <div className="d-inline-flex items-start gap-1 flex-column">
-        <Typography.Text
-          className="m-b-0 d-block text-link-color"
-          data-testid="column-name">
+        <Typography
+          data-testid="column-name"
+          className="m-b-0 d-block text-link-color">
           {renderMainContent}
-        </Typography.Text>
+        </Typography>
 
         <div className="d-flex items-center">
           {hasEditPermission ? (

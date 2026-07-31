@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Typography } from 'antd';
+import { Dropdown } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { EntityReference } from '../../../generated/entity/type';
@@ -31,9 +32,9 @@ const DomainLink: React.FC<{
       className="no-underline"
       data-testid="domain-link"
       to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-      <Typography.Text className="text-sm text-primary">
+      <Typography className="text-sm text-primary">
         {getEntityName(domain)}
-      </Typography.Text>
+      </Typography>
     </Link>
   </>
 );
@@ -60,9 +61,9 @@ export const DomainDisplay = ({
           <Link
             className="no-underline"
             to={getDomainPath(domain.fullyQualifiedName) ?? ''}>
-            <Typography.Text className="text-sm text-primary">
+            <Typography className="text-sm text-primary">
               {getEntityName(domain)}
-            </Typography.Text>
+            </Typography>
           </Link>
         </div>
       ),
@@ -80,7 +81,6 @@ export const DomainDisplay = ({
             />
           </div>
         )}
-
         <div className="d-flex items-center gap-2">
           <DomainLink domain={firstDomain} />
 
@@ -90,13 +90,13 @@ export const DomainDisplay = ({
               className: 'domain-tooltip-list',
             }}
             trigger={['hover']}>
-            <Typography.Text
+            <Typography
+              data-testid="domain-count-button"
               className={`flex-center flex-shrink-0 cursor-pointer align-middle ant-typography-secondary domain-count-button ${
                 remainingCount <= 9 ? 'h-6 w-6' : ''
-              }`}
-              data-testid="domain-count-button">
+              }`}>
               <span className="domain-count-label">{`+${remainingCount}`}</span>
-            </Typography.Text>
+            </Typography>
           </Dropdown>
         </div>
       </div>

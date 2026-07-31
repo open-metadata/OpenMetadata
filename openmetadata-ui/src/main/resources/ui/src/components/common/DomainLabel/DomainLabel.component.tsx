@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Tooltip, Typography } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -140,7 +141,7 @@ export const DomainLabel = ({
             key={domain.id}>
             {/* condition to show icon for new layout perticulary for multiple domains */}
             {(!headerLayout || (headerLayout && multiple)) && (
-              <Typography.Text className="self-center text-xs whitespace-nowrap">
+              <Typography className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
                   className="d-flex"
                   color={DE_ACTIVE_COLOR}
@@ -148,7 +149,7 @@ export const DomainLabel = ({
                   name="folder"
                   width={20}
                 />
-              </Typography.Text>
+              </Typography>
             )}
             {renderDomainLink(
               domain,
@@ -178,13 +179,13 @@ export const DomainLabel = ({
                 })),
                 className: 'domain-tooltip-list',
               }}>
-              <Typography.Text
+              <Typography
+                data-testid="domain-count-button"
                 className={`flex-center cursor-pointer align-middle ant-typography-secondary domain-count-button ${
                   remainingCount <= 9 ? 'h-6 w-6' : ''
-                }`}
-                data-testid="domain-count-button">
+                }`}>
                 <span className="ant-typography domain-count-label">{`+${remainingCount}`}</span>
-              </Typography.Text>
+              </Typography>
             </Dropdown>
           </div>
         );
@@ -194,15 +195,15 @@ export const DomainLabel = ({
     }
 
     return (
-      <Typography.Text
+      <Typography
+        data-testid="no-domain-text"
         className={classNames(
           'domain-link-text',
           { 'font-medium text-sm': !showDomainHeading },
           textClassName
-        )}
-        data-testid="no-domain-text">
+        )}>
         {defaultDomainText}
-      </Typography.Text>
+      </Typography>
     );
   }, [
     activeDomain,
@@ -235,19 +236,18 @@ export const DomainLabel = ({
             className="d-flex text-sm  font-medium items-center m-b-xs"
             data-testid="header-domain-container">
             {!headerLayout ? (
-              <Typography.Text className="right-panel-label m-r-xss">
+              <Typography className="right-panel-label m-r-xss">
                 {t('label.domain-plural')}
-              </Typography.Text>
+              </Typography>
             ) : (
-              <Typography.Text className="domain-link right-panel-label m-r-xss">
+              <Typography className="domain-link right-panel-label m-r-xss">
                 {activeDomain.length > 0
                   ? t('label.domain-plural')
                   : defaultDomainText}
-              </Typography.Text>
+              </Typography>
             )}
             {selectableList}
           </div>
-
           <div className="d-flex  text-sm font-medium items-center gap-2 flex-wrap">
             {domainLink}
           </div>
@@ -261,13 +261,12 @@ export const DomainLabel = ({
           <div
             className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
-            <Typography.Text className="domain-link right-panel-label m-r-xss">
+            <Typography className="domain-link right-panel-label m-r-xss">
               {t('label.domain-plural')}
-            </Typography.Text>
+            </Typography>
             {selectableList}
           </div>
         )}
-
         <div
           className="d-flex no-underline items-center gap-2 flex-wrap"
           data-testid="header-domain-container">

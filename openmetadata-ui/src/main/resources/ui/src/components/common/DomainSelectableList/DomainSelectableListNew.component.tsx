@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip, Typography } from 'antd';
+import { Button, Popover, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -75,9 +76,9 @@ const DomainSelectableListNew = ({
                 <DomainIcon height={16} />
               </div>
 
-              <Typography.Text className="user-profile-edit-popover-card-title">
+              <Typography className="user-profile-edit-popover-card-title">
                 {t('label.domain-plural')}
-              </Typography.Text>
+              </Typography>
             </div>
             <DomainSelectablTreeNew
               initialDomains={initialDomains}

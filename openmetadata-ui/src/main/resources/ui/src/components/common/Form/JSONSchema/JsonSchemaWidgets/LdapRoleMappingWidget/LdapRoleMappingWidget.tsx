@@ -14,14 +14,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import {
-  Button,
-  Card,
-  Input,
-  Select,
-  Space,
-  Typography as AntDTypography,
-} from 'antd';
+import { Button, Card, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -30,8 +23,6 @@ import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-de
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import './ldap-role-mapping-widget.less';
-
-const { Text } = AntDTypography;
 
 interface RoleMappingEntry {
   id: string;
@@ -305,12 +296,12 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
                   }
                 />
                 {errors[mapping.id] && (
-                  <Text
-                    className="text-xs m-t-xss"
+                  <Typography
                     data-testid={`ldap-group-error-${mapping.id}`}
-                    type="danger">
+                    color='danger'
+                    className="text-xs m-t-xss">
                     {errors[mapping.id]}
-                  </Text>
+                  </Typography>
                 )}
               </Grid.Item>
 
@@ -362,7 +353,7 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
         )}
 
         {mappings.length === 0 && readonly && (
-          <Text type="secondary">{t('message.no-ldap-role-mappings')}</Text>
+          <Typography color='secondary'>{t('message.no-ldap-role-mappings')}</Typography>
         )}
       </Space>
     </div>
