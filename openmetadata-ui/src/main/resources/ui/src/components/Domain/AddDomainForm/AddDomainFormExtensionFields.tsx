@@ -17,14 +17,21 @@ import {
   Select as CoreSelect,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Button, Form } from 'antd';
+import { isEmpty, omit } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Column, textEditor } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { useGridEditController } from '../../../hooks/useGridEditController';
 import { searchQuery } from '../../../rest/searchAPI';
+import { CSMode } from '../../../enums/codemirror.enum';
 import { getField } from '../../../utils/formUtils';
+import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import TableTypePropertyEditTable from '../../common/CustomPropertyTable/TableTypeProperty/TableTypePropertyEditTable';
+import '../../common/CustomPropertyTable/TableTypeProperty/edit-table-type-property.less';
 import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
 import {
   getExtensionFieldKind,
@@ -315,6 +322,133 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
           <Autocomplete.Item id={String(item.id)} label={item.label} />
         )}
       </Autocomplete>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// CoreSqlEditor — bridges antd Form.Item with SchemaEditor (SQL mode)
+// ---------------------------------------------------------------------------
+
+interface CoreSqlEditorProps {
+  value?: string;
+  onChange?: (value: string) => void;
+  'data-testid'?: string;
+}
+
+const CoreSqlEditor: React.FC<CoreSqlEditorProps> = ({
+  value,
+  onChange,
+  'data-testid': testId,
+}) => (
+  <div data-testid={testId}>
+    <SchemaEditor
+      className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+      mode={{ name: CSMode.SQL }}
+      showCopyButton={false}
+      value={value ?? ''}
+      onChange={onChange}
+    />
+  </div>
+);
+
+// ---------------------------------------------------------------------------
+// CoreTableEditor — inline react-data-grid editor for table custom properties
+// ---------------------------------------------------------------------------
+
+interface TableValue {
+  rows: Record<string, string>[];
+  columns: string[];
+}
+
+interface CoreTableEditorProps {
+  columns: string[];
+  value?: TableValue;
+  onChange?: (val: TableValue) => void;
+  'data-testid'?: string;
+}
+
+const CoreTableEditor: React.FC<CoreTableEditorProps> = ({
+  columns,
+  value,
+  onChange,
+  'data-testid': testId,
+}) => {
+  const { t } = useTranslation();
+
+  const gridColumns = useMemo(
+    () =>
+      columns.map((col) => ({
+        key: col,
+        name: col,
+        sortable: false,
+        resizable: true,
+        cellClass: () => `rdg-cell-${col.replace(/[^a-zA-Z0-9-_]/g, '')}`,
+        editable: true,
+        renderEditCell: textEditor,
+        minWidth: 180,
+      })) as Column<Record<string, string>[]>[],
+    [columns]
+  );
+
+  const initialRows = useMemo(() => {
+    const rawRows =
+      typeof value === 'object' &&
+      value !== null &&
+      Array.isArray(value.rows)
+        ? value.rows
+        : [];
+
+    return rawRows.map((row, i) => ({ ...row, id: String(i) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // initialize once from initial value
+
+  const [dataSource, setDataSource] = useState<Record<string, string>[]>(
+    initialRows
+  );
+
+  const {
+    handleCopy,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handlePaste: rawHandlePaste,
+    handleOnRowsChange,
+    setGridContainer,
+    handleAddRow,
+  } = useGridEditController({
+    dataSource,
+    setDataSource,
+    columns: gridColumns,
+  });
+
+  // Keep a stable ref to onChange so the effect below never re-fires solely
+  // because antd cloneElement produces a new function identity each render.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  useEffect(() => {
+    const rows = dataSource
+      .map((row) => omit(row, 'id'))
+      .filter((row) => !isEmpty(row) && Object.values(row).some(Boolean));
+    onChangeRef.current?.({ rows, columns });
+  }, [dataSource, columns]);
+
+  return (
+    <div data-testid={testId}>
+      <TableTypePropertyEditTable
+        columns={gridColumns}
+        dataSource={dataSource}
+        handleCopy={handleCopy}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handleOnRowsChange={handleOnRowsChange}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handlePaste={rawHandlePaste as any}
+        setGridContainer={setGridContainer}
+      />
+      <div style={{ marginTop: 8 }}>
+        <Button onClick={handleAddRow}>
+          {t('label.add-entity', { entity: t('label.row') })}
+        </Button>
+      </div>
     </div>
   );
 };
@@ -632,6 +766,41 @@ const AddDomainFormExtensionFields = ({
                 data-testid={dataTestId}
                 label={label}
                 multiple={kind === 'referenceList'}
+              />
+            </Form.Item>
+          );
+        }
+
+        if (kind === 'sqlQuery') {
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={labelWithBadge}
+              name={namePath}
+              rules={baseRules}>
+              <CoreSqlEditor data-testid={dataTestId} />
+            </Form.Item>
+          );
+        }
+
+        if (kind === 'table') {
+          const config = definition?.customPropertyConfig?.config;
+          const tableColumns =
+            typeof config === 'object' &&
+            !Array.isArray(config) &&
+            config !== null
+              ? (config as { columns?: string[] }).columns ?? []
+              : [];
+
+          return (
+            <Form.Item
+              key={formField.fieldPath}
+              label={labelWithBadge}
+              name={namePath}
+              rules={baseRules}>
+              <CoreTableEditor
+                columns={tableColumns}
+                data-testid={dataTestId}
               />
             </Form.Item>
           );
