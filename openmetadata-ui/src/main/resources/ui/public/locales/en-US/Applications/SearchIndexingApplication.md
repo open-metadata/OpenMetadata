@@ -66,7 +66,9 @@ Maximum backoff time in milliseconds
 $$
 
 $$section
-### entities $(id="entities")
+### Entities $(id="entities")
+
+List of entities that you need to reindex
 
 $$
 
