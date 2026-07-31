@@ -34,8 +34,9 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
 };
 
 /**
- * Asserts a failed test case's incident sits at `status` on the entity's Data
- * Quality tab. Drives no transition.
+ * Asserts a failed test case's incident sits at `status`, then opens the test
+ * case details page. Drives no transition, but leaves the page where
+ * {@link acknowledgeTask} does so callers can go on to the Incident tab.
  */
 export const verifyIncidentStatus = async (data: {
   testCase: string;
@@ -54,6 +55,8 @@ export const verifyIncidentStatus = async (data: {
   await expect(
     page.locator(`[data-testid="${testCase}-status"]`)
   ).toContainText(status);
+  await page.getByTestId(testCase).getByText(testCase).click();
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const acknowledgeTask = async (data: {
