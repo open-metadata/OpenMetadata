@@ -15,7 +15,6 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -175,7 +174,7 @@ class IndexTemplateManagerTest {
   }
 
   @Test
-  void skippedMappingsDoNotPreventFingerprintStamping() throws IOException {
+  void missingMappingInvalidatesFingerprint() throws IOException {
     SearchClient searchClient = mock(SearchClient.class);
     IndexMapping availableMapping = indexMapping("available_search_index");
     IndexMapping unavailableMapping = indexMapping("unavailable_search_index");
@@ -198,7 +197,7 @@ class IndexTemplateManagerTest {
     ArgumentCaptor<Settings> settingCaptor = ArgumentCaptor.forClass(Settings.class);
     verify(systemRepository).updateSetting(settingCaptor.capture());
     StartupChecksums checksums = (StartupChecksums) settingCaptor.getValue().getConfigValue();
-    assertNotNull(checksums.getSearchTemplateFingerprint());
+    assertNull(checksums.getSearchTemplateFingerprint());
   }
 
   @Test

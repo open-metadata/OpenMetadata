@@ -19,6 +19,7 @@ import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -32,7 +33,7 @@ public interface EntityLifecycleEventHandler {
    * Returns whether this handler needs the event. The dispatcher evaluates this before creating an
    * asynchronous entity snapshot.
    */
-  default boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+  default boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
     return true;
   }
 

@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -282,6 +283,35 @@ class EntityLifecycleEventDispatcherTest {
   }
 
   @Test
+  void handlersReceiveRepositoryEventTypes() {
+    List<EventType> receivedEventTypes = new ArrayList<>();
+    TestHandler eventTypeHandler =
+        new TestHandler("EventTypeHandler", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
+            receivedEventTypes.add(eventType);
+            return true;
+          }
+        };
+    dispatcher.registerHandler(eventTypeHandler);
+
+    dispatcher.onEntityCreated(mockEntity, mockSubjectContext);
+    dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext);
+    dispatcher.onEntityDeleted(mockEntity, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, true, mockSubjectContext);
+    dispatcher.onEntitySoftDeletedOrRestored(mockEntity, false, mockSubjectContext);
+
+    assertEquals(
+        List.of(
+            EventType.ENTITY_CREATED,
+            EventType.ENTITY_UPDATED,
+            EventType.ENTITY_DELETED,
+            EventType.ENTITY_SOFT_DELETED,
+            EventType.ENTITY_RESTORED),
+        receivedEventTypes);
+  }
+
+  @Test
   void testOnEntitiesUpdatedUsesEntitySpecificChangeDescriptions() {
     TestHandler allEntitiesHandler = new TestHandler("AllEntitiesHandler", 100, false, Set.of());
     dispatcher.registerHandler(allEntitiesHandler);
@@ -419,7 +449,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler decliningHandler =
         new TestHandler("DecliningHandler", 100, true, Set.of()) {
           @Override
-          public boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
             shouldProcessCount.incrementAndGet();
             return false;
           }
@@ -438,7 +468,7 @@ class EntityLifecycleEventDispatcherTest {
     TestHandler handler =
         new TestHandler("FailingFilter", 100, false, Set.of()) {
           @Override
-          public boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+          public boolean shouldProcess(EventType eventType, ChangeDescription changeDescription) {
             throw new IllegalStateException("filter failed");
           }
         };

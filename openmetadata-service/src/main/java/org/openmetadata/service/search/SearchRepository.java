@@ -760,8 +760,7 @@ public class SearchRepository {
         success++;
       } catch (Exception exception) {
         failed++;
-        LOG.warn(
-            "Failed to create index template for {}: {}", entry.getKey(), exception.getMessage());
+        LOG.warn("Failed to create index template for {}", entry.getKey(), exception);
       }
     }
     if (failed == 0) {
@@ -793,6 +792,7 @@ public class SearchRepository {
         continue;
       }
       if (mappingContent == null) {
+        failures++;
         LOG.warn("No mapping content found for entity type: {}", entry.getKey());
         continue;
       }
