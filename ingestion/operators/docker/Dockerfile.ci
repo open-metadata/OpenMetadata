@@ -142,6 +142,16 @@ RUN [ $(uname -m) = "x86_64" ] \
   && pip install ".[db2]" \
   || echo "DB2 not supported on ARM architectures."
 
+# Patch CVE-vulnerable jars bundled inside PySpark (zookeeper, jackson-asl, netty).
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale.
+COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
+RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
+
+# Strip spacy's bundled CI test fixture: spacy/tests/package/requirements.txt pins an old
+# black, which image scanners misreport as an installed package (CVE-2026-31900). The file
+# is test-only, never imported at runtime. Guarded so builds without spacy don't fail.
+RUN find /home/openmetadata/.local/lib/python*/site-packages/spacy/tests -name 'requirements.txt' -delete 2>/dev/null || true
+
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
 

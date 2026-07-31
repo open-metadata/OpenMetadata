@@ -144,36 +144,10 @@ RUN [ $(uname -m) = "x86_64" ] \
   && pip install ".[db2]" \
   || echo "DB2 not supported on ARM architectures."
 
-# Patch vulnerable Hive-metastore jars bundled inside PySpark 3.5.6 (the Deltalake
-# connector calls .enableHiveSupport()). SHA256-pinned to Maven Central.
-#   zookeeper 3.6.3 -> 3.7.2        CVE-2023-44981 (SASL quorum auth bypass); ZK 3.7 runs on Java 8+
-#   jackson-mapper/core-asl 1.9.13  CVE-2019-10202 (deserialization RCE) -- removed, no fix upstream
-# Derby (CVE-2022-46337) is deliberately left at the bundled 10.14.2.0. The only fixed
-# release on Maven Central is 10.17.1.0, which requires Java 21 — this image ships Java 17
-# (default-jre-headless), and the Java-8/11/17 backport jars (10.14.3.0 / 10.15.2.1 /
-# 10.16.1.2) were never published upstream, so no drop-in Java-17 fix exists. The CVE is
-# an LDAP-authenticator injection; OM's embedded Derby metastore uses no LDAP auth, so the
-# vulnerable path is unreachable. Revisit if PySpark bumps Derby or the image moves to Java 21.
-# Skips cleanly when pyspark is absent (e.g. an INGESTION_DEPENDENCY build without
-# the deltalake/pyspark deps); only patches jars when the pyspark jars dir exists.
-RUN JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))' 2>/dev/null || true)" \
-  && if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then \
-       echo "pyspark not installed; skipping Hive-metastore jar patch"; \
-     else \
-       fetch_jar() { \
-         wget -q "https://repo1.maven.org/maven2/$2" -O "$1" \
-         && echo "$3  $1" | sha256sum -c - || exit 1; \
-       }; \
-       cd "${JARS_DIR}" \
-       && rm -f zookeeper-*.jar zookeeper-jute-*.jar \
-                jackson-mapper-asl-*.jar jackson-core-asl-*.jar \
-       && fetch_jar zookeeper-3.7.2.jar \
-            org/apache/zookeeper/zookeeper/3.7.2/zookeeper-3.7.2.jar \
-            b12d6fb4afd7b3849d3a9a5a38b9260c23a12e1ea58ca8c8d775880249cb8eac \
-       && fetch_jar zookeeper-jute-3.7.2.jar \
-            org/apache/zookeeper/zookeeper-jute/3.7.2/zookeeper-jute-3.7.2.jar \
-            ad15d812b1f01f373638443adcda0e23fda549d65ced2be8c4f64bef33b5d774; \
-     fi
+# Patch CVE-vulnerable jars bundled inside PySpark (zookeeper, jackson-asl, netty).
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale.
+COPY --chown=airflow:0 ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
+RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
