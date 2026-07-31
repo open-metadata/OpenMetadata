@@ -131,12 +131,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Install antlr cli
-        run: sudo make install_antlr_cli
-        shell: bash
-
+      # -am builds only openmetadata-dist's dependency closure, and -DonlyBackend is what
+      # drops openmetadata-ui from it. Removing either pulls the whole frontend build back
+      # in, which also needs the antlr4 CLI that this job deliberately does not install.
       - name: Build backend distribution
-        run: mvn -DskipTests -DonlyBackend clean package -pl '!openmetadata-ui'
+        run: mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
         shell: bash
 
       - name: Upload backend distribution

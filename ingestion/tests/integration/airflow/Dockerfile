@@ -23,3 +23,8 @@ COPY --chown=airflow:0 . /tmp/ingestion
 RUN pip install --no-cache-dir uv \
  && uv pip install --no-cache "apache-airflow==3.2.2" /tmp/ingestion \
  && rm -rf /tmp/ingestion
+
+# Migrating at build time rather than container start: on a 2-core CI runner this step
+# alone outlived the readiness timeout.
+RUN airflow db migrate \
+ && echo '{"admin": "admin"}' > /opt/airflow/simple_auth_manager_passwords.json

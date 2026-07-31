@@ -49,10 +49,8 @@ OM_JWT = (
 _DOCKERFILE = "tests/integration/airflow/Dockerfile"
 
 _START_AIRFLOW = textwrap.dedent(
-    f"""
+    """
     set -e
-    airflow db migrate
-    echo '{{"{AIRFLOW_ADMIN}": "{AIRFLOW_ADMIN}"}}' > /opt/airflow/simple_auth_manager_passwords.json
     airflow dag-processor &
     airflow scheduler &
     exec airflow api-server --port 8080
@@ -79,7 +77,6 @@ def _auth_token(host: str, port: str) -> str | None:
 
 def _wait_for_airflow_api(container, timeout: int = 420) -> None:
     """Block until the Airflow API issues tokens. Raises TimeoutError otherwise."""
-    # `airflow db migrate` against SQLite takes minutes before the API server binds.
     host = container.get_container_host_ip()
     port = container.get_exposed_port(8080)
     deadline = time.monotonic() + timeout
@@ -87,7 +84,13 @@ def _wait_for_airflow_api(container, timeout: int = 420) -> None:
         if _auth_token(host, port):
             return
         time.sleep(5)
-    raise TimeoutError(f"Airflow API did not become ready within {timeout}s")
+
+    stdout, stderr = container.get_logs()
+    raise TimeoutError(
+        f"Airflow API did not become ready within {timeout}s.\n"
+        f"--- container stdout ---\n{stdout.decode(errors='replace')[-4000:]}\n"
+        f"--- container stderr ---\n{stderr.decode(errors='replace')[-4000:]}"
+    )
 
 
 @pytest.fixture(scope="session")
