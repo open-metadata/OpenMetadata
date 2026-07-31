@@ -8,7 +8,8 @@
             "description": "Checks if we can access the ranger service",
             "errorMessage": "Failed to access the ranger service, please check the credentials",
             "shortCircuit": true,
-            "mandatory": true
+            "mandatory": true,
+            "category": "ConnectionGate"
         }
     ]
 }

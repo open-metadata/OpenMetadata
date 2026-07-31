@@ -107,6 +107,32 @@ BIGQUERY_ERRORS = ErrorPack(
         fix="Grant the service account the BigQuery Job User role (bigquery.jobs.create) on the "
         "billing project so it can run queries.",
     ),
+    # BigQuery answers 403 for three unrelated causes and google-api-core raises
+    # Forbidden for all of them, so without these the generic rules below would
+    # tell a user to grant IAM roles for a quota breach or a disabled API -
+    # neither of which a role fixes. Keyed on the message tokens Google's error
+    # bodies carry (reasons quotaExceeded/rateLimitExceeded, accessNotConfigured),
+    # and ordered ahead of the "access denied" rule because a body can carry both
+    # that prefix and the sharper reason.
+    when(Matchers.any_of(Matchers.contains("quota exceeded"), Matchers.contains("exceeded rate limits"))).diagnose(
+        "BigQuery quota exceeded",
+        fix="This is a quota or rate limit, not a permission problem. Retry later, or raise the "
+        "affected BigQuery quota for the billing project in the Google Cloud console.",
+    ),
+    when(Matchers.contains("bigquery api has not been used in project")).diagnose(
+        "BigQuery API is not enabled",
+        fix="The BigQuery API is disabled on this project. Enable it in the Google Cloud console "
+        "for the configured project (and for billingProjectId when it differs), then retry - no "
+        "IAM role grants access to a disabled API.",
+    ),
+    # accessNotConfigured is not BigQuery-specific: with policy tags enabled the
+    # disabled API is Data Catalog, not BigQuery. Name no API the error did not.
+    when(Matchers.contains("has not been used in project")).diagnose(
+        "A required Google Cloud API is not enabled",
+        fix="A Google Cloud API this connector calls is disabled on the project - the error names "
+        "which one (Data Catalog when includePolicyTags is set). Enable it in the Google Cloud "
+        "console, then retry; no IAM role grants access to a disabled API.",
+    ),
     when(Matchers.contains("access denied")).diagnose(
         "Access denied",
         fix="The service account is authenticated but lacks permission for the requested "
