@@ -267,6 +267,25 @@ class DatabricksPipelineTests(TestCase):
         ]
         self.assertEqual(pipeline_status, EXPECTED_PIPELINE_STATUS)
 
+    @patch("metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs")
+    def test_yield_pipeline_status_deduplicates_run_timestamps(self, get_job_runs):
+        # Databricks' inclusive `start_time_to` pagination returns boundary runs
+        # more than once. OpenMetadata stores a single status per timestamp
+        # (entityFQNHash, extension, timestamp), so runs sharing a start_time must
+        # collapse to one status or the Postgres bulk upsert fails with
+        # "ON CONFLICT DO UPDATE command cannot affect row a second time".
+        duplicate_run = dict(mock_run_data[0])
+        older_run = dict(mock_run_data[0])
+        older_run["start_time"] = mock_run_data[0]["start_time"] - 900000
+        get_job_runs.return_value = [mock_run_data[0], duplicate_run, older_run]
+
+        result = list(self.databricks.yield_pipeline_status(DataBrickPipelineDetails(**mock_data[0])))
+        statuses = result[0].right.pipeline_statuses
+        timestamps = [status.timestamp.root for status in statuses]
+
+        self.assertEqual(len(statuses), 2)
+        self.assertEqual(len(timestamps), len(set(timestamps)))
+
     def test_databricks_pipeline_lineage(self):
         self.databricks.context.get().__dict__["pipeline"] = "11223344"
         self.databricks.context.get().__dict__["pipeline_service"] = "databricks_pipeline_test"
