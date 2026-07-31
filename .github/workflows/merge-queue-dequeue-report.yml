@@ -45,6 +45,7 @@ jobs:
       OWNER: ${{ github.repository_owner }}
       REPO: ${{ github.event.repository.name }}
       PR: ${{ github.event.number || inputs.pr }}
+      BASE_REF: ${{ github.event.repository.default_branch }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
     steps:
       - name: Resolve the dequeue event
@@ -103,15 +104,37 @@ jobs:
           gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
             --jq '.check_runs[]
                   | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")
-                  | "- [\(.name)](\(.html_url)) — `\(.conclusion)`"' > failures.md
+                  | "\(.html_url)\t\(.name)"' > failures.tsv
+
+          # Only a required check can dequeue an entry; the rest failed alongside it.
+          gh api "repos/$GH_REPO/rules/branches/$BASE_REF" \
+            --jq '.[] | select(.type == "required_status_checks")
+                  | .parameters.required_status_checks[].context' > required.txt || true
+
+          blocked=$(cut -f2 failures.tsv | grep -xFf required.txt \
+            | awk '{ out = out (out ? ", " : "") "`" $0 "`" } END { print out }' || true)
+
+          : > runs.md
+          cut -f1 failures.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
+            run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
+            # Matrix jobs carry every parameter; the first one is the shard id.
+            jobs=$(grep -F "$run/job/" failures.tsv | cut -f2 \
+                   | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
+                   | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
+            echo "- [$run_name]($run) — $jobs" >> runs.md
+          done
 
           {
             echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
             echo
-            if [ -s failures.md ]; then
-              echo "These checks failed on merge-queue commit \`${SHA:0:7}\`:"
+            if [ -s runs.md ]; then
+              if [ -n "$blocked" ]; then
+                echo "Blocked the queue: $blocked"
+              else
+                echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending."
+              fi
               echo
-              cat failures.md
+              cat runs.md
             else
               echo "No failing check on merge-queue commit \`${SHA:0:7}\` — removed by hand, invalidated by an entry ahead in the queue, or a required check timed out."
             fi
