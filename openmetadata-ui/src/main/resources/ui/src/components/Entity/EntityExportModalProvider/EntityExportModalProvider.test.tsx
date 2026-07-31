@@ -1055,6 +1055,7 @@ describe('EntityExportModalProvider component', () => {
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
+
       expect(getCsvAsyncJob).toHaveBeenCalledTimes(2);
       expect(onError).not.toHaveBeenCalled();
 
@@ -1063,6 +1064,7 @@ describe('EntityExportModalProvider component', () => {
       await act(async () => {
         jest.advanceTimersByTime(10_000);
       });
+
       expect(onError).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
         'server.unexpected-error'
@@ -1082,7 +1084,6 @@ describe('EntityExportModalProvider component', () => {
 
     try {
       (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
-      const onExport = jest.fn().mockResolvedValue(mockExportJob);
       (getCsvAsyncJob as jest.Mock).mockResolvedValue({
         createdBy: 'admin',
         entityType: 'database',
