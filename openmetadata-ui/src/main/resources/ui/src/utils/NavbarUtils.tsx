@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Row } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
@@ -33,10 +34,10 @@ const getHelpDropdownLabelContentRenderer = (
         />
       </Col>
       <Col className="flex items-center" span={20}>
-        <Typography.Text className="text-base-color">
+        <Typography className="text-base-color">
           {t(item.label)}{' '}
           {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
-        </Typography.Text>
+        </Typography>
 
         {item.isExternal && (
           <Icon

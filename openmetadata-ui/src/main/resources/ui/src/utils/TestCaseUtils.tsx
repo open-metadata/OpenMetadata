@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { lowerCase } from 'lodash';
 import type { ReactElement, ReactNode } from 'react';
@@ -37,11 +37,11 @@ export const getTestCaseResultCount = (
   <div
     className={`test-result-container ${lowerCase(status)}`}
     data-testid={`test-${status}`}>
-    <Typography.Text
+    <Typography
       className="font-medium text-md"
       data-testid={`test-${status}-value`}>
       {count}
-    </Typography.Text>
+    </Typography>
   </div>
 );
 

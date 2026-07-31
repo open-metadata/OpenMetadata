@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Card } from 'antd';
 import { isEmpty, startCase, uniqBy } from 'lodash';
 import {
   CartesianGrid,
@@ -114,9 +115,9 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
         className="custom-data-insight-tooltip"
         style={cardStyles}
         title={
-          <Typography.Title level={5} style={titleStyles}>
+          <Typography as="h5" size="text-md" style={titleStyles}>
             {timestamp}
-          </Typography.Title>
+          </Typography>
         }>
         <ul
           className="custom-data-insight-tooltip-container"

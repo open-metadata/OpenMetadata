@@ -64,6 +64,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest
     .fn()
     .mockImplementation(({ children }) => <>{children}</>),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({
+        as: Component = 'span',
+        children,
+        ...props
+      }: {
+        as?: React.ElementType;
+        children: React.ReactNode;
+        [key: string]: unknown;
+      }) => <Component {...props}>{children}</Component>
+    ),
 }));
 
 jest.mock(

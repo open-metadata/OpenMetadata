@@ -12,7 +12,7 @@
  */
 
 import Icon, { CheckOutlined } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import type { ColumnsType } from 'antd/es/table';
 import { isEmpty } from 'lodash';
 import type { LoadingState } from 'Models';
@@ -68,10 +68,9 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
             src={serviceUtilClassBase.getServiceLogo(serviceType)}
           />
         )}
-
-        <Typography.Text className="text-primary" ellipsis={{ tooltip: true }}>
+        <Typography className="text-primary" ellipsis={{ tooltip: true }}>
           {isEmpty(fqn) ? NO_DATA_PLACEHOLDER : fqn}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -160,11 +159,11 @@ const buildLineageTableColumns = (headers: string[]): ColumnsType<string> => {
       width: 200,
       ellipsis: { showTitle: false },
       render: (text: string) => (
-        <Typography.Text
+        <Typography
           data-testid={`lineage-column-${header}-${text}`}
           ellipsis={{ tooltip: true }}>
           {isEmpty(text) ? NO_DATA_PLACEHOLDER : text}
-        </Typography.Text>
+        </Typography>
       ),
     });
   });

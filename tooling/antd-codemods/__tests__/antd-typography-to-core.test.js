@@ -183,6 +183,22 @@ defineInlineTest(
 defineInlineTest(
   transform,
   OPTS,
+  `import { Typography as CoreTypography } from '@openmetadata/ui-core-components';\nimport { Typography } from 'antd';\nconst App = () => (\n  <>\n    <CoreTypography>Existing</CoreTypography>\n    <Typography.Text>Hi</Typography.Text>\n  </>\n);`,
+  `import { Typography as CoreTypography } from '@openmetadata/ui-core-components';\nconst App = () => (\n  <>\n    <CoreTypography>Existing</CoreTypography>\n    <CoreTypography>Hi</CoreTypography>\n  </>\n);`,
+  'regression (IngestionUtils.tsx bug): fully converted file reuses a pre-existing `Typography as CoreTypography` alias instead of adding a duplicate plain `Typography` specifier'
+);
+
+defineInlineTest(
+  transform,
+  OPTS,
+  `import { Typography } from '@openmetadata/ui-core-components';\nimport { Typography as AntdTypography } from 'antd';\nconst App = () => (\n  <>\n    <Typography>Existing</Typography>\n    <AntdTypography.Text copyable>Hi</AntdTypography.Text>\n    <AntdTypography.Paragraph>Yo</AntdTypography.Paragraph>\n  </>\n);`,
+  `import { Typography } from '@openmetadata/ui-core-components';\nimport { Typography as AntdTypography } from 'antd';\nconst App = () => (\n  <>\n    <Typography>Existing</Typography>\n    <AntdTypography.Text copyable>Hi</AntdTypography.Text>\n    <Typography as='p'>Yo</Typography>\n  </>\n);`,
+  'partial conversion reuses a pre-existing plain core `Typography` specifier instead of introducing the `CoreTypography` alias, with no duplicate specifier'
+);
+
+defineInlineTest(
+  transform,
+  OPTS,
   `import { Typography } from 'antd';\nconst App = () => <Typography>Hi</Typography>;`,
   `import { Typography } from 'antd';\nconst App = () => <Typography>Hi</Typography>;`,
   'bare <Typography> stays untouched (no-op, import unchanged)'
