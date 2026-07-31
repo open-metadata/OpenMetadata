@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DateTime } from 'luxon';
 import { ENTITY_PATH } from '../constants/constants';
 import {
   DEFAULT_DATE_FORMAT,
@@ -22,7 +21,6 @@ import {
   TABLE_TYPE_CUSTOM_PROPERTY,
 } from '../constants/CustomProperty.constants';
 import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
-import { SearchIndex } from '../enums/search.enum';
 import { CustomProperty, CustomPropertyConfig } from '../generated/entity/type';
 
 type SerializedEntityReference = Record<string, unknown> & { type: string };
@@ -58,10 +56,10 @@ const unwrapEntityReference = (
     return undefined;
   }
   if (isEntityReference(value.reference)) {
-    return value.reference;
+    return value.reference as SerializedEntityReference;
   }
 
-  return isEntityReference(value.value) ? value.value : undefined;
+  return isEntityReference(value.value) ? (value.value as SerializedEntityReference) : undefined;
 };
 
 const toFiniteNumber = (raw: unknown): number | undefined => {
@@ -87,9 +85,6 @@ const serializeTimeInterval = (
   return isEmptyExtensionValue(interval) ? undefined : interval;
 };
 
-const serializeTableValue = (raw: unknown): unknown =>
-  hasPopulatedTableRows(raw) ? raw : undefined;
-
 const serializeHyperlink = (
   raw: unknown
 ): Record<string, string> | undefined => {
@@ -104,123 +99,6 @@ const serializeHyperlink = (
       : {}),
   };
 };
-
-export const getCustomPropertyReferenceSearchIndex = (
-  customProperty: CustomProperty
-): SearchIndex => {
-  const config = customProperty.customPropertyConfig?.config;
-
-  if (Array.isArray(config) && config.length) {
-    return config.join(',') as SearchIndex;
-  }
-
-  if (typeof config === 'string' && config.trim()) {
-    return config as SearchIndex;
-  }
-
-  return SearchIndex.ALL;
-};
-
-export const getHyperlinkUrlValidationErrorKey = (
-  value?: string
-): 'message.invalid-url' | 'message.url-must-use-http-or-https' | undefined => {
-  if (!value) {
-    return undefined;
-  }
-
-  try {
-    const parsedUrl = new URL(value);
-
-    return ['http:', 'https:'].includes(parsedUrl.protocol)
-      ? undefined
-      : 'message.url-must-use-http-or-https';
-  } catch {
-    return 'message.invalid-url';
-  }
-};
-
-const CUSTOM_PROPERTY_TYPE_NAME_SUFFIX = '-cp';
-
-export const getCustomPropertyTypeDisplayName = (propertyTypeName?: string) => {
-  if (!propertyTypeName) {
-    return '';
-  }
-
-  const baseName = propertyTypeName.endsWith(CUSTOM_PROPERTY_TYPE_NAME_SUFFIX)
-    ? propertyTypeName.slice(0, -CUSTOM_PROPERTY_TYPE_NAME_SUFFIX.length)
-    : propertyTypeName;
-
-  return baseName.toUpperCase();
-};
-
-export const serializeExtensionValue = (
-  definition: CustomProperty,
-  raw: unknown
-): unknown => {
-  if (isEmptyExtensionValue(raw)) {
-    return undefined;
-  }
-
-  const propertyType = definition.propertyType.name;
-  let serializedValue: unknown;
-
-  switch (propertyType) {
-    case 'integer':
-    case 'number':
-    case 'timestamp':
-      serializedValue = toFiniteNumber(raw);
-
-      break;
-    case 'timeInterval':
-      serializedValue = serializeTimeInterval(raw);
-
-      break;
-    case TABLE_TYPE_CUSTOM_PROPERTY:
-      serializedValue = serializeTableValue(raw);
-
-      break;
-    case 'enum': {
-      const values = Array.isArray(raw) ? raw : [raw];
-      serializedValue = values
-        .map(unwrapPickerValue)
-        .filter((value) => !isEmptyExtensionValue(value));
-
-      break;
-    }
-    case 'entityReference':
-      serializedValue = unwrapEntityReference(raw);
-
-      break;
-    case 'entityReferenceList': {
-      const references = (Array.isArray(raw) ? raw : [raw])
-        .map(unwrapEntityReference)
-        .filter(
-          (reference): reference is SerializedEntityReference =>
-            reference !== undefined
-        );
-      serializedValue = references;
-
-      break;
-    }
-    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
-      serializedValue = serializeHyperlink(raw);
-
-      break;
-    default:
-      serializedValue = raw;
-  }
-
-  return isEmptyExtensionValue(serializedValue) ? undefined : serializedValue;
-};
-
-export const filterPopulatedTableRows = <T extends Record<string, unknown>>(
-  rows: T[]
-) => rows.filter((row) => Object.values(row).some(Boolean));
-
-export const hasPopulatedTableRows = (value: unknown) =>
-  isRecord(value) &&
-  Array.isArray(value.rows) &&
-  value.rows.some((row) => isRecord(row) && Object.values(row).some(Boolean));
 
 export const getCustomPropertyEntityPathname = (entityType: string) => {
   const entityPathEntries = Object.entries(ENTITY_PATH);
@@ -255,31 +133,6 @@ export const getCustomPropertyLuxonFormat = (
 
   return format;
 };
-
-export const formatCustomPropertyDateTime = (
-  value: DateTime,
-  type: string,
-  backendFormat: CustomPropertyConfig['config']
-) => {
-  const formattedValue = value
-    .setLocale('en')
-    .toFormat(getCustomPropertyLuxonFormat(type, backendFormat));
-
-  return backendFormat === 'yyyy-MM-dd HH:mm:ss.SSSSSS'
-    ? `${formattedValue}000`
-    : formattedValue;
-};
-
-export const parseCustomPropertyDateTime = (
-  value: string,
-  type: string,
-  backendFormat: CustomPropertyConfig['config']
-) =>
-  DateTime.fromFormat(
-    value,
-    getCustomPropertyLuxonFormat(type, backendFormat),
-    { locale: 'en' }
-  );
 
 export const getCustomPropertyMomentFormat = (
   type: string,
@@ -381,6 +234,91 @@ export const getCustomPropertyPageHeaderFromEntity = (
     default:
       return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
   }
+};
+
+export const hasPopulatedTableRows = (value: unknown): boolean => {
+  if (!Array.isArray(value)) {
+    return false;
+  }
+
+  return value.some(
+    (row) =>
+      isRecord(row) && Object.values(row).some((v) => !isEmptyExtensionValue(v))
+  );
+};
+
+export const serializeExtensionValue = (
+  definition: CustomProperty,
+  raw: unknown
+): unknown => {
+  if (isEmptyExtensionValue(raw)) {
+    return undefined;
+  }
+
+  const propertyType = definition.propertyType.name;
+  let serializedValue: unknown;
+
+  switch (propertyType) {
+    case 'integer':
+    case 'number':
+    case 'timestamp':
+      serializedValue = toFiniteNumber(raw);
+
+      break;
+    case 'timeInterval':
+      serializedValue = serializeTimeInterval(raw);
+
+      break;
+    case TABLE_TYPE_CUSTOM_PROPERTY:
+      serializedValue = hasPopulatedTableRows(raw) ? raw : undefined;
+
+      break;
+    case 'enum': {
+      const values = Array.isArray(raw) ? raw : [raw];
+      serializedValue = values
+        .map(unwrapPickerValue)
+        .filter((value) => !isEmptyExtensionValue(value));
+
+      break;
+    }
+    case 'entityReference':
+      serializedValue = unwrapEntityReference(raw);
+
+      break;
+    case 'entityReferenceList': {
+      const references = (Array.isArray(raw) ? raw : [raw])
+        .map(unwrapEntityReference)
+        .filter(
+          (reference): reference is SerializedEntityReference =>
+            reference !== undefined
+        );
+      serializedValue = references;
+
+      break;
+    }
+    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
+      serializedValue = serializeHyperlink(raw);
+
+      break;
+    default:
+      serializedValue = raw;
+  }
+
+  return isEmptyExtensionValue(serializedValue) ? undefined : serializedValue;
+};
+
+export const getCustomPropertyTypeDisplayName = (
+  typeName: string | undefined
+): string | undefined => {
+  if (!typeName) {
+    return undefined;
+  }
+  const CP_SUFFIX = '-cp';
+  const base = typeName.endsWith(CP_SUFFIX)
+    ? typeName.slice(0, -CP_SUFFIX.length)
+    : typeName;
+
+  return base.toUpperCase();
 };
 
 export const formatTableCellValue = (value: unknown): string => {

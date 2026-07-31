@@ -43,7 +43,6 @@ import {
   listIntakeForms,
   patchIntakeForm,
 } from '../../rest/intakeFormsAPI';
-import { getIntakeFormFields } from '../../utils/IntakeFormUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import IntakeFormDesignerModal from './IntakeFormDesignerModal';
 
@@ -76,7 +75,7 @@ const IntakeFormsPage = () => {
     setLoading(true);
     try {
       const response = await listIntakeForms({
-        fields: 'owners,formFields,requiredFields',
+        fields: 'owners,requiredFields',
       });
       setForms(response.data ?? []);
     } catch (err) {
@@ -184,7 +183,7 @@ const IntakeFormsPage = () => {
 
   const columns = [
     { id: 'entityType', name: t('label.entity-type') },
-    { id: 'formFields', name: t('label.field-plural') },
+    { id: 'requiredFields', name: t('label.required-fields') },
     { id: 'enabled', name: t('label.enabled') },
     { id: 'actions', name: t('label.action-plural') },
   ];
@@ -272,35 +271,27 @@ const IntakeFormsPage = () => {
               </Table.Cell>
               <Table.Cell>
                 <Box className="tw:gap-1" direction="col">
-                  {getIntakeFormFields(record).length === 0 ? (
+                  {(record.requiredFields ?? []).length === 0 ? (
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('label.none')}
                     </Typography>
                   ) : (
-                    getIntakeFormFields(record).map((field) => (
+                    (record.requiredFields ?? []).map((rf) => (
                       <Badge
                         color={
-                          field.fieldKind === FieldKind.CustomProperty
+                          rf.fieldKind === FieldKind.CustomProperty
                             ? 'gray'
                             : 'brand'
                         }
-                        key={field.fieldPath}
+                        key={rf.fieldPath}
                         size="sm"
                         type="pill-color">
-                        {field.fieldLabel}
+                        {rf.fieldLabel}
                         <Typography
                           as="span"
                           className="tw:ml-1 tw:text-tertiary"
                           size="text-xs">
-                          ({field.fieldPath})
-                        </Typography>
-                        <Typography
-                          as="span"
-                          className="tw:ml-1 tw:text-tertiary"
-                          size="text-xs">
-                          {field.required
-                            ? t('label.required')
-                            : t('label.optional')}
+                          ({rf.fieldPath})
                         </Typography>
                       </Badge>
                     ))

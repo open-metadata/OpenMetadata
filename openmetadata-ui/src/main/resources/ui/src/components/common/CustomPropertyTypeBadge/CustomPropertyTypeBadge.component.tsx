@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
+import { Tag } from 'antd';
+import React from 'react';
 import { getCustomPropertyTypeDisplayName } from '../../../utils/CustomProperty.utils';
 
 interface CustomPropertyTypeBadgeProps {
@@ -26,15 +27,7 @@ const CustomPropertyTypeBadge = ({
     return null;
   }
 
-  return (
-    <Badge
-      color="gray"
-      data-testid="custom-property-type-badge"
-      size="xs"
-      type="color">
-      {displayName}
-    </Badge>
-  );
+  return <Tag data-testid="custom-property-type-badge">{displayName}</Tag>;
 };
 
 export default CustomPropertyTypeBadge;

@@ -11,95 +11,121 @@
  *  limitations under the License.
  */
 
-import {
-  HYPERLINK_TYPE_CUSTOM_PROPERTY,
-  TABLE_TYPE_CUSTOM_PROPERTY,
-} from '../../../constants/CustomProperty.constants';
+/**
+ * The suffix appended to a property name to produce the form key used
+ * inside `extensionFormValues`.
+ *
+ * Kept as a named constant so that the encoder (`getExtensionFormKey`) and
+ * the decoder (`getExtensionPropertyNameFromFormKey`) share a single source
+ * of truth and changing the separator can never create a mismatch.
+ */
+const FORM_KEY_SUFFIX = '__ext';
+
+/**
+ * Given the `name` of a custom property, returns the key used for that
+ * property inside the `extensionFormValues` form-group.
+ *
+ * Example:
+ *   "myProp" → "myProp__ext"
+ */
+export const getExtensionFormKey = (propertyName: string): string =>
+  `${propertyName}${FORM_KEY_SUFFIX}`;
+
+/**
+ * Reverses `getExtensionFormKey`: given a form key (as produced by
+ * `getExtensionFormKey`), returns the original property name.
+ *
+ * Example:
+ *   "myProp__ext" → "myProp"
+ */
+export const getExtensionPropertyNameFromFormKey = (formKey: string): string =>
+  formKey.endsWith(FORM_KEY_SUFFIX)
+    ? formKey.slice(0, -FORM_KEY_SUFFIX.length)
+    : formKey;
+
+/**
+ * Given the `name` of a custom property, returns the path stored inside
+ * the full form value object.
+ *
+ * The extension fields live at the top-level key `'extensionFormValues'`
+ * rather than nested under `'extension'` because:
+ *  - `extension` is reserved for the serialized API payload.
+ *  - The raw form values often need per-type serialization before they
+ *    can be submitted (e.g. converting a Luxon DateTime to a Unix
+ *    timestamp). Separating the raw values lets the serializer run once
+ *    on submit without re-reading the form.
+ */
+export const getExtensionPropertyName = (propertyName: string): string =>
+  `extensionFormValues.${getExtensionFormKey(propertyName)}`;
 
 export type ExtensionFieldKind =
+  | 'text'
+  | 'email'
+  | 'duration'
+  | 'number'
+  | 'timestamp'
   | 'date'
   | 'dateTime'
-  | 'duration'
-  | 'email'
+  | 'time'
   | 'enum'
+  | 'enumMultiSelect'
   | 'hyperlink'
   | 'markdown'
-  | 'number'
-  | 'reference'
   | 'sqlQuery'
-  | 'table'
-  | 'text'
-  | 'time'
+  | 'reference'
+  | 'referenceList'
   | 'timeInterval'
-  | 'timestamp';
+  | 'table'
+  | 'unknown';
 
-export const getExtensionPropertyName = (fieldPath: string) =>
-  fieldPath.startsWith('extension.')
-    ? fieldPath.substring('extension.'.length)
-    : fieldPath;
-
-export const getExtensionFormKey = (propertyName: string) =>
-  `cp_${Array.from(propertyName)
-    .map((character) => character.codePointAt(0)?.toString(16))
-    .join('_')}`;
-
-const MAX_UNICODE_CODE_POINT = 0x10ffff;
-
-export const getExtensionPropertyNameFromFormKey = (formKey: string) => {
-  if (!formKey.startsWith('cp_')) {
-    return formKey;
-  }
-  const codePoints = formKey
-    .substring('cp_'.length)
-    .split('_')
-    .map((value) => Number.parseInt(value, 16));
-
-  return codePoints.every(
-    (codePoint) =>
-      Number.isFinite(codePoint) &&
-      codePoint >= 0 &&
-      codePoint <= MAX_UNICODE_CODE_POINT
-  )
-    ? String.fromCodePoint(...codePoints)
-    : formKey;
-};
-
+/**
+ * Maps a custom-property type name (as returned by the API's
+ * `propertyType.name` field) to a simplified `ExtensionFieldKind` string
+ * that the form-field renderer can switch on.
+ */
 export const getExtensionFieldKind = (
-  propertyTypeName?: string
+  typeName: string | undefined
 ): ExtensionFieldKind => {
-  switch (propertyTypeName) {
+  switch (typeName) {
+    case 'string':
+      return 'text';
+    case 'email':
+      return 'email';
+    case 'duration':
+      return 'duration';
+    case 'integer':
+    case 'number':
+      return 'number';
+    case 'timestamp':
+      return 'timestamp';
     case 'date-cp':
       return 'date';
     case 'dateTime-cp':
       return 'dateTime';
-    case 'duration':
-      return 'duration';
-    case 'email':
-      return 'email';
-    case 'enum':
+    case 'time-cp':
+      return 'time';
+    case 'enum': {
       return 'enum';
-    case 'entityReference':
-    case 'entityReferenceList':
-      return 'reference';
-    case HYPERLINK_TYPE_CUSTOM_PROPERTY:
+    }
+    case 'enumMultiSelect':
+      return 'enumMultiSelect';
+    case 'map':
+    case 'hyperlink-cp':
+    case 'hyperlink':
       return 'hyperlink';
-    case 'integer':
-    case 'number':
-      return 'number';
     case 'markdown':
       return 'markdown';
     case 'sqlQuery':
       return 'sqlQuery';
-    case TABLE_TYPE_CUSTOM_PROPERTY:
-      return 'table';
-    case 'time-cp':
-      return 'time';
+    case 'entityReference':
+      return 'reference';
+    case 'entityReferenceList':
+      return 'referenceList';
     case 'timeInterval':
       return 'timeInterval';
-    case 'timestamp':
-      return 'timestamp';
-    case 'string':
+    case 'table':
+      return 'table';
     default:
-      return 'text';
+      return 'unknown';
   }
 };

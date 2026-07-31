@@ -33,13 +33,10 @@ import { CustomProperty } from '../../generated/entity/type';
 import {
   FieldKind,
   IntakeFormField,
+  RequiredField,
   TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
-import {
-  getIntakeFormFields,
-  toLegacyRequiredFields,
-} from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
@@ -49,10 +46,12 @@ interface FieldRow {
   path: string;
   label: string;
   kind: FieldKind;
-  included: boolean;
+  /** Whether this field is included (visible) on the intake form. */
+  selected: boolean;
+  /** Whether this field is required (must be filled). Only meaningful when selected=true. */
   required: boolean;
   errorMessage?: string;
-  // True when this row corresponds to a previously-included custom property
+  // True when this row corresponds to a previously-required custom property
   // whose definition is no longer in the current metadata-type lookup —
   // shown so the admin can deselect it deliberately instead of losing the
   // constraint silently on save.
@@ -122,23 +121,46 @@ const IntakeFormDesignerModal = ({
     };
   }, [open, entityType]);
 
-  // Rebuild rows whenever the data backing them changes
+  // Rebuild rows whenever the data backing them changes.
+  // Supports both the new `formFields` schema and the legacy `requiredFields` schema.
   useEffect(() => {
     const natives: IntakeFormNativeField[] =
       intakeFormClassBase.getNativeFields(entityType);
-    const existingSelections = new Map<string, IntakeFormField>(
-      getIntakeFormFields(initialValue).map((field) => [field.fieldPath, field])
-    );
+
+    // Build a unified lookup: path → { selected, required, errorMessage }
+    // Prefer formFields (new schema) over requiredFields (legacy).
+    const existingByPath = new Map<
+      string,
+      { selected: boolean; required: boolean; errorMessage?: string }
+    >();
+
+    if (initialValue?.formFields && initialValue.formFields.length > 0) {
+      for (const ff of initialValue.formFields) {
+        existingByPath.set(ff.fieldPath, {
+          selected: true,
+          required: ff.required ?? false,
+          errorMessage: ff.errorMessage,
+        });
+      }
+    } else {
+      for (const rf of initialValue?.requiredFields ?? []) {
+        existingByPath.set(rf.fieldPath, {
+          selected: true,
+          required: true,
+          errorMessage: rf.errorMessage,
+        });
+      }
+    }
 
     const nativeRows: FieldRow[] = natives.map((nf) => {
-      const existing = existingSelections.get(nf.path);
+      const existing = existingByPath.get(nf.path);
 
       return {
         path: nf.path,
         label: t(nf.labelKey),
         kind: FieldKind.Native,
-        included: true,
-        required: Boolean(existing?.required),
+        selected: Boolean(existing?.selected),
+        required: existing?.required ?? false,
         errorMessage: existing?.errorMessage,
       };
     });
@@ -148,37 +170,38 @@ const IntakeFormDesignerModal = ({
     );
     const customRows: FieldRow[] = customProperties.map((cp) => {
       const path = `extension.${cp.name}`;
-      const existing = existingSelections.get(path);
+      const existing = existingByPath.get(path);
 
       return {
         path,
         label: cp.displayName ?? cp.name ?? path,
         kind: FieldKind.CustomProperty,
-        included: Boolean(existing),
-        required: Boolean(existing?.required),
+        selected: Boolean(existing?.selected),
+        required: existing?.required ?? false,
         errorMessage: existing?.errorMessage,
       };
     });
 
-    // Preserve previously-included custom-property fields whose definition is
+    // Preserve previously-required custom-property fields whose definition is
     // missing from the current metadata-type lookup. Without this, rebuilding
     // rows when the custom-property fetch returns an empty list (real empty,
     // or after a transient error followed by an empty cache) silently drops
-    // any extension.* form field on save. We surface them as an orphan
+    // any extension.* required field on save. We surface them as an orphan
     // row so the admin can deselect them deliberately.
-    const orphanCustomRows: FieldRow[] = Array.from(existingSelections.values())
+    const orphanCustomRows: FieldRow[] = Array.from(existingByPath.entries())
       .filter(
-        (rf) =>
-          rf.fieldKind === FieldKind.CustomProperty &&
-          !customPropertyPaths.has(rf.fieldPath)
+        ([path, state]) =>
+          state.selected &&
+          path.startsWith('extension.') &&
+          !customPropertyPaths.has(path)
       )
-      .map((rf) => ({
-        path: rf.fieldPath,
-        label: rf.fieldLabel,
+      .map(([path, state]) => ({
+        path,
+        label: path,
         kind: FieldKind.CustomProperty,
-        included: true,
-        required: Boolean(rf.required),
-        errorMessage: rf.errorMessage,
+        selected: true,
+        required: state.required,
+        errorMessage: state.errorMessage,
         isOrphan: true,
       }));
 
@@ -192,16 +215,26 @@ const IntakeFormDesignerModal = ({
   }, []);
 
   const handleOk = async () => {
+    // Build the new-schema formFields list (includes both included and required flags).
     const formFields: IntakeFormField[] = rows
-      .filter((row) =>
-        row.kind === FieldKind.Native ? row.required : row.included
-      )
+      .filter((row) => row.selected)
       .map((row) => ({
         fieldPath: row.path,
         fieldLabel: row.label,
         fieldKind: row.kind,
         required: row.required,
-        errorMessage: row.required ? row.errorMessage || undefined : undefined,
+        errorMessage: row.errorMessage || undefined,
+      }));
+
+    // Also derive the legacy requiredFields for backwards compatibility with
+    // API consumers that only read requiredFields.
+    const requiredFields: RequiredField[] = formFields
+      .filter((f) => f.required)
+      .map((f) => ({
+        fieldPath: f.fieldPath,
+        fieldLabel: f.fieldLabel,
+        fieldKind: f.fieldKind,
+        errorMessage: f.errorMessage,
       }));
 
     // One intake form per entity type — name is deterministically derived.
@@ -221,7 +254,7 @@ const IntakeFormDesignerModal = ({
       entityType,
       enabled,
       formFields,
-      requiredFields: toLegacyRequiredFields(formFields),
+      requiredFields,
       // Carry forward server-managed fields on edit. The designer UI doesn't
       // expose an owners picker today, but `createOrUpdateIntakeForm` PUTs
       // the whole entity — without this, any previously configured owners
@@ -241,43 +274,33 @@ const IntakeFormDesignerModal = ({
     [rows]
   );
 
-  const renderFieldRow = (record: FieldRow, allowOptional: boolean) => (
+  const renderFieldRow = (record: FieldRow) => (
     <Box
       align="center"
       className="tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-2"
       key={record.path}>
-      {allowOptional && (
-        <div className="tw:w-20">
-          <Checkbox
-            aria-label={`${t('label.include')} ${record.label}`}
-            data-testid={`include-${record.path}`}
-            isSelected={record.included}
-            onChange={(included) =>
-              updateRow(
-                record.path,
-                included
-                  ? { included }
-                  : {
-                      included,
-                      required: false,
-                      errorMessage: undefined,
-                    }
-              )
-            }
-          />
-        </div>
-      )}
-      <div className="tw:w-20">
+      <div className="tw:w-16">
         <Checkbox
-          aria-label={record.label}
-          data-testid={`require-${record.path}`}
-          isDisabled={allowOptional && !record.included}
-          isSelected={record.required}
-          onChange={(required) =>
+          aria-label={`${t('label.include')} ${record.label}`}
+          data-testid={`include-${record.path}`}
+          isSelected={record.selected}
+          onChange={(isSelected) =>
             updateRow(record.path, {
-              required,
-              errorMessage: required ? record.errorMessage : undefined,
+              selected: isSelected,
+              // Clear required when deselecting
+              required: isSelected ? record.required : false,
             })
+          }
+        />
+      </div>
+      <div className="tw:w-16">
+        <Checkbox
+          aria-label={`${t('label.required')} ${record.label}`}
+          data-testid={`require-${record.path}`}
+          isDisabled={!record.selected}
+          isSelected={record.selected && record.required}
+          onChange={(isRequired) =>
+            updateRow(record.path, { required: isRequired })
           }
         />
       </div>
@@ -293,7 +316,7 @@ const IntakeFormDesignerModal = ({
         <Input
           aria-label={t('label.custom-error-message')}
           data-testid={`error-${record.path}`}
-          isDisabled={!record.required}
+          isDisabled={!record.selected || !record.required}
           placeholder={t('message.optional-custom-error')}
           value={record.errorMessage ?? ''}
           onChange={(value) => updateRow(record.path, { errorMessage: value })}
@@ -305,23 +328,20 @@ const IntakeFormDesignerModal = ({
   const renderFieldTable = (
     fieldRows: FieldRow[],
     emptyMessage: string,
-    isLoading: boolean,
-    allowOptional = false
+    isLoading: boolean
   ) => (
     <Box
       className="tw:overflow-hidden tw:rounded-lg tw:ring-1 tw:ring-secondary"
       direction="col">
       <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
-        {allowOptional && (
-          <Typography
-            className="tw:w-20 tw:text-tertiary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.include')}
-          </Typography>
-        )}
         <Typography
-          className="tw:w-20 tw:text-tertiary"
+          className="tw:w-16 tw:text-tertiary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.include')}
+        </Typography>
+        <Typography
+          className="tw:w-16 tw:text-tertiary"
           size="text-xs"
           weight="semibold">
           {t('label.required')}
@@ -351,8 +371,7 @@ const IntakeFormDesignerModal = ({
           </Typography>
         </Box>
       )}
-      {!isLoading &&
-        fieldRows.map((field) => renderFieldRow(field, allowOptional))}
+      {!isLoading && fieldRows.map(renderFieldRow)}
     </Box>
   );
 
@@ -451,8 +470,7 @@ const IntakeFormDesignerModal = ({
           {renderFieldTable(
             customRows,
             t('message.no-custom-properties-defined'),
-            loadingProps,
-            true
+            loadingProps
           )}
         </Box>
       </SlideoutMenu.Content>
