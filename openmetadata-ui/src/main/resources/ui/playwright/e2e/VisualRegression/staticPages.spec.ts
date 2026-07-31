@@ -62,13 +62,22 @@ const PAGES: {
   { name: 'settings', route: '/settings' },
   { name: 'database-services', route: '/settings/services/databases' },
   { name: 'data-quality', route: '/data-quality' },
-  { name: 'incident-manager', route: '/incident-manager' },
   { name: 'users', route: '/settings/members/users' },
   { name: 'teams', route: '/settings/members/teams' },
   // 'roles' intentionally omitted: the roles listing renders seeded roles
   // with per-run random names, so it is non-deterministic run-to-run in CI
   // (no committed baseline can be stable). Re-add with a dedicated
   // fixed-name fixture when its sweep needs coverage.
+  // 'incident-manager' intentionally omitted: the incident table renders
+  // seeded test-case rows whose names, table names, and "Last Updated"
+  // timestamps differ per run, and the table's auto-width columns then
+  // shift the whole layout to fit that per-run content — the same class of
+  // non-determinism as 'roles' above. Confirmed pre-existing and unrelated
+  // to this sweep: none of the 32 utils files this sweep touches render on
+  // this page (checked the full IncidentManager component tree), and this
+  // baseline also fails intermittently on unrelated, concurrent PRs that
+  // don't touch these files (e.g. runs 91219477124, 91193942898). Re-add
+  // with fixed-name/fixed-timestamp fixtures when its sweep needs coverage.
   { name: 'bots', route: '/settings/bots' },
   { name: 'applications', route: '/marketplace' },
 ];
