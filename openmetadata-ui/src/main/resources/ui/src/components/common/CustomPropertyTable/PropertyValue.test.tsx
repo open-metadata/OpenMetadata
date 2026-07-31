@@ -66,6 +66,7 @@ jest.mock('../../../utils/EntityUtilClassBase', () => ({
 
 jest.mock('../../../utils/CustomProperty.utils', () => ({
   getCustomPropertyLuxonFormat: jest.fn().mockReturnValue('dd-MM-yyyy'),
+  parseCustomPropertyDateTime: jest.fn().mockReturnValue(undefined),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({

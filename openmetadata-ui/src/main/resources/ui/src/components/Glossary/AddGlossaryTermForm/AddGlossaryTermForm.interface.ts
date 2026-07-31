@@ -32,6 +32,7 @@ export interface GlossaryTermForm {
   name: string;
   displayName: string;
   description: string;
+  extension?: Record<string, unknown>;
   reviewers: EntityReference[];
   relatedTerms: string[] | undefined;
   references: TermReference[] | undefined;
