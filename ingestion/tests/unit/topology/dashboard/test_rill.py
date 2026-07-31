@@ -596,8 +596,43 @@ class TestRillSource:
         assert cloud_source.get_project_name(resource) == "rill-openrtb-prog-ads"
         assert local_source.get_project_name(resource) is None
 
+    def test_metrics_view_columns_deduplicate_dimension_measure_name_collision(self):
+        spec = RillResource.model_validate(
+            {
+                "meta": {"name": {"kind": METRICS_VIEW_KIND, "name": "collision"}},
+                "metricsView": {
+                    "state": {
+                        "validSpec": {
+                            "dimensions": [{"name": "revenue", "column": "revenue"}],
+                            "measures": [{"name": "revenue", "expression": "SUM(revenue)"}],
+                        }
+                    }
+                },
+            }
+        ).metrics_view.effective_spec
+
+        columns = RillSource._get_metrics_view_columns(spec)
+
+        assert [column.name.root for column in columns] == ["revenue"]
+        assert columns[0].dataType == DataType.UNKNOWN
+
     def test_canvas_metrics_views_are_deduplicated(self):
         source = make_source("http://localhost:9009")
+        resource = RillResource.model_validate(CANVAS_RESOURCE)
+
+        assert source._get_dashboard_metrics_views(resource) == ["pull_request_metrics"]
+
+    def test_dashboard_metrics_views_skip_components_without_spec(self):
+        source = make_source("http://localhost:9009")
+        source.components["merge_time"] = RillResource.model_validate(
+            {
+                "meta": {
+                    "name": {"kind": "rill.runtime.v1.Component", "name": "merge_time"},
+                    "refs": [{"kind": METRICS_VIEW_KIND, "name": "pull_request_metrics"}],
+                },
+                "component": {},
+            }
+        )
         resource = RillResource.model_validate(CANVAS_RESOURCE)
 
         assert source._get_dashboard_metrics_views(resource) == ["pull_request_metrics"]
