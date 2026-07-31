@@ -108,7 +108,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();

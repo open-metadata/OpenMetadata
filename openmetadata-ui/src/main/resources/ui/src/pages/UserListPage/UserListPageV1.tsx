@@ -55,12 +55,11 @@ import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
-
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();

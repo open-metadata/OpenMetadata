@@ -39,7 +39,7 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,

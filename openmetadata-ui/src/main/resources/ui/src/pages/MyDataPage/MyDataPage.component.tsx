@@ -35,10 +35,8 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getConstrainedWidgetWidth,
-  getWidgetFromKey,
-} from '../../utils/CustomizableLandingPageUtils';
+import { getConstrainedWidgetWidth } from '../../utils/CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
