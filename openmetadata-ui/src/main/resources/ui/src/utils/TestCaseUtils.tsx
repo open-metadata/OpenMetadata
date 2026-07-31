@@ -69,6 +69,10 @@ const TEST_CASE_CSV_HEADERS = [
   'glossaryTerms',
 ];
 
+/**
+ * Serializes client-fetched filtered results with the import-compatible test
+ * case schema. The async server export accepts an FQN but not list filters.
+ */
 export const convertTestCasesToCSV = (testCases: TestCase[]): string =>
   unparse({
     fields: TEST_CASE_CSV_HEADERS,
@@ -117,6 +121,8 @@ export const getTestCaseManageMenuItems = (
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void,
   sourceEntityType?: EntityType.TABLE | EntityType.TEST_SUITE,
+  // Entity pages use the server export by default; the filtered list injects
+  // a client-side exporter that preserves its current search and filters.
   onExport: ExportData['onExport'] = exportTestCasesInCSV
 ): ManageMenuItem[] => {
   const { ViewAll, EditAll } = permission;

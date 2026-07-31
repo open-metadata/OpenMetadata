@@ -73,6 +73,8 @@ export const useTestSuitesData = ({
   // Guards against out-of-order responses when the tab/filters change mid-fetch
   // (main #29561): only the latest request is allowed to update state.
   const latestRequestId = useRef(0);
+  // Recent query variants make quick tab switches instantaneous. TTL limits
+  // staleness, while the entry cap bounds memory in long-lived sessions.
   const responseCache = useRef(
     new Map<
       string,
@@ -125,6 +127,7 @@ export const useTestSuitesData = ({
         return;
       }
       if (responseCache.current.size >= TEST_SUITE_RESPONSE_CACHE_MAX_SIZE) {
+        // Map preserves insertion order, so the first key is the oldest entry.
         const oldestCacheKey = responseCache.current.keys().next().value;
         if (oldestCacheKey) {
           responseCache.current.delete(oldestCacheKey);

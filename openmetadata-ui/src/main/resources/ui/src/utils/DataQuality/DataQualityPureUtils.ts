@@ -201,6 +201,8 @@ export const transformToTestCaseStatusObject = (
     const count = parseInt(item.document_count);
     const status = item['testCaseResult.testCaseStatus'];
 
+    // The chart renders only these known statuses, so its total must exclude
+    // unknown aggregation buckets as well.
     if (status === 'success') {
       acc.success += count;
       acc.total += count;
@@ -672,6 +674,10 @@ export function getColumnNameFromColumnFilterKey(
     : columnFilterKey;
 }
 
+/**
+ * Builds a test-case list link that preserves the dashboard slice represented
+ * by the clicked card or chart segment.
+ */
 export const getTestCaseTabPath = (
   testCaseStatus: TestCaseStatus,
   filters?: DataQualityDashboardChartFilters

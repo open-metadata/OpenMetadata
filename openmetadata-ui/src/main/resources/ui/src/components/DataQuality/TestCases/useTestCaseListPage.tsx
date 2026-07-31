@@ -50,6 +50,8 @@ export type {
 } from './FilterChip.interface';
 
 const EXPORT_SORT_FIELD = 'fullyQualifiedName.keyword';
+// Export pages can shift while records are updated. A stable sort plus a few
+// bounded reconciliation passes avoids silently dropping moving rows.
 const MAX_EXPORT_PASSES = 3;
 
 export const useTestCaseListPage = () => {
@@ -149,6 +151,8 @@ export const useTestCaseListPage = () => {
     let reconciledTestCases: TestCase[] = [];
 
     do {
+      // Each pass intentionally starts fresh so rows deleted or edited out of
+      // the active filters are not retained from an earlier pass.
       const testCasesById = new Map<string, TestCase>();
       let offset = 0;
       let total = 0;
@@ -165,6 +169,8 @@ export const useTestCaseListPage = () => {
         total = response.paging.total ?? testCasesById.size;
         offset += response.data.length;
 
+        // The reported total can lag behind concurrent deletes. Stop on an
+        // empty page instead of repeatedly requesting the stale range.
         if (response.data.length === 0) {
           break;
         }
@@ -181,6 +187,8 @@ export const useTestCaseListPage = () => {
     return convertTestCasesToCSV(reconciledTestCases);
   }, [params, searchValue, selectedFilter]);
 
+  // Keep the server-side export for unfiltered lists; only materialize rows in
+  // the browser when the current search/filter state must be preserved.
   const filteredExportAction =
     hasActiveFilters || searchValue ? exportFilteredTestCases : undefined;
 
