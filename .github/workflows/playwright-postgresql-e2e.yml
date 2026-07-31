@@ -912,7 +912,12 @@ jobs:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budget breakdown: 20 min planner shard target + up to 25 min playwright
+    # timeout wrapper (line ~1090) + ~5-8 min for setup (env, node, browser,
+    # bundle verify) and teardown/artifact upload. 30 min was tight enough
+    # that slow shards were being cancelled by the job clock while playwright
+    # itself still had time on the inner wrapper; 35 gives real headroom.
+    timeout-minutes: 35
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
@@ -1093,7 +1098,7 @@ jobs:
           jq '{shardId, lane, workers, predictedWorkerMs, predictedExecutionMs, testCount, projects, files: (.files | length)}' "$plan_file"
           started_at=$(date +%s)
           set +e
-          timeout --signal=TERM --kill-after=30s 21m \
+          timeout --signal=TERM --kill-after=30s 25m \
             npx playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
