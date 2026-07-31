@@ -767,15 +767,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     [setTestCaseResolutionStatus, selectedTask?.id]
   );
 
-  // Activity Events fetch methods
-  const fetchActivityEventsHandler = useCallback(
-    async (params?: ListActivityParams) => {
+  // Activity Events fetch methods.
+  // Every activity fetcher shares this runner so the sequence guard, the active
+  // domain resolution and the loading flag stay identical across all of them —
+  // a request that has been superseded must not commit its result, toast, or
+  // clear a loading flag that now belongs to a newer request.
+  const runActivityRequest = useCallback(
+    async (
+      request: (domain?: string) => Promise<{ data: ActivityEvent[] }>
+    ) => {
       const seq = ++activityRequestSeq.current;
       setIsActivityLoading(true);
       try {
         const domain =
           activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getActivityEvents({ domain, ...params });
+        const { data } = await request(domain);
         if (seq !== activityRequestSeq.current) {
           return;
         }
@@ -791,56 +797,33 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       }
     },
     [activeDomain]
+  );
+
+  const fetchActivityEventsHandler = useCallback(
+    async (params?: ListActivityParams) => {
+      await runActivityRequest((domain) =>
+        getActivityEvents({ ...params, domain })
+      );
+    },
+    [runActivityRequest]
   );
 
   const fetchMyActivityFeedHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      const seq = ++activityRequestSeq.current;
-      setIsActivityLoading(true);
-      try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getMyActivityFeed({ ...params, domain });
-        if (seq !== activityRequestSeq.current) {
-          return;
-        }
-        setActivityEvents(data);
-      } catch (err) {
-        if (seq === activityRequestSeq.current) {
-          showErrorToast(err as AxiosError);
-        }
-      } finally {
-        if (seq === activityRequestSeq.current) {
-          setIsActivityLoading(false);
-        }
-      }
+      await runActivityRequest((domain) =>
+        getMyActivityFeed({ ...params, domain })
+      );
     },
-    [activeDomain]
+    [runActivityRequest]
   );
 
   const fetchFollowingActivityHandler = useCallback(
     async (params?: { days?: number; limit?: number }) => {
-      const seq = ++activityRequestSeq.current;
-      setIsActivityLoading(true);
-      try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getFollowingActivityFeed({ ...params, domain });
-        if (seq !== activityRequestSeq.current) {
-          return;
-        }
-        setActivityEvents(data);
-      } catch (err) {
-        if (seq === activityRequestSeq.current) {
-          showErrorToast(err as AxiosError);
-        }
-      } finally {
-        if (seq === activityRequestSeq.current) {
-          setIsActivityLoading(false);
-        }
-      }
+      await runActivityRequest((domain) =>
+        getFollowingActivityFeed({ ...params, domain })
+      );
     },
-    [activeDomain]
+    [runActivityRequest]
   );
 
   const fetchEntityActivityHandler = useCallback(
