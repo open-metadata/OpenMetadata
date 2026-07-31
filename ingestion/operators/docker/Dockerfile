@@ -137,15 +137,12 @@ RUN [ $(uname -m) = "x86_64" ] \
   && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
   || echo "DB2 not supported on ARM architectures."
 
-# Patch CVE-vulnerable jars bundled inside PySpark (zookeeper, jackson-asl, netty).
-# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale.
+# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after all
+# pip installs so the pyspark/spacy trees exist; the script fails the build on a broken
+# pyspark install rather than silently shipping unpatched jars.
 COPY --chown=openmetadata:openmetadata ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
 RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
-
-# Strip spacy's bundled CI test fixture: spacy/tests/package/requirements.txt pins an old
-# black, which image scanners misreport as an installed package (CVE-2026-31900). The file
-# is test-only, never imported at runtime. Guarded so builds without spacy don't fail.
-RUN find /home/openmetadata/.local/lib/python*/site-packages/spacy/tests -name 'requirements.txt' -delete 2>/dev/null || true
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error

@@ -144,8 +144,10 @@ RUN [ $(uname -m) = "x86_64" ] \
   && pip install ".[db2]" \
   || echo "DB2 not supported on ARM architectures."
 
-# Patch CVE-vulnerable jars bundled inside PySpark (zookeeper, jackson-asl, netty).
-# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale.
+# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after the
+# final pip install; fails the build on a broken pyspark install rather than shipping
+# unpatched jars.
 COPY --chown=airflow:0 ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
 RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 

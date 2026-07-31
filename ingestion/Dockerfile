@@ -107,8 +107,10 @@ RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.2.2/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
-# Patch CVE-vulnerable jars bundled inside PySpark (zookeeper, jackson-asl, netty).
-# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale.
+# Patch CVE-vulnerable jars bundled inside PySpark and strip the spaCy scanner fixture.
+# See ingestion/scripts/patch_pyspark_jars.sh for the per-CVE rationale. Runs after the
+# final pip install; fails the build on a broken pyspark install rather than shipping
+# unpatched jars.
 COPY --chown=airflow:0 ingestion/scripts/patch_pyspark_jars.sh /tmp/patch_pyspark_jars.sh
 RUN bash /tmp/patch_pyspark_jars.sh && rm -f /tmp/patch_pyspark_jars.sh
 

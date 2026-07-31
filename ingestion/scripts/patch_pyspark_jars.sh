@@ -30,16 +30,48 @@
 # uber-jars, so it cannot be swapped as a standalone jar without repackaging Spark. Left as a
 # documented residual.
 #
-# Skips cleanly when pyspark is absent (e.g. an INGESTION_DEPENDENCY build without the
-# deltalake/pyspark deps); only patches jars when the pyspark jars dir exists.
+# Skips cleanly when pyspark is genuinely absent (e.g. an INGESTION_DEPENDENCY build
+# without the deltalake/pyspark deps). A pyspark that is installed but fails to import is
+# treated as an error and fails the build, so a broken install can never ship unpatched
+# jars silently.
 
 set -euo pipefail
 
-JARS_DIR="$(python -c 'import os,pyspark;print(os.path.join(os.path.dirname(pyspark.__file__),"jars"))' 2>/dev/null || true)"
+# Locate PySpark's bundled jars directory, distinguishing three cases via exit code:
+#   0 -> installed and importable (prints the jars dir on stdout)
+#   2 -> genuinely not installed (top-level pyspark module missing) -> skip
+#   3 -> installed but import failed for any other reason -> fail the build
+locate_pyspark_jars() {
+  python - <<'PY'
+import os, sys
+try:
+    import pyspark
+except ModuleNotFoundError as exc:
+    if exc.name == "pyspark" or (exc.name or "").split(".")[0] == "pyspark":
+        sys.exit(2)
+    # pyspark itself is present but one of ITS imports is missing -> broken install
+    sys.stderr.write(f"pyspark is installed but failed to import: {exc!r}\n")
+    sys.exit(3)
+except Exception as exc:
+    sys.stderr.write(f"pyspark is installed but failed to import: {exc!r}\n")
+    sys.exit(3)
+print(os.path.join(os.path.dirname(pyspark.__file__), "jars"))
+PY
+}
 
-if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then
+JARS_DIR="$(locate_pyspark_jars)" && rc=0 || rc=$?
+
+if [ "${rc}" -eq 2 ]; then
   echo "pyspark not installed; skipping PySpark jar patch"
   exit 0
+elif [ "${rc}" -ne 0 ]; then
+  echo "ERROR: pyspark is installed but not importable; refusing to ship unpatched jars" >&2
+  exit 1
+fi
+
+if [ -z "${JARS_DIR}" ] || [ ! -d "${JARS_DIR}" ]; then
+  echo "ERROR: pyspark imported but its jars dir '${JARS_DIR}' is missing" >&2
+  exit 1
 fi
 
 fetch_jar() {
@@ -64,3 +96,13 @@ fetch_jar zookeeper-jute-3.7.2.jar \
 fetch_jar netty-codec-http-4.1.135.Final.jar \
   io/netty/netty-codec-http/4.1.135.Final/netty-codec-http-4.1.135.Final.jar \
   4018529d3d6aecf4044b98c75d9a90c91839ddf49c7aa484c5ac81c90a15da02
+
+# Strip spacy's bundled CI test fixture. spacy/tests/package/requirements.txt pins an old
+# black, which image scanners misreport as an installed package (CVE-2026-31900). The file
+# is test-only and never imported at runtime. spacy is installed alongside pyspark in the
+# same (deltalake/all) extra, so this runs in the same place the jar patch does. Guarded so
+# a build without spacy does not fail.
+SPACY_DIR="$(python -c 'import os,spacy;print(os.path.dirname(spacy.__file__))' 2>/dev/null || true)"
+if [ -n "${SPACY_DIR}" ] && [ -d "${SPACY_DIR}/tests" ]; then
+  find "${SPACY_DIR}/tests" -name 'requirements.txt' -delete
+fi
