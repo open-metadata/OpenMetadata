@@ -14,7 +14,7 @@ import { Space, Typography } from 'antd';
 import { lazy } from 'react';
 import { ReactComponent as IconTerm } from '../../assets/svg/book.svg';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
-import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';

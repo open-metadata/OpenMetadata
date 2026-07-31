@@ -60,7 +60,7 @@ import {
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityPureUtils';
-import { getEntityFQN } from '../FeedUtils';
+import { getEntityFQN } from '../FeedUtilsPure';
 import { getDataQualityPagePath } from '../RouterUtils';
 import { generateEntityLink } from '../TablePureUtils';
 

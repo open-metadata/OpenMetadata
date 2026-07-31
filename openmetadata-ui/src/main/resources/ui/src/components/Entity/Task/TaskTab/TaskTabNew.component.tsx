@@ -98,7 +98,7 @@ import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {

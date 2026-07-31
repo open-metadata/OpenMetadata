@@ -18,7 +18,7 @@ import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { ContractSecurity } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-security.less';
 
 const ContractSecurityCard: React.FC<{

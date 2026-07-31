@@ -76,13 +76,12 @@ const mockProps = {
   isTabExpanded: false,
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
-  return {
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      permissions: MOCK_PERMISSIONS,
-    })),
-  };
-});
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    permissions: MOCK_PERMISSIONS,
+  })),
+}));
 
 jest.mock('../../Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <div>GenericTab</div>),
