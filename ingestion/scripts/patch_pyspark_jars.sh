@@ -59,6 +59,21 @@ print(os.path.join(os.path.dirname(pyspark.__file__), "jars"))
 PY
 }
 
+# Strip spacy's bundled CI test fixture. spacy/tests/package/requirements.txt pins an old
+# black, which image scanners misreport as an installed package (CVE-2026-31900). The file
+# is test-only and never imported at runtime. spaCy (from the pii-processor / sample-data
+# extras) installs independently of pyspark (from deltalake), so this must run on every
+# path — including builds that ship spaCy but not pyspark. Best-effort: never fails the build.
+strip_spacy_scanner_fixture() {
+  local spacy_dir
+  spacy_dir="$(python -c 'import os,spacy;print(os.path.dirname(spacy.__file__))' 2>/dev/null || true)"
+  if [ -n "${spacy_dir}" ] && [ -d "${spacy_dir}/tests" ]; then
+    find "${spacy_dir}/tests" -name 'requirements.txt' -delete 2>/dev/null || true
+  fi
+}
+
+strip_spacy_scanner_fixture
+
 JARS_DIR="$(locate_pyspark_jars)" && rc=0 || rc=$?
 
 if [ "${rc}" -eq 2 ]; then
@@ -96,13 +111,3 @@ fetch_jar zookeeper-jute-3.7.2.jar \
 fetch_jar netty-codec-http-4.1.135.Final.jar \
   io/netty/netty-codec-http/4.1.135.Final/netty-codec-http-4.1.135.Final.jar \
   4018529d3d6aecf4044b98c75d9a90c91839ddf49c7aa484c5ac81c90a15da02
-
-# Strip spacy's bundled CI test fixture. spacy/tests/package/requirements.txt pins an old
-# black, which image scanners misreport as an installed package (CVE-2026-31900). The file
-# is test-only and never imported at runtime. spacy is installed alongside pyspark in the
-# same (deltalake/all) extra, so this runs in the same place the jar patch does. Guarded so
-# a build without spacy does not fail.
-SPACY_DIR="$(python -c 'import os,spacy;print(os.path.dirname(spacy.__file__))' 2>/dev/null || true)"
-if [ -n "${SPACY_DIR}" ] && [ -d "${SPACY_DIR}/tests" ]; then
-  find "${SPACY_DIR}/tests" -name 'requirements.txt' -delete
-fi
