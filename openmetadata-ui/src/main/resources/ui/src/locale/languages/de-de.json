@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "Der Kontext wurde noch nicht erstellt",
     "persona-context-restore-confirmation": "KI-Kontext auf v{{version}} wiederherstellen? Dadurch wird eine neue Version mit den Regeln und Einstellungen dieser Version erstellt.",
     "persona-context-rule-deleted": "KI-Kontextregel gelöscht.",
+    "persona-context-rule-filter-incomplete": "Vervollständigen oder entfernen Sie die unvollständige Bedingung vor dem Speichern. Eine unvollständige Bedingung wird ignoriert, wodurch diese Regel auf alles zutreffen würde.",
     "persona-context-rule-saved": "KI-Kontextregel gespeichert.",
     "persona-context-rule-subtitle": "Wählen Sie die Metadaten aus, die diese Regel dem Kontextdokument hinzufügt.",
     "persona-context-rules-count": "Regeln ({{count}})",

@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "संदर्भ अद्याप तयार केलेला नाही",
     "persona-context-restore-confirmation": "AI संदर्भ v{{version}} वर पुनर्संचयित करायचा? यामुळे त्या आवृत्तीच्या नियम आणि सेटिंग्जसह नवीन आवृत्ती तयार होते.",
     "persona-context-rule-deleted": "AI संदर्भ नियम हटवला.",
+    "persona-context-rule-filter-incomplete": "जतन करण्यापूर्वी अपूर्ण अट पूर्ण करा किंवा काढून टाका. अपूर्ण अट दुर्लक्षित केली जाते, त्यामुळे हा नियम सर्व गोष्टींशी जुळेल इतका व्यापक होईल.",
     "persona-context-rule-saved": "AI संदर्भ नियम जतन केला.",
     "persona-context-rule-subtitle": "हा नियम संदर्भ दस्तऐवजात जोडणारा मेटाडेटा निवडा.",
     "persona-context-rules-count": "नियम ({{count}})",

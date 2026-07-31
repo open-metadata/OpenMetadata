@@ -3989,6 +3989,7 @@
     "persona-context-not-generated": "زمینه هنوز ایجاد نشده است",
     "persona-context-restore-confirmation": "زمینه هوش مصنوعی به نسخه v{{version}} بازیابی شود؟ این کار نسخه جدیدی با قوانین و تنظیمات آن نسخه ایجاد می‌کند.",
     "persona-context-rule-deleted": "قانون زمینه هوش مصنوعی حذف شد.",
+    "persona-context-rule-filter-incomplete": "پیش از ذخیره، شرط ناتمام را کامل یا حذف کنید. شرط ناتمام نادیده گرفته می‌شود و این قانون را چنان گسترده می‌کند که با همه چیز مطابقت کند.",
     "persona-context-rule-saved": "قانون زمینه هوش مصنوعی ذخیره شد.",
     "persona-context-rule-subtitle": "فراداده‌هایی را که این قانون به سند زمینه اضافه می‌کند انتخاب کنید.",
     "persona-context-rules-count": "قوانین ({{count}})",

@@ -1085,6 +1085,59 @@ export function elasticSearchFormat(tree, config, syntax = ES_6_SYNTAX) {
   }
 }
 
+/**
+ * A rule that produced no clause, or a multiselect wrapper with no options picked, adds no
+ * constraint at all.
+ *
+ * @param {object|undefined} clause - What elasticSearchFormat produced for a single rule
+ * @returns {boolean} - Whether the rule ended up constraining nothing
+ * @private
+ */
+function producesNoConstraint(clause) {
+  if (!clause) {
+    return true;
+  }
+
+  const options = clause.bool?.must ?? clause.bool?.should;
+
+  return Array.isArray(options) && options.length === 0;
+}
+
+/**
+ * Reports whether the tree still holds a condition the user has not finished — no field picked, or
+ * a field and an operator with no value entered.
+ *
+ * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is rejected by
+ * both search engines), so persisting it would silently widen the filter to match everything. The
+ * answer comes from asking elasticSearchFormat what the row actually produces, so this check and
+ * buildEsRule cannot drift apart.
+ *
+ * @param {object} tree - The immutable query-builder tree
+ * @param {object} config - The same config passed to elasticSearchFormat
+ * @param {string} syntax - The version of ElasticSearch syntax to generate
+ * @returns {boolean} - Whether any condition is still unfinished
+ */
+export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
+  if (!tree) {
+    return false;
+  }
+
+  const type = tree.get('type');
+  if (type === 'rule') {
+    return producesNoConstraint(elasticSearchFormat(tree, config, syntax));
+  }
+
+  const children = tree.get('children1');
+  if (!children || typeof children.valueSeq !== 'function') {
+    return false;
+  }
+
+  return children
+    .valueSeq()
+    .toArray()
+    .some((child) => hasUnfinishedRule(child, config, syntax));
+}
+
 export function elasticSearchFormatForJSONLogic(
   tree,
   config,

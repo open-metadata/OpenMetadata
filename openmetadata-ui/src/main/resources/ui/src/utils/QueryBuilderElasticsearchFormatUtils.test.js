@@ -12,7 +12,10 @@
  */
 
 import { AntdConfig } from '@react-awesome-query-builder/antd';
-import { elasticSearchFormat } from './QueryBuilderElasticsearchFormatUtils';
+import {
+  elasticSearchFormat,
+  hasUnfinishedRule,
+} from './QueryBuilderElasticsearchFormatUtils';
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
@@ -192,5 +195,85 @@ describe('elasticSearchFormat – rules that are not fully entered', () => {
 
     expect(result).toContain('7');
     expect(result).not.toMatch(/:\{\}/);
+  });
+});
+
+// Immutable-compatible group stub. hasUnfinishedRule reads .get('type') and .get('children1'),
+// and walks children with .valueSeq().toArray() the same way buildEsGroup does.
+const makeGroup = (rules) => ({
+  get(key) {
+    if (key === 'type') {
+      return 'group';
+    }
+    if (key === 'children1') {
+      return { valueSeq: () => ({ toArray: () => rules }) };
+    }
+
+    return undefined;
+  },
+});
+
+const makeBlankRule = () => ({
+  get(key) {
+    if (key === 'type') {
+      return 'rule';
+    }
+    if (key === 'properties') {
+      return { get: () => undefined };
+    }
+
+    return undefined;
+  },
+});
+
+describe('hasUnfinishedRule', () => {
+  it('should report a rule whose value has not been entered', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [undefined]), configWithNumberType)
+    ).toBe(true);
+  });
+
+  it('should report a rule with no field picked at all', () => {
+    expect(hasUnfinishedRule(makeBlankRule(), configWithNumberType)).toBe(true);
+  });
+
+  it('should report a multiselect rule with no option picked', () => {
+    expect(
+      hasUnfinishedRule(
+        makeTree('multiselect_equals', [[undefined]]),
+        configWithNumberType
+      )
+    ).toBe(true);
+  });
+
+  it('should accept a fully entered rule', () => {
+    expect(
+      hasUnfinishedRule(makeTree('equal', [7]), configWithNumberType)
+    ).toBe(false);
+  });
+
+  // "Empty selects every entity of the configured type" is documented behaviour, so a filter with
+  // no conditions has to stay saveable.
+  it('should accept a group with no conditions at all', () => {
+    expect(hasUnfinishedRule(makeGroup([]), configWithNumberType)).toBe(false);
+  });
+
+  it('should accept an undefined tree', () => {
+    expect(hasUnfinishedRule(undefined, configWithNumberType)).toBe(false);
+  });
+
+  it('should find an unfinished rule nested inside a group', () => {
+    const group = makeGroup([
+      makeTree('equal', [7]),
+      makeTree('equal', [undefined]),
+    ]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(true);
+  });
+
+  it('should accept a group whose conditions are all entered', () => {
+    const group = makeGroup([makeTree('equal', [7]), makeTree('equal', [9])]);
+
+    expect(hasUnfinishedRule(group, configWithNumberType)).toBe(false);
   });
 });

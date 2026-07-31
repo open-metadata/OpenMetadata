@@ -27,6 +27,7 @@ interface RuleQueryBuilderFieldProps {
   queryFilter?: string;
   readonly?: boolean;
   onChange: (queryFilter: string, filterJsonTree?: string) => void;
+  onValidityChange?: (isValid: boolean) => void;
 }
 
 export const RuleQueryBuilderField = ({
@@ -35,6 +36,7 @@ export const RuleQueryBuilderField = ({
   queryFilter,
   readonly,
   onChange,
+  onValidityChange,
 }: RuleQueryBuilderFieldProps) => {
   const { t } = useTranslation();
   const [queryActions, setQueryActions] = useState<Actions>();
@@ -62,6 +64,7 @@ export const RuleQueryBuilderField = ({
         tree={tree}
         value={queryFilter ?? ''}
         onChange={handleChange}
+        onValidityChange={onValidityChange}
       />
       {!readonly && (
         <Button
