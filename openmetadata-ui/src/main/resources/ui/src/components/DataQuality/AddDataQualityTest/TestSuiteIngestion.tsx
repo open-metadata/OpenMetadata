@@ -26,8 +26,8 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
 import {
-  CreateIngestionPipeline,
   ConfigType,
+  CreateIngestionPipeline,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
