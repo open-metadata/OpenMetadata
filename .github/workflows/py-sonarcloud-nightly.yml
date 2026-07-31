@@ -153,8 +153,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.BRANCH_NAME }}
+          # Do not add `filter: blob:none` — Sonar blames via JGit, which cannot
+          # lazily fetch blobs from a promisor remote.
           fetch-depth: 0
-          filter: blob:none
 
       - name: Setup Python
         uses: actions/setup-python@v6
