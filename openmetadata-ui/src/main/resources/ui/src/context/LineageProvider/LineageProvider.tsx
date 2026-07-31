@@ -48,12 +48,14 @@ import {
   ReactFlowInstance,
   useKeyPress,
 } from 'reactflow';
+import 'reactflow/dist/style.css';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
 import AddPipeLineModal from '../../components/Entity/EntityLineage/AppPipelineModel/AddPipeLineModal';
+import '../../components/Entity/EntityLineage/entity-lineage.style.less';
 import {
   ElementLoadingState,
   LineageConfig,
@@ -157,6 +159,7 @@ import {
   LineageProviderProps,
   LineageTimeRange,
 } from './LineageProvider.interface';
+
 const LINEAGE_START_TIME_PARAM = 'lineageStartTime';
 const LINEAGE_END_TIME_PARAM = 'lineageEndTime';
 
