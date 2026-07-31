@@ -416,6 +416,48 @@ describe('useTestCaseListPage', () => {
     expect(csv.split('\n')).toHaveLength(53);
   });
 
+  it('should drop stale test cases that disappear during export reconciliation', async () => {
+    const staleTestCase = buildTestCase('stale', 'svc.tbl.stale');
+    const stableTestCase = buildTestCase('stable', 'svc.tbl.stable');
+    const currentTestCase = buildTestCase('current', 'svc.tbl.current');
+
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [],
+        paging: { total: 10 },
+      })
+      .mockResolvedValueOnce({
+        data: [staleTestCase, stableTestCase],
+        paging: { total: 3 },
+      })
+      .mockResolvedValueOnce({
+        data: [stableTestCase],
+        paging: { total: 3 },
+      })
+      .mockResolvedValueOnce({
+        data: [stableTestCase, currentTestCase],
+        paging: { total: 2 },
+      });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(csv).not.toContain('stale');
+    expect(csv).toContain('stable');
+    expect(csv).toContain('current');
+    expect(csv.split('\n')).toHaveLength(3);
+  });
+
   it('should refetch for the requested page when the pagination handler is called', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 

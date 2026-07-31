@@ -872,11 +872,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && (
-        <div className="dq-pagination-sticky">
-          <NextPrevious {...pagingData} />
-        </div>
-      )}
+      {pagingData && showPagination && <NextPrevious {...pagingData} />}
       {enableBulkActions && (
         <AddToBundleSuiteModal
           open={isAddToBundleSuiteModalOpen}

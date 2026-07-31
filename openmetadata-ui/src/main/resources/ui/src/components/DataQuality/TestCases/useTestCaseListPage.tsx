@@ -145,11 +145,13 @@ export const useTestCaseListPage = () => {
       sortField: EXPORT_SORT_FIELD,
       sortType: SORT_ORDER.ASC,
     };
-    const testCasesById = new Map<string, TestCase>();
     let pass = 0;
-    let total = 0;
+    let reconciledTestCases: TestCase[] = [];
+
     do {
+      const testCasesById = new Map<string, TestCase>();
       let offset = 0;
+      let total = 0;
 
       do {
         const response = await getListTestCaseBySearch({
@@ -168,10 +170,15 @@ export const useTestCaseListPage = () => {
         }
       } while (offset < total);
 
+      reconciledTestCases = [...testCasesById.values()];
       pass += 1;
-    } while (testCasesById.size < total && pass < MAX_EXPORT_PASSES);
 
-    return convertTestCasesToCSV([...testCasesById.values()]);
+      if (testCasesById.size >= total) {
+        break;
+      }
+    } while (pass < MAX_EXPORT_PASSES);
+
+    return convertTestCasesToCSV(reconciledTestCases);
   }, [params, searchValue, selectedFilter]);
 
   const filteredExportAction =
