@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DateTime } from 'luxon';
 import { ENTITY_PATH } from '../constants/constants';
 import {
   DEFAULT_DATE_FORMAT,
@@ -150,6 +151,26 @@ export const getCustomPropertyMomentFormat = (
     ];
 
   return format;
+};
+
+export const parseCustomPropertyDateTime = (
+  value: string,
+  type: string,
+  backendFormat: CustomPropertyConfig['config']
+): DateTime => {
+  const format = getCustomPropertyLuxonFormat(type, backendFormat);
+
+  return DateTime.fromFormat(value, format);
+};
+
+export const formatCustomPropertyDateTime = (
+  dateTime: DateTime,
+  type: string,
+  backendFormat: CustomPropertyConfig['config']
+): string => {
+  const format = getCustomPropertyLuxonFormat(type, backendFormat);
+
+  return dateTime.toFormat(format);
 };
 
 interface PageHeader {

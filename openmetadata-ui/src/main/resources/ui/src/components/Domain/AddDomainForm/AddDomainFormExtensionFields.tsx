@@ -18,7 +18,6 @@ import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCustomPropertyTypeDisplayName } from '../../../utils/CustomProperty.utils';
 import { getField } from '../../../utils/formUtils';
 import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
 import {
