@@ -38,6 +38,11 @@ public class ListFilter extends Filter<ListFilter> {
     this.include = include;
   }
 
+  public ListFilter setInclude(Include include) {
+    this.include = include;
+    return this;
+  }
+
   public String getCondition(String tableName) {
     ArrayList<String> conditions = new ArrayList<>();
     conditions.add(getIncludeCondition(tableName));

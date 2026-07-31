@@ -269,6 +269,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
+    // Entities without a `deleted` column (supportsSoftDelete == false, e.g. Persona) must not
+    // emit a `WHERE deleted = FALSE` clause — it references a column that doesn't exist.
+    if (!repository.supportsSoftDelete) {
+      filter.setInclude(Include.ALL);
+    }
+
     if (!nullOrEmpty(query)) {
       filter.addQueryParam("nameFilter", query);
     }
