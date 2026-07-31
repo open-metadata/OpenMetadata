@@ -16,7 +16,7 @@ Datalake S3 Client
 from functools import partial
 from typing import Callable, Iterable, Optional, Set, Tuple  # noqa: UP035
 
-from metadata.clients.aws_client import AWSClient
+from metadata.clients.aws_client import BOTO_CONFIG, AWSClient
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
 )
@@ -42,9 +42,10 @@ class DatalakeS3Client(DatalakeBaseClient):
             s3_client = session.client(
                 service_name="s3",
                 endpoint_url=str(config.securityConfig.endPointURL),
+                config=BOTO_CONFIG,
             )
         else:
-            s3_client = session.client(service_name="s3")
+            s3_client = session.client(service_name="s3", config=BOTO_CONFIG)
         return cls(client=s3_client, session=session)
 
     def update_client_database(self, config, database_name: str):
