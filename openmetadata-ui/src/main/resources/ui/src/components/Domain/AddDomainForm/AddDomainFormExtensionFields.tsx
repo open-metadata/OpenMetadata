@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { InputBase } from '@openmetadata/ui-core-components';
 import { DatePicker, Form, Select, TimePicker } from 'antd';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,12 +19,38 @@ import { CustomProperty } from '../../../generated/entity/type';
 import { IntakeFormField } from '../../../generated/governance/intakeForm';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import MUITextField from '../../common/MUITextField/MUITextField';
 import { getField } from '../../../utils/formUtils';
 import CustomPropertyTypeBadge from '../../common/CustomPropertyTypeBadge/CustomPropertyTypeBadge.component';
 import {
   getExtensionFieldKind,
 } from './AddDomainFormExtensionFields.utils';
+
+/**
+ * Thin adapter so InputBase (react-aria onChange: (value: string) => void)
+ * works with antd Form.Item (onChange: React.ChangeEventHandler).
+ */
+interface CoreTextInputProps {
+  value?: string;
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  placeholder?: string;
+  type?: string;
+  id?: string;
+  'data-testid'?: string;
+}
+
+const CoreTextInput: React.FC<CoreTextInputProps> = ({
+  value,
+  onChange,
+  placeholder,
+  type,
+  id,
+  'data-testid': testId,
+}) => (
+  <InputBase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    {...({ id, type, 'data-testid': testId, value: value ?? '', onChange, placeholder } as any)}
+  />
+);
 
 interface AddDomainFormExtensionFieldsProps {
   customProperties: CustomProperty[];
@@ -197,14 +224,11 @@ const AddDomainFormExtensionFields = ({
         const namePath = ['extension', propertyName];
         const dataTestId = `extension-${propertyName}`;
 
-        const typeBadge = (
-          <CustomPropertyTypeBadge propertyTypeName={propertyTypeName} />
-        );
-
         const labelWithBadge = (
-          <>
-            {label} {typeBadge}
-          </>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {label}
+            <CustomPropertyTypeBadge propertyTypeName={propertyTypeName} />
+          </span>
         );
 
         if (kind === 'text' || kind === 'duration' || kind === 'unknown') {
@@ -214,7 +238,7 @@ const AddDomainFormExtensionFields = ({
               label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <MUITextField
+              <CoreTextInput
                 data-testid={dataTestId}
                 placeholder={label}
               />
@@ -232,7 +256,7 @@ const AddDomainFormExtensionFields = ({
                 ...baseRules,
                 { type: 'email' as const, message: t('message.email-is-invalid') },
               ]}>
-              <MUITextField
+              <CoreTextInput
                 data-testid={dataTestId}
                 placeholder={label}
                 type="email"
@@ -274,9 +298,8 @@ const AddDomainFormExtensionFields = ({
               label={labelWithBadge}
               name={namePath}
               rules={baseRules}>
-              <MUITextField
+              <CoreTextInput
                 data-testid={dataTestId}
-                inputProps={{ inputMode: 'numeric' }}
                 placeholder={label}
                 type="number"
               />
@@ -339,7 +362,7 @@ const AddDomainFormExtensionFields = ({
                     },
                   },
                 ]}>
-                <MUITextField
+                <CoreTextInput
                   data-testid={`${dataTestId}-url`}
                   placeholder={t('label.url-lowercase')}
                 />
@@ -348,7 +371,7 @@ const AddDomainFormExtensionFields = ({
                 name={[...namePath, 'displayText']}
                 noStyle
                 style={{ marginTop: 8 }}>
-                <MUITextField
+                <CoreTextInput
                   data-testid={`${dataTestId}-displayText`}
                   placeholder={t('label.display-name')}
                 />
@@ -388,9 +411,8 @@ const AddDomainFormExtensionFields = ({
                     ? [{ required: true, message: requiredMessage }]
                     : []
                 }>
-                <MUITextField
+                <CoreTextInput
                   data-testid={`${dataTestId}-start`}
-                  inputProps={{ inputMode: 'numeric' }}
                   placeholder={t('label.start')}
                   type="number"
                 />
@@ -404,9 +426,8 @@ const AddDomainFormExtensionFields = ({
                     ? [{ required: true, message: requiredMessage }]
                     : []
                 }>
-                <MUITextField
+                <CoreTextInput
                   data-testid={`${dataTestId}-end`}
-                  inputProps={{ inputMode: 'numeric' }}
                   placeholder={t('label.end')}
                   type="number"
                 />
@@ -472,7 +493,7 @@ const AddDomainFormExtensionFields = ({
             label={labelWithBadge}
             name={namePath}
             rules={baseRules}>
-            <MUITextField
+            <CoreTextInput
               data-testid={dataTestId}
               placeholder={label}
             />
