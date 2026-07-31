@@ -110,15 +110,14 @@ POWERBI_ERRORS = ErrorPack(
     # 403 - so the two split on tenant-enablement vs. workspace access.
     when(Matchers.exception(InvalidSourceException)).diagnose(
         "Authentication failed",
-        fix="Could not acquire an OAuth token. Check the Client ID, Client Secret, and Tenant ID, "
-        "and that the app registration is allowed to request the configured scope.",
+        fix="Microsoft Entra would not issue a token. Check Client ID, Client Secret and Tenant ID, and that the app "
+        "registration is allowed to request the scope this connection asks for.",
     ),
     when(http_status(401)).diagnose(
         "Power BI did not authorize the service principal",
-        fix="The token was accepted but Power BI rejected the call (401). In the Fabric admin "
-        "portal enable 'Allow service principals to use Power BI APIs' (and the read-only admin "
-        "APIs setting when Use Admin APIs is on), add the service principal to the allowed "
-        "security group, and grant the app registration the required API permission.",
+        fix="The token was valid, but Power BI itself refused the call. In the Fabric admin portal, turn on 'Allow "
+        "service principals to use Power BI APIs' - plus the read-only admin API setting if Use Admin APIs is on - "
+        "and add this service principal to the security group those settings allow.",
     ),
     when(http_status(403)).diagnose(
         "Insufficient permissions",
@@ -128,13 +127,13 @@ POWERBI_ERRORS = ErrorPack(
     ),
     when(http_status(404)).diagnose(
         "Resource not found",
-        fix="The requested resource was not found (404). Check the API URL and that the configured "
-        "tenant/workspace exists and is visible to the service principal.",
+        fix="Power BI answered, but there is nothing at that address. Check the API URL, and that the workspace exists "
+        "and the service principal has been given access to it.",
     ),
     when(http_status(429)).diagnose(
         "Rate limited by Power BI",
-        fix="Power BI is throttling this service principal (429). Retry once the current window "
-        "has elapsed; the admin APIs throttle per user per time window.",
+        fix="Power BI is rate limiting this service principal. Wait for the current window to pass and try again - the "
+        "admin APIs count requests per user, per window.",
     ),
     # Kept last: authority/instance-discovery failures are MSAL ValueErrors that
     # carry no HTTP status, so a broad substring match here must not shadow a

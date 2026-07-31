@@ -49,13 +49,13 @@ MAX_DATABASES_TO_PROBE = 10
 GLUE_ERRORS = ErrorPack(
     when(aws_code("AccessDenied", "AccessDeniedException")).diagnose(
         "Not authorized",
-        fix="Grant glue:GetDatabases and glue:GetTables to the identity used, and check any "
-        "Lake Formation permissions on the catalog.",
+        fix="Grant the AWS identity glue:GetDatabases and glue:GetTables. If this catalog is managed by Lake Formation, "
+        "it also needs Lake Formation permissions on the databases and tables.",
     ),
     # Only from GetTables; a GetDatabases listing returns an empty list instead.
     when(aws_code("EntityNotFoundException")).diagnose(
         "Glue database not found",
-        fix="The database disappeared from the catalog while the connection was being tested; re-run the test.",
+        fix="The database was removed from the Glue catalog while this test was running. Run the test again.",
     ),
 ).including(AWS_ERRORS)
 

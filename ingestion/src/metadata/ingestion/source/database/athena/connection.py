@@ -93,29 +93,29 @@ def _authorization_error(error: BaseException) -> bool:
 ATHENA_ERRORS = ErrorPack(
     when(_authorization_error).diagnose(
         "Not authorized",
-        fix="Grant the IAM principal the required Athena and Glue permissions "
-        "(e.g. athena:StartQueryExecution, glue:GetDatabases, glue:GetTables).",
+        fix="The AWS identity is missing Athena or Glue permissions. It needs athena:StartQueryExecution to run a query, "
+        "and glue:GetDatabases and glue:GetTables to read the catalog behind it.",
     ),
     when(_all_of("workgroup", "is not found")).diagnose(
         "Workgroup not found",
-        fix="Verify the configured workgroup exists in this account and region.",
+        fix="Athena has no workgroup with the name in Athena Workgroup, in this account and region. Check the name "
+        "and AWS Region.",
     ),
     when(Matchers.contains("output location")).diagnose(
         "Query result location not configured",
-        fix="Set s3StagingDir to an S3 path the principal can write to, or configure a query "
-        "result location on the workgroup.",
+        fix="Athena has nowhere to put query results. Set S3 Staging Directory to an S3 path the AWS identity can write "
+        "to, or set a result location on the workgroup itself.",
     ),
     # Athena raises this before the query runs, when it cannot even reach the bucket.
     when(Matchers.contains("unable to verify/create output bucket")).diagnose(
         "Query result bucket not usable",
-        fix="Athena cannot reach the bucket in s3StagingDir. Check that it exists in awsRegion "
-        "and that the identity has s3:ListBucket and s3:GetBucketLocation on it.",
+        fix="Athena could not reach the bucket in S3 Staging Directory. Check the bucket exists in AWS Region, and that "
+        "the AWS identity has s3:ListBucket and s3:GetBucketLocation on it.",
     ),
     when(Matchers.contains("writing to location")).diagnose(
         "Cannot write query results",
-        fix="Athena could not write results to the staging location. Grant s3:PutObject on "
-        "s3StagingDir, and if the bucket requires encryption, use a workgroup that sets "
-        "server-side encryption on query results.",
+        fix="Athena could not write its results to the staging location. Grant the AWS identity s3:PutObject on S3 "
+        "Staging Directory. If the bucket requires encryption, use a workgroup configured to encrypt query results.",
     ),
 ).including(AWS_ERRORS)
 
