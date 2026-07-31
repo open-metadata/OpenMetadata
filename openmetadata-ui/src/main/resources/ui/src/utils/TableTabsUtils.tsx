@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Space } from 'antd';
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -386,13 +387,13 @@ export const getTableDetailPageBaseTabs = ({
           title={
             <Space className="p-y-xss" size="small">
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography className="text-grey-muted">
                   {`${t('label.dbt-source-project')}: `}
-                </Typography.Text>
-                <Typography.Text data-testid="dbt-source-project-id">
+                </Typography>
+                <Typography data-testid="dbt-source-project-id">
                   {tableDetails?.dataModel?.dbtSourceProject ??
                     NO_DATA_PLACEHOLDER}
-                </Typography.Text>
+                </Typography>
               </div>
 
               <Divider
@@ -401,12 +402,10 @@ export const getTableDetailPageBaseTabs = ({
               />
 
               <div>
-                <Typography.Text className="text-grey-muted">
+                <Typography className="text-grey-muted">
                   {`${t('label.path')}: `}
-                </Typography.Text>
-                <Typography.Text>
-                  {tableDetails?.dataModel?.path}
-                </Typography.Text>
+                </Typography>
+                <Typography>{tableDetails?.dataModel?.path}</Typography>
               </div>
             </Space>
           }

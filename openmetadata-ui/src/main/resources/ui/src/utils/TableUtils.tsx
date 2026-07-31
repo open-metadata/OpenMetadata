@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Space, Tooltip } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
@@ -552,12 +553,11 @@ export const tableConstraintRendererBasedOnType = (
           </Fragment>
         ))}
       </Space>
-
       <Space direction="vertical" size={16}>
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
       </Space>
     </div>

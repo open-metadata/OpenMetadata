@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { Operation } from 'fast-json-patch';
 import { ServiceTypes } from 'Models';
@@ -91,7 +91,7 @@ export const getServiceMainTabColumns = (
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
             ) : (
-              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+              <Typography>{NO_DATA_PLACEHOLDER}</Typography>
             ),
         },
       ]
@@ -110,11 +110,11 @@ export const getServiceMainTabColumns = (
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,
           render: (usageSummary: Database['usageSummary']) => (
-            <Typography.Text>
+            <Typography>
               {getUsagePercentile(
                 usageSummary?.weeklyStats?.percentileRank ?? 0
               )}
-            </Typography.Text>
+            </Typography>
           ),
         },
       ]

@@ -13,7 +13,7 @@
 
 import { RightOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
@@ -224,11 +224,11 @@ const getActionLabelFromCardStyle = (
 
   if (cardStyle === CardStyle.EntityDeleted) {
     action = (
-      <Typography.Text className="text-danger">
+      <Typography className="text-danger">
         {isApplication
           ? t('label.uninstalled-lowercase')
           : t('label.deleted-lowercase')}
-      </Typography.Text>
+      </Typography>
     );
   } else if (cardStyle === CardStyle.EntitySoftDeleted) {
     action = t('label.soft-deleted-lowercase');
@@ -247,7 +247,7 @@ export const getFeedHeaderTextFromCardStyle = (
     return (
       <Transi18next
         i18nKey="message.feed-asset-action-header"
-        renderElement={<Typography.Text className="font-bold" />}
+        renderElement={<Typography className="font-bold" />}
         values={{
           action: getActionLabelFromCardStyle(cardStyle),
         }}
@@ -259,14 +259,14 @@ export const getFeedHeaderTextFromCardStyle = (
       return (
         <Transi18next
           i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={<Typography className="font-bold" />}
         />
       );
     case CardStyle.TestCaseResult:
       return (
         <Transi18next
           i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={<Typography className="font-bold" />}
         />
       );
     case CardStyle.Description:
@@ -276,10 +276,7 @@ export const getFeedHeaderTextFromCardStyle = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t(
@@ -297,10 +294,10 @@ export const getFeedHeaderTextFromCardStyle = (
     case CardStyle.EntitySoftDeleted:
       if (entityType === EntityType.APPLICATION) {
         return (
-          <Typography.Text>
+          <Typography>
             {getActionLabelFromCardStyle(cardStyle, true)}{' '}
             {t('label.app-lowercase')}
-          </Typography.Text>
+          </Typography>
         );
       }
 
@@ -324,22 +321,22 @@ export const getActivityEventHeaderText = (
   switch (eventType) {
     case ActivityEventType.EntityCreated:
       return (
-        <Typography.Text className="font-bold">
+        <Typography className="font-bold">
           {t('label.created-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     case ActivityEventType.EntityDeleted:
     case ActivityEventType.EntitySoftDeleted:
       return (
-        <Typography.Text className="font-bold">
+        <Typography className="font-bold">
           {t('label.deleted-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     case ActivityEventType.EntityRestored:
       return (
-        <Typography.Text className="font-bold">
+        <Typography className="font-bold">
           {t('label.restored-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     case ActivityEventType.DescriptionUpdated:
     case ActivityEventType.ColumnDescriptionUpdated:
@@ -347,10 +344,7 @@ export const getActivityEventHeaderText = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t('label.description'),
@@ -364,10 +358,7 @@ export const getActivityEventHeaderText = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t('label.tag-plural'),
@@ -380,10 +371,7 @@ export const getActivityEventHeaderText = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t('label.owner'),
@@ -396,10 +384,7 @@ export const getActivityEventHeaderText = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t('label.domain'),
@@ -412,10 +397,7 @@ export const getActivityEventHeaderText = (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
           renderElement={
-            <Typography.Text
-              className="font-bold"
-              style={{ fontSize: '14px' }}
-            />
+            <Typography className="font-bold" style={{ fontSize: '14px' }} />
           }
           values={{
             field: t('label.tier'),
@@ -427,36 +409,36 @@ export const getActivityEventHeaderText = (
       return (
         <Transi18next
           i18nKey="message.feed-custom-property-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={<Typography className="font-bold" />}
         />
       );
     case ActivityEventType.TestCaseStatusChanged:
       return (
         <Transi18next
           i18nKey="message.feed-test-case-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={<Typography className="font-bold" />}
         />
       );
     case ActivityEventType.PipelineStatusChanged:
       return (
-        <Typography.Text className="font-bold">
+        <Typography className="font-bold">
           {t('label.pipeline-status-changed')}
-        </Typography.Text>
+        </Typography>
       );
     case ActivityEventType.EntityUpdated:
     default:
       if (fieldName) {
         return (
-          <Typography.Text className="font-bold">
+          <Typography className="font-bold">
             {t('label.updated-field-for-lowercase', { field: fieldName })}
-          </Typography.Text>
+          </Typography>
         );
       }
 
       return (
-        <Typography.Text className="font-bold">
+        <Typography className="font-bold">
           {t('label.updated-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
   }
 };

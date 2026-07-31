@@ -12,7 +12,8 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { Link } from 'react-router-dom';
 import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
@@ -214,9 +215,9 @@ export const getSuggestionElement = (
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
-        <Typography.Text className="m-l-xs text-xs" type="secondary">
+        <Typography className="m-l-xs text-xs" color="secondary">
           {fqn}
-        </Typography.Text>
+        </Typography>
       </Link>
     </Button>
   );

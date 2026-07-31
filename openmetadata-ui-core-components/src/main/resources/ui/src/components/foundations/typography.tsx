@@ -13,7 +13,13 @@
 
 import { Tooltip, TooltipTrigger } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
-import type { ElementType, HTMLAttributes, ReactNode, Ref } from 'react';
+import type {
+  ElementType,
+  HTMLAttributeAnchorTarget,
+  HTMLAttributes,
+  ReactNode,
+  Ref,
+} from 'react';
 
 const lineClampClasses: Record<number, string> = {
   1: 'tw:line-clamp-1',
@@ -71,6 +77,14 @@ interface TypographyProps extends HTMLAttributes<HTMLElement> {
   weight?: TypographyWeight;
   color?: TypographyColor;
   ellipsis?: TypographyEllipsis;
+  // Anchor pass-through, for the `as="a"` shape used by antd `Typography.Link`
+  // migrations (see docs/antd-migration/typography.md). `HTMLAttributes`
+  // doesn't include these — they're spread onto `Component` at runtime
+  // regardless of `as`, so this only widens the type to match existing
+  // behavior.
+  href?: string;
+  target?: HTMLAttributeAnchorTarget;
+  rel?: string;
 }
 
 const quoteStyles: Record<TypographyQuoteVariant, string> = {

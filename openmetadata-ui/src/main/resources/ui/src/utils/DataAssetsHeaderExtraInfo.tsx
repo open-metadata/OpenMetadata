@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Divider, Tooltip, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Divider, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -37,39 +38,39 @@ export const ExtraInfoLabel = ({
     return (
       <>
         <Divider className="self-center" type="vertical" />
-        <Typography.Text
+        <Typography
           className="self-center text-xs whitespace-nowrap"
           data-testid={dataTestId}>
           {!isEmpty(label) && (
             <span className="text-grey-muted">{`${label}: `}</span>
           )}
           <span className="font-medium">{value}</span>
-        </Typography.Text>
+        </Typography>
       </>
     );
   }
 
   return (
     <div className="d-flex align-start extra-info-container">
-      <Typography.Text
+      <Typography
         className="text-sm d-flex flex-col gap-2 w-full"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
-          <Typography.Text
+          <Typography
             className="extra-info-label-heading"
             ellipsis={{ tooltip: true }}>
             {label}
-          </Typography.Text>
+          </Typography>
         )}
 
-        <Typography.Text
+        <Typography
           className={classNames('font-medium extra-info-value')}
           ellipsis={{
             tooltip: true,
           }}>
           {value ?? NO_DATA_PLACEHOLDER}
-        </Typography.Text>
-      </Typography.Text>
+        </Typography>
+      </Typography>
     </div>
   );
 };
@@ -92,22 +93,23 @@ export const ExtraInfoLink = ({
       'w-48': ellipsis,
     })}>
     {!isEmpty(label) && (
-      <Typography.Text
+      <Typography
         className="extra-info-label-heading m-r-xss"
         ellipsis={ellipsis ? { tooltip: true } : false}>
         {label}
-      </Typography.Text>
+      </Typography>
     )}
     <div className="d-flex items-center gap-1">
       <Tooltip title={value}>
-        <Typography.Link
+        <Typography
           ellipsis
+          as="a"
           className="extra-info-link"
           href={href}
           rel={newTab ? 'noopener noreferrer' : undefined}
           target={newTab ? '_blank' : undefined}>
           {value}
-        </Typography.Link>
+        </Typography>
       </Tooltip>
       <Icon
         className="m-l-xs"

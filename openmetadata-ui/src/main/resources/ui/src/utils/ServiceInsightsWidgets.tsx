@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -181,7 +181,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
       icon={<Icon className={iconClassName} height={height} width={width} />}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography.Paragraph className="w-max-350">
+      <Typography as="p" className="w-max-350">
         <Transi18next
           i18nKey={localizationKey}
           renderElement={
@@ -194,7 +194,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
             />
           }
         />
-      </Typography.Paragraph>
+      </Typography>
     </ErrorPlaceHolder>
   );
 };

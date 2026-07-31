@@ -13,6 +13,7 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { CustomIconComponentProps } from '@ant-design/icons/lib/components/Icon';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
@@ -20,7 +21,7 @@ import {
   RenderSettings,
   ValueSource,
 } from '@react-awesome-query-builder/antd';
-import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
+import { Button, Checkbox, MenuProps, Radio, Space } from 'antd';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
@@ -126,7 +127,7 @@ export const generateSearchDropdownLabel = (
           />
         )}
         <div>
-          <Typography.Text
+          <Typography
             ellipsis
             className="dropdown-option-label"
             title={option.label}>
@@ -135,14 +136,14 @@ export const generateSearchDropdownLabel = (
                 __html: getSearchLabel(option.label, searchKey),
               }}
             />
-          </Typography.Text>
+          </Typography>
           {option.description && (
-            <Typography.Text
+            <Typography
               className="text-xs d-block"
-              data-testid={`${option.key}-description`}
-              type="secondary">
+              color="secondary"
+              data-testid={`${option.key}-description`}>
               {option.description}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       </Space>

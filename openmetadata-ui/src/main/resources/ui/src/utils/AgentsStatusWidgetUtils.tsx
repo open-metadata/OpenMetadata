@@ -29,7 +29,8 @@ import { ReactComponent as MetadataIcon } from '../assets/svg/ic-empty-doc.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-stack-quality.svg';
 import { ReactComponent as ProfilerIcon } from '../assets/svg/ic-stack-search.svg';
 
-import { Skeleton, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Skeleton } from 'antd';
 import { isEmpty, isUndefined, reduce } from 'lodash';
 import type { AgentsInfo } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type {
@@ -289,12 +290,11 @@ export const getAgentRunningStatusMessage = (
   return (
     <div className="flex items-center gap-1">
       <Icon className={status} height={14} width={14} />
-
-      <Typography.Text
+      <Typography
         className="text-grey-muted text-sm"
         data-testid="agents-status-message">
         {message}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };
