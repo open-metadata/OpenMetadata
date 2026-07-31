@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs, Typography } from 'antd';
+import { Card, Col, Row, Tabs } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
@@ -70,7 +71,7 @@ const DetailItem: React.FC<DetailItemProps> = ({
 }) => (
   <div
     className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}>
-    <Typography.Text className="detail-label">{label}</Typography.Text>
+    <Typography className="detail-label">{label}</Typography>
     <div className="detail-value">{value}</div>
   </div>
 );
@@ -610,11 +611,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <div className="no-test-cases">
-        <Typography.Text className="no-data-placeholder">
+        <Typography className="no-data-placeholder">
           {t('label.no-entity', {
             entity: t('label.test-case-plural'),
           })}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -645,14 +646,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <div className="no-incidents">
-        <Typography.Text className="text-grey-muted">
+        <Typography className="text-grey-muted">
           {t('message.no-entity-found-for-name', {
             entity: t('label.incident-plural'),
             name: `${t('label.type-filed-name', {
               fieldName: startCase(activeIncidentFilter),
             })}`,
           })}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   };
@@ -672,9 +673,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="text-grey-14 m-t-lg"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
+          <Typography as='p' className="text-center p-x-md  no-data-placeholder">
             {t('message.no-data-quality-test-message')}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       );
     }
@@ -729,9 +730,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             className="text-grey-14"
             icon={<AddPlaceHolderIcon height={100} width={100} />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph className="text-center p-x-md  no-data-placeholder">
+            <Typography as='p' className="text-center p-x-md  no-data-placeholder">
               {t('message.no-data-quality-test-message')}
-            </Typography.Paragraph>
+            </Typography>
           </ErrorPlaceHolderNew>
         </div>
       );
@@ -747,12 +748,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography.Text className="stat-count new">
+              <Typography className="stat-count new">
                 {incidentCounts.new}
-              </Typography.Text>
-              <Typography.Text className="stat-label new">
+              </Typography>
+              <Typography className="stat-label new">
                 {t('label.new')}
-              </Typography.Text>
+              </Typography>
             </button>
             <div aria-hidden="true" className="stat-card-vertical-divider" />
             <button
@@ -761,12 +762,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography.Text className="stat-count ack">
+              <Typography className="stat-count ack">
                 {incidentCounts.ack}
-              </Typography.Text>
-              <Typography.Text className="stat-label ack">
+              </Typography>
+              <Typography className="stat-label ack">
                 {t('label.acknowledged')}
-              </Typography.Text>
+              </Typography>
             </button>
             <div aria-hidden="true" className="stat-card-vertical-divider" />
             <button
@@ -775,12 +776,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography.Text className="stat-count assigned">
+              <Typography className="stat-count assigned">
                 {incidentCounts.assigned}
-              </Typography.Text>
-              <Typography.Text className="stat-label assigned">
+              </Typography>
+              <Typography className="stat-label assigned">
                 {t('label.assigned')}
-              </Typography.Text>
+              </Typography>
             </button>
           </div>
           <div>
@@ -790,12 +791,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               })}
               type="button"
               onClick={() => handleIncidentFilterChange('resolved')}>
-              <Typography.Text className="resolved-label">
+              <Typography className="resolved-label">
                 {t('label.-with-colon', { text: t('label.resolved') })}
-              </Typography.Text>
-              <Typography.Text className="resolved-value">
+              </Typography>
+              <Typography className="resolved-value">
                 {incidentCounts.resolved}
-              </Typography.Text>
+              </Typography>
             </button>
           </div>
         </div>

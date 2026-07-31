@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { clone } from 'lodash';
@@ -79,9 +80,9 @@ const SchemaModal: FC<SchemaModalProp> = ({
       maskClosable={false}
       open={visible}
       title={
-        <Typography.Text strong data-testid="schema-modal-header">
+        <Typography data-testid="schema-modal-header" weight='bold'>
           {t('label.json-data')}
-        </Typography.Text>
+        </Typography>
       }
       width={800}
       onCancel={onClose}>

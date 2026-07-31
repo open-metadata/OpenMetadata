@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Row, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -137,16 +138,16 @@ const EntityHeaderTitle = ({
             <Tooltip
               placement="bottom"
               title={stringToHTML(displayName ?? name)}>
-              <Typography.Text
+              <Typography
                 ellipsis
+                data-testid="entity-header-display-name"
                 className={classNames(
                   'entity-header-name',
                   nameClassName,
                   'm-b-0 d-block display-xs font-semibold'
-                )}
-                data-testid="entity-header-display-name">
+                )}>
                 {stringToHTML(displayName ?? name)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
             {badges}
             {suffix}
@@ -157,13 +158,13 @@ const EntityHeaderTitle = ({
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
           <Tooltip placement="bottom" title={entityName}>
-            <Typography.Text
+            <Typography
               ellipsis
+              data-testid="entity-header-name"
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-xs entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
-              })}
-              data-testid="entity-header-name">
+              })}>
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
@@ -172,7 +173,7 @@ const EntityHeaderTitle = ({
                   width={14}
                 />
               )}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
 
           <Tooltip
@@ -204,9 +205,9 @@ const EntityHeaderTitle = ({
                   icon={<Icon component={StarFilledIcon} />}
                   loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
-                  <Typography.Text>
+                  <Typography>
                     {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
-                  </Typography.Text>
+                  </Typography>
                 </Button>
               </Tooltip>
             )}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import { Button, Col, Modal, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isArray, startCase } from 'lodash';
@@ -42,9 +43,9 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         title: t('label.step'),
         dataIndex: 'name',
         render: (_, record: StepSummary) => (
-          <Typography.Text data-testid={`step-summary-name-${record.name}`}>
+          <Typography data-testid={`step-summary-name-${record.name}`}>
             {getEntityName(record)}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {

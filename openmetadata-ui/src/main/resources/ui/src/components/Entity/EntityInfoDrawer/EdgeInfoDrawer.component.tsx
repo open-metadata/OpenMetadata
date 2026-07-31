@@ -12,7 +12,8 @@
  */
 
 import { GitMerge, X } from '@untitledui/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -213,9 +214,9 @@ const EdgeInfoDrawer = ({
             setSqlFunction(functionValue ?? '');
             setShowSqlFunctionModal(true);
           }}>
-          <Typography.Text className="m-b-0" data-testid="sql-function">
+          <Typography data-testid="sql-function" className="m-b-0">
             {functionValue ?? NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         </SectionWithEdit>
       );
     }
@@ -238,18 +239,18 @@ const EdgeInfoDrawer = ({
               value={mysqlQuery}
             />
           ) : (
-            <Typography.Paragraph className="m-b-0">
+            <Typography as='p' className="m-b-0">
               {t('server.no-query-available')}
-            </Typography.Paragraph>
+            </Typography>
           )}
         </SectionWithEdit>
         <SectionWithEdit
           className="summary-panel-card"
           showEditButton={false}
           title={t('label.lineage-source')}>
-          <Typography.Text className="lineage-source-text">
+          <Typography className="lineage-source-text">
             {LINEAGE_SOURCE[edgeEntity.source as keyof typeof Source]}
-          </Typography.Text>
+          </Typography>
         </SectionWithEdit>
       </>
     );
@@ -403,11 +404,11 @@ const EdgeInfoDrawer = ({
                     <span className="d-flex">
                       <GitMerge height={16} width={16} />
                     </span>
-                    <Typography.Text
-                      className="edge-info-drawer-title"
-                      data-testid="edge-header-title">
+                    <Typography
+                      data-testid="edge-header-title"
+                      className="edge-info-drawer-title">
                       {t('label.edge-information')}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                 </Tooltip>
               </div>

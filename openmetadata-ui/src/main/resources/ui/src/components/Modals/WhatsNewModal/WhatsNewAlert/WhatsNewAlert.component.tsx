@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Affix, Button, Card, Col, Row, Typography } from 'antd';
+import { Affix, Button, Card, Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,19 +91,19 @@ const WhatsNewAlert = () => {
             <Row gutter={0} wrap={false}>
               <Col className="whats-new-alert-left" flex="210px">
                 <RocketIcon className="whats-new-alert-rocket-icon" />
-                <Typography.Text className="whats-new-alert-version">
+                <Typography className="whats-new-alert-version">
                   {t('label.version-number', {
                     version: appVersion ?? '',
                   })}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col className="whats-new-alert-right" flex="auto">
-                <Typography.Text className="text-md font-semibold">
+                <Typography className="text-md font-semibold">
                   {t('label.new-update-announcement')}
-                </Typography.Text>
-                <Typography.Paragraph className="whats-new-alert-subtext">
+                </Typography>
+                <Typography as='p' className="whats-new-alert-subtext">
                   {t('label.to-learn-more-please-check-out')}
-                </Typography.Paragraph>
+                </Typography>
                 <div className="whats-new-alert-links">
                   <Button
                     className="p-0"

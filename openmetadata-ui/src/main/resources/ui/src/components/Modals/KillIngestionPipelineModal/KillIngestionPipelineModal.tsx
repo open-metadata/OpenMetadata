@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Modal, Typography } from 'antd';
+import { Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,9 +64,9 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       title={`${t('label.kill')} ${pipelineName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
-      <Typography.Text data-testid="kill-modal-body">
+      <Typography data-testid="kill-modal-body">
         {t('message.kill-ingestion-warning')}
-      </Typography.Text>
+      </Typography>
     </Modal>
   );
 };

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
+import { Select, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -64,7 +65,7 @@ const LineageSearchSelect = () => {
               src={serviceUtilClassBase.getServiceTypeLogo(node)}
               width="16px"
             />
-            <Typography.Text>{getEntityName(node)}</Typography.Text>
+            <Typography>{getEntityName(node)}</Typography>
           </Space>
         ),
         value: node.fullyQualifiedName,
@@ -87,16 +88,16 @@ const LineageSearchSelect = () => {
                   src={serviceUtilClassBase.getServiceTypeLogo(node)}
                   width="16px"
                 />
-                <Typography.Text className="text-grey-muted text-xs">
+                <Typography className="text-grey-muted text-xs">
                   {getEntityName(node)}
-                </Typography.Text>
+                </Typography>
                 <RightOutlined className="text-grey-muted text-xss" />
               </div>
               <div className="d-flex items-center gap-1 ">
                 <div className="flex-center w-4 h-4 text-base-color">
                   {searchClassBase.getEntityIcon(node.entityType ?? '')}
                 </div>
-                <Typography.Text>{getEntityName(column)}</Typography.Text>
+                <Typography>{getEntityName(column)}</Typography>
               </div>
             </div>
           ),

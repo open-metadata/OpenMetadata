@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Modal, Typography } from 'antd';
+import { Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,12 +65,12 @@ const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
       onCancel={onClose}
       onOk={handleConfirm}>
       <div data-testid="stop-modal">
-        <Typography.Text data-testid="stop-modal-body">
+        <Typography data-testid="stop-modal-body">
           {t('message.are-you-sure-action-property', {
             action: 'Stop',
             propertyName: displayName,
           })}
-        </Typography.Text>
+        </Typography>
       </div>
     </Modal>
   );

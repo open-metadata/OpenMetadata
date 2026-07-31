@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Input, Modal, Typography } from 'antd';
+import { Button, Form, Input, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -77,7 +78,7 @@ export const ModalWithFunctionEditor = ({
       getContainer={getContainer}
       maskClosable={false}
       open={visible}
-      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
+      title={<Typography data-testid="header">{header}</Typography>}
       width="700px"
       onCancel={onCancel}>
       {isLoading ? (

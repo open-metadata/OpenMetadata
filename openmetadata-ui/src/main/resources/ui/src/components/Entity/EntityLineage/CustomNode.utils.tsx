@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { Dataflow01, Plus } from '@untitledui/icons';
-import { Button, Skeleton, Typography } from 'antd';
+import { Button, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
@@ -187,13 +188,13 @@ const getColumnNameContent = (
           })}
         </div>
       )}
-      <Typography.Text
-        className="custom-node-column-label"
+      <Typography
         ellipsis={{
           tooltip: true,
-        }}>
+        }}
+        className="custom-node-column-label">
         {getEntityName(column)}
-      </Typography.Text>
+      </Typography>
     </>
   );
 };

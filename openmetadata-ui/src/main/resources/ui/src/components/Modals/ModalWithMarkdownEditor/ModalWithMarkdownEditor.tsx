@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +83,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<
       maskClosable={false}
       modalRender={(node) => <div data-react-aria-top-layer>{node}</div>}
       open={visible}
-      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
+      title={<Typography data-testid="header">{header}</Typography>}
       width="90%"
       onCancel={onCancel}>
       <KeyDownStopPropagationWrapper>

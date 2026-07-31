@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -117,7 +118,7 @@ export const ModalWithCustomPropertyEditor = ({
       }
       maskClosable={false}
       open={visible}
-      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
+      title={<Typography data-testid="header">{header}</Typography>}
       width={650}
       onCancel={onCancel}>
       <KeyDownStopPropagationWrapper>

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { Col, Radio, RadioChangeEvent, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -99,11 +100,11 @@ const APIEndpointSummary = ({
       </Col>
       <Col span={24}>
         {isEmpty(activeSchema?.schemaFields) ? (
-          <Typography.Text data-testid="no-data-message">
-            <Typography.Text className="text-grey-body">
+          <Typography data-testid="no-data-message">
+            <Typography className="text-grey-body">
               {t('message.no-data-available')}
-            </Typography.Text>
-          </Typography.Text>
+            </Typography>
+          </Typography>
         ) : (
           <SummaryList formattedEntityData={formattedSchemaFieldsData} />
         )}

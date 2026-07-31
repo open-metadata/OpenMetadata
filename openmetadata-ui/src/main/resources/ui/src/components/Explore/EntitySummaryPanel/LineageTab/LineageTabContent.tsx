@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { Button, Typography } from 'antd';
+import { Tooltip, TooltipTrigger, Typography } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -250,9 +250,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   </div>
                 </div>
                 <div className="lineage-card-content">
-                  <Typography.Text className="item-name-text">
+                  <Typography className="item-name-text">
                     {getEntityName(item.entity)}
-                  </Typography.Text>
+                  </Typography>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {item.entity.entityType && (
                       <>
@@ -265,9 +265,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                             )}
                           </span>
                         )}
-                        <Typography.Text className="item-entity-type-text">
+                        <Typography className="item-entity-type-text">
                           {capitalize(item.entity.entityType)}
-                        </Typography.Text>
+                        </Typography>
                       </>
                     )}
                     <span className="item-bullet-separator">
@@ -302,9 +302,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center  no-data-placeholder">
+              <Typography as='p' className="text-center  no-data-placeholder">
                 {t('label.lineage-not-found')}
-              </Typography.Paragraph>
+              </Typography>
             </ErrorPlaceHolderNew>
           </div>
         )}

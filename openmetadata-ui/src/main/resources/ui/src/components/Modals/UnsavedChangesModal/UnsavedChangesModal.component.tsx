@@ -12,7 +12,8 @@
  */
 
 import { SaveOutlined } from '@ant-design/icons';
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './unsaved-changes-modal.less';
@@ -48,17 +49,18 @@ export const UnsavedChangesModal: React.FC<UnsavedChangesModalProps> = ({
           </div>
 
           <div className="unsaved-changes-modal-content">
-            <Typography.Title
-              className="unsaved-changes-modal-title"
+            <Typography
+              as='h5'
+              size='text-md'
               data-testid="unsaved-changes-modal-title"
-              level={5}>
+              className="unsaved-changes-modal-title">
               {title || t('message.unsaved-changes')}
-            </Typography.Title>
-            <Typography.Text
-              className="unsaved-changes-modal-description"
-              data-testid="unsaved-changes-modal-description">
+            </Typography>
+            <Typography
+              data-testid="unsaved-changes-modal-description"
+              className="unsaved-changes-modal-description">
               {description || t('message.unsaved-changes-description')}
-            </Typography.Text>
+            </Typography>
           </div>
         </div>
 

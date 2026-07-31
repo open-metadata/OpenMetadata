@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, uniqueId } from 'lodash';
 import { FC, HTMLAttributes, memo } from 'react';
@@ -73,9 +73,9 @@ const EntityNodeInternal: FC<EntityNodeProps> = ({
           />
         </span>
       </div>
-      <Typography.Text className="text-grey-body text-xs p-t-xs">
+      <Typography className="text-grey-body text-xs p-t-xs">
         {label}
-      </Typography.Text>
+      </Typography>
     </div>
   );
 };

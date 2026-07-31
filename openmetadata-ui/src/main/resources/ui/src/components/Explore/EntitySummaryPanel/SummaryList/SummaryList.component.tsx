@@ -11,15 +11,14 @@
  *  limitations under the License.
  */
 
-import { Collapse, List, Row, Skeleton, Typography } from 'antd';
+import { Collapse, List, Row, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import './summary-list.less';
 import { SummaryListProps } from './SummaryList.interface';
 import SummaryListItems from './SummaryListItems/SummaryListItems.component';
-
-const { Text } = Typography;
 
 export default function SummaryList({
   formattedEntityData,
@@ -44,9 +43,9 @@ export default function SummaryList({
       locale={{
         emptyText: (
           <div>
-            <Text className="no-data-chip-placeholder">
+            <Typography className="no-data-chip-placeholder">
               {emptyPlaceholderText ?? t('message.no-data-available')}
-            </Text>
+            </Typography>
           </div>
         ),
       }}

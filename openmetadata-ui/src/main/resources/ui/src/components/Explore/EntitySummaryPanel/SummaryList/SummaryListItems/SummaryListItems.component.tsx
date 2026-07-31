@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Col, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
@@ -20,7 +21,6 @@ import AppBadge from '../../../../common/Badge/Badge.component';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
-const { Text, Paragraph } = Typography;
 
 function SummaryListItem({
   entityDetails,
@@ -44,11 +44,11 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            <Typography.Text
-              className="m-r-xs"
-              ellipsis={{ tooltip: entityDetails.title }}>
+            <Typography
+              ellipsis={{ tooltip: entityDetails.title }}
+              className="m-r-xs">
               {entityDetails.title}
-            </Typography.Text>
+            </Typography>
 
             {entityDetails.type && (
               <AppBadge
@@ -64,31 +64,31 @@ function SummaryListItem({
           {entityDetails.algorithm && (
             <Col span={24}>
               <Space className="h-6" size={4}>
-                <Text className="text-grey-muted">{`${t(
+                <Typography className="text-grey-muted">{`${t(
                   'label.algorithm'
-                )}:`}</Text>
-                <Text
-                  className="font-medium text-grey-body"
-                  data-testid="algorithm">
+                )}:`}</Typography>
+                <Typography
+                  data-testid="algorithm"
+                  className="font-medium text-grey-body">
                   {entityDetails.algorithm}
-                </Text>
+                </Typography>
               </Space>
             </Col>
           )}
 
           <Col span={24}>
-            <Paragraph className="text-grey-body m-y-0">
+            <Typography as='p' className="text-grey-body m-y-0">
               {entityDetails.description ? (
                 <RichTextEditorPreviewerV1
                   markdown={entityDetails.description || ''}
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
               ) : (
-                <Text className="text-sm no-data-chip-placeholder">
+                <Typography className="text-sm no-data-chip-placeholder">
                   {t('label.no-entity', { entity: t('label.description') })}
-                </Text>
+                </Typography>
               )}
-            </Paragraph>
+            </Typography>
           </Col>
           {entityDetails.tags && entityDetails.tags.length !== 0 && (
             <Col className="flex-grow" data-testid="tags-viewer" span={24}>

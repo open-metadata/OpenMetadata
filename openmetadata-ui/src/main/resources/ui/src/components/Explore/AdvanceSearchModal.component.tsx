@@ -12,7 +12,8 @@
  */
 
 import { Builder, Query } from '@react-awesome-query-builder/antd';
-import { Button, Modal, Space, Typography } from 'antd';
+import { Button, Modal, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import './advanced-search-modal.less';
@@ -70,9 +71,9 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       }
       width={1080}
       onCancel={onCancel}>
-      <Typography.Text data-testid="advanced-search-message">
+      <Typography data-testid="advanced-search-message">
         {modalProps?.subTitle ?? t('message.advanced-search-message')}
-      </Typography.Text>
+      </Typography>
       <Query
         {...config}
         renderBuilder={(props) => (
