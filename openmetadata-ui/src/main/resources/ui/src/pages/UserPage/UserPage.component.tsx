@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
@@ -95,7 +95,7 @@ const UserPage = () => {
       <div
         className="d-flex items-center justify-center h-full"
         data-testid="error">
-        <Typography.Paragraph className="text-base" data-testid="error-message">
+        <Typography as='p' data-testid="error-message" className="text-base">
           <Transi18next
             i18nKey="message.no-username-available"
             renderElement={<strong data-testid="username" />}
@@ -103,7 +103,7 @@ const UserPage = () => {
               user: username,
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </div>
     ),
     [username]

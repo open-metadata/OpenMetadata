@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Space, Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -424,9 +425,9 @@ function ServiceMainTabContent({
                               data-testid="show-deleted"
                               onClick={onShowDeletedChange}
                             />
-                            <Typography.Text className="m-l-xs">
+                            <Typography className="m-l-xs">
                               {t('label.deleted')}
-                            </Typography.Text>
+                            </Typography>
                           </span>
 
                           {entityType === EntityType.DATABASE_SERVICE &&

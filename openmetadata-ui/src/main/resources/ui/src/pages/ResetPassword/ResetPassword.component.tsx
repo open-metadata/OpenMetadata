@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Form, Input, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useMemo } from 'react';
@@ -80,9 +81,9 @@ const ResetPassword = () => {
           </Col>
 
           <Col className="mt-12 text-center" span={24}>
-            <Typography.Text className="text-xl font-medium text-grey-muted">
+            <Typography className="text-xl font-medium text-grey-muted">
               {t('label.reset-your-password')}
-            </Typography.Text>
+            </Typography>
           </Col>
 
           <Col span={24}>

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -269,9 +270,9 @@ const StoredProcedureTab = () => {
             data-testid="show-deleted-stored-procedure"
             onClick={handleShowDeletedStoredProcedures}
           />
-          <Typography.Text className="m-l-xs">
+          <Typography className="m-l-xs">
             {t('label.deleted')}
-          </Typography.Text>
+          </Typography>
         </span>
       }
       loading={isLoading}

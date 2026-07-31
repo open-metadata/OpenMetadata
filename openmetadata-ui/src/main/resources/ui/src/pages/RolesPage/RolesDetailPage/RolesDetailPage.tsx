@@ -12,7 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Modal, Row, Tabs, Typography } from 'antd';
+import { Button, Card, Col, Modal, Row, Tabs } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -463,12 +464,12 @@ const RolesDetailPage = () => {
               );
               setEntity(undefined);
             }}>
-            <Typography.Text>
+            <Typography>
               {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
                 child: getEntityName(selectedEntity.record),
                 parent: roleName,
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         )}
         {addAttribute && (

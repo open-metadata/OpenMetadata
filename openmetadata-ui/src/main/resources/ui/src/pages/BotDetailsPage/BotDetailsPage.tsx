@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useEffect, useState } from 'react';
@@ -153,14 +153,14 @@ const BotDetailsPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="text-base" data-testid="error-message">
+        <Typography as='p' data-testid="error-message" className="text-base">
           {t('message.no-entity-available-with-name', {
             entity: t('label.bot-plural'),
           })}{' '}
           <span className="font-medium" data-testid="username">
             {botsName}
           </span>{' '}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

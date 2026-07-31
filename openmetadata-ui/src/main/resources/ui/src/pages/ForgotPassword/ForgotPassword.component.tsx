@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Form, Input, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,12 +83,12 @@ const ForgotPassword = () => {
             />
           </Col>
           <Col className="text-center mt-4" span={24}>
-            <Typography.Title level={3}>
+            <Typography as='h3' size='text-xl'>
               {t('label.forgot-your-password')}
-            </Typography.Title>
-            <Typography.Text className="text-md text-grey-muted">
+            </Typography>
+            <Typography className="text-md text-grey-muted">
               {t('message.enter-your-registered-email')}
-            </Typography.Text>
+            </Typography>
           </Col>
 
           <Form

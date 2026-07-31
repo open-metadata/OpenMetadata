@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Skeleton, Tooltip, Typography } from 'antd';
+import { Button, Skeleton, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -43,9 +44,9 @@ function ObservabilityAlertActions({
     (!alertPermission.edit && !alertPermission.delete)
   ) {
     return (
-      <Typography.Text className="p-l-xs">
+      <Typography className="p-l-xs">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

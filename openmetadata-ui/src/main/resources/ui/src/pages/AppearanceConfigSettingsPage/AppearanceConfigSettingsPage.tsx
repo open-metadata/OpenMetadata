@@ -12,16 +12,8 @@
  */
 
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Form,
-  FormProps,
-  Row,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Form, FormProps, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -491,7 +483,7 @@ const AppearanceConfigSettingsPage = () => {
               <Card
                 className="white-label-config-card"
                 title={
-                  <Typography.Text>{t('label.custom-theme')}</Typography.Text>
+                  <Typography>{t('label.custom-theme')}</Typography>
                 }>
                 <Row className="w-full" gutter={[16, 16]}>
                   {themeFormFields.map((field) => {

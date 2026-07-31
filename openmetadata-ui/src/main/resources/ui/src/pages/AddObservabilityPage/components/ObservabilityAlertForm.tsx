@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row, Typography } from 'antd';
+import { Button, Col, Form, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
@@ -52,16 +53,14 @@ function ObservabilityAlertForm({
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumb} />
       </Col>
-
       <Col span={24}>
-        <Typography.Title level={5}>
+        <Typography as='h5' size='text-md'>
           {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
             entity: t('label.alert'),
           })}
-        </Typography.Title>
-        <Typography.Text>{t('message.alerts-description')}</Typography.Text>
+        </Typography>
+        <Typography>{t('message.alerts-description')}</Typography>
       </Col>
-
       <Col span={24}>
         <Form<ModifiedCreateEventSubscription>
           form={form}

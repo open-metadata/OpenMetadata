@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -285,9 +286,9 @@ const NotificationListPage = () => {
             (!alertPermission.edit && !alertPermission.delete)
           ) {
             return (
-              <Typography.Text className="p-l-xs">
+              <Typography className="p-l-xs">
                 {NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             );
           }
 

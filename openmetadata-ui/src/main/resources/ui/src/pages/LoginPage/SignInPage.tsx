@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Typography } from 'antd';
+import { Button, Form, Input } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   useCallback,
@@ -196,9 +197,9 @@ const SignInPage = () => {
             'sso-container': !isAuthProviderBasic,
           })}>
           <BrandImage isMonoGram height={50} width={50} />
-          <Typography.Title className="header-text display-sm" level={3}>
+          <Typography as='h3' size='text-xl' className="header-text display-sm">
             {t('label.welcome-to')} {brandName}
-          </Typography.Title>
+          </Typography>
           {isAuthProviderBasic ? (
             <div className="login-form ">
               <Form
@@ -231,15 +232,16 @@ const SignInPage = () => {
                   data-testid="password"
                   label={
                     <>
-                      <Typography.Text className="mr-1">
+                      <Typography className="mr-1">
                         {t('label.password')}
-                      </Typography.Text>
-                      <Typography.Link
-                        className="forgot-password-link"
+                      </Typography>
+                      <Typography
+                        as='a'
                         data-testid="forgot-password"
-                        onClick={onClickForgotPassword}>
+                        onClick={onClickForgotPassword}
+                        className="forgot-password-link">
                         {t('label.forgot-password')}
-                      </Typography.Link>
+                      </Typography>
                     </>
                   }
                   name="password"
@@ -267,9 +269,9 @@ const SignInPage = () => {
                 <>
                   {authConfig?.enableSelfSignup && (
                     <div className="mt-4 d-flex flex-center signup-text">
-                      <Typography.Text>
+                      <Typography>
                         {t('message.new-to-the-platform')}
-                      </Typography.Text>
+                      </Typography>
                       <Button
                         className="link-btn"
                         data-testid="signup"
@@ -286,9 +288,9 @@ const SignInPage = () => {
             </div>
           ) : (
             <div className=" login-form">
-              <Typography.Text className="text-xl text-grey-muted m-t-lg">
+              <Typography className="text-xl text-grey-muted m-t-lg">
                 {t('message.om-description')}
-              </Typography.Text>
+              </Typography>
               <div className="sso-signup">{signInButton}</div>
             </div>
           )}

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Radio, Row, Space, Typography } from 'antd';
+import { Card, Col, Radio, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -80,9 +81,9 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
           <ErrorPlaceHolder
             className="m-t-lg"
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph className="w-max-500">
+            <Typography as='p' className="w-max-500">
               {t('message.app-mode-not-available')}
-            </Typography.Paragraph>
+            </Typography>
           </ErrorPlaceHolder>
         </div>
       </PageLayoutV1>
@@ -104,9 +105,9 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
           <Col span={24}>
             <Card bordered={false} title={t('label.app-mode')}>
-              <Typography.Paragraph type="secondary">
+              <Typography as='p' color='secondary'>
                 {t('message.app-mode-description')}
-              </Typography.Paragraph>
+              </Typography>
 
               <Radio.Group
                 value={selectedMode}

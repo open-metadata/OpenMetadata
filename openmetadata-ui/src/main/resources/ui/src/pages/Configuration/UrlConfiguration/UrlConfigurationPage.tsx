@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -116,16 +117,16 @@ const UrlConfigurationPage = () => {
         <Col span={12}>
           <Row align="middle">
             <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              <Typography className="m-0 text-grey-muted">
                 {t('label.brand-name-url')}
-              </Typography.Text>
+              </Typography>
             </Col>
             <Col span={24}>
-              <Typography.Text data-testid="open-metadata-url">
+              <Typography data-testid="open-metadata-url">
                 {urlConfig?.openMetadataUrl
                   ? urlConfig.openMetadataUrl
                   : NO_DATA_PLACEHOLDER}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Row>
         </Col>

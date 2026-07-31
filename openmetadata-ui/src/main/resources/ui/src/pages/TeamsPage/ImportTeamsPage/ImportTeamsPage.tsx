@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
@@ -187,9 +188,9 @@ const ImportTeamsPage = () => {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <div className="m-t-sm text-center text-sm font-normal">
-          <Typography.Paragraph className="w-80">
+          <Typography as='p' className="w-80">
             {t('message.group-type-team-not-allowed-to-have-sub-team')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
       </ErrorPlaceHolder>
     );
@@ -211,14 +212,14 @@ const ImportTeamsPage = () => {
           <TitleBreadcrumb titleLinks={breadcrumb} />
         </Col>
         <Col span={24}>
-          <Typography.Title data-testid="title" level={5}>
+          <Typography as='h5' size='text-md' data-testid="title">
             {t('label.import-entity', {
               entity:
                 type === ImportType.USERS
                   ? t('label.user-plural')
                   : t('label.team-plural'),
             })}
-          </Typography.Title>
+          </Typography>
         </Col>
         <Col span={24}>
           <EntityImport

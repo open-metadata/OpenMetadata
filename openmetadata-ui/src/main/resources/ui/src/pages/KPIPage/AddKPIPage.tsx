@@ -22,8 +22,8 @@ import {
   Select,
   Slider,
   Space,
-  Typography,
 } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, kebabCase } from 'lodash';
@@ -193,13 +193,11 @@ const AddKPIPage = () => {
               className="m-t-0 my-4"
               titleLinks={translatedKPIBreadcrumb}
             />
-            <Typography.Paragraph
-              className="text-base"
-              data-testid="form-title">
+            <Typography as='p' data-testid="form-title" className="text-base">
               {t('label.add-new-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
+            </Typography>
             <Form
               data-testid="kpi-form"
               form={form}
@@ -397,12 +395,12 @@ const AddKPIPage = () => {
       secondPanel={{
         children: (
           <div data-testid="right-panel">
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as='p' className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.kpi-uppercase'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-kpi-message')}</Typography>
           </div>
         ),
         className: 'content-resizable-panel-container',

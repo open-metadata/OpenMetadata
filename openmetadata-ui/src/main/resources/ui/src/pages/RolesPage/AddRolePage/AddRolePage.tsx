@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Form, Input, Select, Space, Typography } from 'antd';
+import { Button, Form, Input, Select, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -136,13 +137,11 @@ const AddRolePage = () => {
           <div data-testid="add-role-container">
             <TitleBreadcrumb titleLinks={translatedRoleBreadcrumb} />
             <div className="m-t-md">
-              <Typography.Paragraph
-                className="text-base"
-                data-testid="form-title">
+              <Typography as='p' data-testid="form-title" className="text-base">
                 {t('label.add-new-entity', {
                   entity: t('label.role'),
                 })}
-              </Typography.Paragraph>
+              </Typography>
               <Form
                 data-testid="role-form"
                 id="role-form"
@@ -214,12 +213,12 @@ const AddRolePage = () => {
       secondPanel={{
         children: (
           <>
-            <Typography.Paragraph className="text-base font-medium">
+            <Typography as='p' className="text-base font-medium">
               {t('label.add-entity', {
                 entity: t('label.role'),
               })}
-            </Typography.Paragraph>
-            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+            </Typography>
+            <Typography>{t('message.add-role-message')}</Typography>
           </>
         ),
         className: 'content-resizable-panel-container',

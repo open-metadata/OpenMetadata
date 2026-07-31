@@ -10,17 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Skeleton,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Skeleton } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
@@ -297,11 +288,9 @@ const AddNotificationPage = () => {
   if (isSystemProvider) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph
-          className="tw-max-w-md"
-          style={{ marginBottom: '0' }}>
+        <Typography as='p' style={{ marginBottom: '0' }} className="tw-max-w-md">
           {t('message.system-alert-edit-message')}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -321,14 +310,14 @@ const AddNotificationPage = () => {
               </Col>
 
               <Col span={24}>
-                <Typography.Title level={5}>
+                <Typography as='h5' size='text-md'>
                   {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
                     entity: t('label.alert'),
                   })}
-                </Typography.Title>
-                <Typography.Text>
+                </Typography>
+                <Typography>
                   {t('message.alerts-description')}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
                 <Form<ModifiedCreateEventSubscription>

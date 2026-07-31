@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { FeaturedIcon, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { User03 } from '@untitledui/icons';
-import { Button, Col, Modal, Row, Typography } from 'antd';
+import { Button, Col, Modal, Row } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -429,7 +429,6 @@ export const PersonaDetailsPage = () => {
           <div>{activeTabContent}</div>
         </Col>
       </Row>
-
       {/* Set Default Persona Confirmation Modal */}
       <Modal
         data-testid="default-persona-confirmation-modal"
@@ -446,7 +445,7 @@ export const PersonaDetailsPage = () => {
         }
         onCancel={handleCancelSetAsDefault}
         onOk={handleConfirmDefaultAction}>
-        <Typography.Text>
+        <Typography>
           {personaDetails?.default
             ? t('message.remove-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
@@ -454,7 +453,7 @@ export const PersonaDetailsPage = () => {
             : t('message.set-default-persona-confirmation', {
                 persona: getEntityName(personaDetails),
               })}
-        </Typography.Text>
+        </Typography>
       </Modal>
     </PageLayoutV1>
   );

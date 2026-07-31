@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -187,7 +188,7 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
+          return <Typography>{requestMethod ?? NO_DATA}</Typography>;
         },
       },
       ...descriptionTableObject(),
@@ -295,9 +296,9 @@ function APIEndpointsTab({
               data-testid="show-deleted"
               onClick={handleDeleteAction}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs">
               {t('label.deleted')}
-            </Typography.Text>{' '}
+            </Typography>{' '}
           </span>
         )
       }

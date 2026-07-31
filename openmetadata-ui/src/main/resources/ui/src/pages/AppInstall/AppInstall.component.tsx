@@ -12,7 +12,8 @@
  */
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -272,7 +273,7 @@ const AppInstall = () => {
       case 3:
         return (
           <div className="m-auto bg-white w-3/5 p-md border rounded-4">
-            <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
+            <Typography as='h5' size='text-md'>{t('label.schedule')}</Typography>
             <ScheduleInterval
               defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
@@ -319,7 +320,7 @@ const AppInstall = () => {
       pageTitle={t('label.application-plural')}>
       {pluginComponent ? (
         // Render plugin's custom app details component
-        React.createElement(pluginComponent)
+        (React.createElement(pluginComponent))
       ) : (
         <Row gutter={[0, 16]}>
           <Col span={24}>
