@@ -21,15 +21,31 @@ import pytest
 MAX_IMPORT_RSS_MB = 480
 MAX_TOTAL_MODULES = 5000
 
+# Linux carries ru_maxrss across fork+exec, so under pytest it reports the runner's peak
+# rather than this process's. VmHWM is per-process and survives that.
 _MEASURE = """
-import json, resource, sys, warnings
+import json, sys, warnings
 
 warnings.filterwarnings("ignore")
 import metadata  # noqa: F401
 
-peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+def peak_rss_mb():
+    try:
+        with open("/proc/self/status") as status:
+            for line in status:
+                if line.startswith("VmHWM:"):
+                    return int(line.split()[1]) / 1024
+    except OSError:
+        pass
+    import resource
+
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return peak / (1024 * 1024) if sys.platform == "darwin" else peak / 1024
+
+
 print(json.dumps({
-    "rss_mb": peak / (1024 * 1024) if sys.platform == "darwin" else peak / 1024,
+    "rss_mb": peak_rss_mb(),
     "modules": len(sys.modules),
     "metadata_modules": sum(1 for name in sys.modules if name.startswith("metadata")),
 }))
