@@ -6,7 +6,7 @@
         {
             "name": "CheckAccess",
             "description": "Validate that we can properly reach the service and authenticate with the given credentials.",
-            "errorMessage": "Failed to connect to Rill, please validate the credentials",
+            "errorMessage": "Failed to connect to Rill. Please validate the credentials.",
             "shortCircuit": true,
             "mandatory": true
         },

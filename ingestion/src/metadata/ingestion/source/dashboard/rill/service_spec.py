@@ -12,6 +12,6 @@
 
 from metadata.ingestion.source.dashboard.rill.connection import RillConnection
 from metadata.ingestion.source.dashboard.rill.metadata import RillSource
-from metadata.utils.service_spec.service_spec import BaseSpec
+from metadata.utils.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(metadata_source_class=RillSource, connection_class=RillConnection)  # pyright: ignore[reportArgumentType]

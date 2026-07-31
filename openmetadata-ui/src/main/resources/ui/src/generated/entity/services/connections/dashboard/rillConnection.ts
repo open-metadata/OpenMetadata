@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * The fastest business intelligence tool for humans and agents
+ * Rill Connection Config
  */
 export interface RillConnection {
     /**

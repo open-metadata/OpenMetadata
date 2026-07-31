@@ -908,7 +908,7 @@ export interface RequestConnection {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
- * The fastest business intelligence tool for humans and agents
+ * Rill Connection Config
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
