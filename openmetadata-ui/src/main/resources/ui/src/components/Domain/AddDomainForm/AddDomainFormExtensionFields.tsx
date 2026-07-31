@@ -219,7 +219,10 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 }) => {
   const [searchItems, setSearchItems] = useState<SelectItemType[]>([]);
   const optionMapRef = useRef<Map<string, Record<string, unknown>>>(new Map());
-  const searchIndex = (allowedTypes[0] ?? 'glossaryTerm') as string;
+  // Use the broad 'all' index when multiple types are allowed so that every
+  // configured type appears in results, not just the first one.
+  const searchIndex =
+    allowedTypes.length > 1 ? 'all' : (allowedTypes[0] ?? 'glossaryTerm');
 
   const handleSearch = useCallback(
     async (query: string) => {

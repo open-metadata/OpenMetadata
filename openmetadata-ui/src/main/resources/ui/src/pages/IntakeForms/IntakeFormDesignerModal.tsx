@@ -33,10 +33,10 @@ import { CustomProperty } from '../../generated/entity/type';
 import {
   FieldKind,
   IntakeFormField,
-  RequiredField,
   TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
+import { toLegacyRequiredFields } from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
@@ -228,14 +228,7 @@ const IntakeFormDesignerModal = ({
 
     // Also derive the legacy requiredFields for backwards compatibility with
     // API consumers that only read requiredFields.
-    const requiredFields: RequiredField[] = formFields
-      .filter((f) => f.required)
-      .map((f) => ({
-        fieldPath: f.fieldPath,
-        fieldLabel: f.fieldLabel,
-        fieldKind: f.fieldKind,
-        errorMessage: f.errorMessage,
-      }));
+    const requiredFields = toLegacyRequiredFields(formFields);
 
     // One intake form per entity type — name is deterministically derived.
     // On edit, keep whatever displayName the form already has (users may

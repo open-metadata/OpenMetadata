@@ -35,11 +35,6 @@ export const getIntakeFormFields = (
   }));
 };
 
-export const getRequiredIntakeFormFields = (
-  intakeForm?: IntakeFormFieldConfiguration | null
-): IntakeFormField[] =>
-  getIntakeFormFields(intakeForm).filter((field) => field.required);
-
 export const toLegacyRequiredFields = (
   formFields: IntakeFormField[]
 ): RequiredField[] =>
