@@ -20,7 +20,6 @@ import {
   ValueSource,
 } from '@react-awesome-query-builder/ui';
 import { Plus, Trash01, X } from '@untitledui/icons';
-import { Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
 import { isArray, isEmpty } from 'lodash';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -36,6 +35,8 @@ import { getSearchLabel } from './AdvancedSearchPureUtils';
 import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
+
+type DropdownItem = { key: string; label: JSX.Element };
 
 export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
@@ -105,15 +106,18 @@ export const generateSearchDropdownLabel = (
   hideCounts = false,
   singleSelect = false
 ) => {
-  const InputComponent = singleSelect ? Radio : Checkbox;
-
   return (
     <div className="d-flex justify-between">
-      <Space align="start" className="m-x-sm" data-testid={option.key} size={8}>
-        <InputComponent
+      <div
+        className="d-flex m-x-sm"
+        data-testid={option.key}
+        style={{ alignItems: 'flex-start', gap: '8px' }}>
+        <input
+          readOnly
           checked={checked}
           data-testid={`${option.key}-${singleSelect ? 'radio' : 'checkbox'}`}
           style={option.description ? { marginTop: 4 } : undefined}
+          type={singleSelect ? 'radio' : 'checkbox'}
         />
         {showProfilePicture && (
           <ProfilePicture
@@ -123,26 +127,24 @@ export const generateSearchDropdownLabel = (
           />
         )}
         <div>
-          <Typography.Text
-            ellipsis
-            className="dropdown-option-label"
+          <span
+            className="dropdown-option-label tw:truncate tw:block"
             title={option.label}>
             <span
               dangerouslySetInnerHTML={{
                 __html: getSearchLabel(option.label, searchKey),
               }}
             />
-          </Typography.Text>
+          </span>
           {option.description && (
-            <Typography.Text
-              className="text-xs d-block"
-              data-testid={`${option.key}-description`}
-              type="secondary">
+            <span
+              className="text-xs d-block tw:text-secondary"
+              data-testid={`${option.key}-description`}>
               {option.description}
-            </Typography.Text>
+            </span>
           )}
         </div>
-      </Space>
+      </div>
       {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>
   );
@@ -155,7 +157,7 @@ export const getSearchDropdownLabels = (
   showProfilePicture = false,
   hideCounts = false,
   singleSelect = false
-): MenuProps['items'] => {
+): DropdownItem[] => {
   if (isArray(optionsArray)) {
     const sortedOptions = optionsArray.sort(
       (a, b) => (b.count ?? 0) - (a.count ?? 0)
