@@ -138,11 +138,11 @@ describe('RequestDescriptionPage', () => {
     render(
       <RequestDescription pageTitle={i18n.t('label.request-description')} />
     );
-    const submitBtn = await screen.findByTestId('submit-btn');
+    const form = await screen.findByTestId('form-container');
     await screen.findByDisplayValue('Task message');
 
     await act(async () => {
-      fireEvent.click(submitBtn);
+      fireEvent.submit(form);
     });
 
     await waitFor(() =>
