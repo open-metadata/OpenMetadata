@@ -24,7 +24,17 @@ RUN pip install --no-cache-dir uv \
  && uv pip install --no-cache "apache-airflow==3.2.2" /tmp/ingestion \
  && rm -rf /tmp/ingestion
 
-# Migrating at build time rather than container start: on a 2-core CI runner this step
-# alone outlived the readiness timeout.
+# Migrating at build time keeps container start to a few seconds.
 RUN airflow db migrate \
  && echo '{"admin": "admin"}' > /opt/airflow/simple_auth_manager_passwords.json
+
+# A file, not a `bash -c` string: passing a multi-line command through the container
+# runtime mangles the newlines and bash silently starts nothing.
+RUN printf '%s\n' \
+      '#!/usr/bin/env bash' \
+      'set -e' \
+      'airflow dag-processor &' \
+      'airflow scheduler &' \
+      'exec airflow api-server --port 8080' \
+      > /opt/airflow/start-test-airflow.sh \
+ && chmod +x /opt/airflow/start-test-airflow.sh

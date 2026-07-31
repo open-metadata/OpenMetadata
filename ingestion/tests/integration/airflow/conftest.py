@@ -16,7 +16,6 @@ its own DAGs and connections instead of depending on the compose ingestion servi
 """
 
 import json
-import textwrap
 import time
 from pathlib import Path
 
@@ -48,14 +47,9 @@ OM_JWT = (
 
 _DOCKERFILE = "tests/integration/airflow/Dockerfile"
 
-_START_AIRFLOW = textwrap.dedent(
-    """
-    set -e
-    airflow dag-processor &
-    airflow scheduler &
-    exec airflow api-server --port 8080
-    """
-).strip()
+# A list, and via bash: the base image's entrypoint prefixes anything it does not
+# recognise with `airflow`, and a single string would be re-split by the runtime.
+_START_AIRFLOW = ["bash", "/opt/airflow/start-test-airflow.sh"]
 
 
 def _ingestion_root() -> Path:
@@ -139,7 +133,7 @@ def airflow_container(airflow_image, airflow_dag_dir):
         # Default is 300s; a DAG written after start would otherwise take 5 minutes to appear.
         .with_env("AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL", "5")
         .with_env(f"AIRFLOW_CONN_{OM_CONNECTION_ID.upper()}", connection)
-        .with_command(f"bash -c {json.dumps(_START_AIRFLOW)}")
+        .with_command(_START_AIRFLOW)
     )
 
     with container:
