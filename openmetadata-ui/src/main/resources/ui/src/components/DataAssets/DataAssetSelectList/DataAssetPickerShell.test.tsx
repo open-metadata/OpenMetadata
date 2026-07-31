@@ -122,18 +122,16 @@ describe('DataAssetPickerShell', () => {
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });
 
-  it('closes on click outside via overlay', () => {
+  it('closes on click outside', () => {
     render(<DataAssetPickerShell {...defaultProps} />);
     openPicker();
 
     expect(screen.getByText('Orders')).toBeInTheDocument();
 
-    const underlay = screen.getByTestId('underlay');
-    fireEvent.pointerDown(underlay);
-    fireEvent.mouseDown(underlay);
-    fireEvent.pointerUp(underlay);
-    fireEvent.mouseUp(underlay);
-    fireEvent.click(underlay);
+    // The Popover uses isNonModal so there is no underlay element.
+    // react-aria dismisses via document-level pointerdown → click sequence.
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
 
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });
