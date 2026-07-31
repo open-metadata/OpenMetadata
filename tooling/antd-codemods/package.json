@@ -1,0 +1,15 @@
+{
+  "name": "antd-codemods",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "devDependencies": {
+    "jest": "29.7.0",
+    "jscodeshift": "0.15.2"
+  }
+}
