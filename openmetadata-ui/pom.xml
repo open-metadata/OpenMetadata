@@ -24,6 +24,26 @@
     <skip.ui.build>false</skip.ui.build>
   </properties>
 
+  <dependencies>
+    <!-- No Java classpath dependency exists between openmetadata-ui and
+         openmetadata-ui-core-components — the vite build resolves core-components
+         at build time via a workspace symlink in node_modules. This dep exists
+         solely to declare reactor ordering: `mvn ... -pl openmetadata-dist -am`
+         (used by playwright-postgresql-e2e and java-playwright-nightly) only
+         pulls Maven-declared deps into the reactor, and openmetadata-dist
+         depends on openmetadata-ui but not on openmetadata-ui-core-components.
+         Without this, core-components' dist/ is never built and vite fails with
+         "Failed to resolve entry for package @openmetadata/ui-core-components".
+         `<optional>true</optional>` keeps the core-components jar off any
+         downstream consumer's transitive classpath. -->
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-ui-core-components</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
+    </dependency>
+  </dependencies>
+
   <profiles>
     <!-- Auto-activates when the vite build output already exists on disk, so a
          CI workflow that restored openmetadata-ui/src/main/resources/ui/dist
