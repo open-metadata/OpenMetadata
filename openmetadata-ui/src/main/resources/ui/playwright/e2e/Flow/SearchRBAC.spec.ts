@@ -121,7 +121,8 @@ for (const entity of searchRBACEntities) {
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
         entityObj.entityResponseData?.displayName ?? '',
-        userWithPermissionPage
+        userWithPermissionPage,
+        entity.name
       );
     });
 
@@ -243,7 +244,8 @@ test.describe(`Table Column`, () => {
     await searchForEntityShouldWork(
       column.fullyQualifiedName ?? '',
       column.displayName ?? column.name ?? '',
-      userWithPermissionPage
+      userWithPermissionPage,
+      'Columns'
     );
   });
 
