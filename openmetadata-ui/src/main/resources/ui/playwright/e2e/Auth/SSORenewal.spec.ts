@@ -197,6 +197,44 @@ test.describe('SSO Session Renewal', { tag: SESSION_RENEWAL_TAGS }, () => {
     expect(page.url()).not.toContain('/signin');
   });
 
+  test('should surface a dependency 401 without ending the SAML session', async () => {
+    const page = userPage!;
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
+    const message = 'The configured runner token is not authorized';
+
+    // The SAML session is live and the access token is fresh — only this endpoint answers 401,
+    // standing in for a service the API depends on rejecting its own credentials. Refreshing
+    // cannot fix that, so the error must reach the user instead of ending a working session.
+    // See https://github.com/open-metadata/openmetadata-collate/issues/4647
+    await page.route('**/api/v1/teams**', (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 401, message }),
+      })
+    );
+
+    try {
+      await page.goto('/settings/members/teams', {
+        waitUntil: 'domcontentloaded',
+      });
+
+      await expect(
+        page
+          .getByTestId('alert-bar')
+          .filter({ hasText: new RegExp(message, 'i') })
+          .first()
+      ).toBeVisible({ timeout: 30_000 });
+
+      expect(page.url()).not.toContain('/signin');
+
+      await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+    } finally {
+      await page.unroute('**/api/v1/teams**');
+    }
+  });
+
   test('should force re-login when the SAML session is gone', async () => {
     const page = userPage!;
 

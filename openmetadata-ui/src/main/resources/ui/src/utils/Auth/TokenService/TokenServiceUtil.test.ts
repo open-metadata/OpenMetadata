@@ -184,6 +184,64 @@ describe('TokenService', () => {
     });
   });
 
+  describe('isSessionExpired', () => {
+    it('should report an expired token as expired', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValue('expired-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+
+      expect(await tokenService.isSessionExpired()).toBe(true);
+    });
+
+    it('should report a token inside the renewal threshold as expired', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValue('about-to-expire');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: false,
+        timeoutExpiry: 0,
+      });
+
+      // A token with no exp claim lands here too, so checking isExpired alone would disagree
+      // with refreshToken's own decision.
+      expect(await tokenService.isSessionExpired()).toBe(true);
+    });
+
+    it('should report an absent token as expired', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValue('');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        exp: 0,
+        isExpired: true,
+        timeoutExpiry: 0,
+      });
+
+      expect(await tokenService.isSessionExpired()).toBe(true);
+    });
+
+    it('should report a comfortably valid token as not expired', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: false,
+        timeoutExpiry: 60_000,
+      });
+
+      expect(await tokenService.isSessionExpired()).toBe(false);
+    });
+
+    it('should agree with refreshToken about whether a renewal is needed', async () => {
+      (getOidcToken as jest.Mock).mockResolvedValue('valid-token');
+      (extractDetailsFromToken as jest.Mock).mockReturnValue({
+        isExpired: false,
+        timeoutExpiry: 60_000,
+      });
+
+      // refreshToken refuses to renew a valid token, so a 401 in that state cannot be fixed by
+      // refreshing — the two must never disagree.
+      expect(await tokenService.isSessionExpired()).toBe(false);
+      expect(await tokenService.refreshToken()).toBeNull();
+    });
+  });
+
   describe('fetchNewToken', () => {
     it('should return null if renewToken is not a function', async () => {
       tokenService.renewToken = null;

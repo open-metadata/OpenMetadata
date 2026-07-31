@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AxiosResponse } from 'axios';
 import { act } from 'react-test-renderer';
+import { NON_SESSION_AUTH_ERROR } from '../../../constants/Auth.constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import axiosClient from '../../../rest';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
@@ -35,8 +36,12 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
 });
 
+const mockNavigate = jest.fn();
+
+// useNavigate must return a callable — the forced-logout path calls navigate(), and an
+// undefined return crashes the worker with an unhandled rejection rather than failing a test.
 jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn(),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -62,10 +67,16 @@ const mockRefreshToken = jest
   .fn()
   .mockImplementation(() => Promise.resolve('newToken'));
 
+// Default to an expired session so every pre-existing test keeps exercising the refresh path.
+const mockIsSessionExpired = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve(true));
+
 jest.mock('../../../utils/Auth/TokenService/TokenServiceUtil', () => {
   return {
     getInstance: jest.fn().mockImplementation(() => ({
       refreshToken: mockRefreshToken,
+      isSessionExpired: mockIsSessionExpired,
       isTokenUpdateInProgress: jest.fn().mockImplementation(() => false),
       getToken: jest.fn().mockImplementation(() => Promise.resolve()),
       clearRefreshInProgress: jest
@@ -207,7 +218,7 @@ describe('Test axios response interceptor', () => {
     jest.restoreAllMocks();
   });
 
-  it('should set up response interceptor with correct signature', () => {
+  it('should set up response interceptor with correct signature', async () => {
     // Mock axios client
     const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
     const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
@@ -248,6 +259,11 @@ describe('Test axios response interceptor', () => {
     const result = errorHandler?.(mockError);
 
     expect(result).toBeInstanceOf(Promise);
+
+    // The handler checks whether the session is actually expired before refreshing, so the
+    // refresh is a microtask away rather than synchronous.
+    await result;
+
     expect(mockRefreshToken).toHaveBeenCalled();
   });
 
@@ -493,5 +509,75 @@ describe('Test axios response interceptor', () => {
 
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
+  });
+
+  // A 401 only means "your session is dead" when our own token actually is. Anything else —
+  // most often a service the API depends on rejecting its own credentials — must reach the
+  // caller instead of destroying a working session.
+  // See https://github.com/open-metadata/openmetadata-collate/issues/4647
+  describe('401 on a still-valid session', () => {
+    const setUpInterceptor = async () => {
+      const mockUse = jest.spyOn(axiosClient.interceptors.response, 'use');
+      const mockAxios = jest.fn().mockResolvedValue({ data: 'success' });
+
+      jest.spyOn(axiosClient, 'request').mockImplementation(mockAxios);
+
+      await act(async () => {
+        render(<WrapperComponent />);
+      });
+
+      const [, errorHandler] = mockUse.mock.calls[0];
+
+      return { errorHandler, mockAxios };
+    };
+
+    const unauthorizedError = () => ({
+      response: {
+        status: 401,
+        data: { message: 'Argo rejected the configured token' },
+      },
+      config: { url: '/services/ingestionPipelines/deploy/1', headers: {} },
+    });
+
+    beforeEach(() => {
+      mockRefreshToken.mockClear();
+    });
+
+    it('should reject with the original error instead of logging out', async () => {
+      mockIsSessionExpired.mockImplementationOnce(() => Promise.resolve(false));
+
+      const { errorHandler, mockAxios } = await setUpInterceptor();
+      const mockError = unauthorizedError();
+
+      await expect(errorHandler?.(mockError)).rejects.toBe(mockError);
+
+      // Refreshing a valid token is a no-op, so it must not even be attempted, and the failed
+      // request must not be silently retried.
+      expect(mockRefreshToken).not.toHaveBeenCalled();
+      expect(mockAxios).not.toHaveBeenCalled();
+    });
+
+    it('should flag the error so its toast is not suppressed as a session failure', async () => {
+      mockIsSessionExpired.mockImplementationOnce(() => Promise.resolve(false));
+
+      const { errorHandler } = await setUpInterceptor();
+
+      await expect(errorHandler?.(unauthorizedError())).rejects.toEqual(
+        expect.objectContaining({ [NON_SESSION_AUTH_ERROR]: true })
+      );
+    });
+
+    it('should still force a logout when the token really is expired', async () => {
+      mockIsSessionExpired.mockImplementationOnce(() => Promise.resolve(true));
+      mockRefreshToken.mockImplementationOnce(() => Promise.resolve(null));
+
+      const { errorHandler, mockAxios } = await setUpInterceptor();
+      const mockError = unauthorizedError();
+
+      await expect(errorHandler?.(mockError)).rejects.toBe(mockError);
+
+      expect(mockRefreshToken).toHaveBeenCalled();
+      expect(mockAxios).not.toHaveBeenCalled();
+    });
   });
 });

@@ -41,3 +41,11 @@ export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   '/auth/refresh',
   '/users/login',
 ];
+
+/**
+ * Flag the auth interceptor sets on a 401 it has decided is NOT a session failure — our own token
+ * was still valid, so the endpoint itself rejected the request. Error toasts are suppressed for
+ * 401s because a dead session already shows its own "session expired" message; a flagged error has
+ * no such message behind it and must be shown.
+ */
+export const NON_SESSION_AUTH_ERROR = 'nonSessionAuthError';

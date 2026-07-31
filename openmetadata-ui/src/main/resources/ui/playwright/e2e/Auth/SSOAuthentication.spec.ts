@@ -33,8 +33,19 @@ import {
   setTokenExpiry,
   waitForMockOidcReady,
 } from '../../utils/mockOidc';
+import { setToken } from '../../utils/tokenStorage';
 
 const MOCK_OIDC_URL = process.env.MOCK_OIDC_URL || 'http://localhost:9090';
+
+// A syntactically valid JWT whose exp is far in the past, used to make a session genuinely dead.
+const EXPIRED_JWT = [
+  'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9',
+  'eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiZXhwIjoxMDAwMDAwMDAwfQ',
+  'not-a-real-signature',
+].join('.');
+
+const DEPENDENCY_401_MESSAGE =
+  'The configured runner token is not authorized for this namespace';
 
 const performOidcLogin = async (page: Page): Promise<void> => {
   await page.goto('/');
@@ -342,12 +353,20 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
   // These tests use page.route() to simulate 401 responses from the
   // OM API, triggering the frontend's axios interceptor to refresh
   // the token and retry failed requests.
+  //
+  // A 401 only ends in a logout when the stored token has actually expired —
+  // refreshToken() refuses to renew a still-valid token, so a 401 in that
+  // state cannot be recovered by refreshing and must surface as an error
+  // instead. Tests that want the logout path therefore plant an expired token
+  // rather than relying on a mocked 401 alone.
+  // See https://github.com/open-metadata/openmetadata-collate/issues/4647
   // ---------------------------------------------------------------
 
   test.describe('401 Interceptor and Request Retry', () => {
     test('should trigger session expired redirect on 401 with expired token message', async ({
       page,
       browserName,
+      request,
     }) => {
       // WebKit processes page.route() 401 interceptions with different event
       // loop timing — the async logout chain doesn't complete before the page
@@ -360,10 +379,11 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await performOidcLogin(page);
       await verifyAuthenticated(page);
 
-      // Intercept the loggedInUser API call and return 401 with 'Expired token!'
-      // message. The interceptor will attempt to refresh, but since the token
-      // isn't truly expired at the OIDC level, refreshToken() returns null →
-      // forced logout with "session expired" toast.
+      // Make the session genuinely dead: the stored token is expired and the
+      // provider will refuse to renew it silently.
+      await setToken(page, EXPIRED_JWT);
+      await forceInteractionRequired(request);
+
       let intercepted = false;
       await page.route('**/api/v1/users/loggedInUser*', async (route) => {
         if (!intercepted) {
@@ -399,6 +419,10 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await verifyAuthenticated(page);
 
       await resetMetrics(request);
+
+      // Expired token, so the 401s below are real session failures and the
+      // interceptor genuinely attempts a renewal to coalesce.
+      await setToken(page, EXPIRED_JWT);
 
       // Track how many 401s we injected
       const interceptedUrls = new Set<string>();
@@ -447,7 +471,9 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       await performOidcLogin(page);
       await verifyAuthenticated(page);
 
-      // Force the OIDC provider to reject the next silent renewal
+      // Expired token + a provider that refuses silent renewal: the session is
+      // unrecoverable, which is exactly when a logout is the right answer.
+      await setToken(page, EXPIRED_JWT);
       await forceInteractionRequired(request);
 
       // Intercept ALL API calls to return 401, simulating expired session
@@ -469,6 +495,41 @@ test.describe('SSO Authentication with Mock OIDC Provider', () => {
       const url = page.url();
 
       expect(url).toContain('/signin');
+    });
+
+    test('should surface a 401 from a dependency without signing the user out', async ({
+      page,
+    }) => {
+      await performOidcLogin(page);
+      await verifyAuthenticated(page);
+
+      // The SSO session is untouched and valid — only this endpoint answers
+      // 401, standing in for a service the API depends on rejecting its own
+      // credentials. Refreshing cannot fix that, so the error must reach the
+      // user rather than destroying a working session.
+      await page.route('**/api/v1/teams**', async (route) => {
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            code: 401,
+            message: DEPENDENCY_401_MESSAGE,
+          }),
+        });
+      });
+
+      await page.goto('/settings/members/teams', {
+        waitUntil: 'domcontentloaded',
+      });
+
+      await expect(
+        page
+          .getByTestId('alert-bar')
+          .filter({ hasText: new RegExp(DEPENDENCY_401_MESSAGE, 'i') })
+          .first()
+      ).toBeVisible({ timeout: 30000 });
+
+      expect(page.url()).not.toContain('/signin');
     });
   });
 

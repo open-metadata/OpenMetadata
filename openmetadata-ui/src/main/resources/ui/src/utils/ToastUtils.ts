@@ -21,6 +21,7 @@ import { get, isString } from 'lodash';
 import React from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
 import { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
+import { NON_SESSION_AUTH_ERROR } from '../constants/Auth.constants';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
@@ -98,11 +99,21 @@ export const showErrorToast = (
     errorMessage = getErrorText(error, fallback);
     isRuleViolation =
       get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
+    // A 401 normally means the session died, and the forced logout shows its own
+    // "session expired" message — a second toast would just be noise. But the auth interceptor
+    // flags a 401 it decided was NOT a session failure (our token was still valid, so the
+    // endpoint itself rejected the request); that one has no message behind it and must be
+    // shown, or the real cause is lost.
+    // See https://github.com/open-metadata/openmetadata-collate/issues/4647
+    const isSessionAuthError =
+      error.response?.status === ClientErrors.UNAUTHORIZED &&
+      !get(error, NON_SESSION_AUTH_ERROR);
+    const isForbiddenRead =
+      error.response?.status === ClientErrors.FORBIDDEN && method === 'GET';
+
     if (
       error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
+      (isSessionAuthError || isForbiddenRead) &&
       !errorMessage.includes('principal domain')
     ) {
       return;

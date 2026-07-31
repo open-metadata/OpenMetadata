@@ -24,6 +24,19 @@ type RenewTokenCallback = () =>
 
 const REFRESHED_KEY = 'tokenRefreshed';
 
+/**
+ * Whether `token` is expired, or close enough to expiry that it needs renewing now.
+ *
+ * Both arms matter: a token with no `exp` claim reports `isExpired: false` but
+ * `timeoutExpiry: 0`, and an absent or unparseable token reports `isExpired: true`. Checking
+ * `isExpired` alone would disagree with the refresh decision on the first of those.
+ */
+const isTokenExpiredOrExpiring = (token: string): boolean => {
+  const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
+
+  return Boolean(isExpired) || timeoutExpiry <= 0;
+};
+
 class TokenService {
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
@@ -77,6 +90,17 @@ class TokenService {
     });
   }
 
+  /**
+   * Whether the stored session token is the plausible cause of a 401.
+   *
+   * Uses the same predicate as {@link refreshToken}, which refuses to renew a token that is still
+   * valid. A 401 received while this returns `false` therefore cannot be fixed by refreshing, and
+   * did not come from our session at all.
+   */
+  async isSessionExpired(): Promise<boolean> {
+    return isTokenExpiredOrExpiring(await getOidcToken());
+  }
+
   // Refresh the token if it is expired
   async refreshToken() {
     if (this.isTokenUpdateInProgress()) {
@@ -88,10 +112,9 @@ class TokenService {
 
     try {
       const oldToken = await getOidcToken();
-      const { isExpired, timeoutExpiry } = extractDetailsFromToken(oldToken);
 
       // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
-      if (isExpired || timeoutExpiry <= 0) {
+      if (isTokenExpiredOrExpiring(oldToken)) {
         // Logic to refresh the token
         const newToken = await this.fetchNewToken();
         if (newToken) {

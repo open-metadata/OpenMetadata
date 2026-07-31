@@ -38,7 +38,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
-import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
+import {
+  NON_SESSION_AUTH_ERROR,
+  UN_AUTHORIZED_EXCLUDED_PATHS,
+} from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
   REDIRECT_PATHNAME,
@@ -584,7 +587,7 @@ export const AuthProvider = ({
     // Axios response interceptor for statusCode 401,403
     responseInterceptor = axiosClient.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
         if (error.response) {
           const { status } = error.response;
           if (status === ClientErrors.UNAUTHORIZED) {
@@ -597,6 +600,19 @@ export const AuthProvider = ({
             ) {
               throw error;
             }
+
+            // A 401 that arrives while our own token is still valid did not come from our
+            // session — it came from the endpoint, e.g. a service the API depends on rejecting
+            // *its* credentials. refreshToken() already refuses to renew a valid token, so this
+            // branch could only ever end in a forced logout that replaces the real error with
+            // "session expired". Surface it to the caller instead.
+            // See https://github.com/open-metadata/openmetadata-collate/issues/4647
+            if (!(await tokenService.current.isSessionExpired())) {
+              error[NON_SESSION_AUTH_ERROR] = true;
+
+              throw error;
+            }
+
             handleStoreProtectedRedirectPath();
 
             // If 401 error and refresh is not in progress, trigger the refresh
