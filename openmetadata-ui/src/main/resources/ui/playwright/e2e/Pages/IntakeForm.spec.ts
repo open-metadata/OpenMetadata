@@ -582,7 +582,7 @@ test.describe(
           await dpTab.click();
         }
         await page.getByRole('button', { name: /Add Data Product/i }).click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
       });
 
       await test.step('Type field is rendered and marked required by intake form', async () => {
@@ -742,7 +742,7 @@ test.describe(
         await dpTab.click();
       }
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
 
       // The field is rendered; its required marker is widget-specific. The
       // enforcement is covered end-to-end by the entity-reference test below
@@ -1023,7 +1023,7 @@ test.describe(
           r.request().method() === 'GET'
       );
       await page.getByRole('button', { name: /Add Data Product/i }).click();
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
       await intakeFetch;
 
       const dpName = `intake-ref-e2e-${uuid()}`;
@@ -1387,7 +1387,7 @@ test.describe(
       await page.getByTestId('domain-details-add-button').click();
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
 
       const customPropertiesSection = page.getByTestId(
         'custom-properties-section'
@@ -1428,7 +1428,7 @@ test.describe(
       );
       await expect(hyperlinkUrl).toBeVisible();
       await expect(hyperlinkDisplayText).toBeVisible();
-      await hyperlinkUrl.fill('ftp://example.com/product');
+      await hyperlinkUrl.fill('example.com/product');
       await hyperlinkDisplayText.fill('Product documentation');
 
       const integerInput = extensionInput(
@@ -1445,39 +1445,37 @@ test.describe(
       await expect(numberInput).toBeVisible();
       await numberInput.fill('42.5');
 
-      const dateField = page.getByTestId(
+      // date / dateTime / time render as native HTML inputs (CoreDateInput ->
+      // InputBase with type="date" | "datetime-local" | "time"), not antd/
+      // react-aria pickers. Set the value directly via fill() in the input's
+      // ISO format and assert it stuck.
+      const dateInput = extensionInput(
+        page,
         `extension-${dataProductProperties.date}`
       );
-      await expect(dateField).toBeVisible();
-      await dateField.getByRole('button').click();
-      await page.getByRole('button', { name: 'Today', exact: true }).click();
-      await page.getByRole('button', { name: 'Apply', exact: true }).click();
-      // Wait for the date picker popup to close before opening the dateTime
-      // picker — if Apply doesn't immediately close it, two "Today" buttons
-      // appear and the strict-mode locator fails with "resolved to 2 elements".
-      await expect(
-        page.getByRole('button', { name: 'Today', exact: true })
-      ).toBeHidden();
+      await expect(dateInput).toBeVisible();
+      await dateInput.fill('2024-01-15');
+      await expect(dateInput).toHaveValue('2024-01-15');
 
-      const dateTimeField = page.getByTestId(
+      const dateTimeInput = extensionInput(
+        page,
         `extension-${dataProductProperties.dateTime}`
       );
-      await expect(dateTimeField).toBeVisible();
-      await dateTimeField.getByRole('button').first().click();
-      await page.getByRole('button', { name: 'Today', exact: true }).click();
-      await page.getByRole('button', { name: 'Apply', exact: true }).click();
-      await expect(
-        page.getByRole('button', { name: 'Apply', exact: true })
-      ).toBeHidden();
-      await dateTimeField.getByRole('spinbutton').first().click();
-      await page.keyboard.type('0930AM');
+      await expect(dateTimeInput).toBeVisible();
+      // Native datetime-local/time inputs drop a :00 seconds component on
+      // normalization ("09:30:00" -> "09:30"), which makes Playwright's fill()
+      // round-trip check fail with "Malformed value". Use non-zero seconds so
+      // the value is retained verbatim.
+      await dateTimeInput.fill('2024-01-15T09:30:45');
+      await expect(dateTimeInput).toHaveValue('2024-01-15T09:30:45');
 
-      const timeField = page.getByTestId(
+      const timeInput = extensionInput(
+        page,
         `extension-${dataProductProperties.time}`
       );
-      await expect(timeField).toBeVisible();
-      await timeField.getByRole('spinbutton').first().click();
-      await page.keyboard.type('0845AM');
+      await expect(timeInput).toBeVisible();
+      await timeInput.fill('08:45:30');
+      await expect(timeInput).toHaveValue('08:45:30');
 
       const timestampInput = extensionInput(
         page,
@@ -1558,9 +1556,9 @@ test.describe(
         /^\d{4}-\d{2}-\d{2}$/
       );
       expect(payload.extension[dataProductProperties.dateTime]).toMatch(
-        /^\d{4}-\d{2}-\d{2} 09:30:00$/
+        /^\d{4}-\d{2}-\d{2} 09:30:45$/
       );
-      expect(payload.extension[dataProductProperties.time]).toBe('08:45:00');
+      expect(payload.extension[dataProductProperties.time]).toBe('08:45:30');
       expect(payload.extension[dataProductProperties.timestamp]).toBe(
         1706000000000
       );
@@ -1695,7 +1693,7 @@ test.describe(
       await page.getByTestId('domain-details-add-button').click();
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
 
       const customPropertiesSection = page.getByTestId(
         'custom-properties-section'
@@ -1837,9 +1835,9 @@ test.describe(
             .includes('/api/v1/governance/intakeForms/entityType/') &&
           response.request().method() === 'GET'
       );
-      await page.getByTestId('add-domain').click();
+      await page.locator('button[data-testid="add-domain"]').click();
       await intakeFetch2;
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
 
       const domainSection = page.getByTestId('custom-properties-section');
       await expect(domainSection).toBeVisible();
@@ -1904,9 +1902,9 @@ test.describe(
             .includes('/api/v1/governance/intakeForms/entityType/') &&
           response.request().method() === 'GET'
       );
-      await page.getByTestId('add-domain').click();
+      await page.locator('button[data-testid="add-domain"]').click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain')).toBeVisible();
+      await expect(page.locator('form[data-testid="add-domain"]')).toBeVisible();
       await expect(page.getByTestId('custom-properties-section')).toBeVisible();
       await expect(
         page

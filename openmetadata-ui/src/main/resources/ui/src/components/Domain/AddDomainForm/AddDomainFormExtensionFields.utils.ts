@@ -123,7 +123,7 @@ export const getExtensionFieldKind = (
       return 'referenceList';
     case 'timeInterval':
       return 'timeInterval';
-    case 'table':
+    case 'table-cp':
       return 'table';
     default:
       return 'unknown';
