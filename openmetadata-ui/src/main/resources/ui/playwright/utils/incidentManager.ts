@@ -34,20 +34,16 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
 };
 
 /**
- * Acknowledges a failed test case's incident.
- *
- * `initialStatus` is the stage the incident is expected to be in before the
- * acknowledgement. It defaults to `New`, but an incident raised on a table that
- * already has owners is auto-assigned on creation, so those call sites must pass
- * `Assigned` instead.
+ * Asserts a failed test case's incident sits at `status` on the entity's Data
+ * Quality tab. Drives no transition.
  */
-export const acknowledgeTask = async (data: {
+export const verifyIncidentStatus = async (data: {
   testCase: string;
   page: Page;
   table: TableClass;
-  initialStatus?: string;
+  status: string;
 }) => {
-  const { testCase, page, table, initialStatus = 'New' } = data;
+  const { testCase, page, table, status } = data;
   await visitProfilerTab(page, table);
   await page.getByRole('tab', { name: 'Data Quality' }).click();
 
@@ -57,7 +53,25 @@ export const acknowledgeTask = async (data: {
 
   await expect(
     page.locator(`[data-testid="${testCase}-status"]`)
-  ).toContainText(initialStatus);
+  ).toContainText(status);
+};
+
+export const acknowledgeTask = async (data: {
+  testCase: string;
+  page: Page;
+  table: TableClass;
+}) => {
+  const { testCase, page, table } = data;
+  await visitProfilerTab(page, table);
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+
+  await expect(
+    page.locator(`[data-testid="status-badge-${testCase}"]`)
+  ).toContainText('Failed');
+
+  await expect(
+    page.locator(`[data-testid="${testCase}-status"]`)
+  ).toContainText('New');
   await page.getByTestId(testCase).getByText(testCase).click();
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="edit-resolution-icon"]');

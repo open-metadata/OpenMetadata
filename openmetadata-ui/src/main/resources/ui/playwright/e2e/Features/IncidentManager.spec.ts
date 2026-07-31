@@ -30,6 +30,7 @@ import {
   addAssigneeFromPopoverWidget,
   assignIncident,
   triggerTestSuitePipelineAndWaitForSuccess,
+  verifyIncidentStatus,
   visitProfilerTab,
 } from '../../utils/incidentManager';
 import { makeRetryRequest } from '../../utils/serviceIngestion';
@@ -875,16 +876,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     /**
      * Step: Verify open vs closed
-     * @description Verifies incident counts for Open and Closed after rerun and re-acknowledgement.
+     * @description Verifies incident counts for Open and Closed after the rerun.
      */
     await test.step('Verify open and closed task', async () => {
-      // The rerun raises a fresh incident, and by now table1 has an owner from
-      // the ownership test above, so this one opens as Assigned rather than New.
-      await acknowledgeTask({
-        initialStatus: 'Assigned',
+      // table1 has an owner by now, so the rerun's incident is auto-assigned on
+      // creation. Ack is not reachable from the Assigned stage.
+      await verifyIncidentStatus({
         page,
-        testCase: testCaseName,
+        status: 'Assigned',
         table: table1,
+        testCase: testCaseName,
       });
       await page.reload();
 
