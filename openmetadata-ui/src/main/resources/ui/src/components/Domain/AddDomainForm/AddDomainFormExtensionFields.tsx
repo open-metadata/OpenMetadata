@@ -666,7 +666,7 @@ const AddDomainFormExtensionFields = ({
         if (kind === 'markdown') {
           const fieldProp: FieldProp = {
             id: `root/extension/${propertyName}`,
-            label,
+            label: labelWithBadge,
             name: namePath as string[],
             required: isRequired,
             rules: baseRules,

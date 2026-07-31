@@ -1102,17 +1102,31 @@ test.describe(
     const dataProductProperties = {
       date: `pwDpDate${suffix}`,
       dateTime: `pwDpDateTime${suffix}`,
+      duration: `pwDpDuration${suffix}`,
+      email: `pwDpEmail${suffix}`,
+      enum: `pwDpEnum${suffix}`,
+      enumMulti: `pwDpEnumMulti${suffix}`,
       hyperlink: `pwDpLink${suffix}`,
       integer: `pwDpInteger${suffix}`,
+      markdown: `pwDpMarkdown${suffix}`,
       number: `pwDpNumber${suffix}`,
       reference: `pwDpTermRef${suffix}`,
       referenceList: `pwDpTermRefList${suffix}`,
+      sqlQuery: `pwDpSqlQuery${suffix}`,
+      string: `pwDpString${suffix}`,
+      table: `pwDpTable${suffix}`,
       time: `pwDpTime${suffix}`,
+      timeInterval: `pwDpTimeInterval${suffix}`,
       timestamp: `pwDpTimestamp${suffix}`,
     };
     const domainProperties = {
+      enum: `pwDomainEnum${suffix}`,
       hyperlink: `pwDomainLink${suffix}`,
+      markdown: `pwDomainMarkdown${suffix}`,
       reference: `pwDomainTermRef${suffix}`,
+      sqlQuery: `pwDomainSqlQuery${suffix}`,
+      string: `pwDomainString${suffix}`,
+      table: `pwDomainTable${suffix}`,
     };
 
     test.beforeAll(
@@ -1185,6 +1199,62 @@ test.describe(
           'entityReferenceList',
           ['glossaryTerm']
         );
+        await ensureStringCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.string
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.email,
+          'email'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.duration,
+          'duration'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.markdown,
+          'markdown'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.enum,
+          'enum',
+          { values: ['Low', 'Medium', 'High'], multiSelect: false }
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.enumMulti,
+          'enum',
+          { values: ['Tag1', 'Tag2', 'Tag3'], multiSelect: true }
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.sqlQuery,
+          'sqlQuery'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.table,
+          'table-cp',
+          { columns: ['Name', 'Value'] }
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DP_INTAKE_NAME,
+          dataProductProperties.timeInterval,
+          'timeInterval'
+        );
         await ensureEntityReferenceCustomProperty(
           apiContext,
           DOMAIN_INTAKE_NAME,
@@ -1196,6 +1266,37 @@ test.describe(
           DOMAIN_INTAKE_NAME,
           domainProperties.hyperlink,
           'hyperlink-cp'
+        );
+        await ensureStringCustomProperty(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          domainProperties.string
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          domainProperties.markdown,
+          'markdown'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          domainProperties.enum,
+          'enum',
+          { values: ['Low', 'Medium', 'High'], multiSelect: false }
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          domainProperties.sqlQuery,
+          'sqlQuery'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          DOMAIN_INTAKE_NAME,
+          domainProperties.table,
+          'table-cp',
+          { columns: ['Name', 'Value'] }
         );
         await afterAction();
       }
@@ -1478,6 +1579,298 @@ test.describe(
       await cleanup.afterAction();
     });
 
+    test('Data Product intake form renders all custom-property field types', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DP_INTAKE_NAME);
+      await createIntakeForm(apiContext, DP_INTAKE_NAME, [
+        {
+          fieldPath: `extension.${dataProductProperties.string}`,
+          fieldLabel: 'Text Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.email}`,
+          fieldLabel: 'Email Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.duration}`,
+          fieldLabel: 'Duration Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.enum}`,
+          fieldLabel: 'Enum Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.enumMulti}`,
+          fieldLabel: 'Multi-Enum Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.markdown}`,
+          fieldLabel: 'Markdown Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.sqlQuery}`,
+          fieldLabel: 'SQL Query Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.table}`,
+          fieldLabel: 'Table Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.timeInterval}`,
+          fieldLabel: 'Time Interval Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.hyperlink}`,
+          fieldLabel: 'Hyperlink Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.integer}`,
+          fieldLabel: 'Integer Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.number}`,
+          fieldLabel: 'Number Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.date}`,
+          fieldLabel: 'Date Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.dateTime}`,
+          fieldLabel: 'DateTime Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.time}`,
+          fieldLabel: 'Time Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.timestamp}`,
+          fieldLabel: 'Timestamp Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.reference}`,
+          fieldLabel: 'Reference Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${dataProductProperties.referenceList}`,
+          fieldLabel: 'Reference List Field',
+          fieldKind: 'customProperty',
+        },
+      ]);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await parentDomain.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
+
+      const intakeFetch = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/governance/intakeForms/entityType/') &&
+          response.request().method() === 'GET'
+      );
+      await page.getByTestId('domain-details-add-button').click();
+      await page.getByRole('menuitem', { name: 'Data Products' }).click();
+      await intakeFetch;
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+
+      const customPropertiesSection = page.getByTestId(
+        'custom-properties-section'
+      );
+      await expect(customPropertiesSection).toBeVisible();
+
+      // Verify each field type is visible
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.string}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.email}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.duration}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.enum}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.enumMulti}`)
+      ).toBeVisible();
+      // Markdown renders via RichTextEditor — verify the block editor is present
+      await expect(
+        customPropertiesSection.locator('.om-block-editor').first()
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.sqlQuery}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.table}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(
+          `extension-${dataProductProperties.timeInterval}-start`
+        )
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.timeInterval}-end`)
+      ).toBeVisible();
+
+      // Verify all expected badge types are present
+      const badges = [
+        'STRING',
+        'EMAIL',
+        'DURATION',
+        'MARKDOWN',
+        'ENUM',
+        'SQLQUERY',
+        'TABLE',
+        'TIMEINTERVAL',
+        'HYPERLINK',
+        'INTEGER',
+        'NUMBER',
+        'DATE',
+        'DATETIME',
+        'TIME',
+        'TIMESTAMP',
+        'ENTITYREFERENCE',
+        'ENTITYREFERENCELIST',
+      ];
+      for (const badge of badges) {
+        await expect(
+          customPropertiesSection
+            .getByTestId('custom-property-type-badge')
+            .filter({ hasText: new RegExp(`^${badge}$`) })
+            .first()
+        ).toBeVisible();
+      }
+
+      // Verify sql editor (CodeMirror) renders
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.sqlQuery}`)
+             .locator('.CodeMirror')
+      ).toBeVisible();
+
+      // Verify table editor renders with the Add Row button
+      await expect(
+        page.getByTestId(`extension-${dataProductProperties.table}`)
+             .getByRole('button')
+      ).toBeVisible();
+    });
+
+    test('Domain intake form renders all custom-property field types', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, DOMAIN_INTAKE_NAME);
+      await createIntakeForm(apiContext, DOMAIN_INTAKE_NAME, [
+        {
+          fieldPath: `extension.${domainProperties.reference}`,
+          fieldLabel: 'Domain Reference Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.hyperlink}`,
+          fieldLabel: 'Domain Hyperlink Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.string}`,
+          fieldLabel: 'Domain String Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.markdown}`,
+          fieldLabel: 'Domain Markdown Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.enum}`,
+          fieldLabel: 'Domain Enum Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.sqlQuery}`,
+          fieldLabel: 'Domain SQL Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${domainProperties.table}`,
+          fieldLabel: 'Domain Table Field',
+          fieldKind: 'customProperty',
+        },
+      ]);
+      await afterAction();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
+
+      const intakeFetch2 = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/governance/intakeForms/entityType/') &&
+          response.request().method() === 'GET'
+      );
+      await page.getByTestId('add-domain').click();
+      await intakeFetch2;
+      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+
+      const domainSection = page.getByTestId('custom-properties-section');
+      await expect(domainSection).toBeVisible();
+
+      await expect(
+        page.getByTestId(`extension-${domainProperties.string}`)
+      ).toBeVisible();
+      await expect(
+        domainSection.locator('.om-block-editor').first()
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${domainProperties.enum}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${domainProperties.sqlQuery}`)
+             .locator('.CodeMirror')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${domainProperties.table}`)
+      ).toBeVisible();
+
+      for (const badge of ['STRING', 'MARKDOWN', 'ENUM', 'SQLQUERY', 'TABLE', 'HYPERLINK', 'ENTITYREFERENCE']) {
+        await expect(
+          domainSection
+            .getByTestId('custom-property-type-badge')
+            .filter({ hasText: new RegExp(`^${badge}$`) })
+            .first()
+        ).toBeVisible();
+      }
+    });
+
     test('Domain uses the shared reference and hyperlink intake fields', async ({
       browser,
       page,
@@ -1590,8 +1983,12 @@ test.describe(
     const glossary = new Glossary();
     const suffix = uuid();
     const properties = {
+      enum: `pwTermEnum${suffix}`,
       hyperlink: `pwTermLink${suffix}`,
+      markdown: `pwTermMarkdown${suffix}`,
+      sqlQuery: `pwTermSqlQuery${suffix}`,
       string: `pwTermString${suffix}`,
+      table: `pwTermTable${suffix}`,
     };
 
     test.beforeAll(
@@ -1612,6 +2009,32 @@ test.describe(
           properties.hyperlink,
           'hyperlink-cp'
         );
+        await ensureCustomProperty(
+          apiContext,
+          GLOSSARY_TERM_INTAKE_NAME,
+          properties.markdown,
+          'markdown'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          GLOSSARY_TERM_INTAKE_NAME,
+          properties.enum,
+          'enum',
+          { values: ['Draft', 'Active', 'Deprecated'], multiSelect: false }
+        );
+        await ensureCustomProperty(
+          apiContext,
+          GLOSSARY_TERM_INTAKE_NAME,
+          properties.sqlQuery,
+          'sqlQuery'
+        );
+        await ensureCustomProperty(
+          apiContext,
+          GLOSSARY_TERM_INTAKE_NAME,
+          properties.table,
+          'table-cp',
+          { columns: ['Name', 'Value'] }
+        );
         await afterAction();
       }
     );
@@ -1622,6 +2045,93 @@ test.describe(
       await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME);
       await glossary.delete(apiContext);
       await afterAction();
+    });
+
+    test('Glossary Term intake form renders all custom-property field types', async ({
+      browser,
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await ensureNoIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME);
+      await createIntakeForm(apiContext, GLOSSARY_TERM_INTAKE_NAME, [
+        {
+          fieldPath: `extension.${properties.string}`,
+          fieldLabel: 'String Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${properties.hyperlink}`,
+          fieldLabel: 'Hyperlink Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${properties.markdown}`,
+          fieldLabel: 'Markdown Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${properties.enum}`,
+          fieldLabel: 'Enum Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${properties.sqlQuery}`,
+          fieldLabel: 'SQL Query Field',
+          fieldKind: 'customProperty',
+        },
+        {
+          fieldPath: `extension.${properties.table}`,
+          fieldLabel: 'Table Field',
+          fieldKind: 'customProperty',
+        },
+      ]);
+      await afterAction();
+
+      await glossary.visitPage(page);
+      const intakeFetchRender = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/governance/intakeForms/entityType/') &&
+          response.request().method() === 'GET'
+      );
+      await openAddGlossaryTermModal(page);
+      await intakeFetchRender;
+
+      const modal = page.locator('[role="dialog"].edit-glossary-modal');
+      const cpSection = modal.getByTestId('custom-properties-section');
+      await expect(cpSection).toBeVisible();
+
+      await expect(
+        page.getByTestId(`extension-${properties.string}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${properties.hyperlink}-url`)
+      ).toBeVisible();
+      await expect(
+        cpSection.locator('.om-block-editor').first()
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${properties.enum}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${properties.sqlQuery}`)
+             .locator('.CodeMirror')
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`extension-${properties.table}`)
+      ).toBeVisible();
+
+      for (const badge of ['STRING', 'HYPERLINK', 'MARKDOWN', 'ENUM', 'SQLQUERY', 'TABLE']) {
+        await expect(
+          cpSection
+            .getByTestId('custom-property-type-badge')
+            .filter({ hasText: new RegExp(`^${badge}$`) })
+            .first()
+        ).toBeVisible();
+      }
     });
 
     test('required intake fields are submitted on create and omitted on edit', async ({
