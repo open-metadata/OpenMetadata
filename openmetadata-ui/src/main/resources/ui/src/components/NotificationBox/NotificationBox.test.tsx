@@ -79,7 +79,7 @@ jest.mock('../../rest/feedsAPI', () => ({
   })),
 }));
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
   getEntityType: jest.fn().mockReturnValue('entityType'),
 }));

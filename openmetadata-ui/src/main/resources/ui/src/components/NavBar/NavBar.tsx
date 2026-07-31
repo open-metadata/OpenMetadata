@@ -70,7 +70,7 @@ import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';

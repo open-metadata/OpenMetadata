@@ -181,8 +181,14 @@ jest.mock('../../rest/storageAPI');
 
 jest.mock('../../utils/CommonUtils', () => ({
   addToRecentViewed: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+  getEntityMissingError: jest
+    .fn()
+    .mockImplementation((entity: string, fqn: string) => `${entity} ${fqn}`),
   getFeedCounts: jest.fn().mockReturnValue(0),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
@@ -392,7 +398,7 @@ describe('Container Page Component', () => {
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
@@ -430,7 +436,7 @@ describe('Container Page Component', () => {
       )
     );
 
-    expect(screen.getByTestId('data-asset-header')).toBeInTheDocument();
+    expect(await screen.findByTestId('data-asset-header')).toBeInTheDocument();
 
     const tabs = screen.getAllByRole('tab');
 
