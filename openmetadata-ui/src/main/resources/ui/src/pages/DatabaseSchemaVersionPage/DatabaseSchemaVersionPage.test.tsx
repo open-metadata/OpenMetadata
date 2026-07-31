@@ -106,6 +106,9 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
 jest.mock(
   '../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest.fn().mockImplementation(() => ({
       data: {
         tableDetails: {
@@ -144,7 +147,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../utils/EntityVersionUtils', () => ({
+jest.mock('../../utils/EntityVersionUtilsPure', () => ({
   getBasicEntityInfoFromVersionData: jest.fn().mockReturnValue({}),
   getCommonDiffsFromVersionData: jest.fn().mockReturnValue({}),
   getCommonExtraInfoForVersionDetails: jest.fn().mockReturnValue({}),

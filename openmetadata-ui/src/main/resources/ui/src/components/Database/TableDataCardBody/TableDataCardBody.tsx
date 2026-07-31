@@ -20,7 +20,6 @@ import { getTagValue } from '../../../utils/TagsPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
-
 type Props = {
   description: string;
   extraInfo: Array<ExtraInfo>;
