@@ -219,6 +219,9 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 }) => {
   const [searchItems, setSearchItems] = useState<SelectItemType[]>([]);
   const optionMapRef = useRef<Map<string, Record<string, unknown>>>(new Map());
+  // Track whether the initial wildcard fetch has been fired so we only call
+  // it once per mount (subsequent opens reuse the already-loaded items).
+  const initialFetchRef = useRef(false);
   // Join all configured types with a comma so the API performs a targeted
   // multi-index search (e.g. "user,team,glossaryTerm") rather than the
   // catch-all "all" index. Mirrors main's getCustomPropertyReferenceSearchIndex.
@@ -316,6 +319,15 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
             onChange?.([...currentValues, ref]);
           } else {
             onChange?.(ref);
+          }
+        }}
+        onOpenChange={(isOpen) => {
+          // On first open (click/keyboard), fire a wildcard search to
+          // pre-populate the dropdown. onSearchChange only fires on typing
+          // (menuTrigger="input"), so this handles the initial-open case.
+          if (isOpen && !initialFetchRef.current) {
+            initialFetchRef.current = true;
+            handleSearch('');
           }
         }}
         onSearchChange={handleSearch}>
