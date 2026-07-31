@@ -31,7 +31,7 @@ import { WorksheetVersionProps } from './WorksheetVersion.interface';
 
 jest.mock('../../../../utils/useRequiredParams');
 jest.mock('../../../../utils/RouterUtils');
-jest.mock('../../../../utils/EntityVersionUtils', () => ({
+jest.mock('../../../../utils/EntityVersionUtilsPure', () => ({
   getCommonExtraInfoForVersionDetails: jest.fn(() => ({
     ownerDisplayName: 'Test Owner',
     ownerRef: { id: 'owner-1', name: 'test-owner' },

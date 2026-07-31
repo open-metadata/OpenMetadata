@@ -147,7 +147,7 @@ jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../utils/EntityVersionUtils', () => ({
+jest.mock('../../utils/EntityVersionUtilsPure', () => ({
   getBasicEntityInfoFromVersionData: jest.fn().mockReturnValue({}),
   getCommonDiffsFromVersionData: jest.fn().mockReturnValue({}),
   getCommonExtraInfoForVersionDetails: jest.fn().mockReturnValue({}),
