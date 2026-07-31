@@ -58,7 +58,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
-import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { getSearchNameEsQuery } from '../../../utils/Lineage/LineageUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
