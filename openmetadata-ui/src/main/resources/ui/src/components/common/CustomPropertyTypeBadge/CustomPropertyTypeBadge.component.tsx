@@ -40,6 +40,8 @@ const CustomPropertyTypeBadge = ({
         verticalAlign: 'middle',
         fontWeight: 500,
         letterSpacing: '0.04em',
+        marginLeft: 4,
+        marginRight: 0,
       }}>
       {displayName}
     </Tag>

@@ -227,7 +227,6 @@ const AddDomainFormExtensionFields = ({
         const labelWithBadge = (
           <>
             {label}
-            {' '}
             <CustomPropertyTypeBadge propertyTypeName={propertyTypeName} />
           </>
         );
