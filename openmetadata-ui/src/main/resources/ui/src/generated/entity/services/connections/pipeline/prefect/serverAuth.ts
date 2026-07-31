@@ -20,8 +20,4 @@ export interface ServerAuth {
      * 'user:password'. Leave empty if the server has no auth enabled.
      */
     authString?: string;
-    /**
-     * Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.
-     */
-    hostPort: string;
 }

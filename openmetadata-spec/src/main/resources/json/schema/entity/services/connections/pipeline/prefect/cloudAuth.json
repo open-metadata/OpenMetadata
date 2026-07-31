@@ -6,12 +6,6 @@
   "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.CloudAuth",
   "type": "object",
   "properties": {
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Prefect Cloud API base URL.",
-      "type": "string",
-      "default": "https://api.prefect.cloud"
-    },
     "apiKey": {
       "title": "Prefect API Key",
       "description": "Prefect Cloud API key for authentication.",
@@ -30,5 +24,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "apiKey", "accountId", "workspaceId"]
+  "required": ["apiKey", "accountId", "workspaceId"]
 }

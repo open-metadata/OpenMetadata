@@ -64,7 +64,7 @@ class PrefectClient:
         auth = config.authType
 
         # hostPort may already carry the /api suffix; api_version adds it back
-        host = clean_uri(str(auth.hostPort)).removesuffix("/api")
+        host = clean_uri(str(config.hostPort)).removesuffix("/api")
         self._path_prefix = (
             f"/accounts/{auth.accountId}/workspaces/{auth.workspaceId}"
             if isinstance(auth, PrefectCloudAuthentication)

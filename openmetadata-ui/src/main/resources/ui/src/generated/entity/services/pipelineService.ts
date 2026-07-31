@@ -257,6 +257,9 @@ export interface Connection {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
@@ -647,12 +650,6 @@ export interface Authentication {
      * Prefect Cloud API key for authentication.
      */
     apiKey?: string;
-    /**
-     * Prefect Cloud API base URL.
-     *
-     * Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.
-     */
-    hostPort?: string;
     /**
      * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
      */

@@ -4429,6 +4429,9 @@ export interface Connection {
      *
      * Spline REST Server Host & Port.
      *
+     * Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your
+     * self-hosted server's URL, e.g. http://localhost:4200.
+     *
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
@@ -6441,10 +6444,6 @@ export interface AuthenticationType {
     /**
      * URL to your self-hosted Dremio Software instance, including protocol and port (e.g.,
      * http://localhost:9047 or https://dremio.example.com:9047).
-     *
-     * Prefect Cloud API base URL.
-     *
-     * Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.
      */
     hostPort?: string;
     /**

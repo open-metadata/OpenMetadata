@@ -19,6 +19,11 @@
       "$ref": "#/definitions/prefectType",
       "default": "Prefect"
     },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Prefect API base URL. Use https://api.prefect.cloud for Prefect Cloud, or your self-hosted server's URL, e.g. http://localhost:4200.",
+      "type": "string"
+    },
     "authType": {
       "title": "Authentication",
       "description": "Choose between Prefect Cloud or a self-hosted Prefect Server.",
@@ -52,5 +57,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["authType"]
+  "required": ["authType", "hostPort"]
 }

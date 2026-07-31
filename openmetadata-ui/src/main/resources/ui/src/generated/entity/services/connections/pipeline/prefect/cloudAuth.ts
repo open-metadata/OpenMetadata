@@ -23,10 +23,6 @@ export interface CloudAuth {
      */
     apiKey: string;
     /**
-     * Prefect Cloud API base URL.
-     */
-    hostPort: string;
-    /**
      * Prefect Cloud Workspace ID. Found in the URL after /workspaces/{workspaceId}.
      */
     workspaceId: string;

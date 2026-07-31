@@ -388,7 +388,7 @@ class PrefectSource(PipelineServiceSource):
                 # Self-hosted Prefect Server mode. hostPort may carry the
                 # /api suffix (the client strips it the same way for API
                 # calls) — the Prefect UI itself is served without it.
-                ui_host = clean_uri(str(auth.hostPort)).removesuffix("/api")
+                ui_host = clean_uri(str(self.service_connection.hostPort)).removesuffix("/api")
                 source_url = f"{ui_host}/flows/flow/{flow_id}"
 
             # Get the service FQN from context

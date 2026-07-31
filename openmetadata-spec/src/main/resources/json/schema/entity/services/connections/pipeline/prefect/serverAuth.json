@@ -6,12 +6,6 @@
   "javaType": "org.openmetadata.schema.services.connections.pipeline.prefect.ServerAuth",
   "type": "object",
   "properties": {
-    "hostPort": {
-      "title": "Host and Port",
-      "description": "Self-hosted Prefect Server API base URL, e.g. http://localhost:4200.",
-      "type": "string",
-      "default": "http://localhost:4200"
-    },
     "authString": {
       "title": "Basic Auth String",
       "description": "Self-hosted Prefect Server Basic Auth credential (PREFECT_SERVER_API_AUTH_STRING), format 'user:password'. Leave empty if the server has no auth enabled.",
@@ -20,5 +14,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort"]
+  "required": []
 }
