@@ -1387,7 +1387,7 @@ test.describe(
       await page.getByTestId('domain-details-add-button').click();
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
 
       const customPropertiesSection = page.getByTestId(
         'custom-properties-section'
@@ -1695,7 +1695,7 @@ test.describe(
       await page.getByTestId('domain-details-add-button').click();
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
 
       const customPropertiesSection = page.getByTestId(
         'custom-properties-section'
@@ -1839,7 +1839,7 @@ test.describe(
       );
       await page.getByTestId('add-domain').click();
       await intakeFetch2;
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
 
       const domainSection = page.getByTestId('custom-properties-section');
       await expect(domainSection).toBeVisible();
@@ -1906,7 +1906,7 @@ test.describe(
       );
       await page.getByTestId('add-domain').click();
       await intakeFetch;
-      await expect(page.getByTestId('add-domain-form')).toBeVisible();
+      await expect(page.getByTestId('add-domain')).toBeVisible();
       await expect(page.getByTestId('custom-properties-section')).toBeVisible();
       await expect(
         page
