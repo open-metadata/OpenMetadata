@@ -74,8 +74,8 @@ jobs:
                   }
                 }
               }' --jq '.data.repository.pullRequest.timelineItems.nodes[0]
-                       | select(.beforeCommit != null)
-                       | "\(.reason)\t\(.beforeCommit.oid)\t\(.createdAt)"' > event.tsv || true
+                       | select(.reason != null)
+                       | "\(.reason)\t\(.beforeCommit.oid // "")\t\(.createdAt)"' > event.tsv || true
 
             if [ -s event.tsv ]; then
               {
@@ -91,7 +91,7 @@ jobs:
           echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
       - name: Comment the checks that caused the dequeue
-        if: ${{ steps.event.outputs.sha != '' }}
+        if: ${{ steps.event.outputs.reason != '' }}
         shell: bash
         env:
           REASON: ${{ steps.event.outputs.reason }}
@@ -101,44 +101,54 @@ jobs:
           set -euo pipefail
           # shellcheck disable=SC2016  # the jq filter must not expand
 
-          gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
-            --jq '.check_runs[]
-                  | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")
-                  | "\(.html_url)\t\(.name)"' > failures.tsv
-
-          # Only a required check can dequeue an entry; the rest failed alongside it.
-          gh api "repos/$GH_REPO/rules/branches/$BASE_REF" \
-            --jq '.[] | select(.type == "required_status_checks")
-                  | .parameters.required_status_checks[].context' > required.txt || true
-
-          blocked=$(cut -f2 failures.tsv | grep -xFf required.txt \
-            | awk '{ out = out (out ? ", " : "") "`" $0 "`" } END { print out }' || true)
-
-          : > runs.md
-          cut -f1 failures.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
-            run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
-            # Matrix jobs carry every parameter; the first one is the shard id.
-            jobs=$(grep -F "$run/job/" failures.tsv | cut -f2 \
-                   | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
-                   | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
-            echo "- [$run_name]($run) — $jobs" >> runs.md
-          done
-
-          {
-            echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
-            echo
-            if [ -s runs.md ]; then
-              if [ -n "$blocked" ]; then
-                echo "Blocked the queue: $blocked"
-              else
-                echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending."
-              fi
+          # An entry removed while still queued was never built, so it has no
+          # merge-group commit and nothing ever ran against it.
+          if [ -z "$SHA" ]; then
+            {
+              echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
               echo
-              cat runs.md
-            else
-              echo "No failing check on merge-queue commit \`${SHA:0:7}\` — removed by hand, invalidated by an entry ahead in the queue, or a required check timed out."
-            fi
-          } > body.md
+              echo "The entry left the queue before it was built, so no checks ran against it."
+            } > body.md
+          else
+            gh api "repos/$GH_REPO/commits/$SHA/check-runs?per_page=100" --paginate \
+              --jq '.check_runs[]
+                    | select(.conclusion != null and .conclusion != "success" and .conclusion != "neutral" and .conclusion != "skipped")
+                    | "\(.html_url)\t\(.name)"' > failures.tsv
+
+            # Only a required check can dequeue an entry; the rest failed alongside it.
+            gh api "repos/$GH_REPO/rules/branches/$BASE_REF" \
+              --jq '.[] | select(.type == "required_status_checks")
+                    | .parameters.required_status_checks[].context' > required.txt || true
+
+            blocked=$(cut -f2 failures.tsv | grep -xFf required.txt \
+              | awk '{ out = out (out ? ", " : "") "`" $0 "`" } END { print out }' || true)
+
+            : > runs.md
+            cut -f1 failures.tsv | sed 's#/job/.*##' | sort -u | while read -r run; do
+              run_name=$(gh api "repos/$GH_REPO/actions/runs/${run##*/}" --jq '.name')
+              # Matrix jobs carry every parameter; the first one is the shard id.
+              jobs=$(grep -F "$run/job/" failures.tsv | cut -f2 \
+                     | sed 's/ (\([^,)]*\)[^)]*)/ (\1)/' \
+                     | awk '{ out = out (out ? ", " : "") $0 } END { print out }')
+              echo "- [$run_name]($run) — $jobs" >> runs.md
+            done
+
+            {
+              echo "### 🚦 Removed from the merge queue — \`$REASON\` ($CREATED)"
+              echo
+              if [ -s runs.md ]; then
+                if [ -n "$blocked" ]; then
+                  echo "Blocked the queue: $blocked"
+                else
+                  echo "No required check failed — the entry may have timed out, or been dequeued while a required check was still pending."
+                fi
+                echo
+                cat runs.md
+              else
+                echo "No failing check on merge-queue commit \`${SHA:0:7}\` — invalidated by an entry ahead in the queue, or a required check timed out."
+              fi
+            } > body.md
+          fi
 
           if [ "$DRY_RUN" = "true" ]; then
             cat body.md >> "$GITHUB_STEP_SUMMARY"
