@@ -163,6 +163,29 @@ describe('TestDefinitionFormBody', () => {
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
   });
 
+  it('allows selecting multiple supported data types without an initial value', async () => {
+    render(<Harness />);
+
+    const input = document.querySelector('input[id="root/supportedDataTypes"]');
+
+    expect(input).toBeInTheDocument();
+
+    fireEvent.mouseDown(input!);
+    fireEvent.focus(input!);
+    fireEvent.change(input!, { target: { value: 'NUMBER' } });
+    fireEvent.click(await screen.findByRole('option', { name: 'NUMBER' }));
+
+    fireEvent.change(input!, { target: { value: 'VARCHAR' } });
+    fireEvent.click(await screen.findByRole('option', { name: 'VARCHAR' }));
+
+    await waitFor(() => {
+      expect(formRef?.getValues('supportedDataTypes')).toEqual([
+        { id: 'NUMBER', label: 'NUMBER' },
+        { id: 'VARCHAR', label: 'VARCHAR' },
+      ]);
+    });
+  });
+
   describe('supportedDataTypes conditional required', () => {
     it('flags supportedDataTypes required when testPlatforms includes OpenMetadata and it is empty', async () => {
       render(<Harness />);
