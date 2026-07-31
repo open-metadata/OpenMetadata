@@ -17,7 +17,7 @@ import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { buildMentionLink } from '../../../../utils/FeedUtils';
+import { buildMentionLink } from '../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import HashList from './HashList';
