@@ -12,23 +12,54 @@
  */
 import { Input } from '@openmetadata/ui-core-components';
 import type { NumberWidgetProps } from '@react-awesome-query-builder/ui';
-import type { FC } from 'react';
+import { type FC, useEffect, useRef, useState } from 'react';
 
 const OMNumberWidget: FC<NumberWidgetProps> = ({
   value,
   setValue,
   placeholder,
   readonly,
-}) => (
-  <Input
-    inputDataTestId="qb-number-input"
-    isDisabled={readonly}
-    placeholder={placeholder}
-    size="sm"
-    type="number"
-    value={value !== null && value !== undefined ? String(value) : ''}
-    onChange={(v: string) => setValue(v === '' ? null : Number(v))}
-  />
-);
+}) => {
+  const externalStr = value !== null && value !== undefined ? String(value) : '';
+  const [localValue, setLocalValue] = useState(externalStr);
+  // Prevent external value sync from overwriting the user's in-progress input
+  // (e.g. typing "1." would round to 1, which would then reset the display to
+  // "1" and make it impossible to type a decimal).
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setLocalValue(externalStr);
+    }
+  }, [externalStr]);
+
+  return (
+    <Input
+      inputDataTestId="qb-number-input"
+      isDisabled={readonly}
+      placeholder={placeholder}
+      size="sm"
+      type="number"
+      value={localValue}
+      onBlur={() => {
+        isFocusedRef.current = false;
+      }}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onChange={(v: string) => {
+        setLocalValue(v);
+        if (v === '') {
+          setValue(null);
+        } else {
+          const num = Number(v);
+          if (!isNaN(num)) {
+            setValue(num);
+          }
+        }
+      }}
+    />
+  );
+};
 
 export default OMNumberWidget;
