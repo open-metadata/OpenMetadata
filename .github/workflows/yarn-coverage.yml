@@ -54,6 +54,10 @@ jobs:
   ui-coverage-tests:
     needs: check-changes
     runs-on: ubuntu-latest
+    outputs:
+      sonar_gate_result: ${{ steps.sonar_pr_scan.outcome }}
+      # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
+      sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
@@ -141,6 +145,11 @@ jobs:
         run: npm install -g sonarqube-scanner@^4.3.0
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
+        id: sonar_pr_scan
+        # The quality gate is a required PR check, so a failing gate must not
+        # kill this job before the coverage comment is posted — ui-sonar-gate
+        # below turns this outcome into the check contributors see.
+        continue-on-error: true
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
@@ -152,6 +161,8 @@ jobs:
           -Dsonar.pullrequest.github.repository=OpenMetadata \
           -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
           -Dsonar.pullrequest.provider=github \
+          -Dsonar.qualitygate.wait=true \
+          -Dsonar.qualitygate.timeout=600 \
           -Dsonar.scm.disabled=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -186,3 +197,64 @@ jobs:
             echo "Coverage check failed with status: $result"
             exit 1
           fi
+
+  # Sonar "Clean as You Code" gate, reported through a job that ALWAYS runs.
+  #
+  # Do not make SonarCloud's own check required instead: the scan is gated
+  # behind dorny/paths-filter and the "safe to test" label, so a PR with no UI
+  # changes never produces that check and would block forever waiting on it —
+  # the exact failure mode the ui-coverage shim above exists to avoid.
+  #
+  # The gate itself is configured in SonarCloud (conditions on New Code only),
+  # so legacy debt can never fail a PR. See docs/ui-code-quality-gate.md.
+  ui-sonar-gate:
+    if: always()
+    needs: [ui-coverage-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Sonar quality gate
+        run: |
+          job="${{ needs.ui-coverage-tests.result }}"
+          gate="${{ needs.ui-coverage-tests.outputs.sonar_gate_result }}"
+          install="${{ needs.ui-coverage-tests.outputs.sonar_scanner_install }}"
+          event="${{ github.event_name }}"
+
+          # Skipped means no UI paths changed. Pass, exactly like ui-coverage —
+          # a required check that never completes blocks the PR forever.
+          if [[ "$job" == "skipped" ]]; then
+            echo "No UI changes — Sonar gate not applicable."
+            exit 0
+          fi
+          if [[ "$job" != "success" ]]; then
+            echo "Upstream coverage job ended with '$job'; the gate could not be evaluated."
+            exit 1
+          fi
+          # On a PR the scan MUST have run. If it was skipped here the scanner
+          # install failed, and treating that as "nothing to gate" would let a
+          # transient npm error pass a required gate without ever evaluating New
+          # Code — the same silent pass this job exists to remove.
+          if [[ "$event" == "pull_request_target" ]]; then
+            if [[ "$install" != "success" ]]; then
+              echo "✖ sonar-scanner install ended with '$install', so the quality gate never ran."
+              echo "  Re-run the job. A required gate must not pass without evaluating New Code."
+              exit 1
+            fi
+            if [[ -z "$gate" || "$gate" == "skipped" ]]; then
+              echo "✖ The Sonar PR scan did not run, so New Code was never evaluated."
+              exit 1
+            fi
+          fi
+          # push / merge_group: the PR scan step is correctly inapplicable.
+          if [[ -z "$gate" || "$gate" == "skipped" ]]; then
+            echo "Sonar PR scan does not apply to this event — nothing to gate."
+            exit 0
+          fi
+          if [[ "$gate" != "success" ]]; then
+            echo "✖ Sonar quality gate FAILED on new code."
+            echo ""
+            echo "Every condition is scoped to the lines this PR adds — the legacy"
+            echo "backlog is never in scope. Open the SonarCloud link on this PR and"
+            echo "work the New Code tab. See docs/ui-code-quality-gate.md."
+            exit 1
+          fi
+          echo "✔ Sonar quality gate passed on new code."
