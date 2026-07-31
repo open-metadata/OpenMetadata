@@ -227,15 +227,12 @@ const CoreEntityRefSelect: React.FC<CoreEntityRefSelectProps> = ({
 
   const handleSearch = useCallback(
     async (query: string) => {
-      if (!query) {
-        setSearchItems([]);
-
-        return;
-      }
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const result = await (searchQuery as any)({
-          query: `*${query}*`,
+          // Empty query (fired on focus/open) uses wildcard to pre-populate the
+          // dropdown. Typed queries use the standard *term* wildcard pattern.
+          query: query ? `*${query}*` : '**',
           pageNumber: 1,
           pageSize: 15,
           queryFilter: {},
