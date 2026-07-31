@@ -61,11 +61,13 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
     get_connection,
     get_connection_url,
+    get_validated_metastore_connection,
 )
 from metadata.ingestion.source.database.hive.connection import (
     test_connection as hive_test_connection,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
+from metadata.ingestion.source.database.hive.utils import get_table_comment
 
 mock_hive_config = {
     "source": {
@@ -1080,28 +1082,75 @@ class HiveUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
     )
-    def test_test_connection_with_invalid_dict_raises_error(self, mock_test_db_schema):
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_unrecognized_dict_falls_back_to_hiveserver(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
         """
-        Test test_connection raises ValueError when metastoreConnection dict is invalid
+        Test test_connection ignores a metastoreConnection dict that matches no supported backend
         """
         mock_metadata = Mock()
         mock_engine = Mock()
+        mock_test_db_schema.return_value = Mock()
 
-        invalid_dict = {
+        unrecognized_dict = {
             "type": "InvalidType",
+            "hostPort": "localhost:5432",
             "invalid_field": "invalid_value",
         }
 
         hive_conn = HiveConnection(
             type="Hive",
             hostPort="localhost:10000",
-            metastoreConnection=invalid_dict,
+            metastoreConnection=unrecognized_dict,
         )
 
-        with self.assertRaises(ValueError) as context:
-            hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
 
-        self.assertEqual(str(context.exception), "Invalid metastore connection")
+        mock_get_metastore.assert_not_called()
+        self.assertEqual(mock_test_db_schema.call_args.kwargs["engine"], mock_engine)
+
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
+    )
+    @patch(
+        "metadata.ingestion.source.database.hive.connection.get_metastore_connection"
+    )
+    def test_test_connection_with_defaults_only_metastore(
+        self, mock_get_metastore, mock_test_db_schema
+    ):
+        """
+        Test test_connection ignores the defaults-only payload the server derives from a "None" metastore
+        """
+        mock_metadata = Mock()
+        mock_engine = Mock()
+        mock_test_db_schema.return_value = Mock()
+
+        defaults_only_dict = {
+            "type": "Mysql",
+            "scheme": "mysql+pymysql",
+            "supportsMetadataExtraction": True,
+            "supportsDBTExtraction": True,
+            "supportsProfiler": True,
+            "supportsQueryComment": True,
+            "supportsDataDiff": True,
+            "supportsUsageExtraction": True,
+            "supportsLineageExtraction": True,
+            "useSlowLogs": False,
+        }
+
+        hive_conn = HiveConnection(
+            type="Hive",
+            hostPort="localhost:10000",
+            metastoreConnection=defaults_only_dict,
+        )
+
+        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+
+        mock_get_metastore.assert_not_called()
+        self.assertEqual(mock_test_db_schema.call_args.kwargs["engine"], mock_engine)
 
     @patch(
         "metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources"
@@ -1162,61 +1211,46 @@ class HiveUnitTest(TestCase):
         self.assertEqual(call_kwargs.kwargs["engine"], mock_engine)
 
 
-class HiveSourceMetastoreValidationTest(TestCase):
+class HiveMetastoreValidationTest(TestCase):
     """
-    Test the _get_validated_metastore_connection method in HiveSource
+    Test get_validated_metastore_connection
     """
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def setUp(self, mock_test_connection):
-        mock_test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_hive_config)
-        self.hive = HiveSource.create(
-            mock_hive_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+    def test_with_none(self):
+        """
+        Test None is returned when metastoreConnection is None
+        """
+        self.assertIsNone(get_validated_metastore_connection(None))
 
-    def test_get_validated_metastore_connection_with_none(self):
+    def test_with_postgres_object(self):
         """
-        Test _get_validated_metastore_connection returns None when metastoreConnection is None
-        """
-        self.hive.service_connection.metastoreConnection = None
-        result = self.hive._get_validated_metastore_connection()
-        self.assertIsNone(result)
-
-    def test_get_validated_metastore_connection_with_postgres_object(self):
-        """
-        Test _get_validated_metastore_connection returns PostgresConnection when already validated
+        Test an already validated PostgresConnection is returned as is
         """
         postgres_conn = PostgresConnection(
             username="postgres_user",
             hostPort="localhost:5432",
             database="hive_metastore",
         )
-        self.hive.service_connection.metastoreConnection = postgres_conn
-        result = self.hive._get_validated_metastore_connection()
-        self.assertIsInstance(result, PostgresConnection)
-        self.assertEqual(result, postgres_conn)
 
-    def test_get_validated_metastore_connection_with_mysql_object(self):
+        self.assertEqual(
+            get_validated_metastore_connection(postgres_conn), postgres_conn
+        )
+
+    def test_with_mysql_object(self):
         """
-        Test _get_validated_metastore_connection returns MysqlConnection when already validated
+        Test an already validated MysqlConnection is returned as is
         """
         mysql_conn = MysqlConnection(
             username="mysql_user",
             hostPort="localhost:3306",
             databaseSchema="hive_metastore",
         )
-        self.hive.service_connection.metastoreConnection = mysql_conn
-        result = self.hive._get_validated_metastore_connection()
-        self.assertIsInstance(result, MysqlConnection)
-        self.assertEqual(result, mysql_conn)
 
-    def test_get_validated_metastore_connection_with_postgres_dict(self):
+        self.assertEqual(get_validated_metastore_connection(mysql_conn), mysql_conn)
+
+    def test_with_postgres_dict(self):
         """
-        Test _get_validated_metastore_connection parses dict as PostgresConnection
+        Test a raw dict is parsed as PostgresConnection
         """
         postgres_dict = {
             "type": "Postgres",
@@ -1224,14 +1258,14 @@ class HiveSourceMetastoreValidationTest(TestCase):
             "hostPort": "localhost:5432",
             "database": "hive_metastore",
         }
-        self.hive.service_connection.metastoreConnection = postgres_dict
-        result = self.hive._get_validated_metastore_connection()
+        result = get_validated_metastore_connection(postgres_dict)
+
         self.assertIsInstance(result, PostgresConnection)
         self.assertEqual(result.username, "postgres_user")
 
-    def test_get_validated_metastore_connection_with_mysql_dict(self):
+    def test_with_mysql_dict(self):
         """
-        Test _get_validated_metastore_connection parses dict as MysqlConnection
+        Test a raw dict is parsed as MysqlConnection
         """
         mysql_dict = {
             "type": "Mysql",
@@ -1239,27 +1273,79 @@ class HiveSourceMetastoreValidationTest(TestCase):
             "hostPort": "localhost:3306",
             "databaseSchema": "hive_metastore",
         }
-        self.hive.service_connection.metastoreConnection = mysql_dict
-        result = self.hive._get_validated_metastore_connection()
+        result = get_validated_metastore_connection(mysql_dict)
+
         self.assertIsInstance(result, MysqlConnection)
         self.assertEqual(result.username, "mysql_user")
 
-    def test_get_validated_metastore_connection_with_empty_dict(self):
+    def test_with_empty_dict(self):
         """
-        Test _get_validated_metastore_connection returns None for empty dict
+        Test None is returned for an empty dict
         """
-        self.hive.service_connection.metastoreConnection = {}
-        result = self.hive._get_validated_metastore_connection()
-        self.assertIsNone(result)
+        self.assertIsNone(get_validated_metastore_connection({}))
 
-    def test_get_validated_metastore_connection_with_invalid_dict(self):
+    def test_with_defaults_only_dict(self):
         """
-        Test _get_validated_metastore_connection returns None for invalid dict
+        Test None is returned for the payload the server derives from a "None" metastore
         """
-        invalid_dict = {
+        defaults_only_dict = {
+            "type": "Mysql",
+            "scheme": "mysql+pymysql",
+            "supportsMetadataExtraction": True,
+            "supportsProfiler": True,
+            "useSlowLogs": False,
+        }
+
+        self.assertIsNone(get_validated_metastore_connection(defaults_only_dict))
+
+    def test_with_unrecognized_dict(self):
+        """
+        Test None is returned for a dict matching no supported backend
+        """
+        unrecognized_dict = {
             "type": "InvalidType",
+            "hostPort": "localhost:5432",
             "invalid_field": "invalid_value",
         }
-        self.hive.service_connection.metastoreConnection = invalid_dict
-        result = self.hive._get_validated_metastore_connection()
-        self.assertIsNone(result)
+
+        self.assertIsNone(get_validated_metastore_connection(unrecognized_dict))
+
+
+class HiveTableCommentTest(TestCase):
+    """
+    Test get_table_comment
+    """
+
+    @staticmethod
+    def _connection_returning(rows):
+        connection = Mock()
+        connection.execute.return_value = rows
+
+        return connection
+
+    def test_returns_table_comment(self):
+        """
+        Test the comment row of DESCRIBE FORMATTED is returned, stripped of padding
+        """
+        rows = [
+            ("id", "int", "customer id"),
+            ("", "comment             ", "customer master     "),
+        ]
+
+        result = get_table_comment(
+            Mock(), self._connection_returning(rows), "customers", "sales_db"
+        )
+
+        self.assertEqual(result, {"text": "customer master"})
+
+    def test_returns_none_without_comment(self):
+        """
+        Test None is returned when DESCRIBE FORMATTED has no comment row
+        """
+        rows = [("id", "int", "customer id")]
+
+        result = get_table_comment(
+            Mock(), self._connection_returning(rows), "customers", "sales_db"
+        )
+
+        self.assertEqual(result, {"text": None})

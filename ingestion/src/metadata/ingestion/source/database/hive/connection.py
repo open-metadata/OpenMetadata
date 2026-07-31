@@ -15,7 +15,7 @@ Source connection handler
 from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from urllib.parse import quote_plus
 
 from pydantic import ValidationError
@@ -53,7 +53,10 @@ from metadata.ingestion.source.database.hive.custom_hive_connection import (
     CustomHiveConnection,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import check_ssl_and_init
+
+logger = ingestion_logger()
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
@@ -144,6 +147,46 @@ def get_connection(connection: HiveConnection) -> Engine:
     )
 
 
+def get_validated_metastore_connection(
+    metastore_connection: Any,
+) -> Optional[Union[PostgresConnection, MysqlConnection]]:
+    """
+    Return the metastore connection as a validated model, or None when no metastore is configured.
+    """
+    validated = None
+    if isinstance(metastore_connection, (PostgresConnection, MysqlConnection)):
+        validated = metastore_connection
+    # Picking "None" for the metastore in the UI submits an empty object, which the server expands
+    # into a defaults-only payload carrying no hostPort. That means "no metastore", not a broken one.
+    elif isinstance(metastore_connection, dict) and metastore_connection.get(
+        "hostPort"
+    ):
+        validated = _validate_metastore_dict(metastore_connection)
+    return validated
+
+
+def _validate_metastore_dict(
+    metastore_connection: dict,
+) -> Optional[Union[PostgresConnection, MysqlConnection]]:
+    """
+    Validate a raw metastore payload against the supported metastore backends.
+    """
+    validated = None
+    for candidate in (PostgresConnection, MysqlConnection):
+        try:
+            validated = candidate.model_validate(metastore_connection)
+            break
+        except ValidationError:
+            continue
+
+    if validated is None:
+        logger.warning(
+            "Ignoring the Hive metastore connection: it matches neither a Postgres nor a MySQL "
+            "metastore. Falling back to HiveServer2 for metadata extraction."
+        )
+    return validated
+
+
 @singledispatch
 def get_metastore_connection(connection: Any) -> Engine:
     """
@@ -216,24 +259,13 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    metastore_conn = service_connection.metastoreConnection
+    metastore_conn = get_validated_metastore_connection(
+        service_connection.metastoreConnection
+    )
 
     if metastore_conn:
-        if isinstance(metastore_conn, (PostgresConnection, MysqlConnection)):
-            engine = get_metastore_connection(metastore_conn)
-        elif isinstance(metastore_conn, dict) and len(metastore_conn) > 0:
-            try:
-                service_connection.metastoreConnection = (
-                    PostgresConnection.model_validate(metastore_conn)
-                )
-            except ValidationError:
-                try:
-                    service_connection.metastoreConnection = (
-                        MysqlConnection.model_validate(metastore_conn)
-                    )
-                except ValidationError:
-                    raise ValueError("Invalid metastore connection")
-            engine = get_metastore_connection(service_connection.metastoreConnection)
+        service_connection.metastoreConnection = metastore_conn
+        engine = get_metastore_connection(metastore_conn)
 
     return test_connection_db_schema_sources(
         metadata=metadata,
