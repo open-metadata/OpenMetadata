@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from 'antd';
+import { Button } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -412,9 +413,9 @@ const Suggestions = ({
 
     return (
       <div data-testid="ai-query-suggestions">
-        <Typography.Text strong className="m-b-sm d-block">
+        <Typography weight='bold' className="m-b-sm d-block">
           {t('label.ai-queries')}
-        </Typography.Text>
+        </Typography>
         {aiQueries.map((query) => (
           <Button
             block
@@ -446,7 +447,7 @@ const Suggestions = ({
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
     return (
-      <Typography.Text>
+      <Typography>
         <Transi18next
           i18nKey="message.please-enter-to-find-data-assets"
           renderElement={<strong />}
@@ -454,7 +455,7 @@ const Suggestions = ({
             keyword: `"${searchText}"`,
           }}
         />
-      </Typography.Text>
+      </Typography>
     );
   }
 

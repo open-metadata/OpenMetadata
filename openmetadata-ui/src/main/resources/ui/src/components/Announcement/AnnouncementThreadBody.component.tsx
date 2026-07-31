@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -105,9 +105,9 @@ const AnnouncementThreadBody = ({
       <ErrorPlaceHolder
         className="h-auto mt-24"
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph data-testid="announcement-error">
+        <Typography as='p' data-testid="announcement-error">
           {t('message.no-announcement-message')}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }

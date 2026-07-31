@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Space, Typography } from 'antd';
+import { Skeleton, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { compact, startCase } from 'lodash';
 import { FC, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -422,9 +423,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     }
 
     return (
-      <Typography.Text className="entity-name">
+      <Typography className="entity-name">
         {entityLabel ?? entityFQN ?? '--'}
-      </Typography.Text>
+      </Typography>
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
@@ -437,7 +438,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
       );
     }
 
-    return <Typography.Text className="user-name">{userName}</Typography.Text>;
+    return <Typography className="user-name">{userName}</Typography>;
   }, [log.userName, userName]);
 
   return (
@@ -454,18 +455,18 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         <div className="item-header" data-testid="item-header">
           <Space size={4}>
             {userLink}
-            <Typography.Text className="event-separator">–</Typography.Text>
-            <Typography.Text className="event-type" data-testid="event-type">
+            <Typography className="event-separator">–</Typography>
+            <Typography data-testid="event-type" className="event-type">
               {eventType}
-            </Typography.Text>
+            </Typography>
             {log.impersonatedBy && (
               <>
-                <Typography.Text className="event-separator">–</Typography.Text>
-                <Typography.Text
-                  className="impersonated-by"
-                  data-testid="impersonated-by">
+                <Typography className="event-separator">–</Typography>
+                <Typography
+                  data-testid="impersonated-by"
+                  className="impersonated-by">
                   {t('label.impersonated-by-with-colon')}
-                </Typography.Text>{' '}
+                </Typography>{' '}
                 <Link
                   className="user-link"
                   to={getUserPath(log.impersonatedBy)}>
@@ -489,9 +490,9 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
             </div>
           ) : (
             <Space size={4}>
-              <Typography.Text className="action-text">
+              <Typography className="action-text">
                 {eventType}
-              </Typography.Text>
+              </Typography>
               {entityLink}
             </Space>
           )}
@@ -499,18 +500,18 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         <div className="item-meta" data-testid="item-meta">
           <Space size={8} split={<span className="meta-separator">|</span>}>
             {entityType && (
-              <Typography.Text
-                className="meta-item entity-type-badge"
-                data-testid="entity-type-badge">
+              <Typography
+                data-testid="entity-type-badge"
+                className="meta-item entity-type-badge">
                 {startCase(entityType)}
-              </Typography.Text>
+              </Typography>
             )}
             {timestamp && (
-              <Typography.Text
-                className="meta-item timestamp"
-                data-testid="timestamp">
+              <Typography
+                data-testid="timestamp"
+                className="meta-item timestamp">
                 {getRelativeTime(timestamp)}
-              </Typography.Text>
+              </Typography>
             )}
           </Space>
         </div>
@@ -543,9 +544,9 @@ const AuditLogList: FC<AuditLogListProps> = ({ logs, isLoading }) => {
     return (
       <div className="audit-log-list-container" data-testid="audit-log-list">
         <div className="audit-log-list-header">
-          <Typography.Text className="header-text">
+          <Typography className="header-text">
             {t('label.event-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <div className="audit-log-list empty">
           <ErrorPlaceHolder />

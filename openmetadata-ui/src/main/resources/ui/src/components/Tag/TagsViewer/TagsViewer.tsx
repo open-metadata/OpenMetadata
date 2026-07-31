@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
-import { Button, Popover, Tag, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Button, Popover, Tag } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
@@ -169,9 +169,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   if (isEmpty(sortedTagsBySource) && showNoDataPlaceholder) {
     return (
-      <Typography.Text className="text-grey-muted m-r-xss">
+      <Typography className="text-grey-muted m-r-xss">
         {NO_DATA_PLACEHOLDER}
-      </Typography.Text>
+      </Typography>
     );
   }
 

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Typography } from 'antd';
+import { Alert } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
 
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -37,10 +39,10 @@ export const IndexNotFoundBanner = () => {
             }}
           />
           <div className="d-flex flex-col gap-2">
-            <Typography.Text className="font-semibold text-xs">
+            <Typography className="font-semibold text-xs">
               {t('server.indexing-error')}
-            </Typography.Text>
-            <Typography.Paragraph className="m-b-0 text-xs">
+            </Typography>
+            <Typography as='p' className="m-b-0 text-xs">
               <Transi18next
                 i18nKey="message.configure-search-re-index"
                 renderElement={
@@ -53,7 +55,7 @@ export const IndexNotFoundBanner = () => {
                   settings: t('label.search-index-setting-plural'),
                 }}
               />
-            </Typography.Paragraph>
+            </Typography>
           </div>
         </div>
       }

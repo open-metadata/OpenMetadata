@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import {
   cloneDeep,
@@ -198,9 +199,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography.Text className="text-link-color">
+              <Typography className="text-link-color">
                 {getEntityName(record)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
             {record.fullyQualifiedName && (
               <CopyLinkButton
@@ -231,9 +232,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              <Typography ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           );
         },

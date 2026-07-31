@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
+import { Avatar, Typography } from '@openmetadata/ui-core-components';
+import { Button, Dropdown, Tabs, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -882,12 +882,12 @@ const DataProductsDetailsPage = ({
                         data-testid="version-button"
                         icon={<Icon component={VersionIcon} />}
                         onClick={handleVersionClick}>
-                        <Typography.Text
+                        <Typography
                           className={classNames('', {
                             'text-primary': version,
                           })}>
                           {toString(dataProduct.version)}
-                        </Typography.Text>
+                        </Typography>
                       </Button>
                     </Tooltip>
                   )}

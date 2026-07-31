@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Typography } from 'antd';
+import { Button, Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
@@ -61,9 +62,9 @@ const SuggestionsAlert = ({
           {showSuggestedBy && (
             <>
               <StarIcon width={14} />
-              <Typography.Text className="text-grey-muted font-italic">
+              <Typography className="text-grey-muted font-italic">
                 {t('label.suggested-by')}
-              </Typography.Text>
+              </Typography>
               <UserPopOverCard userName={userName}>
                 <span>
                   <ProfilePicture

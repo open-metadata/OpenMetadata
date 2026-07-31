@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Segmented, Typography } from 'antd';
+import { Card, Segmented } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -311,7 +312,7 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography>{text || NO_DATA_PLACEHOLDER}</Typography>
         ),
       },
       {

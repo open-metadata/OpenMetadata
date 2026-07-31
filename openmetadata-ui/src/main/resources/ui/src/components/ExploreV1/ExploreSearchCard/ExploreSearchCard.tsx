@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
+import { Breadcrumbs, Card, Typography } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
+import { Button, Checkbox, Col, Row, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
@@ -431,12 +431,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />
 
-                  <Typography.Text className="text-xs score">
+                  <Typography className="text-xs score">
                     <span className="font-normal">
                       {t('label.score-label').toUpperCase()}
                     </span>
                     <span className="font-semibold">{score.toFixed(4)}</span>
-                  </Typography.Text>
+                  </Typography>
                 </div>
               )}
             </Col>
@@ -448,11 +448,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             span={24}>
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
-                <Typography.Text
-                  className="text-lg font-medium text-link-color"
-                  data-testid="entity-header-display-name">
+                <Typography
+                  data-testid="entity-header-display-name"
+                  className="text-lg font-medium text-link-color">
                   {stringToHTML(searchClassBase.getEntityName(source))}
-                </Typography.Text>
+                </Typography>
               </Button>
             ) : (
               <div className="w-full d-flex items-center">
@@ -472,11 +472,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   to={isObject(entityLink) ? entityLink.pathname : entityLink}
                   onFocus={handlePrefetch}
                   onMouseEnter={handlePrefetch}>
-                  <Typography.Text
-                    className="text-lg font-medium text-link-color break-word whitespace-normal"
-                    data-testid="entity-header-display-name">
+                  <Typography
+                    data-testid="entity-header-display-name"
+                    className="text-lg font-medium text-link-color break-word whitespace-normal">
                     {stringToHTML(searchClassBase.getEntityName(source))}
-                  </Typography.Text>
+                  </Typography>
                 </Link>
 
                 {!isEmpty(
@@ -524,7 +524,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           handleSummaryPanelDisplay?.(source, tab);
         }}>
         {header}
-
         <div className="p-t-sm">
           <TableDataCardBody
             description={source.description ?? ''}
@@ -550,15 +549,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             className="ranking-details-container"
             data-testid="ranking-details">
             <div className="ranking-details-header">
-              <Typography.Text className="ranking-details-title">
+              <Typography className="ranking-details-title">
                 {t('label.ranking-detail-plural')}
-              </Typography.Text>
+              </Typography>
               {score !== undefined && (
-                <Typography.Text
-                  className="ranking-details-score"
-                  data-testid="ranking-score">
+                <Typography
+                  data-testid="ranking-score"
+                  className="ranking-details-score">
                   {t('label.score')}: {formatScoreValue(score)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
             {rankingStages.length > 0 ? (
@@ -568,12 +567,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     className="ranking-stage-item"
                     data-testid={`ranking-stage-${name}`}
                     key={name}>
-                    <Typography.Text className="text-xs font-medium">
+                    <Typography className="text-xs font-medium">
                       {label}
-                    </Typography.Text>
-                    <Typography.Text className="text-xs text-grey-muted">
+                    </Typography>
+                    <Typography className="text-xs text-grey-muted">
                       {description}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                 ))}
               </div>
@@ -582,27 +581,27 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
               <div
                 className="ranking-score-explanation"
                 data-testid="ranking-score-explanation">
-                <Typography.Text className="text-xs font-medium">
+                <Typography className="text-xs font-medium">
                   {t('label.reason')}
-                </Typography.Text>
+                </Typography>
                 {scoreReasons.map(({ description, value }) => (
                   <div
                     className="ranking-score-contributor"
                     data-testid="ranking-score-contributor"
                     key={`${description}-${value}`}>
-                    <Typography.Text className="text-xs font-medium">
+                    <Typography className="text-xs font-medium">
                       {formatScoreValue(value)}
-                    </Typography.Text>
-                    <Typography.Text className="text-xs text-grey-muted">
+                    </Typography>
+                    <Typography className="text-xs text-grey-muted">
                       {description}
-                    </Typography.Text>
+                    </Typography>
                   </div>
                 ))}
               </div>
             ) : null}
-            <Typography.Text className="text-xs text-grey-muted">
+            <Typography className="text-xs text-grey-muted">
               {t('message.search-ranking-signals-explanation')}
-            </Typography.Text>
+            </Typography>
           </div>
         ) : null}
         {actionPopoverContent && (

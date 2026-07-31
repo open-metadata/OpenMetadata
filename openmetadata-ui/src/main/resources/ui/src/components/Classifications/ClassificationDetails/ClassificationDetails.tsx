@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Plus, Tag01 } from '@untitledui/icons';
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Tooltip } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -450,7 +450,7 @@ const ClassificationDetails = forwardRef(
                       data-testid="version-button"
                       icon={<Icon component={VersionIcon} />}
                       onClick={versionHandler}>
-                      <Typography.Text>{currentVersion}</Typography.Text>
+                      <Typography>{currentVersion}</Typography>
                     </Button>
                   </Tooltip>
                   {showManageButton && (
@@ -477,7 +477,6 @@ const ClassificationDetails = forwardRef(
             </Col>
           </Row>
         )}
-
         {!currentClassification && isClassificationLoading && <Loader />}
         {currentClassification && (
           <GenericProvider<Classification>

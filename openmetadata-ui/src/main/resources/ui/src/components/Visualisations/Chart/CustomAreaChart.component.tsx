@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from 'antd';
+import { Card, Divider } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import {
   Area,
@@ -40,15 +41,15 @@ const CustomAreaChart = ({
       return (
         <Card className="custom-tooltip-area-chart">
           <div className="flex-center gap-2">
-            <Typography.Text className="font-medium text-md">
+            <Typography className="font-medium text-md">
               {valueFormatter
                 ? valueFormatter(payloadData['count'])
                 : payloadData['count']}
-            </Typography.Text>
+            </Typography>
             <Divider type="vertical" />
-            <Typography.Text className="text-xs">
+            <Typography className="text-xs">
               {formatDate(payloadData.timestamp)}
-            </Typography.Text>
+            </Typography>
           </div>
         </Card>
       );

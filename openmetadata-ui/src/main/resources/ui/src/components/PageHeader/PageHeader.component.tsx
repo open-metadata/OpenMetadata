@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge, Space, Typography } from 'antd';
+import { Badge, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { LearningIcon } from '../Learning/LearningIcon/LearningIcon.component';
 import './page-header.less';
@@ -30,11 +31,12 @@ const PageHeader = ({
   return (
     <div className="page-header-container" data-testid="page-header-container">
       <Space align="center" size={4}>
-        <Typography.Title
-          className="heading m-b-0"
+        <Typography
+          as='h5'
+          size='text-md'
           data-testid="heading"
-          level={5}
-          {...titleProps}>
+          {...titleProps}
+          className="heading m-b-0">
           {header}
 
           {isBeta && (
@@ -45,17 +47,18 @@ const PageHeader = ({
               size="small"
             />
           )}
-        </Typography.Title>
+        </Typography>
         {learningPageId && (
           <LearningIcon pageId={learningPageId} title={title} />
         )}
       </Space>
-      <Typography.Paragraph
-        className="sub-heading"
+      <Typography
+        as='p'
         data-testid="sub-heading"
-        {...subHeaderProps}>
+        {...subHeaderProps}
+        className="sub-heading">
         {subHeader}
-      </Typography.Paragraph>
+      </Typography>
     </div>
   );
 };

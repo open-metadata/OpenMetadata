@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { ForkOutlined } from '@ant-design/icons';
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,10 +42,10 @@ const GatewayNode = ({ data }: Node['data']) => {
       <div className="gateway-node-header">
         <ForkOutlined style={{ fontSize: '24px' }} />
         <Space className="m-l-xs" direction="vertical" size={0}>
-          <Typography.Text className="text-grey-muted gateway-node-action">
+          <Typography className="text-grey-muted gateway-node-action">
             {t('label.gateway')}
-          </Typography.Text>
-          <Typography.Text strong>{getEntityName(data)}</Typography.Text>
+          </Typography>
+          <Typography weight='bold'>{getEntityName(data)}</Typography>
         </Space>
       </div>
       <Handle isConnectable={false} position={Position.Bottom} type="source" />

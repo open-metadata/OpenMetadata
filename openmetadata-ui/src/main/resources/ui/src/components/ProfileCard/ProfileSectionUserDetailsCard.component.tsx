@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import { Badge, Button, Modal, Popover } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -121,11 +122,12 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <Typography.Paragraph
-          className="m-b-0 profile-details-email"
-          data-testid="user-email-value">
+        <Typography
+          as='p'
+          data-testid="user-email-value"
+          className="m-b-0 profile-details-email">
           {userData.email}
-        </Typography.Paragraph>
+        </Typography>
       ),
     [userData.email]
   );
@@ -155,11 +157,11 @@ const ProfileSectionUserDetailsCard = ({
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-          <Typography.Text className="profile-manage-label">
+          <Typography className="profile-manage-label">
             {t('label.edit-entity', {
               entity: t('label.display-name'),
             })}
-          </Typography.Text>
+          </Typography>
         </Button>
       )}
       {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
@@ -175,11 +177,11 @@ const ProfileSectionUserDetailsCard = ({
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-          <Typography.Text className="profile-manage-label">
+          <Typography className="profile-manage-label">
             {t('label.change-entity', {
               entity: t('label.password-lowercase'),
             })}
-          </Typography.Text>
+          </Typography>
         </Button>
       )}
       {userData?.deleted ? (
@@ -194,9 +196,9 @@ const ProfileSectionUserDetailsCard = ({
             style={{ marginRight: '10px' }}
             {...ICON_DIMENSION_USER_PAGE}
           />
-          <Typography.Text className="profile-manage-label">
+          <Typography className="profile-manage-label">
             {t('label.restore')}
-          </Typography.Text>
+          </Typography>
         </Button>
       ) : (
         isAdminUser && (
@@ -211,9 +213,9 @@ const ProfileSectionUserDetailsCard = ({
               style={{ marginRight: '10px' }}
               {...ICON_DIMENSION_USER_PAGE}
             />
-            <Typography.Text className="profile-manage-label">
+            <Typography className="profile-manage-label">
               {t('label.delete-profile')}
-            </Typography.Text>
+            </Typography>
           </Button>
         )
       )}
@@ -242,7 +244,6 @@ const ProfileSectionUserDetailsCard = ({
           />
         )}
       </Popover>
-
       <div className="m-t-sm">
         <UserPopOverCard userName={userData?.name}>
           <div className="d-flex items-center">
@@ -278,7 +279,6 @@ const ProfileSectionUserDetailsCard = ({
           onSave={(data) => handleChangePassword(data)}
         />
       )}
-
       {isDelete && (
         <DeleteEntityModal
           isRecursiveDelete
@@ -310,7 +310,6 @@ const ProfileSectionUserDetailsCard = ({
           {t('label.deleted')}
         </span>
       )}
-
       {showRestoreModal && (
         <Button
           className="remove-button-default-styling"
@@ -336,11 +335,11 @@ const ProfileSectionUserDetailsCard = ({
             })}
             onCancel={() => setShowRestoreModal(false)}
             onOk={handleRestore}>
-            <Typography.Text data-testid="restore-modal-body">
+            <Typography data-testid="restore-modal-body">
               {t('message.are-you-want-to-restore', {
                 entity: getEntityName(userData),
               })}
-            </Typography.Text>
+            </Typography>
           </Modal>
         </Button>
       )}

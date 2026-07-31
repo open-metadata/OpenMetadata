@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
 
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,9 +52,9 @@ const SuggestionsSlider = () => {
 
   return (
     <div className="d-flex items-center gap-2 m-r-md">
-      <Typography.Text className="right-panel-label">
+      <Typography className="right-panel-label">
         {suggestionLabel}
-      </Typography.Text>
+      </Typography>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (
         <Button

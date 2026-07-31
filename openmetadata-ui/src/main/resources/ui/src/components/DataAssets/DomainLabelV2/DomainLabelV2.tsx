@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -139,7 +140,7 @@ export const DomainLabelV2 = <
 
         return (
           <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <Typography className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
                 color={DE_ACTIVE_COLOR}
@@ -147,7 +148,7 @@ export const DomainLabelV2 = <
                 name="folder"
                 width={16}
               />
-            </Typography.Text>
+            </Typography>
             {renderDomainLink(
               domain,
               getEntityName(domain),

@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Dropdown,
-  InputRef,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -576,9 +569,9 @@ const NavBar = () => {
                         name="domain"
                         width={20}
                       />
-                      <Typography.Text ellipsis className="domain-text">
+                      <Typography ellipsis className="domain-text">
                         {domainDisplayName}
-                      </Typography.Text>
+                      </Typography>
                       {!isSingleDomainUser && <DropDownIcon width={12} />}
                     </Button>
                   </Tooltip>

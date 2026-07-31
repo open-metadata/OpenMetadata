@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Tag, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -296,7 +297,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataTypeTopic, record: Field) => (
-      <Typography.Text>
+      <Typography>
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -304,7 +305,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -457,9 +458,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
-          <Typography.Text type="secondary">
+          <Typography color='secondary'>
             {t('label.schema')}
-          </Typography.Text>
+          </Typography>
           {schemaTypePlaceholder ?? (
             <Tag className="ml-4">{messageSchema.schemaType}</Tag>
           )}

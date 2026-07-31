@@ -11,14 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Table,
-} from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@untitledui/icons';
-import { Button, Space, Switch, Tooltip, Typography } from 'antd';
+import { Button, Space, Switch, Tooltip } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
@@ -179,20 +174,20 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography.Text data-testid={record.name}>
+        <Typography data-testid={record.name}>
           {getEntityName(record)}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>{record.entityType}</Typography.Text>
+        <Typography>{record.entityType}</Typography>
       </Table.Cell>
       <Table.Cell>
-        <Typography.Text>
+        <Typography>
           {record.testPlatforms?.join(', ') ?? '--'}
-        </Typography.Text>
+        </Typography>
       </Table.Cell>
       <Table.Cell>{renderEnabledCell(record)}</Table.Cell>
       <Table.Cell>{renderActionsCell(record)}</Table.Cell>

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -308,7 +309,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataType, record: Field) => (
-      <Typography.Text>
+      <Typography>
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -316,7 +317,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
