@@ -41,6 +41,7 @@ interface QueryBuilderSectionProps {
   forceReadOnly?: boolean;
   label?: string;
   outputType?: SearchOutputType;
+  showExploreLink?: boolean;
   value: string;
   onChange: (value: string) => void;
 }
@@ -51,6 +52,7 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
   label,
   onChange,
   outputType,
+  showExploreLink = true,
   value,
 }) => {
   const { isViewMode } = useWorkflowModeContext();
@@ -85,6 +87,7 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
           registry={emptyRegistry}
           schema={{
             entityType: entityTypes,
+            showExploreLink,
             ...(outputType === SearchOutputType.JSONLogic && {
               outputType,
             }),

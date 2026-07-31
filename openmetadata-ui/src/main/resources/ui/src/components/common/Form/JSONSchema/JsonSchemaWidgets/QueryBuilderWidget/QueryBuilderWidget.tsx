@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
+import { Alert as CoreAlert } from '@openmetadata/ui-core-components';
 import {
   Actions,
   Builder,
@@ -82,12 +83,14 @@ const QueryBuilderWidget: FC<
   const resolvedSearchIndex =
     searchIndex === SearchIndex.ALL ? SearchIndex.DATA_ASSET : searchIndex;
   const outputType = schema?.outputType ?? SearchOutputType.ElasticSearch;
+  const showExploreLink = schema?.showExploreLink ?? true;
   const isSearchIndexUpdatedInContext =
     searchIndexFromContext === resolvedSearchIndex;
   const [initDone, setInitDone] = useState<boolean>(false);
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
   const [queryActions, setQueryActions] = useState<Actions>();
+  const [isCountBannerClosed, setIsCountBannerClosed] = useState(false);
 
   const fetchEntityCount = useCallback(
     async (queryFilter: Record<string, unknown>) => {
@@ -231,6 +234,10 @@ const QueryBuilderWidget: FC<
     }
   }, [queryActions]);
 
+  useEffect(() => {
+    setIsCountBannerClosed(false);
+  }, [searchResults]);
+
   if (!initDone) {
     return <></>;
   }
@@ -292,33 +299,47 @@ const QueryBuilderWidget: FC<
 
             {showFilteredResourceCount && (
               <div className="m-t-sm">
-                <Button
-                  className="w-full p-0 text-left h-auto"
-                  data-testid="view-assets-banner-button"
-                  disabled={false}
-                  href={queryURL}
-                  target="_blank"
-                  type="link">
-                  <Alert
-                    closable
-                    showIcon
-                    icon={<InfoCircleOutlined height={16} />}
-                    message={
-                      <div className="d-flex flex-wrap items-center gap-1">
-                        <Typography.Text>
-                          {t('message.search-entity-count', {
-                            count: searchResults,
-                          })}
-                        </Typography.Text>
+                {showExploreLink ? (
+                  <Button
+                    className="w-full p-0 text-left h-auto"
+                    data-testid="view-assets-banner-button"
+                    disabled={false}
+                    href={queryURL}
+                    target="_blank"
+                    type="link">
+                    <Alert
+                      closable
+                      showIcon
+                      icon={<InfoCircleOutlined height={16} />}
+                      message={
+                        <div className="d-flex flex-wrap items-center gap-1">
+                          <Typography.Text>
+                            {t('message.search-entity-count', {
+                              count: searchResults,
+                            })}
+                          </Typography.Text>
 
-                        <Typography.Text className="text-xs text-grey-muted">
-                          {t('message.click-here-to-view-assets-on-explore')}
-                        </Typography.Text>
-                      </div>
-                    }
-                    type="info"
-                  />
-                </Button>
+                          <Typography.Text className="text-xs text-grey-muted">
+                            {t('message.click-here-to-view-assets-on-explore')}
+                          </Typography.Text>
+                        </div>
+                      }
+                      type="info"
+                    />
+                  </Button>
+                ) : (
+                  !isCountBannerClosed && (
+                    <CoreAlert
+                      closable
+                      data-testid="view-assets-banner-count"
+                      title={t('message.search-entity-count', {
+                        count: searchResults,
+                      })}
+                      variant="brand"
+                      onClose={() => setIsCountBannerClosed(true)}
+                    />
+                  )
+                )}
               </div>
             )}
           </Col>

@@ -99,7 +99,8 @@ export const EventTriggerFilterSection: React.FC<
                 forceReadOnly={lockFields}
                 label={t('label.exclude-filter')}
                 outputType={SearchOutputType.ElasticSearch}
-                value={triggerFilter}
+                showExploreLink={false}
+            value={triggerFilter}
                 onChange={(value: string) => {
                   onTriggerFilterChange?.(value || '');
                 }}
