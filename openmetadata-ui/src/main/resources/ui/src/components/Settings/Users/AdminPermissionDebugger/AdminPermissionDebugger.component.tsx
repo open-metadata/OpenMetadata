@@ -22,7 +22,6 @@ import {
   Select,
   Space,
   Spin,
-  Typography,
 } from 'antd';
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -51,9 +50,6 @@ import {
 } from './AdminPermissionDebugger.constants';
 import './AdminPermissionDebugger.style.less';
 
-const {
-  Text
-} = Typography;
 const { Option } = Select;
 
 interface EvaluationFormValues {
@@ -292,7 +288,11 @@ const AdminPermissionDebugger: React.FC = () => {
                       <CoreTypography>{t('label.condition-plural')}:</CoreTypography>
                       {step.conditionEvaluations.map((cond, idx) => (
                         <div className="condition-eval" key={idx}>
-                          <Text code>{cond.condition}</Text>
+                          <CoreTypography
+                            as="code"
+                            className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary">
+                            {cond.condition}
+                          </CoreTypography>
                           <CoreTypography>
                             {' → '}
                             <span>

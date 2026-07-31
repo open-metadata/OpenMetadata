@@ -20,7 +20,6 @@ import {
   Space,
   Spin,
   Tag,
-  Typography,
 } from 'antd';
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -51,9 +50,6 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import './UserPermissions.style.less';
 
 const { Panel } = Collapse;
-const {
-  Text
-} = Typography;
 
 interface UserPermissionsProps {
   username: string;
@@ -131,7 +127,11 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         {rule.condition && (
           <div>
             <CoreTypography color='secondary'>{t('label.condition')}: </CoreTypography>
-            <Text code>{rule.condition}</Text>
+            <CoreTypography
+              as="code"
+              className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary">
+              {rule.condition}
+            </CoreTypography>
           </div>
         )}
       </Space>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Divider, Row, Space } from 'antd';
 import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
@@ -95,7 +95,13 @@ export const AlertDetailsComponent = ({
           <CoreTypography as='h5' size='text-md'>
             {t('label.filter-plural')}
           </CoreTypography>
-          <CoreTypography as='p'>
+          {/*
+            Not `as='p'`: core Typography always wraps its content in an
+            outer `<div className="prose">` regardless of `as`, so nesting
+            the `as="code"` Typography below inside a `p`-rendered Typography
+            produced an invalid `<div>`-in-`<p>` (validateDOMNesting warning).
+          */}
+          <CoreTypography as="div">
             {alerts?.filteringRules?.rules?.map((filter) => {
               const conditions = isArray(filter.condition)
                 ? filter.condition.join(', ')
@@ -107,9 +113,11 @@ export const AlertDetailsComponent = ({
 
               return (
                 <Fragment key={filter.name}>
-                  <Typography.Text code>
+                  <CoreTypography
+                    as="code"
+                    className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary">
                     {`${conditionName} ${effect} ${conditions}`}
-                  </Typography.Text>
+                  </CoreTypography>
                   <br />
                 </Fragment>
               );
