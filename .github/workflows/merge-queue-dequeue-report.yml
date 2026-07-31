@@ -45,6 +45,7 @@ jobs:
       OWNER: ${{ github.repository_owner }}
       REPO: ${{ github.event.repository.name }}
       PR: ${{ github.event.number || inputs.pr }}
+      IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
       DRY_RUN: ${{ inputs.dry_run == true || vars.MQ_REPORT_DRY_RUN == 'true' }}
     steps:
       - name: Resolve the dequeue event
@@ -55,8 +56,13 @@ jobs:
 
           # A PR dequeued before still has an older event, so "an event exists"
           # cannot mean "this dequeue's event". Require a recent one, wide
-          # enough to absorb runner queueing.
-          CUTOFF=$(date -u -d '30 minutes ago' +%s)
+          # enough to absorb runner queueing. A manual dispatch names the PR
+          # outright, so there is no webhook to match an event against.
+          if [ "$IS_DISPATCH" = "true" ]; then
+            CUTOFF=0
+          else
+            CUTOFF=$(date -u -d '30 minutes ago' +%s)
+          fi
 
           # The timeline entry may not be readable the instant the webhook fires.
           # shellcheck disable=SC2016  # the GraphQL query and jq filter must not expand
