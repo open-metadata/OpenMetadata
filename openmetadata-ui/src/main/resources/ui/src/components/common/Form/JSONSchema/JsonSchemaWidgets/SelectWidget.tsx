@@ -15,7 +15,7 @@ import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { filterSelectOptions } from '../../../../../utils/FilterQueryUtils';
-import { getPopupContainer } from '../../../../../utils/formUtils';
+import { getPopupContainer } from '../../../../../utils/formPureUtils';
 import TreeSelectWidget from './TreeSelectWidget';
 
 const getDisplayLabel = (

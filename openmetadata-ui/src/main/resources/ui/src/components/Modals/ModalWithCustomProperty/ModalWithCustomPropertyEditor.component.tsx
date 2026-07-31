@@ -21,7 +21,7 @@ import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
-} from '../../../utils/CSV/CSV.utils';
+} from '../../../utils/CSV/CSVPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';

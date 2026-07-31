@@ -15,12 +15,15 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import TableDataCardV2 from './TableDataCardV2';
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getServiceIcon: jest.fn(),
-  getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
+jest.mock('../../../utils/TablePureUtils', () => ({
   getUsagePercentile: jest
     .fn()
     .mockImplementation((value = 0) => `${value} value`),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
+  getServiceIcon: jest.fn(),
+  getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
 }));
 
 jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {

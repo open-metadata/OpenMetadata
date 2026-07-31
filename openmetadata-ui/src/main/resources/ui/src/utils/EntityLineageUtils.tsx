@@ -29,63 +29,6 @@ import serviceUtilClassBase from '../utils/ServiceUtilClassBase';
 import Fqn from './Fqn';
 import { t } from './i18next/LocalUtil';
 
-export {
-  createColumnEdges,
-  createEdgesAndEdgeMaps,
-  createEntityEdgesAndMaps,
-  createNewEdge,
-  getAllDownstreamEdges,
-  getAllTracedColumnEdge,
-  getAllTracedEdges,
-  getClassifiedEdge,
-  getColumnLineageData,
-  getEdgeDataFromEdge,
-  getEdgePathAlignmentData,
-  getEdgePathData,
-  getLineageDetailsObject,
-  getLineageEdge,
-  getLineageEdgeForAPI,
-  getModalBodyText,
-  getNewLineageConnectionDetails,
-  getUpdatedColumnsFromEdge,
-  isSelfConnectingEdge,
-} from './EntityLineageEdgeUtils';
-export {
-  centerNodePosition,
-  getELKLayoutedElements,
-  getLayoutedElements,
-  getNodesBoundsReactFlow,
-  getViewportForBoundsReactFlow,
-  getViewportForLineageExport,
-  positionNodesUsingElk,
-} from './EntityLineageLayoutUtils';
-export {
-  checkUpstreamDownstream,
-  createNodes,
-  getAllTracedNodes,
-  getConnectedNodesEdges,
-  getEntityChildrenAndLabel,
-  getEntityCountAtDepth,
-  getEntityNodeIcon,
-  getEntityTypeFromPlatformView,
-  getNodeLineageData,
-  getUpstreamDownstreamNodesEdges,
-  removeUnconnectedNodes,
-} from './EntityLineageNodeUtils';
-export {
-  addLineageHandler,
-  dragHandle,
-  getColumnFunctionValue,
-  getExportData,
-  getExportEntity,
-  getLineageEntityExclusionFilter,
-  MAX_LINEAGE_LENGTH,
-  onLoad,
-  onNodeContextMenu,
-  parseLineageData,
-  removeLineageHandler,
-} from './EntityLineagePureUtils';
-
 export const getLoadingStatusValue = (
   defaultState: string | JSX.Element,
   loading: boolean,
