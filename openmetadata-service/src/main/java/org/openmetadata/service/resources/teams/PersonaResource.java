@@ -135,16 +135,15 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           @DefaultValue("0")
           @Min(value = 0, message = "must be greater than or equal to 0")
           @QueryParam("offset")
-          int offsetParam,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include);
+          int offsetParam) {
     return searchInternal(
-        uriInfo, securityContext, fieldsParam, filter, query, limitParam, offsetParam);
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        new ListFilter(null),
+        query,
+        limitParam,
+        offsetParam);
   }
 
   @GET
