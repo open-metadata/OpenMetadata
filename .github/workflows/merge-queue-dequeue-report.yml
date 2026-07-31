@@ -34,10 +34,6 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: merge-queue-dequeue-report-${{ github.event.number || inputs.pr }}
-  cancel-in-progress: false
-
 jobs:
   report:
     name: Report dequeue cause
