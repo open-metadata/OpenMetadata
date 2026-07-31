@@ -656,6 +656,47 @@ def test_explore_changes_schedule_schema_search_in_ingestion(tmp_path, monkeypat
     assert "Ingestion" in schema_search["projects"]
 
 
+def test_explore_changes_schedule_search_rbac_in_its_own_lane(tmp_path, monkeypatch):
+    """The Explore mapping's ``Flow/*Search*.spec.ts`` glob also matches
+    SearchRBAC.spec.ts, which ``chromium`` testIgnores and only the dedicated
+    ``SearchRBAC`` project runs. Without that project in the mapping the selector
+    resolves to zero units and build_playwright_shards.py aborts the whole plan.
+    """
+    selector = load_script("select_playwright_tests")
+    changed = tmp_path / "changed.txt"
+    output = tmp_path / "selection.json"
+    changed.write_text(
+        "openmetadata-ui/src/main/resources/ui/src/components/Explore/"
+        "QuickFilterDropdown.tsx\n"
+    )
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "select_playwright_tests.py",
+            "--event-name",
+            "pull_request_target",
+            "--changed-files",
+            str(changed),
+            "--impact-map",
+            str(Path(".github/playwright/impact-map.json")),
+            "--output",
+            str(output),
+        ],
+    )
+
+    selector.main()
+
+    selection = json.loads(output.read_text())
+    search_rbac = next(
+        entry
+        for entry in selection["selectors"]
+        if entry["spec"] == "playwright/e2e/Flow/SearchRBAC.spec.ts"
+    )
+    assert "SearchRBAC" in search_rbac["projects"]
+
+
 def test_targeted_selection_does_not_schedule_deleted_specs(tmp_path, monkeypatch):
     selector = load_script("select_playwright_tests")
     existing_spec = tmp_path / selector.UI_ROOT / "playwright/e2e/Smoke.spec.ts"
