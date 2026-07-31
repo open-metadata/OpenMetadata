@@ -1386,7 +1386,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     String suggestionApproveTransitionId =
         TaskWorkflowLifecycleResolver.defaultTransitionId(task, TaskResolutionType.Approved);
-    validateTransitionComment(task, suggestionApproveTransitionId, null);
+    validateTransitionComment(task, suggestionApproveTransitionId, comment);
     Task resolvedTask =
         repository.resolveTaskWithWorkflow(
             task,
@@ -1394,7 +1394,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             TaskResolutionType.Approved,
             null,
             null,
-            null,
+            comment,
             userName);
     // Change-event header so resolve fires task alerts.
     return Response.ok(resolvedTask)

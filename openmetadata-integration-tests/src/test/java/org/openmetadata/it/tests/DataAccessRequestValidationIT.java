@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.services.connections.database.PolicyAgentConfig;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -471,21 +472,18 @@ public class DataAccessRequestValidationIT {
                   SdkClients.adminClient()
                       .tasks()
                       .get(dar.getId().toString(), "assignees,createdBy");
-              List<String> assigneeNames =
-                  (fresh.getAssignees() == null ? List.<String>of() : fresh.getAssignees())
-                      .stream()
-                          .map(ref -> ref.getName() == null ? "" : ref.getName())
-                          .collect(Collectors.toList());
-              return !assigneeNames.isEmpty() || fresh.getStatus() != null;
+              List<EntityReference> assignees = fresh.getAssignees();
+              return assignees != null && !assignees.isEmpty();
             });
 
     Task refreshed =
         SdkClients.adminClient().tasks().get(dar.getId().toString(), "assignees,createdBy");
+    List<EntityReference> assignees =
+        refreshed.getAssignees() == null ? List.of() : refreshed.getAssignees();
     List<String> assigneeNames =
-        (refreshed.getAssignees() == null ? List.<String>of() : refreshed.getAssignees())
-            .stream()
-                .map(ref -> ref.getName() == null ? "" : ref.getName())
-                .collect(Collectors.toList());
+        assignees.stream()
+            .map(ref -> ref.getName() == null ? "" : ref.getName())
+            .collect(Collectors.toList());
     assertTrue(
         assigneeNames.stream().noneMatch(name -> name.equalsIgnoreCase(requesterFqn)),
         () -> "Requester leaked into assignees: " + assigneeNames);
