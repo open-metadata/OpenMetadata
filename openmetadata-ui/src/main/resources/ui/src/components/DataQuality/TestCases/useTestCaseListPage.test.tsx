@@ -458,6 +458,49 @@ describe('useTestCaseListPage', () => {
     expect(csv.split('\n')).toHaveLength(3);
   });
 
+  it('should reconcile again when the export total shrinks between pages', async () => {
+    const staleTestCase = buildTestCase('stale', 'svc.tbl.stale');
+    const stableTestCases = Array.from({ length: 49 }, (_, index) =>
+      buildTestCase(`stable-${index}`, `svc.tbl.stable-${index}`)
+    );
+    const shiftedTestCase = buildTestCase('shifted', 'svc.tbl.shifted');
+
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [],
+        paging: { total: 10 },
+      })
+      .mockResolvedValueOnce({
+        data: [staleTestCase, ...stableTestCases],
+        paging: { total: 51 },
+      })
+      .mockResolvedValueOnce({
+        data: [],
+        paging: { total: 50 },
+      })
+      .mockResolvedValueOnce({
+        data: [...stableTestCases, shiftedTestCase],
+        paging: { total: 50 },
+      });
+    mockLocation.search = QueryString.stringify({ searchValue: 'filtered' });
+
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const exportItem = result.current.extraDropdownContent.find(
+      (item) => item.key === 'export-button'
+    );
+    exportItem?.onClick?.();
+
+    const exportData = mockShowModal.mock.calls[0][0];
+    const csv = await exportData.onExport('*');
+
+    expect(csv).not.toContain('stale');
+    expect(csv).toContain('shifted');
+    expect(csv.split('\n')).toHaveLength(51);
+  });
+
   it('should refetch for the requested page when the pagination handler is called', async () => {
     const { result } = renderHook(() => useTestCaseListPage());
 

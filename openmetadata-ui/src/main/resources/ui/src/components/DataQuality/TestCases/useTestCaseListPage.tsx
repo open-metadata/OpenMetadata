@@ -156,6 +156,8 @@ export const useTestCaseListPage = () => {
       const testCasesById = new Map<string, TestCase>();
       let offset = 0;
       let total = 0;
+      let previousReportedTotal: number | undefined;
+      let reportedTotalChanged = false;
 
       do {
         const response = await getListTestCaseBySearch({
@@ -166,6 +168,15 @@ export const useTestCaseListPage = () => {
         response.data.forEach((testCase) =>
           testCasesById.set(testCase.id, testCase)
         );
+        if (response.paging.total !== undefined) {
+          if (
+            previousReportedTotal !== undefined &&
+            previousReportedTotal !== response.paging.total
+          ) {
+            reportedTotalChanged = true;
+          }
+          previousReportedTotal = response.paging.total;
+        }
         total = response.paging.total ?? testCasesById.size;
         offset += response.data.length;
 
@@ -179,7 +190,9 @@ export const useTestCaseListPage = () => {
       reconciledTestCases = [...testCasesById.values()];
       pass += 1;
 
-      if (testCasesById.size >= total) {
+      // A changing total means the result set moved while paging. Only accept
+      // a later pass that observes a stable total from start to finish.
+      if (!reportedTotalChanged && testCasesById.size >= total) {
         break;
       }
     } while (pass < MAX_EXPORT_PASSES);
