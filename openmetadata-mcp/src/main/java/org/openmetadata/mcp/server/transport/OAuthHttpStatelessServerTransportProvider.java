@@ -317,10 +317,19 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * Sets CORS headers with origin validation.
    * Only allows specific origins from the allowedOrigins list.
    * Rejects requests from origins not in the allowed list.
+   *
+   * <p>Must be called on every path that answers a browser, including the ones handled by the base
+   * transport - it writes the 401 challenge and the JSON-RPC response itself and never sets these.
    * @param request The HTTP request
    * @param response The HTTP response
    */
   private void setCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
+    applyCorsHeaders(request, response, allowedOrigins);
+  }
+
+  /** Split out from {@link #setCorsHeaders} so the header emission can be unit tested. */
+  static void applyCorsHeaders(
+      HttpServletRequest request, HttpServletResponse response, List<String> allowedOrigins) {
     String origin = request.getHeader("Origin");
 
     if (origin != null && allowedOrigins.contains(origin)) {
@@ -359,6 +368,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       basicAuthLoginServlet.doGet(request, response);
     } else {
       // Unknown GET path: base class returns 404 for sub-paths, 405 for /mcp exactly
+      setCorsHeaders(request, response);
       super.doGet(request, response);
     }
   }
@@ -475,7 +485,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
     } else {
-      // Handle other POST requests using the parent class
+      // The MCP message endpoint. Everything below this line is written by the base transport,
+      // which knows nothing about CORS: the 401 challenge, the JSON-RPC response, the SSE stream.
+      // The headers have to go on here, before the response is committed, or a browser client
+      // gets a CORS failure instead of the response - including the 401 that carries the
+      // WWW-Authenticate challenge it needs to start the OAuth flow.
+      setCorsHeaders(request, response);
       super.doPost(request, response);
     }
   }

@@ -55,12 +55,6 @@ public class OAuthClientMetadata {
   @JsonProperty("jwks")
   private Object jwks;
 
-  // "native" or "web". MCP protocol 2026-07-28 asks clients to send this so we apply the matching
-  // redirect URI rules instead of rejecting loopback URIs from CLI and desktop clients.
-  // See RegistrationHandler for how each value is validated.
-  @JsonProperty("application_type")
-  private String applicationType;
-
   @JsonProperty("software_id")
   private String softwareId;
 
@@ -232,14 +226,6 @@ public class OAuthClientMetadata {
 
   public void setJwks(Object jwks) {
     this.jwks = jwks;
-  }
-
-  public String getApplicationType() {
-    return applicationType;
-  }
-
-  public void setApplicationType(String applicationType) {
-    this.applicationType = applicationType;
   }
 
   public String getSoftwareId() {
