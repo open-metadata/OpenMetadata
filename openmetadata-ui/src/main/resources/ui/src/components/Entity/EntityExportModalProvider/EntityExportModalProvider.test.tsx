@@ -1020,11 +1020,10 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('stops polling and hands off to CsvJobsTray after the 5-minute max duration', async () => {
+  it('bulk-edit: timeout surfaces an error so the grid page does not hang', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
-    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
 
     try {
       (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
@@ -1058,11 +1057,63 @@ describe('EntityExportModalProvider component', () => {
         jest.advanceTimersByTime(1_000);
       });
 
-      // Backend is still running — no error reported to the caller.
-      expect(onError).not.toHaveBeenCalled();
-      expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
+      // Bulk-edit timeout uses the FAILED path so the grid page gets an error
+      // banner instead of hanging on the loader indefinitely.
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'server.unexpected-error'
+      );
+    } finally {
+      dateSpy.mockRestore();
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
 
-      // CsvJobsTray refresh event dispatched so the user can track the job there.
+  it('modal path: timeout closes the modal and hands off to CsvJobsTray', async () => {
+    jest.useFakeTimers();
+    let nowMs = 0;
+    const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue({
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      } as CsvAsyncJob);
+
+      render(
+        <EntityExportModalProvider>
+          <ConsumerComponent />
+        </EntityExportModalProvider>
+      );
+
+      fireEvent.click(await screen.findByText('Manage'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-button'));
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      nowMs = 5 * 60 * 1_000 + 1_000;
+
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+
+      // Modal closes and CsvJobsTray is notified — backend job keeps running.
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('export-entity-modal')
+        ).not.toBeInTheDocument()
+      );
+
       expect(dispatchSpy).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'csv-jobs-refresh' })
       );

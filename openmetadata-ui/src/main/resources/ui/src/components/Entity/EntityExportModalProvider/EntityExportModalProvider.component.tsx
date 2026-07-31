@@ -352,7 +352,7 @@ export const EntityExportModalProvider = ({
   );
 
   const startCSVExportPolling = useCallback(
-    (jobId: string) => {
+    (jobId: string, bulkEdit: boolean) => {
       stopCSVExportPolling();
 
       const pollingState: CSVExportPollingState = {
@@ -451,6 +451,7 @@ export const EntityExportModalProvider = ({
             CSV_EXPORT_MAX_POLL_DURATION_MS
           ) {
             timedOut = true;
+
             break;
           }
 
@@ -490,9 +491,9 @@ export const EntityExportModalProvider = ({
           return;
         }
 
-        if (timedOut) {
-          // Backend job is still running — stop tracking in the modal and hand
-          // it off to CsvJobsTray so the user can follow progress there.
+        if (timedOut && !bulkEdit) {
+          // Non-bulk-edit: backend job is still running — close the modal and
+          // hand it off to CsvJobsTray so the user can follow progress there.
           csvExportPollingRef.current = undefined;
           csvExportJobRef.current = undefined;
           pendingCSVExportResponsesRef.current.clear();
@@ -501,6 +502,8 @@ export const EntityExportModalProvider = ({
           setExportData(null);
           window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
         } else {
+          // Bulk-edit timeout or max-failures: surface an error so the grid
+          // page can show an error banner instead of hanging on the loader.
           applyCSVExportJobUpdate({
             error: null,
             jobId,
@@ -592,7 +595,7 @@ export const EntityExportModalProvider = ({
         setCSVExportJob(jobData);
         csvExportJobRef.current = jobData;
         pendingCSVExportResponsesRef.current.clear();
-        startCSVExportPolling(data.jobId);
+        startCSVExportPolling(data.jobId, isBulkEdit);
 
         if (pendingResponse) {
           applyCSVExportJobUpdate(pendingResponse);
