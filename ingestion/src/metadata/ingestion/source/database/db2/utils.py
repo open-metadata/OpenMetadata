@@ -15,7 +15,7 @@ Module to define overriden dialect methods
 
 from enum import Enum
 
-from sqlalchemy import and_, join, sql
+from sqlalchemy import and_, join, select, sql, text
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes as sa_types
 
@@ -237,3 +237,52 @@ def install_clidriver(clidriver_version: str) -> None:
         ]
     )
     return None  # noqa: RET501
+
+
+_IBMI_PATCHED = False
+
+
+def _ibmi_compat_select(*args, **kwargs):
+    """Translate the SA-1.x ``select([cols], whereclause)`` form to the modern
+    signature. sqlalchemy-ibmi 0.9.3 uses the legacy form, removed in SA 2.0."""
+    if args and isinstance(args[0], (list, tuple)):
+        statement = select(*args[0])
+        for whereclause in args[1:]:
+            if whereclause is not None:
+                statement = statement.where(whereclause)
+        return statement
+    return select(*args, **kwargs)
+
+
+def get_default_schema_name_ibmi(self, connection):
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return self.normalize_name(connection.execute(text("VALUES CURRENT_SCHEMA")).scalar())
+
+
+def check_text_server_ibmi(self, connection):
+    """SA 2.0 rejects raw strings passed to ``Connection.execute``."""
+    return connection.execute(text("SELECT COUNT(*) FROM QSYS2.SYSTEXTSERVERS")).scalar()
+
+
+def patch_ibmi_dialect() -> bool:
+    """Adapt the sqlalchemy-ibmi dialect to SQLAlchemy 2.0 at runtime.
+
+    sqlalchemy-ibmi 0.9.3 pins sqlalchemy<2 but is installed with --no-deps, so
+    its SA-1.x call sites survive into a SA 2.0 runtime and fail on first use.
+    Reassigning the module-level ``select`` covers every legacy reflection query
+    at once, since the dialect resolves it as a global on each call.
+    """
+    global _IBMI_PATCHED  # noqa: PLW0603
+    if _IBMI_PATCHED:
+        return True
+    try:
+        import sqlalchemy_ibmi.base as ibmi_base  # noqa: PLC0415
+    except ImportError:
+        logger.debug("sqlalchemy-ibmi not installed - ibmi scheme unavailable")
+        return False
+
+    ibmi_base.select = _ibmi_compat_select
+    ibmi_base.IBMiDb2Dialect._get_default_schema_name = get_default_schema_name_ibmi
+    ibmi_base.IBMiDb2Dialect._check_text_server = check_text_server_ibmi
+    _IBMI_PATCHED = True
+    return True
