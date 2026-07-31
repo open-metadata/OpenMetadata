@@ -15,6 +15,7 @@ Client to interact with the Prefect REST API (Cloud or self-hosted Server)
 import base64
 from collections.abc import Iterable
 from functools import lru_cache
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.pipeline.prefect.cloudAuth import (
     PrefectCloudAuthentication,
@@ -86,7 +87,7 @@ class PrefectClient:
         )
         self.client = TrackedREST(client_config, source_name="prefect")
 
-    def _filter(self, resource: str, payload: dict, **kwargs) -> list[dict]:
+    def _filter(self, resource: str, payload: dict, **kwargs: Any) -> list[dict]:
         result = self.client.post(f"{self._path_prefix}/{resource}/filter", json=payload, **kwargs)
         return result if isinstance(result, list) else []
 

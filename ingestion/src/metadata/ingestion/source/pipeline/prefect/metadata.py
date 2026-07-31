@@ -127,9 +127,9 @@ class PrefectSource(PipelineServiceSource):
         pipeline_name: str | None = None,
     ) -> PrefectSource:
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: PrefectConnection = config.serviceConnection.root.config
+        connection: PrefectConnection = config.serviceConnection.root.config  # pyright: ignore[reportAssignmentType, reportOptionalMemberAccess]
         if not isinstance(connection, PrefectConnection):
-            raise InvalidSourceException(f"Expected PrefectConnection, got {connection}")
+            raise InvalidSourceException(f"Expected PrefectConnection, got {connection}")  # pyright: ignore[reportUnreachable]
         return cls(config, metadata)
 
     def _build_task_dag(self, task_runs: list[dict]) -> list[Task]:
@@ -152,7 +152,7 @@ class PrefectSource(PipelineServiceSource):
                     if upstream_name and this_name not in downstream[upstream_name]:
                         downstream[upstream_name].append(this_name)
         return [
-            Task(
+            Task(  # pyright: ignore[reportCallIssue]
                 name=name,
                 displayName=name,
                 downstreamTasks=targets or None,
@@ -160,7 +160,7 @@ class PrefectSource(PipelineServiceSource):
                     metadata=self.metadata,
                     tags=list(tags_by_name[name]),
                     classification_name=PREFECT_TAG_CATEGORY,
-                    include_tags=self.source_config.includeTags,
+                    include_tags=bool(self.source_config.includeTags),
                 )
                 or None,
             )
@@ -284,7 +284,7 @@ class PrefectSource(PipelineServiceSource):
         """
         id_to_name = _stable_task_names(task_runs)
         return [
-            TaskStatus(
+            TaskStatus(  # pyright: ignore[reportCallIssue]
                 name=id_to_name[run["id"]],
                 executionStatus=PREFECT_STATE_MAP.get((run.get("state_type") or "UNKNOWN").upper(), StatusType.Pending),
                 startTime=_parse_timestamp(run.get("start_time") or run.get("expected_start_time")),
@@ -319,7 +319,7 @@ class PrefectSource(PipelineServiceSource):
             end_time = _parse_timestamp(run.get("end_time"))
 
             task_runs = task_runs_by_run.get(run["id"], [])
-            pipeline_status = PipelineStatus(
+            pipeline_status = PipelineStatus(  # pyright: ignore[reportCallIssue]
                 executionStatus=om_status,
                 taskStatus=self._build_task_status(task_runs, valid_names),
                 timestamp=start_time,
@@ -340,7 +340,7 @@ class PrefectSource(PipelineServiceSource):
             classification_name=PREFECT_TAG_CATEGORY,
             tag_description="Prefect Tag",
             classification_description="Tags associated with Prefect flows, deployments, and tasks",
-            include_tags=self.source_config.includeTags,
+            include_tags=bool(self.source_config.includeTags),
         )
 
     def yield_pipeline(self, pipeline_details: dict) -> Iterable[Either[CreatePipelineRequest]]:
@@ -364,7 +364,7 @@ class PrefectSource(PipelineServiceSource):
                 metadata=self.metadata,
                 tags=all_tags,
                 classification_name=PREFECT_TAG_CATEGORY,
-                include_tags=self.source_config.includeTags,
+                include_tags=bool(self.source_config.includeTags),
             )
 
             schedule_interval = self._schedule_interval(deployments)
@@ -375,7 +375,7 @@ class PrefectSource(PipelineServiceSource):
             # Stashed for yield_pipeline_status to filter historical taskStatus
             # entries against, same pattern as the Airflow connector — avoids
             # re-fetching the same latest run's tasks a second time.
-            self.context.get().task_names = {task.name for task in tasks}
+            self.context.get().task_names = {task.name for task in tasks}  # pyright: ignore[reportAttributeAccessIssue]
 
             # Build sourceUrl dynamically based on mode
             auth = self.service_connection.authType
@@ -392,9 +392,9 @@ class PrefectSource(PipelineServiceSource):
                 source_url = f"{ui_host}/flows/flow/{flow_id}"
 
             # Get the service FQN from context
-            service_fqn = self.context.get().pipeline_service
+            service_fqn = self.context.get().pipeline_service  # pyright: ignore[reportAttributeAccessIssue]
 
-            create_request = CreatePipelineRequest(
+            create_request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=flow_name,
                 displayName=flow_name,
                 scheduleInterval=schedule_interval,
@@ -405,14 +405,14 @@ class PrefectSource(PipelineServiceSource):
             )
 
             logger.info(f"Yielding pipeline request for {flow_name}")
-            yield Either(right=create_request)
+            yield Either(right=create_request)  # pyright: ignore[reportCallIssue]
             self.register_record(pipeline_request=create_request)
 
         except Exception as exc:
             # Defensive default: yield_pipeline_status reads context.task_names
             # back — without this, a flow that fails here leaves it unset.
-            self.context.get().task_names = set()
-            yield Either(
+            self.context.get().task_names = set()  # pyright: ignore[reportAttributeAccessIssue]
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=pipeline_details.get("name", "Prefect Pipeline"),
                     error=f"Failed to yield pipeline for flow {pipeline_details.get('name')}: {exc}",
@@ -427,17 +427,17 @@ class PrefectSource(PipelineServiceSource):
             flow_runs = self.client.get_flow_runs(
                 flow_id, limit=self.service_connection.numberOfStatus, exclude_scheduled=True
             )
-            valid_names = self.context.get().task_names or set()
+            valid_names = self.context.get().task_names or set()  # pyright: ignore[reportAttributeAccessIssue]
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
+                service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=self.context.get().pipeline,  # pyright: ignore[reportAttributeAccessIssue]
             )
             for status in self._build_pipeline_status(flow_runs, valid_names):
-                yield Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))
+                yield Either(right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))  # pyright: ignore[reportCallIssue, reportArgumentType]
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=pipeline_details.get("name", "Prefect Pipeline Status"),
                     error=f"Failed to yield status for flow {pipeline_details.get('name')}: {exc}",
@@ -464,10 +464,10 @@ class PrefectSource(PipelineServiceSource):
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
+                service_name=self.context.get().pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=self.context.get().pipeline,  # pyright: ignore[reportAttributeAccessIssue]
             )
-            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tags"])
+            pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tags"])  # pyright: ignore[reportArgumentType]
             if not pipeline_entity:
                 logger.warning(f"Pipeline entity not found for {pipeline_fqn}")
                 return
@@ -480,8 +480,8 @@ class PrefectSource(PipelineServiceSource):
                 logger.debug(f"No source/destination lineage tag pair for flow {pipeline_details['name']}")
                 return
 
-            lineage_details = LineageDetails(
-                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+            lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
+                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),  # pyright: ignore[reportCallIssue]
                 source=LineageSource.PipelineLineage,
             )
 
@@ -511,18 +511,18 @@ class PrefectSource(PipelineServiceSource):
                 resolved_sources, resolved_destinations
             ):
                 logger.info(f"Creating lineage: {source_identifier} -> {dest_identifier}")
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=source_table.id, type="table"),
-                            toEntity=EntityReference(id=dest_table.id, type="table"),
+                            fromEntity=EntityReference(id=source_table.id, type="table"),  # pyright: ignore[reportCallIssue]
+                            toEntity=EntityReference(id=dest_table.id, type="table"),  # pyright: ignore[reportCallIssue]
                             lineageDetails=lineage_details,
                         )
                     )
                 )
 
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=pipeline_details.get("name", "Prefect Pipeline Lineage"),
                     error=f"Failed to yield lineage for flow {pipeline_details.get('name')}: {exc}",
@@ -530,7 +530,7 @@ class PrefectSource(PipelineServiceSource):
                 )
             )
 
-    def get_pipelines_list(self) -> Iterable[dict]:
+    def get_pipelines_list(self) -> Iterable[dict]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Get List of all Prefect flows."""
         yield from self.client.get_flows()
 
