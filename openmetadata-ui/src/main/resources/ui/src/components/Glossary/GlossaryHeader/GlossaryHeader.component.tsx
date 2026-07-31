@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -590,12 +591,12 @@ const GlossaryHeader = ({
                     data-testid="version-button"
                     icon={<Icon component={VersionIcon} />}
                     onClick={handleVersionClick}>
-                    <Typography.Text
+                    <Typography
                       className={classNames('', {
                         'text-primary': version,
                       })}>
                       {toString(selectedData.version)}
-                    </Typography.Text>
+                    </Typography>
                   </Button>
                 </Tooltip>
               )}
@@ -650,7 +651,6 @@ const GlossaryHeader = ({
           onDelete={handleDelete}
         />
       )}
-
       <EntityNameModal<GlossaryTerm>
         allowRename
         entity={selectedData}
@@ -672,21 +672,18 @@ const GlossaryHeader = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-
       <StyleModal
         open={isStyleEditing}
         style={selectedData.style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
-
       {openChangeParentHierarchyModal && (
         <ChangeParentHierarchy
           selectedData={selectedData}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
         />
       )}
-
       {isOntologyImportOpen && (
         <ImportOntologyModal
           glossaryName={selectedData.fullyQualifiedName ?? ''}

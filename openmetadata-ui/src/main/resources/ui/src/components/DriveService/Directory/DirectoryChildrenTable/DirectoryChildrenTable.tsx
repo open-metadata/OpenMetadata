@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
@@ -71,9 +72,9 @@ function DirectoryChildrenTable() {
               textAlign: 'center',
             }}
             title={toLower(type)}>
-            <Typography.Text ellipsis className="cursor-pointer">
+            <Typography ellipsis className="cursor-pointer">
               {type ?? record.type}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
         ),
       },

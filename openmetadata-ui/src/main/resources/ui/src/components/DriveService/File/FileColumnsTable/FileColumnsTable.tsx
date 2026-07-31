@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {
@@ -167,18 +168,18 @@ function FileColumnsTable() {
                   columnName: name,
                   columnConstraint: record.constraint,
                 })}
-                <Typography.Text
-                  className={classNames('m-b-0 d-block break-word')}
-                  data-testid="column-name">
+                <Typography
+                  data-testid="column-name"
+                  className={classNames('m-b-0 d-block break-word')}>
                   {name}
-                </Typography.Text>
+                </Typography>
               </div>
               {isEmpty(displayName) ? null : (
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
-                  data-testid="column-display-name">
+                <Typography
+                  data-testid="column-display-name"
+                  className="m-b-0 d-block break-word">
                   {getEntityName(record)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           );
@@ -203,9 +204,9 @@ function FileColumnsTable() {
                 textAlign: 'center',
               }}
               title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              <Typography ellipsis className="cursor-pointer">
                 {dataTypeDisplay ?? record.dataType}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           );
         },

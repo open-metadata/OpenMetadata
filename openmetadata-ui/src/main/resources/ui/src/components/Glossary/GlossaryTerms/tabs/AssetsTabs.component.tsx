@@ -22,8 +22,8 @@ import {
   Skeleton,
   Space,
   Tooltip,
-  Typography,
 } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -441,7 +441,7 @@ const AssetsTabs = forwardRef(
 
         return (
           <>
-            <Typography.Text>{baseMessage}</Typography.Text>
+            <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
               className="m-t-sm"
@@ -706,16 +706,16 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as='p'>
                   {t('label.no-matching-data-asset')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as='p'>
                   {noDataPlaceholder.message}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
@@ -1072,13 +1072,13 @@ const AssetsTabs = forwardRef(
                         onFieldValueSelect={handleQuickFiltersValueSelect}
                       />
                       {quickFilterQuery && (
-                        <Typography.Text
-                          className="text-primary self-center cursor-pointer"
-                          onClick={clearFilters}>
+                        <Typography
+                          onClick={clearFilters}
+                          className="text-primary self-center cursor-pointer">
                           {t('label.clear-entity', {
                             entity: '',
                           })}
-                        </Typography.Text>
+                        </Typography>
                       )}
                     </div>
                   </Col>
@@ -1149,9 +1149,9 @@ const AssetsTabs = forwardRef(
               visible: selectedItems.size > 0,
             })}>
             <div className="d-flex items-center justify-between">
-              <Typography.Text className="text-white">
+              <Typography className="text-white">
                 {selectedItems.size} {t('label.items-selected-lowercase')}
-              </Typography.Text>
+              </Typography>
               <Button
                 danger
                 data-testid="delete-all-button"

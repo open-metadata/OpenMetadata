@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Card,
-  Dropdown,
-  Form,
-  MenuItemProps,
-  MenuProps,
-  Select,
-  Typography,
-} from 'antd';
+import { Button, Card, Dropdown, Form, MenuItemProps, MenuProps, Select } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,9 +58,9 @@ function AlertFormSourceItem({
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
         data-testid="drop-down-menu">
-        <Typography.Text className="p-l-md text-grey-muted">
+        <Typography className="p-l-md text-grey-muted">
           {t('label.data-asset-plural')}
-        </Typography.Text>
+        </Typography>
         <div className="p-t-xss">{menuNode}</div>
       </Card>
     );

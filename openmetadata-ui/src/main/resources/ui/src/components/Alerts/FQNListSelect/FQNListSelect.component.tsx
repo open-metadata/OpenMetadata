@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { SelectProps, Tag, Typography } from 'antd';
+import { SelectProps, Tag } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { useEffect, useState } from 'react';
@@ -110,7 +111,7 @@ const FQNListSelect = ({
         title={label}
         onClose={onClose}
         onMouseDown={onPreventMouseDown}>
-        <Typography.Text className="break-all">{label}</Typography.Text>
+        <Typography className="break-all">{label}</Typography>
       </Tag>
     );
   };

@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Bell01 } from '@untitledui/icons';
-import {
-  Button,
-  Col,
-  Collapse,
-  Dropdown,
-  Row,
-  Skeleton,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, Collapse, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
@@ -220,17 +211,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                           </Col>
                           <Col>
                             {/* Display the change event id */}
-                            <Typography.Text>
+                            <Typography>
                               {changeEventData.id}
-                            </Typography.Text>
+                            </Typography>
                           </Col>
                         </Row>
                       </Col>
                       <Col>
                         {/* Display the event timestamp */}
-                        <Typography.Text className="text-grey-muted">
+                        <Typography className="text-grey-muted">
                           {formatDateTime(typedEvent.timestamp)}
-                        </Typography.Text>
+                        </Typography>
                       </Col>
                     </Row>
                   }
@@ -248,20 +239,20 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   data-testid={`event-data-${key}`}
                                   gutter={[4, 4]}>
                                   <Col span={24}>
-                                    <Typography.Text
-                                      className="text-grey-muted"
-                                      data-testid="event-data-key">
+                                    <Typography
+                                      data-testid="event-data-key"
+                                      className="text-grey-muted">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                   <Col span={24}>
-                                    <Typography.Text
-                                      className="font-medium"
-                                      data-testid="event-data-value">
+                                    <Typography
+                                      data-testid="event-data-value"
+                                      className="font-medium">
                                       {value}
-                                    </Typography.Text>
+                                    </Typography>
                                   </Col>
                                 </Row>
                               </Col>
@@ -272,11 +263,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                     {!isEmpty(changeEventData.changeDescription) && (
                       <>
                         <Col span={24}>
-                          <Typography.Text className="font-medium">
+                          <Typography className="font-medium">
                             {`${t('label.change-entity', {
                               entity: t('label.description'),
                             })}:`}
-                          </Typography.Text>
+                          </Typography>
                         </Col>
                         <Col span={24}>
                           <SchemaEditor
@@ -333,14 +324,14 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           <Col>
             <Row gutter={[8, 8]}>
               <Col span={24}>
-                <Typography.Text className="font-medium">
+                <Typography className="font-medium">
                   {`${t('label.description')}:`}
-                </Typography.Text>
+                </Typography>
               </Col>
               <Col span={24}>
-                <Typography.Text className="text-grey-muted">
+                <Typography className="text-grey-muted">
                   {t('message.alert-recent-events-description', { alertName })}
-                </Typography.Text>
+                </Typography>
               </Col>
             </Row>
           </Col>
@@ -358,11 +349,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 data-testid="filter-button"
                 icon={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography.Text
-                    className="font-medium"
-                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
+                  <Typography
+                    data-testid="applied-filter-text"
+                    className="font-medium">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
-                  )}`}</Typography.Text>
+                  )}`}</Typography>
                 )}
               </Button>
             </Dropdown>

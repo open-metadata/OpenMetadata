@@ -12,7 +12,8 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space, Typography } from 'antd';
+import { Button, Select, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -164,9 +165,9 @@ const GlossaryTermSynonyms = () => {
 
   const header = (
     <div className="d-flex items-center gap-2">
-      <Typography.Text className="text-sm font-medium">
+      <Typography className="text-sm font-medium">
         {t('label.synonym-plural')}
-      </Typography.Text>
+      </Typography>
       {permissions.EditAll &&
         isViewMode &&
         (isEmpty(synonyms) ? (

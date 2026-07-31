@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -129,9 +130,9 @@ const GlossaryTermReferences = () => {
     <Space
       className="w-full"
       data-testid={`section-${t('label.reference-plural')}`}>
-      <Typography.Text className="text-sm font-medium">
+      <Typography className="text-sm font-medium">
         {t('label.reference-plural')}
-      </Typography.Text>
+      </Typography>
       {permissions.EditAll &&
         (isEmpty(references) ? (
           <PlusIconButton

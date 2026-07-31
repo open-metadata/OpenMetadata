@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
+import { Alert, Button, Modal, Progress, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -100,7 +101,7 @@ export const GlossaryUpdateConfirmationModal = ({
         dataIndex: 'message',
         key: 'message',
         render: (error: string) => (
-          <Typography.Paragraph>{error}</Typography.Paragraph>
+          <Typography as='p'>{error}</Typography>
         ),
       },
     ];
@@ -116,10 +117,10 @@ export const GlossaryUpdateConfirmationModal = ({
   const data = useMemo(() => {
     const footer = (
       <div className="d-flex justify-between">
-        <Typography.Text type="secondary">
+        <Typography color='secondary'>
           {failedStatus?.numberOfRowsFailed &&
             `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-        </Typography.Text>
+        </Typography>
         <Button onClick={onCancel}>{t('label.cancel')}</Button>
       </div>
     );
@@ -141,15 +142,15 @@ export const GlossaryUpdateConfirmationModal = ({
                 component={ExclamationIcon}
                 style={{ fontSize: '60px' }}
               />
-              <Typography.Title level={5}>
+              <Typography as='h5' size='text-md'>
                 {t('message.tag-update-confirmation')}
-              </Typography.Title>
-              <Typography.Text className="text-center">
+              </Typography>
+              <Typography className="text-center">
                 {t('message.glossary-tag-update-description')}{' '}
                 <span className="font-medium">
                   {getEntityName(glossaryTerm)}
                 </span>
-              </Typography.Text>
+              </Typography>
               <div className="m-t-lg">
                 <Space size={8}>
                   <Button onClick={onCancel}>
@@ -197,10 +198,10 @@ export const GlossaryUpdateConfirmationModal = ({
           ),
           footer: (
             <div className="d-flex justify-between">
-              <Typography.Text type="secondary">
+              <Typography color='secondary'>
                 {failedStatus?.numberOfRowsFailed &&
                   `${failedStatus.numberOfRowsFailed} ${t('label.failed')}`}
-              </Typography.Text>
+              </Typography>
               <Button onClick={onCancel}>{t('label.cancel')}</Button>
             </div>
           ),

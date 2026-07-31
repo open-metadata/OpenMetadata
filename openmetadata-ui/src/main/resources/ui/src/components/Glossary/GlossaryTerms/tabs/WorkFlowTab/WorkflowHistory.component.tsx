@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Empty, Typography } from 'antd';
+import { Empty } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
@@ -40,8 +41,6 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
-
-const { Text } = Typography;
 
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
@@ -218,11 +217,11 @@ const WorkflowHistory = memo(
             })}>
             <Empty
               description={
-                <Text className="text-grey-muted">
+                <Typography className="text-grey-muted">
                   {t('label.no-entity-available', {
                     entity: t('label.workflow-history'),
                   })}
-                </Text>
+                </Typography>
               }
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
@@ -249,13 +248,13 @@ const WorkflowHistory = memo(
             }}>
             <div className="workflow-header d-flex justify-between align-center w-full">
               <div className="d-flex align-center gap-2">
-                <Text className="workflow-title">
+                <Typography className="workflow-title">
                   {t('label.workflow-history')}
-                </Text>
+                </Typography>
               </div>
-              <Text className="workflow-counter">
+              <Typography className="workflow-counter">
                 {completedSteps}/{totalSteps}
-              </Text>
+              </Typography>
             </div>
             <div className="workflow-progress w-full">
               <div className="workflow-steps">{workflowSteps}</div>

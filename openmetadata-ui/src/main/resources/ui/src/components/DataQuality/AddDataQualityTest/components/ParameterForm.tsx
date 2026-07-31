@@ -13,17 +13,8 @@
 
 import { PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Form, FormItemProps, Input, InputNumber, Select, Switch, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FormListProps, RuleRender } from 'antd/lib/form';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
@@ -168,9 +159,9 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 title={
                   <div className="ant-form-item-label">
                     <label className="d-flex align-items-center">
-                      <Typography.Text className="form-label-title">
+                      <Typography className="form-label-title">
                         {label}
-                      </Typography.Text>
+                      </Typography>
                       <Tooltip title={data.description}>
                         <QuestionCircleOutlined className="ant-form-item-tooltip" />
                       </Tooltip>
@@ -322,7 +313,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         <Form.Item {...commonFormItemProps} className="m-b-0">
           {Field}
         </Form.Item>
-        <Typography.Text className="font-medium">{label}</Typography.Text>
+        <Typography className="font-medium">{label}</Typography>
       </div>
     ) : (
       <Form.Item

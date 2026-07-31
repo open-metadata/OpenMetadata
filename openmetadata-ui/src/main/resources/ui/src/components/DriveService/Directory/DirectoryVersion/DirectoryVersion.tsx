@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps, Typography } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -143,7 +144,7 @@ const DirectoryVersion = ({
         dataIndex: 'name',
         key: 'name',
         render: (_, record) => (
-          <Typography.Text>{getEntityName(record)}</Typography.Text>
+          <Typography>{getEntityName(record)}</Typography>
         ),
       },
       {
