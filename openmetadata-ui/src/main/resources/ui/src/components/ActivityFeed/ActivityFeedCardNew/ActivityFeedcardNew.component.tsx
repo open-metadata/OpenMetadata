@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Input, Skeleton, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined, orderBy } from 'lodash';
@@ -240,11 +241,11 @@ const ActivityFeedCardNew = ({
       color="white"
       overlayClassName="timestamp-tooltip"
       title={formatDateTime(timestampValue)}>
-      <Typography.Text
-        className="feed-card-header-v2-timestamp"
-        data-testid="timestamp">
+      <Typography
+        data-testid="timestamp"
+        className="feed-card-header-v2-timestamp">
         {getRelativeTime(timestampValue)}
-      </Typography.Text>
+      </Typography>
     </Tooltip>
   ) : null;
 
@@ -377,11 +378,11 @@ const ActivityFeedCardNew = ({
                       ' items-center':
                         showThread && entityRef?.type !== EntityType.CONTAINER,
                     })}>
-                    <Typography.Text
-                      className="card-style-feed-header text-sm"
-                      data-testid="headerText">
+                    <Typography
+                      data-testid="headerText"
+                      className="card-style-feed-header text-sm">
                       {feedHeaderText}
-                    </Typography.Text>
+                    </Typography>
 
                     {renderEntityLink}
                   </Space>
@@ -461,7 +462,7 @@ const ActivityFeedCardNew = ({
                   'header-container-right-panel': showThread,
                 })}
                 size={0}>
-                <Typography.Text
+                <Typography
                   className={classNames('mr-2', {
                     'activity-feed-user-name': !isPost,
                     'reply-card-user-name': isPost,
@@ -476,7 +477,7 @@ const ActivityFeedCardNew = ({
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
-                </Typography.Text>
+                </Typography>
                 {timestamp}
               </Space>
               {!isPost && (
@@ -490,11 +491,11 @@ const ActivityFeedCardNew = ({
                     ' items-center':
                       showThread && entityRef?.type !== EntityType.CONTAINER,
                   })}>
-                  <Typography.Text
-                    className="card-style-feed-header text-sm"
-                    data-testid="headerText">
+                  <Typography
+                    data-testid="headerText"
+                    className="card-style-feed-header text-sm">
                     {feedHeaderText}
-                  </Typography.Text>
+                  </Typography>
 
                   {renderEntityLink}
                 </Space>
@@ -535,9 +536,9 @@ const ActivityFeedCardNew = ({
       {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
           {(showActivityFeedEditor || isOpenInDrawer) && (
-            <Typography.Text className="activity-feed-comments-title m-b-md">
+            <Typography className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
-            </Typography.Text>
+            </Typography>
           )}
           {showFeedEditor ? (
             <ActivityFeedEditorNew

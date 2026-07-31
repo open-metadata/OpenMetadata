@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
@@ -88,11 +88,9 @@ const TaskListV1 = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
+          <Typography as='p' style={{ marginBottom: '0' }} className="placeholder-text">
             {emptyPlaceholderText}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );

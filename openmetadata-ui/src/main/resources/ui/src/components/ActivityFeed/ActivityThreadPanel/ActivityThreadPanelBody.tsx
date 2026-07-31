@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Switch, Typography } from 'antd';
+import { Button, Space, Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -363,9 +364,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               <>
                 {isConversationType && (
                   <Space className="w-full" direction="vertical">
-                    <Typography.Paragraph>
+                    <Typography as='p'>
                       {t('message.new-conversation')}
-                    </Typography.Paragraph>
+                    </Typography>
                     <ActivityFeedEditor
                       placeHolder={t('message.enter-a-field', {
                         field: t('label.message-lowercase'),
@@ -378,11 +379,11 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                   <ErrorPlaceHolder
                     className="mt-24"
                     type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                    <Typography.Paragraph>
+                    <Typography as='p'>
                       {isTaskClosed
                         ? t('message.no-closed-task')
                         : t('message.no-open-task')}
-                    </Typography.Paragraph>
+                    </Typography>
                   </ErrorPlaceHolder>
                 )}
               </>

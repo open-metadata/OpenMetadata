@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from 'antd';
+import { Button, Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -172,9 +173,9 @@ const FeedCardBodyNew = ({
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         <Card bordered className="activity-feed-reply-card-message">
-          <Typography.Text className="activity-feed-comment-text">
+          <Typography className="activity-feed-comment-text">
             {message}
-          </Typography.Text>
+          </Typography>
         </Card>;
       }
     }

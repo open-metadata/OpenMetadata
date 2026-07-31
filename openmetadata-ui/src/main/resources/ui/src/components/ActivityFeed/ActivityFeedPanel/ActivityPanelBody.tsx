@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Input, Typography } from 'antd';
+import { Input } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,11 +68,10 @@ const ActivityPanelBody: FC<ActivityPanelBodyProps> = ({
         showThread
         activity={activity}
       />
-
       <div className="activity-feed-comments-container d-flex flex-col m-t-md">
-        <Typography.Text className="activity-feed-comments-title m-b-md">
+        <Typography className="activity-feed-comments-title m-b-md">
           {t('label.comment-plural')}
-        </Typography.Text>
+        </Typography>
 
         {showFeedEditor ? (
           <ActivityFeedEditorNew

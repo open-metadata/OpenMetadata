@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -92,9 +93,9 @@ const TaskFeedCard = ({
 
     if (columnName) {
       return (
-        <Typography.Text className="p-r-xss">
+        <Typography className="p-r-xss">
           {columnName} {t('label.in-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -123,19 +124,19 @@ const TaskFeedCard = ({
             data-testid="redirect-task-button-link"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography className="p-0 text-primary">{`#${taskDetails.id} `}</Typography>
 
-            <Typography.Text className="p-xss">
+            <Typography className="p-xss">
               {t(TASK_TYPES[taskDetails.type])}
-            </Typography.Text>
+            </Typography>
 
             {taskColumnName}
 
-            <Typography.Text className="break-all" data-testid="entity-link">
+            <Typography data-testid="entity-link" className="break-all">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
+            <Typography className="p-l-xss">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -182,7 +183,7 @@ const TaskFeedCard = ({
             {taskLinkTitleElement}
           </Col>
           <Col span={24}>
-            <Typography.Text className="task-feed-body text-xs text-grey-muted">
+            <Typography className="task-feed-body text-xs text-grey-muted">
               <UserPopOverCard
                 key={feed.createdBy}
                 userName={feed.createdBy ?? ''}>
@@ -198,7 +199,7 @@ const TaskFeedCard = ({
                   </span>
                 </Tooltip>
               )}
-            </Typography.Text>
+            </Typography>
           </Col>
           {!showThread ? (
             <Col span={24}>
@@ -230,14 +231,14 @@ const TaskFeedCard = ({
                     </div>
                   </>
                 )}
-                <Typography.Text
+                <Typography
                   className={classNames(
                     postLength > 0
                       ? 'm-l-sm text-sm text-grey-muted'
                       : 'text-sm text-grey-muted'
                   )}>
                   {`${t('label.assignee-plural')}: `}
-                </Typography.Text>
+                </Typography>
                 <OwnerLabel owners={feed?.task?.assignees} />
               </div>
             </Col>

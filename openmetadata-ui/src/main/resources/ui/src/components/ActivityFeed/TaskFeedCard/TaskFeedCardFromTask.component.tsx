@@ -12,7 +12,8 @@
  */
 
 import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import { Button, Card, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Card, Col, Row, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -123,9 +124,9 @@ const TaskFeedCardFromTask = ({
 
     if (columnName) {
       return (
-        <Typography.Text className="p-r-xss column-name">
+        <Typography className="p-r-xss column-name">
           {columnName} {t('label.in-lowercase')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -150,21 +151,21 @@ const TaskFeedCardFromTask = ({
             data-testid="redirect-task-button-link"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography.Text>
+            <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
-            <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
+            <Typography className="m-r-xss  m-r-xss task-details-entity-link">
               {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
-            </Typography.Text>
+            </Typography>
 
             {taskColumnName}
 
-            <Typography.Text
-              className="break-all header-link text-sm"
-              data-testid="entity-link">
+            <Typography
+              data-testid="entity-link"
+              className="break-all header-link text-sm">
               {getNameFromFQN(entityFQN)}
-            </Typography.Text>
+            </Typography>
 
-            <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
+            <Typography className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -313,7 +314,7 @@ const TaskFeedCardFromTask = ({
               {taskLinkTitleElement}
             </Col>
             <Col style={{ marginTop: '-8px' }}>
-              <Typography.Text>
+              <Typography>
                 <UserPopOverCard
                   key={task.createdBy?.name}
                   userName={task.createdBy?.name ?? ''}>
@@ -335,7 +336,7 @@ const TaskFeedCardFromTask = ({
                     </span>
                   </Tooltip>
                 )}
-              </Typography.Text>
+              </Typography>
             </Col>
           </Col>
           <Col span={24}>

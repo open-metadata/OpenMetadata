@@ -12,7 +12,8 @@
  */
 
 import { CloseOutlined } from '@ant-design/icons';
-import { Button, Space, Typography } from 'antd';
+import { Button, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,25 +44,25 @@ const TaskPanelHeader: FC<TaskPanelHeaderProps> = ({
     <div className={classNames('feed-panel-header', className)}>
       <Space className="w-full justify-between">
         <Space direction="vertical" size={0}>
-          <Typography.Text className="font-semibold text-md">
+          <Typography className="font-semibold text-md">
             {`#${getTaskDisplayId(task.taskId)} `}
             {t(taskTypeLabel)}
-          </Typography.Text>
+          </Typography>
           {task.about && (
-            <Typography.Text className="text-grey-muted text-sm">
+            <Typography className="text-grey-muted text-sm">
               {getEntityName(task.about)}
-            </Typography.Text>
+            </Typography>
           )}
         </Space>
         <Space>
-          <Typography.Text
+          <Typography
             className={classNames('task-status-badge', {
               open: isOpen,
               granted: isGranted,
               closed: !isOpen && !isGranted,
             })}>
             {task.status}
-          </Typography.Text>
+          </Typography>
           {onCancel && (
             <Button
               data-testid="close-drawer-button"

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -121,11 +122,11 @@ const FeedCardHeaderV2 = ({
           <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(entityType ?? '')}
           </span>
-          <Typography.Text className="break-all font-bold">
+          <Typography className="break-all font-bold">
             {feed?.entityRef
               ? getEntityName(feed.entityRef)
               : entityDisplayName(entityType, entityFQN)}
-          </Typography.Text>
+          </Typography>
         </>
       );
     }
@@ -133,7 +134,7 @@ const FeedCardHeaderV2 = ({
 
   return (
     <div className={classNames('feed-card-header-v2', className)}>
-      <Typography.Text className="break-word">
+      <Typography className="break-word">
         <UserPopOverCard userName={createdBy}>
           <Link className="thread-author" to={getUserPath(createdBy)}>
             {getEntityName(user)}
@@ -141,35 +142,35 @@ const FeedCardHeaderV2 = ({
         </UserPopOverCard>
 
         {entityCheck && !isEntityFeed && (
-          <Typography.Text
-            className="font-normal whitespace-normal"
-            data-testid="headerText">
+          <Typography
+            data-testid="headerText"
+            className="font-normal whitespace-normal">
             {isAnnouncement ? (
-              <Typography.Text className="m-r-xss">
+              <Typography className="m-r-xss">
                 {t('label.posted-on-lowercase')}
-              </Typography.Text>
+              </Typography>
             ) : (
               <>
-                <Typography.Text className="m-r-xss">
+                <Typography className="m-r-xss">
                   {getFeedHeaderTextFromCardStyle(
                     fieldOperation,
                     cardStyle,
                     fieldName,
                     entityType
                   )}
-                </Typography.Text>
+                </Typography>
                 {fieldName === 'assets' && (
-                  <Typography.Text className="m-r-xss">
+                  <Typography className="m-r-xss">
                     {t('label.to-lowercase')}
-                  </Typography.Text>
+                  </Typography>
                 )}
               </>
             )}
 
             {renderEntityLink}
-          </Typography.Text>
+          </Typography>
         )}
-      </Typography.Text>
+      </Typography>
       {timeStamp && (
         <Tooltip
           color="white"

@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Divider,
-  Dropdown,
-  Menu,
-  Segmented,
-  Space,
-  Typography,
-} from 'antd';
+import { Button, Divider, Dropdown, Menu, Segmented, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -206,40 +199,40 @@ export const ActivityFeedTab = ({
     if (activeTab === ActivityFeedTabs.ALL) {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-activity-feed-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-activity-feed-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <Typography.Text className="placeholder-text">
+        <Typography className="placeholder-text">
           {t('message.no-mentions')}
-        </Typography.Text>
+        </Typography>
       );
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-closed-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-closed-tasks-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
       return (
         <div className="d-flex flex-col gap-4">
-          <Typography.Text className="placeholder-title">
+          <Typography className="placeholder-title">
             {t('message.no-open-tasks-title')}
-          </Typography.Text>
-          <Typography.Text className="placeholder-text">
+          </Typography>
+          <Typography className="placeholder-text">
             {t('message.no-open-tasks-description')}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     }
@@ -698,20 +691,20 @@ export const ActivityFeedTab = ({
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
       return (
-        <Typography.Text className="placeholder-text m-t-0">
+        <Typography className="placeholder-text m-t-0">
           {t('message.no-mentions')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
     return (
       <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-md">
+        <Typography className="placeholder-title m-t-md">
           {t('message.no-conversations')}
-        </Typography.Text>
-        <Typography.Text className="placeholder-text">
+        </Typography>
+        <Typography className="placeholder-text">
           {t('message.no-conversations-description')}
-        </Typography.Text>
+        </Typography>
       </div>
     );
   }, [activeTab, selectedThread]);
@@ -871,11 +864,9 @@ export const ActivityFeedTab = ({
             />
           )}
       </div>
-
       {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
         <Divider className="feed-divider h-100 m-0" type="vertical" />
       )}
-
       <div
         className={classNames('right-container', {
           'hide-panel': isFullWidth,
@@ -890,9 +881,9 @@ export const ActivityFeedTab = ({
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
+                  <Typography as='p' className="placeholder-text">
                     {getRightPanelPlaceholder}
-                  </Typography.Paragraph>
+                  </Typography>
                 </ErrorPlaceHolderNew>
               </div>
             )}

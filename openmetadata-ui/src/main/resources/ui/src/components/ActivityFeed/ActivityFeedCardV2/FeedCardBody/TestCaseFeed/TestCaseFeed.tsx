@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Col, Row } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -76,9 +77,9 @@ function TestCaseFeed({
   return (
     <Row gutter={[0, 12]}>
       <Col span={24}>
-        <Typography.Text className="font-bold">{`${t(
+        <Typography className="font-bold">{`${t(
           'label.test-suite-summary'
-        )}:`}</Typography.Text>
+        )}:`}</Typography>
       </Col>
       <Col span={24}>
         <Row gutter={16}>
@@ -89,7 +90,6 @@ function TestCaseFeed({
           ))}
         </Row>
       </Col>
-
       {showTestCaseGraph && <Col span={24}>{renderTestCaseResult}</Col>}
     </Row>
   );

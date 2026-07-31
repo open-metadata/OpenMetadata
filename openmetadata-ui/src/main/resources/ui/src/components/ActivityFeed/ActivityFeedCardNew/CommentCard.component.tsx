@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -143,7 +144,7 @@ const CommentCard = ({
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
-          <Typography.Text className="activity-feed-user-name reply-card-user-name">
+          <Typography className="activity-feed-user-name reply-card-user-name">
             <UserPopOverCard userName={post.from ?? ''}>
               <Link
                 className="reply-card-user-name"
@@ -151,28 +152,27 @@ const CommentCard = ({
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>
-          </Typography.Text>
-          <Typography.Text className="seperator m-b-xss">
+          </Typography>
+          <Typography className="seperator m-b-xss">
             {seperator}
-          </Typography.Text>
-          <Typography.Text>
+          </Typography>
+          <Typography>
             <Tooltip
               color="white"
               overlayClassName="timestamp-tooltip"
               title={formatDateTime(post.postTs)}>
-              <Typography.Text
-                className="feed-card-header-v2-timestamp mr-2"
-                data-testid="timestamp">
+              <Typography
+                data-testid="timestamp"
+                className="feed-card-header-v2-timestamp mr-2">
                 {getRelativeTime(post.postTs)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
-          </Typography.Text>
+          </Typography>
         </div>
         {feedBodyRender}
 
         <FeedCardFooterNew isPost feed={feed} post={post} />
       </div>
-
       {isHovered && (
         <ActivityFeedActions
           isPost

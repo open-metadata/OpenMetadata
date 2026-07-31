@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
@@ -179,11 +179,9 @@ const ActivityFeedListV1New = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
+          <Typography as='p' style={{ marginBottom: '0' }} className="placeholder-text">
             {emptyPlaceholderText}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );
