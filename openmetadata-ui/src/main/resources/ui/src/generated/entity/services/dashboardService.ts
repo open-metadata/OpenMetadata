@@ -233,6 +233,8 @@ export interface DashboardConnection {
  * The fastest business intelligence tool for humans and agents
  *
  * SAP S/4HANA Connection Config for Embedded Analytics
+ *
+ * Omni BI connector: models, topics, workbooks/dashboards and lineage
  */
 export interface Connection {
     /**
@@ -265,6 +267,8 @@ export interface Connection {
     dashboardFilterPattern?: FilterPattern;
     /**
      * Regex exclude or include data models that matches the pattern.
+     *
+     * Regex to exclude or include data models (Omni topics) that matches the pattern.
      */
     dataModelFilterPattern?: FilterPattern;
     /**
@@ -310,6 +314,9 @@ export interface Connection {
      * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
+     *
+     * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
+     * automatically.
      */
     hostPort?: string;
     /**
@@ -551,6 +558,8 @@ export interface Connection {
      * Hex API token for authentication. Can be personal or workspace token.
      *
      * API token to authenticate with Rill.
+     *
+     * API token to authenticate with Omni.
      */
     token?: string;
     /**
@@ -784,6 +793,8 @@ export interface CertificatesSSLConfig {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include data models (Omni topics) that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1539,6 +1550,7 @@ export enum DashboardServiceType {
     Metabase = "Metabase",
     MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Omni = "Omni",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",

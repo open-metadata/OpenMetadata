@@ -36,7 +36,8 @@
         "Hex",
         "Ssrs",
         "Rill",
-        "SapS4Hana"
+        "SapS4Hana",
+        "Omni"
       ],
       "javaEnums": [
         {
@@ -104,6 +105,9 @@
         },
         {
           "name": "SapS4Hana"
+        },
+        {
+          "name": "Omni"
         }
       ]
     },
@@ -183,6 +187,9 @@
             },
             {
               "$ref": "./connections/dashboard/sapS4HanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/omniConnection.json"
             }
           ]
         }

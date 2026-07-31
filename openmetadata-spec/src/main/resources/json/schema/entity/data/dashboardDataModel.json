@@ -35,7 +35,8 @@
         "SapS4HanaCdsView",
         "SsrsDataModel",
         "RillModel",
-        "RillMetricsView"
+        "RillMetricsView",
+        "OmniDataModel"
       ],
       "javaEnums": [
         {
@@ -94,6 +95,9 @@
         },
         {
           "name": "RillMetricsView"
+        },
+        {
+          "name": "OmniDataModel"
         }
       ]
     }
