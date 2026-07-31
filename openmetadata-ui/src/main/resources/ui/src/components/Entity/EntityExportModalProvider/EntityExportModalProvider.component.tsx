@@ -74,6 +74,7 @@ const CSV_EXPORT_INITIAL_POLL_INTERVAL_MS = 1_000;
 const CSV_EXPORT_MAX_POLL_INTERVAL_MS = 10_000;
 const CSV_EXPORT_STATUS_REQUEST_TIMEOUT_MS = 5_000;
 const CSV_EXPORT_MAX_CONSECUTIVE_POLL_FAILURES = 6;
+const CSV_EXPORT_MAX_POLL_DURATION_MS = 5 * 60 * 1_000;
 
 interface CSVExportPollingState {
   abortController: AbortController;
@@ -110,6 +111,7 @@ export const EntityExportModalProvider = ({
   const exportOnErrorRef = useRef<(() => void) | undefined>();
   const csvExportPollingRef = useRef<CSVExportPollingState>();
   const csvExportResultAbortControllerRef = useRef<AbortController>();
+  const exportGenerationRef = useRef(0);
 
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
@@ -168,9 +170,17 @@ export const EntityExportModalProvider = ({
     [exportData]
   );
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
+    exportGenerationRef.current++;
+    stopCSVExportPolling();
+    abortCSVExportResultRequest();
+    setCSVExportJob(undefined);
+    csvExportJobRef.current = undefined;
+    pendingCSVExportResponsesRef.current.clear();
+    exportOnErrorRef.current = undefined;
+    setDownloading(false);
     setExportData(null);
-  };
+  }, [abortCSVExportResultRequest, stopCSVExportPolling]);
 
   const showModal = useCallback((data: ExportData) => {
     setExportData(data);
@@ -191,14 +201,14 @@ export const EntityExportModalProvider = ({
           fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
         downloadFile(data, `${csvFileName}.csv`);
       }
-      setDownloading(false);
       handleCancel();
-      setCSVExportJob(undefined);
-      csvExportJobRef.current = undefined;
-      pendingCSVExportResponsesRef.current.clear();
-      exportOnErrorRef.current = undefined;
     },
-    [abortCSVExportResultRequest, isBulkEdit, stopCSVExportPolling]
+    [
+      abortCSVExportResultRequest,
+      handleCancel,
+      isBulkEdit,
+      stopCSVExportPolling,
+    ]
   );
 
   const handleClearCSVExportData = useCallback(() => {
@@ -263,6 +273,11 @@ export const EntityExportModalProvider = ({
               return;
             }
             showErrorToast(error as AxiosError);
+            setCSVExportJob((prev) =>
+              prev?.jobId === jobId
+                ? { ...prev, error: t('server.unexpected-error') }
+                : prev
+            );
             setDownloading(false);
             exportOnErrorRef.current?.();
             exportOnErrorRef.current = undefined;
@@ -345,6 +360,7 @@ export const EntityExportModalProvider = ({
         jobId,
       };
       csvExportPollingRef.current = pollingState;
+      const pollingStartTime = Date.now();
 
       const waitForNextPoll = (intervalMs: number) =>
         new Promise<void>((resolve) => {
@@ -429,6 +445,13 @@ export const EntityExportModalProvider = ({
             return;
           }
 
+          if (
+            Date.now() - pollingStartTime >=
+            CSV_EXPORT_MAX_POLL_DURATION_MS
+          ) {
+            break;
+          }
+
           try {
             const job = await getPolledJob();
 
@@ -485,6 +508,7 @@ export const EntityExportModalProvider = ({
     }
     setCSVExportError(undefined);
     exportOnErrorRef.current = exportData.onError;
+    let currentGeneration: number | undefined;
     try {
       if (exportType !== ExportTypes.CSV) {
         // Flush the loading state, then wait for the browser to actually paint
@@ -514,6 +538,7 @@ export const EntityExportModalProvider = ({
         return;
       }
 
+      currentGeneration = ++exportGenerationRef.current;
       setDownloading(true);
       stopCSVExportPolling();
       abortCSVExportResultRequest();
@@ -525,6 +550,10 @@ export const EntityExportModalProvider = ({
         recursive: !isBulkEdit,
       });
 
+      if (exportGenerationRef.current !== currentGeneration) {
+        return;
+      }
+
       if (isString(data)) {
         // Bulk Edit loads its grid via a synchronous export that returns the CSV
         // directly — feed it to the wizard instead of downloading a file.
@@ -534,10 +563,6 @@ export const EntityExportModalProvider = ({
           downloadFile(data, `${fileName}.csv`);
         }
         handleCancel();
-        setDownloading(false);
-        csvExportJobRef.current = undefined;
-        pendingCSVExportResponsesRef.current.clear();
-        exportOnErrorRef.current = undefined;
       } else {
         const jobData = {
           jobId: data.jobId,
@@ -558,6 +583,12 @@ export const EntityExportModalProvider = ({
         }
       }
     } catch (error) {
+      if (
+        currentGeneration !== undefined &&
+        exportGenerationRef.current !== currentGeneration
+      ) {
+        return;
+      }
       showErrorToast(error as AxiosError);
       setDownloading(false);
       if (isBulkEdit) {
@@ -608,6 +639,7 @@ export const EntityExportModalProvider = ({
 
   useEffect(
     () => () => {
+      exportGenerationRef.current++;
       stopCSVExportPolling();
       abortCSVExportResultRequest();
     },

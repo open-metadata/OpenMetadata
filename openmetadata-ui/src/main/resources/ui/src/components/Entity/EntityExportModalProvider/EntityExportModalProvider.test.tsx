@@ -589,7 +589,7 @@ describe('EntityExportModalProvider component', () => {
     }
   });
 
-  it('keeps polling a healthy export beyond the former thirty-minute limit', async () => {
+  it('keeps polling a healthy export up to the 5-minute limit without failing', async () => {
     jest.useFakeTimers();
 
     try {
@@ -615,14 +615,16 @@ describe('EntityExportModalProvider component', () => {
         fireEvent.click(screen.getByText('Start polled export'));
       });
 
-      for (let pollAttempt = 1; pollAttempt <= 183; pollAttempt++) {
+      // Advance to just under the 5-minute cap (285 s < 300 s):
+      // 4 backoff steps (1+2+4+8 = 15 s) + 27 steps at 10 s = 285 s total.
+      for (let pollAttempt = 1; pollAttempt <= 31; pollAttempt++) {
         const intervalMs = Math.min(1_000 * 2 ** (pollAttempt - 1), 10_000);
         await act(async () => {
           jest.advanceTimersByTime(intervalMs);
         });
       }
 
-      expect(getCsvAsyncJob).toHaveBeenCalledTimes(184);
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(32);
       expect(onError).not.toHaveBeenCalled();
       expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
 
@@ -847,5 +849,221 @@ describe('EntityExportModalProvider component', () => {
     expect(screen.getByTestId('export-error')).not.toHaveTextContent(
       'sensitive backend detail'
     );
+  });
+
+  it('cancelling the modal stops in-flight polling', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    jest.useFakeTimers();
+
+    try {
+      const runningJob: CsvAsyncJob = {
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      };
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue(runningJob);
+
+      render(
+        <EntityExportModalProvider>
+          <ConsumerComponent />
+        </EntityExportModalProvider>
+      );
+
+      fireEvent.click(await screen.findByText('Manage'));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('submit-button'));
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      const callCountBeforeCancel = (getCsvAsyncJob as jest.Mock).mock.calls
+        .length;
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.cancel'));
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(20_000);
+      });
+
+      expect(getCsvAsyncJob).toHaveBeenCalledTimes(callCountBeforeCancel);
+      expect(
+        screen.queryByTestId('export-entity-modal')
+      ).not.toBeInTheDocument();
+    } finally {
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
+  });
+
+  it('generation counter prevents polling when modal is cancelled while onExport is pending', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    const deferredExport = createDeferredExport();
+    const slowOnExport = jest.fn().mockReturnValue(deferredExport.promise);
+
+    const SlowExportConsumer = () => {
+      const { showModal } = useEntityExportModalProvider();
+
+      return (
+        <button
+          onClick={() =>
+            showModal({
+              name: 'test',
+              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
+              onExport: slowOnExport,
+            })
+          }>
+          Start
+        </button>
+      );
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <SlowExportConsumer />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Start'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-button'));
+    });
+
+    fireEvent.click(screen.getByText('label.cancel'));
+
+    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+
+    await act(async () => {
+      deferredExport.resolve(mockExportJob);
+      await deferredExport.promise;
+    });
+
+    expect(getCsvAsyncJob).not.toHaveBeenCalled();
+  });
+
+  it('does not start polling when the provider unmounts before onExport resolves', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    const deferredExport = createDeferredExport();
+    const slowOnExport = jest.fn().mockReturnValue(deferredExport.promise);
+
+    const UnmountConsumer = () => {
+      const { showModal } = useEntityExportModalProvider();
+
+      return (
+        <button
+          onClick={() =>
+            showModal({
+              name: 'test',
+              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
+              onExport: slowOnExport,
+            })
+          }>
+          Start
+        </button>
+      );
+    };
+
+    const { unmount } = render(
+      <EntityExportModalProvider>
+        <UnmountConsumer />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Start'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-button'));
+    });
+
+    unmount();
+
+    await act(async () => {
+      deferredExport.resolve(mockExportJob);
+      await deferredExport.promise;
+    });
+
+    expect(getCsvAsyncJob).not.toHaveBeenCalled();
+  });
+
+  it('shows an error Alert in the modal when the result download fails after COMPLETED', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    (getCsvAsyncJobResult as jest.Mock).mockRejectedValueOnce(
+      new Error('download failed')
+    );
+
+    render(
+      <EntityExportModalProvider>
+        <WebsocketConsumerComponent />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(await screen.findByText('Manage'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-button'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Complete'));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText('server.unexpected-error')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('export-entity-modal')).toBeInTheDocument();
+    expect(downloadFile).not.toHaveBeenCalled();
+  });
+
+  it('stops polling and marks export as failed after the 5-minute max duration', async () => {
+    jest.useFakeTimers();
+    let nowMs = 0;
+    const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
+
+    try {
+      (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+      const onError = jest.fn();
+      const onExport = jest.fn().mockResolvedValue(mockExportJob);
+      const runningJob: CsvAsyncJob = {
+        createdBy: 'admin',
+        entityType: 'database',
+        jobId: mockExportJob.jobId,
+        operation: 'EXPORT',
+        status: 'RUNNING',
+      };
+      (getCsvAsyncJob as jest.Mock).mockResolvedValue(runningJob);
+
+      render(
+        <EntityExportModalProvider>
+          <PollingConsumer onError={onError} onExport={onExport} />
+        </EntityExportModalProvider>
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('Start polled export'));
+      });
+
+      await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
+
+      nowMs = 5 * 60 * 1_000 + 1_000;
+
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'server.unexpected-error'
+      );
+    } finally {
+      dateSpy.mockRestore();
+      (getCsvAsyncJob as jest.Mock).mockReset();
+      jest.useRealTimers();
+    }
   });
 });
