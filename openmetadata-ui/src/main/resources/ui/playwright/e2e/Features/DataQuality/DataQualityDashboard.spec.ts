@@ -626,7 +626,9 @@ test.describe(
         ).toBeVisible();
       });
 
-      await test.step('Verify New incident for Consistency test case on table3 DQ tab', async () => {
+      // table3 is given an owner in beforeAll, so the incident raised by the
+      // Consistency failure is auto-assigned on creation instead of opening as New.
+      await test.step('Verify Assigned incident for Consistency test case on table3 DQ tab', async () => {
         await visitDataQualityTab(page, table3);
         await expect(
           page.locator(
@@ -635,7 +637,7 @@ test.describe(
         ).toContainText('Failed');
         await expect(
           page.locator(`[data-testid="${consistencyTestCaseName}-status"]`)
-        ).toContainText('New');
+        ).toContainText('Assigned');
       });
 
       await test.step('Verify Resolved incident chip for Uniqueness test case on table4 DQ tab', async () => {
