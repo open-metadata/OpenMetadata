@@ -40,6 +40,7 @@ import {
 import {
   getConnectedNodesEdges,
   getEntityChildrenAndLabel,
+  getNodeLineageData,
   getUpstreamDownstreamNodesEdges,
 } from './EntityLineageNodeUtils';
 import {

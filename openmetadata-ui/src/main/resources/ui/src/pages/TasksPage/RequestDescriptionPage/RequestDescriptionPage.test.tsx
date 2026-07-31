@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { forwardRef } from 'react';
 import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
@@ -133,28 +139,31 @@ describe('RequestDescriptionPage', () => {
       <RequestDescription pageTitle={i18n.t('label.request-description')} />
     );
     const submitBtn = await screen.findByTestId('submit-btn');
+    await screen.findByDisplayValue('Task message');
 
     await act(async () => {
       fireEvent.click(submitBtn);
     });
 
-    expect(mockPostThread).toHaveBeenCalledWith({
-      about:
-        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::description>',
-      from: undefined,
-      message: 'Task message',
-      taskDetails: {
-        assignees: [
-          {
-            id: 'id1',
-            type: 'User',
-          },
-        ],
-        oldValue: '',
-        suggestion: undefined,
-        type: 'RequestDescription',
-      },
-      type: 'Task',
-    });
+    await waitFor(() =>
+      expect(mockPostThread).toHaveBeenCalledWith({
+        about:
+          '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::"address.street_name"::description>',
+        from: undefined,
+        message: 'Task message',
+        taskDetails: {
+          assignees: [
+            {
+              id: 'id1',
+              type: 'User',
+            },
+          ],
+          oldValue: '',
+          suggestion: undefined,
+          type: 'RequestDescription',
+        },
+        type: 'Task',
+      })
+    );
   });
 });
