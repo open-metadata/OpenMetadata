@@ -65,6 +65,29 @@ def test_team(metadata):
 
 
 @pytest.fixture(scope="module")
+def test_team_data(metadata):
+    """A Group team named "Data", whose name also matches DataInsightsApplicationBot."""
+    # Sample-data lanes already own this team; deleting theirs would break their tests.
+    existing = metadata.get_by_name(entity=Team, fqn="Data")
+    if existing:
+        yield existing
+        return
+
+    team = metadata.create_or_update(
+        data=CreateTeamRequest(teamType=TeamType.Group, name="Data", email="data@getcollate.io")
+    )
+
+    yield team
+
+    _safe_delete(
+        metadata,
+        entity=Team,
+        entity_id=team.id,
+        hard_delete=True,
+    )
+
+
+@pytest.fixture(scope="module")
 def test_user_1(metadata):
     """Create first test user."""
     user = metadata.create_or_update(
@@ -174,7 +197,7 @@ class TestOMetaUserAPI:
         # I can get the team by its mail
         assert test_team.id == metadata.get_reference_by_email(email="ops.team@getcollate.io").root[0].id
 
-    def test_es_search_from_name(self, metadata, test_user_1, test_user_2, test_team):
+    def test_es_search_from_name(self, metadata, test_user_1, test_user_2, test_team, test_team_data):
         """
         We can fetch users by its name
         """
