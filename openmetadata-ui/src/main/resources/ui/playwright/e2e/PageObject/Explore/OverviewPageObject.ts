@@ -441,10 +441,8 @@ export class OverviewPageObject extends RightPanelBase {
   }
 
   async editOwners(ownerName: string): Promise<OverviewPageObject> {
-    await this.editOwnersIcon.scrollIntoViewIfNeeded();
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editOwnersIcon.click({ force: true });
-    await this.userSearchBar.waitFor({ state: 'visible' });
+    await this.openOwnerSelector();
+    await expect(this.userSearchBar).toBeVisible();
     await this.userSearchBar.scrollIntoViewIfNeeded();
     await this.userSearchBar.fill(ownerName);
     await this.loader.waitFor({ state: 'hidden' });
@@ -474,12 +472,11 @@ export class OverviewPageObject extends RightPanelBase {
     ownerNames: string[],
     type: 'Users' | 'Teams' = 'Users'
   ): Promise<OverviewPageObject> {
-    await this.editOwnersIcon.waitFor({ state: 'visible' });
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await this.editOwnersIcon.click({ force: true });
-
-    await this.selectOwnerTabs.waitFor({ state: 'visible' });
-    await this.page.getByRole('tab', { name: type }).click();
+    await this.openOwnerSelector();
+    const ownerTypeTab = this.selectOwnerTabs.getByRole('tab', { name: type });
+    await expect(ownerTypeTab).toBeVisible();
+    await expect(ownerTypeTab).toBeEnabled();
+    await ownerTypeTab.click();
 
     let anyChangesMade = false;
     for (const ownerName of ownerNames) {
@@ -518,6 +515,19 @@ export class OverviewPageObject extends RightPanelBase {
       await this.updateButton.click();
     }
     return this;
+  }
+
+  private async openOwnerSelector(): Promise<void> {
+    await this.waitForLoadersToDisappear();
+    await this.editOwnersIcon.scrollIntoViewIfNeeded();
+
+    await expect(this.editOwnersIcon).toBeVisible({ timeout: 10_000 });
+    await expect(this.editOwnersIcon).toBeEnabled();
+
+    await this.editOwnersIcon.click();
+
+    await expect(this.selectOwnerTabs).toBeVisible({ timeout: 10_000 });
+    await expect(this.selectOwnerTabsRoleTab).toBeVisible({ timeout: 10_000 });
   }
 
   /**
