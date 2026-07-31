@@ -1020,7 +1020,7 @@ describe('EntityExportModalProvider component', () => {
     expect(downloadFile).not.toHaveBeenCalled();
   });
 
-  it('bulk-edit: keeps polling past the 5-minute cap without failing', async () => {
+  it('bulk-edit: continues past the 5-minute modal cap and fails at 30 minutes', async () => {
     jest.useFakeTimers();
     let nowMs = 0;
     const dateSpy = jest.spyOn(Date, 'now').mockImplementation(() => nowMs);
@@ -1050,18 +1050,23 @@ describe('EntityExportModalProvider component', () => {
 
       await waitFor(() => expect(getCsvAsyncJob).toHaveBeenCalledTimes(1));
 
-      // Advance Date.now well past the 5-minute modal cap.
+      // Past the 5-minute modal cap — bulk-edit must NOT stop here.
       nowMs = 5 * 60 * 1_000 + 1_000;
-
-      // Advance the 1-s retry timer — bulk-edit must NOT stop here.
       await act(async () => {
         jest.advanceTimersByTime(1_000);
       });
-
-      // Poll count increased: polling continued despite the elapsed time.
       expect(getCsvAsyncJob).toHaveBeenCalledTimes(2);
       expect(onError).not.toHaveBeenCalled();
-      expect(screen.getByTestId('polled-export-error')).toBeEmptyDOMElement();
+
+      // Past the 30-minute bulk-edit cap — must now stop with an error.
+      nowMs = 30 * 60 * 1_000 + 1_000;
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('polled-export-error')).toHaveTextContent(
+        'server.unexpected-error'
+      );
     } finally {
       dateSpy.mockRestore();
       (getCsvAsyncJob as jest.Mock).mockReset();

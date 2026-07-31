@@ -75,6 +75,7 @@ const CSV_EXPORT_MAX_POLL_INTERVAL_MS = 10_000;
 const CSV_EXPORT_STATUS_REQUEST_TIMEOUT_MS = 5_000;
 const CSV_EXPORT_MAX_CONSECUTIVE_POLL_FAILURES = 6;
 const CSV_EXPORT_MAX_POLL_DURATION_MS = 5 * 60 * 1_000;
+const CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS = 30 * 60 * 1_000;
 
 interface CSVExportPollingState {
   abortController: AbortController;
@@ -447,8 +448,10 @@ export const EntityExportModalProvider = ({
           }
 
           if (
-            !bulkEdit &&
-            Date.now() - pollingStartTime >= CSV_EXPORT_MAX_POLL_DURATION_MS
+            Date.now() - pollingStartTime >=
+            (bulkEdit
+              ? CSV_EXPORT_BULK_EDIT_MAX_POLL_DURATION_MS
+              : CSV_EXPORT_MAX_POLL_DURATION_MS)
           ) {
             timedOut = true;
 
@@ -491,10 +494,9 @@ export const EntityExportModalProvider = ({
           return;
         }
 
-        if (timedOut) {
-          // timedOut is only set when bulkEdit === false (the duration cap is
-          // skipped for bulk-edit). Close the modal and hand the still-running
-          // backend job off to CsvJobsTray so the user can track it there.
+        if (timedOut && !bulkEdit) {
+          // Modal path timeout (5 min): backend is still running — close the
+          // modal and hand the job off to CsvJobsTray for continued tracking.
           csvExportPollingRef.current = undefined;
           csvExportJobRef.current = undefined;
           pendingCSVExportResponsesRef.current.clear();
@@ -503,8 +505,9 @@ export const EntityExportModalProvider = ({
           setExportData(null);
           window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
         } else {
-          // Max consecutive network failures — surface FAILED so any waiting
-          // consumer (bulk-edit grid or the modal itself) can show an error.
+          // Bulk-edit timeout (30 min) or max consecutive network failures:
+          // surface FAILED so the grid can show an error banner instead of
+          // hanging on the loader indefinitely.
           applyCSVExportJobUpdate({
             error: null,
             jobId,
