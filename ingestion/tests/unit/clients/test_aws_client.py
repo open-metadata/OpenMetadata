@@ -14,7 +14,7 @@ Test AWS Client region validation
 
 import pytest
 
-from metadata.clients.aws_client import VALID_AWS_REGIONS, AWSClient
+from metadata.clients.aws_client import BOTO_CONFIG, VALID_AWS_REGIONS, AWSClient
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 
 
@@ -95,3 +95,22 @@ class TestAWSClientRegionValidation:
             config = AWSCredentials(awsRegion=region)
             client = AWSClient(config)
             assert client.config.awsRegion == region
+
+
+class TestAWSClientUserAgent:
+    """Validate the User-Agent suffix carried by the boto3 clients"""
+
+    def test_user_agent_extra_identifies_the_ingestion_package(self):
+        assert BOTO_CONFIG.user_agent_extra.startswith("openmetadata-ingestion/")
+
+    def test_client_appends_the_suffix_to_the_botocore_user_agent(self):
+        config = AWSCredentials(
+            awsRegion="us-east-1",
+            awsAccessKeyId="access-key-id",
+            awsSecretAccessKey="secret-access-key",
+            endPointURL="https://s3.example.com",
+        )
+        client = AWSClient(config).get_s3_client()
+        user_agent = client.meta.config.user_agent
+        assert "Botocore/" in user_agent
+        assert user_agent.endswith(BOTO_CONFIG.user_agent_extra)
