@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
+import { Switch } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -384,9 +385,9 @@ export const DatabaseSchemaTable = ({
               data-testid="show-deleted"
               onClick={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
+            <Typography className="m-l-xs">
               {t('label.deleted')}
-            </Typography.Text>{' '}
+            </Typography>{' '}
           </span>
           {getBulkEditButton(
             permissions.databaseSchema.EditAll && !isDatabaseDeleted,

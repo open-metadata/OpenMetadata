@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Divider, Tooltip, Typography } from 'antd';
+import { Col, Divider, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -165,14 +166,13 @@ const ContractSLA: React.FC<{
       span={24}>
       <div className="contract-card-header-container">
         <div className="d-flex items-center gap-1">
-          <Typography.Text className="contract-card-header">
+          <Typography className="contract-card-header">
             {t('label.service-level-agreement')}
-          </Typography.Text>
+          </Typography>
           {inheritedIcon}
         </div>
         <Divider className="contract-dash-separator" />
       </div>
-
       <div className="sla-item-container">
         {renderSLAData.map((item) => (
           <div className="sla-item" key={item.key}>

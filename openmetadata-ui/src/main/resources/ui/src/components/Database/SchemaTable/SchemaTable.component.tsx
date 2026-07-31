@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 
-import { Label } from '@openmetadata/ui-core-components';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Row,
-  Select,
-  TableProps,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Label, Typography } from '@openmetadata/ui-core-components';
+import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -544,11 +535,12 @@ const SchemaTable = () => {
         }
 
         return (
-          <Typography.Paragraph
-            className="cursor-pointer"
-            ellipsis={{ tooltip: displayValue, rows: 3 }}>
+          <Typography
+            as='p'
+            ellipsis={{ tooltip: displayValue, rows: 3 }}
+            className="cursor-pointer">
             {highlightSearchArrayElement(dataTypeDisplay, searchText)}
-          </Typography.Paragraph>
+          </Typography>
         );
       },
       [searchText]
@@ -719,13 +711,13 @@ const SchemaTable = () => {
                 columnConstraint: record.constraint,
                 tableConstraints,
               })}
-              <Typography.Text
+              <Typography
+                data-testid="column-name"
                 className={classNames(
                   'm-b-0 d-block break-word cursor-pointer text-link-color'
-                )}
-                data-testid="column-name">
+                )}>
                 {stringToHTML(highlightSearchText(name, searchText))}
-              </Typography.Text>
+              </Typography>
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
@@ -758,13 +750,13 @@ const SchemaTable = () => {
             </div>
           </div>
           {isEmpty(displayName) ? null : (
-            <Typography.Text
-              className="m-b-0 d-block break-word"
-              data-testid="column-display-name">
+            <Typography
+              data-testid="column-display-name"
+              className="m-b-0 d-block break-word">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
               )}
-            </Typography.Text>
+            </Typography>
           )}
         </div>
       );

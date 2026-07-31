@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import type { TooltipProps } from 'recharts';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
@@ -34,9 +35,9 @@ const ContractExecutionChartTooltip = (
   return (
     <Card
       title={
-        <Typography.Title level={5}>
+        <Typography as='h5' size='text-md'>
           {formatDateTimeLong(timestamp)}
-        </Typography.Title>
+        </Typography>
       }>
       <ul
         className="test-summary-tooltip-container"

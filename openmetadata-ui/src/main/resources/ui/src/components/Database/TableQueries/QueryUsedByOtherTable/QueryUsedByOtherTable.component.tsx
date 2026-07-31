@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Popover, Row, Space, Typography } from 'antd';
+import { Col, Popover, Row, Space } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,8 +34,6 @@ import {
   QueryUsedByOtherTableProps,
   QueryUsedByTable,
 } from '../TableQueries.interface';
-
-const { Text } = Typography;
 
 const QueryUsedByOtherTable = ({
   query,
@@ -66,10 +65,10 @@ const QueryUsedByOtherTable = ({
 
   const tableNames = useMemo(
     () => (
-      <Text>
+      <Typography>
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
-              <Text className="m-r-xss" key={table.name}>
+              <Typography key={table.name} className="m-r-xss">
                 <Link
                   to={getEntityDetailsPath(
                     EntityType.TABLE,
@@ -78,12 +77,12 @@ const QueryUsedByOtherTable = ({
                   {getEntityName(table)}
                 </Link>
                 {topThreeTable.length - 1 !== index && ','}
-              </Text>
+              </Typography>
             ))
           : '--'}
         {remainingTable.length ? (
           <>
-            <Text className="m-r-xss">{t('label.and-lowercase')}</Text>
+            <Typography className="m-r-xss">{t('label.and-lowercase')}</Typography>
             <Popover
               content={
                 <Space direction="vertical">
@@ -101,13 +100,13 @@ const QueryUsedByOtherTable = ({
               }
               placement="bottom"
               trigger="click">
-              <Text className="show-more" data-testid="show-more">
+              <Typography data-testid="show-more" className="show-more">
                 {`${remainingTable.length} ${t('label.more-lowercase')}`}
-              </Text>
+              </Typography>
             </Popover>
           </>
         ) : null}
-      </Text>
+      </Typography>
     ),
     [topThreeTable, remainingTable]
   );
@@ -195,7 +194,7 @@ const QueryUsedByOtherTable = ({
   return (
     <Row wrap data-testid="para-container">
       <Col flex="200px">
-        <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
+        <Typography>{`${t('message.query-used-by-other-tables')}:`}</Typography>
       </Col>
       <Col>{isEditMode ? selectList : tableNames}</Col>
     </Row>

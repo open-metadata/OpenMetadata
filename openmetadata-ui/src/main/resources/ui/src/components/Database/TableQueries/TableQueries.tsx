@@ -16,7 +16,8 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Row, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -542,11 +543,11 @@ const TableQueries: FC<TableQueriesProp> = ({
       data-testid="no-queries"
       span={24}>
       <ErrorPlaceHolder>
-        <Typography.Paragraph>
+        <Typography as='p'>
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.query-lowercase-plural'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     </Col>
   ) : (

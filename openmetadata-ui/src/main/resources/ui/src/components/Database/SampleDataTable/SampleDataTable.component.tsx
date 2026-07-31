@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Select, Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -128,11 +129,11 @@ const SampleDataTable: FC<SampleDataProps> = ({
         dataType: matchedColumn?.dataType ?? '',
         title: (
           <div className="d-flex flex-column">
-            <Typography.Text> {column}</Typography.Text>
+            <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
-              <Typography.Text className="text-grey-muted text-xs font-normal">{`(${lowerCase(
+              <Typography className="text-grey-muted text-xs font-normal">{`(${lowerCase(
                 matchedColumn?.dataType ?? ''
-              )})`}</Typography.Text>
+              )})`}</Typography>
             )}
           </div>
         ),
@@ -269,7 +270,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
       <ErrorPlaceHolder className="error-placeholder">
-        <Typography.Paragraph>
+        <Typography as='p'>
           <Transi18next
             i18nKey="message.view-sample-data-entity"
             renderElement={
@@ -285,7 +286,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
               entity: t('label.auto-classification'),
             }}
           />
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -299,9 +300,9 @@ const SampleDataTable: FC<SampleDataProps> = ({
       id="sampleDataDetails">
       <Space className="m-y-xss justify-between w-full">
         <Space>
-          <Typography.Text className="text-grey-muted">
+          <Typography className="text-grey-muted">
             {t('label.row-limit')}:
-          </Typography.Text>
+          </Typography>
           <Select
             className="w-28"
             data-testid="row-limit-select"
@@ -340,7 +341,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
           </Tooltip>
         </Dropdown>
       </Space>
-
       <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
@@ -350,7 +350,6 @@ const SampleDataTable: FC<SampleDataProps> = ({
         scroll={{ y: 'calc(100vh - 160px)' }}
         size="small"
       />
-
       {isDeleteModalOpen && (
         <DeleteModal
           entityTitle={t('label.sample-data')}

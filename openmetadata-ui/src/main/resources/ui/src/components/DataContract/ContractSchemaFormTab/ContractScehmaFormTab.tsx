@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Tag, Typography } from 'antd';
+import { Button, Card, Tag } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -411,9 +412,9 @@ export const ContractSchemaFormTab: React.FC<{
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         render: (_, record: Column) => (
-          <Typography.Text className="schema-table-name">
+          <Typography className="schema-table-name">
             {getEntityName(record)}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -534,12 +535,12 @@ export const ContractSchemaFormTab: React.FC<{
     <>
       <Card className="container bg-grey p-box">
         <div className="m-b-sm">
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.schema')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as='p' className="contract-detail-form-tab-description">
             {t('message.data-contract-schema-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
         <AntTable
           columns={columns}

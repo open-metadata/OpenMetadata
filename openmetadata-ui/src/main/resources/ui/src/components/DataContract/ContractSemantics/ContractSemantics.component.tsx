@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -71,18 +72,18 @@ const ContractSemantics: React.FC<{
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">
-                  <Typography.Text className="rule-name">
+                  <Typography className="rule-name">
                     {item.name}
-                  </Typography.Text>
+                  </Typography>
                   {inheritedIcon}
                 </div>
-                <Typography.Text className="rule-description">
+                <Typography className="rule-description">
                   <RichTextEditorPreviewerNew
                     enableSeeMoreVariant
                     markdown={item.description}
                     maxLineLength="3"
                   />
-                </Typography.Text>
+                </Typography>
               </div>
             </div>
           );
@@ -90,9 +91,9 @@ const ContractSemantics: React.FC<{
       </div>
       {contractStatus && (
         <div className="contract-status-container">
-          <Typography.Text>{`${t('label.entity-status', {
+          <Typography>{`${t('label.entity-status', {
             entity: t('label.semantic-plural'),
-          })} :`}</Typography.Text>
+          })} :`}</Typography>
           <StatusBadgeV2
             dataTestId="contract-status-card-item-semantics-status"
             label={contractStatus}

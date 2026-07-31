@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Collapse, Tag, Typography } from 'antd';
+import { Collapse, Tag } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -26,9 +27,9 @@ const { Panel } = Collapse;
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
   const [header, setHeader] = useState<ReactNode>(
-    <Typography.Text ellipsis className="text-primary">
+    <Typography ellipsis className="text-primary">
       {message}
-    </Typography.Text>
+    </Typography>
   );
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -43,12 +44,12 @@ const MessageCard = ({ message }: { message: string }) => {
       );
     } else {
       setHeader(
-        <Typography.Text
+        <Typography
           ellipsis
-          className="text-primary"
-          data-testid="collapsed-header">
+          data-testid="collapsed-header"
+          className="text-primary">
           {message}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [isExpanded]);

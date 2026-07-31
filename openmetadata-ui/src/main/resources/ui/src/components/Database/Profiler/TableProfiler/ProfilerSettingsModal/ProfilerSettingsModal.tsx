@@ -13,17 +13,8 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Drawer,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  Switch,
-  TreeSelect,
-  Typography,
-} from 'antd';
+import { Button, Drawer, Input, InputNumber, Select, Space, Switch, TreeSelect } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import Form from 'antd/lib/form';
 import { FormProps, List } from 'antd/lib/form/Form';
 import { Col, Row } from 'antd/lib/grid';
@@ -566,9 +557,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           />
         </Col>
         <Col data-testid="exclude-column-container" span={24}>
-          <Typography.Paragraph>
+          <Typography as='p'>
             {t('message.enable-column-profile')}
-          </Typography.Paragraph>
+          </Typography>
           <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
           <Select
             allowClear

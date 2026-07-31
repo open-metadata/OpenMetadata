@@ -12,7 +12,8 @@
  */
 
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Card, Dropdown, Typography } from 'antd';
+import { Button, Card, Dropdown } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
@@ -223,12 +224,12 @@ export const ContractQualityFormTab: React.FC<{
     <Card className="contract-quality-form-tab-container container bg-grey p-box">
       <div className="d-flex justify-between">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.quality')}
-          </Typography.Text>
-          <Typography.Text className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography className="contract-detail-form-tab-description">
             {t('message.quality-contract-description')}
-          </Typography.Text>
+          </Typography>
         </div>
 
         <Button
@@ -241,7 +242,6 @@ export const ContractQualityFormTab: React.FC<{
           })}
         </Button>
       </div>
-
       <div className="contract-form-content-container ">
         <Table
           columns={columns}
@@ -278,7 +278,6 @@ export const ContractQualityFormTab: React.FC<{
           }}
         />
       </div>
-
       <div className="d-flex justify-between m-t-md">
         <Button
           className="contract-prev-button"
@@ -294,7 +293,6 @@ export const ContractQualityFormTab: React.FC<{
           <Icon component={RightIcon} />
         </Button>
       </div>
-
       <TestCaseFormDrawer
         open={isTestCaseDrawerOpen}
         table={table}

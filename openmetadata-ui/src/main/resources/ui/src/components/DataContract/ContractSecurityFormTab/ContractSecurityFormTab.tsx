@@ -11,17 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Divider,
-  Form,
-  Input,
-  Row,
-  Select,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Select } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
@@ -161,12 +152,12 @@ export const ContractSecurityFormTab: React.FC<{
     <>
       <Card className="contract-security-form-container container bg-grey p-box">
         <div>
-          <Typography.Text className="contract-detail-form-tab-title">
+          <Typography className="contract-detail-form-tab-title">
             {t('label.security')}
-          </Typography.Text>
-          <Typography.Paragraph className="contract-detail-form-tab-description">
+          </Typography>
+          <Typography as='p' className="contract-detail-form-tab-description">
             {t('message.data-contract-security-description')}
-          </Typography.Paragraph>
+          </Typography>
         </div>
 
         <Form
@@ -193,12 +184,12 @@ export const ContractSecurityFormTab: React.FC<{
           <div className="contract-form-content-container">
             <div className="d-flex justify-between items-center">
               <div className="consumer-title-container">
-                <Typography.Text className="consumer-title">
+                <Typography className="consumer-title">
                   {t('label.policy-plural')}
-                </Typography.Text>
-                <Typography.Paragraph className="consumer-description">
+                </Typography>
+                <Typography as='p' className="consumer-description">
                   {t('message.contract-security-consume-description')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
 
               <Button
@@ -236,10 +227,10 @@ export const ContractSecurityFormTab: React.FC<{
                               <div className="security-form-item-title-container">
                                 <div className="d-flex items-center gap-6">
                                   <div className="d-flex flex-column">
-                                    <Typography.Text className="consumer-form-item-title">
+                                    <Typography className="consumer-form-item-title">
                                       {policiesFormData?.[policyField.key]
                                         ?.accessPolicy || t('label.untitled')}
-                                    </Typography.Text>
+                                    </Typography>
                                   </div>
                                 </div>
                                 <div className="d-flex items-center gap-2">
@@ -331,9 +322,9 @@ export const ContractSecurityFormTab: React.FC<{
                                     return (
                                       <>
                                         <div className="d-flex items-center justify-between">
-                                          <Typography.Text className="row-filter-title">
+                                          <Typography className="row-filter-title">
                                             {t('label.row-filter-plural')}
-                                          </Typography.Text>
+                                          </Typography>
 
                                           <Button
                                             className="add-row-filter-button"
@@ -346,7 +337,6 @@ export const ContractSecurityFormTab: React.FC<{
                                             })}
                                           </Button>
                                         </div>
-
                                         <div className="contract-consumer-security-card-rule-container">
                                           {rowFilterFields.map(
                                             (
@@ -438,7 +428,6 @@ export const ContractSecurityFormTab: React.FC<{
                                             }
                                           )}
                                         </div>
-
                                         <div className="contract-consumer-security-card-form-actions-items">
                                           <Button
                                             data-testid="cancel-policy-button"

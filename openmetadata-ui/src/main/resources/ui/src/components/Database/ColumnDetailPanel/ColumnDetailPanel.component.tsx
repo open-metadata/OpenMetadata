@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
   XClose,
 } from '@untitledui/icons';
-import { Card, Drawer, Space, Tooltip, Typography } from 'antd';
+import { Card, Drawer, Space, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -787,21 +787,21 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 className="tw:inline-flex tw:items-center tw:min-w-0"
                 key={breadcrumb.fullyQualifiedName}>
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
-                  <Typography.Text
-                    className={classNames('tw:text-xs tw:truncate', {
-                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
-                        isLastItem,
-                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
-                        !isLastItem,
-                    })}
+                  <Typography
                     title={getEntityName(breadcrumb)}
                     onClick={
                       isLastItem
                         ? undefined
                         : () => handleBreadcrumbClick(breadcrumb)
-                    }>
+                    }
+                    className={classNames('tw:text-xs tw:truncate', {
+                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
+                        isLastItem,
+                      'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                        !isLastItem,
+                    })}>
                     {getEntityName(breadcrumb)}
-                  </Typography.Text>
+                  </Typography>
                   {index < breadcrumbPath.length - 1 && (
                     <ChevronRight
                       className="tw:text-gray-400 tw:shrink-0"
@@ -829,16 +829,16 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                   placement="topLeft"
                   title={getEntityName(activeColumn)}
                   trigger="hover">
-                  <Typography.Text
+                  <Typography
                     ellipsis
-                    className="entity-title-link"
-                    data-testid="entity-link">
+                    data-testid="entity-link"
+                    className="entity-title-link">
                     {stringToHTML(
                       (activeColumn as { displayName?: string }).displayName ||
                         activeColumn.name ||
                         ''
                     )}
-                  </Typography.Text>
+                  </Typography>
                 </Tooltip>
 
                 {hasEditPermission.displayName &&
@@ -868,12 +868,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 activeColumn.displayName !== activeColumn.name &&
                 (entityType === EntityType.TABLE ||
                   entityType === EntityType.DASHBOARD_DATA_MODEL) && (
-                  <Typography.Text
-                    className="tw:text-gray-400 tw:text-xs"
+                  <Typography
                     data-testid="entity-name"
-                    ellipsis={{ tooltip: true }}>
+                    ellipsis={{ tooltip: true }}
+                    className="tw:text-gray-400 tw:text-xs">
                     {stringToHTML(activeColumn.name || '')}
-                  </Typography.Text>
+                  </Typography>
                 )}
             </div>
           </div>
@@ -960,10 +960,10 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handleNextColumn}
         />
         {isColumnInList && flattenedColumns.length > 0 && (
-          <Typography.Text className="pagination-header-text tw:font-medium">
+          <Typography className="pagination-header-text tw:font-medium">
             {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
             {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
-          </Typography.Text>
+          </Typography>
         )}
       </div>
     </div>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isNil, isObject, noop } from 'lodash';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -27,25 +27,26 @@ export const RowData = ({ data }: { data: SampleDataType }) => {
   const dataElementRenderer = useMemo(() => {
     if (isNil(data) || data === '') {
       return (
-        <Typography.Text data-testid="empty-data">
+        <Typography data-testid="empty-data">
           {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
+        </Typography>
       );
     } else if (isObject(data)) {
       return (
-        <Typography.Paragraph
-          className="w-52 cursor-pointer"
+        <Typography
+          as='p'
           data-testid="json-object"
           ellipsis={{ rows: 4 }}
-          onClick={onOpen}>
+          onClick={onOpen}
+          className="w-52 cursor-pointer">
           {JSON.stringify(data)}
-        </Typography.Paragraph>
+        </Typography>
       );
     } else {
       return (
-        <Typography.Text data-testid="string-data">
+        <Typography data-testid="string-data">
           {data.toString()}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [data, onOpen]);
