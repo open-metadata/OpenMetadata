@@ -98,6 +98,10 @@ const dashboardSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/dashboard/ssrsConnection.json'
     ),
+  [DashboardServiceType.Rill]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/rillConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

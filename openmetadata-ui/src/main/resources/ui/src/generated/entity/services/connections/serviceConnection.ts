@@ -97,6 +97,8 @@ export interface ServiceConnectionClass {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * The fastest business intelligence tool for humans and agents
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Google BigQuery Connection Config
@@ -375,6 +377,8 @@ export interface ConfigObject {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
+     * API token to authenticate with Rill.
+     *
      * To Connect to Dagster Cloud
      *
      * Generated Token to connect to DBTCloud.
@@ -507,6 +511,8 @@ export interface ConfigObject {
      * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * Host and Port of the Ssrs instance.
+     *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
      *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
@@ -5169,6 +5175,7 @@ export enum ConfigType {
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",
