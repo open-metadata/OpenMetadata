@@ -57,7 +57,13 @@ class RillApiClient:
         self.config = config
         host_port = clean_uri(str(config.hostPort))
         token = config.token.get_secret_value() if config.token else None
-        is_cloud = get_rill_cloud_project(host_port) is not None
+        cloud_match = RILL_CLOUD_PROJECT_PATH.fullmatch(urlparse(host_port).path.rstrip("/"))
+        if cloud_match and cloud_match.group("branch"):
+            raise ValueError(
+                "Rill Cloud branch-level routing is not supported yet. Remove the "
+                f"'/branch/{cloud_match.group('branch')}' segment from the project URL [{host_port}]."
+            )
+        is_cloud = cloud_match is not None
         if is_cloud and not token:
             raise ValueError(
                 f"An API token is required to connect to the Rill Cloud project at [{host_port}]. "

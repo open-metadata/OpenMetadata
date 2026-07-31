@@ -20,6 +20,9 @@ use the project endpoint:
 
 For a local Rill Developer project, this is typically
 `http://localhost:9009`.
+
+Branch-level project URLs (ending in `/branch/<branch>`) are not supported
+yet; use the project endpoint without a branch segment.
 $$
 
 $$section

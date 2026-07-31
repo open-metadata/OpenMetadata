@@ -405,6 +405,16 @@ class TestRillClient:
         with pytest.raises(ValueError, match="API token is required"):
             RillApiClient(config)
 
+    def test_cloud_project_with_branch_raises_unsupported_error(self):
+        config = RillConnection(
+            type="Rill",
+            hostPort="https://api.rilldata.com/v1/orgs/demo/projects/rill-openrtb-prog-ads/branch/staging",
+            token="test-token",
+        )
+
+        with pytest.raises(ValueError, match="branch-level routing is not supported"):
+            RillApiClient(config)
+
     def test_cloud_project_parser_supports_current_and_legacy_paths(self):
         assert get_rill_cloud_project("https://api.rilldata.com/v1/orgs/demo/projects/rill-openrtb-prog-ads") == (
             "demo",
