@@ -280,41 +280,52 @@ class RillSource(DashboardServiceSource):
         cls,
         spec: RillMetricsViewSpec,
     ) -> List[Column]:  # noqa: UP006
-        dimensions = [
-            Column(
-                name=truncate_column_name(dimension.name),
-                displayName=dimension.display_name or dimension.name,
-                dataType=cls._get_column_data_type(dimension.data_type),
-                dataTypeDisplay=(
-                    dimension.data_type.raw_type
-                    if dimension.data_type and dimension.data_type.raw_type
-                    else "Rill Dimension"
-                ),
-                description=cls._get_field_description(
-                    dimension.description,
-                    dimension.expression,
-                ),
+        columns: List[Column] = []  # noqa: UP006
+        seen_names: Set[str] = set()  # noqa: UP006
+
+        def append_column(column: Column) -> None:
+            name = column.name.root
+            if name in seen_names:
+                logger.warning("Skipping duplicate Rill metrics view column [%s]; column names must be unique", name)
+                return
+            seen_names.add(name)
+            columns.append(column)
+
+        for dimension in spec.dimensions:
+            append_column(
+                Column(
+                    name=truncate_column_name(dimension.name),
+                    displayName=dimension.display_name or dimension.name,
+                    dataType=cls._get_column_data_type(dimension.data_type),
+                    dataTypeDisplay=(
+                        dimension.data_type.raw_type
+                        if dimension.data_type and dimension.data_type.raw_type
+                        else "Rill Dimension"
+                    ),
+                    description=cls._get_field_description(
+                        dimension.description,
+                        dimension.expression,
+                    ),
+                )
             )
-            for dimension in spec.dimensions
-        ]
-        measures = [
-            Column(
-                name=truncate_column_name(measure.name),
-                displayName=measure.display_name or measure.name,
-                dataType=DataType.MEASURE,
-                dataTypeDisplay=(
-                    f"Rill Measure ({measure.data_type.raw_type})"
-                    if measure.data_type and measure.data_type.raw_type
-                    else "Rill Measure"
-                ),
-                description=cls._get_field_description(
-                    measure.description,
-                    measure.expression,
-                ),
+        for measure in spec.measures:
+            append_column(
+                Column(
+                    name=truncate_column_name(measure.name),
+                    displayName=measure.display_name or measure.name,
+                    dataType=DataType.MEASURE,
+                    dataTypeDisplay=(
+                        f"Rill Measure ({measure.data_type.raw_type})"
+                        if measure.data_type and measure.data_type.raw_type
+                        else "Rill Measure"
+                    ),
+                    description=cls._get_field_description(
+                        measure.description,
+                        measure.expression,
+                    ),
+                )
             )
-            for measure in spec.measures
-        ]
-        return [*dimensions, *measures]
+        return columns
 
     def yield_bulk_datamodel(
         self,
@@ -452,7 +463,9 @@ class RillSource(DashboardServiceSource):
                 for reference in component.meta.refs:
                     if reference.kind == METRICS_VIEW_KIND:
                         metrics_views[reference.name] = None
-                spec = self._get_component_spec(component)
+                if not (component.component and component.component.effective_spec):
+                    continue
+                spec = component.component.effective_spec
                 metrics_view = spec.renderer_properties.get("metrics_view") or spec.renderer_properties.get(
                     "metricsView"
                 )
