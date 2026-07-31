@@ -77,7 +77,7 @@ public class ServicesOverviewRepository {
     List<TypedKey> keys = listKeys(securityContext, r);
     List<TypedKey> page = slice(keys, r.offset(), r.limit());
     List<ServiceSummary> data = hydrate(page, pageHealth(r, page, universeHealth), r);
-    int listTotal = listTotal(counts, byConnector, byHealth, keys, r);
+    int listTotal = listTotal(counts, byConnector, keys, r);
     logOverview(r, counts, keys.size(), data.size());
     return new ServicesOverview()
         .withCounts(counts)
@@ -429,28 +429,23 @@ public class ServicesOverviewRepository {
   private int listTotal(
       Map<String, Integer> counts,
       Map<String, Map<String, Integer>> byConnector,
-      Map<String, Map<String, Integer>> byHealth,
       List<TypedKey> keys,
       ServicesOverviewRequest r) {
     boolean hasConnector = !nullOrEmpty(r.serviceTypes());
     boolean hasHealth = !nullOrEmpty(r.healths());
     int total;
-    if (hasConnector && hasHealth) {
+    if (hasHealth) {
+      // A health filter forces the scan to cover the listed types in full, and those types are
+      // asserted resolvable before we get here, so the filtered keys *are* the total. Deriving it
+      // from healthCounts instead would report zero whenever that map is omitted for being
+      // universe-unresolvable — a paging total of zero alongside a non-empty page.
       total = keys.size();
     } else if (hasConnector) {
       total = sumSelected(byConnector, r.listEntityTypes(), r.serviceTypes());
-    } else if (hasHealth) {
-      total = sumSelected(byHealth, r.listEntityTypes(), healthValues(r));
     } else {
       total = r.listEntityTypes().stream().mapToInt(type -> counts.getOrDefault(type, 0)).sum();
     }
     return total;
-  }
-
-  private Set<String> healthValues(ServicesOverviewRequest r) {
-    return r.healths().stream()
-        .map(ServiceHealth::value)
-        .collect(java.util.stream.Collectors.toSet());
   }
 
   private int sumSelected(

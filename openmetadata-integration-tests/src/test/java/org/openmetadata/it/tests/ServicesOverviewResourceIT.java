@@ -450,6 +450,20 @@ public class ServicesOverviewResourceIT {
   }
 
   @Test
+  void healthFilteredPagingTotalMatchesTheRowsReturned(TestNamespace ns) throws Exception {
+    postgres(ns, "healthTotal_one");
+    postgres(ns, "healthTotal_two");
+
+    JsonNode response = overview("limit=1000&q=healthTotal_&health=notRun");
+
+    // paging.total must agree with what is actually in data. Deriving it from healthCounts would
+    // report zero whenever that map is omitted, telling a client there is nothing to page through
+    // while handing it rows.
+    assertEquals(2, namespacedNames(response, ns).size());
+    assertEquals(2, response.get("paging").get("total").asInt());
+  }
+
+  @Test
   void anUnresolvableDomainIsRejectedRatherThanIgnored(TestNamespace ns) throws Exception {
     postgres(ns, "domainGuard");
 
