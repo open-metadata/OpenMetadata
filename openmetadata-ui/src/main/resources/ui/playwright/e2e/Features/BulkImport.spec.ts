@@ -1038,12 +1038,13 @@ test.describe('Bulk Import Export', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await dbEntity.create(apiContext);
 
-    await test.step('should export data database details', async () => {
-      await dbEntity.visitEntityPage(page);
-      await performBulkDownload(page, dbEntity.entity.name);
-    });
+    try {
+      await test.step('should export data database details', async () => {
+        await dbEntity.visitEntityPage(page);
+        await performBulkDownload(page, dbEntity.entity.name);
+      });
 
-    await test.step('should import and test range selection', async () => {
+      await test.step('should import and test range selection', async () => {
       await dbEntity.visitEntityPage(page);
       await page.getByTestId('manage-button').click();
       await page
@@ -1304,9 +1305,10 @@ test.describe('Bulk Import Export', () => {
         // undo the action
         await page.keyboard.press('Control+Z');
       });
-    });
-
-    await dbEntity.delete(apiContext);
-    await afterAction();
+      });
+    } finally {
+      await dbEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 });
