@@ -225,10 +225,11 @@ const AddDomainFormExtensionFields = ({
         const dataTestId = `extension-${propertyName}`;
 
         const labelWithBadge = (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <>
             {label}
+            {' '}
             <CustomPropertyTypeBadge propertyTypeName={propertyTypeName} />
-          </span>
+          </>
         );
 
         if (kind === 'text' || kind === 'duration' || kind === 'unknown') {
